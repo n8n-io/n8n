@@ -15,19 +15,19 @@ import {
 } from './GenericFunctions';
 
 import {
-	allRedditFields,
-	allRedditOperations,
-} from './AllRedditDescription';
+	commentFields,
+	commentOperations,
+} from './CommentDescription';
 
 import {
-	myAccountFields,
-	myAccountOperations,
-} from './MyAccountDescription';
+	postFields,
+	postOperations,
+} from './PostDescription';
 
 import {
-	submissionFields,
-	submissionOperations,
-} from './SubmissionDescription';
+	profileFields,
+	profileOperations,
+} from './ProfileDescription';
 
 import {
 	subredditFields,
@@ -61,13 +61,9 @@ export class Reddit implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'myAccount',
-							'submission',
-						],
-					},
-					hide: {
-						operation: [
-							'search',
+							'profile',
+							'comment',
+							'post',
 						],
 					},
 				},
@@ -80,16 +76,16 @@ export class Reddit implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'All Reddit',
-						value: 'allReddit',
+						name: 'Comment',
+						value: 'comment',
 					},
 					{
-						name: 'My Account',
-						value: 'myAccount',
+						name: 'Post',
+						value: 'post',
 					},
 					{
-						name: 'Submission',
-						value: 'submission',
+						name: 'Profile',
+						value: 'profile',
 					},
 					{
 						name: 'Subreddit',
@@ -100,27 +96,17 @@ export class Reddit implements INodeType {
 						value: 'user',
 					},
 				],
-				default: 'myAccount',
+				default: 'comment',
 				description: 'Resource to consume',
 			},
-
-			// allReddit
-			...allRedditOperations,
-			...allRedditFields,
-
-			// myAccount
-			...myAccountOperations,
-			...myAccountFields,
-
-			// submission
-			...submissionOperations,
-			...submissionFields,
-
-			// subreddit
+			...commentOperations,
+			...commentFields,
+			...profileOperations,
+			...profileFields,
 			...subredditOperations,
 			...subredditFields,
-
-			// user
+			...postOperations,
+			...postFields,
 			...userOperations,
 			...userFields,
 		],
@@ -137,62 +123,90 @@ export class Reddit implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 
-		if (resource === 'allReddit') {
+		if (resource === 'comment') {
 
 			// ----------------------------------
-			//         allReddit: get
+			//         comment: create
+			// ----------------------------------
+
+			const qs: IDataObject = {
+				thing_id: this.getNodeParameter('target', i),
+				text: this.getNodeParameter('text', i),
+			};
+
+			responseData = await redditApiRequest.call(this, 'POST', 'api/comment', qs);
+
+		} else if (resource === 'profile') {
+
+			// ----------------------------------
+			//         profile: get
 			// ----------------------------------
 
 			if (operation === 'get') {
 
-				const information = this.getNodeParameter('information', i) as string;
+				const endpoints: {[key: string]: string} = {
+					identity: 'me',
+					blockedUsers: 'me/blocked',
+					friends: 'me/friends',
+					karma: 'me/karma',
+					prefs: 'me/prefs',
+					trophies: 'me/trophies',
+				};
 
-				if (information === 'trending') {
+				const details = this.getNodeParameter('details', i) as string;
+				const endpoint = `api/v1/${endpoints[details]}`;
+				responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
 
-					const endpoint = 'api/trending_subreddits.json';
-					responseData = await redditApiRequest.call(this, 'GET', endpoint, {}, {});
-
-				} else {
-
-					const endpoint = 'best.json';
-					responseData = await handleListing.call(this, i, endpoint);
-
+				if (details === 'identity') {
+					responseData = responseData.features;
 				}
+
 			}
 
-		} else if (resource === 'myAccount') {
+		} else if (resource === 'subreddit') {
 
-			// ----------------------------------
-			//         myAccount: get
-			// ----------------------------------
+				// ----------------------------------
+				//        subreddit: get
+				// ----------------------------------
 
 				if (operation === 'get') {
 
-					const endpoints: {[key: string]: string} = {
-						identity: 'me',
-						blockedUsers: 'me/blocked',
-						friends: 'me/friends',
-						karma: 'me/karma',
-						prefs: 'me/prefs',
-						trophies: 'me/trophies',
-					};
+					const qs: IDataObject = {};
 
-					const details = this.getNodeParameter('details', i) as string;
-					responseData = await redditApiRequest.call(this, 'GET', `api/v1/${endpoints[details]}`, {}, {});
+					const subreddit = this.getNodeParameter('subreddit', i);
+					const content = this.getNodeParameter('content', i) as string;
+					const endpoint = `r/${subreddit}/about/${content}.json`;
 
-					if (details === 'identity') {
-						responseData = responseData.features;
+					responseData = await redditApiRequest.call(this, 'GET', endpoint, qs);
+
+					if (content === 'rules') {
+						responseData = responseData.rules;
 					}
 
+				// ----------------------------------
+				//        subreddit: getAll
+				// ----------------------------------
+
+				} else if (operation === 'getAll') {
+
+					const trending = this.getNodeParameter('trending', i) as IDataObject;
+
+					if (trending) {
+						const endpoint = 'api/trending_subreddits.json';
+						responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
+					} else {
+						const endpoint = 'api/search_reddit_names.json';
+						responseData = await handleListing.call(this, i, endpoint);
+					}
 				}
 
-			} else if (resource === 'submission') {
+			} else if (resource === 'post') {
 
-			// ----------------------------------
-			//         submission: post
-			// ----------------------------------
+				// ----------------------------------
+				//         post: create
+				// ----------------------------------
 
-				if (operation === 'post') {
+				if (operation === 'create') {
 
 					const qs: IDataObject = {
 						title: this.getNodeParameter('title', i),
@@ -208,73 +222,21 @@ export class Reddit implements INodeType {
 						qs.resubmit = this.getNodeParameter('resubmit', i);
 					}
 
-					responseData = await redditApiRequest.call(this, 'POST', 'api/submit', qs, {});
-
-			// ----------------------------------
-			//        submission: comment
-			// ----------------------------------
-
-				} else if (operation === 'comment') {
-
-					const qs: IDataObject = {
-						thing_id: this.getNodeParameter('target', i),
-						text: this.getNodeParameter('text', i),
-					};
-
-					responseData = await redditApiRequest.call(this, 'POST', 'api/comment', qs, {});
-
-				} else if (operation === 'search') {
-
-					const subreddit = this.getNodeParameter('subreddit', i);
-
-					const qs: IDataObject = {
-						q: this.getNodeParameter('keyword', i),
-						restrict_sr: 'on',
-					};
-
-					const endpoint = `r/${subreddit}/search.json`;
-
-					responseData = await redditApiRequest.call(this, 'GET', endpoint, qs, {});
+					responseData = await redditApiRequest.call(this, 'POST', 'api/submit', qs);
 
 				}
 
-			} else if (resource === 'subreddit') {
+				// ----------------------------------
+				//         post: getAll
+				// ----------------------------------
 
-			// ----------------------------------
-			//        subreddit: get
-			// ----------------------------------
+				else if (operation === 'getAll') {
 
-				if (operation === 'get') {
-
-					const qs: IDataObject = {};
-
-					const content = this.getNodeParameter('content', i) as string;
 					const subreddit = this.getNodeParameter('subreddit', i);
+					const content = this.getNodeParameter('content', i);
+					const endpoint = `r/${subreddit}/${content}.json`;
 
-					if (['about', 'rules', 'sidebar', 'sticky'].includes(content)) {
-
-						const endpoint = `r/${subreddit}/about/${content}.json`;
-						responseData = await redditApiRequest.call(this, 'GET', endpoint, qs, {});
-
-						if (content === 'rules') {
-							responseData = responseData.rules;
-						}
-
-					} else if (['top', 'hot', 'new', 'rising'].includes(content)) {
-
-						const endpoint = `r/${subreddit}/${content}.json`;
-						responseData = await handleListing.call(this, i, endpoint);
-
-					}
-
-				} else if (operation === 'search') {
-
-					const endpoint = `api/search_reddit_names.json`;
-					const qs: IDataObject = {
-						query: this.getNodeParameter('keyword', i),
-					};
-
-					responseData = await redditApiRequest.call(this, 'GET', endpoint, qs, {});
+					responseData = await handleListing.call(this, i, endpoint);
 
 				}
 
@@ -291,7 +253,7 @@ export class Reddit implements INodeType {
 					const endpoint = `user/${username}/${details}.json`;
 
 					responseData = ['about', 'gilded'].includes(details)
-						? await redditApiRequest.call(this, 'GET', endpoint, {}, {})
+						? await redditApiRequest.call(this, 'GET', endpoint, {})
 						: await handleListing.call(this, i, endpoint);
 
 				}

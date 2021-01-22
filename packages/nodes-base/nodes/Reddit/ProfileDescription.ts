@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const myAccountOperations = [
+export const profileOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const myAccountOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'myAccount',
+					'profile',
 				],
 			},
 		},
@@ -26,7 +26,7 @@ export const myAccountOperations = [
 ] as INodeProperties[];
 
 
-export const myAccountFields = [
+export const profileFields = [
 	{
 		displayName: 'Details',
 		name: 'details',
@@ -69,7 +69,7 @@ export const myAccountFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'myAccount',
+					'profile',
 				],
 				operation: [
 					'get',

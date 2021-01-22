@@ -20,35 +20,27 @@ export async function redditApiRequest(
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
-	body: IDataObject,
 ): Promise<any> { // tslint:disable-line:no-any
 
 	const resource = this.getNodeParameter('resource', 0) as string;
-	const operation = this.getNodeParameter('operation', 0) as string;
-	const requiresAuth = resource === 'myAccount' ||
-		(resource === 'submission' && ['post', 'comment'].includes(operation));
+	const authRequired = ['profile', 'post', 'comment'].includes(resource);
 
 	const options: OptionsWithUri = {
 		headers: {
 			'user-agent': 'n8n',
 		},
 		method,
-		uri: requiresAuth ? `https://oauth.reddit.com/${endpoint}` : `https://www.reddit.com/${endpoint}`,
+		uri: authRequired ? `https://oauth.reddit.com/${endpoint}` : `https://www.reddit.com/${endpoint}`,
 		qs,
-		body,
 		json: true,
 	};
-
-	if (!Object.keys(body).length) {
-		delete options.body;
-	}
 
 	if (!Object.keys(qs).length) {
 		delete options.qs;
 	}
 
 	try {
-		return requiresAuth
+		return authRequired
 			? await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options)
 			: await this.helpers.request.call(this, options);
 
@@ -70,16 +62,24 @@ export async function redditApiRequestAllItems(
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
-	body: IDataObject,
 ): Promise<any> { // tslint:disable-line:no-any
 
 	let responseData;
 	const returnData: IDataObject[] = [];
 
 	do {
-		responseData = await redditApiRequest.call(this, method, endpoint, qs, body);
+		console.log(method);
+		console.log(endpoint);
+		console.log(qs);
+		responseData = await redditApiRequest.call(this, method, endpoint, qs);
+		console.log(responseData);
 		qs.after = responseData.after;
-		responseData.data.children.forEach((child: any) => returnData.push(child.data)); // tslint:disable-line:no-any
+
+		if (endpoint === 'api/search_reddit_names.json') {
+			responseData.names.forEach((name: IDataObject) => returnData.push(name));
+		} else {
+			responseData.data.children.forEach((child: any) => returnData.push(child.data)); // tslint:disable-line:no-any
+		}
 
 		if (qs.limit && returnData.length >= qs.limit) {
 			return returnData;
@@ -98,18 +98,30 @@ export async function handleListing(
 	i: number,
 	endpoint: string,
 ): Promise<any> { // tslint:disable-line:no-any
+
 	let responseData;
 
-	const returnAll = this.getNodeParameter('returnAll', i);
-	if (returnAll) {
-		return await redditApiRequestAllItems.call(this, 'GET', endpoint, {}, {});
+	const resource = this.getNodeParameter('resource', 0);
+	const operation = this.getNodeParameter('operation', 0);
+
+	const qs: IDataObject = {};
+
+	if (resource === 'subreddit' && operation === 'getAll') {
+		const filters = this.getNodeParameter('filters', i) as IDataObject;
+		if (filters.query) {
+			qs.query = filters.query;
+		}
 	}
 
-	const qs: IDataObject = {
-		limit: this.getNodeParameter('limit', i),
-	};
-	responseData = await redditApiRequestAllItems.call(this, 'GET', endpoint, qs, {});
-	responseData = responseData.splice(0, qs.limit);
+	const returnAll = this.getNodeParameter('returnAll', i);
+
+	if (returnAll) {
+		responseData = await redditApiRequestAllItems.call(this, 'GET', endpoint, qs);
+	} else {
+		qs.limit = this.getNodeParameter('limit', i);
+		responseData = await redditApiRequestAllItems.call(this, 'GET', endpoint, qs);
+		responseData = responseData.splice(0, qs.limit);
+	}
 
 	return responseData;
 }

@@ -15,8 +15,8 @@ export const subredditOperations = [
 				value: 'get',
 			},
 			{
-				name: 'Search',
-				value: 'search',
+				name: 'Get All',
+				value: 'getAll',
 			},
 		],
 		displayOptions: {
@@ -31,7 +31,7 @@ export const subredditOperations = [
 
 export const subredditFields = [
 	// ----------------------------------
-	//         get: subreddit
+	//         subreddit: get
 	// ----------------------------------
 	{
 		displayName: 'Content',
@@ -56,22 +56,6 @@ export const subredditFields = [
 			{
 				name: 'Sticky Posts',
 				value: 'sticky',
-			},
-			{
-				name: 'Top Posts',
-				value: 'top',
-			},
-			{
-				name: 'Hot Posts',
-				value: 'hot',
-			},
-			{
-				name: 'New Posts',
-				value: 'new',
-			},
-			{
-				name: 'Rising Posts',
-				value: 'rising',
 			},
 		],
 		displayOptions: {
@@ -117,12 +101,6 @@ export const subredditFields = [
 				operation: [
 					'get',
 				],
-				content: [
-					'top',
-					'hot',
-					'new',
-					'rising',
-				],
 			},
 		},
 	},
@@ -144,12 +122,6 @@ export const subredditFields = [
 				operation: [
 					'get',
 				],
-				content: [
-					'top',
-					'hot',
-					'new',
-					'rising',
-				],
 				returnAll: [
 					false,
 				],
@@ -157,22 +129,21 @@ export const subredditFields = [
 		},
 	},
 	// ----------------------------------
-	//         search: subreddit
+	//        subreddit: getAll
 	// ----------------------------------
 	{
-		displayName: 'Keyword',
-		name: 'keyword',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'The keyword for the subreddit name search',
+		displayName: 'Trending',
+		name: 'trending',
+		type: 'boolean',
+		default: false,
+		description: 'Currently trending subreddits in all of Reddit',
 		displayOptions: {
 			show: {
 				resource: [
 					'subreddit',
 				],
 				operation: [
-					'search',
+					'getAll',
 				],
 			},
 		},
@@ -189,7 +160,10 @@ export const subredditFields = [
 					'subreddit',
 				],
 				operation: [
-					'search',
+					'getAll',
+				],
+				trending: [
+					false,
 				],
 			},
 		},
@@ -210,9 +184,41 @@ export const subredditFields = [
 					'subreddit',
 				],
 				operation: [
-					'search',
+					'getAll',
 				],
 				returnAll: [
+					false,
+				],
+				trending: [
+					false,
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		options: [
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				description: 'The term for the subreddit name search',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'subreddit',
+				],
+				operation: [
+					'getAll',
+				],
+				trending: [
 					false,
 				],
 			},
