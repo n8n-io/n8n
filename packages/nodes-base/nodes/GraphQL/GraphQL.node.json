@@ -1,0 +1,23 @@
+{
+	"node": "n8n-nodes-base.graphql",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Data & Storage",
+		"Development"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.graphql/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Giving kudos to contributors with GitHub, Slack, and n8n",
+				"icon": "👏",
+				"url": "https://medium.com/n8n-io/giving-kudos-to-contributors-with-github-slack-and-n8n-b3f5f4a653a6"
+			}
+		]
+	}
+}
