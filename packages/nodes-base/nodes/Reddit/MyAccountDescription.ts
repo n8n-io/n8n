@@ -41,7 +41,7 @@ export const myAccountFields = [
 				description: 'Return the identity of the logged-in user',
 			},
 			{
-				name: 'Blocked users',
+				name: 'Blocked Users',
 				value: 'blockedUsers',
 				description: 'Return the blocked users of the logged-in user',
 			},
