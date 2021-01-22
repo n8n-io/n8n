@@ -1,13 +1,15 @@
 import {
-	IExecuteSingleFunctions,
+	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-	import {
+
+import {
 	rocketchatApiRequest,
 	validateJSON
 } from './GenericFunctions';
@@ -50,7 +52,7 @@ export class Rocketchat implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RocketChat',
 		name: 'rocketchat',
-		icon: 'file:rocketchat.png',
+		icon: 'file:rocketchat.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
@@ -395,106 +397,113 @@ export class Rocketchat implements INodeType {
 		],
 	};
 
-	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
-		const resource = this.getNodeParameter('resource') as string;
-		const operation = this.getNodeParameter('operation') as string;
-		let response;
-
-		if (resource === 'chat') {
-			//https://rocket.chat/docs/developer-guides/rest-api/chat/postmessage
-			if (operation === 'postMessage') {
-				const channel = this.getNodeParameter('channel') as string;
-				const text = this.getNodeParameter('text') as string;
-				const options = this.getNodeParameter('options') as IDataObject;
-				const jsonActive = this.getNodeParameter('jsonParameters') as boolean;
-
-				const body: IPostMessageBody = {
-					channel,
-					text,
-				};
-
-				if (options.alias) {
-					body.alias = options.alias as string;
-				}
-				if (options.avatar) {
-					body.avatar = options.avatar as string;
-				}
-				if (options.emoji) {
-					body.emoji = options.emoji as string;
-				}
-
-				if (!jsonActive) {
-					const optionsAttachments = this.getNodeParameter('attachments') as IDataObject[];
-					if (optionsAttachments.length > 0) {
-						const attachments: IAttachment[] = [];
-						for (let i = 0; i < optionsAttachments.length; i++) {
-							const attachment: IAttachment = {};
-							for (const option of Object.keys(optionsAttachments[i])) {
-								if (option === 'color') {
-									attachment.color = optionsAttachments[i][option] as string;
-								} else if (option === 'text') {
-									attachment.text = optionsAttachments[i][option] as string;
-								} else if (option === 'ts') {
-									attachment.ts = optionsAttachments[i][option] as string;
-								} else if (option === 'messageLinks') {
-									attachment.message_link = optionsAttachments[i][option] as string;
-								} else if (option === 'thumbUrl') {
-									attachment.thumb_url = optionsAttachments[i][option] as string;
-								} else if (option === 'collapsed') {
-									attachment.collapsed = optionsAttachments[i][option] as boolean;
-								} else if (option === 'authorName') {
-									attachment.author_name = optionsAttachments[i][option] as string;
-								} else if (option === 'authorLink') {
-									attachment.author_link = optionsAttachments[i][option] as string;
-								} else if (option === 'authorIcon') {
-									attachment.author_icon = optionsAttachments[i][option] as string;
-								} else if (option === 'title') {
-									attachment.title = optionsAttachments[i][option] as string;
-								} else if (option === 'titleLink') {
-									attachment.title_link = optionsAttachments[i][option] as string;
-								} else if (option === 'titleLinkDownload') {
-									attachment.title_link_download = optionsAttachments[i][option] as boolean;
-								} else if (option === 'imageUrl') {
-									attachment.image_url = optionsAttachments[i][option] as string;
-								} else if (option === 'audioUrl') {
-									attachment.audio_url = optionsAttachments[i][option] as string;
-								} else if (option === 'videoUrl') {
-									attachment.video_url = optionsAttachments[i][option] as string;
-								} else if (option === 'fields') {
-									const fieldsValues = (optionsAttachments[i][option] as IDataObject).fieldsValues as IDataObject[];
-									if (fieldsValues.length > 0) {
-										const fields: IField[] = [];
-										for (let i = 0; i < fieldsValues.length; i++) {
-											const field: IField = {};
-											for (const key of Object.keys(fieldsValues[i])) {
-												if (key === 'short') {
-													field.short = fieldsValues[i][key] as boolean;
-												} else if (key === 'title') {
-													field.title = fieldsValues[i][key] as string;
-												} else if (key === 'value') {
-													field.value = fieldsValues[i][key] as string;
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		const length = (items.length as unknown) as number;
+		let responseData;
+		const returnData: IDataObject[] = [];
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+		for (let i = 0; i < length; i++) {
+			if (resource === 'chat') {
+				//https://rocket.chat/docs/developer-guides/rest-api/chat/postmessage
+				if (operation === 'postMessage') {
+					const channel = this.getNodeParameter('channel', i) as string;
+					const text = this.getNodeParameter('text', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+	
+					const body: IPostMessageBody = {
+						channel,
+						text,
+					};
+	
+					if (options.alias) {
+						body.alias = options.alias as string;
+					}
+					if (options.avatar) {
+						body.avatar = options.avatar as string;
+					}
+					if (options.emoji) {
+						body.emoji = options.emoji as string;
+					}
+	
+					if (!jsonActive) {
+						const optionsAttachments = this.getNodeParameter('attachments', i) as IDataObject[];
+						if (optionsAttachments.length > 0) {
+							const attachments: IAttachment[] = [];
+							for (let i = 0; i < optionsAttachments.length; i++) {
+								const attachment: IAttachment = {};
+								for (const option of Object.keys(optionsAttachments[i])) {
+									if (option === 'color') {
+										attachment.color = optionsAttachments[i][option] as string;
+									} else if (option === 'text') {
+										attachment.text = optionsAttachments[i][option] as string;
+									} else if (option === 'ts') {
+										attachment.ts = optionsAttachments[i][option] as string;
+									} else if (option === 'messageLinks') {
+										attachment.message_link = optionsAttachments[i][option] as string;
+									} else if (option === 'thumbUrl') {
+										attachment.thumb_url = optionsAttachments[i][option] as string;
+									} else if (option === 'collapsed') {
+										attachment.collapsed = optionsAttachments[i][option] as boolean;
+									} else if (option === 'authorName') {
+										attachment.author_name = optionsAttachments[i][option] as string;
+									} else if (option === 'authorLink') {
+										attachment.author_link = optionsAttachments[i][option] as string;
+									} else if (option === 'authorIcon') {
+										attachment.author_icon = optionsAttachments[i][option] as string;
+									} else if (option === 'title') {
+										attachment.title = optionsAttachments[i][option] as string;
+									} else if (option === 'titleLink') {
+										attachment.title_link = optionsAttachments[i][option] as string;
+									} else if (option === 'titleLinkDownload') {
+										attachment.title_link_download = optionsAttachments[i][option] as boolean;
+									} else if (option === 'imageUrl') {
+										attachment.image_url = optionsAttachments[i][option] as string;
+									} else if (option === 'audioUrl') {
+										attachment.audio_url = optionsAttachments[i][option] as string;
+									} else if (option === 'videoUrl') {
+										attachment.video_url = optionsAttachments[i][option] as string;
+									} else if (option === 'fields') {
+										const fieldsValues = (optionsAttachments[i][option] as IDataObject).fieldsValues as IDataObject[];
+										if (fieldsValues.length > 0) {
+											const fields: IField[] = [];
+											for (let i = 0; i < fieldsValues.length; i++) {
+												const field: IField = {};
+												for (const key of Object.keys(fieldsValues[i])) {
+													if (key === 'short') {
+														field.short = fieldsValues[i][key] as boolean;
+													} else if (key === 'title') {
+														field.title = fieldsValues[i][key] as string;
+													} else if (key === 'value') {
+														field.value = fieldsValues[i][key] as string;
+													}
 												}
+												fields.push(field);
+												attachment.fields = fields;
 											}
-											fields.push(field);
-											attachment.fields = fields;
 										}
 									}
 								}
+								attachments.push(attachment);
 							}
-							attachments.push(attachment);
+							body.attachments = attachments;
 						}
-						body.attachments = attachments;
+					} else {
+						body.attachments = validateJSON(this.getNodeParameter('attachmentsJson', i) as string);
 					}
-				} else {
-					body.attachments = validateJSON(this.getNodeParameter('attachmentsJson') as string);
+	
+					responseData = await rocketchatApiRequest.call(this, '/chat', 'POST', 'postMessage', body);
 				}
-
-				response = await rocketchatApiRequest.call(this, '/chat', 'POST', 'postMessage', body);
+			}
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else if (responseData !== undefined) {
+				returnData.push(responseData as IDataObject);
 			}
 		}
 
-		return {
-			json: response,
-		};
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
