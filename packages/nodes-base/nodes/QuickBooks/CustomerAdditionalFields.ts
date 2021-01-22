@@ -30,40 +30,55 @@ export const customerAdditionalFields = [
 		default: 0,
 	},
 	{
-		displayName: 'Billing Address - City',
-		name: 'billCity',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Billing Address - Line 1',
-		name: 'billLine1',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Billing Address - Postal Code',
-		name: 'billPostalCode',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Billing Address - Latitude',
-		name: 'billLat',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Billing Address - Longitude',
-		name: 'billLong',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Billing Address - Country Subdivision Code',
-		name: 'billCountrySubDivisionCode',
-		type: 'string',
-		default: '',
+		displayName: 'Billing Address',
+		name: 'billingAddress',
+		placeholder: 'Add Billing Address Fields',
+		type: 'fixedCollection',
+		default: {},
+		options: [
+			{
+				displayName: 'Details',
+				name: 'details',
+				values: [
+					{
+						displayName: 'City',
+						name: 'City',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Line 1',
+						name: 'Line1',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Postal Code',
+						name: 'PostalCode',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Latitude',
+						name: 'Lat',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Longitude',
+						name: 'Long',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Country Subdivision Code',
+						name: 'CountrySubDivisionCode',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Bill With Parent',
@@ -274,3 +289,17 @@ export const customerAdditionalFields = [
 		default: '',
 	},
 ];
+
+export interface CustomerBillingAddress {
+	details: [
+		{
+			[key: string]: string;
+			City: string,
+			Line1: string,
+			PostalCode: string,
+			Lat: string,
+			Long: string,
+			CountrySubDivisionCode: string,
+		}
+	];
+}

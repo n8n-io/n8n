@@ -25,8 +25,14 @@ import {
 } from './GenericFunctions';
 
 import {
+	identity,
 	isEmpty,
+	pickBy,
 } from 'lodash';
+
+import {
+	CustomerBillingAddress,
+} from './CustomerAdditionalFields';
 
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {
@@ -136,18 +142,14 @@ export class QuickBooks implements INodeType {
 						throw new Error('Please enter at least one field to update for the customer.');
 					}
 
-					Object.keys(updateFields).forEach(key => {
+					Object.entries(updateFields).forEach(([key, value]) => {
 						if (key === 'PrimaryEmailAddr') {
-							body[key] = {
-								Address: updateFields[key],
-							};
-						} else if (key.startsWith('bill')) {
-							const parsedKey = key.replace('bill', '');
-							body.BillAddr = {
-								[parsedKey]: updateFields[key],
-							};
+							body.PrimaryEmailAddr = { Address: value };
+						} else if (key === 'billingAddress') {
+							const { details } = updateFields[key] as CustomerBillingAddress;
+							body.BillAddr = pickBy(details[0], v => v !== '');
 						} else {
-							body[key] = updateFields[key];
+							body[key] = value;
 						}
 					});
 
