@@ -5,6 +5,7 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
 import {
@@ -19,7 +20,7 @@ import {
  * Make an authenticated API request to QuickBooks.
  */
 export async function quickBooksApiRequest(
-	this: IHookFunctions | IExecuteFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
@@ -57,7 +58,7 @@ export async function quickBooksApiRequest(
 
 	try {
 		console.log(options);
-		return await this.helpers.requestOAuth2.call(this, 'quickBooksOAuth2Api', options);
+		return await this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
 	} catch (error) {
 		throw error;
 	}
@@ -67,7 +68,7 @@ export async function quickBooksApiRequest(
  * Make an authenticated API request to QuickBooks and return all results.
  */
 export async function quickBooksApiRequestAllItems(
-	this: IHookFunctions | IExecuteFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
@@ -83,7 +84,6 @@ export async function quickBooksApiRequestAllItems(
 	do {
 		qs.query += ` MAXRESULTS 1000 STARTPOSITION ${startPosition}`;
 		responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, body);
-		console.log(responseData);
 		returnData.push(...responseData.QueryResponse[pascalCase(resource)]);
 
 		if (limit && returnData.length >= limit) {
