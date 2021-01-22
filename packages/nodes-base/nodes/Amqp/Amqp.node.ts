@@ -1,6 +1,6 @@
 import {
-	create_container,
 	ContainerOptions,
+	create_container,
 	Dictionary,
 	EventContext,
 } from 'rhea';
