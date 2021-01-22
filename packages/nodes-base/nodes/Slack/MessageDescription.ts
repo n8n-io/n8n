@@ -31,7 +31,7 @@ export const messageOperations = [
 				description: 'Updates a message.',
 			},
 			{
-				name: 'GetPermalink',
+				name: 'Get Permalink',
 				value: 'getPermalink',
 				description: 'Get Permanent Link of a message',
 			},
