@@ -193,6 +193,8 @@ export class Compression implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const operation = this.getNodeParameter('operation', 0) as string;
 
+		const validFormats = ['.gzip', '.zip'];
+
 		for (let i = 0; i < length; i++) {
 
 			if (operation === 'decompress') {
@@ -216,6 +218,11 @@ export class Compression implements INodeType {
 					const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
 
 					if (inputFormat === 'zip') {
+						
+						if (binaryData.fileExtension  !== 'zip') {
+							throw new Error(`The input binary data it's not .zip`);
+						}
+
 						const files = fllate.unzipSync(Buffer.from(binaryData.data as string, BINARY_ENCODING));
 
 						let zipIndex = 0;
@@ -237,6 +244,11 @@ export class Compression implements INodeType {
 						}
 
 					} else if (inputFormat === 'gzip') {
+
+						if (binaryData.fileExtension  !== 'gz') {
+							throw new Error(`The input binary data it's not .gz`);
+						}
+
 						const file = fllate.gunzipSync(Buffer.from(binaryData.data as string, BINARY_ENCODING));
 						
 						const fileName = binaryData.fileName?.split('.')[0];
