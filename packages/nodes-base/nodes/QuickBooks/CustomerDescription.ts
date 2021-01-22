@@ -6,6 +6,10 @@ import {
 	customerAdditionalFields,
 } from './CustomerAdditionalFields';
 
+import {
+	sortBy
+} from 'lodash';
+
 export const customerOperations = [
 	{
 		displayName: 'Operation',
@@ -214,14 +218,16 @@ export const customerFields = [
 				],
 			},
 		},
-		options: [
-			{
-				displayName: 'Display name',
-				name: 'displayName',
-				type: 'string',
-				default: '',
-			},
-			...customerAdditionalFields,
-		],
+		options: sortBy(
+			[
+				{
+					displayName: 'Display Name',
+					name: 'displayName',
+					type: 'string',
+					default: '',
+				},
+				...customerAdditionalFields,
+			], o => o.displayName,
+		),
 	},
 ] as INodeProperties[];
