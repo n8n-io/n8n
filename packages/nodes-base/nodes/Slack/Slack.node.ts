@@ -103,14 +103,14 @@ export class Slack implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Slack',
 		name: 'slack',
-		icon: 'file:slack.png',
+		icon: 'file:slack.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Slack API',
 		defaults: {
 			name: 'Slack',
-			color: '#BB2244',
+			color: '#E01E5A',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -799,7 +799,7 @@ export class Slack implements INodeType {
 				if (operation === 'getPermalink') {
 					const channel = this.getNodeParameter('channelId', i) as string;
 					const ts = this.getNodeParameter('messageTs', i) as string;
-				    const qs = { channel: channel, message_ts: ts };
+					const qs = { channel, message_ts: ts };
 					responseData = await slackApiRequest.call(this, 'GET', '/chat.getPermalink', {}, qs);
 				}
 			}
