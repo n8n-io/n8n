@@ -1,5 +1,5 @@
-export const estimateLine = 	{
-	displayName: 'Estimate Line',
+export const line = {
+	displayName: 'Line',
 	name: 'Line',
 	type: 'collection',
 	placeholder: 'Add Line Item Property',
@@ -11,6 +11,7 @@ export const estimateLine = 	{
 		show: {
 			resource: [
 				'estimate',
+				'invoice',
 			],
 			operation: [
 				'create',

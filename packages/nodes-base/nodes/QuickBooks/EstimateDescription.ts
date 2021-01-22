@@ -7,8 +7,8 @@ import {
 } from './EstimateAdditionalFields';
 
 import {
-	estimateLine
-} from './EstimateLine';
+	line
+} from './LineDescription';
 
 export const estimateOperations = [
 	{
@@ -63,7 +63,7 @@ export const estimateFields = [
 		type: 'options',
 		required: true,
 		description: 'The customer who the estimate is for',
-		default: '', // TODO: `The value "" is not supported!`
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
 		},
@@ -78,7 +78,7 @@ export const estimateFields = [
 			},
 		},
 	},
-	estimateLine,
+	line,
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -238,7 +238,7 @@ export const estimateFields = [
 				type: 'options',
 				required: true,
 				description: 'The customer who the estimate is for',
-				default: '', // TODO: `The value "" is not supported!`
+				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getCustomers',
 				},
@@ -253,7 +253,7 @@ export const estimateFields = [
 					},
 				},
 			},
-			estimateLine,
+			line,
 			...estimateAdditionalFields,
 		],
 	},
