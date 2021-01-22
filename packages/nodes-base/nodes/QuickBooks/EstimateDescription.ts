@@ -6,6 +6,10 @@ import {
 	estimateAdditionalFields,
 } from './EstimateAdditionalFields';
 
+import {
+	estimateLine
+} from './EstimateLine';
+
 export const estimateOperations = [
 	{
 		displayName: 'Operation',
@@ -55,7 +59,7 @@ export const estimateFields = [
 		type: 'options',
 		required: true,
 		description: 'The customer who the estimate is for',
-		default: '', // TODO: What to set here?
+		default: '', // TODO: `The value "" is not supported!`
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
 		},
@@ -70,77 +74,7 @@ export const estimateFields = [
 			},
 		},
 	},
-	{
-		displayName: 'Estimate Line',
-		name: 'Line',
-		type: 'collection',
-		placeholder: 'Add Line Item Property',
-		typeOptions: {
-			multipleValues: true,
-		},
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Type',
-				name: 'DetailType',
-				type: 'options',
-				default: 'DescriptionOnlyLine',
-				options: [
-					{
-						name: 'Description Only Line',
-						value: 'DescriptionOnlyLine',
-					},
-					{
-						name: 'Discount Line',
-						value: 'DiscountLine',
-					},
-					{
-						name: 'Group Line',
-						value: 'GroupLine',
-					},
-					{
-						name: 'Sales Item Line',
-						value: 'SalesItemLine',
-					},
-					{
-						name: 'Subtotal Line',
-						value: 'SubTotalLine',
-					},
-				],
-			},
-			{
-				displayName: 'Amount',
-				name: 'amount',
-				type: 'number',
-				default: 0,
-			},
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-			},
-			{
-				displayName: 'Position',
-				name: 'LineNum',
-				type: 'number',
-				default: 1,
-			},
-		],
-	},
+	estimateLine,
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -257,49 +191,65 @@ export const estimateFields = [
 	// ----------------------------------
 	//         customer: update
 	// ----------------------------------
-	// {
-	// 	displayName: 'Customer ID',
-	// 	name: 'customerId',
-	// 	type: 'string',
-	// 	required: true,
-	// 	default: '',
-	// 	description: 'The ID of the customer to update',
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'customer',
-	// 			],
-	// 			operation: [
-	// 				'update',
-	// 			],
-	// 		},
-	// 	},
-	// },
-	// {
-	// 	displayName: 'Update Fields',
-	// 	name: 'updateFields',
-	// 	type: 'collection',
-	// 	placeholder: 'Add Field',
-	// 	default: {},
-	// 	required: true,
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'customer',
-	// 			],
-	// 			operation: [
-	// 				'update',
-	// 			],
-	// 		},
-	// 	},
-	// 	options: [
-	// 		{
-	// 			displayName: 'Display name',
-	// 			name: 'displayName',
-	// 			type: 'string',
-	// 			default: '',
-	// 		},
-	// 		...customerAdditionalFields,
-	// 	],
-	// },
+	{
+		displayName: 'Estimate ID',
+		name: 'estimateId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The ID of the estimate to update',
+		displayOptions: {
+			show: {
+				resource: [
+					'estimate',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'estimate',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'For Customer',
+				name: 'CustomerRef',
+				type: 'options',
+				required: true,
+				description: 'The customer who the estimate is for',
+				default: '', // TODO: `The value "" is not supported!`
+				typeOptions: {
+					loadOptionsMethod: 'getCustomers',
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'estimate',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+			},
+			estimateLine,
+			...estimateAdditionalFields,
+		],
+	},
 ] as INodeProperties[];
