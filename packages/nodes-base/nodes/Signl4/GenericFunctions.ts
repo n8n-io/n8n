@@ -47,7 +47,7 @@ export async function SIGNL4ApiRequest(this: IExecuteFunctions, method: string, 
 	options = Object.assign({}, options, option);
 
 	try {
-		return await this.helpers.request!(options);
+		return JSON.parse(await this.helpers.request!(options));
 	} catch (error) {
 
 		if (error.response && error.response.body && error.response.body.details) {
