@@ -200,7 +200,7 @@ export class NextCloud implements INodeType {
 				options: [
 					{
 						name: 'Create',
-						value: 'Create',
+						value: 'create',
 						description: 'Invite a user to a NextCloud organization',
 					},
 				],
@@ -510,7 +510,7 @@ export class NextCloud implements INodeType {
 			//         user:create
 			// ----------------------------------
 			{
-				displayName: 'User ID',
+				displayName: 'Username',
 				name: 'userId',
 				type: 'string',
 				default: '',
@@ -526,7 +526,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: 'john',
-				description: 'The ID of the user to invite.',
+				description: 'Username the user will have.',
 			},
 			{
 				displayName: 'Email',
@@ -551,6 +551,7 @@ export class NextCloud implements INodeType {
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
+				placeholder: 'Add Field',
 				default: {},
 				displayOptions: {
 					show: {

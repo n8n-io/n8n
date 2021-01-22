@@ -17,6 +17,9 @@ import {
  * @returns {Promise<any>}
  */
 export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object | string | Buffer, headers?: object, encoding?: null | undefined, query?: object): Promise<any> { // tslint:disable-line:no-any
+	const resource = this.getNodeParameter('resource', 0);
+	const operation = this.getNodeParameter('operation', 0);
+	
 	const options : OptionsWithUri = {
 		headers,
 		method,
@@ -46,9 +49,6 @@ export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctio
 
 			options.uri = `${credentials.webDavUrl}/${encodeURI(endpoint)}`;
 
-			const resource = this.getNodeParameter('resource', 0);
-			const operation = this.getNodeParameter('operation', 0);
-
 			if (resource === 'user' && operation === 'create') {
 				options.uri = options.uri.replace('/remote.php/webdav', '');
 			}
@@ -61,10 +61,13 @@ export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctio
 
 			options.uri = `${credentials.webDavUrl}/${encodeURI(endpoint)}`;
 
+			if (resource === 'user' && operation === 'create') {
+				options.uri = options.uri.replace('/remote.php/webdav', '');
+			}
+
 			return await this.helpers.requestOAuth2!.call(this, 'nextCloudOAuth2Api', options);
 		}
 	} catch (error) {
-		console.log(error);
 		throw new Error(`NextCloud Error. Status Code: ${error.statusCode}. Message: ${error.message}`);
 	}
 }
