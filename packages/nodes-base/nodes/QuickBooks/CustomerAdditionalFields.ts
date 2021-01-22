@@ -164,7 +164,8 @@ export const customerAdditionalFields = [
 		type: 'string',
 		default: '',
 	},
-	{ name: 'Level',
+	{
+		name: 'Level',
 		value: 'Level',
 		type: 'number',
 		default: 0,
@@ -229,13 +230,13 @@ export const customerAdditionalFields = [
 		default: '',
 	},
 	{
-		displayName: 'Print on check name',
+		displayName: 'Print on Check Name',
 		name: 'PrintOnCheckName',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Resale number',
+		displayName: 'Resale Number',
 		name: 'ResaleNumber',
 		type: 'string',
 		default: '',
@@ -247,13 +248,13 @@ export const customerAdditionalFields = [
 		default: '',
 	},
 	{
-		displayName: 'Secondary tax identifier',
+		displayName: 'Secondary Tax Identifier',
 		name: 'SecondaryTaxIdentifier',
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Shipping address',
+		displayName: 'Shipping Address',
 		name: 'ShipAddr',
 		type: 'string',
 		default: '',
@@ -265,7 +266,7 @@ export const customerAdditionalFields = [
 		default: '',
 	},
 	{
-		name: 'Tax exemption reason',
+		name: 'Tax Exemption Reason',
 		value: 'TaxExemptionReason',
 		type: 'string',
 		default: '',
@@ -283,7 +284,7 @@ export const customerAdditionalFields = [
 		default: '',
 	},
 	{
-		displayName: 'Website address',
+		displayName: 'Website Address',
 		name: 'WebAddr',
 		type: 'string',
 		default: '',
