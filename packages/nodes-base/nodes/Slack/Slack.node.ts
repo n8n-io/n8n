@@ -798,8 +798,11 @@ export class Slack implements INodeType {
 				//https://api.slack.com/methods/chat.getPermalink
 				if (operation === 'getPermalink') {
 					const channel = this.getNodeParameter('channelId', i) as string;
-					const ts = this.getNodeParameter('messageTs', i) as string;
-					const qs = { channel, message_ts: ts };
+					const timestamp = this.getNodeParameter('timestamp', i) as string;
+					const qs = {
+						channel,
+						message_ts: timestamp,
+					};
 					responseData = await slackApiRequest.call(this, 'GET', '/chat.getPermalink', {}, qs);
 				}
 			}

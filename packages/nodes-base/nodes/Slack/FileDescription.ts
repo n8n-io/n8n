@@ -239,14 +239,14 @@ export const fileFields = [
 				description: 'Show truncated file info for files hidden due to being too old, and the team who owns the file being over the file limit.',
 			},
 			{
-				displayName: 'TS From',
+				displayName: 'Timestamp From',
 				name: 'tsFrom',
 				type: 'string',
 				default: '',
 				description: 'Filter files created after this timestamp (inclusive).',
 			},
 			{
-				displayName: 'TS To',
+				displayName: 'Timestamp To',
 				name: 'tsTo',
 				type: 'string',
 				default: '',
