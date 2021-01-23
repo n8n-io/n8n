@@ -16,6 +16,11 @@ export const messageOperations = [
 		},
 		options: [
 			{
+				name: 'Get Permalink',
+				value: 'getPermalink',
+				description: 'Get Permanent Link of a message',
+			},
+			{
 				name: 'Post',
 				value: 'post',
 				description: 'Post a message into a channel',
@@ -37,6 +42,49 @@ export const messageOperations = [
 ] as INodeProperties[];
 
 export const messageFields = [
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:getPermalink
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Channel',
+		name: 'channelId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getPermalink',
+				],
+			},
+		},
+		description: 'Channel containing the message.',
+	},
+	{
+		displayName: 'Timestamp',
+		name: 'timestamp',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getPermalink',
+				],
+			},
+		},
+		description: `Timestamp of the message to get permanent link.`,
+	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                          message:post/postEphemeral                        */
@@ -1631,4 +1679,5 @@ export const messageFields = [
 			},
 		],
 	},
+
 ] as INodeProperties[];
