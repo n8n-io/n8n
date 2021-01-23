@@ -105,7 +105,7 @@ export interface ICredentialsDecryptedResponse extends ICredentialsDecryptedDb {
 	id: string;
 }
 
-export type DatabaseType = 'mariadb' | 'mongodb' | 'postgresdb' | 'mysqldb' | 'sqlite';
+export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';
 export type SaveExecutionDataType = 'all' | 'none';
 
 export interface IExecutionBase {
@@ -249,9 +249,6 @@ export interface IN8nConfig {
 
 export interface IN8nConfigDatabase {
 	type: DatabaseType;
-	mongodb: {
-		connectionUrl: string;
-	};
 	postgresdb: {
 		host: string;
 		password: string;
