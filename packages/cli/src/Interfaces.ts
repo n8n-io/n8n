@@ -299,6 +299,9 @@ export interface IN8nUISettings {
 	timezone: string;
 	urlBaseWebhook: string;
 	versionCli: string;
+	n8nMetadata?: {
+		[key: string]: string | number | undefined;
+	};
 }
 
 export interface IPackageVersions {

@@ -114,6 +114,7 @@ import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
 import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { mouseSelect } from '@/components/mixins/mouseSelect';
 import { moveNodeWorkflow } from '@/components/mixins/moveNodeWorkflow';
@@ -164,6 +165,7 @@ import {
 
 export default mixins(
 	copyPaste,
+	externalHooks,
 	genericHelpers,
 	mouseSelect,
 	moveNodeWorkflow,
@@ -374,6 +376,8 @@ export default mixins(
 				await this.addNodes(data.nodes, data.connections);
 
 				this.$store.commit('setStateDirty', false);
+
+				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
 
 				return data;
 			},
@@ -1969,6 +1973,7 @@ export default mixins(
 				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
 				this.$store.commit('setVersionCli', settings.versionCli);
 				this.$store.commit('setOauthCallbackUrls', settings.oauthCallbackUrls);
+				this.$store.commit('setN8nMetadata', settings.n8nMetadata || {});
 			},
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();
@@ -2033,6 +2038,8 @@ export default mixins(
 				}
 				this.stopLoading();
 			});
+
+			this.$externalHooks().run('nodeView.mount');
 		},
 
 		destroyed () {
