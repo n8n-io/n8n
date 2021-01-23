@@ -1,4 +1,4 @@
-import { 
+import {
 	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -10,9 +10,43 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import * as fllate from 'fflate';
+import * as fflate from 'fflate';
+
+import { promisify } from 'util';
+
+const gunzip = promisify(fflate.gunzip);
+const gzip = promisify(fflate.gzip);
+const unzip = promisify(fflate.unzip);
+const zip = promisify(fflate.zip);
 
 import * as mime from 'mime-types';
+
+const ALREADY_COMPRESSED = [
+	'7z',
+	'aifc',
+	'bz2',
+	'doc',
+	'docx',
+	'gif',
+	'gz',
+	'heic',
+	'heif',
+	'jpg',
+	'jpeg',
+	'mov',
+	'mp3',
+	'mp4',
+	'pdf',
+	'png',
+	'ppt',
+	'pptx',
+	'rar',
+	'webm',
+	'webp',
+	'xls',
+	'xlsx',
+	'zip',
+];
 
 export class Compression implements INodeType {
 	description: INodeTypeDescription = {
@@ -47,30 +81,6 @@ export class Compression implements INodeType {
 				default: 'decompress',
 			},
 			{
-				displayName: 'Input Format',
-				name: 'inputFormat',
-				type: 'options',
-				default: '',
-				options: [
-					{
-						name: 'gzip',
-						value: 'gzip',
-					},
-					{
-						name: 'zip',
-						value: 'zip',
-					},
-				],
-				displayOptions: {
-					show: {
-						operation: [
-							'decompress',
-						],
-					},
-				},
-				description: 'Format of the input file',
-			},
-			{
 				displayName: 'Binary Property',
 				name: 'binaryPropertyName',
 				type: 'string',
@@ -83,7 +93,7 @@ export class Compression implements INodeType {
 							'decompress',
 						],
 					},
-		
+
 				},
 				placeholder: '',
 				description: 'Name of the binary property which contains<br />the data for the file(s) to be compress/decompress. Multiple can be used separated by ,',
@@ -128,7 +138,7 @@ export class Compression implements INodeType {
 							'zip',
 						],
 					},
-		
+
 				},
 				description: 'Name of the file to be compressed',
 			},
@@ -155,7 +165,7 @@ export class Compression implements INodeType {
 				displayName: 'Output Prefix',
 				name: 'outputPrefix',
 				type: 'string',
-				default: 'data_',
+				default: 'data',
 				required: true,
 				displayOptions: {
 					show: {
@@ -193,18 +203,16 @@ export class Compression implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		const validFormats = ['.gzip', '.zip'];
-
 		for (let i = 0; i < length; i++) {
 
 			if (operation === 'decompress') {
-				const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName', 0) as string).split(',');
+				const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName', 0) as string).split(',').map(key => key.trim());
 
-				const inputFormat =  this.getNodeParameter('inputFormat', 0) as string;
-
-				const outputPrefix =  this.getNodeParameter('outputPrefix', 0) as string;
+				const outputPrefix = this.getNodeParameter('outputPrefix', 0) as string;
 
 				const binaryObject: IBinaryKeyData = {};
+
+				let zipIndex = 0;
 
 				for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
 					if (items[i].binary === undefined) {
@@ -214,68 +222,49 @@ export class Compression implements INodeType {
 					if (items[i].binary[binaryPropertyName] === undefined) {
 						throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
 					}
-	
+
 					const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
 
-					if (inputFormat === 'zip') {
-						
-						if (binaryData.fileExtension  !== 'zip') {
-							throw new Error(`The input binary data it's not .zip`);
-						}
-
-						const files = fllate.unzipSync(Buffer.from(binaryData.data as string, BINARY_ENCODING));
-
-						let zipIndex = 0;
+					if (binaryData.fileExtension === 'zip') {
+						const files = await unzip(Buffer.from(binaryData.data as string, BINARY_ENCODING));
 
 						for (const key of Object.keys(files)) {
-
 							// when files are compresed using MACOSX for some reason they are duplicated under __MACOSX
 							if (key.includes('__MACOSX')) {
 								continue;
 							}
 
-							const buffer = files[key].buffer;
-							
-							const data = await this.helpers.prepareBinaryData(Buffer.from(buffer), key);
-							
-							binaryObject[`${outputPrefix}${index}_${zipIndex}`] = data;
+							const data = await this.helpers.prepareBinaryData(Buffer.from(files[key].buffer), key);
 
-							zipIndex++;
+							binaryObject[`${outputPrefix}${zipIndex++}`] = data;
 						}
+					} else if (binaryData.fileExtension === 'gz') {
+						const file = await gunzip(Buffer.from(binaryData.data as string, BINARY_ENCODING));
 
-					} else if (inputFormat === 'gzip') {
-
-						if (binaryData.fileExtension  !== 'gz') {
-							throw new Error(`The input binary data it's not .gz`);
-						}
-
-						const file = fllate.gunzipSync(Buffer.from(binaryData.data as string, BINARY_ENCODING));
-						
 						const fileName = binaryData.fileName?.split('.')[0];
-						
-						binaryObject[`${outputPrefix}${index}`] = await this.helpers.prepareBinaryData(Buffer.from(file.buffer), fileName);
 
-						const fileExtension = mime.extension(binaryObject[`${outputPrefix}${index}`].mimeType) as string;
+						const propertyName = `${outputPrefix}${index}`;
 
-						binaryObject[`${outputPrefix}${index}`].fileName = `${fileName}.${fileExtension}`;
-
-						binaryObject[`${outputPrefix}${index}`].fileExtension = fileExtension;
+						binaryObject[propertyName] = await this.helpers.prepareBinaryData(Buffer.from(file.buffer), fileName);
+						const fileExtension = mime.extension(binaryObject[propertyName].mimeType) as string;
+						binaryObject[propertyName].fileName = `${fileName}.${fileExtension}`;
+						binaryObject[propertyName].fileExtension = fileExtension;
 					}
 				}
 
 				returnData.push({
-					json: {},
+					json: items[i].json,
 					binary: binaryObject,
 				});
 			}
 
 			if (operation === 'compress') {
-				const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName', 0) as string).split(',');
+				const binaryPropertyNames = (this.getNodeParameter('binaryPropertyName', 0) as string).split(',').map(key => key.trim());
 
 				const outputFormat = this.getNodeParameter('outputFormat', 0) as string;
 
-				const zipData: fllate.Zippable = {};
-				
+				const zipData: fflate.Zippable = {};
+
 				const binaryObject: IBinaryKeyData = {};
 
 				for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
@@ -289,12 +278,6 @@ export class Compression implements INodeType {
 					}
 
 					const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
-
-					const ALREADY_COMPRESSED = [
-						'zip', 'gz', 'png', 'jpg', 'jpeg', 'pdf', 'doc', 'docx', 'ppt', 'pptx',
-						'xls', 'xlsx', 'heic', 'heif', '7z', 'bz2', 'rar', 'gif', 'webp', 'webm',
-						'mp4', 'mov', 'mp3', 'aifc',
-					];
 
 					if (outputFormat === 'zip') {
 						zipData[binaryData.fileName as string] = [
@@ -302,12 +285,12 @@ export class Compression implements INodeType {
 								level: ALREADY_COMPRESSED.includes(binaryData.fileExtension as string) ? 0 : 6,
 							},
 						];
-					
+
 					} else if (outputFormat === 'gzip') {
-						const outputPrefix =  this.getNodeParameter('outputPrefix', 0) as string;
-						
-						const data = fllate.gzipSync(Buffer.from(binaryData.data, BINARY_ENCODING));
-						
+						const outputPrefix = this.getNodeParameter('outputPrefix', 0) as string;
+
+						const data = await gzip(Buffer.from(binaryData.data, BINARY_ENCODING)) as Uint8Array;
+
 						const fileName = binaryData.fileName?.split('.')[0];
 
 						binaryObject[`${outputPrefix}${index}`] = await this.helpers.prepareBinaryData(Buffer.from(data), `${fileName}.gzip`);
@@ -318,13 +301,13 @@ export class Compression implements INodeType {
 					const fileName = this.getNodeParameter('fileName', 0) as string;
 
 					const binaryPropertyOutput = this.getNodeParameter('binaryPropertyOutput', 0) as string;
-					
-					const buffer = fllate.zipSync(zipData);
+
+					const buffer = await zip(zipData);
 
 					const data = await this.helpers.prepareBinaryData(Buffer.from(buffer), fileName);
-	
+
 					returnData.push({
-						json: {},
+						json: items[i].json,
 						binary: {
 							[binaryPropertyOutput]: data,
 						},
@@ -333,7 +316,7 @@ export class Compression implements INodeType {
 
 				if (outputFormat === 'gzip') {
 					returnData.push({
-						json: {},
+						json: items[i].json,
 						binary: binaryObject,
 					});
 				}

@@ -25,7 +25,6 @@ import {
 	faAngleUp,
 	faArrowRight,
 	faAt,
-	faFileArchive,
 	faBook,
 	faBug,
 	faCalendar,
@@ -47,6 +46,7 @@ import {
 	faExternalLinkAlt,
 	faExchangeAlt,
 	faFile,
+	faFileArchive,
 	faFileCode,
 	faFileDownload,
 	faFileExport,
@@ -107,7 +107,6 @@ library.add(faArrowRight);
 library.add(faAt);
 library.add(faBook);
 library.add(faBug);
-library.add(faFileArchive);
 library.add(faCalendar);
 library.add(faCheck);
 library.add(faCode);
@@ -127,6 +126,7 @@ library.add(faExclamationTriangle);
 library.add(faExternalLinkAlt);
 library.add(faExchangeAlt);
 library.add(faFile);
+library.add(faFileArchive);
 library.add(faFileCode);
 library.add(faFileDownload);
 library.add(faFileExport);
