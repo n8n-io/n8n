@@ -258,6 +258,11 @@ export class Github implements INodeType {
 						value: 'getRepositories',
 						description: 'Returns the repositories of a user',
 					},
+					{
+						name: 'Invite',
+						value: 'invite',
+						description: 'Invites a user to an organization.',
+					},
 				],
 				default: 'getRepositories',
 				description: 'The operation to perform.',
@@ -331,8 +336,15 @@ export class Github implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
+				displayOptions: {
+					hide: {
+						operation: [
+							'invite',
+						],
+					},
+				},
 				placeholder: 'n8n-io',
-				description: 'Owner of the repsitory.',
+				description: 'Owner of the repository.',
 			},
 			{
 				displayName: 'Repository Name',
@@ -351,7 +363,7 @@ export class Github implements INodeType {
 					},
 				},
 				placeholder: 'n8n',
-				description: 'The name of the repsitory.',
+				description: 'The name of the repository.',
 			},
 
 
@@ -1401,6 +1413,45 @@ export class Github implements INodeType {
 				default: '',
 				description: 'The body of the review',
 			},
+			// ----------------------------------
+			//         user:invite
+			// ----------------------------------
+			{
+				displayName: 'Organization',
+				name: 'organization',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'invite',
+						],
+						resource: [
+							'user',
+						],
+					},
+				},
+				description: 'The GitHub organization that the user is being invited to.',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'invite',
+						],
+						resource: [
+							'user',
+						],
+					},
+				},
+				description: 'The email address of the invited user.',
+			},
 		],
 	};
 
@@ -1430,6 +1481,7 @@ export class Github implements INodeType {
 			'review:create',
 			'review:get',
 			'review:update',
+			'user:invite',
 		];
 		// Operations which overwrite the returned data and return arrays
 		// and has so to be merged with the data of other items
@@ -1461,10 +1513,14 @@ export class Github implements INodeType {
 			body = {};
 			qs = {};
 
-			// Request the parameters which almost all operations need
-			const owner = this.getNodeParameter('owner', i) as string;
+			let owner = '';
+			if (fullOperation !== 'user:invite') {
+				// Request the parameters which almost all operations need
+				owner = this.getNodeParameter('owner', i) as string;
+			}
+
 			let repository = '';
-			if (fullOperation !== 'user:getRepositories') {
+			if (fullOperation !== 'user:getRepositories' && fullOperation !== 'user:invite') {
 				repository = this.getNodeParameter('repository', i) as string;
 			}
 
@@ -1747,7 +1803,19 @@ export class Github implements INodeType {
 					requestMethod = 'GET';
 
 					endpoint = `/users/${owner}/repos`;
+
+				}	else if (operation === 'invite') {
+					// ----------------------------------
+					//            invite
+					// ----------------------------------
+
+					requestMethod = 'POST';
+					const org  = this.getNodeParameter('organization', i) as string;
+					endpoint = `/orgs/${org}/invitations`;
+					body.email = this.getNodeParameter('email', i) as string;
+
 				}
+
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
