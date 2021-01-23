@@ -706,6 +706,7 @@ export class Jira implements INodeType {
 					const deleteSubtasks = this.getNodeParameter('deleteSubtasks', i) as boolean;
 					qs.deleteSubtasks = deleteSubtasks;
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'DELETE', {}, qs);
+					responseData = { success: true };
 				}
 			}
 			if (resource === 'issueAttachment') {
