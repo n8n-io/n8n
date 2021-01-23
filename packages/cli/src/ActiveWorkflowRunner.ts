@@ -20,6 +20,7 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	IExecuteData,
 	IGetExecutePollFunctions,
 	IGetExecuteTriggerFunctions,
@@ -321,8 +322,10 @@ export class ActiveWorkflowRunner {
 				// if it's a workflow from the the insert
 				// TODO check if there is standard error code for duplicate key violation that works
 				// with all databases
-				if (error.name === 'MongoError' || error.name === 'QueryFailedError') {
-					errorMessage = `The webhook path [${webhook.webhookPath}] and method [${webhook.method}] already exist.`;
+				if (error.name === 'QueryFailedError') {
+					errorMessage = error.parameters.length === 5
+					? `Node [${webhook.node}] can't be saved, please duplicate [${webhook.node}] and delete the currently existing one.`
+					: `The webhook path [${webhook.webhookPath}] and method [${webhook.method}] already exist.`;
 
 				} else if (error.detail) {
 					// it's a error runnig the webhook methods (checkExists, create)
@@ -367,11 +370,6 @@ export class ActiveWorkflowRunner {
 		}
 
 		await WorkflowHelpers.saveStaticData(workflow);
-
-		// if it's a mongo objectId convert it to string
-		if (typeof workflowData.id === 'object') {
-			workflowData.id = workflowData.id.toString();
-		}
 
 		const webhook = {
 			workflowId: workflowData.id,

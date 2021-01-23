@@ -101,7 +101,6 @@
         "jwks-rsa": "~1.9.0",
         "localtunnel": "^2.0.0",
         "lodash.get": "^4.4.2",
-        "mongodb": "^3.5.5",
         "mysql2": "~2.1.0",
         "n8n-core": "~0.59.0",
         "n8n-editor-ui": "~0.72.0",
