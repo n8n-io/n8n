@@ -311,6 +311,7 @@ export interface IWebhookFunctions {
 	getNode(): INode;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getNodeWebhookUrl: (name: string) => string | undefined;
+	getParamsData(): object;
 	getQueryData(): object;
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
@@ -566,6 +567,7 @@ export interface IWebhookData {
 	webhookDescription: IWebhookDescription;
 	workflowId: string;
 	workflowExecuteAdditionalData: IWorkflowExecuteAdditionalData;
+	webhookId?: string;
 }
 
 export interface IWebhookDescription {

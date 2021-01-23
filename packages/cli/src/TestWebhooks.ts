@@ -54,14 +54,28 @@ export class TestWebhooks {
 	 * @memberof TestWebhooks
 	 */
 	async callTestWebhook(httpMethod: WebhookHttpMethod, path: string, request: express.Request, response: express.Response): Promise<IResponseCallbackData> {
-		const webhookData: IWebhookData | undefined = this.activeWebhooks!.get(httpMethod, path);
+		let webhookData: IWebhookData | undefined = this.activeWebhooks!.get(httpMethod, path);
 
+		// check if path is dynamic
 		if (webhookData === undefined) {
-			// The requested webhook is not registered
-			throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+			const pathElements = path.split('/');
+			const webhookId = pathElements.shift();
+			webhookData = this.activeWebhooks!.get(httpMethod, pathElements.join('/'), webhookId);
+			if (webhookData === undefined) {
+				// The requested webhook is not registered
+				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+			}
+			path = webhookData.path;
+			// extracting params from path
+			path.split('/').forEach((ele, index) => {
+				if (ele.startsWith(':')) {
+					// write params to req.params
+					request.params[ele.slice(1)] = pathElements[index];
+				}
+			});
 		}
 
-		const webhookKey = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path);
+		const webhookKey = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path, webhookData.webhookId) + `|${webhookData.workflowId}`;
 
 		// TODO: Clean that duplication up one day and improve code generally
 		if (this.testWebhookData[webhookKey] === undefined) {
@@ -81,7 +95,7 @@ export class TestWebhooks {
 		return new Promise(async (resolve, reject) => {
 			try {
 				const executionMode = 'manual';
-				const executionId = await WebhookHelpers.executeWebhook(workflow, webhookData, this.testWebhookData[webhookKey].workflowData, workflowStartNode, executionMode, this.testWebhookData[webhookKey].sessionId, request, response, (error: Error | null, data: IResponseCallbackData) => {
+				const executionId = await WebhookHelpers.executeWebhook(workflow, webhookData!, this.testWebhookData[webhookKey].workflowData, workflowStartNode, executionMode, this.testWebhookData[webhookKey].sessionId, request, response, (error: Error | null, data: IResponseCallbackData) => {
 					if (error !== null) {
 						return reject(error);
 					}
@@ -98,7 +112,7 @@ export class TestWebhooks {
 				// Inform editor-ui that webhook got received
 				if (this.testWebhookData[webhookKey].sessionId !== undefined) {
 					const pushInstance = Push.getInstance();
-					pushInstance.send('testWebhookReceived', { workflowId: webhookData.workflowId, executionId }, this.testWebhookData[webhookKey].sessionId!);
+					pushInstance.send('testWebhookReceived', { workflowId: webhookData!.workflowId, executionId }, this.testWebhookData[webhookKey].sessionId!);
 				}
 
 			} catch (error) {
@@ -158,7 +172,7 @@ export class TestWebhooks {
 		let key: string;
 		const activatedKey: string[] = [];
 		for (const webhookData of webhooks) {
-			key = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path);
+			key = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path, webhookData.webhookId) + `|${workflowData.id}`;
 
 			activatedKey.push(key);
 
