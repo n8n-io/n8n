@@ -19,8 +19,8 @@ import {
 export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object | string | Buffer, headers?: object, encoding?: null | undefined, query?: object): Promise<any> { // tslint:disable-line:no-any
 	const resource = this.getNodeParameter('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
-	
-	const options : OptionsWithUri = {
+
+	const options: OptionsWithUri = {
 		headers,
 		method,
 		body,

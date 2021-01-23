@@ -695,7 +695,6 @@ export class NextCloud implements INodeType {
 				}
 
 			} else if (resource === 'user') {
-
 				if (operation === 'create') {
 					// ----------------------------------
 					//         user:create
@@ -774,7 +773,12 @@ export class NextCloud implements INodeType {
 						if (err) {
 							return reject(err);
 						}
-						resolve(data as IDataObject);
+
+						if (data.ocs.meta.status !== 'ok') {
+							return reject(new Error(data.ocs.meta.message));
+						}
+
+						resolve(data.ocs.data as IDataObject);
 					});
 				});
 
@@ -841,7 +845,7 @@ export class NextCloud implements INodeType {
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
 			return this.prepareOutputData(items);
-		} else  {
+		} else {
 			// For all other ones does the output get replaced
 			return [this.helpers.returnJsonArray(returnData)];
 		}
