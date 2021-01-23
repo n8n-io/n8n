@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -95,7 +95,7 @@ export async function jiraSoftwareCloudApiRequestAllItems(this: IHookFunctions |
 	query.startAt = 0;
 	body.startAt = 0;
 	query.maxResults = 100;
-	body.maxResults  = 100;
+	body.maxResults = 100;
 
 	do {
 		responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, method, body, query);
@@ -119,7 +119,7 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 	return result;
 }
 
-export function eventExists (currentEvents : string[], webhookEvents: string[]) {
+export function eventExists(currentEvents: string[], webhookEvents: string[]) {
 	for (const currentEvent of currentEvents) {
 		if (!webhookEvents.includes(currentEvent)) {
 			return false;
@@ -128,7 +128,7 @@ export function eventExists (currentEvents : string[], webhookEvents: string[]) 
 	return true;
 }
 
-export function getId (url: string) {
+export function getId(url: string) {
 	return url.split('/').pop();
 }
 

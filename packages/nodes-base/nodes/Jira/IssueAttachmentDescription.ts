@@ -82,6 +82,7 @@ export const issueAttachmentFields = [
 		description: 'Object property name which holds binary data.',
 		required: true,
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                issueAttachment:get                         */
 	/* -------------------------------------------------------------------------- */
@@ -103,6 +104,7 @@ export const issueAttachmentFields = [
 		default: '',
 		description: 'The ID of the attachment.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                issueAttachment:getAll                      */
 	/* -------------------------------------------------------------------------- */
@@ -165,6 +167,7 @@ export const issueAttachmentFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                issueAttachment:remove                      */
 	/* -------------------------------------------------------------------------- */

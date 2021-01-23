@@ -20,7 +20,7 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 
-import { 
+import {
 	issueAttachmentFields,
 	issueAttachmentOperations,
 } from './IssueAttachmentDescription';
@@ -768,7 +768,7 @@ export class Jira implements INodeType {
 					}
 				}
 			}
-				
+
 			if (resource === 'issueComment') {
 				//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-post
 				if (operation === 'add') {
