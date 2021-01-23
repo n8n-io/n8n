@@ -48,6 +48,7 @@ import {
 	faExternalLinkAlt,
 	faExchangeAlt,
 	faFile,
+	faFileArchive,
 	faFileCode,
 	faFileDownload,
 	faFileExport,
@@ -127,6 +128,7 @@ library.add(faExclamationTriangle);
 library.add(faExternalLinkAlt);
 library.add(faExchangeAlt);
 library.add(faFile);
+library.add(faFileArchive);
 library.add(faFileCode);
 library.add(faFileDownload);
 library.add(faFileExport);
