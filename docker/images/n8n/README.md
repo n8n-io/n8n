@@ -110,7 +110,7 @@ By default n8n uses SQLite to save credentials, past executions and workflows.
 n8n however also supports MongoDB, PostgresDB and MySQL. To use them simply a few
 environment variables have to be set.
 
-It is important to still persist the data in the `/root/.n8` folder. The reason
+It is important to still persist the data in the `/root/.n8n` folder. The reason
 is that it contains n8n user data. That is the name of the webhook
 (in case) the n8n tunnel gets used and even more important the encryption key
 for the credentials. If none gets found n8n creates automatically one on

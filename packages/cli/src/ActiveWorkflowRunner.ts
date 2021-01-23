@@ -116,12 +116,49 @@ export class ActiveWorkflowRunner {
 			throw new ResponseHelper.ResponseError('The "activeWorkflows" instance did not get initialized yet.', 404, 404);
 		}
 
-		const webhook = await Db.collections.Webhook?.findOne({ webhookPath: path, method: httpMethod }) as IWebhookDb;
+		let webhook = await Db.collections.Webhook?.findOne({ webhookPath: path, method: httpMethod }) as IWebhookDb;
+		let webhookId: string | undefined;
 
-		// check if something exist
+		// check if path is dynamic
 		if (webhook === undefined) {
-			// The requested webhook is not registered
-			throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+			// check if a dynamic webhook path exists
+			const pathElements = path.split('/');
+			webhookId = pathElements.shift();
+			const dynamicWebhooks = await Db.collections.Webhook?.find({ webhookId, method: httpMethod, pathLength: pathElements.length });
+			if (dynamicWebhooks === undefined) {
+				// The requested webhook is not registered
+				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+			}
+			// set webhook to the first webhook result
+			// if more results have been returned choose the one with the most route-matches
+			webhook = dynamicWebhooks[0];
+			if (dynamicWebhooks.length > 1) {
+				let maxMatches = 0;
+				const pathElementsSet = new Set(pathElements);
+				dynamicWebhooks.forEach(dynamicWebhook => {
+					const intersection =
+						dynamicWebhook.webhookPath
+						.split('/')
+						.reduce((acc, element) => pathElementsSet.has(element) ? acc += 1 : acc, 0);
+
+					if (intersection > maxMatches) {
+						maxMatches = intersection;
+						webhook = dynamicWebhook;
+					}
+				});
+				if (maxMatches === 0) {
+					throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+				}
+			}
+
+			path = webhook.webhookPath;
+			// extracting params from path
+			webhook.webhookPath.split('/').forEach((ele, index) => {
+				if (ele.startsWith(':')) {
+					// write params to req.params
+					req.params[ele.slice(1)] = pathElements[index];
+				}
+			});
 		}
 
 		const workflowData = await Db.collections.Workflow!.findOne(webhook.workflowId);
@@ -253,6 +290,15 @@ export class ActiveWorkflowRunner {
 				method: webhookData.httpMethod,
 			} as IWebhookDb;
 
+			if (webhook.webhookPath.startsWith('/')) {
+				webhook.webhookPath = webhook.webhookPath.slice(1);
+			}
+
+			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
+				webhook.webhookId = node.webhookId;
+				webhook.pathLength = webhook.webhookPath.split('/').length;
+			}
+
 			try {
 
 				await Db.collections.Webhook?.insert(webhook);
@@ -273,10 +319,9 @@ export class ActiveWorkflowRunner {
 				let errorMessage = '';
 
 				// if it's a workflow from the the insert
-				// TODO check if there is standard error code for deplicate key violation that works
+				// TODO check if there is standard error code for duplicate key violation that works
 				// with all databases
 				if (error.name === 'MongoError' || error.name === 'QueryFailedError') {
-
 					errorMessage = `The webhook path [${webhook.webhookPath}] and method [${webhook.method}] already exist.`;
 
 				} else if (error.detail) {
