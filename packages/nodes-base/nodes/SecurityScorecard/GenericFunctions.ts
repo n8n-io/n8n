@@ -13,7 +13,7 @@ import {
 } from 'n8n-workflow';
 
 export async function scorecardApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('securityScorecard');
+	const credentials = this.getCredentials('securityScorecardApi');
 
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -49,4 +49,16 @@ export async function scorecardApiRequest(this: IHookFunctions | IExecuteFunctio
 			throw new Error(errorMessage);
 		} else throw error;
 	}
+}
+
+export function simplify(data: IDataObject[]) {
+	const results = [];
+	for (const record of data) {
+		const newRecord: IDataObject = { date: record.date };
+		for (const factor of record.factors as IDataObject[]) {
+			newRecord[factor.name as string] = factor.score;
+		}
+		results.push(newRecord);
+	}
+	return results;
 }

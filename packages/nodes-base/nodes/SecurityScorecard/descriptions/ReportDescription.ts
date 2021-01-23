@@ -11,20 +11,73 @@ export const reportOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'reports',
+					'report',
 				],
 			},
 		},
 		options: [
-			{ name: 'Download', value: 'download', description: 'Download a generated report' },
-			{ name: 'Generate', value: 'generate', description: 'Generate a report' },
-			{ name: 'Get All', value: 'getAll', description: 'Get list of recently generated reports' },
+			{ 
+				name: 'Download',
+				value: 'download',
+				description: 'Download a generated report',
+			},
+			{ 
+				name: 'Generate',
+				value: 'generate',
+				description: 'Generate a report',
+			},
+			{ 
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get list of recently generated report',
+			},
 		],
 		default: 'getAll',
 	},
 ] as INodeProperties[];
 
 export const reportFields = [
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'report',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'report',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 100,
+		description: 'Number of results to return.',
+	},
 	{
 		displayName: 'Report',
 		name: 'report',
@@ -33,7 +86,7 @@ export const reportFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'reports',
+					'report',
 				],
 				operation: [
 					'generate',
@@ -41,14 +94,46 @@ export const reportFields = [
 			},
 		},
 		options: [
-			{ name: 'Company Detailed', value: 'detailed', description: '' },
-			{ name: 'Company Events', value: 'events-json', description: '' },
-			{ name: 'Full Scorecard', value: 'full-scorecard-json', description: '' },
-			{ name: 'Company Issues', value: 'issues', description: '' },
-			{ name: 'Company Partnership', value: 'partnership', description: '' },
-			{ name: 'Portfolio', value: 'portfolio', description: '' },
-			{ name: 'Scorecard Footprint', value: 'scorecard-footprint', description: '' },
-			{ name: 'Company Summary', value: 'summary', description: '' },
+			{ 
+				name: 'Company Detailed',
+				value: 'detailed',
+				description: '',
+			},
+			{ 
+				name: 'Company Events',
+				value: 'events-json',
+				description: '',
+			},
+			{ 
+				name: 'Full Scorecard',
+				value: 'full-scorecard-json',
+				description: '',
+			},
+			{ 
+				name: 'Company Issues',
+				value: 'issues',
+				description: '',
+			},
+			{ 
+				name: 'Company Partnership',
+				value: 'partnership',
+				description: '',
+			},
+			{ 
+				name: 'Portfolio',
+				value: 'portfolio',
+				description: '',
+			},
+			{ 
+				name: 'Scorecard Footprint',
+				value: 'scorecard-footprint',
+				description: '',
+			},
+			{ 
+				name: 'Company Summary',
+				value: 'summary',
+				description: '',
+			},
 		],
 		default: 'detailed',
 	},
@@ -62,7 +147,7 @@ export const reportFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'reports',
+					'report',
 				],
 				operation: [
 					'generate',
@@ -88,7 +173,7 @@ export const reportFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'reports',
+					'report',
 				],
 				operation: [
 					'generate',
@@ -108,7 +193,7 @@ export const reportFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'reports',
+					'report',
 				],
 				operation: [
 					'generate',
@@ -143,7 +228,7 @@ export const reportFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'reports',
+					'report',
 				],
 				operation: [
 					'generate',
@@ -155,16 +240,16 @@ export const reportFields = [
 		},
 	},
 	{
-		displayName: 'Optional Fields',
-		name: 'optional',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		required: false,
 		default: {},
-		placeholder: 'Add Optional Field',
+		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
 				resource: [
-					'reports',
+					'report',
 				],
 				operation: [
 					'generate',
@@ -182,24 +267,30 @@ export const reportFields = [
 				type: 'options',
 				default: 'pdf',
 				options: [
-					{ 'name': 'PDF', value: 'pdf' },
-					{ 'name': 'CSV', value: 'csv '},
+					{ 
+						name: 'PDF',
+						value: 'pdf',
+					},
+					{ 
+						name: 'CSV',
+						value: 'csv',
+					},
 				],
 				required: false,
 			},
 		],
 	},
 	{
-		displayName: 'Optional Fields',
-		name: 'optional',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		required: false,
 		default: {},
-		placeholder: 'Add Optional Field',
+		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
 				resource: [
-					'reports',
+					'report',
 				],
 				operation: [
 					'generate',
@@ -216,8 +307,14 @@ export const reportFields = [
 				type: 'options',
 				default: 'pdf',
 				options: [
-					{ 'name': 'PDF', value: 'pdf' },
-					{ 'name': 'CSV', value: 'csv' },
+					{ 
+						name: 'PDF',
+						value: 'pdf',
+					},
+					{ 
+						name: 'CSV',
+						value: 'csv',
+					},
 				],
 				required: false,
 			},
@@ -263,7 +360,7 @@ export const reportFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'reports',
+					'report',
 				],
 				operation: [
 					'download',
@@ -280,7 +377,7 @@ export const reportFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'reports',
+					'report',
 				],
 				operation: [
 					'download',

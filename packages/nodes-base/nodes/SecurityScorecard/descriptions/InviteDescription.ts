@@ -10,11 +10,17 @@ export const inviteOperations = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['invites'],
+				resource: [
+					'invite',
+				],
 			},
 		},
 		options: [
-			{ name: 'Create', value: 'create', description: 'Create an invite for a company/user' },
+			{ 
+				name: 'Create',
+				value: 'create',
+				description: 'Create an invite for a company/user',
+			},
 		],
 		default: 'create',
 	},
@@ -29,8 +35,12 @@ export const inviteFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['invites'],
-				operation: ['create'],
+				resource: [
+					'invite',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 	},
@@ -42,8 +52,12 @@ export const inviteFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['invites'],
-				operation: ['create'],
+				resource: [
+					'invite',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 	},
@@ -55,8 +69,12 @@ export const inviteFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['invites'],
-				operation: ['create'],
+				resource: [
+					'invite',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 	},
@@ -69,39 +87,38 @@ export const inviteFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['invites'],
-				operation: ['create'],
+				resource: [
+					'invite',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 	},
 	{
-		displayName: 'Optional Fields',
-		name: 'optional',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: ['invites'],
-				operation: ['create'],
+				resource: [
+					'invite',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Target URL',
-				name: 'target_url',
-				type: 'string',
-				description: 'Optional URL to take the invitee to when arriving to the platform',
-				default: '',
-				required: false,
-			},
-			{
-				displayName: 'Is organisation point of contact',
-				description: 'Is the invitee organisation\'s point of contact',
-				name: 'is_organization_point_of_contact',
-				type: 'boolean',
-				default: false,
-				required: false,
+				displayName: 'Days to Resolve Issue',
+				description: 'Minimum days to resolve a scorecard issue',
+				name: 'days_to_resolve_issue',
+				type: 'float',
+				default: 0,
 			},
 			{
 				displayName: 'Domain',
@@ -109,52 +126,52 @@ export const inviteFields = [
 				name: 'domain',
 				type: 'string',
 				default: '',
-				required: false,
 			},
 			{
-				displayName: 'Grade to maintain',
+				displayName: 'Grade to Maintain',
 				description: 'Request the invitee\'s organisation to maintain a minimum grade',
 				name: 'grade_to_maintain',
 				type: 'string',
 				default: '',
-				required: false,
 			},
 			{
-				displayName: 'Days to resolve issue',
-				description: 'Minimum days to resolve a scorecard issue',
-				name: 'days_to_resolve_issue',
-				type: 'float',
-				default: 0,
-				required: false,
-			},
-			{
-				displayName: 'Issue Title',
-				name: 'issue_title',
-				type: 'string',
-				default: '',
-				required: false,
-			},
-			{
-				displayName: 'Issue Type',
-				name: 'issue_type',
-				type: 'string',
-				default: '',
-				required: false,
+				displayName: 'Is Organisation Point of Contact',
+				description: 'Is the invitee organisation\'s point of contact',
+				name: 'is_organization_point_of_contact',
+				type: 'boolean',
+				default: false,
 			},
 			{
 				displayName: 'Issue Description',
 				name: 'issue_desc',
 				type: 'string',
 				default: '',
-				required: false,
 			},
 			{
-				displayName: 'Send me a copy',
+				displayName: 'Issue Title',
+				name: 'issue_title',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Issue Type',
+				name: 'issue_type',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Send Me a Copy',
 				name: 'sendme_copy',
 				description: 'Send a copy of the invite to the requesting user',
 				type: 'boolean',
 				default: false,
-				required: false,
+			},
+			{
+				displayName: 'Target URL',
+				name: 'target_url',
+				type: 'string',
+				description: 'Optional URL to take the invitee to when arriving to the platform',
+				default: '',
 			},
 		],
 	},

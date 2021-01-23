@@ -11,14 +11,23 @@ export const industryOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'industries',
+					'industry',
 				],
 			},
 		},
 		options: [
-			{ name: 'Get Factor Scores', value: 'getFactor' },
-			{ name: 'Get Historical Factor Scores', value: 'getFactorHistorical' },
-			{ name: 'Get Score', value: 'getScore' },
+			{ 
+				name: 'Get Factor Scores',
+				value: 'getFactor',
+			},
+			{ 
+				name: 'Get Historical Factor Scores',
+				value: 'getFactorHistorical',
+			},
+			{ 
+				name: 'Get Score',
+				value: 'getScore',
+			},
 		],
 		default: 'getFactor',
 	},
@@ -33,10 +42,77 @@ export const industryFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['industries'],
-				operation: ['getScore', 'getFactor', 'getFactorHistorical'],
+				resource: [
+					'industry',
+				],
+				operation: [
+					'getScore',
+					'getFactor',
+					'getFactorHistorical',
+				],
 			},
 		},
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'industry',
+				],
+				operation: [
+					'getFactor',
+					'getFactorHistorical',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'industry',
+				],
+				operation: [
+					'getFactor',
+					'getFactorHistorical',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 100,
+		description: 'Number of results to return.',
+	},
+	{
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'industry',
+				],
+				operation: [
+					'getFactor',
+					'getFactorHistorical',
+				],
+			},
+		},
+		default: true,
+		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
 	{
 		displayName: 'Options',
@@ -44,7 +120,7 @@ export const industryFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'industries',
+					'industry',
 				],
 				operation: [
 					'getFactorHistorical',

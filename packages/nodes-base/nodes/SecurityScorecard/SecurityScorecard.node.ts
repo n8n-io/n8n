@@ -9,8 +9,6 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import moment = require('moment');
-
 import { 
 	companyFields, 
 	companyOperations 
@@ -32,30 +30,40 @@ import {
 } from './descriptions/PortfolioDescription';
 
 import {
+	portfolioCompanyFields,
+	portfolioCompanyOperations
+} from './descriptions/PortfolioCompanyDescription';
+
+import {
 	reportFields,
 	reportOperations
 } from './descriptions/ReportDescription';
-import { scorecardApiRequest } from './GenericFunctions';
 
+import { 
+	scorecardApiRequest,
+	simplify,
+} from './GenericFunctions';
+
+import * as moment from 'moment';
 
 export class SecurityScorecard implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SecurityScorecard',
 		name: 'securityScorecard',
-		icon: 'file:securityscorecard.png',
+		icon: 'file:securityScorecard.svg',
 		group: ['transform'],
 		subtitle: '={{$parameter["operation"]}} : {{$parameter["resource"]}}',
 		version: 1,
 		description: 'Consume SecurityScorecard API',
 		defaults: {
 			name: 'SecurityScorecard',
-			color: '#772244',
+			color: '#619e73',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'securityScorecard',
+				name: 'securityScorecardApi',
 				required: true,
 			},
 		],
@@ -67,69 +75,65 @@ export class SecurityScorecard implements INodeType {
 				required: true,
 				options: [
 					{
-						name: 'Companies',
-						value: 'companies',
+						name: 'Company',
+						value: 'company',
 					},
 					{
-						name: 'Industries',
-						value: 'industries',
+						name: 'Industry',
+						value: 'industry',
 					},
 					{
-						name: 'Invites',
-						value: 'invites',
+						name: 'Invite',
+						value: 'invite',
 					},
 					{
-						name: 'Portfolios',
-						value: 'portfolios',
+						name: 'Portfolio',
+						value: 'portfolio',
 					},
 					{
-						name: 'Reports',
-						value: 'reports',
+						name: 'Portfolio Company',
+						value: 'portfolioCompany',
+					},
+					{
+						name: 'Report',
+						value: 'report',
 					},
 				],
-				default: 'companies',
+				default: 'company',
 			},
-			// Portfolios
-			...portfolioOperations,
-			...portfolioFields,
-			// Reports
-			...reportOperations,
-			...reportFields,
-			// Invites
-			...inviteOperations,
-			...inviteFields,
-			// Companies
+			// Company
 			...companyOperations,
 			...companyFields,
-			// Industries
+			// Industry
 			...industryOperations,
 			...industryFields,
+			// Invite
+			...inviteOperations,
+			...inviteFields,
+			// Portfolio
+			...portfolioOperations,
+			...portfolioFields,
+			// Portfolio Company
+			...portfolioCompanyOperations,
+			...portfolioCompanyFields,
+			// Report
+			...reportOperations,
+			...reportFields,
 		],
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
+		let responseData;
 		const length = (items.length as unknown) as number;
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
-			let responseData;
 			
-			if (resource === 'portfolios') {
-				if (operation === 'addCompany') {
-					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
-					const domain = this.getNodeParameter('domain', i);
-					responseData = await scorecardApiRequest.call(
-						this,
-						'PUT',
-						`portfolios/${portfolioId}/companies/${domain}`,
-					);
-					returnData.push(responseData as IDataObject);
-				}
+			if (resource === 'portfolio') {
 
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i) as string;
@@ -161,18 +165,7 @@ export class SecurityScorecard implements INodeType {
 					returnData.push({"success": true});
 				}
 
-				if (operation === 'deleteCompany') {
-					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
-					const domain = this.getNodeParameter('domain', i);
-					responseData = await scorecardApiRequest.call(
-						this,
-						'DELETE',
-						`portfolios/${portfolioId}/companies/${domain}`,
-					);
-					returnData.push({'success': true});
-				}
-
-				if (operation === 'edit') {
+				if (operation === 'update') {
 					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
 					const name = this.getNodeParameter('name', i) as string;
 					const description = this.getNodeParameter('description', i) as string;
@@ -194,15 +187,48 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
 						'portfolios',
 					);
-					returnData.push.apply(returnData, responseData.entries as IDataObject[]);
-				}				
+					responseData = responseData.entries;
 
-				if (operation === 'getCompanies') {
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', 0) as number;
+						responseData = responseData.splice(0, limit);
+					}
+
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				}				
+			}
+
+			if (resource === 'portfolioCompany') {
+				if (operation === 'add') {
+					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
+					const domain = this.getNodeParameter('domain', i);
+					responseData = await scorecardApiRequest.call(
+						this,
+						'PUT',
+						`portfolios/${portfolioId}/companies/${domain}`,
+					);
+					returnData.push(responseData as IDataObject);
+				}
+
+				if (operation === 'remove') {
+					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
+					const domain = this.getNodeParameter('domain', i);
+					responseData = await scorecardApiRequest.call(
+						this,
+						'DELETE',
+						`portfolios/${portfolioId}/companies/${domain}`,
+					);
+					returnData.push({ success: true });
+				}			
+
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
 					const filterParams = this.getNodeParameter('filters', i) as IDataObject;
 					responseData = await scorecardApiRequest.call(
@@ -212,11 +238,19 @@ export class SecurityScorecard implements INodeType {
 						{},
 						filterParams,
 					);
-					returnData.push.apply(returnData, responseData.entries as IDataObject[]);
+
+					responseData = responseData.entries;
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', 0) as boolean;
+						responseData = responseData.splice(0, limit);
+					}
+
+					returnData.push.apply(returnData, responseData as IDataObject[]);
 				}
 			}
 
-			if (resource === 'reports') {
+			if (resource === 'report') {
 				if (operation === 'download') {
 					const reportUrl = this.getNodeParameter('url', i) as string;
 
@@ -227,7 +261,7 @@ export class SecurityScorecard implements INodeType {
 						{},
 						{},
 						reportUrl,
-						{encoding: null, resolveWithFullResponse: true });
+						{ encoding: null, resolveWithFullResponse: true });
 
 					let mimeType: string | undefined;
 					if (response.headers['content-type']) {
@@ -269,18 +303,18 @@ export class SecurityScorecard implements INodeType {
 						body['date'] = this.getNodeParameter('date', i);
 					}
 					if (['issues', 'portfolio'].indexOf(reportType) > -1) {
-						body['format'] = this.getNodeParameter('optional.format', i);
+						body['format'] = this.getNodeParameter('options.format', i) || 'pdf';
 					}
 					if (['detailed', 'summary'].indexOf(reportType) > -1) {
 						body['branding'] = this.getNodeParameter('branding', i);
 					}
 					// json reports want the params differently
 					if (['events-json', 'full-scorecard-json'].indexOf(reportType) > -1) {
-						body = {params: body};
+						body = { params: body };
 					}
 					if (reportType === 'scorecard-footprint') {
-						const optionalFields = this.getNodeParameter('optional', i) as IDataObject;
-						Object.assign(body, optionalFields);
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						Object.assign(body, options);
 					}
 				
 					responseData = await scorecardApiRequest.call(
@@ -289,20 +323,28 @@ export class SecurityScorecard implements INodeType {
 						`reports/${reportType}`,
 						body,
 					);
+
 					returnData.push(responseData as IDataObject);
 				}
 
 				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
 						'reports/recent',
 					);
-					returnData.push.apply(returnData, responseData.entries as IDataObject[]);
+					responseData = responseData.entries;
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
+					returnData.push.apply(returnData, responseData as IDataObject[]);
 				}
 			}
 
-			if (resource === 'invites') {
+			if (resource === 'invite') {
 				if (operation === 'create') {
 					const body : IDataObject = {
 						email: this.getNodeParameter('email', i),
@@ -310,8 +352,8 @@ export class SecurityScorecard implements INodeType {
 						last_name: this.getNodeParameter('lastName', i),
 						message: this.getNodeParameter('message', i),
 					};
-					const optionalFields = this.getNodeParameter('optional', i);
-					Object.assign(body, optionalFields);
+					const additionalFields = this.getNodeParameter('additionalFields', i);
+					Object.assign(body, additionalFields);
 
 					responseData = await scorecardApiRequest.call(
 						this,
@@ -323,7 +365,7 @@ export class SecurityScorecard implements INodeType {
 				}
 			}
 
-			if (resource === 'industries') {
+			if (resource === 'industry') {
 				if (operation === 'getScore') {
 					const industry = this.getNodeParameter('industry', i);
 					responseData = await scorecardApiRequest.call(
@@ -335,16 +377,30 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'getFactor') {
+					const simple = this.getNodeParameter('simple', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 					const industry = this.getNodeParameter('industry', i);
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
 						`industries/${industry}/history/factors`,
 					);
-					returnData.push.apply(returnData, responseData.entries as IDataObject[]);
-				}
+					responseData = responseData.entries;
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
+
+					if (simple === true) {
+						responseData = simplify(responseData);
+					}
+					
+					returnData.push.apply(returnData, responseData as IDataObject[]);				}
 
 				if (operation === 'getFactorHistorical') {
+					const simple = this.getNodeParameter('simple', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const industry = this.getNodeParameter('industry', i);
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					// Convert to YYYY-MM-DD
@@ -362,11 +418,21 @@ export class SecurityScorecard implements INodeType {
 						{},
 						options,
 					);
-					returnData.push.apply(returnData, responseData.entries as IDataObject[]);
-				}
+					responseData = responseData.entries;
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
+
+					if (simple === true) {
+						responseData = simplify(responseData);
+					}
+					
+					returnData.push.apply(returnData, responseData as IDataObject[]);				}
 			}
 
-			if (resource === 'companies') {
+			if (resource === 'company') {
 				if (operation === 'getScorecard') {
 					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i) as string;
 					responseData = await scorecardApiRequest.call(
@@ -378,6 +444,7 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'getFactor') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i);
 					const filterParams = this.getNodeParameter('filters', i) as IDataObject;
 					responseData = await scorecardApiRequest.call(
@@ -387,10 +454,20 @@ export class SecurityScorecard implements INodeType {
 						{},
 						filterParams,
 					);
-					returnData.push.apply(returnData, responseData.entries as IDataObject[]);
+
+					responseData = responseData.entries;
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
+					
+					returnData.push.apply(returnData, responseData as IDataObject[]);
 				}
 
 				if (operation === 'getFactorHistorical') {
+					const simple = this.getNodeParameter('simple', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					// Convert to YYYY-MM-DD
@@ -408,10 +485,24 @@ export class SecurityScorecard implements INodeType {
 						{},
 						options,
 					);
-					returnData.push.apply(returnData, responseData.entries as IDataObject[]);
+
+					responseData = responseData.entries;
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
+
+					if (simple === true) {
+						responseData = simplify(responseData);
+					}
+
+					returnData.push.apply(returnData, responseData as IDataObject[]);
 				}
 
 				if (operation === 'getHistoricalScore') {
+					const simple = this.getNodeParameter('simple', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i);
 					const options = this.getNodeParameter('options', i) as IDataObject;
 
@@ -431,10 +522,22 @@ export class SecurityScorecard implements INodeType {
 						{},
 						options,
 					);
-					returnData.push.apply(returnData, responseData.entries as IDataObject[]);
+					responseData = responseData.entries;
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
+
+					if (simple === true) {
+						responseData = simplify(responseData);
+					}
+
+					returnData.push.apply(returnData, responseData as IDataObject[]);
 				}
 
 				if (operation === 'getScorePlan') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i) as string;
 					const targetScore = this.getNodeParameter('score', i);
 					responseData = await scorecardApiRequest.call(
@@ -442,12 +545,20 @@ export class SecurityScorecard implements INodeType {
 						'GET',
 						`companies/${scorecardIdentifier}/score-plans/by-target/${targetScore}`,
 					);
-					returnData.push.apply(returnData, responseData.entries as IDataObject[]);
+
+					responseData = responseData.entries;
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
+
+					returnData.push.apply(returnData, responseData as IDataObject[]);
 				}
 			}
 		}
 		// Handle file download output data differently
-		if (resource === 'reports' && operation === 'download') {
+		if (resource === 'report' && operation === 'download') {
 			return this.prepareOutputData(items);
 		}
 		return [this.helpers.returnJsonArray(returnData)];

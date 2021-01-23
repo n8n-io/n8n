@@ -10,23 +10,79 @@ export const portfolioOperations = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['portfolios'],
+				resource: [
+					'portfolio',
+				],
 			},
 		},
 		options: [
-			{ name: 'Add Company', value: 'addCompany', description: 'Add a company to portfolio' },
-			{ name: 'Create', value: 'create', description: 'Create a new portfolio' },
-			{ name: 'Delete', value: 'delete', description: 'Delete a portfolio' },
-			{ name: 'Delete Company', value: 'deleteCompany', description: 'Delete a company from portfolio' },
-			{ name: 'Edit', value: 'edit', description: 'Edit a portfolio' },
-			{ name: 'Get All', value: 'getAll', description: 'Get all portfolios' },
-			{ name: 'Get Companies', value: 'getCompanies', description: 'Get all companies in a portfolio' },
+			{ 
+				name: 'Create',
+				value: 'create',
+				description: 'Create a portfolio',
+			},
+			{ 
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a portfolio',
+			},
+			{ 
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all portfolios',
+			},
+			{ 
+				name: 'Update',
+				value: 'update',
+				description: 'Update a portfolio',
+			},
 		],
-		default: 'getAll',
+		default: 'create',
 	},
 ] as INodeProperties[];
 
 export const portfolioFields = [
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'portfolio',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'portfolio',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 100,
+		description: 'Number of results to return.',
+	},
 	{
 		displayName: 'Portfolio ID',
 		name: 'portfolioId',
@@ -36,14 +92,11 @@ export const portfolioFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'portfolios',
+					'portfolio',
 				],
 				operation: [
-					'edit',
+					'update',
 					'delete',
-					'getCompanies',
-					'addCompany',
-					'deleteCompany',
 				],
 			},
 		},
@@ -57,11 +110,11 @@ export const portfolioFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'portfolios',
+					'portfolio',
 				],
 				operation: [
 					'create',
-					'edit',
+					'update',
 				],
 			},
 		},
@@ -76,11 +129,11 @@ export const portfolioFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'portfolios',
+					'portfolio',
 				],
 				operation: [
 					'create',
-					'edit',
+					'update',
 				],
 			},
 		},
@@ -94,11 +147,11 @@ export const portfolioFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'portfolios',
+					'portfolio',
 				],
 				operation: [
 					'create',
-					'edit',
+					'update',
 				],
 			},
 		},
@@ -120,88 +173,6 @@ export const portfolioFields = [
 			},
 		],
 		default: 'shared',
-	},
-	{
-		displayName: 'Filters',
-		name: 'filters',
-		displayOptions: {
-			show: {
-				resource: [
-					'portfolios',
-				],
-				operation: [
-					'getCompanies',
-				],
-			},
-		},
-		type: 'collection',
-		placeholder: 'Add Filter',
-		default: {},
-		options: [
-			{
-				displayName: 'Grade',
-				name: 'grade',
-				type: 'string',
-				placeholder: '',
-				default: '',
-				description: 'Company score grade filter',
-			},
-			{
-				displayName: 'Industry',
-				name: 'industry',
-				type: 'string',
-				placeholder: '',
-				default: '',
-				description: 'Industry filter',
-			},
-			{
-				displayName: 'Vulnerability',
-				name: 'vulnerability',
-				type: 'string',
-				placeholder: '',
-				description: 'CVE vulnerability filter',
-				default: '',
-			},
-			{
-				displayName: 'Issue Type',
-				name: 'issueType',
-				type: 'string',
-				placeholder: '',
-				description: 'Issue type filter',
-				default: '',
-			},
-			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
-				options: [
-					{ 'name': 'Active', value: 'active'},
-					{ 'name': 'Inactive', value: 'inactive'},
-				],
-				placeholder: '',
-				default: '',
-			},
-		],
-	},
-	{
-		displayName: 'Domain',
-		name: 'domain',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'portfolios',
-				],
-				operation: [
-					'addCompany',
-					'deleteCompany',
-				],
-			},
-		},
-		description: 'Company\'s domain name',
-	},
-	
+	},	
 ] as INodeProperties[];
 

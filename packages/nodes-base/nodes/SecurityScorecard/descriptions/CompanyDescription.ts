@@ -11,16 +11,36 @@ export const companyOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'companies',
+					'company',
 				],
 			},
 		},
 		options: [
-			{ name: 'Get factor scores', value: 'getFactor', description: 'Gets company factor scores and issue counts' },
-			{ name: 'Get historical factor scores', value: 'getFactorHistorical', description: 'Gets company\'s historical factor scores' },
-			{ name: 'Get historical scores', value: 'getHistoricalScore', description: 'Gets company\'s historical scores' },
-			{ name: 'Get information and scorecard', value: 'getScorecard', description: 'Gets company information and summary of their scorecard' },
-			{ name: 'Get score plan', value: 'getScorePlan', description: 'Gets company\'s score improvement plan' },
+			{ 
+				name: 'Get Factor Scores',
+				value: 'getFactor',
+				description: 'Get company factor scores and issue counts',
+			},
+			{ 
+				name: 'Get historical Factor Scores',
+				value: 'getFactorHistorical',
+				description: 'Gets company\'s historical factor scores',
+			},
+			{ 
+				name: 'Get Historical Scores',
+				value: 'getHistoricalScore',
+				description: 'Gets company\'s historical scores',
+			},
+			{ 
+				name: 'Get Information and Scorecard',
+				value: 'getScorecard',
+				description: 'Gets company information and summary of their scorecard',
+			},
+			{ 
+				name: 'Get Score Plan',
+				value: 'getScorePlan',
+				description: 'Gets company\'s score improvement plan',
+			},
 		],
 		default: 'getFactor',
 	},
@@ -36,7 +56,9 @@ export const companyFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['companies'],
+				resource: [
+					'company',
+				],
 				operation: [
 					'getScorecard',
 					'getFactor',
@@ -47,14 +69,97 @@ export const companyFields = [
 			},
 		},
 	},
-	// companies:getFactor
+	{
+		displayName: 'Score',
+		name: 'score',
+		description: 'Score target',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getScorePlan',
+				],
+			},
+		},
+		required: true,
+		default: 0,
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getFactor',
+					'getFactorHistorical',
+					'getHistoricalScore',
+					'getScorePlan',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getFactor',
+					'getFactorHistorical',
+					'getHistoricalScore',
+					'getScorePlan',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 100,
+		description: 'Number of results to return.',
+	},
+	{
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getFactorHistorical',
+					'getHistoricalScore',
+				],
+			},
+		},
+		default: true,
+		description: 'When set to true a simplify version of the response will be used else the raw data.',
+	},
+	// company:getFactor
 	{
 		displayName: 'Filters',
 		name: 'filters',
 		displayOptions: {
 			show: {
 				resource: [
-					'companies',
+					'company',
 				],
 				operation: [
 					'getFactor',
@@ -82,15 +187,15 @@ export const companyFields = [
 			},
 		],
 	},
-	// companies:getFactorHistorical
-	// companies:getHistoricalScore
+	// company:getFactorHistorical
+	// company:getHistoricalScore
 	{
 		displayName: 'Options',
 		name: 'options',
 		displayOptions: {
 			show: {
 				resource: [
-					'companies',
+					'company',
 				],
 				operation: [
 					'getFactorHistorical',
@@ -125,27 +230,22 @@ export const companyFields = [
 				name: 'timing',
 				type: 'options',
 				options: [
-					{ name: 'Daily', value: 'daily' },
-					{ name: 'Weekly', value: 'weekly' },
-					{ name: 'Monthly', value: 'monthly' },
+					{ 
+						name: 'Daily',
+						value: 'daily',
+					},
+					{ 
+						name: 'Weekly',
+						value: 'weekly',
+					},
+					{ 
+						name: 'Monthly',
+						value: 'monthly',
+					},
 				],
 				default: 'daily',
 				required: false,
 			},
 		],
-	},
-	{
-		displayName: 'Score',
-		name: 'score',
-		description: 'Score target',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['companies'],
-				operation: ['getScorePlan'],
-			},
-		},
-		required: true,
-		default: 0,
 	},
 ] as INodeProperties[];
