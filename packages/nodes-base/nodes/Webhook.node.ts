@@ -412,9 +412,10 @@ export class Webhook implements INodeType {
 					const returnItem: INodeExecutionData = {
 						binary: {},
 						json: {
-							body: data,
 							headers,
+							params: this.getParamsData(),
 							query: this.getQueryData(),
+							body: data,
 						},
 					};
 
@@ -458,9 +459,10 @@ export class Webhook implements INodeType {
 					const returnItem: INodeExecutionData = {
 						binary: {},
 						json: {
-							body: this.getBodyData(),
 							headers,
+							params: this.getParamsData(),
 							query: this.getQueryData(),
+							body: this.getBodyData(),
 						},
 					};
 
@@ -483,9 +485,10 @@ export class Webhook implements INodeType {
 
 		const response: INodeExecutionData = {
 			json: {
-				body: this.getBodyData(),
 				headers,
+				params: this.getParamsData(),
 				query: this.getQueryData(),
+				body: this.getBodyData(),
 			},
 		};
 

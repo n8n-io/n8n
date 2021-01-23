@@ -993,6 +993,12 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 
 				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, fallbackValue);
 			},
+			getParamsData(): object {
+				if (additionalData.httpRequest === undefined) {
+					throw new Error('Request is missing!');
+				}
+				return additionalData.httpRequest.params;
+			},
 			getQueryData(): object {
 				if (additionalData.httpRequest === undefined) {
 					throw new Error('Request is missing!');

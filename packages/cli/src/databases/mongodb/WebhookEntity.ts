@@ -11,6 +11,8 @@ import {
  } from '../../Interfaces';
 
 @Entity()
+@Index(["webhookPath", "method"], { unique: true })
+@Index(["webhookId", "method"], { unique: true })
 export class WebhookEntity implements IWebhookDb {
 
 	@ObjectIdColumn()
@@ -27,4 +29,10 @@ export class WebhookEntity implements IWebhookDb {
 
 	@Column()
 	node: string;
+
+	@Column()
+	webhookId: string;
+
+	@Column({ nullable: true })
+	pathLength: number;
 }
