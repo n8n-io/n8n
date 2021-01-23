@@ -19,7 +19,6 @@ import { TlsOptions } from 'tls';
 import * as config from '../config';
 
 import {
-	MongoDb,
 	MySQLDb,
 	PostgresDb,
 	SQLite,
@@ -33,7 +32,6 @@ export let collections: IDatabaseCollections = {
 };
 
 import { postgresMigrations } from './databases/postgresdb/migrations';
-import { mongodbMigrations } from './databases/mongodb/migrations';
 import { mysqlMigrations } from './databases/mysqldb/migrations';
 import { sqliteMigrations } from './databases/sqlite/migrations';
 
@@ -49,19 +47,6 @@ export async function init(): Promise<IDatabaseCollections> {
 	const entityPrefix = config.get('database.tablePrefix');
 
 	switch (dbType) {
-		case 'mongodb':
-			entities = MongoDb;
-			connectionOptions = {
-				type: 'mongodb',
-				entityPrefix,
-				url: await GenericHelpers.getConfigValue('database.mongodb.connectionUrl') as string,
-				useNewUrlParser: true,
-				migrations: mongodbMigrations,
-				migrationsRun: true,
-				migrationsTableName: `${entityPrefix}migrations`,
-			};
-			break;
-
 		case 'postgresdb':
 			entities = PostgresDb;
 
