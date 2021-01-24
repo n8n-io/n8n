@@ -258,7 +258,7 @@ export class Jira implements INodeType {
 					// the interface call must bring username
 					const users = await jiraSoftwareCloudApiRequest.call(this, '/api/2/user/search', 'GET', {},
 						{
-							username: "'",
+							username: '\'',
 						},
 					);
 					for (const user of users) {
@@ -675,7 +675,7 @@ export class Jira implements INodeType {
 								version: 1,
 								content: [
 									{
-										type: "paragraph",
+										type: 'paragraph',
 										content: [
 											{
 												type: 'text',
@@ -750,7 +750,7 @@ export class Jira implements INodeType {
 								version: 1,
 								content: [
 									{
-										type: "paragraph",
+										type: 'paragraph',
 										content: [
 											{
 												type: 'text',

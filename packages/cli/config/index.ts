@@ -8,17 +8,9 @@ const config = convict({
 	database: {
 		type: {
 			doc: 'Type of database to use',
-			format: ['sqlite', 'mariadb', 'mongodb', 'mysqldb', 'postgresdb'],
+			format: ['sqlite', 'mariadb', 'mysqldb', 'postgresdb'],
 			default: 'sqlite',
 			env: 'DB_TYPE',
-		},
-		mongodb: {
-			connectionUrl: {
-				doc: 'MongoDB Connection URL',
-				format: '*',
-				default: 'mongodb://user:password@localhost:27017/database',
-				env: 'DB_MONGODB_CONNECTION_URL',
-			},
 		},
 		tablePrefix: {
 			doc: 'Prefix for table names',

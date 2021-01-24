@@ -76,6 +76,10 @@ export class Crypto implements INodeType {
 						value: 'SHA256',
 					},
 					{
+						name: 'SHA384',
+						value: 'SHA384',
+					},
+					{
 						name: 'SHA512',
 						value: 'SHA512',
 					},
@@ -157,6 +161,10 @@ export class Crypto implements INodeType {
 					{
 						name: 'SHA256',
 						value: 'SHA256',
+					},
+					{
+						name: 'SHA384',
+						value: 'SHA384',
 					},
 					{
 						name: 'SHA512',

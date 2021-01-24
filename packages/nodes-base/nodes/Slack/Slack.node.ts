@@ -103,14 +103,14 @@ export class Slack implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Slack',
 		name: 'slack',
-		icon: 'file:slack.png',
+		icon: 'file:slack.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Slack API',
 		defaults: {
 			name: 'Slack',
-			color: '#BB2244',
+			color: '#E01E5A',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -514,9 +514,9 @@ export class Slack implements INodeType {
 			}
 			if (resource === 'message') {
 				//https://api.slack.com/methods/chat.postMessage
-				if (operation === 'post') {
+				if (['post', 'postEphemeral'].includes(operation)) {
 					const channel = this.getNodeParameter('channel', i) as string;
-					const ephemeral = this.getNodeParameter('ephemeral', i) as boolean;
+					const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
 					const text = this.getNodeParameter('text', i) as string;
 					const body: IDataObject = {
 						channel,
@@ -525,19 +525,15 @@ export class Slack implements INodeType {
 
 					let action = 'postMessage';
 
-					if (ephemeral) {
+					if (operation === 'postEphemeral') {
 						body.user = this.getNodeParameter('user', i) as string;
 						action = 'postEphemeral';
 					}
 
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
-					if (authentication === 'accessToken') {
-						body.as_user = this.getNodeParameter('as_user', i) as boolean;
-					}
-					if (body.as_user === false) {
-						body.username = this.getNodeParameter('username', i) as string;
-						delete body.as_user;
+					if (authentication === 'accessToken' && sendAsUser !== '') {
+						body.username = sendAsUser;
 					}
 
 					if (!jsonParameters) {
@@ -798,6 +794,16 @@ export class Slack implements INodeType {
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					Object.assign(body, updateFields);
 					responseData = await slackApiRequest.call(this, 'POST', '/chat.update', body, qs);
+				}
+				//https://api.slack.com/methods/chat.getPermalink
+				if (operation === 'getPermalink') {
+					const channel = this.getNodeParameter('channelId', i) as string;
+					const timestamp = this.getNodeParameter('timestamp', i) as string;
+					const qs = {
+						channel,
+						message_ts: timestamp,
+					};
+					responseData = await slackApiRequest.call(this, 'GET', '/chat.getPermalink', {}, qs);
 				}
 			}
 			if (resource === 'reaction') {

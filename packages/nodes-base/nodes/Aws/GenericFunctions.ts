@@ -16,9 +16,9 @@ import {
 
 function getEndpointForService(service: string, credentials: ICredentialDataDecryptedObject): string {
 	let endpoint;
-	if (service === "lambda" && credentials.lambdaEndpoint) {
+	if (service === 'lambda' && credentials.lambdaEndpoint) {
 		endpoint = credentials.lambdaEndpoint;
-	} else if (service === "sns" && credentials.snsEndpoint) {
+	} else if (service === 'sns' && credentials.snsEndpoint) {
 		endpoint = credentials.snsEndpoint;
 	} else {
 		endpoint = `https://${service}.${credentials.region}.amazonaws.com`;
@@ -36,7 +36,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	const endpoint = new URL(getEndpointForService(service, credentials) + path);
 
 	// Sign AWS API request with the user credentials
-	const signOpts = { headers: headers || {}, host: endpoint.host, method, path: endpoint.pathname, body };
+	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body };
 	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim() });
 
 
