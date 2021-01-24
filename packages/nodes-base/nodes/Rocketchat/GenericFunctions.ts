@@ -1,4 +1,4 @@
-import { 
+import {
 	OptionsWithUri,
 } from 'request';
 
@@ -16,7 +16,11 @@ export async function rocketchatApiRequest(this: IExecuteFunctions | ILoadOption
 	}
 
 	const headerWithAuthentication = Object.assign({}, headers,
-		{ 'X-Auth-Token': credentials.authKey, 'X-User-Id': credentials.userId   });
+		{
+			'X-Auth-Token': credentials.authKey,
+			'X-User-Id': credentials.userId,
+		}
+	);
 
 	const options: OptionsWithUri = {
 		headers: headerWithAuthentication,

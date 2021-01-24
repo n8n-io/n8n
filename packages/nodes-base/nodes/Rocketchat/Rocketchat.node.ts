@@ -412,12 +412,12 @@ export class Rocketchat implements INodeType {
 					const text = this.getNodeParameter('text', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
-	
+
 					const body: IPostMessageBody = {
 						channel,
 						text,
 					};
-	
+
 					if (options.alias) {
 						body.alias = options.alias as string;
 					}
@@ -427,7 +427,7 @@ export class Rocketchat implements INodeType {
 					if (options.emoji) {
 						body.emoji = options.emoji as string;
 					}
-	
+
 					if (!jsonActive) {
 						const optionsAttachments = this.getNodeParameter('attachments', i) as IDataObject[];
 						if (optionsAttachments.length > 0) {
@@ -493,7 +493,7 @@ export class Rocketchat implements INodeType {
 					} else {
 						body.attachments = validateJSON(this.getNodeParameter('attachmentsJson', i) as string);
 					}
-	
+
 					responseData = await rocketchatApiRequest.call(this, '/chat', 'POST', 'postMessage', body);
 				}
 			}
