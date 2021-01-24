@@ -84,6 +84,15 @@ export interface ICredentialsEncrypted {
 	data?: string;
 }
 
+export interface ICredentialsExpressionResolveValues {
+	connectionInputData: INodeExecutionData[];
+	itemIndex: number;
+	node: INode;
+	runExecutionData: IRunExecutionData | null;
+	runIndex: number;
+	workflow: Workflow;
+}
+
 export abstract class ICredentialsHelper {
 	encryptionKey: string;
 	workflowCredentials: IWorkflowCredentials;
@@ -94,7 +103,7 @@ export abstract class ICredentialsHelper {
 	}
 
 	abstract getCredentials(name: string, type: string): ICredentials;
-	abstract getDecrypted(name: string, type: string): ICredentialDataDecryptedObject;
+	abstract getDecrypted(name: string, type: string, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): ICredentialDataDecryptedObject;
 	abstract updateCredentials(name: string, type: string, data: ICredentialDataDecryptedObject): Promise<void>;
 }
 
@@ -203,7 +212,7 @@ export interface IExecuteFunctions {
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
 	executeWorkflow(workflowInfo: IExecuteWorkflowInfo, inputData?: INodeExecutionData[]): Promise<any>; // tslint:disable-line:no-any
 	getContext(type: string): IContextObject;
-	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
+	getCredentials(type: string, itemIndex?: number): ICredentialDataDecryptedObject | undefined;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
