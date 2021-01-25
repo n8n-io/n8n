@@ -14,12 +14,12 @@ import {
 import {
 	customerFields,
 	customerOperations,
-} from './CustomerDescription';
+} from './descriptions/CustomerDescription';
 
 import {
 	estimateFields,
 	estimateOperations,
-} from './EstimateDescription';
+} from './descriptions/EstimateDescription';
 
 import {
 	getSyncToken,
@@ -35,7 +35,7 @@ import {
 
 import {
 	CustomerBillingAddress,
-} from './CustomerAdditionalFields';
+} from './descriptions/CustomerAdditionalFields';
 
 import {
 	pascalCase
