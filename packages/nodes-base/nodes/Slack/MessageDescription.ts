@@ -16,6 +16,11 @@ export const messageOperations = [
 		},
 		options: [
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Deletes a message',
+			},
+			{
 				name: 'Get Permalink',
 				value: 'getPermalink',
 				description: 'Get Permanent Link of a message',
@@ -33,12 +38,7 @@ export const messageOperations = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Updates a message.',
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Deletes a message.',
+				description: 'Updates a message',
 			},
 		],
 		default: 'post',
@@ -1711,7 +1711,7 @@ export const messageFields = [
 	},
 	{
 		displayName: 'Timestamp',
-		name: 'ts',
+		name: 'timestamp',
 		type: 'string',
 		required: true,
 		default: '',
