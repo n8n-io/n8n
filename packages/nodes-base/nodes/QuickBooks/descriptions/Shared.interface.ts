@@ -11,10 +11,7 @@ export interface Line {
 			value: string
 		},
 		BillableStatus: string,
-		CustomerRef: {
-			name: string,
-			value: string
-		}
+		CustomerRef: CustomerRef,
 	};
 	Description: string;
 }
@@ -55,4 +52,52 @@ export interface BillEmail {
 export interface MetaData {
 	CreateTime: string;
 	LastUpdatedTime: string;
+}
+
+export interface PrimaryPhone {
+	FreeFormNumber: string;
+}
+
+export interface CustomerMemo {
+	value: string;
+}
+
+export interface CustomerRef {
+	name: string;
+	value: string;
+}
+
+export interface LinkedTxn {
+	TxnId: string;
+	TxnType: string;
+}
+
+export interface CurrencyRef {
+	name: string;
+	value: string;
+}
+
+export interface PrimaryEmailAddr {
+	Address: string;
+}
+
+export interface TxnTaxCodeRef {
+	TxnTaxCodeRef: {
+		value: string;
+	};
+	TotalTax: number;
+	TaxLine: [
+		{
+			DetailType: string;
+			Amount: number;
+			TaxLineDetail: {
+				NetAmountTaxable: number;
+				TaxPercent: number;
+				TaxRateRef: {
+					value: string;
+				};
+				PercentBased: true;
+			};
+		}
+	];
 }

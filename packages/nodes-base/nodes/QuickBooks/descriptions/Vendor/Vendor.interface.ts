@@ -2,28 +2,27 @@ import {
 	AltBillAddr,
 	MetaData,
 	PrimaryEmailAddr,
-	PrimaryPhone,
+	PrimaryPhone
 } from '../Shared.interface';
 
-export interface Customer {
+export interface Vendor {
+	AcctNum: string;
 	Active: boolean;
-	Balance: 85.0;
-	BalanceWithJobs: number;
+	Balance: number;
 	BillAddr: AltBillAddr;
-	BillWithParent: false;
 	CompanyName: string;
 	DisplayName: string;
 	domain: 'QBO';
 	FamilyName: string;
-	FullyQualifiedName: string;
 	GivenName: string;
 	Id: string;
-	Job: boolean;
 	MetaData: MetaData;
-	PreferredDeliveryMethod: string;
 	PrimaryEmailAddr: PrimaryEmailAddr;
 	PrimaryPhone: PrimaryPhone;
 	PrintOnCheckName: string;
-	SyncToken: string;
-	Taxable: boolean;
+	SyncToken: '0';
+	Vendor1099: boolean;
+	WebAddr: {
+		URI: string;
+	};
 }

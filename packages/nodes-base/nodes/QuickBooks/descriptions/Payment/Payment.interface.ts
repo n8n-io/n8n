@@ -1,20 +1,21 @@
-import { Line, MetaData } from '../Shared.interface';
+import {
+	CustomerRef,
+	Line,
+	MetaData,
+} from '../Shared.interface';
 
 export interface Payment {
-	SyncToken: string;
-	domain: 'QBO';
+	CustomerRef: CustomerRef;
 	DepositToAccountRef: {
 		value: string;
 	};
-	UnappliedAmt: number;
-	TxnDate: string;
-	TotalAmt: number;
-	ProcessPayment: boolean;
-	Line: Line[];
-	CustomerRef: {
-		name: string;
-		value: string;
-	};
+	domain: 'QBO';
 	Id: string;
+	Line: Line[];
 	MetaData: MetaData;
+	ProcessPayment: boolean;
+	SyncToken: string;
+	TotalAmt: number;
+	TxnDate: string;
+	UnappliedAmt: number;
 }

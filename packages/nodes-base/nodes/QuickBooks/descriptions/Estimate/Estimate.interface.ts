@@ -1,32 +1,17 @@
 import {
 	BillAddr,
 	BillEmail,
+	CustomerMemo,
+	CustomerRef,
 	Line,
 	MetaData,
 	ShipAddr,
 } from '../Shared.interface';
 
 export interface Estimate {
-	DocNumber: string;
-	SyncToken: string;
-	domain: 'QBO';
-	TxnStatus: string;
-	BillEmail: BillEmail;
-	TxnDate: string;
-	TotalAmt: number;
-	CustomerRef: {
-		name: string;
-		value: string;
-	};
-	CustomerMemo: {
-		value: string;
-	};
-	ShipAddr: ShipAddr;
-	PrintStatus: string;
-	BillAddr: BillAddr;
-	EmailStatus: string;
-	Line: Line[];
 	ApplyTaxAfterDiscount: boolean;
+	BillAddr: BillAddr;
+	BillEmail: BillEmail;
 	CustomField: [
 		{
 			DefinitionId: string;
@@ -34,10 +19,21 @@ export interface Estimate {
 			Name: string;
 		}
 	];
+	CustomerMemo: CustomerMemo;
+	CustomerRef: CustomerRef;
+	DocNumber: string;
+	domain: 'QBO';
+	EmailStatus: string;
 	Id: string;
+	Line: Line[];
+	MetaData: MetaData;
+	PrintStatus: string;
+	ShipAddr: ShipAddr;
+	SyncToken: string;
+	TotalAmt: number;
+	TxnDate: string;
+	TxnStatus: string;
 	TxnTaxDetail: {
 		TotalTax: number;
 	};
-	MetaData: MetaData;
 }
-

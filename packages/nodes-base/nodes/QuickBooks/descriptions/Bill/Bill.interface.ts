@@ -1,37 +1,31 @@
 import {
+	CurrencyRef,
 	Line,
+	LinkedTxn,
 	MetaData,
 } from '../Shared.interface';
 
 export interface Bill {
-	SyncToken: string;
-	domain: 'QBO';
 	APAccountRef: {
 		name: string;
 		value: string;
 	};
+	Balance: number;
+	CurrencyRef: CurrencyRef;
+	domain: 'QBO';
+	DueDate: string;
+	Id: string;
+	Line: Line[];
+	LinkedTxn: LinkedTxn[];
+	MetaData: MetaData;
+	SalesTermRef: {
+		value: string;
+	};
+	SyncToken: string;
+	TotalAmt: number;
+	TxnDate: string;
 	VendorRef: {
 		name: string;
 		value: string;
 	};
-	TxnDate: string;
-	TotalAmt: number;
-	CurrencyRef: {
-		name: string;
-		value: string;
-	};
-	LinkedTxn: [
-		{
-			TxnId: string;
-			TxnType: string;
-		}
-	];
-	SalesTermRef: {
-		value: string;
-	};
-	DueDate: string;
-	Line: Line[];
-	Balance: number;
-	Id: string;
-	MetaData: MetaData;
 }
