@@ -72,7 +72,7 @@ export async function quickBooksApiRequest(
 		options.headers!['Content-Type'] = 'application/octet-stream';
 	}
 
-	if (resource === 'invoice' && operation === 'void') {
+	if (resource === 'invoice' && (operation === 'void' || operation === 'delete')) {
 		options.headers!['Content-Type'] = 'application/json';
 	}
 

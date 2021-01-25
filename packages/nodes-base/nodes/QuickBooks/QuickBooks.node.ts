@@ -273,7 +273,17 @@ export class QuickBooks implements INodeType {
 
 				} else if (operation === 'delete') {
 
-					// ...
+					const qs = {
+						operation: 'delete',
+					} as IDataObject;
+
+					const body = {
+						Id: this.getNodeParameter('invoiceId', i),
+						SyncToken: await getSyncToken.call(this, i, companyId, resource),
+					} as IDataObject;
+
+					const endpoint = `/v3/company/${companyId}/invoice`;
+					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, body);
 
 				// ----------------------------------
 				//         invoice: get

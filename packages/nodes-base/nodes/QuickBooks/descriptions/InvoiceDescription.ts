@@ -102,6 +102,27 @@ export const invoiceFields = [
 		options: invoiceAdditionalFields,
 	},
 	// ----------------------------------
+	//         invoice: delete
+	// ----------------------------------
+	{
+		displayName: 'Invoice ID',
+		name: 'invoiceId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The ID of the invoice to delete',
+		displayOptions: {
+			show: {
+				resource: [
+					'invoice',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+	// ----------------------------------
 	//         invoice: get
 	// ----------------------------------
 	{
