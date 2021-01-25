@@ -172,16 +172,8 @@ export async function handleBinaryData(
 	const endpoint = `/v3/company/${companyId}/${resource}/${itemId}/pdf`;
 	const data = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {}, { encoding: null });
 
-	const newItem: INodeExecutionData = {
-		json: items[i].json,
-		binary: {},
-	};
+	items[i].binary = items[i].binary !== undefined ? items[i].binary : {};
 
-	if (items[i].binary !== undefined) {
-		Object.assign(newItem.binary, items[i].binary);
-	}
-
-	items[i] = newItem;
 	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
 
 	return items;
