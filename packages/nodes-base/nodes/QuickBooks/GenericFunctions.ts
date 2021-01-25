@@ -6,6 +6,7 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 } from 'n8n-workflow';
 
 import {
@@ -28,11 +29,12 @@ export async function quickBooksApiRequest(
 	option: IDataObject = {},
 ): Promise<any> { // tslint:disable-line:no-any
 
-	const resource = this.getNodeParameter('resource', 0);
-	const operation = this.getNodeParameter('operation', 0);
+	const resource = this.getNodeParameter('resource', 0) as string;
+	const operation = this.getNodeParameter('operation', 0) as string;
 
 	let isPdfEstimate = false;
-	if (resource === 'estimate' && operation === 'get') {
+
+	if (['estimate', 'invoice'].includes(resource) && operation === 'get') {
 		isPdfEstimate = this.getNodeParameter('download', 0) as boolean;
 	}
 
@@ -140,10 +142,44 @@ export async function handleListing(
 	return responseData;
 }
 
-export async function getSyncToken(this: IExecuteFunctions, i: number, companyId: string, resource: string) {
+export async function getSyncToken(
+	this: IExecuteFunctions,
+	i: number,
+	companyId: string,
+	resource: string,
+) {
 	const resourceId = this.getNodeParameter(`${resource}Id`, i);
 	const getEndpoint = `/v3/company/${companyId}/${resource}/${resourceId}`;
 	const propertyName = pascalCase(resource);
 	const { [propertyName]: { SyncToken } } = await quickBooksApiRequest.call(this, 'GET', getEndpoint, {}, {});
 	return SyncToken;
+}
+
+export async function handleBinaryData(
+	this: IExecuteFunctions,
+	items: INodeExecutionData[],
+	i: number,
+	companyId: string,
+	resource: string,
+	itemId: string,
+) {
+	const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+	const endpoint = `/v3/company/${companyId}/${resource}/${itemId}/pdf`;
+	const data = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {}, { encoding: null });
+
+	const newItem: INodeExecutionData = {
+		json: items[i].json,
+		binary: {},
+	};
+
+	if (items[i].binary !== undefined) {
+		Object.assign(newItem.binary, items[i].binary);
+	}
+
+	items[i] = newItem;
+
+	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
+
+	return items;
+	// return this.prepareOutputData(items);
 }

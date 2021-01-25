@@ -22,7 +22,13 @@ import {
 } from './descriptions/EstimateDescription';
 
 import {
+	invoiceFields,
+	invoiceOperations,
+} from './descriptions/InvoiceDescription';
+
+import {
 	getSyncToken,
+	handleBinaryData,
 	handleListing,
 	quickBooksApiRequest,
 	quickBooksApiRequestAllItems,
@@ -36,10 +42,6 @@ import {
 import {
 	CustomerBillingAddress,
 } from './descriptions/CustomerAdditionalFields';
-
-import {
-	pascalCase
-} from 'change-case';
 
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {
@@ -76,6 +78,10 @@ export class QuickBooks implements INodeType {
 						name: 'Estimate',
 						value: 'estimate',
 					},
+					{
+						name: 'Invoice',
+						value: 'invoice',
+					},
 				],
 				default: 'customer',
 				description: 'Resource to consume',
@@ -84,6 +90,8 @@ export class QuickBooks implements INodeType {
 			...customerFields,
 			...estimateOperations,
 			...estimateFields,
+			...invoiceOperations,
+			...invoiceFields,
 		],
 	};
 
@@ -97,7 +105,7 @@ export class QuickBooks implements INodeType {
 					query: `SELECT * FROM ${resource}`,
 				} as IDataObject;
 
-				const { companyId } = this.getCredentials('quickBooksOAuth2Api') as IDataObject;
+				const { companyId } = this.getCredentials('quickBooksOAuth2Api') as { companyId: string };
 				const endpoint = `/v3/company/${companyId}/query`;
 
 				const customers = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
@@ -115,7 +123,7 @@ export class QuickBooks implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
+		let items = this.getInputData();
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -123,7 +131,7 @@ export class QuickBooks implements INodeType {
 		let responseData;
 		const returnData: IDataObject[] = [];
 
-		const { companyId } = this.getCredentials('quickBooksOAuth2Api') as IDataObject;
+		const { companyId } = this.getCredentials('quickBooksOAuth2Api') as { companyId: string };
 
 		for (let i = 0; i < items.length; i++) {
 
@@ -171,10 +179,6 @@ export class QuickBooks implements INodeType {
 
 				} else if (operation === 'update') {
 
-					// const customerId = this.getNodeParameter('customerId', i);
-					// const getEndpoint = `/v3/company/${companyId}/customer/${customerId}`;
-					// const { Customer: { SyncToken } } = await quickBooksApiRequest.call(this, 'GET', getEndpoint, {}, {});
-
 					const endpoint = `/v3/company/${companyId}/customer`;
 					const body = {
 						Id: this.getNodeParameter('customerId', i),
@@ -219,28 +223,12 @@ export class QuickBooks implements INodeType {
 
 				} else if (operation === 'get') {
 
-					const estimateId = this.getNodeParameter('estimateId', i);
-					const download = this.getNodeParameter('download', i);
+					const estimateId = this.getNodeParameter('estimateId', i) as string;
+					const download = this.getNodeParameter('download', i) as boolean;
 
 					if (download) {
 
-						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
-						const endpoint = `/v3/company/${companyId}/estimate/${estimateId}/pdf`;
-						const data = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {}, { encoding: null });
-
-						const newItem: INodeExecutionData = {
-							json: items[i].json,
-							binary: {},
-						};
-
-						if (items[i].binary !== undefined) {
-							Object.assign(newItem.binary, items[i].binary);
-						}
-
-						items[i] = newItem;
-
-						items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
-
+						items = await handleBinaryData.call(this, items, i, companyId, resource, estimateId);
 						return this.prepareOutputData(items);
 
 					} else {
@@ -293,7 +281,20 @@ export class QuickBooks implements INodeType {
 
 				} else if (operation === 'get') {
 
-					// ...
+					const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+					const download = this.getNodeParameter('download', i) as boolean;
+
+					if (download) {
+
+						items = await handleBinaryData.call(this, items, i, companyId, resource, invoiceId);
+						return this.prepareOutputData(items);
+
+					} else {
+
+						const endpoint = `/v3/company/${companyId}/invoice/${invoiceId}`;
+						responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+
+					}
 
 				// ----------------------------------
 				//         invoice: getAll
@@ -301,7 +302,8 @@ export class QuickBooks implements INodeType {
 
 				} else if (operation === 'getAll') {
 
-					// ...
+					const endpoint = `/v3/company/${companyId}/query`;
+					responseData = await handleListing.call(this, i, endpoint, resource);
 
 				// ----------------------------------
 				//         invoice: send
