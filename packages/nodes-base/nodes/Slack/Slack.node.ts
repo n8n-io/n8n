@@ -798,10 +798,10 @@ export class Slack implements INodeType {
 				//https://api.slack.com/methods/chat.delete
 				if (operation === 'delete') {
 					const channel = this.getNodeParameter('channelId', i) as string;
-					const ts = this.getNodeParameter('ts', i) as string;
+					const timestamp = this.getNodeParameter('timestamp', i) as string;
 					const body: IDataObject = {
 						channel,
-						ts,
+						ts: timestamp,
 					};
 					// Add all the other options to the request
 					responseData = await slackApiRequest.call(this, 'POST', '/chat.delete', body, qs);
