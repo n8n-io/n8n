@@ -1,4 +1,4 @@
-export const lineProperty = {
+export const createlineProperty = (resource: string) => ({
 	displayName: 'Line',
 	name: 'Line',
 	type: 'collection',
@@ -9,6 +9,9 @@ export const lineProperty = {
 	default: {},
 	displayOptions: {
 		show: {
+			resource: [
+				resource,
+			],
 			operation: [
 				'create',
 			],
@@ -65,4 +68,4 @@ export const lineProperty = {
 			default: 1,
 		},
 	],
-};
+});

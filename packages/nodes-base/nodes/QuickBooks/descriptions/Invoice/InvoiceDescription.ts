@@ -3,7 +3,7 @@ import {
 } from 'n8n-workflow';
 
 import {
-	lineProperty,
+	createlineProperty,
 } from '../SharedDescription';
 
 import {
@@ -82,7 +82,7 @@ export const invoiceFields = [
 			},
 		},
 	},
-	lineProperty,
+	createlineProperty('invoice'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -361,7 +361,7 @@ export const invoiceFields = [
 				type: 'string',
 				default: '',
 			},
-			lineProperty,
+			createlineProperty('invoice'),
 			...invoiceAdditionalFieldsOptions,
 		],
 	},
