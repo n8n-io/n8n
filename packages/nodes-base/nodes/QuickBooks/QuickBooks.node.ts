@@ -94,8 +94,16 @@ export class QuickBooks implements INodeType {
 						value: 'invoice',
 					},
 					{
+						name: 'Item',
+						value: 'item',
+					},
+					{
 						name: 'Payment',
 						value: 'payment',
+					},
+					{
+						name: 'Vendor',
+						value: 'vendor',
 					},
 				],
 				default: 'customer',
