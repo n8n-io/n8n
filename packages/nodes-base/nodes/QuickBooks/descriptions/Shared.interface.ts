@@ -39,7 +39,7 @@ export interface BillAddr {
 	Id: string;
 }
 
-export interface AltBillingAddress {
+export interface AltBillAddr {
 	City: string;
 	Line1: string;
 	PostalCode: string;
