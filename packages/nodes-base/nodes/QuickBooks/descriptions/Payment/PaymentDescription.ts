@@ -66,7 +66,7 @@ export const paymentFields = [
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The customer who the payment is for',
+		description: 'The customer who the payment is for.',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -110,7 +110,7 @@ export const paymentFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the payment to delete',
+		description: 'The ID of the payment to delete.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -131,7 +131,7 @@ export const paymentFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the payment to retrieve',
+		description: 'The ID of the payment to retrieve.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -190,7 +190,7 @@ export const paymentFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results',
+		description: 'Return all results.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -207,7 +207,7 @@ export const paymentFields = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return',
+		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -265,7 +265,7 @@ export const paymentFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the payment to send',
+		description: 'The ID of the payment to send.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -283,7 +283,7 @@ export const paymentFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The email of the recipient of the payment',
+		description: 'The email of the recipient of the payment.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -304,7 +304,7 @@ export const paymentFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the payment to void',
+		description: 'The ID of the payment to void.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -325,7 +325,7 @@ export const paymentFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the payment to update',
+		description: 'The ID of the payment to update.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -358,23 +358,8 @@ export const paymentFields = [
 			{
 				displayName: 'For Customer',
 				name: 'CustomerRef',
-				type: 'options',
-				required: true,
-				description: 'The customer who the payment is for',
+				type: 'string',
 				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getCustomers',
-				},
-				displayOptions: {
-					show: {
-						resource: [
-							'payment',
-						],
-						operation: [
-							'create',
-						],
-					},
-				},
 			},
 			lineProperty,
 			...paymentAdditionalFieldsOptions,

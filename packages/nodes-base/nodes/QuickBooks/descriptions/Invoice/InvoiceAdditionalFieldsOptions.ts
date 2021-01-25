@@ -3,13 +3,13 @@ export const invoiceAdditionalFieldsOptions = [
 		displayName: 'Apply Tax After Discount',
 		name: 'ApplyTaxAfterDiscount',
 		type: 'boolean',
-		default: '',
+		default: false,
 	},
 	{
 		displayName: 'Balance',
 		name: 'Balance',
 		type: 'number',
-		default: '',
+		default: 0,
 	},
 	{
 		displayName: 'Billing Address',
@@ -107,7 +107,7 @@ export const invoiceAdditionalFieldsOptions = [
 		displayName: 'Total Amount',
 		name: 'TotalAmt',
 		type: 'number',
-		default: '',
+		default: 0,
 	},
 	{
 		displayName: 'Transaction Date',

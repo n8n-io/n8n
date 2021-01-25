@@ -83,7 +83,7 @@ export const estimateAdditionalFieldsOptions = [
 		displayName: 'Total Amount',
 		name: 'TotalAmt',
 		type: 'number',
-		default: '',
+		default: 0,
 	},
 	{
 		displayName: 'Transaction Date',

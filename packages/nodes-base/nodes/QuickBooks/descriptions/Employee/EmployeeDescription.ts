@@ -55,7 +55,7 @@ export const employeeFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The display name of the customer to create',
+		description: 'The display name of the bill to create.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -89,12 +89,12 @@ export const employeeFields = [
 	//         employee: get
 	// ----------------------------------
 	{
-		displayName: 'Customer ID',
-		name: 'customerId',
+		displayName: 'bill ID',
+		name: 'billId',
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the customer to retrieve',
+		description: 'The ID of the bill to retrieve.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -114,7 +114,7 @@ export const employeeFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results',
+		description: 'Return all results.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -131,7 +131,7 @@ export const employeeFields = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return',
+		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -163,7 +163,7 @@ export const employeeFields = [
 				type: 'string',
 				default: '',
 				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting customers. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries" target="_blank">guide</a> for supported syntax.',
+				description: 'The condition for selecting employees. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries" target="_blank">guide</a> for supported syntax.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -184,12 +184,12 @@ export const employeeFields = [
 	//         employee: update
 	// ----------------------------------
 	{
-		displayName: 'Customer ID',
-		name: 'customerId',
+		displayName: 'bill ID',
+		name: 'billId',
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the customer to update',
+		description: 'The ID of the bill to update.',
 		displayOptions: {
 			show: {
 				resource: [

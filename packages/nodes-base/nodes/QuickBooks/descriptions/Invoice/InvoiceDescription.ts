@@ -66,7 +66,7 @@ export const invoiceFields = [
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The customer who the invoice is for',
+		description: 'The customer who the invoice is for.',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -110,7 +110,7 @@ export const invoiceFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the invoice to delete',
+		description: 'The ID of the invoice to delete.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -131,7 +131,7 @@ export const invoiceFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the invoice to retrieve',
+		description: 'The ID of the invoice to retrieve.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -149,7 +149,7 @@ export const invoiceFields = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Download estimate as PDF file',
+		description: 'Download the invoice as a PDF file.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -167,7 +167,7 @@ export const invoiceFields = [
 		type: 'string',
 		required: true,
 		default: 'data',
-		description: 'Name of the binary property to which to write to',
+		description: 'Name of the binary property to which to write to.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -190,7 +190,7 @@ export const invoiceFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results',
+		description: 'Return all results.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -207,7 +207,7 @@ export const invoiceFields = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return',
+		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -265,7 +265,7 @@ export const invoiceFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the invoice to send',
+		description: 'The ID of the invoice to send.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -283,7 +283,7 @@ export const invoiceFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The email of the recipient of the invoice',
+		description: 'The email of the recipient of the invoice.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -304,7 +304,7 @@ export const invoiceFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the invoice to void',
+		description: 'The ID of the invoice to void.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -325,7 +325,7 @@ export const invoiceFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the invoice to update',
+		description: 'The ID of the invoice to update.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -358,26 +358,11 @@ export const invoiceFields = [
 			{
 				displayName: 'For Customer',
 				name: 'CustomerRef',
-				type: 'options',
-				required: true,
-				description: 'The customer who the invoice is for',
+				type: 'string',
 				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getCustomers',
-				},
-				displayOptions: {
-					show: {
-						resource: [
-							'invoice',
-						],
-						operation: [
-							'create',
-						],
-					},
-				},
 			},
 			lineProperty,
-			...invoiceAdditionalFields,
+			...invoiceAdditionalFieldsOptions,
 		],
 	},
 ] as INodeProperties[];

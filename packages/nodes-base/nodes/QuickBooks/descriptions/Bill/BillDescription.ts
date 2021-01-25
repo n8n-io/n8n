@@ -58,7 +58,7 @@ export const billFields = [
 		name: 'VendorRef',
 		type: 'options',
 		required: true,
-		description: 'The vendor who the bill is for',
+		description: 'The vendor who the bill is for.',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getVendors',
@@ -94,7 +94,7 @@ export const billFields = [
 		options: billAdditionalFieldsOptions,
 	},
 	// ----------------------------------
-	//         customer: get
+	//         bill: get
 	// ----------------------------------
 	{
 		displayName: 'Bill ID',
@@ -102,7 +102,7 @@ export const billFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the bill to retrieve',
+		description: 'The ID of the bill to retrieve.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -115,14 +115,14 @@ export const billFields = [
 		},
 	},
 	// ----------------------------------
-	//         customer: getAll
+	//         bill: getAll
 	// ----------------------------------
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results',
+		description: 'Return all results.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -139,7 +139,7 @@ export const billFields = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return',
+		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -171,7 +171,7 @@ export const billFields = [
 				type: 'string',
 				default: '',
 				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting customers. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries" target="_blank">guide</a> for supported syntax.',
+				description: 'The condition for selecting bills. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries" target="_blank">guide</a> for supported syntax.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -197,7 +197,7 @@ export const billFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the bill to update',
+		description: 'The ID of the bill to update.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -229,11 +229,12 @@ export const billFields = [
 		options: sortBy(
 			[
 				{
-					displayName: 'Display Name',
-					name: 'displayName',
+					displayName: 'For Vendor',
+					name: 'vendorRef',
 					type: 'string',
 					default: '',
 				},
+				lineProperty,
 				...billAdditionalFieldsOptions,
 			], o => o.displayName,
 		),

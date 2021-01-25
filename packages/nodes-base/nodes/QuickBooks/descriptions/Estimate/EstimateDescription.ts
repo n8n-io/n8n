@@ -58,7 +58,7 @@ export const estimateFields = [
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The customer who the estimate is for',
+		description: 'The customer who the estimate is for.',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -102,7 +102,7 @@ export const estimateFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the estimate to retrieve',
+		description: 'The ID of the estimate to retrieve.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -120,7 +120,7 @@ export const estimateFields = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Download estimate as PDF file',
+		description: 'Download the estimate as a PDF file.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -138,7 +138,7 @@ export const estimateFields = [
 		type: 'string',
 		required: true,
 		default: 'data',
-		description: 'Name of the binary property to which to write to',
+		description: 'Name of the binary property to which to write to.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -161,7 +161,7 @@ export const estimateFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results',
+		description: 'Return all results.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -178,7 +178,7 @@ export const estimateFields = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return',
+		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -228,7 +228,7 @@ export const estimateFields = [
 		},
 	},
 	// ----------------------------------
-	//         customer: update
+	//         estimate: update
 	// ----------------------------------
 	{
 		displayName: 'Estimate ID',
@@ -236,7 +236,7 @@ export const estimateFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the estimate to update',
+		description: 'The ID of the estimate to update.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -269,23 +269,8 @@ export const estimateFields = [
 			{
 				displayName: 'For Customer',
 				name: 'CustomerRef',
-				type: 'options',
-				required: true,
-				description: 'The customer who the estimate is for',
+				type: 'string',
 				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getCustomers',
-				},
-				displayOptions: {
-					show: {
-						resource: [
-							'estimate',
-						],
-						operation: [
-							'create',
-						],
-					},
-				},
 			},
 			lineProperty,
 			...estimateAdditionalFieldsOptions,

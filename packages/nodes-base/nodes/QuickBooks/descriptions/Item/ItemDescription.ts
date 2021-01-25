@@ -55,7 +55,7 @@ export const itemFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The display name of the item to create',
+		description: 'The display name of the item to create.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -94,7 +94,7 @@ export const itemFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the item to retrieve',
+		description: 'The ID of the item to retrieve.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -114,7 +114,7 @@ export const itemFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results',
+		description: 'Return all results.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -131,7 +131,7 @@ export const itemFields = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return',
+		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
@@ -189,7 +189,7 @@ export const itemFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the item to update',
+		description: 'The ID of the item to update.',
 		displayOptions: {
 			show: {
 				resource: [
