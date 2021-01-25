@@ -7,7 +7,6 @@ import {
 	LinkedTxn,
 	MetaData,
 	ShipAddr,
-	TxnTaxCodeRef,
 } from '../Shared.interface';
 
 export interface Invoice {
@@ -16,26 +15,7 @@ export interface Invoice {
 	BillAddr: BillAddr;
 	BillEmail: BillEmail;
 	CustomerMemo: CustomerMemo;
-	CustomerRef: CustomerRef;
-	Deposit: number;
-	DocNumber: string;
-	domain: 'QBO';
-	DueDate: string;
-	EmailStatus: string;
-	Id: string;
-	Line: Line[];
-	LinkedTxn: LinkedTxn[];
-	MetaData: MetaData;
-	PrintStatus: string;
-	SalesTermRef: {
-		value: string;
-	};
-	ShipAddr: ShipAddr;
-	sparse: boolean;
-	SyncToken: string;
-	TotalAmt: number;
-	TxnDate: string;
-	TxnTaxDetail: TxnTaxCodeRef;
+	CustomerRef: CustomerRef; // required
 	CustomField: [
 		{
 			DefinitionId: string;
@@ -44,4 +24,19 @@ export interface Invoice {
 			Name: string;
 		}
 	];
+	Deposit: number;
+	DocNumber: string;
+	DueDate: string;
+	EmailStatus: string;
+	Id: string; // system-defined
+	Line: Line[]; // required
+	MetaData: MetaData; // system-defined
+	PrintStatus: string;
+	SalesTermRef: {
+		value: string;
+	};
+	ShipAddr: ShipAddr;
+	SyncToken: string; // system-defined
+	TotalAmt: number;
+	TxnDate: string;
 }

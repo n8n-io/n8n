@@ -1,4 +1,4 @@
-export const line = {
+export const lineProperty = {
 	displayName: 'Line',
 	name: 'Line',
 	type: 'collection',

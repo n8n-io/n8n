@@ -12,18 +12,17 @@ export interface Customer {
 	BillAddr: AltBillAddr;
 	BillWithParent: false;
 	CompanyName: string;
-	DisplayName: string;
-	domain: 'QBO';
+	DisplayName: string; // required
 	FamilyName: string;
 	FullyQualifiedName: string;
 	GivenName: string;
-	Id: string;
+	Id: string; // system-defined
 	Job: boolean;
-	MetaData: MetaData;
+	MetaData: MetaData; // system-defined
 	PreferredDeliveryMethod: string;
 	PrimaryEmailAddr: PrimaryEmailAddr;
 	PrimaryPhone: PrimaryPhone;
 	PrintOnCheckName: string;
-	SyncToken: string;
+	SyncToken: string; // system-defined
 	Taxable: boolean;
 }

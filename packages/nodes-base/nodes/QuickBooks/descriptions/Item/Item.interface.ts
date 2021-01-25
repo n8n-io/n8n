@@ -3,12 +3,11 @@ import {
 } from '../Shared.interface';
 
 export interface Item {
-	Active: true;
-	domain: 'QBO';
+	Active: boolean;
 	FullyQualifiedName: string;
-	Id: string;
-	MetaData: MetaData;
+	Id: string; // system-defined
+	MetaData: MetaData; // system-defined
 	Name: string;
-	SyncToken: string;
+	SyncToken: string; // system-defined
 	Type: string;
 }

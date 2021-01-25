@@ -3,8 +3,12 @@ import {
 } from 'n8n-workflow';
 
 import {
-	billAdditionalFields,
-} from './BillAdditionalFields';
+	billAdditionalFieldsOptions,
+} from './BillAdditionalFieldsOptions';
+
+import {
+	lineProperty,
+} from '../SharedDescription';
 
 import {
 	sortBy
@@ -50,14 +54,14 @@ export const billFields = [
 	//         bill: create
 	// ----------------------------------
 	{
-		displayName: 'For Customer',
-		name: 'CustomerRef',
+		displayName: 'For Vendor',
+		name: 'VendorRef',
 		type: 'options',
 		required: true,
-		description: 'The customer who the estimate is for',
+		description: 'The vendor who the bill is for',
 		default: '',
 		typeOptions: {
-			loadOptionsMethod: 'getCustomers',
+			loadOptionsMethod: 'getVendors',
 		},
 		displayOptions: {
 			show: {
@@ -70,6 +74,7 @@ export const billFields = [
 			},
 		},
 	},
+	lineProperty,
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -86,7 +91,7 @@ export const billFields = [
 				],
 			},
 		},
-		options: billAdditionalFields,
+		options: billAdditionalFieldsOptions,
 	},
 	// ----------------------------------
 	//         customer: get
@@ -229,7 +234,7 @@ export const billFields = [
 					type: 'string',
 					default: '',
 				},
-				...billAdditionalFields,
+				...billAdditionalFieldsOptions,
 			], o => o.displayName,
 		),
 	},

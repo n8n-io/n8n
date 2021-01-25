@@ -3,8 +3,8 @@ import {
 } from 'n8n-workflow';
 
 import {
-	customerAdditionalFields,
-} from './CustomerAdditionalFields';
+	customerAdditionalFieldsOptions,
+} from './CustomerAdditionalFieldsOptions';
 
 import {
 	sortBy
@@ -83,7 +83,7 @@ export const customerFields = [
 				],
 			},
 		},
-		options: customerAdditionalFields,
+		options: customerAdditionalFieldsOptions,
 	},
 	// ----------------------------------
 	//         customer: get
@@ -226,7 +226,7 @@ export const customerFields = [
 					type: 'string',
 					default: '',
 				},
-				...customerAdditionalFields,
+				...customerAdditionalFieldsOptions,
 			], o => o.displayName,
 		),
 	},

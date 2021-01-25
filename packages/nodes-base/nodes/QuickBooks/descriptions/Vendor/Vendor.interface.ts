@@ -11,16 +11,15 @@ export interface Vendor {
 	Balance: number;
 	BillAddr: AltBillAddr;
 	CompanyName: string;
-	DisplayName: string;
-	domain: 'QBO';
+	DisplayName: string; // required
 	FamilyName: string;
 	GivenName: string;
-	Id: string;
-	MetaData: MetaData;
+	Id: string; // system-defined
+	MetaData: MetaData; // system-defined
 	PrimaryEmailAddr: PrimaryEmailAddr;
 	PrimaryPhone: PrimaryPhone;
 	PrintOnCheckName: string;
-	SyncToken: '0';
+	SyncToken: string; // system-defined
 	Vendor1099: boolean;
 	WebAddr: {
 		URI: string;

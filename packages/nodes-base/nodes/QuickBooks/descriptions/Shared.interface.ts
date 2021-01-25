@@ -80,24 +80,3 @@ export interface CurrencyRef {
 export interface PrimaryEmailAddr {
 	Address: string;
 }
-
-export interface TxnTaxCodeRef {
-	TxnTaxCodeRef: {
-		value: string;
-	};
-	TotalTax: number;
-	TaxLine: [
-		{
-			DetailType: string;
-			Amount: number;
-			TaxLineDetail: {
-				NetAmountTaxable: number;
-				TaxPercent: number;
-				TaxRateRef: {
-					value: string;
-				};
-				PercentBased: true;
-			};
-		}
-	];
-}

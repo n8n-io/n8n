@@ -20,16 +20,15 @@ export interface Estimate {
 		}
 	];
 	CustomerMemo: CustomerMemo;
-	CustomerRef: CustomerRef;
+	CustomerRef: CustomerRef; // required
 	DocNumber: string;
-	domain: 'QBO';
 	EmailStatus: string;
-	Id: string;
-	Line: Line[];
-	MetaData: MetaData;
+	Id: string; // system-defined
+	Line: Line[]; // required
+	MetaData: MetaData; // system-defined
 	PrintStatus: string;
 	ShipAddr: ShipAddr;
-	SyncToken: string;
+	SyncToken: string; // system-defined
 	TotalAmt: number;
 	TxnDate: string;
 	TxnStatus: string;

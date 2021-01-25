@@ -3,12 +3,12 @@ import {
 } from 'n8n-workflow';
 
 import {
-	line,
+	lineProperty,
 } from '../SharedDescription';
 
 import {
-	invoiceAdditionalFields
-} from './InvoiceAdditionalFields';
+	invoiceAdditionalFieldsOptions
+} from './InvoiceAdditionalFieldsOptions';
 
 export const invoiceOperations = [
 	{
@@ -82,7 +82,7 @@ export const invoiceFields = [
 			},
 		},
 	},
-	line,
+	lineProperty,
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -99,7 +99,7 @@ export const invoiceFields = [
 				],
 			},
 		},
-		options: invoiceAdditionalFields,
+		options: invoiceAdditionalFieldsOptions,
 	},
 	// ----------------------------------
 	//         invoice: delete
@@ -376,7 +376,7 @@ export const invoiceFields = [
 					},
 				},
 			},
-			line,
+			lineProperty,
 			...invoiceAdditionalFields,
 		],
 	},

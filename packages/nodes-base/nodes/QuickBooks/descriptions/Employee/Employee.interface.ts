@@ -7,15 +7,14 @@ import {
 export interface Employee {
 	Active: boolean;
 	BillableTime: boolean;
-	DisplayName: string;
-	domain: 'QBO';
+	DisplayName: string; // required
 	FamilyName: string;
 	GivenName: string;
-	Id: string;
-	MetaData: MetaData;
+	Id: string; // system-defined
+	MetaData: MetaData; // system-defined
 	PrimaryAddr: AltBillAddr;
 	PrimaryPhone: PrimaryPhone;
 	PrintOnCheckName: string;
 	SSN: string;
-	SyncToken: string;
+	SyncToken: string; // system-defined
 }

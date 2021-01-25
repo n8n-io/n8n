@@ -5,16 +5,15 @@ import {
 } from '../Shared.interface';
 
 export interface Payment {
-	CustomerRef: CustomerRef;
+	CustomerRef: CustomerRef; // required
 	DepositToAccountRef: {
 		value: string;
 	};
-	domain: 'QBO';
-	Id: string;
-	Line: Line[];
-	MetaData: MetaData;
+	Id: string; // system-defined
+	Line: Line[]; // required
+	MetaData: MetaData; // system-defined
 	ProcessPayment: boolean;
-	SyncToken: string;
+	SyncToken: string; // system-defined
 	TotalAmt: number;
 	TxnDate: string;
 	UnappliedAmt: number;

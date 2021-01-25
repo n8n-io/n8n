@@ -3,12 +3,12 @@ import {
 } from 'n8n-workflow';
 
 import {
-	line,
+	lineProperty,
 } from '../SharedDescription';
 
 import {
-	paymentAdditionalFields
-} from './PaymentAdditionalFields';
+	paymentAdditionalFieldsOptions
+} from './PaymentAdditionalFieldsOptions';
 
 export const paymentOperations = [
 	{
@@ -82,7 +82,7 @@ export const paymentFields = [
 			},
 		},
 	},
-	line,
+	lineProperty,
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -99,7 +99,7 @@ export const paymentFields = [
 				],
 			},
 		},
-		options: paymentAdditionalFields,
+		options: paymentAdditionalFieldsOptions,
 	},
 	// ----------------------------------
 	//         payment: delete
@@ -376,8 +376,8 @@ export const paymentFields = [
 					},
 				},
 			},
-			line,
-			...paymentAdditionalFields,
+			lineProperty,
+			...paymentAdditionalFieldsOptions,
 		],
 	},
 ] as INodeProperties[];

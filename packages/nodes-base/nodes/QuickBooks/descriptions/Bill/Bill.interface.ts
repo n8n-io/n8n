@@ -1,7 +1,6 @@
 import {
 	CurrencyRef,
 	Line,
-	LinkedTxn,
 	MetaData,
 } from '../Shared.interface';
 
@@ -12,19 +11,17 @@ export interface Bill {
 	};
 	Balance: number;
 	CurrencyRef: CurrencyRef;
-	domain: 'QBO';
 	DueDate: string;
-	Id: string;
-	Line: Line[];
-	LinkedTxn: LinkedTxn[];
-	MetaData: MetaData;
+	Id: string; // system-defined
+	Line: Line[]; // required
+	MetaData: MetaData; // system-defined
 	SalesTermRef: {
 		value: string;
 	};
-	SyncToken: string;
+	SyncToken: string; // system-defined
 	TotalAmt: number;
 	TxnDate: string;
-	VendorRef: {
+	VendorRef: { // required
 		name: string;
 		value: string;
 	};

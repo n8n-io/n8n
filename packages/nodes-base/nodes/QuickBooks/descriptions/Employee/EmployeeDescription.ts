@@ -3,14 +3,14 @@ import {
 } from 'n8n-workflow';
 
 import {
-	estimateAdditionalFieldsOptions,
-} from './EstimateAdditionalFieldsOptions';
+	employeeAdditionalFieldsOptions,
+} from './EmployeeAdditionalFieldsOptions';
 
 import {
-	lineProperty
-} from '../SharedDescription';
+	sortBy
+} from 'lodash';
 
-export const estimateOperations = [
+export const employeeOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -31,10 +31,6 @@ export const estimateOperations = [
 				value: 'getAll',
 			},
 			{
-				name: 'Send',
-				value: 'send',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 			},
@@ -42,31 +38,28 @@ export const estimateOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'estimate',
+					'employee',
 				],
 			},
 		},
 	},
 ] as INodeProperties[];
 
-export const estimateFields = [
+export const employeeFields = [
 	// ----------------------------------
-	//         estimate: create
+	//         employee: create
 	// ----------------------------------
 	{
-		displayName: 'For Customer',
-		name: 'CustomerRef',
-		type: 'options',
+		displayName: 'Display Name',
+		name: 'displayName',
+		type: 'string',
 		required: true,
-		description: 'The customer who the estimate is for',
 		default: '',
-		typeOptions: {
-			loadOptionsMethod: 'getCustomers',
-		},
+		description: 'The display name of the customer to create',
 		displayOptions: {
 			show: {
 				resource: [
-					'estimate',
+					'employee',
 				],
 				operation: [
 					'create',
@@ -74,7 +67,6 @@ export const estimateFields = [
 			},
 		},
 	},
-	lineProperty,
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -84,77 +76,38 @@ export const estimateFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'estimate',
+					'employee',
 				],
 				operation: [
 					'create',
 				],
 			},
 		},
-		options: estimateAdditionalFieldsOptions,
+		options: employeeAdditionalFieldsOptions,
 	},
 	// ----------------------------------
-	//         estimate: get
+	//         employee: get
 	// ----------------------------------
 	{
-		displayName: 'Estimate ID',
-		name: 'estimateId',
+		displayName: 'Customer ID',
+		name: 'customerId',
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the estimate to retrieve',
+		description: 'The ID of the customer to retrieve',
 		displayOptions: {
 			show: {
 				resource: [
-					'estimate',
+					'employee',
 				],
 				operation: [
 					'get',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Download',
-		name: 'download',
-		type: 'boolean',
-		required: true,
-		default: false,
-		description: 'Download estimate as PDF file',
-		displayOptions: {
-			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'get',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Binary Property',
-		name: 'binaryProperty',
-		type: 'string',
-		required: true,
-		default: 'data',
-		description: 'Name of the binary property to which to write to',
-		displayOptions: {
-			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'get',
-				],
-				download: [
-					true,
 				],
 			},
 		},
 	},
 	// ----------------------------------
-	//         estimate: getAll
+	//         employee: getAll
 	// ----------------------------------
 	{
 		displayName: 'Return All',
@@ -165,7 +118,7 @@ export const estimateFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'estimate',
+					'employee',
 				],
 				operation: [
 					'getAll',
@@ -186,7 +139,7 @@ export const estimateFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'estimate',
+					'employee',
 				],
 				operation: [
 					'getAll',
@@ -210,7 +163,7 @@ export const estimateFields = [
 				type: 'string',
 				default: '',
 				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting estimates. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries" target="_blank">guide</a> for supported syntax.',
+				description: 'The condition for selecting customers. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries" target="_blank">guide</a> for supported syntax.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -219,7 +172,7 @@ export const estimateFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'estimate',
+					'employee',
 				],
 				operation: [
 					'getAll',
@@ -228,19 +181,19 @@ export const estimateFields = [
 		},
 	},
 	// ----------------------------------
-	//         customer: update
+	//         employee: update
 	// ----------------------------------
 	{
-		displayName: 'Estimate ID',
-		name: 'estimateId',
+		displayName: 'Customer ID',
+		name: 'customerId',
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the estimate to update',
+		description: 'The ID of the customer to update',
 		displayOptions: {
 			show: {
 				resource: [
-					'estimate',
+					'employee',
 				],
 				operation: [
 					'update',
@@ -258,37 +211,23 @@ export const estimateFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'estimate',
+					'employee',
 				],
 				operation: [
 					'update',
 				],
 			},
 		},
-		options: [
-			{
-				displayName: 'For Customer',
-				name: 'CustomerRef',
-				type: 'options',
-				required: true,
-				description: 'The customer who the estimate is for',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getCustomers',
+		options: sortBy(
+			[
+				{
+					displayName: 'Display Name',
+					name: 'displayName',
+					type: 'string',
+					default: '',
 				},
-				displayOptions: {
-					show: {
-						resource: [
-							'estimate',
-						],
-						operation: [
-							'create',
-						],
-					},
-				},
-			},
-			lineProperty,
-			...estimateAdditionalFieldsOptions,
-		],
+				...employeeAdditionalFieldsOptions,
+			], o => o.displayName,
+		),
 	},
 ] as INodeProperties[];
