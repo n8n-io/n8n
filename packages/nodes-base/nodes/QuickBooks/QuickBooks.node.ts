@@ -14,17 +14,17 @@ import {
 import {
 	customerFields,
 	customerOperations,
-} from './descriptions/CustomerDescription';
+} from './descriptions/Customer/CustomerDescription';
 
 import {
 	estimateFields,
 	estimateOperations,
-} from './descriptions/EstimateDescription';
+} from './descriptions/Estimate/EstimateDescription';
 
 import {
 	invoiceFields,
 	invoiceOperations,
-} from './descriptions/InvoiceDescription';
+} from './descriptions/Invoice/InvoiceDescription';
 
 import {
 	getSyncToken,
@@ -41,7 +41,7 @@ import {
 
 import {
 	CustomerBillingAddress,
-} from './descriptions/CustomerAdditionalFields';
+} from './descriptions/Customer/CustomerAdditionalFields';
 
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {
