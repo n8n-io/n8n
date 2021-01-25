@@ -39,6 +39,15 @@ export interface BillAddr {
 	Id: string;
 }
 
+export interface AltBillingAddress {
+	City: string;
+	Line1: string;
+	PostalCode: string;
+	Lat: string;
+	Long: string;
+	CountrySubDivisionCode: string;
+}
+
 export interface BillEmail {
 	Address: string;
 }

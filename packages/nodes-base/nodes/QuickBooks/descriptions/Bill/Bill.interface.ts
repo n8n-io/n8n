@@ -15,7 +15,7 @@ export interface Bill {
 		value: string;
 	};
 	TxnDate: string;
-	TotalAmt: 103.55;
+	TotalAmt: number;
 	CurrencyRef: {
 		name: string;
 		value: string;

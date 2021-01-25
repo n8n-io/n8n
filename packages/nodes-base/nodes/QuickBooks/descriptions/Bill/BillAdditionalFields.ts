@@ -1,4 +1,4 @@
-export const customerAdditionalFields = [
+export const billAdditionalFields = [
 	{
 		displayName: 'Accounts Receivable Account',
 		name: 'ARAccountRef',

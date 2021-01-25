@@ -1,5 +1,5 @@
 import {
-	BillAddr,
+	AltBillingAddress,
 	MetaData,
 } from '../Shared.interface';
 
@@ -21,7 +21,7 @@ export interface Customer {
 	Active: boolean;
 	Job: boolean;
 	BalanceWithJobs: number;
-	BillAddr: BillAddr;
+	BillAddr: AltBillingAddress;
 	PreferredDeliveryMethod: string;
 	Taxable: boolean;
 	PrintOnCheckName: string;
@@ -29,3 +29,4 @@ export interface Customer {
 	Id: string;
 	MetaData: MetaData;
 }
+
