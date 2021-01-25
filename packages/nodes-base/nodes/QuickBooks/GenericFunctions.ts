@@ -7,6 +7,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
@@ -191,4 +192,29 @@ export async function handleBinaryData(
 	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
 
 	return items;
+}
+
+export async function loadResource(
+	this: ILoadOptionsFunctions,
+	resource: string,
+) {
+	const returnData: INodePropertyOptions[] = [];
+
+	const qs = {
+		query: `SELECT * FROM ${resource}`,
+	} as IDataObject;
+
+	const { companyId } = this.getCredentials('quickBooksOAuth2Api') as { companyId: string };
+	const endpoint = `/v3/company/${companyId}/query`;
+
+	const resourceItems = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
+
+	resourceItems.forEach((customer: any) => { // tslint:disable-line:no-any
+		returnData.push({
+			name: customer.DisplayName as string,
+			value: customer.DisplayName as string,
+		});
+	});
+
+	return returnData;
 }
