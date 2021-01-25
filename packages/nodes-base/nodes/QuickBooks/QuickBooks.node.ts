@@ -32,17 +32,26 @@ import {
 } from './descriptions/Invoice/InvoiceDescription';
 
 import {
+	itemFields,
+	itemOperations,
+} from './descriptions/Item/ItemDescription';
+
+import {
 	paymentFields,
 	paymentOperations,
 } from './descriptions/Payment/PaymentDescription';
 
+import {
+	vendorFields,
+	vendorOperations,
+} from './descriptions/Vendor/VendorDescription';
 
 import {
 	getSyncToken,
 	handleBinaryData,
 	handleListing,
+	loadResource,
 	quickBooksApiRequest,
-	quickBooksApiRequestAllItems,
 } from './GenericFunctions';
 
 import {
@@ -117,34 +126,22 @@ export class QuickBooks implements INodeType {
 			...estimateFields,
 			...invoiceOperations,
 			...invoiceFields,
+			...itemOperations,
+			...itemFields,
 			...paymentOperations,
 			...paymentFields,
+			...vendorOperations,
+			...vendorFields,
 		],
 	};
 
 	methods = {
 		loadOptions: {
 			async getCustomers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const resource = 'customer';
-				const returnData: INodePropertyOptions[] = [];
-
-				const qs = {
-					query: `SELECT * FROM ${resource}`,
-				} as IDataObject;
-
-				const { companyId } = this.getCredentials('quickBooksOAuth2Api') as { companyId: string };
-				const endpoint = `/v3/company/${companyId}/query`;
-
-				const customers = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
-
-				customers.forEach((customer: any) => { // tslint:disable-line:no-any
-					returnData.push({
-						name: customer.DisplayName as string,
-						value: customer.DisplayName as string,
-					});
-				});
-
-				return returnData;
+				return await loadResource.call(this, 'customer');
+			},
+			async getVendors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await loadResource.call(this, 'vendor');
 			},
 		},
 	};
@@ -161,6 +158,10 @@ export class QuickBooks implements INodeType {
 		const { companyId } = this.getCredentials('quickBooksOAuth2Api') as { companyId: string };
 
 		for (let i = 0; i < items.length; i++) {
+
+			// *********************************************************************
+			// 															  bill
+			// *********************************************************************
 
 			if (resource === 'bill')	{
 
@@ -200,6 +201,10 @@ export class QuickBooks implements INodeType {
 					// ...
 
 				}
+
+			// *********************************************************************
+			// 															customer
+			// *********************************************************************
 
 			} else if (resource === 'customer') {
 
@@ -275,6 +280,10 @@ export class QuickBooks implements INodeType {
 
 				}
 
+			// *********************************************************************
+			// 															estimate
+			// *********************************************************************
+
 			} else if (resource === 'estimate') {
 
 				// ----------------------------------
@@ -324,6 +333,10 @@ export class QuickBooks implements INodeType {
 					// ...
 
 				}
+
+			// *********************************************************************
+			// 															invoice
+			// *********************************************************************
 
 			} else if (resource === 'invoice') {
 
@@ -422,6 +435,10 @@ export class QuickBooks implements INodeType {
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
 
 				}
+
+			// *********************************************************************
+			// 															payment
+			// *********************************************************************
 
 			} else if (resource === 'payment') {
 

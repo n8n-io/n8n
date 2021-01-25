@@ -9,10 +9,6 @@ export const lineProperty = {
 	default: {},
 	displayOptions: {
 		show: {
-			resource: [
-				'estimate',
-				'invoice',
-			],
 			operation: [
 				'create',
 			],
