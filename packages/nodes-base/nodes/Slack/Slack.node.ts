@@ -795,6 +795,17 @@ export class Slack implements INodeType {
 					Object.assign(body, updateFields);
 					responseData = await slackApiRequest.call(this, 'POST', '/chat.update', body, qs);
 				}
+				//https://api.slack.com/methods/chat.delete
+				if (operation === 'delete') {
+					const channel = this.getNodeParameter('channelId', i) as string;
+					const ts = this.getNodeParameter('ts', i) as string;
+					const body: IDataObject = {
+						channel,
+						ts,
+					};
+					// Add all the other options to the request
+					responseData = await slackApiRequest.call(this, 'POST', '/chat.delete', body, qs);
+				}
 				//https://api.slack.com/methods/chat.getPermalink
 				if (operation === 'getPermalink') {
 					const channel = this.getNodeParameter('channelId', i) as string;
