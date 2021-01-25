@@ -387,7 +387,7 @@ export class QuickBooks implements INodeType {
 						sendTo: this.getNodeParameter('email', i) as string,
 					} as IDataObject;
 
-					const endpoint = `/v3/company/${companyId}/invoice/${invoiceId}/send`;
+					const endpoint = `/v3/company/${companyId}/${resource}/${invoiceId}/send`;
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
 
 				// ----------------------------------
@@ -410,7 +410,7 @@ export class QuickBooks implements INodeType {
 						operation: 'void',
 					} as IDataObject;
 
-					const endpoint = `/v3/company/${companyId}/invoice`;
+					const endpoint = `/v3/company/${companyId}/${resource}`;
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
 
 				}
@@ -485,7 +485,7 @@ export class QuickBooks implements INodeType {
 						sendTo: this.getNodeParameter('email', i) as string,
 					} as IDataObject;
 
-					const endpoint = `/v3/company/${companyId}/invoice/${paymentId}/send`;
+					const endpoint = `/v3/company/${companyId}/${resource}/${paymentId}/send`;
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
 
 				// ----------------------------------
@@ -508,7 +508,7 @@ export class QuickBooks implements INodeType {
 						operation: 'void',
 					} as IDataObject;
 
-					const endpoint = `/v3/company/${companyId}/invoice`;
+					const endpoint = `/v3/company/${companyId}/${resource}`;
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
 
 				}
