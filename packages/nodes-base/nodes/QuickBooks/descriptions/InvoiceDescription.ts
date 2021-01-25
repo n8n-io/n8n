@@ -275,6 +275,27 @@ export const invoiceFields = [
 		},
 	},
 	// ----------------------------------
+	//         invoice: void
+	// ----------------------------------
+	{
+		displayName: 'Invoice ID',
+		name: 'invoiceId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The ID of the invoice to void',
+		displayOptions: {
+			show: {
+				resource: [
+					'invoice',
+				],
+				operation: [
+					'void',
+				],
+			},
+		},
+	},
+	// ----------------------------------
 	//         invoice: update
 	// ----------------------------------
 	{

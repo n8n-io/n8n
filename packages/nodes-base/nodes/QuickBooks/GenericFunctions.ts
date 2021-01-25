@@ -72,11 +72,25 @@ export async function quickBooksApiRequest(
 		options.headers!['Content-Type'] = 'application/octet-stream';
 	}
 
+	if (resource === 'invoice' && operation === 'void') {
+		options.headers!['Content-Type'] = 'application/json';
+	}
+
 	try {
 		console.log(options);
 		return await this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
 	} catch (error) {
-		throw error;
+
+		const errors = error.error.Fault.Error;
+
+		if (errors && Array.isArray(errors)) {
+			const errorMessage = errors.map(
+				(e: IDataObject) => `QuickBooks error response [${e.code}]: ${e.Message} - Detail: ${e.Detail}`,
+			).join('|');
+			throw new Error(errorMessage);
+		}
+
+		throw new Error(`QuickBooks error response [${error.statusCode}]: ${error.message}`);
 	}
 }
 

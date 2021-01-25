@@ -182,7 +182,7 @@ export class QuickBooks implements INodeType {
 					const endpoint = `/v3/company/${companyId}/customer`;
 					const body = {
 						Id: this.getNodeParameter('customerId', i),
-						SyncToken: await getSyncToken.call(this, i, (companyId as string), resource),
+						SyncToken: await getSyncToken.call(this, i, companyId, resource),
 						sparse: true,
 					} as IDataObject;
 
@@ -334,7 +334,14 @@ export class QuickBooks implements INodeType {
 
 				} else if (operation === 'void') {
 
-					// ...
+					const qs = {
+						Id: this.getNodeParameter('invoiceId', i),
+						SyncToken: await getSyncToken.call(this, i, companyId, resource),
+						operation: 'void',
+					} as IDataObject;
+
+					const endpoint = `/v3/company/${companyId}/invoice`;
+					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
 
 				}
 			}
