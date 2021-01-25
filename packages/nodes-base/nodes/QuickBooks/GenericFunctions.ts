@@ -68,6 +68,10 @@ export async function quickBooksApiRequest(
 		options.headers!['Accept'] = 'application/pdf';
 	}
 
+	if (resource === 'invoice' && operation === 'send') {
+		options.headers!['Content-Type'] = 'application/octet-stream';
+	}
+
 	try {
 		console.log(options);
 		return await this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
@@ -152,6 +156,7 @@ export async function getSyncToken(
 	const getEndpoint = `/v3/company/${companyId}/${resource}/${resourceId}`;
 	const propertyName = pascalCase(resource);
 	const { [propertyName]: { SyncToken } } = await quickBooksApiRequest.call(this, 'GET', getEndpoint, {}, {});
+
 	return SyncToken;
 }
 
@@ -177,9 +182,7 @@ export async function handleBinaryData(
 	}
 
 	items[i] = newItem;
-
 	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
 
 	return items;
-	// return this.prepareOutputData(items);
 }

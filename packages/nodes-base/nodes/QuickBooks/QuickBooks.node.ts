@@ -311,7 +311,14 @@ export class QuickBooks implements INodeType {
 
 				} else if (operation === 'send') {
 
-					// ...
+					const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+
+					const qs = {
+						sendTo: this.getNodeParameter('email', i) as string,
+					} as IDataObject;
+
+					const endpoint = `/v3/company/${companyId}/invoice/${invoiceId}/send`;
+					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
 
 				// ----------------------------------
 				//         invoice: update

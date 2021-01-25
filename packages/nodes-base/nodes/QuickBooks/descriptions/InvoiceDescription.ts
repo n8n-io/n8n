@@ -236,6 +236,45 @@ export const invoiceFields = [
 		},
 	},
 	// ----------------------------------
+	//         invoice: send
+	// ----------------------------------
+	{
+		displayName: 'Invoice ID',
+		name: 'invoiceId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The ID of the invoice to send',
+		displayOptions: {
+			show: {
+				resource: [
+					'invoice',
+				],
+				operation: [
+					'send',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The email of the recipient of the invoice',
+		displayOptions: {
+			show: {
+				resource: [
+					'invoice',
+				],
+				operation: [
+					'send',
+				],
+			},
+		},
+	},
+	// ----------------------------------
 	//         invoice: update
 	// ----------------------------------
 	{
