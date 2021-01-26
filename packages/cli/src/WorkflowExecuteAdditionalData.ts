@@ -24,6 +24,7 @@ import {
 	IDataObject,
 	IExecuteData,
 	IExecuteWorkflowInfo,
+	ILogger,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
@@ -44,6 +45,8 @@ import * as config from '../config';
 import { LessThanOrEqual } from "typeorm";
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
+
+const logger = (global as any).logger as ILogger;
 
 
 /**
@@ -161,6 +164,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 	return {
 		nodeExecuteBefore: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
+				logger.info(`Executing hook nodeExecuteBefore for hookFunctionsPush on node ${nodeName}`, {executionId: this.executionId});
 				// Push data to session which started workflow before each
 				// node which starts rendering
 				if (this.sessionId === undefined) {
@@ -176,6 +180,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 		],
 		nodeExecuteAfter: [
 			async function (this: WorkflowHooks, nodeName: string, data: ITaskData): Promise<void> {
+				logger.info(`Executing hook nodeExecuteAfter for hookFunctionsPush on node ${nodeName}`, {executionId: this.executionId});
 				// Push data to session which started workflow after each rendered node
 				if (this.sessionId === undefined) {
 					return;
@@ -191,6 +196,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 		],
 		workflowExecuteBefore: [
 			async function (this: WorkflowHooks): Promise<void> {
+				logger.info(`Executing hook WorkflowExecuteBefore for hookFunctionsPush`, {executionId: this.executionId});
 				// Push data to editor-ui once workflow finished
 				const pushInstance = Push.getInstance();
 				pushInstance.send('executionStarted', {
@@ -205,6 +211,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 		],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
+				logger.info(`Executing hook WorkflowExecuteAfter for hookFunctionsPush`, {executionId: this.executionId});
 				pushExecutionFinished(this.mode, fullRunData, this.executionId, undefined, this.retryOf);
 			},
 		],
@@ -218,6 +225,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 	return {
 		workflowExecuteBefore: [
 			async function (this: WorkflowHooks, workflow: Workflow): Promise<void> {
+				logger.info(`Executing hook workflowExecuteBefore for hookFunctionsPreExecute`, {executionId: this.executionId});
 				await externalHooks.run('workflow.preExecute', [workflow, this.mode]);
 			},
 		],
@@ -236,6 +244,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 		workflowExecuteBefore: [],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
+				logger.info(`Executing hook workflowExecuteAfter for hookFunctionsSave`, {executionId: this.executionId});
 
 				// Prune old execution data
 				if (config.get('executions.pruneData')) {

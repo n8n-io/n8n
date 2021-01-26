@@ -759,3 +759,13 @@ export interface IWorkflowHooksOptionalParameters {
 export interface IWorkflowSettings {
 	[key: string]: IDataObject | string | number | boolean | undefined;
 }
+
+export type ILogTypes = "info" | "warning" | "error";
+
+export interface ILogger {
+	log: (type: ILogTypes, message: string, meta?: object) => void;
+	debug: (message: string, meta?: object) => void;
+	info: (message: string, meta?: object) => void;
+	error: (message: string, meta?: object) => void;
+	notice: (message: string, meta?: object) => void;
+}

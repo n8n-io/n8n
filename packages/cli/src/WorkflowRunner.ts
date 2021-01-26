@@ -22,6 +22,7 @@ import {
 
 import {
 	IExecutionError,
+	ILogger,
 	IRun,
 	Workflow,
 	WorkflowExecuteMode,
@@ -33,6 +34,7 @@ import * as PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
 
+const logger = (global as any).logger as ILogger;
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -145,20 +147,24 @@ export class WorkflowRunner {
 
 		// Register the active execution
 		const executionId = this.activeExecutions.add(data, undefined);
+		logger.info(`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`, {executionId});
 
 		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
 
 		let workflowExecution: PCancelable<IRun>;
 		if (data.executionData !== undefined) {
+			logger.debug(`Execution ID  ${executionId} had Execution data. Running with payload.`, {executionId});
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode, data.executionData);
 			workflowExecution = workflowExecute.processRunExecutionData(workflow);
 		} else if (data.runData === undefined || data.startNodes === undefined || data.startNodes.length === 0 || data.destinationNode === undefined) {
+			logger.debug(`Execution ID  ${executionId} will run executing all nodes.`, {executionId});
 			// Execute all nodes
 
 			// Can execute without webhook so go on
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 			workflowExecution = workflowExecute.run(workflow, undefined, data.destinationNode);
 		} else {
+			logger.debug(`Execution ID  ${executionId} is a partial execution.`, {executionId});
 			// Execute only the nodes between start and destination nodes
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 			workflowExecution = workflowExecute.runPartialWorkflow(workflow, data.runData, data.startNodes, data.destinationNode);
@@ -274,6 +280,7 @@ export class WorkflowRunner {
 
 		// Listen to data from the subprocess
 		subprocess.on('message', (message: IProcessMessage) => {
+			logger.debug(`Received child process message of type ${message.type} for execution ID ${executionId}.`, {executionId});
 			if (message.type === 'end') {
 				clearTimeout(executionTimeout);
 				this.activeExecutions.remove(executionId!, message.data.runData);
@@ -296,6 +303,7 @@ export class WorkflowRunner {
 		// Also get informed when the processes does exit especially when it did crash or timed out
 		subprocess.on('exit', (code, signal) => {
 			if (signal === 'SIGTERM'){
+				logger.debug(`Subprocess for execution ID ${executionId} timed out.`, {executionId});
 				// Execution timed out and its process has been terminated
 				const timeoutError = {
 					message: 'Workflow execution timed out!',
@@ -303,6 +311,7 @@ export class WorkflowRunner {
 
 				this.processError(timeoutError, startedAt, data.executionMode, executionId);
 			} else if (code !== 0) {
+				logger.debug(`Subprocess for execution ID ${executionId} finished with error code ${code}.`, {executionId});
 				// Process did exit with error code, so something went wrong.
 				const executionError = {
 					message: 'Workflow execution process did crash for an unknown reason!',

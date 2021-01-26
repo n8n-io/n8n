@@ -1,5 +1,7 @@
 import * as convict from 'convict';
 import * as dotenv from 'dotenv';
+import * as path from 'path';
+import * as core from 'n8n-core';
 
 dotenv.config();
 
@@ -465,6 +467,29 @@ const config = convict({
 			default: 'n8n-nodes-base.errorTrigger',
 			env: 'NODES_ERROR_TRIGGER_TYPE',
 		},
+	},
+
+	logs: {
+		level: {
+			doc: 'Log output level. Options are error, warning, notice, info and debug.',
+			format: String,
+			default: 'notice',
+			env: 'N8N_LOG_LEVEL',
+		},
+		output: {
+			doc: 'Where to output logs. Options are: console, file.',
+			format: String,
+			default: 'console',
+			env: 'N8N_LOG_OUTPUT',
+		},
+		file: {
+			location: {
+				doc: 'Log file location; only used if log output is set to file.',
+				format: String,
+				default: path.join(core.UserSettings.getUserN8nFolderPath(), 'n8n.log'),
+				env: 'N8N_LOG_FILE_LOCATION',
+			}
+		}
 	},
 
 });

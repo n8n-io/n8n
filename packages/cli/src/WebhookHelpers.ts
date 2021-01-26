@@ -25,6 +25,7 @@ import {
 	IBinaryKeyData,
 	IDataObject,
 	IExecuteData,
+	ILogger,
 	INode,
 	IRunExecutionData,
 	IWebhookData,
@@ -36,6 +37,7 @@ import {
 } from 'n8n-workflow';
 
 const activeExecutions = ActiveExecutions.getInstance();
+const logger = (global as any).logger as ILogger;
 
 
 /**
@@ -284,6 +286,8 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 		// Start now to run the workflow
 		const workflowRunner = new WorkflowRunner();
 		const executionId = await workflowRunner.run(runData, true);
+
+		logger.info(`Started execution of workflow ${workflow.name} from webhook with execution ID ${executionId}`);
 
 		// Get a promise which resolves when the workflow did execute and send then response
 		const executePromise = activeExecutions.getPostExecutePromise(executionId) as Promise<IExecutionDb | undefined>;
