@@ -212,7 +212,7 @@ export const billFields = [
 	{
 		displayName: 'For Vendor',
 		name: 'VendorRef',
-		type: 'string',
+		type: 'options',
 		required: true,
 		description: 'The vendor who the bill is for.',
 		default: [],
@@ -247,16 +247,6 @@ export const billFields = [
 				],
 			},
 		},
-		options: sortBy(
-			[
-				{
-					displayName: 'For Vendor',
-					name: 'vendorRef',
-					type: 'string',
-					default: '',
-				},
-				...billAdditionalFieldsOptions,
-			], o => o.displayName,
-		),
+		options: billAdditionalFieldsOptions,
 	},
 ] as INodeProperties[];

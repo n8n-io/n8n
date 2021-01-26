@@ -218,16 +218,6 @@ export const customerFields = [
 				],
 			},
 		},
-		options: sortBy(
-			[
-				{
-					displayName: 'Display Name',
-					name: 'displayName',
-					type: 'string',
-					default: '',
-				},
-				...customerAdditionalFieldsOptions,
-			], o => o.displayName,
-		),
+		options: customerAdditionalFieldsOptions,
 	},
 ] as INodeProperties[];

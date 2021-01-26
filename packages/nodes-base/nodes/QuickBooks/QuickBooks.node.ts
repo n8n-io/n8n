@@ -242,31 +242,13 @@ export class QuickBooks implements INodeType {
 
 				if (operation === 'create') {
 
-					const body = {
+					let body = {
 						DisplayName: this.getNodeParameter('displayName', i),
 					} as IDataObject;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					Object.entries(additionalFields).forEach(([key, value]) => {
-						if (key === 'BillingAddress') {
-							const { details } = value as { details: AltBillAddr };
-							body.BillAddr = pickBy(details, d => d !== '');
-
-						} else if (key === 'PrimaryEmailAddr') {
-							body.PrimaryEmailAddr = {
-								Address: value,
-							};
-
-						} else if (key === 'PrimaryPhone') {
-							body.PrimaryPhone = {
-								FreeFormNumber: value,
-							};
-
-						} else {
-							body[key] = value;
-						}
-					});
+					body = populateRequestBody.call(this, body, additionalFields, resource);
 
 					const endpoint = `/v3/company/${companyId}/${resource}`;
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
@@ -296,7 +278,7 @@ export class QuickBooks implements INodeType {
 
 				} else if (operation === 'update') {
 
-					const body = {
+					let body = {
 						Id: this.getNodeParameter('customerId', i),
 						SyncToken: await getSyncToken.call(this, i, companyId, resource),
 						sparse: true,
@@ -308,18 +290,7 @@ export class QuickBooks implements INodeType {
 						throw new Error('Please enter at least one field to update for the customer.');
 					}
 
-					// TODO
-
-					// Object.entries(updateFields).forEach(([key, value]) => {
-					// 	if (key === 'PrimaryEmailAddr') {
-					// 		body.PrimaryEmailAddr = { Address: value };
-					// 	} else if (key === 'BillingAddress') {
-					// 		const { details } = value as CustomerBillingAddress;
-					// 		body.BillAddr = pickBy(details, d => d !== '');
-					// 	} else {
-					// 		body[key] = value;
-					// 	}
-					// });
+					body = populateRequestBody.call(this, body, updateFields, resource);
 
 					const endpoint = `/v3/company/${companyId}/${resource}`;
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);

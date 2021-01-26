@@ -15,9 +15,17 @@ import {
 } from 'request';
 
 import {
-	pascalCase
+	pascalCase,
 } from 'change-case';
-import { Ref } from './descriptions/Shared/Shared.interface';
+
+import {
+	AltBillAddr,
+	Ref,
+} from './descriptions/Shared/Shared.interface';
+
+import {
+	pickBy,
+} from 'lodash';
 
 /**
  * Make an authenticated API request to QuickBooks.
@@ -229,6 +237,7 @@ export function populateRequestBody(
 ) {
 
 	if (resource === 'bill') {
+
 		Object.entries(fields).forEach(([key, value]) => {
 			if (key.endsWith('Ref')) {
 				const { details } = value as { details: Ref };
@@ -236,6 +245,28 @@ export function populateRequestBody(
 					name: details.name,
 					value: details.value,
 				};
+			} else {
+				body[key] = value;
+			}
+		});
+
+	} else if (resource === 'customer') {
+
+		Object.entries(fields).forEach(([key, value]) => {
+			if (key === 'BillingAddress') {
+				const { details } = value as { details: AltBillAddr };
+				body.BillAddr = pickBy(details, detail => detail !== '');
+
+			} else if (key === 'PrimaryEmailAddr') {
+				body.PrimaryEmailAddr = {
+					Address: value,
+				};
+
+			} else if (key === 'PrimaryPhone') {
+				body.PrimaryPhone = {
+					FreeFormNumber: value,
+				};
+
 			} else {
 				body[key] = value;
 			}
