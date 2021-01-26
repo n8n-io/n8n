@@ -136,7 +136,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		if (expressionResolveValues) {
 			try {
-				decryptedData = expressionResolveValues.workflow.expression.getParameterValue(decryptedData as INodeParameters, expressionResolveValues.runExecutionData, expressionResolveValues.runIndex, expressionResolveValues.itemIndex, expressionResolveValues.node.name, expressionResolveValues.connectionInputData) as ICredentialDataDecryptedObject;
+				const workflow = new Workflow({ nodes: Object.values(expressionResolveValues.workflow.nodes), connections: expressionResolveValues.workflow.connectionsBySourceNode, active: false, nodeTypes: expressionResolveValues.workflow.nodeTypes });
+				// TODO: Find a better way for that!
+				// Add the credential data to the parameters of the node so that they can get accessed by expressions
+				Object.assign(workflow.nodes[expressionResolveValues.node.name].parameters, decryptedData);
+				decryptedData = workflow.expression.getParameterValue(decryptedData as INodeParameters, expressionResolveValues.runExecutionData, expressionResolveValues.runIndex, expressionResolveValues.itemIndex, expressionResolveValues.node.name, expressionResolveValues.connectionInputData) as ICredentialDataDecryptedObject;
 			} catch (e) {
 				e.message += ' [Error resolving credentials]';
 				throw e;
