@@ -37,9 +37,6 @@ import {
 
 import * as express from 'express';
 
-
-const logger = (global as any).logger as ILogger;
-
 export class ActiveWorkflowRunner {
 	private activeWorkflows: ActiveWorkflows | null = null;
 
@@ -62,17 +59,19 @@ export class ActiveWorkflowRunner {
 
 		this.activeWorkflows = new ActiveWorkflows();
 
+		const logger = (global as any).logger as ILogger;  // tslint:disable-line:no-any
+
 		if (workflowsData.length !== 0) {
-			logger.notice('\n ================================');
-			logger.notice('   Start Active Workflows:');
-			logger.notice(' ================================');
+			logger.info('\n ================================');
+			logger.info('   Start Active Workflows:');
+			logger.info(' ================================');
 
 			for (const workflowData of workflowsData) {
 				console.log(`   - ${workflowData.name}`);
 				logger.debug(`Initializing active workflow ${workflowData.name} on startup.`, {workflowName: workflowData.name, workflowId: workflowData.id});
 				try {
 					await this.add(workflowData.id.toString(), workflowData);
-					logger.info(`Successfully started workflow ${workflowData.name}.`, {workflowName: workflowData.name, workflowId: workflowData.id});
+					logger.verbose(`Successfully started workflow ${workflowData.name}.`, {workflowName: workflowData.name, workflowId: workflowData.id});
 					console.log(`     => Started`);
 				} catch (error) {
 					console.log(`     => ERROR: Workflow could not be activated:`);
@@ -80,7 +79,7 @@ export class ActiveWorkflowRunner {
 					logger.error(`Unable to initialize workflow ${workflowData.name} on startup.`, {workflowName: workflowData.name, workflowId: workflowData.id});
 				}
 			}
-			logger.info('Finished initializing active workflows on startup.');
+			logger.verbose('Finished initializing active workflows on startup.');
 		}
 	}
 
@@ -92,7 +91,8 @@ export class ActiveWorkflowRunner {
 	 */
 	async removeAll(): Promise<void> {
 		const activeWorkflowId: string[] = [];
-		logger.info('Call to remove all active workflows received.');
+		const logger = (global as any).logger as ILogger;  // tslint:disable-line:no-any
+		logger.verbose('Call to remove all active workflows received.');
 
 		if (this.activeWorkflows !== null) {
 			// TODO: This should be renamed!
@@ -122,6 +122,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async executeWebhook(httpMethod: WebhookHttpMethod, path: string, req: express.Request, res: express.Response): Promise<IResponseCallbackData> {
+		const logger = (global as any).logger as ILogger;  // tslint:disable-line:no-any
 		logger.debug(`Received webhoook ${httpMethod} for path ${path}`);
 		if (this.activeWorkflows === null) {
 			throw new ResponseHelper.ResponseError('The "activeWorkflows" instance did not get initialized yet.', 404, 404);
@@ -445,6 +446,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	getExecutePollFunctions(workflowData: IWorkflowDb, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode): IGetExecutePollFunctions {
+		const logger = (global as any).logger as ILogger;  // tslint:disable-line:no-any
 		return ((workflow: Workflow, node: INode) => {
 			const returnFunctions = NodeExecuteFunctions.getExecutePollFunctions(workflow, node, additionalData, mode);
 			returnFunctions.__emit = (data: INodeExecutionData[][]): void => {
@@ -467,6 +469,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	getExecuteTriggerFunctions(workflowData: IWorkflowDb, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode): IGetExecuteTriggerFunctions{
+		const logger = (global as any).logger as ILogger;  // tslint:disable-line:no-any
 		return ((workflow: Workflow, node: INode) => {
 			const returnFunctions = NodeExecuteFunctions.getExecuteTriggerFunctions(workflow, node, additionalData, mode);
 			returnFunctions.emit = (data: INodeExecutionData[][]): void => {
@@ -490,6 +493,8 @@ export class ActiveWorkflowRunner {
 		if (this.activeWorkflows === null) {
 			throw new Error(`The "activeWorkflows" instance did not get initialized yet.`);
 		}
+
+		const logger = (global as any).logger as ILogger;  // tslint:disable-line:no-any
 
 		let workflowInstance: Workflow;
 		try {
@@ -521,7 +526,7 @@ export class ActiveWorkflowRunner {
 			if (workflowInstance.getTriggerNodes().length !== 0
 				|| workflowInstance.getPollNodes().length !== 0) {
 					await this.activeWorkflows.add(workflowId, workflowInstance, additionalData, getTriggerFunctions, getPollFunctions);
-				logger.notice(`Successfully activated workflow ${workflowData.name}`);
+				logger.info(`Successfully activated workflow ${workflowData.name}`);
 			}
 
 			if (this.activationErrors[workflowId] !== undefined) {

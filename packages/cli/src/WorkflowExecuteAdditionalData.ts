@@ -46,9 +46,6 @@ import { LessThanOrEqual } from "typeorm";
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
-const logger = (global as any).logger as ILogger;
-
-
 /**
  * Checks if there was an error and if errorWorkflow or a trigger is defined. If so it collects
  * all the data and executes it
@@ -161,15 +158,16 @@ export function pushExecutionFinished(mode: WorkflowExecuteMode, fullRunData: IR
  * @returns {IWorkflowExecuteHooks}
  */
 function hookFunctionsPush(): IWorkflowExecuteHooks {
+	const logger = (global as any).logger as ILogger; // tslint:disable-line:no-any
 	return {
 		nodeExecuteBefore: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
-				logger.info(`Executing hook nodeExecuteBefore for hookFunctionsPush on node ${nodeName}`, {executionId: this.executionId});
 				// Push data to session which started workflow before each
 				// node which starts rendering
 				if (this.sessionId === undefined) {
 					return;
 				}
+				logger.verbose(`Executing hook nodeExecuteBefore for hookFunctionsPush on node ${nodeName}`, {executionId: this.executionId});
 
 				const pushInstance = Push.getInstance();
 				pushInstance.send('nodeExecuteBefore', {
@@ -180,11 +178,11 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 		],
 		nodeExecuteAfter: [
 			async function (this: WorkflowHooks, nodeName: string, data: ITaskData): Promise<void> {
-				logger.info(`Executing hook nodeExecuteAfter for hookFunctionsPush on node ${nodeName}`, {executionId: this.executionId});
 				// Push data to session which started workflow after each rendered node
 				if (this.sessionId === undefined) {
 					return;
 				}
+				logger.verbose(`Executing hook nodeExecuteAfter for hookFunctionsPush on node ${nodeName}`, {executionId: this.executionId});
 
 				const pushInstance = Push.getInstance();
 				pushInstance.send('nodeExecuteAfter', {
@@ -196,7 +194,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 		],
 		workflowExecuteBefore: [
 			async function (this: WorkflowHooks): Promise<void> {
-				logger.info(`Executing hook WorkflowExecuteBefore for hookFunctionsPush`, {executionId: this.executionId});
+				logger.verbose(`Executing hook WorkflowExecuteBefore for hookFunctionsPush`, {executionId: this.executionId});
 				// Push data to editor-ui once workflow finished
 				const pushInstance = Push.getInstance();
 				pushInstance.send('executionStarted', {
@@ -211,7 +209,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 		],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
-				logger.info(`Executing hook WorkflowExecuteAfter for hookFunctionsPush`, {executionId: this.executionId});
+				logger.verbose(`Executing hook WorkflowExecuteAfter for hookFunctionsPush`, {executionId: this.executionId});
 				pushExecutionFinished(this.mode, fullRunData, this.executionId, undefined, this.retryOf);
 			},
 		],
@@ -225,7 +223,6 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 	return {
 		workflowExecuteBefore: [
 			async function (this: WorkflowHooks, workflow: Workflow): Promise<void> {
-				logger.info(`Executing hook workflowExecuteBefore for hookFunctionsPreExecute`, {executionId: this.executionId});
 				await externalHooks.run('workflow.preExecute', [workflow, this.mode]);
 			},
 		],
@@ -238,13 +235,14 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
  * @returns {IWorkflowExecuteHooks}
  */
 function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
+	const logger = (global as any).logger as ILogger; // tslint:disable-line:no-any
 	return {
 		nodeExecuteBefore: [],
 		nodeExecuteAfter: [],
 		workflowExecuteBefore: [],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
-				logger.info(`Executing hook workflowExecuteAfter for hookFunctionsSave`, {executionId: this.executionId});
+				logger.verbose(`Executing hook workflowExecuteAfter for hookFunctionsSave`, {executionId: this.executionId});
 
 				// Prune old execution data
 				if (config.get('executions.pruneData')) {

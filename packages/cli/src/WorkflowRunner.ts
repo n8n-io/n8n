@@ -34,8 +34,6 @@ import * as PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
 
-const logger = (global as any).logger as ILogger;
-
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
 	credentialsOverwrites: ICredentialsOverwrite;
@@ -136,6 +134,7 @@ export class WorkflowRunner {
 	 * @memberof WorkflowRunner
 	 */
 	async runMainProcess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
+		const logger = (global as any).logger as ILogger; // tslint:disable-line:no-any
 		if (loadStaticData === true && data.workflowData.id) {
 			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(data.workflowData.id as string);
 		}
@@ -147,7 +146,7 @@ export class WorkflowRunner {
 
 		// Register the active execution
 		const executionId = this.activeExecutions.add(data, undefined);
-		logger.info(`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`, {executionId});
+		logger.verbose(`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`, {executionId});
 
 		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
 
@@ -207,6 +206,7 @@ export class WorkflowRunner {
 	 * @memberof WorkflowRunner
 	 */
 	async runSubprocess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
+		const logger = (global as any).logger as ILogger; // tslint:disable-line:no-any
 		const startedAt = new Date();
 		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
 

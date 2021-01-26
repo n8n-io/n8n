@@ -6,29 +6,36 @@ import {
 	ILogTypes,
 } from 'n8n-workflow';
 
-export default class Logger implements ILogger {
+export class Logger implements ILogger {
 	private logger: winston.Logger;
 	
 	constructor() {
+
+		const logFormat = winston.format.printf(({ message }) => {
+			return message;
+		}) as winston.Logform.Format;
 		
 		this.logger = winston.createLogger({
 			level: config.get('logs.level'),
-			format: winston.format.json(),
+			format: logFormat,
 			transports: [
 				new winston.transports.Console(),
 			],
 		});
 		
 		if (config.get('logs.output') === 'file') {
-			console.log('Saving logs to file ', config.get('logs.file.location'));
+			const fileLogFormat = winston.format.combine(
+				winston.format.timestamp(),
+				winston.format.json()
+			);
 			this.logger.add(
 				new winston.transports.File({
 					filename: config.get('logs.file.location'),
-				}),
+					format: fileLogFormat,
+				})
 			);
 		}
 			
-		this.logger.info('test message from logger');
 	}
 	
 	log(type: ILogTypes, message: string, meta: object = {}) {
@@ -49,10 +56,14 @@ export default class Logger implements ILogger {
 		this.logger.log('error', message, meta);
 	}
 	
-	notice(message: string, meta: object = {}) {
-		this.logger.log('notice', message, meta);
+	verbose(message: string, meta: object = {}) {
+		this.logger.log('verbose', message, meta);
 	}
 	
+	warn(message: string, meta: object = {}) {
+		this.logger.log('warn', message, meta);
+	}
+
 }
 
 let activeLoggerInstance: Logger | undefined;

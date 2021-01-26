@@ -5,6 +5,7 @@ import {
 
 import {
 	IDataObject,
+	ILogger,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,

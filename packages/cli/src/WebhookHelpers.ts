@@ -37,8 +37,6 @@ import {
 } from 'n8n-workflow';
 
 const activeExecutions = ActiveExecutions.getInstance();
-const logger = (global as any).logger as ILogger;
-
 
 /**
  * Returns all the webhooks which should be created for the give workflow
@@ -115,6 +113,8 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 		responseCallback(new Error(errorMessage), {});
 		throw new ResponseHelper.ResponseError(errorMessage, 500, 500);
 	}
+
+	const logger = (global as any).logger as ILogger;  // tslint:disable-line:no-any
 
 	// Get the responseMode
 	const responseMode = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseMode'], 'onReceived');
@@ -287,7 +287,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 		const workflowRunner = new WorkflowRunner();
 		const executionId = await workflowRunner.run(runData, true);
 
-		logger.info(`Started execution of workflow ${workflow.name} from webhook with execution ID ${executionId}`);
+		logger.verbose(`Started execution of workflow ${workflow.name} from webhook with execution ID ${executionId}`);
 
 		// Get a promise which resolves when the workflow did execute and send then response
 		const executePromise = activeExecutions.getPostExecutePromise(executionId) as Promise<IExecutionDb | undefined>;

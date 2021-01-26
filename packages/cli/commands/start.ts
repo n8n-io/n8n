@@ -23,12 +23,13 @@ import {
 } from "../src";
 
 import { ILogger } from 'n8n-workflow';
+import { getInstance } from '../src/Logger';
+
+const logger = getInstance();
+(global as any).logger = logger; // tslint:disable-line:no-any
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExistCode = 0;
-
-
-const logger = (global as any).logger as ILogger;
 
 export class Start extends Command {
 	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
@@ -71,7 +72,7 @@ export class Start extends Command {
 	 * get removed.
 	 */
 	static async stopProcess() {
-		logger.notice(`\nStopping n8n...`);
+		logger.info(`\nStopping n8n...`);
 
 		try {
 			const externalHooks = ExternalHooks();
@@ -127,7 +128,7 @@ export class Start extends Command {
 		// Wrap that the process does not close but we can still use async
 		await (async () => {
 			try {
-				logger.notice('Initializing n8n process');
+				logger.info('Initializing n8n process');
 
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch(error => {
@@ -202,7 +203,7 @@ export class Start extends Command {
 					const webhookTunnel = await localtunnel(port, tunnelSettings);
 
 					process.env.WEBHOOK_TUNNEL_URL = webhookTunnel.url + '/';
-					logger.notice(`Tunnel URL: ${process.env.WEBHOOK_TUNNEL_URL}\n`);
+					logger.info(`Tunnel URL: ${process.env.WEBHOOK_TUNNEL_URL}\n`);
 					this.log('IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!');
 				}
 
