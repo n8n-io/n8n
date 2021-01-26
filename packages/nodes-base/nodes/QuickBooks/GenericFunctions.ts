@@ -17,6 +17,7 @@ import {
 import {
 	pascalCase
 } from 'change-case';
+import { Ref } from './descriptions/Shared/Shared.interface';
 
 /**
  * Make an authenticated API request to QuickBooks.
@@ -218,4 +219,28 @@ export async function loadResource(
 	});
 
 	return returnData;
+}
+
+export function populateRequestBody(
+	this: IExecuteFunctions,
+	body: IDataObject,
+	fields: IDataObject,
+	resource: string,
+) {
+
+	if (resource === 'bill') {
+		Object.entries(fields).forEach(([key, value]) => {
+			if (key.endsWith('Ref')) {
+				const { details } = value as { details: Ref };
+				body[key] = {
+					name: details.name,
+					value: details.value,
+				};
+			} else {
+				body[key] = value;
+			}
+		});
+	}
+
+	return body;
 }

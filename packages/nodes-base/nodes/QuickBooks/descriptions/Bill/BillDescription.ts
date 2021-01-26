@@ -210,6 +210,27 @@ export const billFields = [
 		},
 	},
 	{
+		displayName: 'For Vendor',
+		name: 'VendorRef',
+		type: 'string',
+		required: true,
+		description: 'The vendor who the bill is for.',
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getVendors',
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'bill',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -234,7 +255,6 @@ export const billFields = [
 					type: 'string',
 					default: '',
 				},
-				createlineProperty('bill'),
 				...billAdditionalFieldsOptions,
 			], o => o.displayName,
 		),
