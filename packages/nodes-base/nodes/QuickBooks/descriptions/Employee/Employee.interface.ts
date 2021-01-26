@@ -1,5 +1,5 @@
 import {
-	AltBillAddr,
+	GeneralAddress,
 	PrimaryEmailAddr,
 	PrimaryPhone,
 } from '../Shared/Shared.interface';
@@ -10,7 +10,7 @@ export interface Employee {
 	DisplayName: string;
 	FamilyName: string; // required
 	GivenName: string; // required
-	PrimaryAddr: AltBillAddr;
+	PrimaryAddr: GeneralAddress;
 	PrimaryEmailAddr: PrimaryEmailAddr;
 	PrimaryPhone: PrimaryPhone;
 	PrintOnCheckName: string;

@@ -1,21 +1,20 @@
 import {
-	BillAddr,
 	BillEmail,
 	CustomerMemo,
-	CustomerRef,
+	EstimateBillAddr,
+	GeneralAddress,
 	Line,
-	LinkedTxn,
 	MetaData,
-	ShipAddr,
+	Ref,
 } from '../Shared/Shared.interface';
 
 export interface Invoice {
 	ApplyTaxAfterDiscount: boolean;
 	Balance: number;
-	BillAddr: BillAddr;
+	BillAddr: EstimateBillAddr;
 	BillEmail: BillEmail;
 	CustomerMemo: CustomerMemo;
-	CustomerRef: CustomerRef; // required
+	CustomerRef: Ref; // required
 	CustomField: [
 		{
 			DefinitionId: string;
@@ -35,7 +34,7 @@ export interface Invoice {
 	SalesTermRef: {
 		value: string;
 	};
-	ShipAddr: ShipAddr;
+	ShipAddr: GeneralAddress;
 	SyncToken: string; // system-defined
 	TotalAmt: number;
 	TxnDate: string;

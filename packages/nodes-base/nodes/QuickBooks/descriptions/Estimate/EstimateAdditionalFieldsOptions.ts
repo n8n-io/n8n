@@ -7,9 +7,54 @@ export const estimateAdditionalFieldsOptions = [
 	},
 	{
 		displayName: 'Billing Address',
-		name: 'BillAddr',
-		type: 'string',
-		default: '',
+		name: 'BillingAddress',
+		placeholder: 'Add Billing Address Fields',
+		type: 'fixedCollection',
+		default: {},
+		options: [
+			{
+				displayName: 'Details',
+				name: 'details',
+				values: [
+					{
+						displayName: 'City',
+						name: 'City',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Line 1',
+						name: 'Line1',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Postal Code',
+						name: 'PostalCode',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Latitude',
+						name: 'Lat',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Longitude',
+						name: 'Long',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Country Subdivision Code',
+						name: 'CountrySubDivisionCode',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Billing Email',
@@ -75,9 +120,54 @@ export const estimateAdditionalFieldsOptions = [
 	},
 	{
 		displayName: 'Shipping Address',
-		name: 'ShipAddr',
-		type: 'string',
-		default: '',
+		name: 'ShippingAddress',
+		placeholder: 'Add Shippping Address Fields',
+		type: 'fixedCollection',
+		default: {},
+		options: [
+			{
+				displayName: 'Details',
+				name: 'details',
+				values: [
+					{
+						displayName: 'City',
+						name: 'City',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Line 1',
+						name: 'Line1',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Postal Code',
+						name: 'PostalCode',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Latitude',
+						name: 'Lat',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Longitude',
+						name: 'Long',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Country Subdivision Code',
+						name: 'CountrySubDivisionCode',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Total Amount',

@@ -22,7 +22,7 @@ export const createlineProperty = (resource: string) => ({
 			displayName: 'Detail Type',
 			name: 'DetailType',
 			type: 'options',
-			default: 'DescriptionOnlyLine',
+			default: 'DescriptionOnly',
 			options: [
 				{
 					name: 'Description Only',

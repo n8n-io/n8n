@@ -16,33 +16,22 @@ export interface Line {
 	Description: string;
 }
 
-export interface ShipAddr {
+export interface GeneralAddress {
 	City: string;
 	Line1: string;
 	PostalCode: string;
 	Lat: string;
 	Long: string;
 	CountrySubDivisionCode: string;
-	Id: string;
 }
 
-export interface BillAddr {
+export interface EstimateBillAddr {
 	Line4: string;
 	Line3: string;
 	Line2: string;
 	Line1: string;
 	Long: string;
 	Lat: string;
-	Id: string;
-}
-
-export interface AltBillAddr {
-	City: string;
-	Line1: string;
-	PostalCode: string;
-	Lat: string;
-	Long: string;
-	CountrySubDivisionCode: string;
 }
 
 export interface BillEmail {
@@ -76,3 +65,7 @@ export interface Ref {
 	value: string;
 }
 
+export interface CustomField {
+	DefinitionId: string;
+	Name: string;
+}

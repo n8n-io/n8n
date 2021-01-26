@@ -19,7 +19,8 @@ import {
 } from 'change-case';
 
 import {
-	AltBillAddr,
+	CustomField,
+	GeneralAddress,
 	Ref,
 } from './descriptions/Shared/Shared.interface';
 
@@ -254,7 +255,7 @@ export function populateRequestBody(
 
 		Object.entries(fields).forEach(([key, value]) => {
 			if (key === 'BillingAddress') {
-				const { details } = value as { details: AltBillAddr };
+				const { details } = value as { details: GeneralAddress };
 				body.BillAddr = pickBy(details, detail => detail !== '');
 
 			} else if (key === 'PrimaryEmailAddr') {
@@ -271,6 +272,50 @@ export function populateRequestBody(
 				body[key] = value;
 			}
 		});
+
+	} else if (resource === 'estimate') {
+
+		Object.entries(fields).forEach(([key, value]) => {
+			if (key === 'BillingAddress') {
+				const { details } = value as { details: GeneralAddress };
+				body.BillAddr = pickBy(details, detail => detail !== '');
+
+			} else if (key === 'ShippingAddress') {
+				const { details } = value as { details: GeneralAddress };
+				body.ShipAddr = pickBy(details, detail => detail !== '');
+
+			} else if (key === 'BillEmail') {
+				body.BillEmail = {
+					Address: value,
+				};
+
+			} else if (key === 'CustomFields') {
+				const { Field } = value as { Field: CustomField[] };
+				body.CustomField = Field;
+
+			} else if (key === 'CustomerMemo') {
+				body.CustomerMemo = {
+					value,
+				};
+
+
+			} else if (key.endsWith('Ref')) {
+				const { details } = value as { details: Ref };
+				body[key] = {
+					name: details.name,
+					value: details.value,
+				};
+
+			} else if (key === 'TxnTaxDetail') {
+				body.TxnTaxDetail = {
+					TotalTax: value,
+				};
+
+			} else {
+				body[key] = value;
+			}
+		});
+
 	}
 
 	return body;

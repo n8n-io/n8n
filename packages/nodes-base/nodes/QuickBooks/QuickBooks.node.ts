@@ -44,7 +44,7 @@ import {
 } from 'lodash';
 
 import {
-	AltBillAddr,
+	GeneralAddress,
 	Line,
 } from './descriptions/Shared/Shared.interface';
 
@@ -170,7 +170,7 @@ export class QuickBooks implements INodeType {
 					const lines = this.getNodeParameter('Line', i) as Line[];
 
 					if (!lines.length) {
-						throw new Error('Please enter at least one line for the bill.');
+						throw new Error(`Please enter at least one line for the ${resource}.`);
 					}
 
 					if (lines.some(line => !line.DetailType || !line.Amount || !line.Description)) {
@@ -179,7 +179,7 @@ export class QuickBooks implements INodeType {
 
 					let body = {
 						VendorRef: {
-							value: this.getNodeParameter('VendorRef', i) as IDataObject,
+							value: this.getNodeParameter('VendorRef', i),
 						},
 						Line: lines,
 					} as IDataObject;
@@ -385,7 +385,29 @@ export class QuickBooks implements INodeType {
 
 				if (operation === 'create') {
 
-					// ...
+					const lines = this.getNodeParameter('Line', i) as Line[];
+
+					if (!lines.length) {
+						throw new Error(`Please enter at least one line for the ${resource}.`);
+					}
+
+					if (lines.some(line => !line.DetailType || !line.Amount || !line.Description)) {
+						throw new Error('Please enter a detail type, an amount and a description for every line.');
+					}
+
+					let body = {
+						CustomerRef: {
+							value: this.getNodeParameter('CustomerRef', i),
+						},
+						Line: lines,
+					} as IDataObject;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					body = populateRequestBody.call(this, body, additionalFields, resource);
+
+					const endpoint = `/v3/company/${companyId}/${resource}`;
+					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 
 				// ----------------------------------
 				//         estimate: get
@@ -423,7 +445,25 @@ export class QuickBooks implements INodeType {
 
 				} else if (operation === 'update') {
 
-					// ...
+					let body = {
+						Id: this.getNodeParameter('estimateId', i),
+						SyncToken: await getSyncToken.call(this, i, companyId, resource),
+						sparse: true,
+						CustomerRef: {
+							value: this.getNodeParameter('CustomerRef', i) as IDataObject,
+						},
+					} as IDataObject;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (isEmpty(updateFields)) {
+						throw new Error(`Please enter at least one field to update for the ${resource}.`);
+					}
+
+					body = populateRequestBody.call(this, body, updateFields, resource);
+
+					const endpoint = `/v3/company/${companyId}/${resource}`;
+					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 
 				}
 

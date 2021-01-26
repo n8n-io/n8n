@@ -1,34 +1,25 @@
 import {
-	BillAddr,
 	BillEmail,
 	CustomerMemo,
-	CustomerRef,
+	CustomField,
+	EstimateBillAddr,
+	GeneralAddress,
 	Line,
-	MetaData,
-	ShipAddr,
+	Ref,
 } from '../Shared/Shared.interface';
 
 export interface Estimate {
 	ApplyTaxAfterDiscount: boolean;
-	BillAddr: BillAddr;
+	BillAddr: EstimateBillAddr;
 	BillEmail: BillEmail;
-	CustomField: [
-		{
-			DefinitionId: string;
-			Type: string;
-			Name: string;
-		}
-	];
+	CustomField: CustomField[];
 	CustomerMemo: CustomerMemo;
-	CustomerRef: CustomerRef; // required
+	CustomerRef: Ref; // required
 	DocNumber: string;
 	EmailStatus: string;
-	Id: string; // system-defined
 	Line: Line[]; // required
-	MetaData: MetaData; // system-defined
 	PrintStatus: string;
-	ShipAddr: ShipAddr;
-	SyncToken: string; // system-defined
+	ShipAddr: GeneralAddress;
 	TotalAmt: number;
 	TxnDate: string;
 	TxnStatus: string;

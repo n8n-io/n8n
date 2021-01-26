@@ -1,5 +1,5 @@
 import {
-	AltBillAddr,
+	GeneralAddress,
 	MetaData,
 	PrimaryEmailAddr,
 	PrimaryPhone
@@ -9,7 +9,7 @@ export interface Vendor {
 	AcctNum: string;
 	Active: boolean;
 	Balance: number;
-	BillAddr: AltBillAddr;
+	BillAddr: GeneralAddress;
 	CompanyName: string;
 	DisplayName: string; // required
 	FamilyName: string;

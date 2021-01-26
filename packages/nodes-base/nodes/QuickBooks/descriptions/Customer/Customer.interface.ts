@@ -1,5 +1,5 @@
 import {
-	AltBillAddr,
+	GeneralAddress,
 	PrimaryEmailAddr,
 	PrimaryPhone,
 } from '../Shared/Shared.interface';
@@ -8,7 +8,7 @@ export interface Customer {
 	Active: boolean;
 	Balance: number;
 	BalanceWithJobs: number;
-	BillAddr: AltBillAddr;
+	BillAddr: GeneralAddress;
 	BillWithParent: false;
 	CompanyName: string;
 	DisplayName: string; // required
