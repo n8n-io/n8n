@@ -7,7 +7,7 @@ import {
 } from './BillAdditionalFieldsOptions';
 
 import {
-	createlineProperty,
+	createLineProperty,
 } from '../Shared/SharedDescription';
 
 export const billOperations = [
@@ -70,7 +70,7 @@ export const billFields = [
 			},
 		},
 	},
-	createlineProperty('bill'),
+	createLineProperty('bill'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

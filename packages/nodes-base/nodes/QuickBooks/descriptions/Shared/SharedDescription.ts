@@ -1,4 +1,4 @@
-export const createlineProperty = (resource: string) => ({
+export const createLineProperty = (resource: string) => ({
 	displayName: 'Line',
 	name: 'Line',
 	type: 'collection',

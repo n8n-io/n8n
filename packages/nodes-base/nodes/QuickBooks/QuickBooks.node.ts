@@ -174,7 +174,7 @@ export class QuickBooks implements INodeType {
 					}
 
 					if (lines.some(line => !line.DetailType || !line.Amount || !line.Description)) {
-						throw new Error('Please enter a detail type, an amount and a description for every line.');
+						throw new Error('Please enter detail type, amount and description for every line.');
 					}
 
 					let body = {
@@ -392,7 +392,7 @@ export class QuickBooks implements INodeType {
 					}
 
 					if (lines.some(line => !line.DetailType || !line.Amount || !line.Description)) {
-						throw new Error('Please enter a detail type, an amount and a description for every line.');
+						throw new Error('Please enter detail type, amount and description for every line.');
 					}
 
 					let body = {
@@ -581,7 +581,19 @@ export class QuickBooks implements INodeType {
 
 				if (operation === 'create') {
 
-					// ...
+					let body = {
+						CustomerRef: {
+							value: this.getNodeParameter('CustomerRef', i),
+						},
+						TotalAmt: this.getNodeParameter('TotalAmt', i),
+					} as IDataObject;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					body = populateRequestBody.call(this, body, additionalFields, resource);
+
+					const endpoint = `/v3/company/${companyId}/${resource}`;
+					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 
 				// ----------------------------------
 				//         payment: delete
@@ -653,7 +665,25 @@ export class QuickBooks implements INodeType {
 
 				} else if (operation === 'update') {
 
-					// ...
+					let body = {
+						Id: this.getNodeParameter('paymentId', i),
+						SyncToken: await getSyncToken.call(this, i, companyId, resource),
+						sparse: true,
+						CustomerRef: {
+							value: this.getNodeParameter('CustomerRef', i) as IDataObject,
+						},
+					} as IDataObject;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (isEmpty(updateFields)) {
+						throw new Error(`Please enter at least one field to update for the ${resource}.`);
+					}
+
+					body = populateRequestBody.call(this, body, updateFields, resource);
+
+					const endpoint = `/v3/company/${companyId}/${resource}`;
+					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 
 				// ----------------------------------
 				//         payment: void

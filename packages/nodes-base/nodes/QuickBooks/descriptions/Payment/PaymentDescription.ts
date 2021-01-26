@@ -3,7 +3,7 @@ import {
 } from 'n8n-workflow';
 
 import {
-	createlineProperty,
+	createLineProperty,
 } from '../Shared/SharedDescription';
 
 import {
@@ -82,7 +82,22 @@ export const paymentFields = [
 			},
 		},
 	},
-	createlineProperty('payment'),
+	{
+		displayName: 'Total Amount',
+		name: 'TotalAmt',
+		type: 'number',
+		default: 0,
+		displayOptions: {
+			show: {
+				resource: [
+					'payment',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -126,7 +141,7 @@ export const paymentFields = [
 	//         payment: get
 	// ----------------------------------
 	{
-		displayName: 'payment ID',
+		displayName: 'Payment ID',
 		name: 'paymentId',
 		type: 'string',
 		required: true,
@@ -260,7 +275,7 @@ export const paymentFields = [
 	//         payment: send
 	// ----------------------------------
 	{
-		displayName: 'payment ID',
+		displayName: 'Payment ID',
 		name: 'paymentId',
 		type: 'string',
 		required: true,
@@ -299,7 +314,7 @@ export const paymentFields = [
 	//         payment: void
 	// ----------------------------------
 	{
-		displayName: 'payment ID',
+		displayName: 'Payment ID',
 		name: 'paymentId',
 		type: 'string',
 		required: true,
@@ -320,12 +335,33 @@ export const paymentFields = [
 	//         payment: update
 	// ----------------------------------
 	{
-		displayName: 'payment ID',
+		displayName: 'Payment ID',
 		name: 'paymentId',
 		type: 'string',
 		required: true,
 		default: '',
 		description: 'The ID of the payment to update.',
+		displayOptions: {
+			show: {
+				resource: [
+					'payment',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'For Customer',
+		name: 'CustomerRef',
+		type: 'options',
+		required: true,
+		description: 'The customer who the payment is for.',
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getCustomers',
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -354,15 +390,6 @@ export const paymentFields = [
 				],
 			},
 		},
-		options: [
-			{
-				displayName: 'For Customer',
-				name: 'CustomerRef',
-				type: 'string',
-				default: '',
-			},
-			createlineProperty('payment'),
-			...paymentAdditionalFieldsOptions,
-		],
+		options: paymentAdditionalFieldsOptions,
 	},
 ] as INodeProperties[];

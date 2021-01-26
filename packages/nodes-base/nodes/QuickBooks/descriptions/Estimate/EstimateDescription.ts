@@ -7,7 +7,7 @@ import {
 } from './EstimateAdditionalFieldsOptions';
 
 import {
-	createlineProperty
+	createLineProperty
 } from '../Shared/SharedDescription';
 
 export const estimateOperations = [
@@ -74,7 +74,7 @@ export const estimateFields = [
 			},
 		},
 	},
-	createlineProperty('estimate'),
+	createLineProperty('estimate'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

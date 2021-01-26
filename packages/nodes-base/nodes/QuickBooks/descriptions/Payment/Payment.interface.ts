@@ -1,19 +1,13 @@
 import {
-	CustomerRef,
 	Line,
-	MetaData,
+	LinkedTxn,
+	Ref,
 } from '../Shared/Shared.interface';
 
 export interface Payment {
-	CustomerRef: CustomerRef; // required
-	DepositToAccountRef: {
-		value: string;
-	};
-	Id: string; // system-defined
-	Line: Line[]; // required
-	MetaData: MetaData; // system-defined
+	CustomerRef: Ref; // required
+	// Line: Line[]; // required
 	ProcessPayment: boolean;
-	SyncToken: string; // system-defined
 	TotalAmt: number;
 	TxnDate: string;
 	UnappliedAmt: number;

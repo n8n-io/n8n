@@ -311,6 +311,10 @@ export function populateRequestBody(
 			}
 		});
 
+	} else if (resource === 'payment') {
+		Object.entries(fields).forEach(([key, value]) => {
+			body[key] = value;
+		});
 	}
 
 	return body;
