@@ -22,24 +22,24 @@ export const companyOperations = [
 				description: 'Get company factor scores and issue counts',
 			},
 			{ 
-				name: 'Get historical Factor Scores',
+				name: 'Get Historical Factor Scores',
 				value: 'getFactorHistorical',
-				description: 'Gets company\'s historical factor scores',
+				description: 'Get company\'s historical factor scores',
 			},
 			{ 
 				name: 'Get Historical Scores',
 				value: 'getHistoricalScore',
-				description: 'Gets company\'s historical scores',
+				description: 'Get company\'s historical scores',
 			},
 			{ 
 				name: 'Get Information and Scorecard',
 				value: 'getScorecard',
-				description: 'Gets company information and summary of their scorecard',
+				description: 'Get company information and summary of their scorecard',
 			},
 			{ 
 				name: 'Get Score Plan',
 				value: 'getScorePlan',
-				description: 'Gets company\'s score improvement plan',
+				description: 'Get company\'s score improvement plan',
 			},
 		],
 		default: 'getFactor',
@@ -150,7 +150,7 @@ export const companyFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Simplify the response.',
 	},
 	// company:getFactor
 	{

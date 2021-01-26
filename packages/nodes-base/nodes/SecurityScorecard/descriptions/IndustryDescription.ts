@@ -37,8 +37,29 @@ export const industryFields = [
 	{
 		displayName: 'Industry',
 		name: 'industry',
-		type: 'string',
-		default: '',
+		type: 'options',
+		options: [
+			{
+				name: 'Food',
+				value: 'food',
+			},
+			{
+				name: 'Healthcare',
+				value: 'healthcare',
+			},
+			{
+				name: 'Manofacturing',
+				value: 'manofacturing',
+			},
+			{
+				name: 'Retail',
+				value: 'retail',
+			},
+			{
+				name: 'Technology',
+				value: 'technology',
+			},
+		],
 		required: true,
 		displayOptions: {
 			show: {
@@ -112,7 +133,7 @@ export const industryFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Simplify the response.',
 	},
 	{
 		displayName: 'Options',

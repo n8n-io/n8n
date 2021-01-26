@@ -16,22 +16,22 @@ export const portfolioOperations = [
 			},
 		},
 		options: [
-			{ 
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a portfolio',
 			},
-			{ 
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a portfolio',
 			},
-			{ 
+			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all portfolios',
 			},
-			{ 
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a portfolio',
@@ -173,6 +173,6 @@ export const portfolioFields = [
 			},
 		],
 		default: 'shared',
-	},	
+	},
 ] as INodeProperties[];
 

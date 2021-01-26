@@ -16,20 +16,20 @@ export const portfolioCompanyOperations = [
 			},
 		},
 		options: [
-			{ 
+			{
 				name: 'Add',
 				value: 'add',
 				description: 'Add a company to portfolio',
 			},
-			{ 
-				name: 'Remove',
-				value: 'remove',
-				description: 'Remove a company from portfolio',
-			},
-			{ 
+			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all companies in a portfolio',
+			},
+			{
+				name: 'Remove',
+				value: 'remove',
+				description: 'Remove a company from portfolio',
 			},
 		],
 		default: 'add',
@@ -143,11 +143,11 @@ export const portfolioCompanyFields = [
 				name: 'status',
 				type: 'options',
 				options: [
-					{ 
+					{
 						name: 'Active',
 						value: 'active',
 					},
-					{ 
+					{
 						name: 'Inactive',
 						value: 'inactive',
 					},
@@ -183,6 +183,6 @@ export const portfolioCompanyFields = [
 		},
 		description: 'Company\'s domain name',
 	},
-	
+
 ] as INodeProperties[];
 

@@ -1,5 +1,5 @@
-import { 
-	IExecuteFunctions 
+import {
+	IExecuteFunctions
 } from 'n8n-core';
 
 import {
@@ -9,37 +9,37 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { 
-	companyFields, 
-	companyOperations 
+import {
+	companyFields,
+	companyOperations,
 } from './descriptions/CompanyDescription';
 
-import { 
+import {
 	industryFields,
-	industryOperations
+	industryOperations,
 } from './descriptions/IndustryDescription';
 
 import {
 	inviteFields,
-	inviteOperations
+	inviteOperations,
 } from './descriptions/InviteDescription';
 
 import {
 	portfolioFields,
-	portfolioOperations
+	portfolioOperations,
 } from './descriptions/PortfolioDescription';
 
 import {
 	portfolioCompanyFields,
-	portfolioCompanyOperations
+	portfolioCompanyOperations,
 } from './descriptions/PortfolioCompanyDescription';
 
 import {
 	reportFields,
-	reportOperations
+	reportOperations,
 } from './descriptions/ReportDescription';
 
-import { 
+import {
 	scorecardApiRequest,
 	simplify,
 } from './GenericFunctions';
@@ -132,14 +132,14 @@ export class SecurityScorecard implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
-			
+
 			if (resource === 'portfolio') {
 
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i) as string;
 					const description = this.getNodeParameter('description', i) as string;
 					const privacy = this.getNodeParameter('privacy', i) as string;
-					
+
 					const body: IDataObject = {
 						name,
 						description,
@@ -162,7 +162,7 @@ export class SecurityScorecard implements INodeType {
 						'DELETE',
 						`portfolios/${portfolioId}`,
 					);
-					returnData.push({"success": true});
+					returnData.push({ success: true });
 				}
 
 				if (operation === 'update') {
@@ -170,7 +170,7 @@ export class SecurityScorecard implements INodeType {
 					const name = this.getNodeParameter('name', i) as string;
 					const description = this.getNodeParameter('description', i) as string;
 					const privacy = this.getNodeParameter('privacy', i) as string;
-					
+
 					const body: IDataObject = {
 						name,
 						description,
@@ -201,7 +201,7 @@ export class SecurityScorecard implements INodeType {
 					}
 
 					returnData.push.apply(returnData, responseData as IDataObject[]);
-				}				
+				}
 			}
 
 			if (resource === 'portfolioCompany') {
@@ -225,7 +225,7 @@ export class SecurityScorecard implements INodeType {
 						`portfolios/${portfolioId}/companies/${domain}`,
 					);
 					returnData.push({ success: true });
-				}			
+				}
 
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
@@ -267,7 +267,7 @@ export class SecurityScorecard implements INodeType {
 					if (response.headers['content-type']) {
 						mimeType = response.headers['content-type'];
 					}
-					
+
 					const newItem: INodeExecutionData = {
 						json: items[i].json,
 						binary: {},
@@ -285,7 +285,7 @@ export class SecurityScorecard implements INodeType {
 					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
 
 					const fileName = reportUrl.split('/').pop();
-					
+
 					const data = Buffer.from(response.body as string, 'utf8');
 					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, fileName, mimeType);
 				}
@@ -316,7 +316,7 @@ export class SecurityScorecard implements INodeType {
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						Object.assign(body, options);
 					}
-				
+
 					responseData = await scorecardApiRequest.call(
 						this,
 						'POST',
@@ -346,7 +346,7 @@ export class SecurityScorecard implements INodeType {
 
 			if (resource === 'invite') {
 				if (operation === 'create') {
-					const body : IDataObject = {
+					const body: IDataObject = {
 						email: this.getNodeParameter('email', i),
 						first_name: this.getNodeParameter('firstName', i),
 						last_name: this.getNodeParameter('lastName', i),
@@ -395,8 +395,9 @@ export class SecurityScorecard implements INodeType {
 					if (simple === true) {
 						responseData = simplify(responseData);
 					}
-					
-					returnData.push.apply(returnData, responseData as IDataObject[]);				}
+
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				}
 
 				if (operation === 'getFactorHistorical') {
 					const simple = this.getNodeParameter('simple', 0) as boolean;
@@ -428,8 +429,9 @@ export class SecurityScorecard implements INodeType {
 					if (simple === true) {
 						responseData = simplify(responseData);
 					}
-					
-					returnData.push.apply(returnData, responseData as IDataObject[]);				}
+
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				}
 			}
 
 			if (resource === 'company') {
@@ -461,7 +463,7 @@ export class SecurityScorecard implements INodeType {
 						const limit = this.getNodeParameter('limit', i) as number;
 						responseData = responseData.splice(0, limit);
 					}
-					
+
 					returnData.push.apply(returnData, responseData as IDataObject[]);
 				}
 

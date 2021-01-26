@@ -117,7 +117,7 @@ export const inviteFields = [
 				displayName: 'Days to Resolve Issue',
 				description: 'Minimum days to resolve a scorecard issue',
 				name: 'days_to_resolve_issue',
-				type: 'float',
+				type: 'number',
 				default: 0,
 			},
 			{

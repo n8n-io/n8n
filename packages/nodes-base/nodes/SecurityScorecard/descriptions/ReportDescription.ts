@@ -16,17 +16,17 @@ export const reportOperations = [
 			},
 		},
 		options: [
-			{ 
+			{
 				name: 'Download',
 				value: 'download',
 				description: 'Download a generated report',
 			},
-			{ 
+			{
 				name: 'Generate',
 				value: 'generate',
 				description: 'Generate a report',
 			},
-			{ 
+			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get list of recently generated report',
@@ -94,42 +94,42 @@ export const reportFields = [
 			},
 		},
 		options: [
-			{ 
+			{
 				name: 'Company Detailed',
 				value: 'detailed',
 				description: '',
 			},
-			{ 
+			{
 				name: 'Company Events',
 				value: 'events-json',
 				description: '',
 			},
-			{ 
+			{
 				name: 'Full Scorecard',
 				value: 'full-scorecard-json',
 				description: '',
 			},
-			{ 
+			{
 				name: 'Company Issues',
 				value: 'issues',
 				description: '',
 			},
-			{ 
+			{
 				name: 'Company Partnership',
 				value: 'partnership',
 				description: '',
 			},
-			{ 
+			{
 				name: 'Portfolio',
 				value: 'portfolio',
 				description: '',
 			},
-			{ 
+			{
 				name: 'Scorecard Footprint',
 				value: 'scorecard-footprint',
 				description: '',
 			},
-			{ 
+			{
 				name: 'Company Summary',
 				value: 'summary',
 				description: '',
@@ -267,11 +267,11 @@ export const reportFields = [
 				type: 'options',
 				default: 'pdf',
 				options: [
-					{ 
+					{
 						name: 'PDF',
 						value: 'pdf',
 					},
-					{ 
+					{
 						name: 'CSV',
 						value: 'csv',
 					},
@@ -307,11 +307,11 @@ export const reportFields = [
 				type: 'options',
 				default: 'pdf',
 				options: [
-					{ 
+					{
 						name: 'PDF',
 						value: 'pdf',
 					},
-					{ 
+					{
 						name: 'CSV',
 						value: 'csv',
 					},
