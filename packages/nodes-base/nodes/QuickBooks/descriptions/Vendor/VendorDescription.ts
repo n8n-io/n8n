@@ -89,7 +89,7 @@ export const vendorFields = [
 	//         vendor: get
 	// ----------------------------------
 	{
-		displayName: 'vendor ID',
+		displayName: 'Vendor ID',
 		name: 'vendorId',
 		type: 'string',
 		required: true,

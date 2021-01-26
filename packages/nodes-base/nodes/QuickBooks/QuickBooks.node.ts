@@ -6,7 +6,6 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -137,10 +136,10 @@ export class QuickBooks implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getCustomers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getCustomers(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'customer');
 			},
-			async getVendors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getVendors(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'vendor');
 			},
 		},
@@ -279,6 +278,58 @@ export class QuickBooks implements INodeType {
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 
 				}
+
+		// *********************************************************************
+		// 															employee
+		// *********************************************************************
+
+		} else if (resource === 'employee') {
+
+			// ----------------------------------
+			//         employee: create
+			// ----------------------------------
+
+			if (operation === 'create') {
+
+				const endpoint = `/v3/company/${companyId}/${resource}`;
+
+				const body = {
+					DisplayName: this.getNodeParameter('displayName', i),
+				} as IDataObject;
+
+				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+				Object.keys(additionalFields).forEach(key => body[key] = additionalFields[key]);
+
+				responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+
+			// ----------------------------------
+			//         employee: get
+			// ----------------------------------
+
+			} else if (operation === 'get') {
+
+				const employeeId = this.getNodeParameter('employeeId', i);
+				const endpoint = `/v3/company/${companyId}/${resource}/${employeeId}`;
+				responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+
+			// ----------------------------------
+			//         employee: getAll
+			// ----------------------------------
+
+			} else if (operation === 'getAll') {
+
+				const endpoint = `/v3/company/${companyId}/query`;
+				responseData = await handleListing.call(this, i, endpoint, resource);
+
+			// ----------------------------------
+			//         employee: update
+			// ----------------------------------
+
+			} else if (operation === 'update') {
+
+				// ...
+
+			}
 
 			// *********************************************************************
 			// 															estimate
@@ -535,6 +586,58 @@ export class QuickBooks implements INodeType {
 
 					const endpoint = `/v3/company/${companyId}/${resource}`;
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, {});
+
+				}
+
+			// *********************************************************************
+			// 															vendor
+			// *********************************************************************
+
+			} else if (resource === 'vendor') {
+
+				// ----------------------------------
+				//         vendor: create
+				// ----------------------------------
+
+				if (operation === 'create') {
+
+					const endpoint = `/v3/company/${companyId}/${resource}`;
+
+					const body = {
+						DisplayName: this.getNodeParameter('displayName', i),
+					} as IDataObject;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.keys(additionalFields).forEach(key => body[key] = additionalFields[key]);
+
+					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+
+				// ----------------------------------
+				//         vendor: get
+				// ----------------------------------
+
+				} else if (operation === 'get') {
+
+					const vendorId = this.getNodeParameter('vendorId', i);
+					const endpoint = `/v3/company/${companyId}/${resource}/${vendorId}`;
+					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+
+				// ----------------------------------
+				//         vendor: getAll
+				// ----------------------------------
+
+				} else if (operation === 'getAll') {
+
+					const endpoint = `/v3/company/${companyId}/query`;
+					responseData = await handleListing.call(this, i, endpoint, resource);
+
+				// ----------------------------------
+				//         vendor: update
+				// ----------------------------------
+
+				} else if (operation === 'update') {
+
+					// ...
 
 				}
 
