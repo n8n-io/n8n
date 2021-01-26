@@ -7,7 +7,7 @@ export const estimateAdditionalFieldsOptions = [
 	},
 	{
 		displayName: 'Billing Address',
-		name: 'BillingAddress',
+		name: 'BillAddr',
 		placeholder: 'Add Billing Address Fields',
 		type: 'fixedCollection',
 		default: {},
@@ -120,7 +120,7 @@ export const estimateAdditionalFieldsOptions = [
 	},
 	{
 		displayName: 'Shipping Address',
-		name: 'ShippingAddress',
+		name: 'ShipAddr',
 		placeholder: 'Add Shippping Address Fields',
 		type: 'fixedCollection',
 		default: {},

@@ -254,7 +254,7 @@ export function populateRequestBody(
 	} else if (resource === 'customer' || resource === 'employee') {
 
 		Object.entries(fields).forEach(([key, value]) => {
-			if (key === 'BillingAddress') {
+			if (key === 'BillAddr') {
 				const { details } = value as { details: GeneralAddress };
 				body.BillAddr = pickBy(details, detail => detail !== '');
 
@@ -276,13 +276,9 @@ export function populateRequestBody(
 	} else if (resource === 'estimate') {
 
 		Object.entries(fields).forEach(([key, value]) => {
-			if (key === 'BillingAddress') {
+			if (key === 'BillAddr' || key === 'ShipAddr') {
 				const { details } = value as { details: GeneralAddress };
-				body.BillAddr = pickBy(details, detail => detail !== '');
-
-			} else if (key === 'ShippingAddress') {
-				const { details } = value as { details: GeneralAddress };
-				body.ShipAddr = pickBy(details, detail => detail !== '');
+				body[key] = pickBy(details, detail => detail !== '');
 
 			} else if (key === 'BillEmail') {
 				body.BillEmail = {
@@ -297,7 +293,6 @@ export function populateRequestBody(
 				body.CustomerMemo = {
 					value,
 				};
-
 
 			} else if (key.endsWith('Ref')) {
 				const { details } = value as { details: Ref };

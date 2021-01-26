@@ -19,7 +19,7 @@ export const vendorAdditionalFieldsOptions = [
 	},
 	{
 		displayName: 'Billing Address',
-		name: 'BillingAddress',
+		name: 'BillAddr',
 		placeholder: 'Add Billing Address Fields',
 		type: 'fixedCollection',
 		default: {},
