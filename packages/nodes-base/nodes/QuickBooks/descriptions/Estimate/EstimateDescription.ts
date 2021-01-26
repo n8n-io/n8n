@@ -59,7 +59,7 @@ export const estimateFields = [
 		type: 'options',
 		required: true,
 		description: 'The customer who the estimate is for.',
-		default: '',
+		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
 		},

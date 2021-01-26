@@ -1,8 +1,8 @@
 export const billAdditionalFieldsOptions = [
 	{
-		displayName: 'Accounts Receivable Account',
-		name: 'ARAccountRef',
-		placeholder: 'Add ARA Fields',
+		displayName: 'Accounts Payable Account',
+		name: 'APAccountRef',
+		placeholder: 'Add APA Fields',
 		type: 'fixedCollection',
 		default: {},
 		options: [
@@ -17,7 +17,7 @@ export const billAdditionalFieldsOptions = [
 						default: '',
 					},
 					{
-						displayName: 'Value',
+						displayName: 'ID',
 						name: 'value',
 						type: 'string',
 						default: '',
@@ -35,20 +35,62 @@ export const billAdditionalFieldsOptions = [
 	{
 		displayName: 'Currency',
 		name: 'CurrencyRef',
-		type: 'string',
-		default: '',
+		placeholder: 'Add Currency Fields',
+		type: 'fixedCollection',
+		default: {},
+		options: [
+			{
+				displayName: 'Details',
+				name: 'details',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'ID',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Due Date',
 		name: 'DueDate',
-		type: 'string',
+		type: 'dateTime',
 		default: '',
 	},
 	{
 		displayName: 'Sales Term',
 		name: 'SalesTermRef',
-		type: 'string',
-		default: '',
+		placeholder: 'Add Sales Term Fields',
+		type: 'fixedCollection',
+		default: {},
+		options: [
+			{
+				displayName: 'Details',
+				name: 'details',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'ID',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Total Amount',
@@ -59,7 +101,7 @@ export const billAdditionalFieldsOptions = [
 	{
 		displayName: 'Transaction Date',
 		name: 'TxnDate',
-		type: 'string',
+		type: 'dateTime',
 		default: '',
 	},
 ];

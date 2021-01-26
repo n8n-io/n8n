@@ -210,10 +210,10 @@ export async function loadResource(
 
 	const resourceItems = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 
-	resourceItems.forEach((customer: any) => { // tslint:disable-line:no-any
+	resourceItems.forEach((resourceItem: any) => { // tslint:disable-line:no-any
 		returnData.push({
-			name: customer.DisplayName as string,
-			value: customer.DisplayName as string,
+			name: resourceItem.DisplayName,
+			value: resourceItem.Id,
 		});
 	});
 

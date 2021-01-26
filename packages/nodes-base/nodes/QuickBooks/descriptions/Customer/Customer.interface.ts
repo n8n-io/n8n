@@ -1,6 +1,5 @@
 import {
 	AltBillAddr,
-	MetaData,
 	PrimaryEmailAddr,
 	PrimaryPhone,
 } from '../Shared/Shared.interface';
@@ -16,13 +15,10 @@ export interface Customer {
 	FamilyName: string;
 	FullyQualifiedName: string;
 	GivenName: string;
-	Id: string; // system-defined
 	Job: boolean;
-	MetaData: MetaData; // system-defined
 	PreferredDeliveryMethod: string;
 	PrimaryEmailAddr: PrimaryEmailAddr;
 	PrimaryPhone: PrimaryPhone;
 	PrintOnCheckName: string;
-	SyncToken: string; // system-defined
 	Taxable: boolean;
 }

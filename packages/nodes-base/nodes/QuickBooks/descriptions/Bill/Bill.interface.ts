@@ -1,28 +1,16 @@
 import {
-	CurrencyRef,
 	Line,
-	MetaData,
+	Ref,
 } from '../Shared/Shared.interface';
 
 export interface Bill {
-	APAccountRef: {
-		name: string;
-		value: string;
-	};
+	APAccountRef: Ref;
 	Balance: number;
-	CurrencyRef: CurrencyRef;
+	CurrencyRef: Ref;
 	DueDate: string;
-	Id: string; // system-defined
 	Line: Line[]; // required
-	MetaData: MetaData; // system-defined
-	SalesTermRef: {
-		value: string;
-	};
-	SyncToken: string; // system-defined
+	SalesTermRef: Ref;
 	TotalAmt: number;
 	TxnDate: string;
-	VendorRef: { // required
-		name: string;
-		value: string;
-	};
+	VendorRef: Ref; // required
 }

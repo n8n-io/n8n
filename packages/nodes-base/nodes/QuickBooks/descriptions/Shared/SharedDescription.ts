@@ -19,42 +19,42 @@ export const createlineProperty = (resource: string) => ({
 	},
 	options: [
 		{
-			displayName: 'Type',
+			displayName: 'Detail Type',
 			name: 'DetailType',
 			type: 'options',
 			default: 'DescriptionOnlyLine',
 			options: [
 				{
-					name: 'Description Only Line',
-					value: 'DescriptionOnlyLine',
+					name: 'Description Only',
+					value: 'DescriptionOnly',
 				},
 				{
 					name: 'Discount Line',
-					value: 'DiscountLine',
+					value: 'DiscountLineDetail',
 				},
 				{
 					name: 'Group Line',
-					value: 'GroupLine',
+					value: 'GroupLineDetail',
 				},
 				{
 					name: 'Sales Item Line',
-					value: 'SalesItemLine',
+					value: 'SalesItemLineDetail',
 				},
 				{
 					name: 'Subtotal Line',
-					value: 'SubTotalLine',
+					value: 'SubTotalLineDetail',
 				},
 			],
 		},
 		{
 			displayName: 'Amount',
-			name: 'amount',
+			name: 'Amount',
 			type: 'number',
 			default: 0,
 		},
 		{
 			displayName: 'Description',
-			name: 'description',
+			name: 'Description',
 			type: 'string',
 			default: '',
 			typeOptions: {

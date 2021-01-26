@@ -67,7 +67,7 @@ export const paymentFields = [
 		type: 'options',
 		required: true,
 		description: 'The customer who the payment is for.',
-		default: '',
+		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
 		},

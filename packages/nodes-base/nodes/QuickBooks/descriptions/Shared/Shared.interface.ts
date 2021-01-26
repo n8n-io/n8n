@@ -11,7 +11,7 @@ export interface Line {
 			value: string
 		},
 		BillableStatus: string,
-		CustomerRef: CustomerRef,
+		CustomerRef: Ref,
 	};
 	Description: string;
 }
@@ -62,21 +62,17 @@ export interface CustomerMemo {
 	value: string;
 }
 
-export interface CustomerRef {
-	name: string;
-	value: string;
-}
-
 export interface LinkedTxn {
 	TxnId: string;
 	TxnType: string;
 }
 
-export interface CurrencyRef {
+export interface PrimaryEmailAddr {
+	Address: string;
+}
+
+export interface Ref {
 	name: string;
 	value: string;
 }
 
-export interface PrimaryEmailAddr {
-	Address: string;
-}

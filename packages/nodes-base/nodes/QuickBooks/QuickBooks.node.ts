@@ -40,6 +40,12 @@ import {
 	pickBy,
 } from 'lodash';
 
+import {
+	AltBillAddr,
+	Line,
+	Ref,
+} from './descriptions/Shared/Shared.interface';
+
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'QuickBooks',
@@ -153,7 +159,43 @@ export class QuickBooks implements INodeType {
 
 				if (operation === 'create') {
 
-					// ...
+					const vendorId = this.getNodeParameter('VendorRef', i) as IDataObject;
+					const lines = this.getNodeParameter('Line', i) as Line[];
+
+					if (!lines.length) {
+						throw new Error('Please enter at least one line for the bill.');
+					}
+
+					lines.forEach(line => {
+						if (!line.DetailType || !line.Amount || !line.Description) {
+							throw new Error('Please enter at least a detail type, an amount and a description for every line.');
+						}
+					});
+
+					const body = {
+						VendorRef: {
+							value: vendorId,
+						},
+						Line: lines,
+					} as IDataObject;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					Object.entries(additionalFields).forEach(([key, value]) => {
+						if (key === 'APAccountRef' || key === 'SalesTermRef') {
+							const { details } = value as { details: Ref };
+							body.APAccountRef = {
+								name: details.name,
+								value: details.value,
+							};
+
+						} else {
+							body[key] = value;
+						}
+					});
+
+					const endpoint = `/v3/company/${companyId}/${resource}`;
+					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 
 				// ----------------------------------
 				//         bill: get
@@ -201,7 +243,26 @@ export class QuickBooks implements INodeType {
 					} as IDataObject;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.keys(additionalFields).forEach(key => body[key] = additionalFields[key]);
+
+					Object.entries(additionalFields).forEach(([key, value]) => {
+						if (key === 'BillingAddress') {
+							const { details } = value as { details: AltBillAddr };
+							body.BillAddr = pickBy(details, d => d !== '');
+
+						} else if (key === 'PrimaryEmailAddr') {
+							body.PrimaryEmailAddr = {
+								Address: value,
+							};
+
+						} else if (key === 'PrimaryPhone') {
+							body.PrimaryPhone = {
+								FreeFormNumber: value,
+							};
+
+						} else {
+							body[key] = value;
+						}
+					});
 
 					const endpoint = `/v3/company/${companyId}/${resource}`;
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);

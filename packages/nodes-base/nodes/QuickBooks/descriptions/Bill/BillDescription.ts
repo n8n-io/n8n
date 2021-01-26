@@ -59,7 +59,7 @@ export const billFields = [
 		type: 'options',
 		required: true,
 		description: 'The vendor who the bill is for.',
-		default: '',
+		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getVendors',
 		},

@@ -67,7 +67,7 @@ export const invoiceFields = [
 		type: 'options',
 		required: true,
 		description: 'The customer who the invoice is for.',
-		default: '',
+		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
 		},
