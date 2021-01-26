@@ -2,7 +2,7 @@ import {
 	CurrencyRef,
 	Line,
 	MetaData,
-} from '../Shared.interface';
+} from '../Shared/Shared.interface';
 
 export interface Bill {
 	APAccountRef: {

@@ -13,37 +13,19 @@ import {
 import {
 	billFields,
 	billOperations,
-} from './descriptions/Bill/BillDescription';
-
-import {
 	customerFields,
 	customerOperations,
-} from './descriptions/Customer/CustomerDescription';
-
-import {
 	estimateFields,
 	estimateOperations,
-} from './descriptions/Estimate/EstimateDescription';
-
-import {
 	invoiceFields,
 	invoiceOperations,
-} from './descriptions/Invoice/InvoiceDescription';
-
-import {
 	itemFields,
 	itemOperations,
-} from './descriptions/Item/ItemDescription';
-
-import {
 	paymentFields,
 	paymentOperations,
-} from './descriptions/Payment/PaymentDescription';
-
-import {
 	vendorFields,
 	vendorOperations,
-} from './descriptions/Vendor/VendorDescription';
+} from './descriptions';
 
 import {
 	getSyncToken,
@@ -139,6 +121,7 @@ export class QuickBooks implements INodeType {
 			async getCustomers(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'customer');
 			},
+
 			async getVendors(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'vendor');
 			},
@@ -213,8 +196,6 @@ export class QuickBooks implements INodeType {
 
 				if (operation === 'create') {
 
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-
 					const body = {
 						DisplayName: this.getNodeParameter('displayName', i),
 					} as IDataObject;
@@ -222,6 +203,7 @@ export class QuickBooks implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					Object.keys(additionalFields).forEach(key => body[key] = additionalFields[key]);
 
+					const endpoint = `/v3/company/${companyId}/${resource}`;
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 
 				// ----------------------------------
@@ -249,7 +231,6 @@ export class QuickBooks implements INodeType {
 
 				} else if (operation === 'update') {
 
-					const endpoint = `/v3/company/${companyId}/${resource}`;
 					const body = {
 						Id: this.getNodeParameter('customerId', i),
 						SyncToken: await getSyncToken.call(this, i, companyId, resource),
@@ -275,6 +256,7 @@ export class QuickBooks implements INodeType {
 					// 	}
 					// });
 
+					const endpoint = `/v3/company/${companyId}/${resource}`;
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 
 				}
@@ -291,8 +273,6 @@ export class QuickBooks implements INodeType {
 
 			if (operation === 'create') {
 
-				const endpoint = `/v3/company/${companyId}/${resource}`;
-
 				const body = {
 					DisplayName: this.getNodeParameter('displayName', i),
 				} as IDataObject;
@@ -300,6 +280,7 @@ export class QuickBooks implements INodeType {
 				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 				Object.keys(additionalFields).forEach(key => body[key] = additionalFields[key]);
 
+				const endpoint = `/v3/company/${companyId}/${resource}`;
 				responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 
 			// ----------------------------------
@@ -530,6 +511,7 @@ export class QuickBooks implements INodeType {
 
 					if (download) {
 
+						// TODO: Refactor into single line, with `prepareOutputData` inside `handleBinaryData`
 						items = await handleBinaryData.call(this, items, i, companyId, resource, paymentId);
 						return this.prepareOutputData(items);
 
@@ -601,8 +583,6 @@ export class QuickBooks implements INodeType {
 
 				if (operation === 'create') {
 
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-
 					const body = {
 						DisplayName: this.getNodeParameter('displayName', i),
 					} as IDataObject;
@@ -610,6 +590,7 @@ export class QuickBooks implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					Object.keys(additionalFields).forEach(key => body[key] = additionalFields[key]);
 
+					const endpoint = `/v3/company/${companyId}/${resource}`;
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 
 				// ----------------------------------

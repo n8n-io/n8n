@@ -6,7 +6,7 @@ import {
 	Line,
 	MetaData,
 	ShipAddr,
-} from '../Shared.interface';
+} from '../Shared/Shared.interface';
 
 export interface Estimate {
 	ApplyTaxAfterDiscount: boolean;

@@ -2,7 +2,7 @@ import {
 	CustomerRef,
 	Line,
 	MetaData,
-} from '../Shared.interface';
+} from '../Shared/Shared.interface';
 
 export interface Payment {
 	CustomerRef: CustomerRef; // required

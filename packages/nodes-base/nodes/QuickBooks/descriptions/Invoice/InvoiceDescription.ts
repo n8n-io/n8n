@@ -4,7 +4,7 @@ import {
 
 import {
 	createlineProperty,
-} from '../SharedDescription';
+} from '../Shared/SharedDescription';
 
 import {
 	invoiceAdditionalFieldsOptions

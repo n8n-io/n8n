@@ -1,6 +1,6 @@
 import {
 	MetaData,
-} from '../Shared.interface';
+} from '../Shared/Shared.interface';
 
 export interface Item {
 	Active: boolean;

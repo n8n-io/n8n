@@ -3,7 +3,7 @@ import {
 	MetaData,
 	PrimaryEmailAddr,
 	PrimaryPhone,
-} from '../Shared.interface';
+} from '../Shared/Shared.interface';
 
 export interface Customer {
 	Active: boolean;

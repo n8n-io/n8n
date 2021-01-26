@@ -2,7 +2,7 @@ import {
 	AltBillAddr,
 	MetaData,
 	PrimaryPhone,
-} from '../Shared.interface';
+} from '../Shared/Shared.interface';
 
 export interface Employee {
 	Active: boolean;

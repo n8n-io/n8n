@@ -33,10 +33,10 @@ export async function quickBooksApiRequest(
 	const resource = this.getNodeParameter('resource', 0) as string;
 	const operation = this.getNodeParameter('operation', 0) as string;
 
-	let isPdfEstimate = false;
+	let isDownload = false;
 
-	if (['estimate', 'invoice'].includes(resource) && operation === 'get') {
-		isPdfEstimate = this.getNodeParameter('download', 0) as boolean;
+	if ((resource === 'estimate' || resource === 'invoice') && operation === 'get') {
+		isDownload = this.getNodeParameter('download', 0) as boolean;
 	}
 
 	const productionUrl = 'https://quickbooks.api.intuit.com';
@@ -50,7 +50,7 @@ export async function quickBooksApiRequest(
 		uri: `${sandboxUrl}${endpoint}`,
 		qs,
 		body,
-		json: !isPdfEstimate,
+		json: !isDownload,
 	};
 
 	if (!Object.keys(body).length) {
@@ -65,7 +65,7 @@ export async function quickBooksApiRequest(
 		Object.assign(options, option);
 	}
 
-	if (isPdfEstimate) {
+	if (isDownload) {
 		options.headers!['Accept'] = 'application/pdf';
 	}
 
@@ -86,12 +86,13 @@ export async function quickBooksApiRequest(
 
 		if (errors && Array.isArray(errors)) {
 			const errorMessage = errors.map(
-				(e: IDataObject) => `QuickBooks error response [${e.code}]: ${e.Message} - Detail: ${e.Detail}`,
+				(e) => `QuickBooks error response [${e.code}]: ${e.Message} - Detail: ${e.Detail}`,
 			).join('|');
+
 			throw new Error(errorMessage);
 		}
 
-		throw new Error(`QuickBooks error response [${error.statusCode}]: ${error.message}`);
+		throw error;
 	}
 }
 

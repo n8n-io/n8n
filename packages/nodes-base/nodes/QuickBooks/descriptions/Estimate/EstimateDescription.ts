@@ -8,7 +8,7 @@ import {
 
 import {
 	createlineProperty
-} from '../SharedDescription';
+} from '../Shared/SharedDescription';
 
 export const estimateOperations = [
 	{
