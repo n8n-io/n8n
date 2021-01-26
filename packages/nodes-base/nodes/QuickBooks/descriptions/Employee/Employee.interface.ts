@@ -1,20 +1,18 @@
 import {
 	AltBillAddr,
-	MetaData,
+	PrimaryEmailAddr,
 	PrimaryPhone,
 } from '../Shared/Shared.interface';
 
 export interface Employee {
 	Active: boolean;
 	BillableTime: boolean;
-	DisplayName: string; // required
-	FamilyName: string;
-	GivenName: string;
-	Id: string; // system-defined
-	MetaData: MetaData; // system-defined
+	DisplayName: string;
+	FamilyName: string; // required
+	GivenName: string; // required
 	PrimaryAddr: AltBillAddr;
+	PrimaryEmailAddr: PrimaryEmailAddr;
 	PrimaryPhone: PrimaryPhone;
 	PrintOnCheckName: string;
 	SSN: string;
-	SyncToken: string; // system-defined
 }

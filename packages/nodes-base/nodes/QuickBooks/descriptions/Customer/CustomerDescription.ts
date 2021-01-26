@@ -6,10 +6,6 @@ import {
 	customerAdditionalFieldsOptions,
 } from './CustomerAdditionalFieldsOptions';
 
-import {
-	sortBy
-} from 'lodash';
-
 export const customerOperations = [
 	{
 		displayName: 'Operation',

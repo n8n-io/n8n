@@ -6,7 +6,7 @@ import {
 
 export interface Customer {
 	Active: boolean;
-	Balance: 85.0;
+	Balance: number;
 	BalanceWithJobs: number;
 	BillAddr: AltBillAddr;
 	BillWithParent: false;

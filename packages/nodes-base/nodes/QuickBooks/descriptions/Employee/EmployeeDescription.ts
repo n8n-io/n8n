@@ -6,10 +6,6 @@ import {
 	employeeAdditionalFieldsOptions,
 } from './EmployeeAdditionalFieldsOptions';
 
-import {
-	sortBy
-} from 'lodash';
-
 export const employeeOperations = [
 	{
 		displayName: 'Operation',
@@ -50,12 +46,26 @@ export const employeeFields = [
 	//         employee: create
 	// ----------------------------------
 	{
-		displayName: 'Display Name',
-		name: 'displayName',
+		displayName: 'Family Name',
+		name: 'FamilyName',
 		type: 'string',
-		required: true,
 		default: '',
-		description: 'The display name of the bill to create.',
+		displayOptions: {
+			show: {
+				resource: [
+					'employee',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Given Name',
+		name: 'GivenName',
+		type: 'string',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -89,12 +99,12 @@ export const employeeFields = [
 	//         employee: get
 	// ----------------------------------
 	{
-		displayName: 'bill ID',
-		name: 'billId',
+		displayName: 'Employee ID',
+		name: 'employeeId',
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the bill to retrieve.',
+		description: 'The ID of the employee to retrieve.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -184,12 +194,12 @@ export const employeeFields = [
 	//         employee: update
 	// ----------------------------------
 	{
-		displayName: 'bill ID',
-		name: 'billId',
+		displayName: 'Employee ID',
+		name: 'employeeId',
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the bill to update.',
+		description: 'The ID of the employee to update.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -218,16 +228,6 @@ export const employeeFields = [
 				],
 			},
 		},
-		options: sortBy(
-			[
-				{
-					displayName: 'Display Name',
-					name: 'displayName',
-					type: 'string',
-					default: '',
-				},
-				...employeeAdditionalFieldsOptions,
-			], o => o.displayName,
-		),
+		options: employeeAdditionalFieldsOptions,
 	},
 ] as INodeProperties[];

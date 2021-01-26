@@ -12,14 +12,8 @@ export const employeeAdditionalFieldsOptions = [
 		default: false,
 	},
 	{
-		displayName: 'Family Name',
-		name: 'FamilyName',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Given Name',
-		name: 'GivenName',
+		displayName: 'Display Name',
+		name: 'displayName',
 		type: 'string',
 		default: '',
 	},

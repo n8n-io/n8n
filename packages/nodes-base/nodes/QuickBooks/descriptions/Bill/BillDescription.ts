@@ -10,10 +10,6 @@ import {
 	createlineProperty,
 } from '../Shared/SharedDescription';
 
-import {
-	sortBy
-} from 'lodash';
-
 export const billOperations = [
 	{
 		displayName: 'Operation',

@@ -250,7 +250,7 @@ export function populateRequestBody(
 			}
 		});
 
-	} else if (resource === 'customer') {
+	} else if (resource === 'customer' || resource === 'employee') {
 
 		Object.entries(fields).forEach(([key, value]) => {
 			if (key === 'BillingAddress') {

@@ -15,6 +15,8 @@ import {
 	billOperations,
 	customerFields,
 	customerOperations,
+	employeeFields,
+	employeeOperations,
 	estimateFields,
 	estimateOperations,
 	invoiceFields,
@@ -82,6 +84,10 @@ export class QuickBooks implements INodeType {
 						value: 'customer',
 					},
 					{
+						name: 'Employee',
+						value: 'employee',
+					},
+					{
 						name: 'Estimate',
 						value: 'estimate',
 					},
@@ -109,6 +115,8 @@ export class QuickBooks implements INodeType {
 			...billFields,
 			...customerOperations,
 			...customerFields,
+			...employeeOperations,
+			...employeeFields,
 			...estimateOperations,
 			...estimateFields,
 			...invoiceOperations,
@@ -220,7 +228,7 @@ export class QuickBooks implements INodeType {
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 					if (isEmpty(updateFields)) {
-						throw new Error('Please enter at least one field to update for the bill.');
+						throw new Error(`Please enter at least one field to update for the ${resource}.`);
 					}
 
 					body = populateRequestBody.call(this, body, updateFields, resource);
@@ -287,7 +295,7 @@ export class QuickBooks implements INodeType {
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 					if (isEmpty(updateFields)) {
-						throw new Error('Please enter at least one field to update for the customer.');
+						throw new Error(`Please enter at least one field to update for the ${resource}.`);
 					}
 
 					body = populateRequestBody.call(this, body, updateFields, resource);
@@ -297,56 +305,73 @@ export class QuickBooks implements INodeType {
 
 				}
 
-		// *********************************************************************
-		// 															employee
-		// *********************************************************************
+			// *********************************************************************
+			// 															employee
+			// *********************************************************************
 
-		} else if (resource === 'employee') {
+			} else if (resource === 'employee') {
 
-			// ----------------------------------
-			//         employee: create
-			// ----------------------------------
+				// ----------------------------------
+				//         employee: create
+				// ----------------------------------
 
-			if (operation === 'create') {
+				if (operation === 'create') {
 
-				const body = {
-					DisplayName: this.getNodeParameter('displayName', i),
-				} as IDataObject;
+					let body = {
+						FamilyName: this.getNodeParameter('FamilyName', i),
+						GivenName: this.getNodeParameter('GivenName', i),
+					} as IDataObject;
 
-				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-				Object.keys(additionalFields).forEach(key => body[key] = additionalFields[key]);
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-				const endpoint = `/v3/company/${companyId}/${resource}`;
-				responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+					body = populateRequestBody.call(this, body, additionalFields, resource);
 
-			// ----------------------------------
-			//         employee: get
-			// ----------------------------------
+					const endpoint = `/v3/company/${companyId}/${resource}`;
+					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 
-			} else if (operation === 'get') {
+				// ----------------------------------
+				//         employee: get
+				// ----------------------------------
 
-				const employeeId = this.getNodeParameter('employeeId', i);
-				const endpoint = `/v3/company/${companyId}/${resource}/${employeeId}`;
-				responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+				} else if (operation === 'get') {
 
-			// ----------------------------------
-			//         employee: getAll
-			// ----------------------------------
+					const employeeId = this.getNodeParameter('employeeId', i);
+					const endpoint = `/v3/company/${companyId}/${resource}/${employeeId}`;
+					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
 
-			} else if (operation === 'getAll') {
+				// ----------------------------------
+				//         employee: getAll
+				// ----------------------------------
 
-				const endpoint = `/v3/company/${companyId}/query`;
-				responseData = await handleListing.call(this, i, endpoint, resource);
+				} else if (operation === 'getAll') {
 
-			// ----------------------------------
-			//         employee: update
-			// ----------------------------------
+					const endpoint = `/v3/company/${companyId}/query`;
+					responseData = await handleListing.call(this, i, endpoint, resource);
 
-			} else if (operation === 'update') {
+				// ----------------------------------
+				//         employee: update
+				// ----------------------------------
 
-				// ...
+				} else if (operation === 'update') {
 
-			}
+					let body = {
+						Id: this.getNodeParameter('employeeId', i),
+						SyncToken: await getSyncToken.call(this, i, companyId, resource),
+						sparse: true,
+					} as IDataObject;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (isEmpty(updateFields)) {
+						throw new Error(`Please enter at least one field to update for the ${resource}.`);
+					}
+
+					body = populateRequestBody.call(this, body, updateFields, resource);
+
+					const endpoint = `/v3/company/${companyId}/${resource}`;
+					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+
+				}
 
 			// *********************************************************************
 			// 															estimate
