@@ -2,6 +2,29 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.104.0
+
+### What changed?
+Support for MongoDB as a database for n8n has been dropped as MongoDB had problems saving large amounts of data in a document, among other issues.
+
+### When is action necessary?
+If you have been using MongoDB as a database for n8n. Please note that this is not related to the MongoDB node.
+
+### How to upgrade:
+Before upgrading, you can [export](https://docs.n8n.io/reference/start-workflows-via-cli.html#export-workflows-and-credentials) all your credentials and workflows using the CLI.
+
+```
+n8n export:workflow --backup --output=backups/latest/
+n8n export:credentials --backup --output=backups/latest/
+```
+
+You can then change the database to one of the supported databases mentioned [here](https://docs.n8n.io/reference/data/database.html). Finally, you can upgrade n8n and [import](https://docs.n8n.io/reference/start-workflows-via-cli.html#import-workflows-and-credentials) all your credentials and workflows back into n8n.
+
+```
+n8n import:workflow --separate --input=backups/latest/
+n8n import:credentials --separate --input=backups/latest/
+```
+
 ## 0.102.0
 
 ### What changed?
