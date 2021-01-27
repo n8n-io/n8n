@@ -188,6 +188,27 @@ export async function getSyncToken(
 	return SyncToken;
 }
 
+/**
+ * Get the reference required to perform an update operation in QuickBooks.
+ */
+export async function getRef(
+	this: IExecuteFunctions,
+	i: number,
+	companyId: string,
+	resource: string,
+	ref: string,
+) {
+	const resourceId = this.getNodeParameter(`${resource}Id`, i);
+	const endpoint = `/v3/company/${companyId}/${resource}/${resourceId}`;
+	const responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+
+	return responseData[pascalCase(resource)][ref];
+
+}
+
+/**
+ * Populate node items with binary data.
+ */
 export async function handleBinaryData(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],

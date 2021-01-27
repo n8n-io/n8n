@@ -30,6 +30,7 @@ import {
 } from './descriptions';
 
 import {
+	getRef,
 	getSyncToken,
 	handleBinaryData,
 	handleListing,
@@ -214,12 +215,15 @@ export class QuickBooks implements INodeType {
 
 				} else if (operation === 'update') {
 
+					const vendorRef = await getRef.call(this, i, companyId, 'bill', 'VendorRef');
+
 					let body = {
 						Id: this.getNodeParameter('billId', i),
 						SyncToken: await getSyncToken.call(this, i, companyId, resource),
 						sparse: true,
 						VendorRef: {
-							value: this.getNodeParameter('VendorRef', i) as IDataObject,
+							name: vendorRef.name,
+							value: vendorRef.value,
 						},
 					} as IDataObject;
 

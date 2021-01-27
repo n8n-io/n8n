@@ -205,27 +205,27 @@ export const billFields = [
 			},
 		},
 	},
-	{
-		displayName: 'For Vendor',
-		name: 'VendorRef',
-		type: 'options',
-		required: true,
-		description: 'The vendor who the bill is for.',
-		default: [],
-		typeOptions: {
-			loadOptionsMethod: 'getVendors',
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'bill',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
+	// {
+	// 	displayName: 'For Vendor',
+	// 	name: 'VendorRef',
+	// 	type: 'options',
+	// 	required: true,
+	// 	description: 'The vendor who the bill is for.',
+	// 	default: [],
+	// 	typeOptions: {
+	// 		loadOptionsMethod: 'getVendors',
+	// 	},
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'bill',
+	// 			],
+	// 			operation: [
+	// 				'update',
+	// 			],
+	// 		},
+	// 	},
+	// },
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
