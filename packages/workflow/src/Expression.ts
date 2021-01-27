@@ -1,6 +1,5 @@
 
 import {
-	IDataObject,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
