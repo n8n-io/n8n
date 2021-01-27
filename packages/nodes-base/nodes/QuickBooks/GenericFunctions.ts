@@ -15,18 +15,19 @@ import {
 } from 'change-case';
 
 import {
+	pickBy,
+} from 'lodash';
+
+import {
 	OptionsWithUri,
 } from 'request';
 
 import {
 	CustomField,
 	GeneralAddress,
+	Line,
 	Ref,
 } from './descriptions/Shared/Shared.interface';
-
-import {
-	pickBy,
-} from 'lodash';
 
 /**
  * Make an authenticated API request to QuickBooks.
