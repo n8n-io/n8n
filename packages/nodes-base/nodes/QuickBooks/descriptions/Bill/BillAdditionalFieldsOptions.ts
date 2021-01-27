@@ -33,33 +33,6 @@ export const billAdditionalFieldsOptions = [
 		default: '',
 	},
 	{
-		displayName: 'Currency',
-		name: 'CurrencyRef',
-		placeholder: 'Add Currency Fields',
-		type: 'fixedCollection',
-		default: {},
-		options: [
-			{
-				displayName: 'Details',
-				name: 'details',
-				values: [
-					{
-						displayName: 'Name',
-						name: 'name',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'ID',
-						name: 'value',
-						type: 'string',
-						default: '',
-					},
-				],
-			},
-		],
-	},
-	{
 		displayName: 'Due Date',
 		name: 'DueDate',
 		type: 'dateTime',
