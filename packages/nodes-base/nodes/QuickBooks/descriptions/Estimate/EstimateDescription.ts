@@ -249,27 +249,6 @@ export const estimateFields = [
 		},
 	},
 	{
-		displayName: 'For Vendor',
-		name: 'CustomerRef',
-		type: 'options',
-		required: true,
-		description: 'The customer who the estimate is for.',
-		default: [],
-		typeOptions: {
-			loadOptionsMethod: 'getCustomers',
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'estimate',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',

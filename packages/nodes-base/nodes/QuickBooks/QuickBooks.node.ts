@@ -215,7 +215,7 @@ export class QuickBooks implements INodeType {
 
 				} else if (operation === 'update') {
 
-					const vendorRef = await getRef.call(this, i, companyId, 'bill', 'VendorRef');
+					const vendorRef = await getRef.call(this, i, companyId, resource, 'VendorRef');
 
 					let body = {
 						Id: this.getNodeParameter('billId', i),
@@ -446,12 +446,15 @@ export class QuickBooks implements INodeType {
 
 				} else if (operation === 'update') {
 
+					const customerRef = await getRef.call(this, i, companyId, resource, 'CustomerRef');
+
 					let body = {
 						Id: this.getNodeParameter('estimateId', i),
 						SyncToken: await getSyncToken.call(this, i, companyId, resource),
 						sparse: true,
 						CustomerRef: {
-							value: this.getNodeParameter('CustomerRef', i) as IDataObject,
+							name: customerRef.name,
+							value: customerRef.value,
 						},
 					} as IDataObject;
 
