@@ -13,7 +13,7 @@ export const employeeAdditionalFieldsOptions = [
 	},
 	{
 		displayName: 'Display Name',
-		name: 'displayName',
+		name: 'DisplayName',
 		type: 'string',
 		default: '',
 	},
