@@ -243,6 +243,7 @@ export const billFields = [
 				],
 			},
 		},
-		options: billAdditionalFieldsOptions.filter(property => property.name !== 'TotalAmt'), // total amount cannot be updated
+		// filter out fields that cannot be updated
+		options: billAdditionalFieldsOptions.filter(property => property.name !== 'TotalAmt' && property.name !== 'Balance') ,
 	},
 ] as INodeProperties[];
