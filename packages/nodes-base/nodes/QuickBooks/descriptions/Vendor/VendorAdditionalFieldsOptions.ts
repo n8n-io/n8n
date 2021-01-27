@@ -110,10 +110,4 @@ export const vendorAdditionalFieldsOptions = [
 		type: 'boolean',
 		default: false,
 	},
-	{
-		displayName: 'Website',
-		name: 'WebAddr',
-		type: 'string',
-		default: '',
-	},
 ];

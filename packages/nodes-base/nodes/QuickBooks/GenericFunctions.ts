@@ -251,7 +251,7 @@ export function populateRequestBody(
 				body[key] = value;
 			}
 
-		} else if (resource === 'customer' || resource === 'employee') {
+		} else if (['customer', 'employee', 'vendor'].includes(resource)) {
 
 			if (key === 'BillAddr') {
 				const { details } = value as { details: GeneralAddress };

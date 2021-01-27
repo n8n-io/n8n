@@ -180,7 +180,7 @@ export const vendorFields = [
 	//         vendor: update
 	// ----------------------------------
 	{
-		displayName: 'vendor ID',
+		displayName: 'Vendor ID',
 		name: 'vendorId',
 		type: 'string',
 		required: true,

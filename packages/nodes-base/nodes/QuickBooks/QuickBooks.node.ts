@@ -141,7 +141,7 @@ export class QuickBooks implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		let items = this.getInputData();
+		const items = this.getInputData();
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -775,7 +775,16 @@ export class QuickBooks implements INodeType {
 
 				if (operation === 'create') {
 
-					// ...
+					let body = {
+						DisplayName: this.getNodeParameter('displayName', i),
+					} as IDataObject;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					body = populateRequestBody.call(this, body, additionalFields, resource);
+
+					const endpoint = `/v3/company/${companyId}/${resource}`;
+					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 
 				// ----------------------------------
 				//         vendor: get
@@ -802,7 +811,22 @@ export class QuickBooks implements INodeType {
 
 				} else if (operation === 'update') {
 
-					// ...
+					let body = {
+						Id: this.getNodeParameter('vendorId', i),
+						SyncToken: await getSyncToken.call(this, i, companyId, resource),
+						sparse: true,
+					} as IDataObject;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (isEmpty(updateFields)) {
+						throw new Error(`Please enter at least one field to update for the ${resource}.`);
+					}
+
+					body = populateRequestBody.call(this, body, updateFields, resource);
+
+					const endpoint = `/v3/company/${companyId}/${resource}`;
+					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 
 				}
 
