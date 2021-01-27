@@ -2,14 +2,6 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import {
-	itemAdditionalFieldsOptions,
-} from './ItemAdditionalFieldsOptions';
-
-import {
-	sortBy
-} from 'lodash';
-
 export const itemOperations = [
 	{
 		displayName: 'Operation',
@@ -19,20 +11,12 @@ export const itemOperations = [
 		description: 'Operation to perform',
 		options: [
 			{
-				name: 'Create',
-				value: 'create',
-			},
-			{
 				name: 'Get',
 				value: 'get',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-			},
-			{
-				name: 'Update',
-				value: 'update',
 			},
 		],
 		displayOptions: {
@@ -46,45 +30,6 @@ export const itemOperations = [
 ] as INodeProperties[];
 
 export const itemFields = [
-	// ----------------------------------
-	//         item: create
-	// ----------------------------------
-	{
-		displayName: 'Display Name',
-		name: 'displayName',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'The display name of the item to create.',
-		displayOptions: {
-			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		options: itemAdditionalFieldsOptions,
-	},
 	// ----------------------------------
 	//         item: get
 	// ----------------------------------
@@ -179,55 +124,5 @@ export const itemFields = [
 				],
 			},
 		},
-	},
-	// ----------------------------------
-	//         item: update
-	// ----------------------------------
-	{
-		displayName: 'item ID',
-		name: 'itemId',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'The ID of the item to update.',
-		displayOptions: {
-			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Update Fields',
-		name: 'updateFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-		options: sortBy(
-			[
-				{
-					displayName: 'Display Name',
-					name: 'displayName',
-					type: 'string',
-					default: '',
-				},
-				...itemAdditionalFieldsOptions,
-			], o => o.displayName,
-		),
 	},
 ] as INodeProperties[];

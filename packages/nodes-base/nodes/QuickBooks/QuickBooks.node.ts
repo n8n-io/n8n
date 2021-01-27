@@ -40,11 +40,9 @@ import {
 
 import {
 	isEmpty,
-	pickBy,
 } from 'lodash';
 
 import {
-	GeneralAddress,
 	Line,
 } from './descriptions/Shared/Shared.interface';
 
@@ -570,6 +568,33 @@ export class QuickBooks implements INodeType {
 				}
 
 			// *********************************************************************
+			// 															  item
+			// *********************************************************************
+
+			} else if (resource === 'item')	{
+
+				// ----------------------------------
+				//         item: get
+				// ----------------------------------
+
+				if (operation === 'get') {
+
+					const item = this.getNodeParameter('itemId', i);
+					const endpoint = `/v3/company/${companyId}/${resource}/${item}`;
+					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+
+				// ----------------------------------
+				//         item: getAll
+				// ----------------------------------
+
+				} else if (operation === 'getAll') {
+
+					const endpoint = `/v3/company/${companyId}/query`;
+					responseData = await handleListing.call(this, i, endpoint, resource);
+
+				}
+
+			// *********************************************************************
 			// 															payment
 			// *********************************************************************
 
@@ -714,15 +739,7 @@ export class QuickBooks implements INodeType {
 
 				if (operation === 'create') {
 
-					const body = {
-						DisplayName: this.getNodeParameter('displayName', i),
-					} as IDataObject;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.keys(additionalFields).forEach(key => body[key] = additionalFields[key]);
-
-					const endpoint = `/v3/company/${companyId}/${resource}`;
-					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+					// ...
 
 				// ----------------------------------
 				//         vendor: get

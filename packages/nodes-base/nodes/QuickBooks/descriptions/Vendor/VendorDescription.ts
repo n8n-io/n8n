@@ -6,10 +6,6 @@ import {
 	vendorAdditionalFieldsOptions,
 } from './VendorAdditionalFieldsOptions';
 
-import {
-	sortBy
-} from 'lodash';
-
 export const vendorOperations = [
 	{
 		displayName: 'Operation',
@@ -218,16 +214,6 @@ export const vendorFields = [
 				],
 			},
 		},
-		options: sortBy(
-			[
-				{
-					displayName: 'Display Name',
-					name: 'displayName',
-					type: 'string',
-					default: '',
-				},
-				...vendorAdditionalFieldsOptions,
-			], o => o.displayName,
-		),
+		options: vendorAdditionalFieldsOptions,
 	},
 ] as INodeProperties[];

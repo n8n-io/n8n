@@ -38,11 +38,6 @@ export interface BillEmail {
 	Address: string;
 }
 
-export interface MetaData {
-	CreateTime: string;
-	LastUpdatedTime: string;
-}
-
 export interface PrimaryPhone {
 	FreeFormNumber: string;
 }
