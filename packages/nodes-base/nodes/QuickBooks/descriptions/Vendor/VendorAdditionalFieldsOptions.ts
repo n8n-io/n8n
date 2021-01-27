@@ -88,7 +88,7 @@ export const vendorAdditionalFieldsOptions = [
 	},
 	{
 		displayName: 'Primary Email Address',
-		name: 'PrimaryEmailAddress',
+		name: 'PrimaryEmailAddr',
 		type: 'string',
 		default: '',
 	},
