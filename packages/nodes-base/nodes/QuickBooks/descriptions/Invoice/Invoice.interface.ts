@@ -1,8 +1,8 @@
 import {
 	BillEmail,
+	BillingAddress,
 	CustomerMemo,
 	CustomField,
-	EstimateBillAddr,
 	GeneralAddress,
 	Line,
 	Ref,
@@ -11,7 +11,7 @@ import {
 export interface Invoice {
 	ApplyTaxAfterDiscount: boolean;
 	Balance: number;
-	BillAddr: EstimateBillAddr;
+	BillAddr: BillingAddress;
 	BillEmail: BillEmail;
 	CustomerMemo: CustomerMemo;
 	CustomerRef: Ref; // required

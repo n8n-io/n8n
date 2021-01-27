@@ -25,7 +25,7 @@ export interface GeneralAddress {
 	CountrySubDivisionCode: string;
 }
 
-export interface EstimateBillAddr {
+export interface BillingAddress {
 	Line4: string;
 	Line3: string;
 	Line2: string;

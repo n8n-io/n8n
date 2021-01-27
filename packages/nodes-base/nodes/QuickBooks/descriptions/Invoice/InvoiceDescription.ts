@@ -338,27 +338,6 @@ export const invoiceFields = [
 		},
 	},
 	{
-		displayName: 'For Customer',
-		name: 'CustomerRef',
-		type: 'options',
-		required: true,
-		description: 'The customer who the invoice is for.',
-		default: [],
-		typeOptions: {
-			loadOptionsMethod: 'getCustomers',
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -375,6 +354,7 @@ export const invoiceFields = [
 				],
 			},
 		},
-		options: invoiceAdditionalFieldsOptions,
+		// filter out fields that cannot be updated
+		options: invoiceAdditionalFieldsOptions.filter(property => property.name !== 'TotalAmt' && property.name !== 'Balance'),
 	},
 ] as INodeProperties[];

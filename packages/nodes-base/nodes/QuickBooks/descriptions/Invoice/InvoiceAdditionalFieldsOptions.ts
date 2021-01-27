@@ -1,11 +1,5 @@
 export const invoiceAdditionalFieldsOptions = [
 	{
-		displayName: 'Apply Tax After Discount',
-		name: 'ApplyTaxAfterDiscount',
-		type: 'boolean',
-		default: false,
-	},
-	{
 		displayName: 'Balance',
 		name: 'Balance',
 		type: 'number',
@@ -14,8 +8,53 @@ export const invoiceAdditionalFieldsOptions = [
 	{
 		displayName: 'Billing Address',
 		name: 'BillAddr',
-		type: 'string',
-		default: '',
+		placeholder: 'Add Billing Address Fields',
+		type: 'fixedCollection',
+		default: {},
+		options: [
+			{
+				displayName: 'Details',
+				name: 'details',
+				values: [
+					{
+						displayName: 'City',
+						name: 'City',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Line 1',
+						name: 'Line1',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Postal Code',
+						name: 'PostalCode',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Latitude',
+						name: 'Lat',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Longitude',
+						name: 'Long',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Country Subdivision Code',
+						name: 'CountrySubDivisionCode',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Billing Email',
@@ -62,12 +101,6 @@ export const invoiceAdditionalFieldsOptions = [
 		],
 	},
 	{
-		displayName: 'Deposit',
-		name: 'Deposit',
-		type: 'string',
-		default: '',
-	},
-	{
 		displayName: 'Document Number',
 		name: 'DocNumber',
 		type: 'string',
@@ -82,20 +115,42 @@ export const invoiceAdditionalFieldsOptions = [
 	{
 		displayName: 'Email Status',
 		name: 'EmailStatus',
-		type: 'string',
-		default: '',
+		type: 'options',
+		default: 'NotSet',
+		options: [
+			{
+				name: 'Not Set',
+				value: 'NotSet',
+			},
+			{
+				name: 'Need To Send',
+				value: 'NeedToSend',
+			},
+			{
+				name: 'Email Sent',
+				value: 'EmailSent',
+			},
+		],
 	},
 	{
 		displayName: 'Print Status',
 		name: 'PrintStatus',
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Sales Term',
-		name: 'SalesTermRef',
-		type: 'string',
-		default: '',
+		type: 'options',
+		default: 'NotSet',
+		options: [
+			{
+				name: 'Not Set',
+				value: 'NotSet',
+			},
+			{
+				name: 'Need To Print',
+				value: 'NeedToPrint',
+			},
+			{
+				name: 'PrintComplete',
+				value: 'PrintComplete',
+			},
+		],
 	},
 	{
 		displayName: 'Shipping Address',
