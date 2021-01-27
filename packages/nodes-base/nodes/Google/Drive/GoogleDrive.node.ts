@@ -2067,7 +2067,8 @@ export class GoogleDrive implements INodeType {
 
 					returnData.push(response as IDataObject);
 				}
-			} else if (['file', 'folder'].includes(resource)) {
+			}
+			if (['file', 'folder'].includes(resource)) {
 				if (operation === 'delete') {
 					// ----------------------------------
 					//         delete
