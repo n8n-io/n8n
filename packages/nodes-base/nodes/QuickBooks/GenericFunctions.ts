@@ -200,7 +200,7 @@ export async function handleBinaryData(
 	const data = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {}, { encoding: null });
 
 	items[i].binary = items[i].binary !== undefined ? items[i].binary : {};
-	items[i].binary[binaryProperty] = await this.helpers.prepareBinaryData(data);
+	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
 
 	return this.prepareOutputData(items);
 }
