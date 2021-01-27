@@ -11,12 +11,12 @@ import {
 } from 'n8n-workflow';
 
 import {
-	OptionsWithUri,
-} from 'request';
-
-import {
 	pascalCase,
 } from 'change-case';
+
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	CustomField,
@@ -162,16 +162,17 @@ export async function handleListing(
 	const returnAll = this.getNodeParameter('returnAll', i);
 
 	if (returnAll) {
-		responseData = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
+		return await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 	} else {
 		const limit = this.getNodeParameter('limit', i) as number;
 		responseData = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource, limit);
-		responseData = responseData.splice(0, limit);
+		return responseData.splice(0, limit);
 	}
-
-	return responseData;
 }
 
+/**
+ * Get the SyncToken required to perform an update operation in QuickBooks.
+ */
 export async function getSyncToken(
 	this: IExecuteFunctions,
 	i: number,
@@ -199,8 +200,7 @@ export async function handleBinaryData(
 	const data = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {}, { encoding: null });
 
 	items[i].binary = items[i].binary !== undefined ? items[i].binary : {};
-
-	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
+	items[i].binary[binaryProperty] = await this.helpers.prepareBinaryData(data);
 
 	return this.prepareOutputData(items);
 }
@@ -220,7 +220,7 @@ export async function loadResource(
 
 	const resourceItems = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 
-	resourceItems.forEach((resourceItem: any) => { // tslint:disable-line:no-any
+	resourceItems.forEach((resourceItem: { DisplayName: string, Id: string }) => {
 		returnData.push({
 			name: resourceItem.DisplayName,
 			value: resourceItem.Id,
@@ -237,9 +237,10 @@ export function populateRequestBody(
 	resource: string,
 ) {
 
-	if (resource === 'bill') {
+	Object.entries(fields).forEach(([key, value]) => {
 
-		Object.entries(fields).forEach(([key, value]) => {
+		if (resource === 'bill') {
+
 			if (key.endsWith('Ref')) {
 				const { details } = value as { details: Ref };
 				body[key] = {
@@ -249,11 +250,9 @@ export function populateRequestBody(
 			} else {
 				body[key] = value;
 			}
-		});
 
-	} else if (resource === 'customer' || resource === 'employee') {
+		} else if (resource === 'customer' || resource === 'employee') {
 
-		Object.entries(fields).forEach(([key, value]) => {
 			if (key === 'BillAddr') {
 				const { details } = value as { details: GeneralAddress };
 				body.BillAddr = pickBy(details, detail => detail !== '');
@@ -271,11 +270,9 @@ export function populateRequestBody(
 			} else {
 				body[key] = value;
 			}
-		});
 
-	} else if (resource === 'estimate' || resource === 'invoice') {
+		} else if (resource === 'estimate' || resource === 'invoice') {
 
-		Object.entries(fields).forEach(([key, value]) => {
 			if (key === 'BillAddr' || key === 'ShipAddr') {
 				const { details } = value as { details: GeneralAddress };
 				body[key] = pickBy(details, detail => detail !== '');
@@ -309,13 +306,12 @@ export function populateRequestBody(
 			} else {
 				body[key] = value;
 			}
-		});
 
-	} else if (resource === 'payment') {
-		Object.entries(fields).forEach(([key, value]) => {
+		} else if (resource === 'payment') {
 			body[key] = value;
-		});
-	}
+		}
+
+	});
 
 	return body;
 }
