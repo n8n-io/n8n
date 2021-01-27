@@ -530,10 +530,10 @@ export class GoogleDrive implements INodeType {
 					show: {
 						resource: [
 							'file',
+							'folder',
 						],
 						operation: [
 							'share',
-							'folder',
 						],
 					},
 				},
