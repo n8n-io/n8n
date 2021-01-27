@@ -33,7 +33,7 @@ export class PhilipsHueOAuth2Api implements ICredentialType {
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden' as NodePropertyTypes,
-			default: '={{"appid="+$parameter["appId"]}}',
+			default: '={{"appid="+$self["appId"]}}',
 		},
 		{
 			displayName: 'Scope',

@@ -17,10 +17,11 @@ export class WorkflowDataProxy {
 	private itemIndex: number;
 	private activeNodeName: string;
 	private connectionInputData: INodeExecutionData[];
+	private selfData: IDataObject;
 
 
 
-	constructor(workflow: Workflow, runExecutionData: IRunExecutionData | null, runIndex: number, itemIndex: number, activeNodeName: string, connectionInputData: INodeExecutionData[], defaultReturnRunIndex = -1) {
+	constructor(workflow: Workflow, runExecutionData: IRunExecutionData | null, runIndex: number, itemIndex: number, activeNodeName: string, connectionInputData: INodeExecutionData[], defaultReturnRunIndex = -1, selfData = {}) {
 		this.workflow = workflow;
 		this.runExecutionData = runExecutionData;
 		this.defaultReturnRunIndex = defaultReturnRunIndex;
@@ -28,6 +29,7 @@ export class WorkflowDataProxy {
 		this.itemIndex = itemIndex;
 		this.activeNodeName = activeNodeName;
 		this.connectionInputData = connectionInputData;
+		this.selfData = selfData;
 	}
 
 
@@ -67,6 +69,21 @@ export class WorkflowDataProxy {
 		});
 	}
 
+
+
+	private selfGetter() {
+		const that = this;
+
+		return new Proxy({}, {
+			ownKeys(target) {
+				return Reflect.ownKeys(target);
+			},
+			get(target, name, receiver) {
+				name = name.toString();
+				return that.selfData[name];
+			},
+		});
+	}
 
 
 	/**
@@ -359,6 +376,7 @@ export class WorkflowDataProxy {
 			},
 			$json: {}, // Placeholder
 			$node: this.nodeGetter(),
+			$self: this.selfGetter(),
 			$parameter: this.nodeParameterGetter(this.activeNodeName),
 			$runIndex: this.runIndex,
 			$workflow: this.workflowGetter(),
