@@ -265,6 +265,7 @@ export const estimateFields = [
 				],
 			},
 		},
-		options: estimateAdditionalFieldsOptions,
+		// filter out fields that cannot be updated
+		options: estimateAdditionalFieldsOptions.filter(property => property.name !== 'TotalAmt' && property.name !== 'TotalTax'),
 	},
 ] as INodeProperties[];

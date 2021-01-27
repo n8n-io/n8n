@@ -205,27 +205,6 @@ export const billFields = [
 			},
 		},
 	},
-	// {
-	// 	displayName: 'For Vendor',
-	// 	name: 'VendorRef',
-	// 	type: 'options',
-	// 	required: true,
-	// 	description: 'The vendor who the bill is for.',
-	// 	default: [],
-	// 	typeOptions: {
-	// 		loadOptionsMethod: 'getVendors',
-	// 	},
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'bill',
-	// 			],
-	// 			operation: [
-	// 				'update',
-	// 			],
-	// 		},
-	// 	},
-	// },
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -244,6 +223,6 @@ export const billFields = [
 			},
 		},
 		// filter out fields that cannot be updated
-		options: billAdditionalFieldsOptions.filter(property => property.name !== 'TotalAmt' && property.name !== 'Balance') ,
+		options: billAdditionalFieldsOptions.filter(property => property.name !== 'TotalAmt' && property.name !== 'Balance'),
 	},
 ] as INodeProperties[];

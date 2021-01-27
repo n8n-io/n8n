@@ -2,8 +2,8 @@ export const estimateAdditionalFieldsOptions = [
 	{
 		displayName: 'Apply Tax After Discount',
 		name: 'ApplyTaxAfterDiscount',
-		type: 'string',
-		default: '',
+		type: 'boolean',
+		default: false,
 	},
 	{
 		displayName: 'Billing Address',
@@ -109,14 +109,42 @@ export const estimateAdditionalFieldsOptions = [
 	{
 		displayName: 'Email Status',
 		name: 'EmailStatus',
-		type: 'string',
-		default: '',
+		type: 'options',
+		default: 'NotSet',
+		options: [
+			{
+				name: 'Not Set',
+				value: 'NotSet',
+			},
+			{
+				name: 'Need To Send',
+				value: 'NeedToSend',
+			},
+			{
+				name: 'Email Sent',
+				value: 'EmailSent',
+			},
+		],
 	},
 	{
 		displayName: 'Print Status',
 		name: 'PrintStatus',
-		type: 'string',
-		default: '',
+		type: 'options',
+		default: 'NotSet',
+		options: [
+			{
+				name: 'Not Set',
+				value: 'NotSet',
+			},
+			{
+				name: 'Need To Print',
+				value: 'NeedToPrint',
+			},
+			{
+				name: 'PrintComplete',
+				value: 'PrintComplete',
+			},
+		],
 	},
 	{
 		displayName: 'Shipping Address',
@@ -179,12 +207,6 @@ export const estimateAdditionalFieldsOptions = [
 		displayName: 'Transaction Date',
 		name: 'TxnDate',
 		type: 'dateTime',
-		default: '',
-	},
-	{
-		displayName: 'Transaction Status',
-		name: 'TxnStatus',
-		type: 'string',
 		default: '',
 	},
 	{

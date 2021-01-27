@@ -320,7 +320,7 @@ export function populateRequestBody(
 					value: details.value,
 				};
 
-			} else if (key === 'TxnTaxDetail') {
+			} else if (key === 'TotalTax') {
 				body.TxnTaxDetail = {
 					TotalTax: value,
 				};
