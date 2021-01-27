@@ -137,10 +137,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		if (expressionResolveValues) {
 			try {
 				const workflow = new Workflow({ nodes: Object.values(expressionResolveValues.workflow.nodes), connections: expressionResolveValues.workflow.connectionsBySourceNode, active: false, nodeTypes: expressionResolveValues.workflow.nodeTypes });
-				// TODO: Find a better way for that!
-				// Add the credential data to the parameters of the node so that they can get accessed by expressions
-				Object.assign(workflow.nodes[expressionResolveValues.node.name].parameters, decryptedData);
-				decryptedData = workflow.expression.getParameterValue(decryptedData as INodeParameters, expressionResolveValues.runExecutionData, expressionResolveValues.runIndex, expressionResolveValues.itemIndex, expressionResolveValues.node.name, expressionResolveValues.connectionInputData) as ICredentialDataDecryptedObject;
+				decryptedData = workflow.expression.getParameterValue(decryptedData as INodeParameters, expressionResolveValues.runExecutionData, expressionResolveValues.runIndex, expressionResolveValues.itemIndex, expressionResolveValues.node.name, expressionResolveValues.connectionInputData, false, decryptedData) as ICredentialDataDecryptedObject;
 			} catch (e) {
 				e.message += ' [Error resolving credentials]';
 				throw e;
@@ -151,13 +148,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 				typeVersion: 1,
 				type: 'mock',
 				position: [0, 0],
-				parameters: decryptedData as INodeParameters,
+				parameters: {} as INodeParameters,
 			} as INode;
 
 			const workflow = new Workflow({ nodes: [node!], connections: {}, active: false, nodeTypes: mockNodeTypes });
 
 			// Resolve expressions if any are set
-			decryptedData = workflow.expression.getComplexParameterValue(node!, decryptedData as INodeParameters, undefined) as ICredentialDataDecryptedObject;
+			decryptedData = workflow.expression.getComplexParameterValue(node!, decryptedData as INodeParameters, undefined, decryptedData) as ICredentialDataDecryptedObject;
 		}
 
 		// Load and apply the credentials overwrites if any exist
