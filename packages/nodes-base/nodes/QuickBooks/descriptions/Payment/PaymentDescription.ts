@@ -3,10 +3,6 @@ import {
 } from 'n8n-workflow';
 
 import {
-	createLineProperty,
-} from '../Shared/SharedDescription';
-
-import {
 	paymentAdditionalFieldsOptions
 } from './PaymentAdditionalFieldsOptions';
 
