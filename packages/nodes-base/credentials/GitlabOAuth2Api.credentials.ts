@@ -22,14 +22,14 @@ export class GitlabOAuth2Api implements ICredentialType {
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden' as NodePropertyTypes,
-			default: '={{$parameter["server"]}}/oauth/authorize',
+			default: '={{$self["server"]}}/oauth/authorize',
 			required: true,
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
 			type: 'hidden' as NodePropertyTypes,
-			default: '={{$parameter["server"]}}/oauth/token',
+			default: '={{$self["server"]}}/oauth/token',
 			required: true,
 		},
 		{
