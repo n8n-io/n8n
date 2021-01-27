@@ -45,7 +45,7 @@ export async function quickBooksApiRequest(
 
 	let isDownload = false;
 
-	if ((resource === 'estimate' || resource === 'invoice') && operation === 'get') {
+	if (['estimate', 'invoice', 'payment'].includes(resource) && operation === 'get') {
 		isDownload = this.getNodeParameter('download', 0) as boolean;
 	}
 
@@ -202,7 +202,7 @@ export async function handleBinaryData(
 
 	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
 
-	return items;
+	return this.prepareOutputData(items);
 }
 
 export async function loadResource(

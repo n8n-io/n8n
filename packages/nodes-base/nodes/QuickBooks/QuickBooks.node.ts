@@ -418,8 +418,7 @@ export class QuickBooks implements INodeType {
 
 					if (download) {
 
-						items = await handleBinaryData.call(this, items, i, companyId, resource, estimateId);
-						return this.prepareOutputData(items);
+						return await handleBinaryData.call(this, items, i, companyId, resource, estimateId);
 
 					} else {
 
@@ -530,8 +529,7 @@ export class QuickBooks implements INodeType {
 
 					if (download) {
 
-						items = await handleBinaryData.call(this, items, i, companyId, resource, invoiceId);
-						return this.prepareOutputData(items);
+						return await handleBinaryData.call(this, items, i, companyId, resource, invoiceId);
 
 					} else {
 
@@ -689,9 +687,7 @@ export class QuickBooks implements INodeType {
 
 					if (download) {
 
-						// TODO: Refactor into single line, with `prepareOutputData` inside `handleBinaryData`
-						items = await handleBinaryData.call(this, items, i, companyId, resource, paymentId);
-						return this.prepareOutputData(items);
+						return await handleBinaryData.call(this, items, i, companyId, resource, paymentId);
 
 					} else {
 
