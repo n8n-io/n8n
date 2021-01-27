@@ -353,27 +353,6 @@ export const paymentFields = [
 		},
 	},
 	{
-		displayName: 'For Customer',
-		name: 'CustomerRef',
-		type: 'options',
-		required: true,
-		description: 'The customer who the payment is for.',
-		default: [],
-		typeOptions: {
-			loadOptionsMethod: 'getCustomers',
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'payment',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
