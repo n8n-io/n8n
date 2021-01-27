@@ -273,7 +273,7 @@ export function populateRequestBody(
 			}
 		});
 
-	} else if (resource === 'estimate') {
+	} else if (resource === 'estimate' || resource === 'invoice') {
 
 		Object.entries(fields).forEach(([key, value]) => {
 			if (key === 'BillAddr' || key === 'ShipAddr') {

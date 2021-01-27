@@ -338,6 +338,27 @@ export const invoiceFields = [
 		},
 	},
 	{
+		displayName: 'For Customer',
+		name: 'CustomerRef',
+		type: 'options',
+		required: true,
+		description: 'The customer who the invoice is for.',
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getCustomers',
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'invoice',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -354,15 +375,6 @@ export const invoiceFields = [
 				],
 			},
 		},
-		options: [
-			{
-				displayName: 'For Customer',
-				name: 'CustomerRef',
-				type: 'string',
-				default: '',
-			},
-			createLineProperty('invoice'),
-			...invoiceAdditionalFieldsOptions,
-		],
+		options: invoiceAdditionalFieldsOptions,
 	},
 ] as INodeProperties[];
