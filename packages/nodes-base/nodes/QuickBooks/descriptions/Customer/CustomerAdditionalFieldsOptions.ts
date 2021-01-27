@@ -71,8 +71,8 @@ export const customerAdditionalFieldsOptions = [
 	{
 		displayName: 'Bill With Parent',
 		name: 'BillWithParent',
-		type: 'string',
-		default: '',
+		type: 'boolean',
+		default: false,
 	},
 	{
 		displayName: 'Company Name',
@@ -87,8 +87,8 @@ export const customerAdditionalFieldsOptions = [
 		default: '',
 	},
 	{
-		name: 'Fully Qualified Name',
-		value: 'FullyQualifiedName',
+		displayName: 'Fully Qualified Name',
+		name: 'FullyQualifiedName',
 		type: 'string',
 		default: '',
 	},
@@ -99,16 +99,24 @@ export const customerAdditionalFieldsOptions = [
 		default: '',
 	},
 	{
-		displayName: 'Job',
-		name: 'Job',
-		type: 'string',
-		default: '',
-	},
-	{
 		displayName: 'Preferred Delivery Method',
 		name: 'PreferredDeliveryMethod',
-		type: 'string',
-		default: '',
+		type: 'options',
+		default: 'Print',
+		options: [
+			{
+				name: 'Print',
+				value: 'Print',
+			},
+			{
+				name: 'Email',
+				value: 'Email',
+			},
+			{
+				name: 'None',
+				value: 'None',
+			},
+		],
 	},
 	{
 		displayName: 'Primary Email Address',
@@ -131,7 +139,7 @@ export const customerAdditionalFieldsOptions = [
 	{
 		displayName: 'Taxable',
 		name: 'Taxable',
-		type: 'string',
-		default: '',
+		type: 'boolean',
+		default: false,
 	},
 ];
