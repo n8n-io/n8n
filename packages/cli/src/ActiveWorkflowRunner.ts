@@ -117,6 +117,9 @@ export class ActiveWorkflowRunner {
 			throw new ResponseHelper.ResponseError('The "activeWorkflows" instance did not get initialized yet.', 404, 404);
 		}
 
+		// Reset request parameters
+		req.params = {};
+
 		let webhook = await Db.collections.Webhook?.findOne({ webhookPath: path, method: httpMethod }) as IWebhookDb;
 		let webhookId: string | undefined;
 
@@ -126,10 +129,11 @@ export class ActiveWorkflowRunner {
 			const pathElements = path.split('/');
 			webhookId = pathElements.shift();
 			const dynamicWebhooks = await Db.collections.Webhook?.find({ webhookId, method: httpMethod, pathLength: pathElements.length });
-			if (dynamicWebhooks === undefined) {
+			if (dynamicWebhooks === undefined || dynamicWebhooks.length === 0) {
 				// The requested webhook is not registered
 				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 			}
+
 			// set webhook to the first webhook result
 			// if more results have been returned choose the one with the most route-matches
 			webhook = dynamicWebhooks[0];
@@ -323,10 +327,7 @@ export class ActiveWorkflowRunner {
 				// TODO check if there is standard error code for duplicate key violation that works
 				// with all databases
 				if (error.name === 'QueryFailedError') {
-					errorMessage = error.parameters.length === 5
-					? `Node [${webhook.node}] can't be saved, please duplicate [${webhook.node}] and delete the currently existing one.`
-					: `The webhook path [${webhook.webhookPath}] and method [${webhook.method}] already exist.`;
-
+					errorMessage = `The webhook path [${webhook.webhookPath}] and method [${webhook.method}] already exist.`;
 				} else if (error.detail) {
 					// it's a error runnig the webhook methods (checkExists, create)
 					errorMessage = error.detail;
