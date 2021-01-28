@@ -5,19 +5,28 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
+	companyFields,
+	contactFields,
+	dealFields,
 	hubspotApiRequest,
 	propertyEvents,
 } from './GenericFunctions';
 
 import {
 	createHash,
- } from 'crypto';
+} from 'crypto';
+
+import {
+	capitalCase,
+} from 'change-case';
 
 export class HubspotTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -130,13 +139,48 @@ export class HubspotTrigger implements INodeType {
 							{
 								displayName: 'Property',
 								name: 'property',
-								type: 'string',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getContactProperties',
+								},
 								displayOptions: {
 									show: {
 										name: [
 											'contact.propertyChange',
-											'deal.propertyChange',
+										],
+									},
+								},
+								default: '',
+								required: true,
+							},
+							{
+								displayName: 'Property',
+								name: 'property',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getCompanyProperties',
+								},
+								displayOptions: {
+									show: {
+										name: [
 											'company.propertyChange',
+										],
+									},
+								},
+								default: '',
+								required: true,
+							},
+							{
+								displayName: 'Property',
+								name: 'property',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getDealProperties',
+								},
+								displayOptions: {
+									show: {
+										name: [
+											'deal.propertyChange',
 										],
 									},
 								},
@@ -168,32 +212,46 @@ export class HubspotTrigger implements INodeType {
 		],
 	};
 
-	// methods = {
-	// 	loadOptions: {
-	// 		// Get all the available accounts to display them to user so that he can
-	// 		// select them easily
-	// 		async getProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	// 			const returnData: INodePropertyOptions[] = [];
-	// 			const name = this.getCurrentNodeParameter('name') as string;
-	// 			const resources: IDataObject = {
-	// 				'contact': 'contacts',
-	// 				'deals': 'deals',
-	// 				'company': 'companies',
-	// 			};
-	// 			const endpoint = `/properties/v2/${resources[name]}/properties`;
-	// 			const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-	// 			for (const property of properties) {
-	// 				const propertyName = property.label;
-	// 				const propertyId = property.name;
-	// 				returnData.push({
-	// 					name: propertyName,
-	// 					value: propertyId,
-	// 				});
-	// 			}
-	// 			return returnData;
-	// 		},
-	// 	},
-	// };
+	methods = {
+		loadOptions: {
+			// Get all the available contacts to display them to user so that he can
+			// select them easily
+			async getContactProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				for (const field of contactFields) {
+					returnData.push({
+						name: capitalCase(field),
+						value: field,
+					});
+				}
+				return returnData;
+			},
+			// Get all the available companies to display them to user so that he can
+			// select them easily
+			async getCompanyProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				for (const field of companyFields) {
+					returnData.push({
+						name: capitalCase(field),
+						value: field,
+					});
+				}
+				return returnData;
+			},
+			// Get all the available deals to display them to user so that he can
+			// select them easily
+			async getDealProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				for (const field of dealFields) {
+					returnData.push({
+						name: capitalCase(field),
+						value: field,
+					});
+				}
+				return returnData;
+			},
+		},
+	};
 
 	// @ts-ignore (because of request)
 	webhookMethods = {
@@ -215,7 +273,7 @@ export class HubspotTrigger implements INodeType {
 					}
 				}
 				// if the app is using the current webhook url. Delete everything and create it again with the current events
-				
+
 				const { results: subscriptions } = await hubspotApiRequest.call(this, 'GET', `/webhooks/v3/${appId}/subscriptions`, {});
 
 				// delete all subscriptions
@@ -237,7 +295,7 @@ export class HubspotTrigger implements INodeType {
 					targetUrl: webhookUrl,
 					maxConcurrentRequests: additionalFields.maxConcurrentRequests || 5,
 				};
-				
+
 				await hubspotApiRequest.call(this, 'PUT', endpoint, body);
 
 				endpoint = `/webhooks/v3/${appId}/subscriptions`;
@@ -262,7 +320,7 @@ export class HubspotTrigger implements INodeType {
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const { appId } = this.getCredentials('hubspotDeveloperApi') as IDataObject;
-				
+
 				const { results: subscriptions } = await hubspotApiRequest.call(this, 'GET', `/webhooks/v3/${appId}/subscriptions`, {});
 
 				for (const subscription of subscriptions) {
@@ -299,7 +357,7 @@ export class HubspotTrigger implements INodeType {
 
 		if (credentials.clientSecret !== '') {
 			const hash = `${credentials!.clientSecret}${JSON.stringify(bodyData)}`;
-			const signature =  createHash('sha256').update(hash).digest('hex');
+			const signature = createHash('sha256').update(hash).digest('hex');
 			//@ts-ignore
 			if (signature !== headerData['x-hubspot-signature']) {
 				return {};
