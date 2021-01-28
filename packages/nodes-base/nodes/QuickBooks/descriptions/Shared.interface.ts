@@ -1,28 +1,22 @@
-export interface Line {
-	DetailType: string;
-	Amount: number;
-	AccountBasedExpenseLineDetail: {
-		TaxCodeRef: {
-			value: string
-		},
-		AccountRef: {
-			name: string,
-			value: string
-		},
-		BillableStatus: string,
-		CustomerRef: Ref,
-	};
-	Description: string;
-}
+// export type Line = AccountBasedLine | ItemBasedLine;
 
-export interface GeneralAddress {
-	City: string;
-	Line1: string;
-	PostalCode: string;
-	Lat: string;
-	Long: string;
-	CountrySubDivisionCode: string;
-}
+// export interface AccountBasedLine {
+// 	AccountBasedExpenseLineDetail: {
+// 		AccountRef: Ref;
+// 	};
+// 	DetailType: 'AccountBasedExpenseLineDetail';
+// 	Amount: number;
+// 	Description: string;
+// }
+
+// export interface ItemBasedLine {
+// 	ItemBasedExpenseLineDetail: {
+// 		ItemRef: Ref;
+// 	};
+// 	DetailType: 'ItemBasedExpenseLineDetail';
+// 	Amount: number;
+// 	Description: string;
+// }
 
 export interface BillingAddress {
 	Line4: string;
@@ -37,12 +31,22 @@ export interface BillEmail {
 	Address: string;
 }
 
-export interface PrimaryPhone {
-	FreeFormNumber: string;
+export interface CustomField {
+	DefinitionId: string;
+	Name: string;
 }
 
 export interface CustomerMemo {
 	value: string;
+}
+
+export interface GeneralAddress {
+	City: string;
+	Line1: string;
+	PostalCode: string;
+	Lat: string;
+	Long: string;
+	CountrySubDivisionCode: string;
 }
 
 export interface LinkedTxn {
@@ -54,12 +58,11 @@ export interface PrimaryEmailAddr {
 	Address: string;
 }
 
-export interface Ref {
-	name: string;
-	value: string;
+export interface PrimaryPhone {
+	FreeFormNumber: string;
 }
 
-export interface CustomField {
-	DefinitionId: string;
-	Name: string;
+export interface Ref {
+	value: string;
+	name?: string;
 }

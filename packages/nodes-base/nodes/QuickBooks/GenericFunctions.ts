@@ -11,6 +11,12 @@ import {
 } from 'n8n-workflow';
 
 import {
+	CustomField,
+	GeneralAddress,
+	Ref,
+} from './descriptions/Shared.interface';
+
+import {
 	pascalCase,
 } from 'change-case';
 
@@ -21,13 +27,6 @@ import {
 import {
 	OptionsWithUri,
 } from 'request';
-
-import {
-	CustomField,
-	GeneralAddress,
-	Line,
-	Ref,
-} from './descriptions/Shared.interface';
 
 /**
  * Make an authenticated API request to QuickBooks.
@@ -89,7 +88,7 @@ export async function quickBooksApiRequest(
 	}
 
 	try {
-		console.log(options);
+		console.log(JSON.stringify(options, null, 2));
 		return await this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
 	} catch (error) {
 
@@ -255,7 +254,44 @@ export async function loadResource(
 	return returnData;
 }
 
-export function populateRequestBody(
+/**
+ * Populate bill lines into a request body.
+ */
+export function populateLines(
+	this: IExecuteFunctions,
+	body: IDataObject,
+	lines: IDataObject[],
+	resource: string,
+) {
+
+	lines.forEach((line) => {
+		if (resource === 'bill') {
+			if (line.DetailType === 'AccountBasedExpenseLineDetail') {
+				line.AccountBasedExpenseLineDetail = {
+					AccountRef: {
+						value: line.accountId,
+					},
+				};
+				delete line.accountId;
+			} else if (line.DetailType === 'ItemBasedExpenseLineDetail') {
+				line.ItemBasedExpenseLineDetail = {
+					ItemRef: {
+						value: line.itemId,
+					},
+				};
+				delete line.itemId;
+			}
+		}
+	});
+
+	body.Line = lines;
+	return body;
+}
+
+/**
+ * Populate update fields or additional fields into a request body.
+ */
+export function populateFields(
 	this: IExecuteFunctions,
 	body: IDataObject,
 	fields: IDataObject,
@@ -272,6 +308,7 @@ export function populateRequestBody(
 					name: details.name,
 					value: details.value,
 				};
+
 			} else {
 				body[key] = value;
 			}

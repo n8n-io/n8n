@@ -70,7 +70,80 @@ export const billFields = [
 			},
 		},
 	},
-	createLineProperty('bill'),
+	{
+		displayName: 'Line',
+		name: 'Line',
+		type: 'collection',
+		placeholder: 'Add Line Item Property',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'bill',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Detail Type',
+				name: 'DetailType',
+				type: 'options',
+				default: 'ItemBasedExpenseLine',
+				options: [
+					{
+						name: 'Account-Based Expense Line Detail',
+						value: 'AccountBasedExpenseLineDetail',
+					},
+					{
+						name: 'Item-Based Expense Line Detail',
+						value: 'ItemBasedExpenseLineDetail',
+					},
+				],
+			},
+			{
+				displayName: 'Item ID',
+				name: 'itemId',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Account ID',
+				name: 'accountId',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Amount',
+				name: 'Amount',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Description',
+				name: 'Description',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+			},
+			{
+				displayName: 'Position',
+				name: 'LineNum',
+				type: 'number',
+				default: 1,
+			},
+		],
+	},
+
+
+
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
