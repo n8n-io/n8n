@@ -1,7 +1,6 @@
 export interface Line {
 	DetailType: string;
 	Amount: number;
-	Id: string;
 	AccountBasedExpenseLineDetail: {
 		TaxCodeRef: {
 			value: string

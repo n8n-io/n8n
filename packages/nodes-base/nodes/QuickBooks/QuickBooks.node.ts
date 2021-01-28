@@ -45,7 +45,7 @@ import {
 
 import {
 	Line,
-} from './descriptions/Shared/Shared.interface';
+} from './descriptions/Shared.interface';
 
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {

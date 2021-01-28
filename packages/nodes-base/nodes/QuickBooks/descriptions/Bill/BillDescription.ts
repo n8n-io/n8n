@@ -8,7 +8,7 @@ import {
 
 import {
 	createLineProperty,
-} from '../Shared/createLineProperty';
+} from '../createLineProperty';
 
 export const billOperations = [
 	{

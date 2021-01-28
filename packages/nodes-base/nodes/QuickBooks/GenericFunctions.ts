@@ -27,7 +27,7 @@ import {
 	GeneralAddress,
 	Line,
 	Ref,
-} from './descriptions/Shared/Shared.interface';
+} from './descriptions/Shared.interface';
 
 /**
  * Make an authenticated API request to QuickBooks.
