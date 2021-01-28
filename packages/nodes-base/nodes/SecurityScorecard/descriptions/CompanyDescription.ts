@@ -16,27 +16,27 @@ export const companyOperations = [
 			},
 		},
 		options: [
-			{ 
+			{
 				name: 'Get Factor Scores',
 				value: 'getFactor',
 				description: 'Get company factor scores and issue counts',
 			},
-			{ 
+			{
 				name: 'Get Historical Factor Scores',
 				value: 'getFactorHistorical',
 				description: 'Get company\'s historical factor scores',
 			},
-			{ 
+			{
 				name: 'Get Historical Scores',
 				value: 'getHistoricalScore',
 				description: 'Get company\'s historical scores',
 			},
-			{ 
+			{
 				name: 'Get Information and Scorecard',
 				value: 'getScorecard',
 				description: 'Get company information and summary of their scorecard',
 			},
-			{ 
+			{
 				name: 'Get Score Plan',
 				value: 'getScorePlan',
 				description: 'Get company\'s score improvement plan',
@@ -152,6 +152,7 @@ export const companyFields = [
 		default: true,
 		description: 'Simplify the response.',
 	},
+
 	// company:getFactor
 	{
 		displayName: 'Filters',
@@ -187,6 +188,7 @@ export const companyFields = [
 			},
 		],
 	},
+	
 	// company:getFactorHistorical
 	// company:getHistoricalScore
 	{
@@ -214,7 +216,7 @@ export const companyFields = [
 				type: 'dateTime',
 				default: '',
 				required: false,
-				
+
 			},
 			{
 				displayName: 'Date To',
@@ -230,15 +232,15 @@ export const companyFields = [
 				name: 'timing',
 				type: 'options',
 				options: [
-					{ 
+					{
 						name: 'Daily',
 						value: 'daily',
 					},
-					{ 
+					{
 						name: 'Weekly',
 						value: 'weekly',
 					},
-					{ 
+					{
 						name: 'Monthly',
 						value: 'monthly',
 					},

@@ -97,43 +97,36 @@ export const reportFields = [
 			{
 				name: 'Company Detailed',
 				value: 'detailed',
-				description: '',
 			},
 			{
 				name: 'Company Events',
 				value: 'events-json',
-				description: '',
-			},
-			{
-				name: 'Full Scorecard',
-				value: 'full-scorecard-json',
-				description: '',
 			},
 			{
 				name: 'Company Issues',
 				value: 'issues',
-				description: '',
 			},
 			{
 				name: 'Company Partnership',
 				value: 'partnership',
-				description: '',
-			},
-			{
-				name: 'Portfolio',
-				value: 'portfolio',
-				description: '',
-			},
-			{
-				name: 'Scorecard Footprint',
-				value: 'scorecard-footprint',
-				description: '',
 			},
 			{
 				name: 'Company Summary',
 				value: 'summary',
-				description: '',
 			},
+			{
+				name: 'Full Scorecard',
+				value: 'full-scorecard-json',
+			},
+			{
+				name: 'Portfolio',
+				value: 'portfolio',
+			},
+			{
+				name: 'Scorecard Footprint',
+				value: 'scorecard-footprint',
+			},
+
 		],
 		default: 'detailed',
 	},
@@ -268,12 +261,12 @@ export const reportFields = [
 				default: 'pdf',
 				options: [
 					{
-						name: 'PDF',
-						value: 'pdf',
-					},
-					{
 						name: 'CSV',
 						value: 'csv',
+					},
+					{
+						name: 'PDF',
+						value: 'pdf',
 					},
 				],
 				required: false,
@@ -302,18 +295,28 @@ export const reportFields = [
 		},
 		options: [
 			{
+				displayName: 'Countries',
+				name: 'countries',
+				type: 'string',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: [],
+				required: false,
+			},
+			{
 				displayName: 'Format',
 				name: 'format',
 				type: 'options',
 				default: 'pdf',
 				options: [
 					{
-						name: 'PDF',
-						value: 'pdf',
-					},
-					{
 						name: 'CSV',
 						value: 'csv',
+					},
+					{
+						name: 'PDF',
+						value: 'pdf',
 					},
 				],
 				required: false,
@@ -338,16 +341,7 @@ export const reportFields = [
 				default: [],
 				required: false,
 			},
-			{
-				displayName: 'Countries',
-				name: 'countries',
-				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: [],
-				required: false,
-			},
+
 		],
 	},
 	{

@@ -16,7 +16,7 @@ export const inviteOperations = [
 			},
 		},
 		options: [
-			{ 
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create an invite for a company/user',

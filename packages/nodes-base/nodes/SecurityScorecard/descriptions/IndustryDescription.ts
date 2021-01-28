@@ -16,15 +16,15 @@ export const industryOperations = [
 			},
 		},
 		options: [
-			{ 
+			{
 				name: 'Get Factor Scores',
 				value: 'getFactor',
 			},
-			{ 
+			{
 				name: 'Get Historical Factor Scores',
 				value: 'getFactorHistorical',
 			},
-			{ 
+			{
 				name: 'Get Score',
 				value: 'getScore',
 			},
