@@ -172,7 +172,7 @@ export async function handleListing(
 }
 
 /**
- * Get the SyncToken required to perform an update operation in QuickBooks.
+ * Get the SyncToken required for delete and void operations in QuickBooks.
  */
 export async function getSyncToken(
 	this: IExecuteFunctions,
@@ -189,9 +189,9 @@ export async function getSyncToken(
 }
 
 /**
- * Get the reference required to perform an update operation in QuickBooks.
+ * Get the reference and SyncToken required for update operations in QuickBooks.
  */
-export async function getRef(
+export async function getRefAndSyncToken(
 	this: IExecuteFunctions,
 	i: number,
 	companyId: string,
@@ -202,7 +202,10 @@ export async function getRef(
 	const endpoint = `/v3/company/${companyId}/${resource}/${resourceId}`;
 	const responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
 
-	return responseData[pascalCase(resource)][ref];
+	return {
+		ref: responseData[pascalCase(resource)][ref],
+		syncToken: responseData[pascalCase(resource)].SyncToken,
+	};
 
 }
 
