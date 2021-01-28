@@ -280,7 +280,73 @@ export class WorkflowRunner {
 				}
 			});
 
-			const jobData: IBullJobResponse = await job.finished();
+			const jobData: Promise<IBullJobResponse> = job.finished();
+
+			const queueRecoveryInterval = config.get('queue.bull.queueRecoveryInterval') as number;
+
+			if (queueRecoveryInterval > 0) {
+				/*************************************************
+				 * Long explanation about what this solves:      *
+				 * This only happens in a very specific scenario *
+				 * when Redis crashes and recovers shortly       *
+				 * but during this time, some execution(s)       *
+				 * finished. The end result is that the main     *
+				 * process will wait indefinitively and never    *
+				 * get a response. This adds an active polling to*
+				 * the queue that allows us to identify that the *
+				 * execution finished and get information from   *
+				 * the database.                                 *
+				*************************************************/
+				let watchDogInterval: NodeJS.Timeout | undefined;
+				let resolved = false;
+
+				const watchDog = new Promise((res) => {
+					watchDogInterval = setInterval(async () => {
+						const currentJob = await this.jobQueue.getJob(job.id);
+						// When null means job is finished (not found in queue)
+						if (currentJob === null) {
+							// Mimic worker's success message
+							res({success: true});
+						}
+					}, queueRecoveryInterval * 1000);
+				});
+
+				
+				const clearWatchdogInterval = () => {
+					if (watchDogInterval) {
+						clearInterval(watchDogInterval);
+						watchDogInterval = undefined;
+					}
+				}
+
+				await new Promise((res, rej) => {
+					jobData.then((data) => {
+						if (!resolved) {
+							resolved = true;
+							clearWatchdogInterval();
+							res(data);
+						}
+					}).catch((e) => {
+						if(!resolved) {
+							resolved = true;
+							clearWatchdogInterval();
+							rej(e);
+						}
+					});
+					watchDog.then((data) => {
+						if (!resolved) {
+							resolved = true;
+							clearWatchdogInterval();
+							res(data);
+						}
+					});
+				});
+			} else {
+				await jobData;
+			}
+
+			
+
 			const executionDb = await Db.collections.Execution!.findOne(executionId) as IExecutionFlattedDb;
 			const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
 			const runData = {
