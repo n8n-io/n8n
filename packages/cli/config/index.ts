@@ -297,7 +297,7 @@ const config = convict({
 				format: Number,
 				default: 0,
 				env: 'QUEUE_RECOVERY_INTERVAL',
-			}
+			},
 		},
 	},
 	generic: {

@@ -317,7 +317,7 @@ export class WorkflowRunner {
 						clearInterval(watchDogInterval);
 						watchDogInterval = undefined;
 					}
-				}
+				};
 
 				await new Promise((res, rej) => {
 					jobData.then((data) => {
