@@ -78,6 +78,24 @@ export const userFields: INodeProperties[] = [
 		description: 'Name of the user',
 	},
 	{
+		displayName: 'Username',
+		name: 'username',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		description: `User's username`,
+	},
+	{
 		displayName: 'Password',
 		name: 'password',
 		type: 'string',
@@ -97,24 +115,6 @@ export const userFields: INodeProperties[] = [
 		},
 		default: '',
 		description: `User's password`,
-	},
-	{
-		displayName: 'Username',
-		name: 'username',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: '',
-		description: `User's username`,
 	},
 	{
 		displayName: 'Additional Fields',

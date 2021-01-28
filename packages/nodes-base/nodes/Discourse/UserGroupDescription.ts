@@ -111,5 +111,5 @@ export const userGroupFields: INodeProperties[] = [
 		default: '',
 		description: 'ID of the group',
 	},
-	
+
 ];

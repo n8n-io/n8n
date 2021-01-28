@@ -232,7 +232,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Content of the post',
+		description: 'Content of the post. HTML is supported.',
 	},
 	{
 		displayName: 'Update Fields',
