@@ -295,7 +295,7 @@ const config = convict({
 			queueRecoveryInterval: {
 				doc: 'If > 0 enables an active polling to the queue that can recover for Redis crashes. Given in seconds; 0 is disabled. May increase Redis traffic significantly.',
 				format: Number,
-				default: 0,
+				default: 60,
 				env: 'QUEUE_RECOVERY_INTERVAL',
 			},
 		},
