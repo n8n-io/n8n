@@ -117,6 +117,9 @@ export class ActiveWorkflowRunner {
 			throw new ResponseHelper.ResponseError('The "activeWorkflows" instance did not get initialized yet.', 404, 404);
 		}
 
+		// Reset request parameters
+		req.params = {};
+
 		let webhook = await Db.collections.Webhook?.findOne({ webhookPath: path, method: httpMethod }) as IWebhookDb;
 		let webhookId: string | undefined;
 
@@ -152,9 +155,6 @@ export class ActiveWorkflowRunner {
 					throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 				}
 			}
-
-			// Reset request parameters
-			req.params = {};
 
 			path = webhook.webhookPath;
 			// extracting params from path
