@@ -126,10 +126,11 @@ export class ActiveWorkflowRunner {
 			const pathElements = path.split('/');
 			webhookId = pathElements.shift();
 			const dynamicWebhooks = await Db.collections.Webhook?.find({ webhookId, method: httpMethod, pathLength: pathElements.length });
-			if (dynamicWebhooks === undefined) {
+			if (dynamicWebhooks === undefined || dynamicWebhooks.length === 0) {
 				// The requested webhook is not registered
 				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 			}
+
 			// set webhook to the first webhook result
 			// if more results have been returned choose the one with the most route-matches
 			webhook = dynamicWebhooks[0];
@@ -151,6 +152,9 @@ export class ActiveWorkflowRunner {
 					throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 				}
 			}
+
+			// Reset request parameters
+			req.params = {};
 
 			path = webhook.webhookPath;
 			// extracting params from path

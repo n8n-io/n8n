@@ -65,6 +65,10 @@ export class TestWebhooks {
 				// The requested webhook is not registered
 				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 			}
+
+			// Reset request parameters
+			request.params = {};
+
 			path = webhookData.path;
 			// extracting params from path
 			path.split('/').forEach((ele, index) => {
