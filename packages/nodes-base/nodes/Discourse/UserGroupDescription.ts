@@ -70,8 +70,9 @@ export const userGroupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the group',
+		description: 'ID of the group.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                userGroup:remove                            */
 	/* -------------------------------------------------------------------------- */
@@ -91,7 +92,7 @@ export const userGroupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Usernames to remove from group. Multiples can be defined separated by comma',
+		description: 'Usernames to remove from group. Multiples can be defined separated by comma.',
 	},
 	{
 		displayName: 'Group ID',
@@ -109,7 +110,7 @@ export const userGroupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the group',
+		description: 'ID of the group to remove.',
 	},
 
 ];

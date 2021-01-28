@@ -57,7 +57,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Name of the user',
+		description: 'Name of the user to create.',
 	},
 	{
 		displayName: 'Email',
@@ -75,7 +75,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Name of the user',
+		description: 'Email of the user to create.',
 	},
 	{
 		displayName: 'Username',
@@ -93,7 +93,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `User's username`,
+		description: `The username of the user to create.`,
 	},
 	{
 		displayName: 'Password',
@@ -114,7 +114,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `User's password`,
+		description: `The password of the user to create.`,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -147,6 +147,7 @@ export const userFields: INodeProperties[] = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                user:get                                    */
 	/* -------------------------------------------------------------------------- */
@@ -176,7 +177,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: 'username',
-		description: 'Search by',
+		description: 'What to search by.',
 	},
 	{
 		displayName: 'Username',
@@ -197,7 +198,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `User's username`,
+		description: `The username of the user to return.`,
 	},
 	{
 		displayName: 'SSO External ID',
@@ -218,8 +219,9 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `Discourse SSO external ID`,
+		description: `Discourse SSO external ID.`,
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                user:getAll                                 */
 	/* -------------------------------------------------------------------------- */
@@ -260,7 +262,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: `Users flags as`,
+		description: `User flags to search for.`,
 	},
 	{
 		displayName: 'Return All',
@@ -277,7 +279,7 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your user contacts.',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',

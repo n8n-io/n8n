@@ -57,7 +57,7 @@ export const categoryFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Name of the category',
+		description: 'Name of the category.',
 	},
 	{
 		displayName: 'Color',
@@ -75,7 +75,7 @@ export const categoryFields: INodeProperties[] = [
 			},
 		},
 		default: '0000FF',
-		description: 'Color of the category',
+		description: 'Color of the category.',
 	},
 	{
 		displayName: 'Text Color',
@@ -93,8 +93,9 @@ export const categoryFields: INodeProperties[] = [
 			},
 		},
 		default: '0000FF',
-		description: 'Text color of the category',
+		description: 'Text color of the category.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                category:getAll                             */
 	/* -------------------------------------------------------------------------- */
@@ -113,7 +114,7 @@ export const categoryFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your user contacts.',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -139,6 +140,7 @@ export const categoryFields: INodeProperties[] = [
 		default: 50,
 		description: 'How many results to return.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                category:update                             */
 	/* -------------------------------------------------------------------------- */
@@ -158,7 +160,7 @@ export const categoryFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the category',
+		description: 'ID of the category.',
 	},
 	{
 		displayName: 'Name',
@@ -176,7 +178,7 @@ export const categoryFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Content of the category',
+		description: 'New name of the category.',
 	},
 	{
 		displayName: 'Update Fields',

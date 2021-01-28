@@ -44,28 +44,7 @@ export const groupOperations = [
 
 export const groupFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                group:create                                 */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Name',
-		name: 'name',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: '',
-		description: 'Name of the group',
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                group:get                                   */
+	/*                                group:create & get                          */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
@@ -79,12 +58,14 @@ export const groupFields: INodeProperties[] = [
 				],
 				operation: [
 					'get',
+					'create',
 				],
 			},
 		},
 		default: '',
-		description: 'Name of the group',
+		description: 'Name of the group.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                group:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -103,7 +84,7 @@ export const groupFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-		description: 'Returns a list of your user contacts.',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -129,6 +110,7 @@ export const groupFields: INodeProperties[] = [
 		default: 50,
 		description: 'How many results to return.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                group:update                                */
 	/* -------------------------------------------------------------------------- */
@@ -148,7 +130,7 @@ export const groupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the group',
+		description: 'ID of the group to update.',
 	},
 	{
 		displayName: 'Name',
@@ -166,6 +148,6 @@ export const groupFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Name of the group',
+		description: 'New name of the group.',
 	},
 ];

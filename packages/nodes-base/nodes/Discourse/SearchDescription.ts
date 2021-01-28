@@ -47,7 +47,7 @@ export const searchFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Term to search',
+		description: 'Term to search for.',
 	},
 	{
 		displayName: 'Simple',
