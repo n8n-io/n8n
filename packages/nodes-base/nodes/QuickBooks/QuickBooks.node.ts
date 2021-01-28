@@ -36,7 +36,7 @@ import {
 	handleListing,
 	loadResource,
 	populateFields,
-	populateLines,
+	populateLineProperty,
 	quickBooksApiRequest,
 } from './GenericFunctions';
 
@@ -173,14 +173,14 @@ export class QuickBooks implements INodeType {
 						throw new Error(`Please enter at least one line for the ${resource}.`);
 					}
 
-					if (lines.some(line => !line.DetailType || !line.Amount || !line.Description)) {
+					if (lines.some(line => line.DetailType === undefined || line.Amount === undefined || line.Description === undefined)) {
 						throw new Error('Please enter detail type, amount and description for every line.');
 					}
 
 					lines.forEach(line => {
-						if (line.DetailType === 'AccountBasedExpenseLineDetail' && !line.accountId) {
+						if (line.DetailType === 'AccountBasedExpenseLineDetail' && line.accountId === undefined) {
 							throw new Error('Please enter an account ID for the associated account.');
-						} else if (line.DetailType === 'ItemBasedExpenseLineDetail' && !line.accountId) {
+						} else if (line.DetailType === 'ItemBasedExpenseLineDetail' && line.accountId === undefined) {
 							throw new Error('Please enter an item ID for the associated item.');
 						}
 					});
@@ -191,7 +191,7 @@ export class QuickBooks implements INodeType {
 						},
 					} as IDataObject;
 
-					body = populateLines.call(this, body, lines, resource);
+					body = populateLineProperty.call(this, body, lines, resource);
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -403,16 +403,23 @@ export class QuickBooks implements INodeType {
 						throw new Error(`Please enter at least one line for the ${resource}.`);
 					}
 
-					if (lines.some(line => !line.DetailType || !line.Amount || !line.Description)) {
+					if (lines.some(line => line.DetailType === undefined || line.Amount === undefined || line.Description === undefined)) {
 						throw new Error('Please enter detail type, amount and description for every line.');
 					}
+
+					lines.forEach(line => {
+						if (line.DetailType === 'SalesItemLineDetail' && line.itemId === undefined) {
+							throw new Error('Please enter an item ID for the associated item.');
+						}
+					});
 
 					let body = {
 						CustomerRef: {
 							value: this.getNodeParameter('CustomerRef', i),
 						},
-						Line: lines,
 					} as IDataObject;
+
+					body = populateLineProperty.call(this, body, lines, resource);
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -499,7 +506,7 @@ export class QuickBooks implements INodeType {
 						throw new Error(`Please enter at least one line for the ${resource}.`);
 					}
 
-					if (lines.some(line => !line.DetailType || !line.Amount || !line.Description)) {
+					if (lines.some(line => line.DetailType === undefined || line.Amount === undefined || line.Description === undefined)) {
 						throw new Error('Please enter detail type, amount and description for every line.');
 					}
 

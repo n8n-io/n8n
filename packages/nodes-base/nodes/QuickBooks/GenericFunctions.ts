@@ -255,9 +255,9 @@ export async function loadResource(
 }
 
 /**
- * Populate bill lines into a request body.
+ * Populate the `Line` property in a request body.
  */
-export function populateLines(
+export function populateLineProperty(
 	this: IExecuteFunctions,
 	body: IDataObject,
 	lines: IDataObject[],
@@ -266,6 +266,7 @@ export function populateLines(
 
 	lines.forEach((line) => {
 		if (resource === 'bill') {
+
 			if (line.DetailType === 'AccountBasedExpenseLineDetail') {
 				line.AccountBasedExpenseLineDetail = {
 					AccountRef: {
@@ -273,6 +274,7 @@ export function populateLines(
 					},
 				};
 				delete line.accountId;
+
 			} else if (line.DetailType === 'ItemBasedExpenseLineDetail') {
 				line.ItemBasedExpenseLineDetail = {
 					ItemRef: {
@@ -281,6 +283,19 @@ export function populateLines(
 				};
 				delete line.itemId;
 			}
+		} else if (resource === 'estimate') {
+
+			if (line.DetailType === 'SalesItemLineDetail') {
+
+				line.SalesItemLineDetail = {
+					ItemRef: {
+						value: line.itemId,
+					},
+				};
+				delete line.itemId;
+
+			}
+
 		}
 	});
 

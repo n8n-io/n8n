@@ -6,10 +6,6 @@ import {
 	billAdditionalFieldsOptions,
 } from './BillAdditionalFieldsOptions';
 
-import {
-	createLineProperty,
-} from '../createLineProperty';
-
 export const billOperations = [
 	{
 		displayName: 'Operation',

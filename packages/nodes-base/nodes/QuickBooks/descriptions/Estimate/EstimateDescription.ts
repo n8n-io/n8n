@@ -6,10 +6,6 @@ import {
 	estimateAdditionalFieldsOptions,
 } from './EstimateAdditionalFieldsOptions';
 
-import {
-	createLineProperty
-} from '../createLineProperty';
-
 export const estimateOperations = [
 	{
 		displayName: 'Operation',
@@ -74,7 +70,67 @@ export const estimateFields = [
 			},
 		},
 	},
-	createLineProperty('estimate'),
+	{
+		displayName: 'Line',
+		name: 'Line',
+		type: 'collection',
+		placeholder: 'Add Line Item Property',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'estimate',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Detail Type',
+				name: 'DetailType',
+				type: 'options',
+				default: 'SalesItemLineDetail',
+				options: [
+					{
+						name: 'Sales Item Line Detail',
+						value: 'SalesItemLineDetail',
+					},
+				],
+			},
+			{
+				displayName: 'Item ID',
+				name: 'itemId',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Amount',
+				name: 'Amount',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Description',
+				name: 'Description',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+			},
+			{
+				displayName: 'Position',
+				name: 'LineNum',
+				type: 'number',
+				default: 1,
+			},
+		],
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
