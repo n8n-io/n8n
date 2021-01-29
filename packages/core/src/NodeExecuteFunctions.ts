@@ -299,7 +299,7 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
  * @param {IWorkflowExecuteAdditionalData} additionalData
  * @returns {(ICredentialDataDecryptedObject | undefined)}
  */
-export function getCredentials(workflow: Workflow, node: INode, type: string, additionalData: IWorkflowExecuteAdditionalData, runExecutionData?: IRunExecutionData | null, runIndex?: number, connectionInputData?: INodeExecutionData[], itemIndex?: number): ICredentialDataDecryptedObject | undefined {
+export function getCredentials(workflow: Workflow, node: INode, type: string, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, runExecutionData?: IRunExecutionData | null, runIndex?: number, connectionInputData?: INodeExecutionData[], itemIndex?: number): ICredentialDataDecryptedObject | undefined {
 
 	// Get the NodeType as it has the information if the credentials are required
 	const nodeType = workflow.nodeTypes.getByName(node.type);
@@ -353,7 +353,7 @@ export function getCredentials(workflow: Workflow, node: INode, type: string, ad
 
 	const name = node.credentials[type];
 
-	const decryptedDataObject = additionalData.credentialsHelper.getDecrypted(name, type, false, expressionResolveValues);
+	const decryptedDataObject = additionalData.credentialsHelper.getDecrypted(name, type, mode, false, expressionResolveValues);
 
 	return decryptedDataObject;
 }
@@ -538,7 +538,7 @@ export function getExecutePollFunctions(workflow: Workflow, node: INode, additio
 				throw new Error('Overwrite NodeExecuteFunctions.getExecutePullFunctions.__emit function!');
 			},
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData);
+				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
@@ -601,7 +601,7 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
 			},
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData);
+				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getNode: () => {
 				return getNode(node);
@@ -676,7 +676,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
 			getCredentials(type: string, itemIndex?: number): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData, runExecutionData, runIndex, connectionInputData, itemIndex);
+				return getCredentials(workflow, node, type, additionalData, mode, runExecutionData, runIndex, connectionInputData, itemIndex);
 			},
 			getInputData: (inputIndex = 0, inputName = 'main') => {
 
@@ -771,7 +771,7 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData, runExecutionData, runIndex, connectionInputData, itemIndex);
+				return getCredentials(workflow, node, type, additionalData, mode, runExecutionData, runIndex, connectionInputData, itemIndex);
 			},
 			getInputData: (inputIndex = 0, inputName = 'main') => {
 				if (!inputData.hasOwnProperty(inputName)) {
@@ -851,7 +851,7 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, additio
 	return ((workflow: Workflow, node: INode) => {
 		const that = {
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData);
+				return getCredentials(workflow, node, type, additionalData, 'internal');
 			},
 			getCurrentNodeParameter: (parameterName: string): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object | undefined => {
 				const nodeParameters = additionalData.currentNodeParameters;
@@ -910,7 +910,7 @@ export function getExecuteHookFunctions(workflow: Workflow, node: INode, additio
 	return ((workflow: Workflow, node: INode) => {
 		const that = {
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData);
+				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
@@ -984,7 +984,7 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 				return additionalData.httpRequest.body;
 			},
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData);
+				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getHeaderData(): object {
 				if (additionalData.httpRequest === undefined) {
