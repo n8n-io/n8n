@@ -128,10 +128,94 @@ export class Reddit implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 
 			// *********************************************************************
+			// 															  post
+			// *********************************************************************
+
+			if (resource === 'post') {
+
+				// ----------------------------------
+				//         post: create
+				// ----------------------------------
+
+				if (operation === 'create') {
+
+					// https://www.reddit.com/dev/api/#POST_api_submit
+
+					const qs: IDataObject = {
+						title: this.getNodeParameter('title', i),
+						sr: this.getNodeParameter('subreddit', i),
+						kind: this.getNodeParameter('kind', i),
+					};
+
+					qs.kind === 'self'
+						? qs.text = this.getNodeParameter('text', i)
+						: qs.url = this.getNodeParameter('url', i);
+
+					if (qs.url) {
+						qs.resubmit = this.getNodeParameter('resubmit', i);
+					}
+
+					responseData = await redditApiRequest.call(this, 'POST', 'api/submit', qs);
+
+				// ----------------------------------
+				//         post: delete
+				// ----------------------------------
+
+				} else if (operation === 'delete') {
+
+					// https://www.reddit.com/dev/api/#POST_api_del
+
+					const postTypePrefix = 't3_';
+
+					const qs: IDataObject = {
+						id: postTypePrefix + this.getNodeParameter('postId', i),
+					};
+
+					await redditApiRequest.call(this, 'POST', 'api/del', qs);
+
+					responseData = { success: true };
+
+				// ----------------------------------
+				//         post: get
+				// ----------------------------------
+
+				} else if (operation === 'get') {
+
+					const subreddit = this.getNodeParameter('subreddit', i);
+					const postId = this.getNodeParameter('postId', i) as string;
+					const endpoint = `r/${subreddit}/comments/${postId}.json`;
+
+					responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
+					responseData = responseData[0].data.children[0].data;
+
+				// ----------------------------------
+				//         post: getAll
+				// ----------------------------------
+
+				} else if (operation === 'getAll') {
+
+					// https://www.reddit.com/dev/api/#GET_hot
+					// https://www.reddit.com/dev/api/#GET_new
+					// https://www.reddit.com/dev/api/#GET_rising
+					// https://www.reddit.com/dev/api/#GET_{sort}
+
+					const subreddit = this.getNodeParameter('subreddit', i);
+					let endpoint = `r/${subreddit}.json`;
+
+					const { category } = this.getNodeParameter('additionalFields', i) as { category: string };
+					if (category) {
+						endpoint = `r/${subreddit}/${category}.json`;
+					}
+
+					responseData = await handleListing.call(this, i, endpoint);
+
+				}
+
+			// *********************************************************************
 			// 														 postComment
 			// *********************************************************************
 
-			if (resource === 'postComment') {
+			} else if (resource === 'postComment') {
 
 				// ----------------------------------
 				//        postComment: add
@@ -276,57 +360,6 @@ export class Reddit implements INodeType {
 						const endpoint = 'api/search_subreddits.json';
 						responseData = await handleListing.call(this, i, endpoint);
 					}
-				}
-
-			// *********************************************************************
-			// 															  post
-			// *********************************************************************
-
-			} else if (resource === 'post') {
-
-				// ----------------------------------
-				//         post: create
-				// ----------------------------------
-
-				if (operation === 'create') {
-
-					// https://www.reddit.com/dev/api/#POST_api_submit
-
-					const qs: IDataObject = {
-						title: this.getNodeParameter('title', i),
-						sr: this.getNodeParameter('subreddit', i),
-						kind: this.getNodeParameter('kind', i),
-					};
-
-					qs.kind === 'self'
-						? qs.text = this.getNodeParameter('text', i)
-						: qs.url = this.getNodeParameter('url', i);
-
-					if (qs.url) {
-						qs.resubmit = this.getNodeParameter('resubmit', i);
-					}
-
-					responseData = await redditApiRequest.call(this, 'POST', 'api/submit', qs);
-
-				}
-
-				// ----------------------------------
-				//         post: getAll
-				// ----------------------------------
-
-				else if (operation === 'getAll') {
-
-					// https://www.reddit.com/dev/api/#GET_hot
-					// https://www.reddit.com/dev/api/#GET_new
-					// https://www.reddit.com/dev/api/#GET_rising
-					// https://www.reddit.com/dev/api/#GET_{sort}
-
-					const subreddit = this.getNodeParameter('subreddit', i);
-					const content = this.getNodeParameter('content', i);
-					const endpoint = `r/${subreddit}/${content}.json`;
-
-					responseData = await handleListing.call(this, i, endpoint);
-
 				}
 
 			// *********************************************************************

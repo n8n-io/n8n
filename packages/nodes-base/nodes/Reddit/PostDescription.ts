@@ -13,10 +13,22 @@ export const postOperations = [
 			{
 				name: 'Create',
 				value: 'create',
+				description: 'Submit a post to a subreddit.',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Withdraw a post from a subreddit.',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a post from a subreddit.',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				description: 'Get all posts from a subreddit.',
 			},
 		],
 		displayOptions: {
@@ -177,6 +189,68 @@ export const postFields = [
 		},
 	},
 	// ----------------------------------
+	//           post: delete
+	// ----------------------------------
+	{
+		displayName: 'Post ID',
+		name: 'postId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'ID of the post to delete. Found in the post URL:<br><code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
+		placeholder: 'gla7fmt',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+	// ----------------------------------
+	//           post: get
+	// ----------------------------------
+	{
+		displayName: 'Subreddit',
+		name: 'subreddit',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The name of subreddit to retrieve the post from.',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Post ID',
+		name: 'postId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'ID of the post to retrieve. Found in the post URL:<br><code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
+		placeholder: 'l0me7x',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+	// ----------------------------------
 	//         post: getAll
 	// ----------------------------------
 	{
@@ -186,42 +260,6 @@ export const postFields = [
 		required: true,
 		default: '',
 		description: 'The name of subreddit to retrieve the posts from.',
-		displayOptions: {
-			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Content',
-		name: 'content',
-		type: 'options',
-		required: true,
-		default: 'top',
-		description: 'Content of the posts to retrieve.',
-		options: [
-			{
-				name: 'Top Posts',
-				value: 'top',
-			},
-			{
-				name: 'Hot Posts',
-				value: 'hot',
-			},
-			{
-				name: 'New Posts',
-				value: 'new',
-			},
-			{
-				name: 'Rising Posts',
-				value: 'rising',
-			},
-		],
 		displayOptions: {
 			show: {
 				resource: [
@@ -273,5 +311,50 @@ export const postFields = [
 				],
 			},
 		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: [
+			{
+				displayName: 'Category',
+				name: 'category',
+				type: 'options',
+				required: true,
+				default: 'top',
+				description: 'Category of the posts to retrieve.',
+				options: [
+					{
+						name: 'Top Posts',
+						value: 'top',
+					},
+					{
+						name: 'Hot Posts',
+						value: 'hot',
+					},
+					{
+						name: 'New Posts',
+						value: 'new',
+					},
+					{
+						name: 'Rising Posts',
+						value: 'rising',
+					},
+				],
+			},
+		],
 	},
 ] as INodeProperties[];
