@@ -41,7 +41,6 @@ export async function redditApiRequest(
 	}
 
 	try {
-		// console.log(options);
 		return authRequired
 			? await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options)
 			: await this.helpers.request.call(this, options);
@@ -73,11 +72,7 @@ export async function redditApiRequestAllItems(
 	const operation = this.getNodeParameter('operation', 0) as string;
 
 	do {
-		// console.log(method);
-		// console.log(endpoint);
-		// console.log(qs);
 		responseData = await redditApiRequest.call(this, method, endpoint, qs);
-		console.log(responseData);
 		qs.after = responseData.after;
 
 		if (endpoint === 'api/search_subreddits.json') {

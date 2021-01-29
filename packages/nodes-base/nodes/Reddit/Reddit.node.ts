@@ -234,14 +234,13 @@ export class Reddit implements INodeType {
 
 				} else if (operation === 'getAll') {
 
+					// https://www.reddit.com/r/{subrreddit}/comments/{postId}.json
+
 					const subreddit = this.getNodeParameter('subreddit', i);
 					const postId = this.getNodeParameter('postId', i) as string;
 					const endpoint = `r/${subreddit}/comments/${postId}.json`;
 
 					responseData = await handleListing.call(this, i, endpoint);
-					// console.log(responseData);
-					// responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
-					// responseData = responseData[1].data.children.map((child: any) => child.data); // tslint:disable-line:no-any
 
 				} else if (operation === 'remove') {
 
@@ -306,6 +305,12 @@ export class Reddit implements INodeType {
 
 					if (details === 'identity') {
 						responseData = responseData.features;
+					} else if (details === 'friends') {
+						responseData = responseData.data.children;
+					} else if (details === 'karma') {
+						responseData = responseData.data;
+					} else if (details === 'trophies') {
+						responseData = responseData.data.trophies.map((trophy: IDataObject) => trophy.data);
 					}
 
 				}
@@ -395,7 +400,9 @@ export class Reddit implements INodeType {
 						? await redditApiRequest.call(this, 'GET', endpoint, {})
 						: await handleListing.call(this, i, endpoint);
 
-					if (details === 'about') {
+					if (details === 'gilded') {
+						responseData = responseData.data.children;
+					} else if (details === 'about') {
 						responseData = responseData.data;
 					}
 
