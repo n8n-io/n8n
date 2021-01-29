@@ -17,7 +17,7 @@ import {
 } from './descriptions/Shared.interface';
 
 import {
-	pascalCase,
+	capitalCase,
 } from 'change-case';
 
 import {
@@ -126,7 +126,7 @@ export async function quickBooksApiRequestAllItems(
 	do {
 		qs.query += ` MAXRESULTS 1000 STARTPOSITION ${startPosition}`;
 		responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, body);
-		returnData.push(...responseData.QueryResponse[pascalCase(resource)]);
+		returnData.push(...responseData.QueryResponse[capitalCase(resource)]);
 
 		if (limit && returnData.length >= limit) {
 			return returnData;
@@ -181,7 +181,7 @@ export async function getSyncToken(
 ) {
 	const resourceId = this.getNodeParameter(`${resource}Id`, i);
 	const getEndpoint = `/v3/company/${companyId}/${resource}/${resourceId}`;
-	const propertyName = pascalCase(resource);
+	const propertyName = capitalCase(resource);
 	const { [propertyName]: { SyncToken } } = await quickBooksApiRequest.call(this, 'GET', getEndpoint, {}, {});
 
 	return SyncToken;
@@ -202,8 +202,8 @@ export async function getRefAndSyncToken(
 	const responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
 
 	return {
-		ref: responseData[pascalCase(resource)][ref],
-		syncToken: responseData[pascalCase(resource)].SyncToken,
+		ref: responseData[capitalCase(resource)][ref],
+		syncToken: responseData[capitalCase(resource)].SyncToken,
 	};
 
 }
