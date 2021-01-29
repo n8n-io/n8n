@@ -150,6 +150,12 @@ export class Reddit implements INodeType {
 				//         profile: get
 				// ----------------------------------
 
+				// https://www.reddit.com/dev/api/#GET_api_v1_me
+				// https://www.reddit.com/dev/api/#GET_api_v1_me_karma
+				// https://www.reddit.com/dev/api/#GET_api_v1_me_prefs
+				// https://www.reddit.com/dev/api/#GET_api_v1_me_trophies
+				// https://www.reddit.com/dev/api/#GET_prefs_{where}
+
 				if (operation === 'get') {
 
 					const endpoints: { [key: string]: string } = {
@@ -183,6 +189,10 @@ export class Reddit implements INodeType {
 
 				if (operation === 'get') {
 
+					// https://www.reddit.com/dev/api/#GET_r_{subreddit}_about
+					// https://www.reddit.com/dev/api/#GET_r_{subreddit}_about_rules
+					// https://www.reddit.com/dev/api/#GET_sticky
+
 					const qs: IDataObject = {};
 
 					const subreddit = this.getNodeParameter('subreddit', i);
@@ -204,6 +214,9 @@ export class Reddit implements INodeType {
 				// ----------------------------------
 
 				} else if (operation === 'getAll') {
+
+					// https://www.reddit.com/dev/api/#GET_api_trending_subreddits
+					// https://www.reddit.com/dev/api/#POST_api_search_subreddits
 
 					const trending = this.getNodeParameter('trending', i) as IDataObject;
 
@@ -227,6 +240,8 @@ export class Reddit implements INodeType {
 				// ----------------------------------
 
 				if (operation === 'create') {
+
+					// https://www.reddit.com/dev/api/#POST_api_submit
 
 					const qs: IDataObject = {
 						title: this.getNodeParameter('title', i),
@@ -252,6 +267,11 @@ export class Reddit implements INodeType {
 
 				else if (operation === 'getAll') {
 
+					// https://www.reddit.com/dev/api/#GET_hot
+					// https://www.reddit.com/dev/api/#GET_new
+					// https://www.reddit.com/dev/api/#GET_rising
+					// https://www.reddit.com/dev/api/#GET_{sort}
+
 					const subreddit = this.getNodeParameter('subreddit', i);
 					const content = this.getNodeParameter('content', i);
 					const endpoint = `r/${subreddit}/${content}.json`;
@@ -271,6 +291,8 @@ export class Reddit implements INodeType {
 				// ----------------------------------
 
 				if (operation === 'get') {
+
+					// https://www.reddit.com/dev/api/#GET_user_{username}_{where}
 
 					const username = this.getNodeParameter('username', i) as string;
 					const details = this.getNodeParameter('details', i) as string;
