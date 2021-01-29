@@ -30,8 +30,8 @@ export const commentFields = [
 	//         comment: create
 	// ----------------------------------
 	{
-		displayName: 'Target',
-		name: 'target',
+		displayName: 'Target ID',
+		name: 'targetId',
 		type: 'string',
 		default: '',
 		description: 'ID of the comment target.',

@@ -134,7 +134,7 @@ export class Reddit implements INodeType {
 				// ----------------------------------
 
 				const qs: IDataObject = {
-					thing_id: this.getNodeParameter('target', i),
+					thing_id: this.getNodeParameter('targetId', i),
 					text: this.getNodeParameter('text', i),
 				};
 
