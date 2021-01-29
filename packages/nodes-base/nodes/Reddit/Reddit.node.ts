@@ -280,6 +280,10 @@ export class Reddit implements INodeType {
 						? await redditApiRequest.call(this, 'GET', endpoint, {})
 						: await handleListing.call(this, i, endpoint);
 
+					if (details === 'about') {
+						responseData = responseData.data;
+					}
+
 				}
 
 			}
