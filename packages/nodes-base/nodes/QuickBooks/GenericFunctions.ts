@@ -83,12 +83,15 @@ export async function quickBooksApiRequest(
 		options.headers!['Content-Type'] = 'application/octet-stream';
 	}
 
-	if (resource === 'invoice' && (operation === 'void' || operation === 'delete')) {
+	if (
+		(resource === 'invoice' && (operation === 'void' || operation === 'delete')) ||
+		(resource === 'payment' && (operation === 'void' || operation === 'delete'))
+	)
+	 {
 		options.headers!['Content-Type'] = 'application/json';
 	}
 
 	try {
-		console.log(JSON.stringify(options, null, 2));
 		return await this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
 	} catch (error) {
 
