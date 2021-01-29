@@ -39,7 +39,7 @@ export const subredditFields = [
 		type: 'options',
 		required: true,
 		default: 'about',
-		description: 'Subreddit content to retrieve',
+		description: 'Subreddit content to retrieve.',
 		options: [
 			{
 				name: 'About',
@@ -75,7 +75,7 @@ export const subredditFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The name of subreddit to retrieve the content from',
+		description: 'The name of subreddit to retrieve the content from.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -92,7 +92,7 @@ export const subredditFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results',
+		description: 'Return all results.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -109,7 +109,7 @@ export const subredditFields = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return',
+		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
@@ -136,7 +136,7 @@ export const subredditFields = [
 		name: 'trending',
 		type: 'boolean',
 		default: false,
-		description: 'Currently trending subreddits in all of Reddit',
+		description: 'Currently trending subreddits in all of Reddit.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -153,7 +153,7 @@ export const subredditFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results',
+		description: 'Return all results.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -173,7 +173,7 @@ export const subredditFields = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return',
+		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,

@@ -32,7 +32,7 @@ export const userFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Reddit ID of the user to retrieve',
+		description: 'Reddit ID of the user to retrieve.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -50,7 +50,7 @@ export const userFields = [
 		type: 'options',
 		required: true,
 		default: 'about',
-		description: 'Details of the user to retrieve',
+		description: 'Details of the user to retrieve.',
 		options: [
 			{
 				name: 'About',
@@ -89,7 +89,7 @@ export const userFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results',
+		description: 'Return all results.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -112,7 +112,7 @@ export const userFields = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return',
+		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,

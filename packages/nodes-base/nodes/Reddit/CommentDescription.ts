@@ -34,7 +34,7 @@ export const commentFields = [
 		name: 'target',
 		type: 'string',
 		default: '',
-		description: 'ID of the comment target',
+		description: 'ID of the comment target.',
 		placeholder: 't3_15bfi0',
 		displayOptions: {
 			show: {
@@ -53,7 +53,7 @@ export const commentFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Text of the comment (Markdown supported)',
+		description: 'Text of the comment. Markdown supported.',
 		displayOptions: {
 			show: {
 				resource: [

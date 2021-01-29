@@ -39,7 +39,7 @@ export const postFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Subreddit to create the post in',
+		description: 'Subreddit to create the post in.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -96,7 +96,7 @@ export const postFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Title of the post, up to 300 characters long',
+		description: 'Title of the post, up to 300 characters long.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -114,7 +114,7 @@ export const postFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'URL of the post',
+		description: 'URL of the post.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -138,7 +138,7 @@ export const postFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Text of the post (Markdown supported)',
+		description: 'Text of the post. Markdown supported.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -184,7 +184,7 @@ export const postFields = [
 		name: 'best',
 		type: 'boolean',
 		default: false,
-		description: 'Best posts in all of Reddit',
+		description: 'Best posts in all of Reddit.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -202,7 +202,7 @@ export const postFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The name of subreddit to retrieve the posts from',
+		description: 'The name of subreddit to retrieve the posts from.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -223,7 +223,7 @@ export const postFields = [
 		type: 'options',
 		required: true,
 		default: 'top',
-		description: 'Content of posts to retrieve',
+		description: 'Content of the posts to retrieve.',
 		options: [
 			{
 				name: 'Top Posts',
@@ -261,7 +261,7 @@ export const postFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results',
+		description: 'Return all results.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -281,7 +281,7 @@ export const postFields = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return',
+		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
