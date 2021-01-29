@@ -1,23 +1,3 @@
-// export type Line = AccountBasedLine | ItemBasedLine;
-
-// export interface AccountBasedLine {
-// 	AccountBasedExpenseLineDetail: {
-// 		AccountRef: Ref;
-// 	};
-// 	DetailType: 'AccountBasedExpenseLineDetail';
-// 	Amount: number;
-// 	Description: string;
-// }
-
-// export interface ItemBasedLine {
-// 	ItemBasedExpenseLineDetail: {
-// 		ItemRef: Ref;
-// 	};
-// 	DetailType: 'ItemBasedExpenseLineDetail';
-// 	Amount: number;
-// 	Description: string;
-// }
-
 export interface BillingAddress {
 	Line4: string;
 	Line3: string;
