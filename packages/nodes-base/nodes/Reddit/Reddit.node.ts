@@ -15,9 +15,9 @@ import {
 } from './GenericFunctions';
 
 import {
-	commentFields,
-	commentOperations,
-} from './CommentDescription';
+	postCommentFields,
+	postCommentOperations,
+} from './PostCommentDescription';
 
 import {
 	postFields,
@@ -61,7 +61,7 @@ export class Reddit implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'comment',
+							'postComment',
 							'post',
 							'profile',
 						],
@@ -84,6 +84,10 @@ export class Reddit implements INodeType {
 						value: 'post',
 					},
 					{
+						name: 'Post Comment',
+						value: 'postComment',
+					},
+					{
 						name: 'Profile',
 						value: 'profile',
 					},
@@ -99,8 +103,8 @@ export class Reddit implements INodeType {
 				default: 'comment',
 				description: 'Resource to consume',
 			},
-			...commentOperations,
-			...commentFields,
+			...postCommentOperations,
+			...postCommentFields,
 			...profileOperations,
 			...profileFields,
 			...subredditOperations,
@@ -124,21 +128,38 @@ export class Reddit implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 
 			// *********************************************************************
-			// 															  comment
+			// 														 post comment
 			// *********************************************************************
 
-			if (resource === 'comment') {
+			if (resource === 'postComment') {
 
 				// ----------------------------------
-				//         comment: create
+				//        postComment: add
 				// ----------------------------------
 
-				const qs: IDataObject = {
-					text: this.getNodeParameter('text', i),
-					thing_id: this.getNodeParameter('targetId', i),
-				};
+				if (operation === 'add') {
 
-				responseData = await redditApiRequest.call(this, 'POST', 'api/comment', qs);
+					const qs: IDataObject = {
+						text: this.getNodeParameter('text', i),
+						thing_id: this.getNodeParameter('targetId', i),
+					};
+
+					responseData = await redditApiRequest.call(this, 'POST', 'api/comment', qs);
+
+				} else if (operation === 'getAll') {
+
+					// ...
+
+				} else if (operation === 'remove') {
+
+					// ...
+
+				} else if (operation === 'reply') {
+
+					// ...
+
+				}
+
 
 			// *********************************************************************
 			// 															  profile

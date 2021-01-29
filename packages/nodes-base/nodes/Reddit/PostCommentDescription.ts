@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const commentOperations = [
+export const postCommentOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -11,23 +11,35 @@ export const commentOperations = [
 		description: 'Operation to perform',
 		options: [
 			{
-				name: 'Create',
-				value: 'create',
+				name: 'Add',
+				value: 'add',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+			},
+			{
+				name: 'Remove',
+				value: 'remove',
+			},
+			{
+				name: 'Reply',
+				value: 'reply',
 			},
 		],
 		displayOptions: {
 			show: {
 				resource: [
-					'comment',
+					'postComment',
 				],
 			},
 		},
 	},
 ] as INodeProperties[];
 
-export const commentFields = [
+export const postCommentFields = [
 	// ----------------------------------
-	//         comment: create
+	//        postComment: add
 	// ----------------------------------
 	{
 		displayName: 'Target ID',
@@ -39,10 +51,10 @@ export const commentFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'comment',
+					'postComment',
 				],
 				operation: [
-					'create',
+					'add',
 				],
 			},
 		},
@@ -57,10 +69,10 @@ export const commentFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'comment',
+					'postComment',
 				],
 				operation: [
-					'create',
+					'add',
 				],
 			},
 		},
