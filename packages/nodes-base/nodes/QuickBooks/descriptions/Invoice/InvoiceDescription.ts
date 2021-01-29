@@ -3,10 +3,6 @@ import {
 } from 'n8n-workflow';
 
 import {
-	createLineProperty,
-} from '../createLineProperty';
-
-import {
 	invoiceAdditionalFieldsOptions
 } from './InvoiceAdditionalFieldsOptions';
 
@@ -108,10 +104,6 @@ export const invoiceFields = [
 				type: 'options',
 				default: 'SalesItemLineDetail',
 				options: [
-					{
-						name: 'Description Only Line Detail',
-						value: 'DescriptionOnlyLineDetail',
-					},
 					{
 						name: 'Sales Item Line Detail',
 						value: 'SalesItemLineDetail',

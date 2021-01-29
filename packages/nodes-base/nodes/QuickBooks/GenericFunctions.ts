@@ -257,7 +257,7 @@ export async function loadResource(
 /**
  * Populate the `Line` property in a request body.
  */
-export function populateLineProperty(
+export function processLines(
 	this: IExecuteFunctions,
 	body: IDataObject,
 	lines: IDataObject[],
@@ -274,7 +274,6 @@ export function populateLineProperty(
 					},
 				};
 				delete line.accountId;
-
 			} else if (line.DetailType === 'ItemBasedExpenseLineDetail') {
 				line.ItemBasedExpenseLineDetail = {
 					ItemRef: {
@@ -283,24 +282,31 @@ export function populateLineProperty(
 				};
 				delete line.itemId;
 			}
+
 		} else if (resource === 'estimate') {
-
 			if (line.DetailType === 'SalesItemLineDetail') {
-
 				line.SalesItemLineDetail = {
 					ItemRef: {
 						value: line.itemId,
 					},
 				};
 				delete line.itemId;
-
 			}
 
+		} else if (resource === 'invoice') {
+			if (line.DetailType === 'SalesItemLineDetail') {
+				line.SalesItemLineDetail = {
+					ItemRef: {
+						value: line.itemId,
+					},
+				};
+				delete line.itemId;
+			}
 		}
+
 	});
 
-	body.Line = lines;
-	return body;
+	return lines;
 }
 
 /**

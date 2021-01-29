@@ -36,7 +36,7 @@ import {
 	handleListing,
 	loadResource,
 	populateFields,
-	populateLineProperty,
+	processLines,
 	quickBooksApiRequest,
 } from './GenericFunctions';
 
@@ -179,9 +179,9 @@ export class QuickBooks implements INodeType {
 
 					lines.forEach(line => {
 						if (line.DetailType === 'AccountBasedExpenseLineDetail' && line.accountId === undefined) {
-							throw new Error('Please enter an account ID for the associated account.');
+							throw new Error('Please enter an account ID for the associated line.');
 						} else if (line.DetailType === 'ItemBasedExpenseLineDetail' && line.accountId === undefined) {
-							throw new Error('Please enter an item ID for the associated item.');
+							throw new Error('Please enter an item ID for the associated line.');
 						}
 					});
 
@@ -191,7 +191,7 @@ export class QuickBooks implements INodeType {
 						},
 					} as IDataObject;
 
-					body = populateLineProperty.call(this, body, lines, resource);
+					body.Line = processLines.call(this, body, lines, resource);
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -418,7 +418,7 @@ export class QuickBooks implements INodeType {
 
 					lines.forEach(line => {
 						if (line.DetailType === 'SalesItemLineDetail' && line.itemId === undefined) {
-							throw new Error('Please enter an item ID for the associated item.');
+							throw new Error('Please enter an item ID for the associated line.');
 						}
 					});
 
@@ -428,7 +428,7 @@ export class QuickBooks implements INodeType {
 						},
 					} as IDataObject;
 
-					body = populateLineProperty.call(this, body, lines, resource);
+					body.Line = processLines.call(this, body, lines, resource);
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -522,12 +522,19 @@ export class QuickBooks implements INodeType {
 						throw new Error('Please enter detail type, amount and description for every line.');
 					}
 
+					lines.forEach(line => {
+						if (line.DetailType === 'SalesItemLineDetail' && line.itemId === undefined) {
+							throw new Error('Please enter an item ID for the associated line.');
+						}
+					});
+
 					let body = {
 						CustomerRef: {
 							value: this.getNodeParameter('CustomerRef', i),
 						},
-						Line: lines,
 					} as IDataObject;
+
+					body.Line = processLines.call(this, body, lines, resource);
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
