@@ -123,47 +123,47 @@ export class Reddit implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 
-		if (resource === 'comment') {
+			if (resource === 'comment') {
 
-			// ----------------------------------
-			//         comment: create
-			// ----------------------------------
+				// ----------------------------------
+				//         comment: create
+				// ----------------------------------
 
-			const qs: IDataObject = {
-				thing_id: this.getNodeParameter('target', i),
-				text: this.getNodeParameter('text', i),
-			};
-
-			responseData = await redditApiRequest.call(this, 'POST', 'api/comment', qs);
-
-		} else if (resource === 'profile') {
-
-			// ----------------------------------
-			//         profile: get
-			// ----------------------------------
-
-			if (operation === 'get') {
-
-				const endpoints: {[key: string]: string} = {
-					identity: 'me',
-					blockedUsers: 'me/blocked',
-					friends: 'me/friends',
-					karma: 'me/karma',
-					prefs: 'me/prefs',
-					trophies: 'me/trophies',
+				const qs: IDataObject = {
+					thing_id: this.getNodeParameter('target', i),
+					text: this.getNodeParameter('text', i),
 				};
 
-				const details = this.getNodeParameter('details', i) as string;
-				const endpoint = `api/v1/${endpoints[details]}`;
-				responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
+				responseData = await redditApiRequest.call(this, 'POST', 'api/comment', qs);
 
-				if (details === 'identity') {
-					responseData = responseData.features;
+			} else if (resource === 'profile') {
+
+				// ----------------------------------
+				//         profile: get
+				// ----------------------------------
+
+				if (operation === 'get') {
+
+					const endpoints: {[key: string]: string} = {
+						identity: 'me',
+						blockedUsers: 'me/blocked',
+						friends: 'me/friends',
+						karma: 'me/karma',
+						prefs: 'me/prefs',
+						trophies: 'me/trophies',
+					};
+
+					const details = this.getNodeParameter('details', i) as string;
+					const endpoint = `api/v1/${endpoints[details]}`;
+					responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
+
+					if (details === 'identity') {
+						responseData = responseData.features;
+					}
+
 				}
 
-			}
-
-		} else if (resource === 'subreddit') {
+			} else if (resource === 'subreddit') {
 
 				// ----------------------------------
 				//        subreddit: get
