@@ -96,7 +96,7 @@ export class Reddit implements INodeType {
 						value: 'user',
 					},
 				],
-				default: 'comment',
+				default: 'post',
 				description: 'Resource to consume',
 			},
 			...postCommentOperations,
@@ -152,6 +152,7 @@ export class Reddit implements INodeType {
 					}
 
 					responseData = await redditApiRequest.call(this, 'POST', 'api/submit', qs);
+					delete responseData.jquery;
 
 				// ----------------------------------
 				//         post: delete
@@ -237,8 +238,10 @@ export class Reddit implements INodeType {
 					const postId = this.getNodeParameter('postId', i) as string;
 					const endpoint = `r/${subreddit}/comments/${postId}.json`;
 
-					responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
-					responseData = responseData[1].data.children.map((child: any) => child.data); // tslint:disable-line:no-any
+					responseData = await handleListing.call(this, i, endpoint);
+					// console.log(responseData);
+					// responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
+					// responseData = responseData[1].data.children.map((child: any) => child.data); // tslint:disable-line:no-any
 
 				} else if (operation === 'remove') {
 

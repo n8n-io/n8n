@@ -23,6 +23,7 @@ export async function redditApiRequest(
 ): Promise<any> { // tslint:disable-line:no-any
 
 	const resource = this.getNodeParameter('resource', 0) as string;
+
 	const authRequired = ['profile', 'post', 'postComment'].includes(resource);
 
 	const options: OptionsWithUri = {
@@ -40,7 +41,7 @@ export async function redditApiRequest(
 	}
 
 	try {
-		console.log(options);
+		// console.log(options);
 		return authRequired
 			? await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options)
 			: await this.helpers.request.call(this, options);
@@ -68,16 +69,21 @@ export async function redditApiRequestAllItems(
 	let responseData;
 	const returnData: IDataObject[] = [];
 
+	const resource = this.getNodeParameter('resource', 0) as string;
+	const operation = this.getNodeParameter('operation', 0) as string;
+
 	do {
-		console.log(method);
-		console.log(endpoint);
-		console.log(qs);
+		// console.log(method);
+		// console.log(endpoint);
+		// console.log(qs);
 		responseData = await redditApiRequest.call(this, method, endpoint, qs);
 		console.log(responseData);
 		qs.after = responseData.after;
 
 		if (endpoint === 'api/search_subreddits.json') {
 			responseData.subreddits.forEach((child: any) => returnData.push(child)); // tslint:disable-line:no-any
+		} else if (resource === 'postComment' && operation === 'getAll') {
+			responseData[1].data.children.forEach((child: any) => returnData.push(child.data)); // tslint:disable-line:no-any
 		} else {
 			responseData.data.children.forEach((child: any) => returnData.push(child.data)); // tslint:disable-line:no-any
 		}

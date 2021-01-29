@@ -18,7 +18,7 @@ export const postOperations = [
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Withdraw a post from a subreddit.',
+				description: 'Delete a post from a subreddit.',
 			},
 			{
 				name: 'Get',
