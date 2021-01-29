@@ -50,10 +50,6 @@ export const subredditFields = [
 				value: 'rules',
 			},
 			{
-				name: 'Sidebar',
-				value: 'sidebar',
-			},
-			{
 				name: 'Sticky Posts',
 				value: 'sticky',
 			},
