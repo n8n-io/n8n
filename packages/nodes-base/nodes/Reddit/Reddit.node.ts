@@ -128,7 +128,7 @@ export class Reddit implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 
 			// *********************************************************************
-			// 														 post comment
+			// 														 postComment
 			// *********************************************************************
 
 			if (resource === 'postComment') {
@@ -139,24 +139,54 @@ export class Reddit implements INodeType {
 
 				if (operation === 'add') {
 
+					// https://www.reddit.com/dev/api/#POST_api_comment
+
+					const postTypePrefix = 't3_';
+
 					const qs: IDataObject = {
-						text: this.getNodeParameter('text', i),
-						thing_id: this.getNodeParameter('targetId', i),
+						text: this.getNodeParameter('commentText', i),
+						thing_id: postTypePrefix + this.getNodeParameter('postId', i),
 					};
 
 					responseData = await redditApiRequest.call(this, 'POST', 'api/comment', qs);
+					delete responseData.jquery;
 
 				} else if (operation === 'getAll') {
 
-					// ...
+					const subreddit = this.getNodeParameter('subreddit', i);
+					const postId = this.getNodeParameter('postId', i) as string;
+					const endpoint = `r/${subreddit}/comments/${postId}.json`;
+
+					responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
+					responseData = responseData[1].data.children.map((child: any) => child.data); // tslint:disable-line:no-any
 
 				} else if (operation === 'remove') {
 
-					// ...
+					// https://www.reddit.com/dev/api/#POST_api_del
+
+					const commentTypePrefix = 't1_';
+
+					const qs: IDataObject = {
+						id: commentTypePrefix + this.getNodeParameter('commentId', i),
+					};
+
+					await redditApiRequest.call(this, 'POST', 'api/del', qs);
+
+					responseData = { success: true };
 
 				} else if (operation === 'reply') {
 
-					// ...
+					// https://www.reddit.com/dev/api/#POST_api_comment
+
+					const commentTypePrefix = 't1_';
+
+					const qs: IDataObject = {
+						text: this.getNodeParameter('replyText', i),
+						thing_id: commentTypePrefix + this.getNodeParameter('commentId', i),
+					};
+
+					responseData = await redditApiRequest.call(this, 'POST', 'api/comment', qs);
+					delete responseData.jquery;
 
 				}
 
@@ -214,13 +244,11 @@ export class Reddit implements INodeType {
 					// https://www.reddit.com/dev/api/#GET_r_{subreddit}_about_rules
 					// https://www.reddit.com/dev/api/#GET_sticky
 
-					const qs: IDataObject = {};
-
 					const subreddit = this.getNodeParameter('subreddit', i);
 					const content = this.getNodeParameter('content', i) as string;
 					const endpoint = `r/${subreddit}/about/${content}.json`;
 
-					responseData = await redditApiRequest.call(this, 'GET', endpoint, qs);
+					responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
 
 					if (content === 'rules') {
 						responseData = responseData.rules;

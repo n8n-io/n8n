@@ -23,7 +23,7 @@ export async function redditApiRequest(
 ): Promise<any> { // tslint:disable-line:no-any
 
 	const resource = this.getNodeParameter('resource', 0) as string;
-	const authRequired = ['profile', 'post', 'comment'].includes(resource);
+	const authRequired = ['profile', 'post', 'postComment'].includes(resource);
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -40,6 +40,7 @@ export async function redditApiRequest(
 	}
 
 	try {
+		console.log(options);
 		return authRequired
 			? await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options)
 			: await this.helpers.request.call(this, options);
