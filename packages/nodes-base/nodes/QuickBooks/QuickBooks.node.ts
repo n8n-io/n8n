@@ -398,6 +398,8 @@ export class QuickBooks implements INodeType {
 			// 															estimate
 			// *********************************************************************
 
+			// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/estimate
+
 			} else if (resource === 'estimate') {
 
 				// ----------------------------------
@@ -503,6 +505,8 @@ export class QuickBooks implements INodeType {
 			// *********************************************************************
 			// 															invoice
 			// *********************************************************************
+
+			// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/invoice
 
 			} else if (resource === 'invoice') {
 
@@ -661,6 +665,8 @@ export class QuickBooks implements INodeType {
 			// 															  item
 			// *********************************************************************
 
+			// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/item
+
 			} else if (resource === 'item')	{
 
 				// ----------------------------------
@@ -688,6 +694,8 @@ export class QuickBooks implements INodeType {
 			// *********************************************************************
 			// 															payment
 			// *********************************************************************
+
+			// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/payment
 
 			} else if (resource === 'payment') {
 
@@ -828,6 +836,8 @@ export class QuickBooks implements INodeType {
 			// *********************************************************************
 			// 															vendor
 			// *********************************************************************
+
+			// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/vendor
 
 			} else if (resource === 'vendor') {
 
