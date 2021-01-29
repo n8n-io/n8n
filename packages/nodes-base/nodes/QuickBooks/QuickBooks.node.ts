@@ -180,7 +180,7 @@ export class QuickBooks implements INodeType {
 					lines.forEach(line => {
 						if (line.DetailType === 'AccountBasedExpenseLineDetail' && line.accountId === undefined) {
 							throw new Error('Please enter an account ID for the associated line.');
-						} else if (line.DetailType === 'ItemBasedExpenseLineDetail' && line.accountId === undefined) {
+						} else if (line.DetailType === 'ItemBasedExpenseLineDetail' && line.itemId === undefined) {
 							throw new Error('Please enter an item ID for the associated line.');
 						}
 					});

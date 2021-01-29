@@ -90,7 +90,7 @@ export const billFields = [
 				displayName: 'Detail Type',
 				name: 'DetailType',
 				type: 'options',
-				default: 'ItemBasedExpenseLine',
+				default: 'ItemBasedExpenseLineDetail',
 				options: [
 					{
 						name: 'Account-Based Expense Line Detail',
