@@ -14,6 +14,8 @@ import {
 import {
 	clockifyApiRequest,
 	clockifyApiRequestAllItems,
+	computeValues,
+	flatten,
 } from './GenericFunctions';
 
 import {
@@ -509,6 +511,45 @@ export class Clockify implements INodeType {
 					);
 
 					responseData = { success: true };
+				}
+
+				if (operation === 'list') {
+					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					const usersData = await clockifyApiRequest.call(
+						this,
+						'GET',
+						`/workspaces/${workspaceId}/users`,
+						{},
+						qs,
+					);
+					Object.assign(qs, filters);
+					const entryData = await Promise.all(usersData.map(async (user: { id: string; email: string; name: string; }) => {
+						const endpoint = `workspaces/${workspaceId}/user/${user.id}/time-entries`;
+						const entries = await clockifyApiRequest.call(
+							this,
+							'GET',
+							endpoint,
+							{},
+							qs,
+						);
+						return entries
+							.map(
+								(entry: any) => ({
+									...entry,
+									...computeValues(entry, user),
+									user: {
+										id: user.id,
+										email: user.email,
+										name: user.name,
+									}
+								})
+							);
+
+					}))
+					responseData = flatten(entryData);
 				}
 
 				if (operation === 'get') {

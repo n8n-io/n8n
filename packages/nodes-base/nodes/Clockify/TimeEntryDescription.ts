@@ -28,7 +28,12 @@ export const timeEntryOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get time entrie',
+				description: 'Get time entry',
+			},
+			{
+				name: 'List',
+				value: 'list',
+				description: 'List time entries',
 			},
 			{
 				name: 'Update',
@@ -246,6 +251,43 @@ export const timeEntryFields = [
 			},
 		],
 	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 timeEntry:list                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'timeEntry',
+				],
+				operation: [
+					'list',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'From',
+				name: 'start',
+				type: 'dateTime',
+				default: '',
+				description: 'Only return time entries with a date on or after the given date.',
+			},
+			{
+				displayName: 'To',
+				name: 'end',
+				type: 'dateTime',
+				default: '',
+				description: 'Only return time entries with a date on or before the given date.',
+			},
+		],
+	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 timeEntry:update                           */
 	/* -------------------------------------------------------------------------- */
