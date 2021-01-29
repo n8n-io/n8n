@@ -104,7 +104,44 @@ export const issueAttachmentFields = [
 		default: '',
 		description: 'The ID of the attachment.',
 	},
-
+	{
+		displayName: 'Download',
+		name: 'download',
+		type: 'boolean',
+		default: false,
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'issueAttachment',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Binary Property',
+		name: 'binaryProperty',
+		type: 'string',
+		default: 'data',
+		displayOptions: {
+			show: {
+				resource: [
+					'issueAttachment',
+				],
+				operation: [
+					'get',
+				],
+				download: [
+					true,
+				],
+			},
+		},
+		description: 'Object property name which holds binary data.',
+		required: true,
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                issueAttachment:getAll                      */
 	/* -------------------------------------------------------------------------- */
@@ -167,7 +204,44 @@ export const issueAttachmentFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-
+	{
+		displayName: 'Download',
+		name: 'download',
+		type: 'boolean',
+		default: false,
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'issueAttachment',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Binary Property',
+		name: 'binaryProperty',
+		type: 'string',
+		default: 'data',
+		displayOptions: {
+			show: {
+				resource: [
+					'issueAttachment',
+				],
+				operation: [
+					'getAll',
+				],
+				download: [
+					true,
+				],
+			},
+		},
+		description: 'Object property name which holds binary data.',
+		required: true,
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                issueAttachment:remove                      */
 	/* -------------------------------------------------------------------------- */

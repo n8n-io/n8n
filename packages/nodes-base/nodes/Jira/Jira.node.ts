@@ -28,7 +28,7 @@ import {
 import {
 	issueCommentFields,
 	issueCommentOperations,
- } from './IssueCommentDescription';
+} from './IssueCommentDescription';
 
 import {
 	issueFields,
@@ -41,7 +41,7 @@ import {
 	INotificationRecipients,
 	INotify,
 	NotificationRecipientsRestrictions,
- } from './IssueInterface';
+} from './IssueInterface';
 
 export class Jira implements INodeType {
 	description: INodeTypeDescription = {
@@ -396,11 +396,10 @@ export class Jira implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
-
-		for (let i = 0; i < length; i++) {
-			if (resource === 'issue') {
-				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-post
-				if (operation === 'create') {
+		if (resource === 'issue') {
+			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-post
+			if (operation === 'create') {
+				for (let i = 0; i < length; i++) {
 					const summary = this.getNodeParameter('summary', i) as string;
 					const projectId = this.getNodeParameter('project', i) as string;
 					const issueTypeId = this.getNodeParameter('issueType', i) as string;
@@ -469,9 +468,12 @@ export class Jira implements INodeType {
 					}
 					body.fields = fields;
 					responseData = await jiraSoftwareCloudApiRequest.call(this, '/api/2/issue', 'POST', body);
+					returnData.push(responseData);
 				}
-				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-put
-				if (operation === 'update') {
+			}
+			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-put
+			if (operation === 'update') {
+				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: IIssue = {};
@@ -540,10 +542,12 @@ export class Jira implements INodeType {
 					}
 
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'PUT', body);
-					responseData = { success: true };
+					returnData.push({ success: true });
 				}
-				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-get
-				if (operation === 'get') {
+			}
+			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-get
+			if (operation === 'get') {
+				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					if (additionalFields.fields) {
@@ -561,12 +565,13 @@ export class Jira implements INodeType {
 					if (additionalFields.updateHistory) {
 						qs.updateHistory = additionalFields.updateHistory as string;
 					}
-
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'GET', {}, qs);
-
+					returnData.push(responseData);
 				}
-				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-search-post
-				if (operation === 'getAll') {
+			}
+			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-search-post
+			if (operation === 'getAll') {
+				for (let i = 0; i < length; i++) {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const body: IDataObject = {};
@@ -587,21 +592,27 @@ export class Jira implements INodeType {
 						responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/search`, 'POST', body);
 						responseData = responseData.issues;
 					}
+					returnData.push.apply(returnData, responseData);
 				}
-				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-changelog-get
-				if (operation === 'changelog') {
+			}
+			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-changelog-get
+			if (operation === 'changelog') {
+				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll) {
-						responseData = await jiraSoftwareCloudApiRequestAllItems.call(this, 'values',`/api/2/issue/${issueKey}/changelog`, 'GET');
+						responseData = await jiraSoftwareCloudApiRequestAllItems.call(this, 'values', `/api/2/issue/${issueKey}/changelog`, 'GET');
 					} else {
 						qs.maxResults = this.getNodeParameter('limit', i) as number;
 						responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}/changelog`, 'GET', {}, qs);
 						responseData = responseData.values;
 					}
+					returnData.push.apply(returnData, responseData);
 				}
-				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-notify-post
-				if (operation === 'notify') {
+			}
+			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-notify-post
+			if (operation === 'notify') {
+				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const jsonActive = this.getNodeParameter('jsonParameters', 0) as boolean;
@@ -660,7 +671,7 @@ export class Jira implements INodeType {
 						const notificationRecipientsRestrictions: NotificationRecipientsRestrictions = {};
 						if (notificationRecipientsRestrictionsValues) {
 							// @ts-ignore
-							if (notificationRecipientsRestrictionsValues.groups. length > 0) {
+							if (notificationRecipientsRestrictionsValues.groups.length > 0) {
 								// @ts-ignore
 								notificationRecipientsRestrictions.groups = notificationRecipientsRestrictionsValues.groups.map(group => {
 									return {
@@ -681,10 +692,12 @@ export class Jira implements INodeType {
 						}
 					}
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}/notify`, 'POST', body, qs);
-
+					returnData.push(responseData);
 				}
-				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-transitions-get
-				if (operation === 'transitions') {
+			}
+			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-transitions-get
+			if (operation === 'transitions') {
+				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					if (additionalFields.transitionId) {
@@ -698,20 +711,24 @@ export class Jira implements INodeType {
 					}
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}/transitions`, 'GET', {}, qs);
 					responseData = responseData.transitions;
-
+					returnData.push.apply(returnData, responseData);
 				}
-				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-delete
-				if (operation === 'delete') {
+			}
+			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-delete
+			if (operation === 'delete') {
+				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const deleteSubtasks = this.getNodeParameter('deleteSubtasks', i) as boolean;
 					qs.deleteSubtasks = deleteSubtasks;
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'DELETE', {}, qs);
-					responseData = { success: true };
+					returnData.push({ success: true });
 				}
 			}
-			if (resource === 'issueAttachment') {
-				//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-issue-issueidorkey-attachments-post
-				if (operation === 'add') {
+		}
+		if (resource === 'issueAttachment') {
+			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-issue-issueidorkey-attachments-post
+			if (operation === 'add') {
+				for (let i = 0; i < length; i++) {
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 
@@ -745,19 +762,39 @@ export class Jira implements INodeType {
 							},
 						},
 					);
+					returnData.push.apply(returnData, responseData);
 				}
-				//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-attachment-id-delete
-				if (operation === 'remove') {
+			}
+			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-attachment-id-delete
+			if (operation === 'remove') {
+				for (let i = 0; i < length; i++) {
 					const attachmentId = this.getNodeParameter('attachmentId', i) as string;
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/attachment/${attachmentId}`, 'DELETE', {}, qs);
-					responseData = { success: true };
+					returnData.push({ success: true });
 				}
-				//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-attachment-id-get
-				if (operation === 'get') {
+			}
+			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-attachment-id-get
+			if (operation === 'get') {
+				const download = this.getNodeParameter('download', 0) as boolean;
+				for (let i = 0; i < length; i++) {
 					const attachmentId = this.getNodeParameter('attachmentId', i) as string;
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/attachment/${attachmentId}`, 'GET', {}, qs);
+					returnData.push({ json: responseData });
 				}
-				if (operation === 'getAll') {
+				if (download) {
+					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0) as string;
+					for (const [index, attachment] of returnData.entries()) {
+						returnData[index]['binary'] = {};
+						//@ts-ignore
+						const buffer = await jiraSoftwareCloudApiRequest.call(this, '', 'GET', {}, {}, attachment?.json!.content, { json: false, encoding: null });
+						//@ts-ignore
+						returnData[index]['binary'][binaryPropertyName] = await this.helpers.prepareBinaryData(buffer, attachment.json.filename, attachment.json.mimeType);
+					}
+				}
+			}
+			if (operation === 'getAll') {
+				const download = this.getNodeParameter('download', 0) as boolean;
+				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const { fields: { attachment } } = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'GET', {}, qs);
@@ -766,12 +803,26 @@ export class Jira implements INodeType {
 						const limit = this.getNodeParameter('limit', i) as number;
 						responseData = responseData.slice(0, limit);
 					}
+					responseData = responseData.map((data: IDataObject) => ({ json: data }));
+					returnData.push.apply(returnData, responseData);
+				}
+				if (download) {
+					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0) as string;
+					for (const [index, attachment] of returnData.entries()) {
+						returnData[index]['binary'] = {};
+						//@ts-ignore
+						const buffer = await jiraSoftwareCloudApiRequest.call(this, '', 'GET', {}, {}, attachment.json.content, { json: false, encoding: null });
+						//@ts-ignore
+						returnData[index]['binary'][binaryPropertyName] = await this.helpers.prepareBinaryData(buffer, attachment.json.filename, attachment.json.mimeType);
+					}
 				}
 			}
+		}
 
-			if (resource === 'issueComment') {
-				//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-post
-				if (operation === 'add') {
+		if (resource === 'issueComment') {
+			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-post
+			if (operation === 'add') {
+				for (let i = 0; i < length; i++) {
 					const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
@@ -812,18 +863,23 @@ export class Jira implements INodeType {
 					}
 
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/issue/${issueKey}/comment`, 'POST', body, qs);
+					returnData.push(responseData);
 				}
-				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-get
-				if (operation === 'get') {
+			}
+			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-get
+			if (operation === 'get') {
+				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const commentId = this.getNodeParameter('commentId', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					Object.assign(qs, options);
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/issue/${issueKey}/comment/${commentId}`, 'GET', {}, qs);
-
+					returnData.push(responseData);
 				}
-				//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-get
-				if (operation === 'getAll') {
+			}
+			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-get
+			if (operation === 'getAll') {
+				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
@@ -837,16 +893,21 @@ export class Jira implements INodeType {
 						responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/issue/${issueKey}/comment`, 'GET', body, qs);
 						responseData = responseData.comments;
 					}
+					returnData.push.apply(returnData, responseData);
 				}
-				//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-id-delete
-				if (operation === 'remove') {
+			}
+			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-id-delete
+			if (operation === 'remove') {
+				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const commentId = this.getNodeParameter('commentId', i) as string;
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/issue/${issueKey}/comment/${commentId}`, 'DELETE', {}, qs);
-					responseData = { success: true };
+					returnData.push({ success: true });
 				}
-				//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-id-put
-				if (operation === 'update') {
+			}
+			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-id-put
+			if (operation === 'update') {
+				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const commentId = this.getNodeParameter('commentId', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
@@ -886,14 +947,15 @@ export class Jira implements INodeType {
 						Object.assign(body, { body: json });
 					}
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/issue/${issueKey}/comment/${commentId}`, 'PUT', body, qs);
+					returnData.push(responseData);
 				}
 			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
-			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		if (resource === 'issueAttachment' && (operation === 'getAll' || operation === 'get')) {
+			return this.prepareOutputData(returnData as unknown as INodeExecutionData[]);
+		} else {
+			return [this.helpers.returnJsonArray(returnData)];
+		}
 	}
 }
