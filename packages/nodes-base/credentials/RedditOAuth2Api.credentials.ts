@@ -6,13 +6,7 @@ import {
 const scopes = [
 	'identity',
 	'edit',
-	'flair',
 	'history',
-	'modconfig',
-	'modflair',
-	'modlog',
-	'modposts',
-	'modwiki',
 	'mysubreddits',
 	'privatemessages',
 	'read',
@@ -21,8 +15,6 @@ const scopes = [
 	'submit',
 	'subscribe',
 	'vote',
-	'wikiedit',
-	'wikiread',
 ];
 
 // https://github.com/reddit-archive/reddit/wiki/OAuth2

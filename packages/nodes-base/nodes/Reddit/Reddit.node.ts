@@ -61,9 +61,9 @@ export class Reddit implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'profile',
 							'comment',
 							'post',
+							'profile',
 						],
 					},
 				},
@@ -134,8 +134,8 @@ export class Reddit implements INodeType {
 				// ----------------------------------
 
 				const qs: IDataObject = {
-					thing_id: this.getNodeParameter('targetId', i),
 					text: this.getNodeParameter('text', i),
+					thing_id: this.getNodeParameter('targetId', i),
 				};
 
 				responseData = await redditApiRequest.call(this, 'POST', 'api/comment', qs);
@@ -152,7 +152,7 @@ export class Reddit implements INodeType {
 
 				if (operation === 'get') {
 
-					const endpoints: {[key: string]: string} = {
+					const endpoints: { [key: string]: string } = {
 						identity: 'me',
 						blockedUsers: 'me/blocked',
 						friends: 'me/friends',
