@@ -13,10 +13,12 @@ export const subredditOperations = [
 			{
 				name: 'Get',
 				value: 'get',
+				description: 'Retrieve background information about a subreddit.',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				description: 'Retrieve information about subreddits from all of Reddit.',
 			},
 		],
 		displayOptions: {
@@ -87,23 +89,6 @@ export const subredditFields = [
 	//        subreddit: getAll
 	// ----------------------------------
 	{
-		displayName: 'Trending',
-		name: 'trending',
-		type: 'boolean',
-		default: false,
-		description: 'Currently trending subreddits in all of Reddit.',
-		displayOptions: {
-			show: {
-				resource: [
-					'subreddit',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -116,9 +101,6 @@ export const subredditFields = [
 				],
 				operation: [
 					'getAll',
-				],
-				trending: [
-					false,
 				],
 			},
 		},
@@ -144,9 +126,6 @@ export const subredditFields = [
 				returnAll: [
 					false,
 				],
-				trending: [
-					false,
-				],
 			},
 		},
 	},
@@ -164,6 +143,13 @@ export const subredditFields = [
 				default: '',
 				description: 'The keyword for the subreddit search.',
 			},
+			{
+				displayName: 'Trending',
+				name: 'trending',
+				type: 'boolean',
+				default: false,
+				description: 'Currently trending subreddits in all of Reddit.',
+			},
 		],
 		displayOptions: {
 			show: {
@@ -172,9 +158,6 @@ export const subredditFields = [
 				],
 				operation: [
 					'getAll',
-				],
-				trending: [
-					false,
 				],
 			},
 		},

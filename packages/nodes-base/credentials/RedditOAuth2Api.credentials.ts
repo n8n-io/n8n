@@ -8,13 +8,9 @@ const scopes = [
 	'edit',
 	'history',
 	'mysubreddits',
-	'privatemessages',
 	'read',
-	'report',
 	'save',
 	'submit',
-	'subscribe',
-	'vote',
 ];
 
 // https://github.com/reddit-archive/reddit/wiki/OAuth2

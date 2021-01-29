@@ -98,24 +98,11 @@ export async function handleListing(
 	this: IExecuteFunctions,
 	i: number,
 	endpoint: string,
+	qs: IDataObject = {},
+	requestMethod: 'GET' | 'POST' = 'GET',
 ): Promise<any> { // tslint:disable-line:no-any
 
 	let responseData;
-
-	const resource = this.getNodeParameter('resource', 0);
-	const operation = this.getNodeParameter('operation', 0);
-
-	const qs: IDataObject = {};
-
-	let requestMethod = 'GET';
-
-	if (resource === 'subreddit' && operation === 'getAll') {
-		const filters = this.getNodeParameter('filters', i) as IDataObject;
-		if (filters.keyword) {
-			qs.query = filters.keyword;
-		}
-		requestMethod = 'POST';
-	}
 
 	const returnAll = this.getNodeParameter('returnAll', i);
 

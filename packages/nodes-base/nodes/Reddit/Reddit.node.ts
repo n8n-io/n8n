@@ -76,10 +76,6 @@ export class Reddit implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Comment',
-						value: 'comment',
-					},
-					{
 						name: 'Post',
 						value: 'post',
 					},
@@ -274,7 +270,6 @@ export class Reddit implements INodeType {
 
 				}
 
-
 			// *********************************************************************
 			// 															  profile
 			// *********************************************************************
@@ -350,14 +345,27 @@ export class Reddit implements INodeType {
 
 					// https://www.reddit.com/dev/api/#GET_api_trending_subreddits
 					// https://www.reddit.com/dev/api/#POST_api_search_subreddits
+					// https://www.reddit.com/r/subreddits.json
 
-					const trending = this.getNodeParameter('trending', i) as IDataObject;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
-					if (trending) {
+					if (filters.trending) {
+
 						const endpoint = 'api/trending_subreddits.json';
 						responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
-					} else {
+						responseData = responseData.subreddit_names.map((name: string) => ({ name }));
+
+					} else if (filters.keyword) {
+
+						const qs: IDataObject = {};
 						const endpoint = 'api/search_subreddits.json';
+						qs.query = filters.keyword;
+
+						responseData = await handleListing.call(this, i, endpoint, qs, 'POST');
+
+					} else {
+
+						const endpoint = 'r/subreddits.json';
 						responseData = await handleListing.call(this, i, endpoint);
 					}
 				}
