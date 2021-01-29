@@ -220,10 +220,15 @@ export class HubspotTrigger implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				for (const field of contactFields) {
 					returnData.push({
-						name: capitalCase(field),
-						value: field,
+						name: capitalCase(field.label),
+						value: field.id,
 					});
 				}
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
 				return returnData;
 			},
 			// Get all the available companies to display them to user so that he can
@@ -232,10 +237,15 @@ export class HubspotTrigger implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				for (const field of companyFields) {
 					returnData.push({
-						name: capitalCase(field),
-						value: field,
+						name: capitalCase(field.label),
+						value: field.id,
 					});
 				}
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
 				return returnData;
 			},
 			// Get all the available deals to display them to user so that he can
@@ -244,10 +254,15 @@ export class HubspotTrigger implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				for (const field of dealFields) {
 					returnData.push({
-						name: capitalCase(field),
-						value: field,
+						name: capitalCase(field.label),
+						value: field.id,
 					});
 				}
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
 				return returnData;
 			},
 		},
