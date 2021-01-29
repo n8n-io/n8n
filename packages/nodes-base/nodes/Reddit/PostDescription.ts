@@ -180,23 +180,6 @@ export const postFields = [
 	//         post: getAll
 	// ----------------------------------
 	{
-		displayName: 'Best',
-		name: 'best',
-		type: 'boolean',
-		default: false,
-		description: 'Best posts in all of Reddit.',
-		displayOptions: {
-			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Subreddit',
 		name: 'subreddit',
 		type: 'string',
@@ -210,9 +193,6 @@ export const postFields = [
 				],
 				operation: [
 					'getAll',
-				],
-				best: [
-					false,
 				],
 			},
 		},
@@ -250,9 +230,6 @@ export const postFields = [
 				operation: [
 					'getAll',
 				],
-				best: [
-					false,
-				],
 			},
 		},
 	},
@@ -269,9 +246,6 @@ export const postFields = [
 				],
 				operation: [
 					'getAll',
-				],
-				best: [
-					false,
 				],
 			},
 		},
@@ -295,9 +269,6 @@ export const postFields = [
 					'getAll',
 				],
 				returnAll: [
-					false,
-				],
-				best: [
 					false,
 				],
 			},
