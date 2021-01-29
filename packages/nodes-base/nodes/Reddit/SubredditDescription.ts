@@ -158,11 +158,11 @@ export const subredditFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Query',
-				name: 'query',
+				displayName: 'Keyword',
+				name: 'keyword',
 				type: 'string',
 				default: '',
-				description: 'The term for the subreddit name search',
+				description: 'The keyword for the subreddit search.',
 			},
 		],
 		displayOptions: {

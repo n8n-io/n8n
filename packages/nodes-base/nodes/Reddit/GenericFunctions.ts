@@ -75,8 +75,8 @@ export async function redditApiRequestAllItems(
 		console.log(responseData);
 		qs.after = responseData.after;
 
-		if (endpoint === 'api/search_reddit_names.json') {
-			responseData.names.forEach((name: IDataObject) => returnData.push(name));
+		if (endpoint === 'api/search_subreddits.json') {
+			responseData.subreddits.forEach((child: any) => returnData.push(child)); // tslint:disable-line:no-any
 		} else {
 			responseData.data.children.forEach((child: any) => returnData.push(child.data)); // tslint:disable-line:no-any
 		}
@@ -106,20 +106,23 @@ export async function handleListing(
 
 	const qs: IDataObject = {};
 
+	let requestMethod = 'GET';
+
 	if (resource === 'subreddit' && operation === 'getAll') {
 		const filters = this.getNodeParameter('filters', i) as IDataObject;
-		if (filters.query) {
-			qs.query = filters.query;
+		if (filters.keyword) {
+			qs.query = filters.keyword;
 		}
+		requestMethod = 'POST';
 	}
 
 	const returnAll = this.getNodeParameter('returnAll', i);
 
 	if (returnAll) {
-		responseData = await redditApiRequestAllItems.call(this, 'GET', endpoint, qs);
+		responseData = await redditApiRequestAllItems.call(this, requestMethod, endpoint, qs);
 	} else {
 		qs.limit = this.getNodeParameter('limit', i);
-		responseData = await redditApiRequestAllItems.call(this, 'GET', endpoint, qs);
+		responseData = await redditApiRequestAllItems.call(this, requestMethod, endpoint, qs);
 		responseData = responseData.splice(0, qs.limit);
 	}
 

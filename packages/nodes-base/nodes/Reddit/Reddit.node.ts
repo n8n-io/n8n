@@ -211,7 +211,7 @@ export class Reddit implements INodeType {
 						const endpoint = 'api/trending_subreddits.json';
 						responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
 					} else {
-						const endpoint = 'api/search_reddit_names.json';
+						const endpoint = 'api/search_subreddits.json';
 						responseData = await handleListing.call(this, i, endpoint);
 					}
 				}
