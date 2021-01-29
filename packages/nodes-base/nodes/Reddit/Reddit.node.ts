@@ -193,6 +193,10 @@ export class Reddit implements INodeType {
 
 					if (content === 'rules') {
 						responseData = responseData.rules;
+					} else if (content === 'about') {
+						responseData = responseData.data;
+					} else if (content === 'sticky') {
+						responseData = responseData.map((item: any) => item.data.children[0].data); // tslint:disable-line:no-any
 					}
 
 				// ----------------------------------
