@@ -33,10 +33,44 @@ export class RealtimeDatabase implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
+				name: 'googleFirebaseApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'serviceAccount',
+						],
+					},
+				},
+			},
+			{
 				name: 'googleFirebaseRealtimeDatabaseOAuth2Api',
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'oAuth2',
+			},
 			{
 				displayName: 'Project ID',
 				name: 'projectId',

@@ -92,6 +92,7 @@
       "dist/credentials/GoogleContactsOAuth2Api.credentials.js",
       "dist/credentials/GoogleCloudNaturalLanguageOAuth2Api.credentials.js",
       "dist/credentials/GoogleDriveOAuth2Api.credentials.js",
+      "dist/credentials/GoogleFirebaseApi.credentials.js",    
       "dist/credentials/GoogleFirebaseCloudFirestoreOAuth2Api.credentials.js",
       "dist/credentials/GoogleFirebaseRealtimeDatabaseOAuth2Api.credentials.js",
       "dist/credentials/GoogleOAuth2Api.credentials.js",
