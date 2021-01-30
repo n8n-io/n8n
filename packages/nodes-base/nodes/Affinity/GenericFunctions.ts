@@ -1,4 +1,4 @@
-import { 
+import {
 	OptionsWithUri,
 } from 'request';
 
@@ -8,7 +8,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { 
+import {
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
@@ -44,7 +44,6 @@ export async function affinityApiRequest(this: IExecuteFunctions | IWebhookFunct
 		delete options.qs;
 	}
 	options = Object.assign({}, options, option);
-	console.log(options);
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
