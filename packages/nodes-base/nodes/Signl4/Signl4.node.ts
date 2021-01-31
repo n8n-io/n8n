@@ -264,8 +264,8 @@ export class Signl4 implements INodeType {
 				// Send alert
 				if (operation === 'send') {
 					const message = this.getNodeParameter('message', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields',i) as IDataObject;
-					
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
 					const data: IDataObject = {
 						message,
 					};
@@ -331,7 +331,7 @@ export class Signl4 implements INodeType {
 							}
 						}
 					}
-		
+
 					responseData = await SIGNL4ApiRequest.call(
 						this,
 						'POST',
@@ -350,7 +350,7 @@ export class Signl4 implements INodeType {
 					data['X-S4-ExternalID'] = this.getNodeParameter('externalId', i) as string;
 
 					data['X-S4-Status'] = 'resolved';
-					
+
 					data['X-S4-SourceSystem'] = 'n8n';
 
 					responseData = await SIGNL4ApiRequest.call(
