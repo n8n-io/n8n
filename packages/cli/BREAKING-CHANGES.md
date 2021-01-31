@@ -5,7 +5,7 @@ This list shows all the versions which include breaking changes and how to upgra
 ## 0.105.0
 
 ### What changed?
-In the Hubspot Trigger, now multiple events can be provided and the field `APP ID` was moved to the credentials.
+In the Hubspot Trigger, now multiple events can be provided and the field `App ID` was so moved to the credentials.
 
 ### When is action necessary?
 If you are using the Hubspot Trigger node.
