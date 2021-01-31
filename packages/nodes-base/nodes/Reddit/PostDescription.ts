@@ -80,14 +80,6 @@ export const postFields = [
 				name: 'Image Post',
 				value: 'image',
 			},
-			{
-				name: 'Video Post',
-				value: 'video',
-			},
-			{
-				name: 'Video GIF Post',
-				value: 'videogif',
-			},
 		],
 		default: 'self',
 		description: 'The kind of the post to create',
@@ -138,8 +130,6 @@ export const postFields = [
 				kind: [
 					'link',
 					'image',
-					'video',
-					'videogif',
 				],
 			},
 		},
@@ -182,8 +172,6 @@ export const postFields = [
 				kind: [
 					'link',
 					'image',
-					'video',
-					'videogif',
 				],
 			},
 		},
@@ -313,8 +301,8 @@ export const postFields = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Filters',
+		name: 'filters',
 		type: 'collection',
 		displayOptions: {
 			show: {

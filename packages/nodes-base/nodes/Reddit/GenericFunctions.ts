@@ -11,7 +11,6 @@ import {
 	OptionsWithUri,
 } from 'request';
 
-
 /**
  * Make an authenticated or unauthenticated API request to Reddit.
  */
@@ -25,6 +24,8 @@ export async function redditApiRequest(
 	const resource = this.getNodeParameter('resource', 0) as string;
 
 	const authRequired = ['profile', 'post', 'postComment'].includes(resource);
+
+	qs.api_type = 'json';
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -40,20 +41,31 @@ export async function redditApiRequest(
 		delete options.qs;
 	}
 
-	try {
-		return authRequired
-			? await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options)
-			: await this.helpers.request.call(this, options);
+	if (authRequired) {
+		let response;
 
-	} catch (error) {
-		if (error.message) {
-			const errorObject = JSON.parse(error.message.match(/{.*}/)[0]);
-			throw new Error(`Reddit error response [${errorObject.error}]: ${errorObject.message}`);
+		try {
+			response = await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options);
+		} catch (error) {
+			if (error.response.body && error.response.body.message) {
+				const message = error.response.body.message;
+				throw new Error(`Reddit error response [${error.statusCode}]: ${message}`);
+			}
 		}
-		throw error;
+
+		if ((response.errors && response.errors.length !== 0) || (response.json && response.json.errors && response.json.errors.length !== 0)) {
+			const errors = response?.errors || response?.json?.errors;
+			const errorMessage = errors.map((error: []) => error.join('-'));
+
+			throw new Error(`Reddit error response [400]: ${errorMessage.join('|')}`);
+		}
+
+		return response;
+
+	} else {
+		return await this.helpers.request.call(this, options);
 	}
 }
-
 
 /**
  * Make an unauthenticated API request to Reddit and return all results.
@@ -71,9 +83,13 @@ export async function redditApiRequestAllItems(
 	const resource = this.getNodeParameter('resource', 0) as string;
 	const operation = this.getNodeParameter('operation', 0) as string;
 
+	qs.limit = 100;
+
 	do {
 		responseData = await redditApiRequest.call(this, method, endpoint, qs);
-		qs.after = responseData.after;
+		if (!Array.isArray(responseData)) {
+			qs.after = responseData.data.after;
+		}
 
 		if (endpoint === 'api/search_subreddits.json') {
 			responseData.subreddits.forEach((child: any) => returnData.push(child)); // tslint:disable-line:no-any
@@ -83,11 +99,7 @@ export async function redditApiRequestAllItems(
 			responseData.data.children.forEach((child: any) => returnData.push(child.data)); // tslint:disable-line:no-any
 		}
 
-		if (qs.limit && returnData.length >= qs.limit) {
-			return returnData;
-		}
-
-	} while (responseData.after);
+	} while (responseData.data && responseData.data.after);
 
 	return returnData;
 }
@@ -110,9 +122,10 @@ export async function handleListing(
 	if (returnAll) {
 		responseData = await redditApiRequestAllItems.call(this, requestMethod, endpoint, qs);
 	} else {
-		qs.limit = this.getNodeParameter('limit', i);
+		const limit = this.getNodeParameter('limit', i);
+		qs.limit = limit;
 		responseData = await redditApiRequestAllItems.call(this, requestMethod, endpoint, qs);
-		responseData = responseData.splice(0, qs.limit);
+		responseData = responseData.slice(0, limit);
 	}
 
 	return responseData;

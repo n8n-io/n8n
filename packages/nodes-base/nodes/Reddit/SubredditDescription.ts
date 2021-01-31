@@ -51,10 +51,6 @@ export const subredditFields = [
 				name: 'Rules',
 				value: 'rules',
 			},
-			{
-				name: 'Sticky Posts',
-				value: 'sticky',
-			},
 		],
 		displayOptions: {
 			show: {

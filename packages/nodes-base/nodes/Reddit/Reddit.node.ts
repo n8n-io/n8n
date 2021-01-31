@@ -152,11 +152,11 @@ export class Reddit implements INodeType {
 					}
 
 					responseData = await redditApiRequest.call(this, 'POST', 'api/submit', qs);
-					delete responseData.jquery;
 
-				// ----------------------------------
-				//         post: delete
-				// ----------------------------------
+					responseData = responseData.json.data;
+					// ----------------------------------
+					//         post: delete
+					// ----------------------------------
 
 				} else if (operation === 'delete') {
 
@@ -172,9 +172,9 @@ export class Reddit implements INodeType {
 
 					responseData = { success: true };
 
-				// ----------------------------------
-				//         post: get
-				// ----------------------------------
+					// ----------------------------------
+					//         post: get
+					// ----------------------------------
 
 				} else if (operation === 'get') {
 
@@ -185,9 +185,9 @@ export class Reddit implements INodeType {
 					responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
 					responseData = responseData[0].data.children[0].data;
 
-				// ----------------------------------
-				//         post: getAll
-				// ----------------------------------
+					// ----------------------------------
+					//         post: getAll
+					// ----------------------------------
 
 				} else if (operation === 'getAll') {
 
@@ -199,7 +199,7 @@ export class Reddit implements INodeType {
 					const subreddit = this.getNodeParameter('subreddit', i);
 					let endpoint = `r/${subreddit}.json`;
 
-					const { category } = this.getNodeParameter('additionalFields', i) as { category: string };
+					const { category } = this.getNodeParameter('filters', i) as { category: string };
 					if (category) {
 						endpoint = `r/${subreddit}/${category}.json`;
 					}
@@ -208,9 +208,9 @@ export class Reddit implements INodeType {
 
 				}
 
-			// *********************************************************************
-			// 														 postComment
-			// *********************************************************************
+				// *********************************************************************
+				// 														 postComment
+				// *********************************************************************
 
 			} else if (resource === 'postComment') {
 
@@ -230,7 +230,8 @@ export class Reddit implements INodeType {
 					};
 
 					responseData = await redditApiRequest.call(this, 'POST', 'api/comment', qs);
-					delete responseData.jquery;
+
+					responseData = responseData.data.things;
 
 				} else if (operation === 'getAll') {
 
@@ -268,13 +269,13 @@ export class Reddit implements INodeType {
 					};
 
 					responseData = await redditApiRequest.call(this, 'POST', 'api/comment', qs);
-					delete responseData.jquery;
 
+					responseData = responseData.json.data.things;
 				}
 
-			// *********************************************************************
-			// 															  profile
-			// *********************************************************************
+				// *********************************************************************
+				// 															  profile
+				// *********************************************************************
 
 			} else if (resource === 'profile') {
 
@@ -312,12 +313,11 @@ export class Reddit implements INodeType {
 					} else if (details === 'trophies') {
 						responseData = responseData.data.trophies.map((trophy: IDataObject) => trophy.data);
 					}
-
 				}
 
-			// *********************************************************************
-			// 															 subreddit
-			// *********************************************************************
+				// *********************************************************************
+				// 															 subreddit
+				// *********************************************************************
 
 			} else if (resource === 'subreddit') {
 
@@ -329,7 +329,6 @@ export class Reddit implements INodeType {
 
 					// https://www.reddit.com/dev/api/#GET_r_{subreddit}_about
 					// https://www.reddit.com/dev/api/#GET_r_{subreddit}_about_rules
-					// https://www.reddit.com/dev/api/#GET_sticky
 
 					const subreddit = this.getNodeParameter('subreddit', i);
 					const content = this.getNodeParameter('content', i) as string;
@@ -341,13 +340,11 @@ export class Reddit implements INodeType {
 						responseData = responseData.rules;
 					} else if (content === 'about') {
 						responseData = responseData.data;
-					} else if (content === 'sticky') {
-						responseData = responseData.map((item: any) => item.data.children[0].data); // tslint:disable-line:no-any
 					}
 
-				// ----------------------------------
-				//        subreddit: getAll
-				// ----------------------------------
+					// ----------------------------------
+					//        subreddit: getAll
+					// ----------------------------------
 
 				} else if (operation === 'getAll') {
 
@@ -358,10 +355,14 @@ export class Reddit implements INodeType {
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
 					if (filters.trending) {
-
+						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 						const endpoint = 'api/trending_subreddits.json';
 						responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
 						responseData = responseData.subreddit_names.map((name: string) => ({ name }));
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', 0) as number;
+							responseData = responseData.splice(0, limit);
+						}
 
 					} else if (filters.keyword) {
 
@@ -378,9 +379,9 @@ export class Reddit implements INodeType {
 					}
 				}
 
-			// *********************************************************************
-			// 															  user
-			// *********************************************************************
+				// *********************************************************************
+				// 															  user
+				// *********************************************************************
 
 			} else if (resource === 'user') {
 
@@ -405,9 +406,7 @@ export class Reddit implements INodeType {
 					} else if (details === 'about') {
 						responseData = responseData.data;
 					}
-
 				}
-
 			}
 
 			Array.isArray(responseData)
