@@ -8,8 +8,8 @@ import {
 
 import {
 	OptionsWithUri,
- } from 'request';
- 
+} from 'request';
+
 /**
  * Make an API request to SIGNL4
  *
@@ -21,7 +21,7 @@ import {
  * @param {string} teamSecret
  * @param {object} options
  * @returns {Promise<any>}
- * 
+ *
  */
 
 export async function SIGNL4ApiRequest(this: IExecuteFunctions, method: string, body: string, query: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -47,8 +47,6 @@ export async function SIGNL4ApiRequest(this: IExecuteFunctions, method: string, 
 		delete options.qs;
 	}
 	options = Object.assign({}, options, option);
-
-	console.log(options);
 
 	try {
 		return await this.helpers.request!(options);
