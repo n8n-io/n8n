@@ -1,4 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -10,6 +13,7 @@ import {
 	getItemCopy,
 	pgInsert,
 	pgQuery,
+	pgUpdate,
 } from '../Postgres/Postgres.node.functions';
 
 import * as pgPromise from 'pg-promise';
@@ -18,7 +22,7 @@ export class TimescaleDb implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TimescaleDB',
 		name: 'timescaleDb',
-		icon: 'file:timescale.png',
+		icon: 'file:timescale.svg',
 		group: ['input'],
 		version: 1,
 		description: 'Add and update data in TimescaleDB',
@@ -72,7 +76,9 @@ export class TimescaleDb implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: ['executeQuery'],
+						operation: [
+							'executeQuery',
+						],
 					},
 				},
 				default: '',
@@ -90,7 +96,9 @@ export class TimescaleDb implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['insert'],
+						operation: [
+							'insert',
+						],
 					},
 				},
 				default: 'public',
@@ -103,7 +111,9 @@ export class TimescaleDb implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['insert'],
+						operation: [
+							'insert',
+						],
 					},
 				},
 				default: '',
@@ -116,7 +126,9 @@ export class TimescaleDb implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['insert'],
+						operation: [
+							'insert',
+						],
 					},
 				},
 				default: '',
@@ -130,7 +142,9 @@ export class TimescaleDb implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['insert'],
+						operation: [
+							'insert',
+						],
 					},
 				},
 				default: '*',
@@ -141,12 +155,29 @@ export class TimescaleDb implements INodeType {
 			//         update
 			// ----------------------------------
 			{
+				displayName: 'Schema',
+				name: 'schema',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+					},
+				},
+				default: 'public',
+				required: true,
+				description: 'Name of the schema the table belongs to',
+			},
+			{
 				displayName: 'Table',
 				name: 'table',
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['update'],
+						operation: [
+							'update',
+						],
 					},
 				},
 				default: '',
@@ -159,7 +190,9 @@ export class TimescaleDb implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['update'],
+						operation: [
+							'update',
+						],
 					},
 				},
 				default: 'id',
@@ -173,7 +206,9 @@ export class TimescaleDb implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['update'],
+						operation: [
+							'update',
+						],
 					},
 				},
 				default: '',
@@ -230,7 +265,6 @@ export class TimescaleDb implements INodeType {
 				returnItems.push({
 					json: {
 						...insertData[i],
-						...insertItems[i],
 					},
 				});
 			}
@@ -238,43 +272,11 @@ export class TimescaleDb implements INodeType {
 			// ----------------------------------
 			//         update
 			// ----------------------------------
-			const tableName = this.getNodeParameter('table', 0) as string;
-			const updateKey = this.getNodeParameter('updateKey', 0) as string;
 
-			const queries : string[] = [];
-			const updatedKeys : string[] = [];
-			let updateKeyValue : string | number;
-			let columns : string[] = [];
+			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items);
 
-			items.map(item => {
-				const setOperations : string[] = [];
-				columns = Object.keys(item.json);
-				columns.map((col : string) => {
-					if (col !== updateKey) {
-						if (typeof item.json[col] === 'string') {
-							setOperations.push(`${col} = \'${item.json[col]}\'`);
-						} else {
-							setOperations.push(`${col} = ${item.json[col]}`);
-						}
-					}
-				});
+			returnItems = this.helpers.returnJsonArray(updateItems);
 
-				updateKeyValue = item.json[updateKey] as string | number;
-
-				if (updateKeyValue === undefined) {
-					throw new Error('No value found for update key!');
-				}
-
-				updatedKeys.push(updateKeyValue as string);
-
-				const query = `UPDATE "${tableName}" SET ${setOperations.join(',')} WHERE ${updateKey} = ${updateKeyValue};`;
-				queries.push(query);
-			});
-
-
-			await db.any(pgp.helpers.concat(queries));
-
-			returnItems = this.helpers.returnJsonArray(getItemCopy(items, columns) as IDataObject[]);
 		} else {
 			await pgp.end();
 			throw new Error(`The operation "${operation}" is not supported!`);

@@ -3,10 +3,9 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-
 export class TimescaleDb implements ICredentialType {
 	name = 'timescaleDb';
-	displayName = 'TimescaleDb';
+	displayName = 'TimescaleDB';
 	documentationUrl = 'timescaleDb';
 	properties = [
 		{
