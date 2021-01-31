@@ -140,19 +140,17 @@ export class ActiveWorkflowRunner {
 			}
 
 			// set webhook to the first webhook result
-			// if more results have been returned choose the one with the most route-matches
+			// if more results have been returned choose the one with the most static-route matches
 			webhook = dynamicWebhooks[0];
 			if (dynamicWebhooks.length > 1) {
 				let maxMatches = 0;
 				const pathElementsSet = new Set(pathElements);
 				dynamicWebhooks.forEach(dynamicWebhook => {
-					const intersection =
-						dynamicWebhook.webhookPath
-						.split('/')
-						.reduce((acc, element) => pathElementsSet.has(element) ? acc += 1 : acc, 0);
+					const staticElements = dynamicWebhook.webhookPath.split('/').filter(ele => !ele.startsWith(':'));
+					const allStaticExist = staticElements.every(staticEle => pathElementsSet.has(staticEle));
 
-					if (intersection > maxMatches) {
-						maxMatches = intersection;
+					if (allStaticExist && staticElements.length > maxMatches) {
+						maxMatches = staticElements.length;
 						webhook = dynamicWebhook;
 					}
 				});

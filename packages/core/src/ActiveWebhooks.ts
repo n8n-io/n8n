@@ -93,19 +93,17 @@ export class ActiveWebhooks {
 		}
 
 		// set webhook to the first webhook result
-		// if more results have been returned choose the one with the most route-matches
+		// if more results have been returned choose the one with the most static-route matches
 		let webhook = this.webhookUrls[webhookKey][0];
 		if (this.webhookUrls[webhookKey].length > 1) {
 			let maxMatches = 0;
 			const pathElementsSet = new Set(path.split('/'));
 			this.webhookUrls[webhookKey].forEach(dynamicWebhook => {
-				const intersection =
-					dynamicWebhook.path
-					.split('/')
-					.reduce((acc, element) => pathElementsSet.has(element) ? acc += 1 : acc, 0);
+				const staticElements = dynamicWebhook.path.split('/').filter(ele => !ele.startsWith(':'));
+				const allStaticExist = staticElements.every(staticEle => pathElementsSet.has(staticEle));
 
-				if (intersection > maxMatches) {
-					maxMatches = intersection;
+				if (allStaticExist && staticElements.length > maxMatches) {
+					maxMatches = staticElements.length;
 					webhook = dynamicWebhook;
 				}
 			});
