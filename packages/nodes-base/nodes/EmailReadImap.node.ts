@@ -362,7 +362,7 @@ export class EmailReadImap implements INodeType {
 				host: credentials.host as string,
 				port: credentials.port as number,
 				tls: credentials.secure as boolean,
-				authTimeout: 10000,
+				authTimeout: 20000,
 			},
 			onmail: async () => {
 				const returnData = await getNewEmails(connection, searchCriteria);

@@ -264,20 +264,18 @@ export class Signl4 implements INodeType {
 				// Send alert
 				if (operation === 'send') {
 					const message = this.getNodeParameter('message', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields',i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					const data: IDataObject = {
 						message,
 					};
 
-					if (additionalFields.alertingScenario) {
-						data['X-S4-AlertingScenario'] = additionalFields.alertingScenario as string;
+					if (additionalFields.title) {
+						data.title = additionalFields.title as string;
 					}
-					if (additionalFields.externalId) {
-						data['X-S4-ExternalID'] = additionalFields.externalId as string;
-					}
-					if (additionalFields.filtering) {
-						data['X-S4-Filtering'] = (additionalFields.filtering as boolean).toString();
+
+					if (additionalFields.service) {
+						data.service = additionalFields.service as string;
 					}
 					if (additionalFields.locationFieldsUi) {
 						const locationUi = (additionalFields.locationFieldsUi as IDataObject).locationFieldsValues as IDataObject;
@@ -285,16 +283,25 @@ export class Signl4 implements INodeType {
 							data['X-S4-Location'] = `${locationUi.latitude},${locationUi.longitude}`;
 						}
 					}
-					if (additionalFields.service) {
-						data['X-S4-Service'] = additionalFields.service as string;
+
+					if (additionalFields.alertingScenario) {
+						data['X-S4-AlertingScenario'] = additionalFields.alertingScenario as string;
 					}
+
+					if (additionalFields.filtering) {
+						data['X-S4-Filtering'] = (additionalFields.filtering as boolean).toString();
+					}
+
+					if (additionalFields.externalId) {
+						data['X-S4-ExternalID'] = additionalFields.externalId as string;
+					}
+
 					data['X-S4-Status'] = 'new';
-					if (additionalFields.title) {
-						data['title'] = additionalFields.title as string;
-					}
 
+					data['X-S4-SourceSystem'] = 'n8n';
+
+					// Attachments
 					const attachments = additionalFields.attachmentsUi as IDataObject;
-
 					if (attachments) {
 						if (attachments.attachmentsBinary && items[i].binary) {
 
@@ -304,14 +311,14 @@ export class Signl4 implements INodeType {
 
 							if (binaryProperty) {
 
-								const supportedFileExtension = ['png', 'jpg', 'txt'];
+								const supportedFileExtension = ['png', 'jpg', 'jpeg', 'bmp', 'gif', 'mp3', 'wav'];
 
 								if (!supportedFileExtension.includes(binaryProperty.fileExtension as string)) {
 
 									throw new Error(`Invalid extension, just ${supportedFileExtension.join(',')} are supported}`);
 								}
 
-								data['file'] = {
+								data.attachment = {
 									value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
 									options: {
 										filename: binaryProperty.fileName,
@@ -325,18 +332,14 @@ export class Signl4 implements INodeType {
 						}
 					}
 
-					const credentials = this.getCredentials('signl4Api');
-
-					const endpoint = `https://connect.signl4.com/webhook/${credentials?.teamSecret}`;
-
 					responseData = await SIGNL4ApiRequest.call(
 						this,
 						'POST',
 						'',
-						data,
 						{},
-						endpoint,
-						{},
+						{
+							formData: data,
+						},
 					);
 				}
 				// Resolve alert
@@ -348,26 +351,24 @@ export class Signl4 implements INodeType {
 
 					data['X-S4-Status'] = 'resolved';
 
-					const credentials = this.getCredentials('signl4Api');
-
-					const endpoint = `https://connect.signl4.com/webhook/${credentials?.teamSecret}`;
+					data['X-S4-SourceSystem'] = 'n8n';
 
 					responseData = await SIGNL4ApiRequest.call(
 						this,
 						'POST',
 						'',
-						data,
 						{},
-						endpoint,
-						{},
+						{
+							formData: data,
+						},
 					);
 				}
 			}
-		}
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else if (responseData !== undefined) {
+				returnData.push(responseData as IDataObject);
+			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
