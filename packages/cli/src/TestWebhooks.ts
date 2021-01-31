@@ -54,10 +54,15 @@ export class TestWebhooks {
 	 * @memberof TestWebhooks
 	 */
 	async callTestWebhook(httpMethod: WebhookHttpMethod, path: string, request: express.Request, response: express.Response): Promise<IResponseCallbackData> {
-		let webhookData: IWebhookData | undefined = this.activeWebhooks!.get(httpMethod, path);
-
 		// Reset request parameters
 		request.params = {};
+
+		// Remove trailing slash
+		if (path.endsWith('/')) {
+			path = path.slice(0, -1);
+		}
+
+		let webhookData: IWebhookData | undefined = this.activeWebhooks!.get(httpMethod, path);
 
 		// check if path is dynamic
 		if (webhookData === undefined) {

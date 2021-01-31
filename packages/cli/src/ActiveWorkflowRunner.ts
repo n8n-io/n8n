@@ -120,6 +120,11 @@ export class ActiveWorkflowRunner {
 		// Reset request parameters
 		req.params = {};
 
+		// Remove trailing slash
+		if (path.endsWith('/')) {
+			path = path.slice(0, -1);
+		}
+
 		let webhook = await Db.collections.Webhook?.findOne({ webhookPath: path, method: httpMethod }) as IWebhookDb;
 		let webhookId: string | undefined;
 
@@ -297,6 +302,9 @@ export class ActiveWorkflowRunner {
 
 			if (webhook.webhookPath.startsWith('/')) {
 				webhook.webhookPath = webhook.webhookPath.slice(1);
+			}
+			if (webhook.webhookPath.endsWith('/')) {
+				webhook.webhookPath = webhook.webhookPath.slice(0, -1);
 			}
 
 			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {

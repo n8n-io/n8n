@@ -34,6 +34,9 @@ export class ActiveWebhooks {
 		if (workflow.id === undefined) {
 			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
 		}
+		if (webhookData.path.endsWith('/')) {
+			webhookData.path = webhookData.path.slice(0, -1);
+		}
 
 		const webhookKey = this.getWebhookKey(webhookData.httpMethod, webhookData.path, webhookData.webhookId);
 
