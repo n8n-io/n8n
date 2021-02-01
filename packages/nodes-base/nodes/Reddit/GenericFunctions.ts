@@ -63,7 +63,16 @@ export async function redditApiRequest(
 		return response;
 
 	} else {
-		return await this.helpers.request.call(this, options);
+
+		try {
+			return await this.helpers.request.call(this, options);
+		} catch (error) {
+			const errorMessage = error?.response?.body?.message;
+			if (errorMessage) {
+				throw new Error(`Reddit error response [${error.statusCode}]: ${errorMessage}`);
+			}
+			throw error;
+		}
 	}
 }
 
