@@ -230,8 +230,7 @@ export class Reddit implements INodeType {
 					};
 
 					responseData = await redditApiRequest.call(this, 'POST', 'api/comment', qs);
-
-					responseData = responseData.data.things;
+					responseData = responseData.json.data.things[0].data;
 
 				} else if (operation === 'getAll') {
 
