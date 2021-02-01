@@ -408,13 +408,11 @@ export class Reddit implements INodeType {
 					const details = this.getNodeParameter('details', i) as string;
 					const endpoint = `user/${username}/${details}.json`;
 
-					responseData = ['about', 'gilded'].includes(details)
+					responseData = details === 'about'
 						? await redditApiRequest.call(this, 'GET', endpoint, {})
 						: await handleListing.call(this, i, endpoint);
 
-					if (details === 'gilded') {
-						responseData = responseData.data.children;
-					} else if (details === 'about') {
+					if (details === 'about') {
 						responseData = responseData.data;
 					}
 				}
