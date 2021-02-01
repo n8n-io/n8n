@@ -365,10 +365,17 @@ export class Reddit implements INodeType {
 					} else if (filters.keyword) {
 
 						const qs: IDataObject = {};
-						const endpoint = 'api/search_subreddits.json';
 						qs.query = filters.keyword;
 
-						responseData = await handleListing.call(this, i, endpoint, qs, 'POST');
+						const endpoint = 'api/search_subreddits.json';
+						responseData = await redditApiRequest.call(this, 'POST', endpoint, qs);
+
+						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+						if (returnAll === false) {
+							const limit = this.getNodeParameter('limit', 0) as number;
+							responseData = responseData.subreddits.splice(0, limit);
+						}
 
 					} else {
 
