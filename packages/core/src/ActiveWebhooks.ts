@@ -16,7 +16,7 @@ export class ActiveWebhooks {
 	} = {};
 
 	private webhookUrls: {
-		[key: string]: IWebhookData;
+		[key: string]: IWebhookData[];
 	} = {};
 
 	testWebhooks = false;
@@ -35,10 +35,10 @@ export class ActiveWebhooks {
 			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
 		}
 
-		const webhookKey = this.getWebhookKey(webhookData.httpMethod, webhookData.path);
+		const webhookKey = this.getWebhookKey(webhookData.httpMethod, webhookData.path, webhookData.webhookId);
 
 		//check that there is not a webhook already registed with that path/method
-		if (this.webhookUrls[webhookKey] !== undefined) {
+		if (this.webhookUrls[webhookKey] && !webhookData.webhookId) {
 			throw new Error(`Test-Webhook can not be activated because another one with the same method "${webhookData.httpMethod}" and path "${webhookData.path}" is already active!`);
 		}
 
@@ -48,7 +48,10 @@ export class ActiveWebhooks {
 
 		// Make the webhook available directly because sometimes to create it successfully
 		// it gets called
-		this.webhookUrls[webhookKey] = webhookData;
+		if (!this.webhookUrls[webhookKey]) {
+			this.webhookUrls[webhookKey] = [];
+		}
+		this.webhookUrls[webhookKey].push(webhookData);
 
 		try {
 			const webhookExists = await workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
@@ -59,7 +62,11 @@ export class ActiveWebhooks {
 			}
 		} catch (error) {
 			// If there was a problem unregister the webhook again
-			delete this.webhookUrls[webhookKey];
+			if (this.webhookUrls[webhookKey].length <= 1) {
+				delete this.webhookUrls[webhookKey];
+			} else {
+				this.webhookUrls[webhookKey] = this.webhookUrls[webhookKey].filter(webhook => webhook.path !== webhookData.path);
+			}
 
 			throw error;
 		}
@@ -72,16 +79,39 @@ export class ActiveWebhooks {
 	 *
 	 * @param {WebhookHttpMethod} httpMethod
 	 * @param {string} path
+	 * @param {(string | undefined)} webhookId
 	 * @returns {(IWebhookData | undefined)}
 	 * @memberof ActiveWebhooks
 	 */
-	get(httpMethod: WebhookHttpMethod, path: string): IWebhookData | undefined {
-		const webhookKey = this.getWebhookKey(httpMethod, path);
+	get(httpMethod: WebhookHttpMethod, path: string, webhookId?: string): IWebhookData | undefined {
+		const webhookKey = this.getWebhookKey(httpMethod, path, webhookId);
 		if (this.webhookUrls[webhookKey] === undefined) {
 			return undefined;
 		}
 
-		return this.webhookUrls[webhookKey];
+		// set webhook to the first webhook result
+		// if more results have been returned choose the one with the most route-matches
+		let webhook = this.webhookUrls[webhookKey][0];
+		if (this.webhookUrls[webhookKey].length > 1) {
+			let maxMatches = 0;
+			const pathElementsSet = new Set(path.split('/'));
+			this.webhookUrls[webhookKey].forEach(dynamicWebhook => {
+				const intersection =
+					dynamicWebhook.path
+					.split('/')
+					.reduce((acc, element) => pathElementsSet.has(element) ? acc += 1 : acc, 0);
+
+				if (intersection > maxMatches) {
+					maxMatches = intersection;
+					webhook = dynamicWebhook;
+				}
+			});
+			if (maxMatches === 0) {
+				return undefined;
+			}
+		}
+
+		return webhook;
 	}
 
 	/**
@@ -116,10 +146,18 @@ export class ActiveWebhooks {
 	 *
 	 * @param {WebhookHttpMethod} httpMethod
 	 * @param {string} path
+	 * @param {(string | undefined)} webhookId
 	 * @returns {string}
 	 * @memberof ActiveWebhooks
 	 */
-	getWebhookKey(httpMethod: WebhookHttpMethod, path: string): string {
+	getWebhookKey(httpMethod: WebhookHttpMethod, path: string, webhookId?: string): string {
+		if (webhookId) {
+			if (path.startsWith(webhookId)) {
+				const cutFromIndex = path.indexOf('/') + 1;
+				path = path.slice(cutFromIndex);
+			}
+			return `${httpMethod}|${webhookId}|${path.split('/').length}`;
+		}
 		return `${httpMethod}|${path}`;
 	}
 
@@ -147,7 +185,7 @@ export class ActiveWebhooks {
 		for (const webhookData of webhooks) {
 			await workflow.runWebhookMethod('delete', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
 
-			delete this.webhookUrls[this.getWebhookKey(webhookData.httpMethod, webhookData.path)];
+			delete this.webhookUrls[this.getWebhookKey(webhookData.httpMethod, webhookData.path, webhookData.webhookId)];
 		}
 
 		// Remove also the workflow-webhook entry

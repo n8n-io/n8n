@@ -16,6 +16,16 @@ export const messageOperations = [
 		},
 		options: [
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Deletes a message',
+			},
+			{
+				name: 'Get Permalink',
+				value: 'getPermalink',
+				description: 'Get Permanent Link of a message',
+			},
+			{
 				name: 'Post',
 				value: 'post',
 				description: 'Post a message into a channel',
@@ -28,7 +38,7 @@ export const messageOperations = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Updates a message.',
+				description: 'Updates a message',
 			},
 		],
 		default: 'post',
@@ -37,6 +47,49 @@ export const messageOperations = [
 ] as INodeProperties[];
 
 export const messageFields = [
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:getPermalink
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Channel',
+		name: 'channelId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getPermalink',
+				],
+			},
+		},
+		description: 'Channel containing the message.',
+	},
+	{
+		displayName: 'Timestamp',
+		name: 'timestamp',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getPermalink',
+				],
+			},
+		},
+		description: `Timestamp of the message to get permanent link.`,
+	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                          message:post/postEphemeral                        */
@@ -1630,5 +1683,48 @@ export const messageFields = [
 				],
 			},
 		],
+	},
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:delete
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Channel',
+		name: 'channelId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		description: 'Channel containing the message to be deleted.',
+	},
+	{
+		displayName: 'Timestamp',
+		name: 'timestamp',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		description: `Timestamp of the message to be deleted.`,
 	},
 ] as INodeProperties[];
