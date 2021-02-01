@@ -49,5 +49,11 @@ export class QuickBooksOAuth2Api implements ICredentialType {
 			type: 'hidden' as NodePropertyTypes,
 			default: '',
 		},
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'hidden' as NodePropertyTypes,
+			default: 'header',
+		},
 	];
 }
