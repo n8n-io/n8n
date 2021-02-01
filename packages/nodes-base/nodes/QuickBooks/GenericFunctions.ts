@@ -52,12 +52,14 @@ export async function quickBooksApiRequest(
 	const productionUrl = 'https://quickbooks.api.intuit.com';
 	const sandboxUrl = 'https://sandbox-quickbooks.api.intuit.com';
 
+	const credentials = this.getCredentials('quickBooksOAuth2Api') as IDataObject;
+
 	const options: OptionsWithUri = {
 		headers: {
 			'user-agent': 'n8n',
 		},
 		method,
-		uri: `${sandboxUrl}${endpoint}`,
+		uri: `${credentials.environment === 'sandbox' ? sandboxUrl : productionUrl}${endpoint}`,
 		qs,
 		body,
 		json: !isDownload,
