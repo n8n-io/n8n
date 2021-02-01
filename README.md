@@ -25,6 +25,8 @@ The official n8n documentation can be found under: [https://docs.n8n.io](https:/
 
 Additional information and example workflows on the n8n.io website: [https://n8n.io](https://n8n.io)
 
+The changelog can be found [here](https://docs.n8n.io/reference/changelog.html) and the list of breaking changes [here](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-CHANGES.md).
+
 
 ## Usage
 

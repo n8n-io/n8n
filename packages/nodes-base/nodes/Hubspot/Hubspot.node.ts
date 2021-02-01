@@ -63,7 +63,7 @@ export class Hubspot implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HubSpot',
 		name: 'hubspot',
-		icon: 'file:hubspot.png',
+		icon: 'file:hubspot.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
