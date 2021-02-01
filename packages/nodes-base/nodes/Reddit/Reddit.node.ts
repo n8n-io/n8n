@@ -306,8 +306,14 @@ export class Reddit implements INodeType {
 						responseData = responseData.features;
 					} else if (details === 'friends') {
 						responseData = responseData.data.children;
+						if (!responseData.length) {
+							throw new Error('Reddit error response [404]: Not Found');
+						}
 					} else if (details === 'karma') {
 						responseData = responseData.data;
+						if (!responseData.length) {
+							throw new Error('Reddit error response [404]: Not Found');
+						}
 					} else if (details === 'trophies') {
 						responseData = responseData.data.trophies.map((trophy: IDataObject) => trophy.data);
 					}
