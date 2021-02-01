@@ -18,7 +18,7 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
+export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const options: OptionsWithUri = {
 		method,
@@ -30,6 +30,10 @@ export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions,
 		uri: '',
 		json: true,
 	};
+
+	if (Object.keys(option).length !== 0) {
+		Object.assign(options, option);
+	}
 
 	try {
 		const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
@@ -94,4 +98,23 @@ export async function getFileSha(this: IHookFunctions | IExecuteFunctions, owner
 		throw new Error('Could not get the SHA of the file.');
 	}
 	return responseData.sha;
+}
+
+export async function githubApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	query.per_page = 100;
+	query.page = 1;
+
+	do {
+		responseData = await githubApiRequest.call(this, method, endpoint, body, query, { resolveWithFullResponse: true });
+		query.page++;
+		returnData.push.apply(returnData, responseData.body);
+	} while (
+		responseData.headers.link && responseData.headers.link.includes('next')
+	);
+	return returnData;
 }

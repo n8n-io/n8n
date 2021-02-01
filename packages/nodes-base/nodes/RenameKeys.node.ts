@@ -96,8 +96,8 @@ export class RenameKeys implements INodeType {
 			}
 
 			renameKeys.forEach((renameKey) => {
-				if (renameKey.currentKey === '' || renameKey.newKey === '') {
-					// Ignore all which do not have all the values set
+				if (renameKey.currentKey === '' || renameKey.newKey === '' || renameKey.currentKey === renameKey.newKey) {
+					// Ignore all which do not have all the values set or if the new key is equal to the current key
 					return;
 				}
 				value = get(item.json, renameKey.currentKey as string);

@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export const ticketOperations = [
 	{
@@ -48,9 +48,9 @@ export const ticketOperations = [
 
 export const ticketFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                ticket:create                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                ticket:create                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Pipeline ID',
 		name: 'pipelineId',
@@ -70,7 +70,7 @@ export const ticketFields = [
 			},
 		},
 		default: '',
-		description: 'The ID of the pipeline the ticket is in. ',
+		description: 'The ID of the pipeline the ticket is in.',
 	},
 	{
 		displayName: 'Stage ID',
@@ -94,7 +94,7 @@ export const ticketFields = [
 			},
 		},
 		default: '',
-		description: 'The ID of the pipeline the ticket is in. ',
+		description: 'The ID of the pipeline the ticket is in.',
 	},
 	{
 		displayName: 'Ticket Name',
@@ -112,7 +112,7 @@ export const ticketFields = [
 			},
 		},
 		default: '',
-		description: 'The ID of the pipeline the ticket is in. ',
+		description: 'The ID of the pipeline the ticket is in.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -136,7 +136,7 @@ export const ticketFields = [
 				name: 'associatedCompanyIds',
 				type: 'multiOptions',
 				typeOptions: {
-					loadOptionsMethod:'getCompanies' ,
+					loadOptionsMethod: 'getCompanies',
 				},
 				default: [],
 				description: 'Companies associated with the ticket',
@@ -146,7 +146,7 @@ export const ticketFields = [
 				name: 'associatedContactIds',
 				type: 'multiOptions',
 				typeOptions: {
-					loadOptionsMethod:'getContacts' ,
+					loadOptionsMethod: 'getContacts',
 				},
 				default: [],
 				description: 'Contacts associated with the ticket',
@@ -228,9 +228,9 @@ export const ticketFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 ticket:update                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 ticket:update                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Ticket ID',
 		name: 'ticketId',
@@ -247,7 +247,7 @@ export const ticketFields = [
 			},
 		},
 		default: '',
-		description: 'Unique identifier for a particular ticket',
+		description: 'Unique identifier for a particular ticket.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -271,20 +271,20 @@ export const ticketFields = [
 				name: 'associatedCompanyIds',
 				type: 'multiOptions',
 				typeOptions: {
-					loadOptionsMethod:'getCompanies' ,
+					loadOptionsMethod: 'getCompanies',
 				},
 				default: [],
-				description: 'Companies associated with the ticket',
+				description: 'Companies associated with the ticket.',
 			},
 			{
 				displayName: 'Contact Ids',
 				name: 'associatedContactIds',
 				type: 'multiOptions',
 				typeOptions: {
-					loadOptionsMethod:'getContacts' ,
+					loadOptionsMethod: 'getContacts',
 				},
 				default: [],
-				description: 'Contact associated with the ticket',
+				description: 'Contact associated with the ticket.',
 			},
 			{
 				displayName: 'Category',
@@ -294,21 +294,21 @@ export const ticketFields = [
 					loadOptionsMethod: 'getTicketCategories',
 				},
 				default: '',
-				description: 'Main reason customer reached out for help',
+				description: 'Main reason customer reached out for help.',
 			},
 			{
 				displayName: 'Close Date',
 				name: 'closeDate',
 				type: 'dateTime',
 				default: '',
-				description: 'The date the ticket was closed',
+				description: 'The date the ticket was closed.',
 			},
 			{
 				displayName: 'Create Date',
 				name: 'createDate',
 				type: 'dateTime',
 				default: '',
-				description: 'the date the ticket was created',
+				description: 'The date the ticket was created.',
 			},
 			{
 				displayName: 'Description',
@@ -328,7 +328,7 @@ export const ticketFields = [
 					loadOptionsMethod: 'getTicketPipelines',
 				},
 				default: '',
-				description: 'The ID of the pipeline the ticket is in. ',
+				description: 'The ID of the pipeline the ticket is in.',
 			},
 			{
 				displayName: 'Priority',
@@ -358,7 +358,7 @@ export const ticketFields = [
 					loadOptionsMethod: 'getTicketSources',
 				},
 				default: '',
-				description: 'Channel where ticket was originally submitted',
+				description: 'Channel where ticket was originally submitted.',
 			},
 			{
 				displayName: 'Ticket Name',
@@ -380,176 +380,179 @@ export const ticketFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  ticket:get                                */
-/* -------------------------------------------------------------------------- */
-{
-	displayName: 'Ticket ID',
-	name: 'ticketId',
-	type: 'string',
-	required: true,
-	displayOptions: {
-		show: {
-			resource: [
-				'ticket',
-			],
-			operation: [
-				'get',
-			],
-		},
-	},
-	default: '',
-	description: 'Unique identifier for a particular ticket',
-},
-{
-	displayName: 'Additional Fields',
-	name: 'additionalFields',
-	type: 'collection',
-	placeholder: 'Add Field',
-	default: {},
-	displayOptions: {
-		show: {
-			resource: [
-				'ticket',
-			],
-			operation: [
-				'get',
-			],
-		},
-	},
-	options: [
-		{
-			displayName: 'Include Deleted',
-			name: 'includeDeleted',
-			type: 'boolean',
-			default: false,
-		},
-		{
-			displayName: 'Properties',
-			name: 'properties',
-			type: 'multiOptions',
-			typeOptions: {
-				loadOptionsMethod: 'getTicketProperties',
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  ticket:get                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Ticket ID',
+		name: 'ticketId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'get',
+				],
 			},
-			default: [],
-			description: `Used to include specific ticket properties in the results.<br/>
+		},
+		default: '',
+		description: 'Unique identifier for a particular ticket',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include Deleted',
+				name: 'includeDeleted',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Properties',
+				name: 'properties',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getTicketProperties',
+				},
+				default: [],
+				description: `Used to include specific ticket properties in the results.<br/>
 			By default, the results will only include ticket ID and will not include the values for any properties for your tickets.<br/>
 			Including this parameter will include the data for the specified property in the results.<br/>
 			You can include this parameter multiple times to request multiple properties separed by ,.`,
-		},
-		{
-			displayName: 'Properties With History',
-			name: 'propertiesWithHistory',
-			type: 'string',
-			default: '',
-			description: `Works similarly to properties=, but this parameter will include the history for the specified property,<br/>
-			instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.`,
-		},
-	],
-},
-/* -------------------------------------------------------------------------- */
-/*                                 ticket:getAll                              */
-/* -------------------------------------------------------------------------- */
-{
-	displayName: 'Return All',
-	name: 'returnAll',
-	type: 'boolean',
-	displayOptions: {
-		show: {
-			resource: [
-				'ticket',
-			],
-			operation: [
-				'getAll',
-			],
-		},
-	},
-	default: false,
-	description: 'If all results should be returned or only up to a given limit.',
-},
-{
-	displayName: 'Limit',
-	name: 'limit',
-	type: 'number',
-	displayOptions: {
-		show: {
-			resource: [
-				'ticket',
-			],
-			operation: [
-				'getAll',
-			],
-			returnAll: [
-				false,
-			],
-		},
-	},
-	typeOptions: {
-		minValue: 1,
-		maxValue: 250,
-	},
-	default: 100,
-	description: 'How many results to return.',
-},
-{
-	displayName: 'Additional Fields',
-	name: 'additionalFields',
-	type: 'collection',
-	placeholder: 'Add Field',
-	default: {},
-	displayOptions: {
-		show: {
-			resource: [
-				'ticket',
-			],
-			operation: [
-				'getAll',
-			],
-		},
-	},
-	options: [
-		{
-			displayName: 'Properties',
-			name: 'properties',
-			type: 'multiOptions',
-			typeOptions: {
-				loadOptionsMethod: 'getTicketProperties',
 			},
-			default: [],
-			description: `Used to include specific ticket properties in the results.<br/>
+			{
+				displayName: 'Properties With History',
+				name: 'propertiesWithHistory',
+				type: 'string',
+				default: '',
+				description: `Works similarly to properties=, but this parameter will include the history for the specified property,<br/>
+			instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.`,
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 ticket:getAll                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 250,
+		},
+		default: 100,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Properties',
+				name: 'properties',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getTicketProperties',
+				},
+				default: [],
+				description: `Used to include specific ticket properties in the results.<br/>
 			By default, the results will only include ticket ID and will not include the values for any properties for your tickets.<br/>
 			Including this parameter will include the data for the specified property in the results.<br/>
 			You can include this parameter multiple times to request multiple properties separed by ,.`,
-		},
-		{
-			displayName: 'Properties With History',
-			name: 'propertiesWithHistory',
-			type: 'string',
-			default: '',
-			description: `Works similarly to properties=, but this parameter will include the history for the specified property,<br/>
+			},
+			{
+				displayName: 'Properties With History',
+				name: 'propertiesWithHistory',
+				type: 'string',
+				default: '',
+				description: `Works similarly to properties=, but this parameter will include the history for the specified property,<br/>
 			instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.`,
-		},
-	],
-},
-/* -------------------------------------------------------------------------- */
-/*                                 ticket:delete                              */
-/* -------------------------------------------------------------------------- */
-{
-	displayName: 'Ticket ID',
-	name: 'ticketId',
-	type: 'string',
-	required: true,
-	displayOptions: {
-		show: {
-			resource: [
-				'ticket',
-			],
-			operation: [
-				'delete',
-			],
-		},
+			},
+		],
 	},
-	default: '',
-	description: 'Unique identifier for a particular ticket',
-},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 ticket:delete                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Ticket ID',
+		name: 'ticketId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		default: '',
+		description: 'Unique identifier for a particular ticket',
+	},
 ] as INodeProperties[];

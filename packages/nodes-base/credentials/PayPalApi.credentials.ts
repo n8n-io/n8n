@@ -22,7 +22,7 @@ export class PayPalApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Enviroment',
+			displayName: 'Environment',
 			name: 'env',
 			type: 'options' as NodePropertyTypes,
 			default: 'live',

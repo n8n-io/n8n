@@ -1,6 +1,6 @@
 {
     "name": "n8n",
-    "version": "0.100.0",
+    "version": "0.105.0",
     "description": "n8n Workflow Automation Tool",
     "license": "SEE LICENSE IN LICENSE.md",
     "homepage": "https://n8n.io",
@@ -101,12 +101,11 @@
         "jwks-rsa": "~1.9.0",
         "localtunnel": "^2.0.0",
         "lodash.get": "^4.4.2",
-        "mongodb": "^3.5.5",
         "mysql2": "~2.1.0",
-        "n8n-core": "~0.57.0",
-        "n8n-editor-ui": "~0.69.0",
-        "n8n-nodes-base": "~0.95.0",
-        "n8n-workflow": "~0.48.0",
+        "n8n-core": "~0.62.0",
+        "n8n-editor-ui": "~0.75.0",
+        "n8n-nodes-base": "~0.102.0",
+        "n8n-workflow": "~0.51.0",
         "oauth-1.0a": "^2.2.6",
         "open": "^7.0.0",
         "pg": "^8.3.0",
@@ -114,7 +113,7 @@
         "sqlite3": "^4.2.0",
         "sse-channel": "^3.1.1",
         "tslib": "1.11.2",
-        "typeorm": "^0.2.24"
+        "typeorm": "^0.2.30"
     },
     "jest": {
         "transform": {

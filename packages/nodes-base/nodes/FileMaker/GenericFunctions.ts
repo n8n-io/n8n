@@ -212,11 +212,11 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 		pass: password as string,
 	};
 	requestOptions.body = {
-		"fmDataSource": [
+		'fmDataSource': [
 			{
-				"database": host,
-				"username": login as string,
-				"password": password as string,
+				'database': host,
+				'username': login as string,
+				'password': password as string,
 			},
 		],
 	};
@@ -230,8 +230,6 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 
 		return response.response.token;
 	} catch (error) {
-		console.error(error);
-
 		let errorMessage;
 		if (error.response) {
 			errorMessage = error.response.body.messages[0].message + '(' + error.response.body.messages[0].message + ')';
@@ -275,8 +273,6 @@ export async function logout(this: ILoadOptionsFunctions | IExecuteFunctions | I
 
 		return response;
 	} catch (error) {
-		console.error(error);
-
 		const errorMessage = error.response.body.messages[0].message + '(' + error.response.body.messages[0].message + ')';
 
 		if (errorMessage !== undefined) {

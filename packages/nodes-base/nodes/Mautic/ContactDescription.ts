@@ -305,6 +305,42 @@ export const contactFields = [
 				default: '',
 			},
 			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Fields',
+				description: 'Adds a custom fields to set also values which have not been predefined.',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'customFieldValues',
+						displayName: 'Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getContactFields',
+								},
+								default: '',
+								description: 'ID of the field to set.',
+							},
+							{
+								displayName: 'Field Value',
+								name: 'fieldValue',
+								type: 'string',
+								default: '',
+								description: 'Value of the field to set.',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Fax',
 				name: 'fax',
 				type: 'string',
@@ -616,6 +652,42 @@ export const contactFields = [
 					},
 				},
 				default: '',
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Fields',
+				description: 'Adds a custom fields to set also values which have not been predefined.',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'customFieldValues',
+						displayName: 'Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getContactFields',
+								},
+								default: '',
+								description: 'ID of the field to set.',
+							},
+							{
+								displayName: 'Field Value',
+								name: 'fieldValue',
+								type: 'string',
+								default: '',
+								description: 'Value of the field to set.',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Email',

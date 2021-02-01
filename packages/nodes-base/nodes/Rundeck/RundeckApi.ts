@@ -59,7 +59,7 @@ export class RundeckApi {
 
 		if(args) {
 			for(const arg of args) {
-				params += "-" + arg.name + " " + arg.value + " ";
+				params += '-' + arg.name + ' ' + arg.value + ' ';
 			}
 		}
 
