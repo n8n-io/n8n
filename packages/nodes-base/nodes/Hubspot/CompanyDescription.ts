@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export const companyOperations = [
 	{
@@ -63,9 +63,9 @@ export const companyOperations = [
 
 export const companyFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                company:create                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                company:create                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -370,7 +370,7 @@ export const companyFields = [
 				description: 'The main website of the company or organization. This property is used to identify unique companies. Powered by HubSpot Insights.',
 			},
 			{
-				displayName:  'Year Founded',
+				displayName: 'Year Founded',
 				name: 'yearFounded',
 				type: 'string',
 				default: '',
@@ -378,9 +378,10 @@ export const companyFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 company:update                             */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 company:update                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Company ID',
 		name: 'companyId',
@@ -692,7 +693,7 @@ export const companyFields = [
 				description: 'The main website of the company or organization. This property is used to identify unique companies. Powered by HubSpot Insights.',
 			},
 			{
-				displayName:  'Year Founded',
+				displayName: 'Year Founded',
 				name: 'yearFounded',
 				type: 'string',
 				default: '',
@@ -700,9 +701,10 @@ export const companyFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  company:get                               */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  company:get                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Company ID',
 		name: 'companyId',
@@ -747,9 +749,10 @@ export const companyFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 company:getAll                             */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 company:getAll                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -838,9 +841,10 @@ export const companyFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 company:delete                             */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 company:delete                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Company ID',
 		name: 'companyId',
@@ -859,9 +863,10 @@ export const companyFields = [
 		default: '',
 		description: 'Unique identifier for a particular company',
 	},
-/* -------------------------------------------------------------------------- */
-/*               company:getRecentlyCreated company:getRecentlyModifie        */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*               company:getRecentlyCreated company:getRecentlyModifie        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -939,9 +944,10 @@ export const companyFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                            company:searchByDomain                          */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                            company:searchByDomain                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Domain',
 		name: 'domain',
