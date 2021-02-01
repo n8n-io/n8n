@@ -43,5 +43,11 @@ export class QuickBooksOAuth2Api implements ICredentialType {
 			default: '',
 			required: true,
 		},
+		{
+			displayName: 'Auth URI Query Parameters',
+			name: 'authQueryParameters',
+			type: 'hidden' as NodePropertyTypes,
+			default: '',
+		},
 	];
 }
