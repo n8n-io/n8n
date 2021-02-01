@@ -151,7 +151,9 @@ export class QuickBooks implements INodeType {
 		let responseData;
 		const returnData: IDataObject[] = [];
 
-		const { companyId } = this.getCredentials('quickBooksOAuth2Api') as { companyId: string };
+		const { oauthTokenData } = this.getCredentials('quickBooksOAuth2Api') as IDataObject;
+		// @ts-ignore
+		const companyId = oauthTokenData.realmId;
 
 		for (let i = 0; i < items.length; i++) {
 

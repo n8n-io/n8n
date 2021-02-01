@@ -37,13 +37,6 @@ export class QuickBooksOAuth2Api implements ICredentialType {
 			default: scopes.join(' '),
 		},
 		{
-			displayName: 'Company ID',
-			name: 'companyId',
-			type: 'string' as NodePropertyTypes,
-			default: '',
-			required: true,
-		},
-		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden' as NodePropertyTypes,
