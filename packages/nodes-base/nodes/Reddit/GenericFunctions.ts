@@ -92,6 +92,8 @@ export async function redditApiRequestAllItems(
 	const resource = this.getNodeParameter('resource', 0) as string;
 	const operation = this.getNodeParameter('operation', 0) as string;
 
+	qs.limit = 100;
+
 	do {
 		responseData = await redditApiRequest.call(this, method, endpoint, qs);
 		if (!Array.isArray(responseData)) {
@@ -104,10 +106,6 @@ export async function redditApiRequestAllItems(
 			responseData[1].data.children.forEach((child: any) => returnData.push(child.data)); // tslint:disable-line:no-any
 		} else {
 			responseData.data.children.forEach((child: any) => returnData.push(child.data)); // tslint:disable-line:no-any
-		}
-
-		if (qs.limit && responseData.data.children.length >= qs.limit) {
-			return returnData;
 		}
 
 	} while (responseData.data && responseData.data.after);
