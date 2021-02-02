@@ -3,10 +3,10 @@ import {
  } from 'request';
 
 import {
-	handleError,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
+	NodeApiError
 } from 'n8n-core';
 
 import {
@@ -37,11 +37,11 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	} catch (error) {
 
 		const errorPathMapping: IN8nErrorPathMapping = {
-			code: ["error", "error", "code"],
-			message: ["error", "error", "message"],
+			code: ['error', 'error', 'code'],
+			message: ['error', 'error', 'message'],
 		};
 
-		handleError("GSuite Admin", error, errorPathMapping);
+		throw new NodeApiError('GSuite Admin', error, errorPathMapping);
 	}
 }
 

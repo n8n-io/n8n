@@ -16,8 +16,6 @@ import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IExecuteWorkflowInfo,
-	IN8nApiResponseError,
-	IN8nErrorPathMapping,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
@@ -1062,60 +1060,4 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 		};
 	})(workflow, node);
 
-}
-
-/**
- * Standardizes an API response error and throws it.
- *
- * @export
- * @param {string} nodeName
- * @param {object} errorObject
- * @param {IN8nErrorPathMapping} errorPathMapping
- * @returns {never}
- */
-export function handleError(
-	nodeName: string,
-	errorObject: object,
-	errorPathMapping: IN8nErrorPathMapping,
-): never {
-	const apiResponseError = standardizeError(errorObject, errorPathMapping);
-	throwApiResponseError(nodeName, apiResponseError);
-}
-
-/**
- * Converts an API error object into a standard N8N error object based on the error path mapping provided.
- *
- * @export
- * @param {object} errorObject
- * @param {IN8nErrorPathMapping} errorPathMapping
- * @returns {IN8nApiResponseError}
- */
-function standardizeError(errorObject: object, errorPathMapping: IN8nErrorPathMapping): IN8nApiResponseError {
-	const apiResponseError: IN8nApiResponseError = {
-		code: '',
-		message: '',
-	};
-
-	const findValueRecursively = (accumulator: any, currentValue: any) => accumulator[currentValue]; // tslint:disable-line:no-any
-
-	Object.entries(errorPathMapping).forEach(([key, path]) => {
-		apiResponseError[key] = path.reduce(findValueRecursively, errorObject).toString();
-	});
-
-	return apiResponseError;
-}
-
-/**
- * Throws an error with a standard N8N error message.
- *
- * @export
- * @param {string} nodeName
- * @param {IN8nApiResponseError} apiResponseError
- * @returns {never}
- */
-function throwApiResponseError(
-	nodeName: string,
-	apiResponseError: IN8nApiResponseError,
-): never {
-	throw new Error(`${nodeName} error response [${apiResponseError.code}]: ${apiResponseError.message}`);
 }

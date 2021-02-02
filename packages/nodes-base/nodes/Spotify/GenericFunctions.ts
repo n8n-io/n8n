@@ -1,9 +1,10 @@
 import { OptionsWithUri } from 'request';
 
 import {
-	handleError,
 	IExecuteFunctions,
 	IHookFunctions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-core';
 
 import {
@@ -40,7 +41,7 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		const credentials = this.getCredentials('spotifyOAuth2Api');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError('Spotify', 'No credentials got returned!');
 		}
 
 		if (Object.keys(body).length === 0) {
@@ -51,11 +52,11 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	} catch (error) {
 
 		const errorPathMapping: IN8nErrorPathMapping = {
-			code: ["error", "error", "status"],
-			message: ["error", "error", "message"],
+			code: ['error', 'error', 'status'],
+			message: ['error', 'error', 'message'],
 		};
 
-		handleError("Spotify", error, errorPathMapping);
+		throw new NodeApiError('Spotify', error, errorPathMapping);
 	}
 }
 

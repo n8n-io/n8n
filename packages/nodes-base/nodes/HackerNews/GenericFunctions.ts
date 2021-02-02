@@ -1,6 +1,7 @@
 import {
 	IExecuteFunctions,
 	IHookFunctions,
+	NodeApiError,
 } from 'n8n-core';
 
 import {
@@ -12,10 +13,6 @@ import {
 import {
 	OptionsWithUri,
 } from 'request';
-
-import {
-	handleError,
-} from 'n8n-core';
 
 /**
  * Make an API request to HackerNews
@@ -39,11 +36,11 @@ export async function hackerNewsApiRequest(this: IHookFunctions | IExecuteFuncti
 	} catch (error) {
 
 		const errorPathMapping: IN8nErrorPathMapping = {
-			code: ["error", "status"],
-			message: ["error", "error"],
+			code: ['error', 'status'],
+			message: ['error', 'error'],
 		};
 
-		handleError("Hacker News", error, errorPathMapping);
+		throw new NodeApiError('Hacker News', error, errorPathMapping);
 	}
 }
 
