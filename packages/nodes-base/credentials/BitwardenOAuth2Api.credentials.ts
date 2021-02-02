@@ -3,10 +3,6 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-const scopes = [
-	'api',
-];
-
 // https://bitwarden.com/help/article/public-api/#authentication
 
 export class BitwardenOAuth2Api implements ICredentialType {
@@ -33,12 +29,6 @@ export class BitwardenOAuth2Api implements ICredentialType {
 			default: 'https://identity.bitwarden.com/connect/token',
 		},
 		{
-			displayName: 'Scope',
-			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
-			default: scopes.join(' '),
-		},
-		{
 			displayName: 'Environment',
 			name: 'environment',
 			type: 'options' as NodePropertyTypes,
@@ -53,6 +43,20 @@ export class BitwardenOAuth2Api implements ICredentialType {
 					value: 'selfHosted',
 				},
 			],
+		},
+		{
+			displayName: 'Self-hosted domain',
+			name: 'domain',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+			placeholder: 'https://www.mydomain.com',
+			displayOptions: {
+				show: {
+					environment: [
+						'selfHosted',
+					],
+				},
+			},
 		},
 	];
 }
