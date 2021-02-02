@@ -30,6 +30,11 @@ import {
 } from './descriptions/groupDescription';
 
 import {
+	memberFields,
+	memberOperations,
+} from './descriptions/memberDescription';
+
+import {
 	isEmpty
 } from 'lodash';
 
@@ -93,6 +98,8 @@ export class Bitwarden implements INodeType {
 			...eventOperations,
 			...groupOperations,
 			...groupFields,
+			...memberOperations,
+			...memberFields,
 		],
 	};
 
