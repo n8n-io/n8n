@@ -61,10 +61,6 @@ export class Bitwarden implements INodeType {
 						value: 'organization',
 					},
 					{
-						name: 'Member',
-						value: 'member',
-					},
-					{
 						name: 'Policy',
 						value: 'policy',
 					},
@@ -310,6 +306,60 @@ export class Bitwarden implements INodeType {
 
 					const id = this.getNodeParameter('memberId', i);
 					const endpoint = `/public/members/${id}`;
+					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, {});
+
+				}
+
+			// *********************************************************************
+			// 															organization
+			// *********************************************************************
+
+			} else if (resource === 'organization') {
+
+				// ----------------------------------
+				//       organization: import
+				// ----------------------------------
+
+				if (operation === 'import') {
+
+					const endpoint = '/public/organization/import';
+					responseData = await bitwardenApiRequest.call(this, 'POST', endpoint, {}, {});
+
+				}
+
+			// *********************************************************************
+			// 															policy
+			// *********************************************************************
+
+			} else if (resource === 'policy') {
+
+				// ----------------------------------
+				//       member: get
+				// ----------------------------------
+
+				if (operation === 'get') {
+
+					const id = this.getNodeParameter('policyId', i);
+					const endpoint = `/public/policies/${id}`;
+					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
+
+				// ----------------------------------
+				//       member: getAll
+				// ----------------------------------
+
+				} else if (operation === 'getAll') {
+
+					const endpoint = `/public/policies`;
+					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
+
+				// ----------------------------------
+				//        member: update
+				// ----------------------------------
+
+				} else if (operation === 'update') {
+
+					const id = this.getNodeParameter('policyId', i);
+					const endpoint = `/public/policies/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, {});
 
 				}
