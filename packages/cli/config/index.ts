@@ -464,6 +464,12 @@ const config = convict({
 			env: 'N8N_ENDPOINT_WEBHOOK_TEST',
 			doc: 'Path for test-webhook endpoint',
 		},
+		disableProductionWebhooksOnMainProcess: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_DISABLE_PRODUCTION_MAIN_PROCESS',
+			doc: 'Disable production webhooks from main process. This helps ensures no http traffic load to main process when using webhook-specific processes.',
+		}
 	},
 
 	externalHookFiles: {
