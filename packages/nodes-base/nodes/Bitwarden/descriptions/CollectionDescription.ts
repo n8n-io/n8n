@@ -62,4 +62,51 @@ export const collectionFields = [
 			},
 		},
 	},
+	// ----------------------------------
+	//       collection: update
+	// ----------------------------------
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		required: true,
+		options: [
+			{
+				displayName: 'Group',
+				name: 'groups',
+				type: 'options',
+				description: 'The group to assign this collection to.',
+				default: {},
+				typeOptions: {
+					loadOptionsMethod: 'getGroups',
+				},
+			},
+			{
+				displayName: 'Read Only',
+				name: 'readOnly',
+				type: 'boolean',
+				description: 'Do not allow changes to be made to this collection.',
+				default: false,
+			},
+			{
+				displayName: 'External ID',
+				name: 'externalId',
+				type: 'string',
+				description: 'The external identifier to set to this collection.',
+				default: '',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'collection',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
 ] as INodeProperties[];

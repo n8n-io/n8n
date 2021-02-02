@@ -4,7 +4,9 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -17,6 +19,10 @@ import {
 	collectionFields,
 	collectionOperations,
 } from './descriptions/CollectionDescription';
+
+import {
+	isEmpty
+} from 'lodash';
 
 export class Bitwarden implements INodeType {
 	description: INodeTypeDescription = {
@@ -78,6 +84,26 @@ export class Bitwarden implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			async getGroups(this: ILoadOptionsFunctions) {
+				const returnData: INodePropertyOptions[] = [];
+
+				const endpoint = '/public/groups';
+				const { data } = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
+
+				data.forEach(({ id, name }: { id: string, name: string }) => {
+					returnData.push({
+						name,
+						value: id,
+					});
+				});
+
+				return returnData;
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
@@ -131,9 +157,37 @@ export class Bitwarden implements INodeType {
 
 				} else if (operation === 'update') {
 
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (isEmpty(updateFields)) {
+						throw new Error(`Please enter at least one field to update for the ${resource}.`);
+					}
+
+					console.log(updateFields.readOnly);
+					console.log(updateFields.groups);
+
+					if (updateFields.readOnly !== undefined && !updateFields.groups) {
+						throw new Error('To set the property "read only", please set a group as well.');
+					}
+
+					const body = {} as IDataObject;
+
+					if (updateFields.groups) {
+						body.groups = [
+							{
+								id: updateFields.groups,
+								ReadOnly: updateFields.readOnly || false,
+							},
+						];
+					}
+
+					if (updateFields.externalId) {
+						body.externalId = updateFields.externalId;
+					}
+
 					const id = this.getNodeParameter('collectionId', i);
 					const endpoint = `/public/collections/${id}`;
-					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, {});
+					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 
 				}
 
@@ -300,7 +354,7 @@ export class Bitwarden implements INodeType {
 				//       member: updateGroups
 				// ----------------------------------
 
-				} else if (operation === 'getGroups') {
+				} else if (operation === 'updateGroups') {
 
 					const id = this.getNodeParameter('memberId', i);
 					const endpoint = `/public/members/${id}/group-ids`;

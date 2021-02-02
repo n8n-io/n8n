@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
 import {
@@ -16,7 +17,7 @@ import {
  * Make an authenticated API request to Bitwarden.
  */
 export async function bitwardenApiRequest(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
@@ -35,6 +36,7 @@ export async function bitwardenApiRequest(
 		},
 		method,
 		qs,
+		body,
 		uri: `${getBaseUrl.call(this)}${endpoint}`,
 		json: true,
 	};
@@ -53,18 +55,20 @@ export async function bitwardenApiRequest(
 
 	try {
 		console.log('------------------------------');
-		console.log(options);
+		console.log(options.body);
 		console.log('------------------------------');
 		return await this.helpers.request!(options);
 	} catch (error) {
 
-		console.log(error);
+		// console.log(error);
 
 		throw error;
 	}
 }
 
-async function getAccessToken(this: IExecuteFunctions): Promise<any> { // tslint:disable-line:no-any
+async function getAccessToken(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = this.getCredentials('bitwardenOAuth2Api') as IDataObject;
 
@@ -93,7 +97,7 @@ async function getAccessToken(this: IExecuteFunctions): Promise<any> { // tslint
 	}
 }
 
-function getTokenUrl(this: IExecuteFunctions) {
+function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
 	const credentials = this.getCredentials('bitwardenOAuth2Api') as IDataObject;
 
 	return credentials.environment === 'cloudHosted'
@@ -102,7 +106,7 @@ function getTokenUrl(this: IExecuteFunctions) {
 
 }
 
-function getBaseUrl(this: IExecuteFunctions) {
+function getBaseUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
 	const credentials = this.getCredentials('bitwardenOAuth2Api') as IDataObject;
 
 	return credentials.environment === 'cloudHosted'
