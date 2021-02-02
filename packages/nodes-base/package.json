@@ -61,6 +61,7 @@
       "dist/credentials/CustomerIoApi.credentials.js",
       "dist/credentials/S3.credentials.js",
       "dist/credentials/CrateDb.credentials.js",
+      "dist/credentials/DiscordOAuth2Api.credentials.js",
       "dist/credentials/DiscourseApi.credentials.js",
       "dist/credentials/DisqusApi.credentials.js",
       "dist/credentials/DriftApi.credentials.js",
