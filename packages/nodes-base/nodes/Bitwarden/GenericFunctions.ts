@@ -29,10 +29,9 @@ export async function bitwardenApiRequest(
 
 	const options: OptionsWithUri = {
 		headers: {
-			// 'user-agent': 'n8n',
+			'user-agent': 'n8n',
 			Authorization: `Bearer ${access_token}`,
 			'Content-Type': 'application/json',
-			// 'Content-Type': 'application/x-www-form-urlencoded',
 		},
 		method,
 		qs,
@@ -55,7 +54,7 @@ export async function bitwardenApiRequest(
 
 	try {
 		console.log('------------------------------');
-		console.log(options.body);
+		console.log(options);
 		console.log('------------------------------');
 		return await this.helpers.request!(options);
 	} catch (error) {

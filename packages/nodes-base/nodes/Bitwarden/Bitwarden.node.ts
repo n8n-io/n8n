@@ -27,12 +27,21 @@ import {
 import {
 	groupFields,
 	groupOperations,
-} from './descriptions/groupDescription';
+} from './descriptions/GroupDescription';
 
 import {
 	memberFields,
 	memberOperations,
-} from './descriptions/memberDescription';
+} from './descriptions/MemberDescription';
+
+import {
+	organizationOperations,
+} from './descriptions/OrganizationDescription';
+
+import {
+	policyFields,
+	policyOperations,
+} from './descriptions/PolicyDescription';
 
 import {
 	isEmpty
@@ -100,6 +109,9 @@ export class Bitwarden implements INodeType {
 			...groupFields,
 			...memberOperations,
 			...memberFields,
+			...organizationOperations,
+			...policyOperations,
+			...policyFields,
 		],
 	};
 
@@ -414,7 +426,7 @@ export class Bitwarden implements INodeType {
 			} else if (resource === 'policy') {
 
 				// ----------------------------------
-				//       member: get
+				//       policy: get
 				// ----------------------------------
 
 				if (operation === 'get') {
@@ -424,16 +436,16 @@ export class Bitwarden implements INodeType {
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
 
 				// ----------------------------------
-				//       member: getAll
+				//       policy: getAll
 				// ----------------------------------
 
 				} else if (operation === 'getAll') {
 
-					const endpoint = `/public/policies`;
+					const endpoint = '/public/policies';
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
 
 				// ----------------------------------
-				//        member: update
+				//        policy: update
 				// ----------------------------------
 
 				} else if (operation === 'update') {
