@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const collectionOperations = [
+export const eventOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -18,7 +18,7 @@ export const collectionOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'collection',
+					'event',
 				],
 			},
 		},
