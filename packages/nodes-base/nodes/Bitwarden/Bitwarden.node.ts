@@ -21,6 +21,15 @@ import {
 } from './descriptions/CollectionDescription';
 
 import {
+	eventOperations,
+} from './descriptions/EventDescription';
+
+import {
+	groupFields,
+	groupOperations,
+} from './descriptions/groupDescription';
+
+import {
 	isEmpty
 } from 'lodash';
 
@@ -81,6 +90,9 @@ export class Bitwarden implements INodeType {
 			},
 			...collectionOperations,
 			...collectionFields,
+			...eventOperations,
+			...groupOperations,
+			...groupFields,
 		],
 	};
 
@@ -149,7 +161,6 @@ export class Bitwarden implements INodeType {
 
 					const endpoint = '/public/collections';
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
-					responseData = responseData.data;
 
 				// ----------------------------------
 				//       collection: update
@@ -426,6 +437,10 @@ export class Bitwarden implements INodeType {
 
 				}
 
+			}
+
+			if (operation === 'getAll') {
+				responseData = responseData.data;
 			}
 
 			Array.isArray(responseData)
