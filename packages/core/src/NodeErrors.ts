@@ -5,6 +5,7 @@ import {
 } from 'n8n-workflow';
 
 class NodeError extends Error {
+	subtitle: string | undefined;
 	cause: Error;
 	node: string;
 	timestamp: number;
@@ -25,30 +26,35 @@ export class NodeOperationError extends NodeError {
 		}
     super(node, error);
 		this.name = "NodeOperationError";
-		this.message = `${node} error: ${error.message}`;
+		this.message = `${node}: ${error.message}`;
 	}
 }
 
 export class NodeApiError extends NodeError {
-	httpCode: string | undefined;
+	httpCode: string;
 
 	statusCodeMessages: IDataObject = {
+		'400': 'Bad Request - please check the payload of your request',
 		'401': 'Authorization failed - please check your Credentials',
+		'403': 'Forbidden - please check your Credentials',
 		'404': 'The path you are requesting has not been found',
+		'405': 'Method not allowed - please check if you are using the right HTTP-Method',
+		'429': 'Too many requests - take a break! the service is receiving too many requests from you',
+		'500': 'The service was not able to process your request and returned an error',
+		'502': 'Bad Gateway- service failed to handle your request',
+		'503': 'Service Unavailable - try again later',
+		'504': 'Gateway timed out - try again later',
 	}
 
   constructor(node: string, error: Error, path: IN8nErrorPathMapping) {
     super(node, error);
 		this.name = "NodeApiError";
-		this.message = `${node} error: `;
+		this.message = `${node}: `;
 
 		const standardError = this.standardizeError(error, path);
 		this.httpCode = standardError.code;
-		if (this.httpCode) {
-			this.message += this.statusCodeMessages[this.httpCode];
-			return;
-		}
-		this.message += standardError.message;
+		this.message += this.statusCodeMessages[this.httpCode];
+		this.subtitle = `[${standardError.code}]: ${standardError.message}`
 	}
 
 	/**
