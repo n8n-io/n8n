@@ -13,6 +13,11 @@ import {
 	bitwardenApiRequest,
 } from './GenericFunctions';
 
+import {
+	collectionFields,
+	collectionOperations,
+} from './descriptions/CollectionDescription';
+
 export class Bitwarden implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Bitwarden',
@@ -68,6 +73,8 @@ export class Bitwarden implements INodeType {
 				default: 'collection',
 				description: 'Resource to consume',
 			},
+			...collectionOperations,
+			...collectionFields,
 		],
 	};
 
@@ -116,6 +123,7 @@ export class Bitwarden implements INodeType {
 
 					const endpoint = '/public/collections';
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = responseData.data;
 
 				// ----------------------------------
 				//       collection: update
