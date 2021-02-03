@@ -29,6 +29,7 @@ import {
 } from './descriptions/EventDescription';
 
 import {
+	GroupCreationAdditionalFields,
 	groupFields,
 	groupOperations,
 } from './descriptions/GroupDescription';
@@ -133,13 +134,34 @@ export class Bitwarden implements INodeType {
 
 				data.forEach(({ id, name }: { id: string, name: string }) => {
 					returnData.push({
-						name,
+						name: name || 'Unnamed',
 						value: id,
 					});
 				});
 
 				return returnData;
 			},
+
+			async getCollections(this: ILoadOptionsFunctions) {
+
+				const returnData: INodePropertyOptions[] = [];
+				const token =  await getAccessToken.call(this);
+				const endpoint = '/public/collections';
+
+				const { data } = await tokenlessBitwardenApiRequest.call(this, 'GET', endpoint, {}, {}, token);
+
+				console.log(data);
+
+				data.forEach(({ id, externalId }: { id: string, externalId: string }) => {
+					returnData.push({
+						name: externalId || 'Unnamed',
+						value: id,
+					});
+				});
+
+				return returnData;
+			},
+
 		},
 	};
 
@@ -205,18 +227,14 @@ export class Bitwarden implements INodeType {
 						throw new Error(`Please enter at least one field to update for the ${resource}.`);
 					}
 
-					const { readOnly, groups, externalId } = updateFields;
-
-					if (readOnly !== undefined && !groups) {
-						throw new Error('To set the property "read only", please set a group as well.');
-					}
+					const { groups, externalId } = updateFields;
 
 					const body = {} as IDataObject;
 
 					if (groups) {
 						body.groups = groups.map((groupId) => ({
 							id: groupId,
-							ReadOnly: updateFields.readOnly || false,
+							ReadOnly: false,
 						}));
 					}
 
@@ -261,9 +279,31 @@ export class Bitwarden implements INodeType {
 
 				if (operation === 'create') {
 
-					const id = this.getNodeParameter('groupId', i);
-					const endpoint = `/public/groups/${id}`;
-					responseData = await bitwardenApiRequest.call(this, 'POST', endpoint, {}, {});
+					const body = {
+						name: this.getNodeParameter('name', i),
+					} as IDataObject;
+
+					const {
+						collections,
+						externalId,
+						accessAll,
+					} = this.getNodeParameter('additionalFields', i) as GroupCreationAdditionalFields;
+
+					if (collections) {
+						body.collections = collections.map((collectionId) => ({
+							id: collectionId,
+							ReadOnly: false,
+						}));
+					}
+
+					if (externalId) {
+						body.externalId = externalId;
+					}
+
+					body.AccessAll = accessAll;
+
+					const endpoint = '/public/groups';
+					responseData = await bitwardenApiRequest.call(this, 'POST', endpoint, {}, body);
 
 				// ----------------------------------
 				//       group: delete

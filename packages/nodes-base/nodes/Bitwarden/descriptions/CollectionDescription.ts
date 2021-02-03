@@ -124,13 +124,6 @@ export const collectionFields = [
 				},
 			},
 			{
-				displayName: 'Read Only',
-				name: 'readOnly',
-				type: 'boolean',
-				description: 'Do not allow changes to be made to this collection.',
-				default: false,
-			},
-			{
 				displayName: 'External ID',
 				name: 'externalId',
 				type: 'string',
@@ -152,7 +145,6 @@ export const collectionFields = [
 ] as INodeProperties[];
 
 export interface CollectionUpdateFields {
-	readOnly: boolean;
 	groups: string[];
 	externalId: string;
 }

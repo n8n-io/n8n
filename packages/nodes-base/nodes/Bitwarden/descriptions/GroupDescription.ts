@@ -110,4 +110,72 @@ export const groupFields = [
 			},
 		},
 	},
+	// ----------------------------------
+	//       group: create
+	// ----------------------------------
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		default: '',
+		description: 'The name of the group to create.',
+		displayOptions: {
+			show: {
+				resource: [
+					'group',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		options: [
+			{
+				displayName: 'Collections',
+				name: 'collections',
+				type: 'multiOptions',
+				description: 'The collections to assign to this group.',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getCollections',
+				},
+			},
+			{
+				displayName: 'External ID',
+				name: 'externalId',
+				type: 'string',
+				description: 'The external identifier to set to this group.',
+				default: '',
+			},
+			{
+				displayName: 'Access All',
+				name: 'accessAll',
+				type: 'boolean',
+				default: false,
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'group',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
 ] as INodeProperties[];
+
+export interface GroupCreationAdditionalFields {
+	collections: string[];
+	accessAll: boolean;
+	externalId: string;
+}
