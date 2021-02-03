@@ -106,6 +106,7 @@ import * as timezones from 'google-timezones-json';
 import * as parseUrl from 'parseurl';
 import * as querystring from 'querystring';
 import { OptionsWithUrl } from 'request-promise-native';
+import Bull = require('bull');
 
 class App {
 
@@ -1424,7 +1425,20 @@ class App {
 				limit = parseInt(req.query.limit as string, 10);
 			}
 
-			const executingWorkflowIds = this.activeExecutionsInstance.getActiveExecutions().map(execution => execution.id.toString()) as string[];
+			let executingWorkflowIds;
+
+			if (config.get('executions.mode') === 'queue') {
+				const prefix = config.get('queue.bull.prefix') as string;
+				const redisOptions = config.get('queue.bull.redis') as object;
+				// @ts-ignore
+				const queue = new Bull('jobs', { prefix, redis: redisOptions, enableReadyCheck: false });
+	
+				const currentJobs = await queue.getJobs(['active', 'waiting']);
+	
+				executingWorkflowIds = currentJobs.map(job => job.data.executionId) as string[];
+			} else {
+				executingWorkflowIds = this.activeExecutionsInstance.getActiveExecutions().map(execution => execution.id.toString()) as string[];
+			}
 
 			const countFilter = JSON.parse(JSON.stringify(filter));
 			countFilter.select = ['id'];
@@ -1622,31 +1636,73 @@ class App {
 
 		// Returns all the currently working executions
 		this.app.get(`/${this.restEndpoint}/executions-current`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionsSummary[]> => {
-			const executingWorkflows = this.activeExecutionsInstance.getActiveExecutions();
+			if (config.get('executions.mode') === 'queue') {
+				const prefix = config.get('queue.bull.prefix') as string;
+				const redisOptions = config.get('queue.bull.redis') as object;
+				// @ts-ignore
+				const queue = new Bull('jobs', { prefix, redis: redisOptions, enableReadyCheck: false });
 
-			const returnData: IExecutionsSummary[] = [];
+				const currentJobs = await queue.getJobs(['active', 'waiting']);
 
-			let filter: any = {}; // tslint:disable-line:no-any
-			if (req.query.filter) {
-				filter = JSON.parse(req.query.filter as string);
-			}
+				const currentlyRunningExecutionIds = currentJobs.map(job => job.data.executionId);
 
-			for (const data of executingWorkflows) {
-				if (filter.workflowId !== undefined && filter.workflowId !== data.workflowId) {
-					continue;
-				}
-				returnData.push(
-					{
-						idActive: data.id.toString(),
-						workflowId: data.workflowId.toString(),
-						mode: data.mode,
-						retryOf: data.retryOf,
-						startedAt: new Date(data.startedAt),
+				const resultsQuery = await Db.collections.Execution!
+					.createQueryBuilder("execution")
+					.select([
+						'execution.id',
+						'execution.workflowId',
+						'execution.mode',
+						'execution.retryOf',
+						'execution.startedAt',
+					])
+					.orderBy('execution.id', 'DESC')
+					.andWhere(`execution.id IN (:...ids)`, {ids: currentlyRunningExecutionIds});
+					
+				if (req.query.filter) {
+					const filter = JSON.parse(req.query.filter as string);
+					if (filter.workflowId !== undefined) {
+						resultsQuery.andWhere('execution.workflowId = :workflowId', {workflowId: filter.workflowId});
 					}
-				);
-			}
+				}
 
-			return returnData;
+				const results = await resultsQuery.getMany();
+
+				return results.map(result => {
+					return {
+						idActive: result.id,
+						workflowId: result.workflowId,
+						mode: result.mode,
+						retryOf: result.retryOf !== null ? result.retryOf : undefined,
+						startedAt: new Date(result.startedAt),
+					} as IExecutionsSummary;
+				});
+			} else {
+				const executingWorkflows = this.activeExecutionsInstance.getActiveExecutions();
+
+				const returnData: IExecutionsSummary[] = [];
+	
+				let filter: any = {}; // tslint:disable-line:no-any
+				if (req.query.filter) {
+					filter = JSON.parse(req.query.filter as string);
+				}
+	
+				for (const data of executingWorkflows) {
+					if (filter.workflowId !== undefined && filter.workflowId !== data.workflowId) {
+						continue;
+					}
+					returnData.push(
+						{
+							idActive: data.id.toString(),
+							workflowId: data.workflowId.toString(),
+							mode: data.mode,
+							retryOf: data.retryOf,
+							startedAt: new Date(data.startedAt),
+						}
+					);
+				}
+	
+				return returnData;
+			}
 		}));
 
 		// Forces the execution to stop
