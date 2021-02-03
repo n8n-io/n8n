@@ -76,9 +76,9 @@ export const collectionFields = [
 			{
 				displayName: 'Group',
 				name: 'groups',
-				type: 'options',
+				type: 'multiOptions',
 				description: 'The group to assign this collection to.',
-				default: {},
+				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
 				},
@@ -110,3 +110,9 @@ export const collectionFields = [
 		},
 	},
 ] as INodeProperties[];
+
+export interface CollectionUpdateFields {
+	readOnly: boolean;
+	groups: string[];
+	externalId: string;
+}

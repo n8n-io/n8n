@@ -18,6 +18,7 @@ import {
 import {
 	collectionFields,
 	collectionOperations,
+	CollectionUpdateFields,
 } from './descriptions/CollectionDescription';
 
 import {
@@ -191,32 +192,29 @@ export class Bitwarden implements INodeType {
 
 				} else if (operation === 'update') {
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i) as CollectionUpdateFields;
 
 					if (isEmpty(updateFields)) {
 						throw new Error(`Please enter at least one field to update for the ${resource}.`);
 					}
 
-					console.log(updateFields.readOnly);
-					console.log(updateFields.groups);
+					const { readOnly, groups, externalId } = updateFields;
 
-					if (updateFields.readOnly !== undefined && !updateFields.groups) {
+					if (readOnly !== undefined && !groups) {
 						throw new Error('To set the property "read only", please set a group as well.');
 					}
 
 					const body = {} as IDataObject;
 
-					if (updateFields.groups) {
-						body.groups = [
-							{
-								id: updateFields.groups,
-								ReadOnly: updateFields.readOnly || false,
-							},
-						];
+					if (groups) {
+						body.groups = groups.map((groupId) => ({
+							id: groupId,
+							ReadOnly: updateFields.readOnly || false,
+						}));
 					}
 
-					if (updateFields.externalId) {
-						body.externalId = updateFields.externalId;
+					if (externalId) {
+						body.externalId = externalId;
 					}
 
 					const id = this.getNodeParameter('collectionId', i);

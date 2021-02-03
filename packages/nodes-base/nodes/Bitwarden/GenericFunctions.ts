@@ -51,7 +51,7 @@ export async function bitwardenApiRequest(
 
 	try {
 		console.log('------------------------------');
-		console.log(options);
+		// console.log(loggedOptions);
 		console.log('------------------------------');
 		return await this.helpers.request!(options);
 	} catch (error) {
@@ -95,19 +95,19 @@ export async function getAccessToken(
 }
 
 function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
-	const credentials = this.getCredentials('bitwardenApi') as IDataObject;
+	const { environment, domain } = this.getCredentials('bitwardenApi') as IDataObject;
 
-	return credentials.environment === 'cloudHosted'
+	return environment === 'cloudHosted'
 		? 'https://identity.bitwarden.com/connect/token'
-		: `${credentials.domain}/identity/connect/token`;
+		: `${domain}/identity/connect/token`;
 
 }
 
 function getBaseUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
-	const credentials = this.getCredentials('bitwardenApi') as IDataObject;
+	const { environment, domain } = this.getCredentials('bitwardenApi') as IDataObject;
 
-	return credentials.environment === 'cloudHosted'
+	return environment === 'cloudHosted'
 		? 'https://api.bitwarden.com'
-		: `${credentials.domain}/api`;
+		: `${domain}/api`;
 
 }
