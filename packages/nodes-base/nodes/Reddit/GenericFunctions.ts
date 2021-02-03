@@ -91,6 +91,7 @@ export async function redditApiRequestAllItems(
 
 	const resource = this.getNodeParameter('resource', 0) as string;
 	const operation = this.getNodeParameter('operation', 0) as string;
+	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
 
 	qs.limit = 100;
 
@@ -106,6 +107,9 @@ export async function redditApiRequestAllItems(
 			responseData[1].data.children.forEach((child: any) => returnData.push(child.data)); // tslint:disable-line:no-any
 		} else {
 			responseData.data.children.forEach((child: any) => returnData.push(child.data)); // tslint:disable-line:no-any
+		}
+		if (qs.limit && returnData.length >= qs.limit && returnAll === false) {
+			return returnData;
 		}
 
 	} while (responseData.data && responseData.data.after);
