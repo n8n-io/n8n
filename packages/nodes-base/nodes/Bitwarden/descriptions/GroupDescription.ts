@@ -34,6 +34,10 @@ export const groupOperations = [
 				name: 'Update',
 				value: 'update',
 			},
+			{
+				name: 'Update Members',
+				value: 'updateMembers',
+			},
 		],
 		displayOptions: {
 			show: {
@@ -67,6 +71,7 @@ export const groupFields = [
 					'get',
 					'getMembers',
 					'update',
+					'updateMembers',
 				],
 			},
 		},
@@ -221,6 +226,26 @@ export const groupFields = [
 				],
 				operation: [
 					'update',
+				],
+			},
+		},
+	},
+	// ----------------------------------
+	//      group: updateMembers
+	// ----------------------------------
+	{
+		displayName: 'Member IDs',
+		name: 'memberIds',
+		type: 'string',
+		default: '',
+		description: 'Comma-separated list of IDs of members to set in a group.',
+		displayOptions: {
+			show: {
+				resource: [
+					'group',
+				],
+				operation: [
+					'updateMembers',
 				],
 			},
 		},

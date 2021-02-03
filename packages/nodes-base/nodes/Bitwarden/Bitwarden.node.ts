@@ -344,6 +344,7 @@ export class Bitwarden implements INodeType {
 					const id = this.getNodeParameter('groupId', i);
 					const endpoint = `/public/groups/${id}/member-ids`;
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = responseData.map((memberId: string) => ({ memberId }));
 
 				// ----------------------------------
 				//       group: update
@@ -379,7 +380,6 @@ export class Bitwarden implements INodeType {
 
 					const id = this.getNodeParameter('groupId', i);
 					const endpoint = `/public/groups/${id}`;
-					console.log(body);
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 
 				// ----------------------------------
@@ -388,10 +388,16 @@ export class Bitwarden implements INodeType {
 
 				} else if (operation === 'updateMembers') {
 
+					const memberIds = this.getNodeParameter('memberIds', i) as string;
+
+					const body = {
+						memberIds: memberIds.includes(',') ? memberIds.split(',') : [memberIds],
+					};
+
 					const id = this.getNodeParameter('groupId', i);
 					const endpoint = `/public/groups/${id}/member-ids`;
-					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, {});
-
+					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
+					responseData = { success: true };
 				}
 
 			// *********************************************************************
