@@ -42,10 +42,6 @@ import {
 } from './descriptions/MemberDescription';
 
 import {
-	organizationOperations,
-} from './descriptions/OrganizationDescription';
-
-import {
 	policyFields,
 	policyOperations,
 } from './descriptions/PolicyDescription';
@@ -99,10 +95,6 @@ export class Bitwarden implements INodeType {
 						value: 'member',
 					},
 					{
-						name: 'Organization',
-						value: 'organization',
-					},
-					{
 						name: 'Policy',
 						value: 'policy',
 					},
@@ -118,7 +110,6 @@ export class Bitwarden implements INodeType {
 			...groupFields,
 			...memberOperations,
 			...memberFields,
-			...organizationOperations,
 			...policyOperations,
 			...policyFields,
 		],
@@ -506,23 +497,6 @@ export class Bitwarden implements INodeType {
 					const endpoint = `/public/members/${memberId}/group-ids`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 					responseData = { success: true };
-
-				}
-
-			// *********************************************************************
-			// 															organization
-			// *********************************************************************
-
-			} else if (resource === 'organization') {
-
-				// ----------------------------------
-				//       organization: import
-				// ----------------------------------
-
-				if (operation === 'import') {
-
-					const endpoint = '/public/organization/import';
-					responseData = await bitwardenApiRequest.call(this, 'POST', endpoint, {}, {});
 
 				}
 
