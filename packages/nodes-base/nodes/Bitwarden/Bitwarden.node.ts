@@ -292,7 +292,7 @@ export class Bitwarden implements INodeType {
 				} else if (operation === 'getAll') {
 
 					const endpoint = '/public/groups';
-					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = await handleGetAll.call(this, i, 'GET', endpoint, {}, {});
 
 				// ----------------------------------
 				//       group: getMembers

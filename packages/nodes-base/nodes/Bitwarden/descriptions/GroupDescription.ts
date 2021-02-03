@@ -70,4 +70,44 @@ export const groupFields = [
 			},
 		},
 	},
+	// ----------------------------------
+	//       group: getAll
+	// ----------------------------------
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Return all available results for the query.',
+		displayOptions: {
+			show: {
+				resource: [
+					'group',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 10,
+		description: 'Number of results to return for the query.',
+		displayOptions: {
+			show: {
+				resource: [
+					'group',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
 ] as INodeProperties[];

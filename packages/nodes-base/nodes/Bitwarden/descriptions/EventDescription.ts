@@ -27,6 +27,9 @@ export const eventOperations = [
 
 
 export const eventFields = [
+	// ----------------------------------
+	//       event: getAll
+	// ----------------------------------
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
