@@ -63,6 +63,46 @@ export const collectionFields = [
 		},
 	},
 	// ----------------------------------
+	//       collection: getAll
+	// ----------------------------------
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Return all available results for the query.',
+		displayOptions: {
+			show: {
+				resource: [
+					'collection',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 10,
+		description: 'Number of results to return for the query.',
+		displayOptions: {
+			show: {
+				resource: [
+					'collection',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
+	// ----------------------------------
 	//       collection: update
 	// ----------------------------------
 	{

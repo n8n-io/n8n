@@ -20,14 +20,13 @@ export async function bitwardenApiRequest(
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
-	accessToken: string,
-	option: IDataObject = {},
+	token: string,
 ): Promise<any> { // tslint:disable-line:no-any
 
 	const options: OptionsWithUri = {
 		headers: {
 			'user-agent': 'n8n',
-			Authorization: `Bearer ${accessToken}`,
+			Authorization: `Bearer ${token}`,
 			'Content-Type': 'application/json',
 		},
 		method,
@@ -45,14 +44,11 @@ export async function bitwardenApiRequest(
 		delete options.qs;
 	}
 
-	if (Object.keys(option)) {
-		Object.assign(options, option);
-	}
-
 	try {
-		console.log('------------------------------');
+		// console.log('------------------------------');
 		// console.log(loggedOptions);
-		console.log('------------------------------');
+		// console.log('------------------------------');
+		console.log(options);
 		return await this.helpers.request!(options);
 	} catch (error) {
 
@@ -92,6 +88,25 @@ export async function getAccessToken(
 	} catch (error) {
 		throw error;
 	}
+}
+
+export async function handleGetAll(
+	this: IExecuteFunctions,
+	i: number,
+	method: string,
+	endpoint: string,
+	qs: IDataObject,
+	body: IDataObject,
+	token: string,
+) {
+	const responseData = await bitwardenApiRequest.call(this, method, endpoint, qs, body, token);
+	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const limit = this.getNodeParameter('limit', i) as number || -1;
+
+	return returnAll
+		? responseData.data
+		: responseData.data.slice(0, limit);
+
 }
 
 function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
