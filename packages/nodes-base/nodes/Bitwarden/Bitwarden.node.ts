@@ -395,8 +395,8 @@ export class Bitwarden implements INodeType {
 						memberIds: memberIds.includes(',') ? memberIds.split(',') : [memberIds],
 					};
 
-					const id = this.getNodeParameter('groupId', i);
-					const endpoint = `/public/groups/${id}/member-ids`;
+					const groupId = this.getNodeParameter('groupId', i);
+					const endpoint = `/public/groups/${groupId}/member-ids`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 					responseData = { success: true };
 				}
@@ -478,26 +478,7 @@ export class Bitwarden implements INodeType {
 					const id = this.getNodeParameter('memberId', i);
 					const endpoint = `/public/members/${id}/group-ids`;
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
-
-				// ----------------------------------
-				//       member: reinvite
-				// ----------------------------------
-
-				} else if (operation === 'reinvite') {
-
-					const id = this.getNodeParameter('memberId', i);
-					const endpoint = `/public/members/${id}/reinvite`;
-					responseData = await bitwardenApiRequest.call(this, 'POST', endpoint, {}, {});
-
-				// ----------------------------------
-				//       member: updateGroups
-				// ----------------------------------
-
-				} else if (operation === 'updateGroups') {
-
-					const id = this.getNodeParameter('memberId', i);
-					const endpoint = `/public/members/${id}/group-ids`;
-					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, {});
+					responseData = responseData.map((groupId: string) => ({ groupId }));
 
 				// ----------------------------------
 				//       member: update
@@ -508,6 +489,23 @@ export class Bitwarden implements INodeType {
 					const id = this.getNodeParameter('memberId', i);
 					const endpoint = `/public/members/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, {});
+
+				// ----------------------------------
+				//       member: updateGroups
+				// ----------------------------------
+
+				} else if (operation === 'updateGroups') {
+
+					const groupIds = this.getNodeParameter('groupIds', i) as string;
+
+					const body = {
+						groupIds: groupIds.includes(',') ? groupIds.split(',') : [groupIds],
+					};
+
+					const memberId = this.getNodeParameter('memberId', i);
+					const endpoint = `/public/members/${memberId}/group-ids`;
+					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
+					responseData = { success: true };
 
 				}
 

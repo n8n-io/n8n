@@ -27,12 +27,16 @@ export const memberOperations = [
 				value: 'getAll',
 			},
 			{
-				name: 'Get Members',
-				value: 'getMembers',
+				name: 'Get Groups',
+				value: 'getGroups',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+			},
+			{
+				name: 'Update Groups',
+				value: 'updateGroups',
 			},
 		],
 		displayOptions: {
@@ -65,7 +69,9 @@ export const memberFields = [
 				operation: [
 					'delete',
 					'get',
+					'getGroups',
 					'update',
+					'updateGroups',
 				],
 			},
 		},
@@ -202,6 +208,26 @@ export const memberFields = [
 				],
 				operation: [
 					'create',
+				],
+			},
+		},
+	},
+	// ----------------------------------
+	//      member: updateGroups
+	// ----------------------------------
+	{
+		displayName: 'Group IDs',
+		name: 'groupIds',
+		type: 'string',
+		default: '',
+		description: 'Comma-separated list of IDs of groups to set for a member.',
+		displayOptions: {
+			show: {
+				resource: [
+					'member',
+				],
+				operation: [
+					'updateGroups',
 				],
 			},
 		},
