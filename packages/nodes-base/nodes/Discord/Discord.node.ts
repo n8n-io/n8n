@@ -16,13 +16,13 @@ import {
 } from './GenericFunctions';
 
 import {
-	channelOperations,
 	channelFields,
+	channelOperations,
 } from './ChannelDescription';
 
 import {
-	userOperations,
 	userFields,
+	userOperations,
 } from './UserDescription';
 
 export class Discord implements INodeType {
@@ -57,6 +57,10 @@ export class Discord implements INodeType {
 						value: 'channel',
 					},
 					{
+						name: 'Message',
+						value: 'message',
+					},
+					{
 						name: 'User',
 						value: 'user',
 					},
@@ -70,6 +74,44 @@ export class Discord implements INodeType {
 			// User
 			...userOperations,
 			...userFields,
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'message',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a message',
+					},
+				],
+				default: 'create',
+				description: 'The operation to perform.',
+			},
+			{
+				displayName: 'Content',
+				name: 'content',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'message',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+			},
 		],
 	};
 
@@ -81,7 +123,20 @@ export class Discord implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+
 		for (let i = 0; i < length; i++) {
+			if (resource === 'message') {
+				if (operation === 'create') {
+					const content = this.getNodeParameter('content', i) as string;
+					const { oauthTokenData } = this.getCredentials('discordOAuth2Api') as IDataObject;
+					const { webhook: { url } } = oauthTokenData as { webhook: { url: string } };
+					const body: IDataObject = {
+						content,
+					};
+					responseData = await discordApiRequest.call(this, 'POST', '', body, {}, url);
+					responseData = { success: true };
+				}
+			}
 			if (resource === 'user') {
 				if (operation === 'getCurrentUser') {
 					responseData = await discordApiRequest.call(this, 'GET', `/users/@me`);
