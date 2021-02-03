@@ -76,6 +76,42 @@ export const memberFields = [
 			},
 		},
 	},
+	{
+		displayName: 'Type',
+		name: 'type',
+		type: 'options',
+		default: {},
+		required: true,
+		options: [
+			{
+				name: 'Owner',
+				value: 0,
+			},
+			{
+				name: 'Admin',
+				value: 1,
+			},
+			{
+				name: 'User',
+				value: 2,
+			},
+			{
+				name: 'Manager',
+				value: 3,
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'member',
+				],
+				operation: [
+					'create',
+					'update',
+				],
+			},
+		},
+	},
 	// ----------------------------------
 	//       member: getAll
 	// ----------------------------------
@@ -137,40 +173,6 @@ export const memberFields = [
 		},
 	},
 	{
-		displayName: 'Type',
-		name: 'type',
-		type: 'options',
-		default: {},
-		options: [
-			{
-				name: 'Owner',
-				value: 0,
-			},
-			{
-				name: 'Admin',
-				value: 1,
-			},
-			{
-				name: 'User',
-				value: 2,
-			},
-			{
-				name: 'Manager',
-				value: 3,
-			},
-		],
-		displayOptions: {
-			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -213,6 +215,75 @@ export const memberFields = [
 		},
 	},
 	// ----------------------------------
+	//       member: update
+	// ----------------------------------
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		options: [
+			{
+				displayName: 'Type',
+				name: 'type',
+				type: 'options',
+				default: {},
+				options: [
+					{
+						name: 'Owner',
+						value: 0,
+					},
+					{
+						name: 'Admin',
+						value: 1,
+					},
+					{
+						name: 'User',
+						value: 2,
+					},
+					{
+						name: 'Manager',
+						value: 3,
+					},
+				],
+			},
+			{
+				displayName: 'Collections',
+				name: 'collections',
+				type: 'multiOptions',
+				description: 'The collections to assign to this member.',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getCollections',
+				},
+			},
+			{
+				displayName: 'External ID',
+				name: 'externalId',
+				type: 'string',
+				description: 'The external identifier to set to this member.',
+				default: '',
+			},
+			{
+				displayName: 'Access All',
+				name: 'accessAll',
+				type: 'boolean',
+				default: false,
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'member',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	// ----------------------------------
 	//      member: updateGroups
 	// ----------------------------------
 	{
@@ -242,6 +313,6 @@ type MemberSchema = {
 	externalId: string;
 };
 
-// export type MemberUpdateFields = MemberSchema;
+export type MemberUpdateFields = Omit<MemberSchema, 'email'>;
 
 export type MemberCreationAdditionalFields = Omit<MemberSchema, 'email'>;

@@ -39,6 +39,7 @@ import {
 	MemberCreationAdditionalFields,
 	memberFields,
 	memberOperations,
+	MemberUpdateFields,
 } from './descriptions/MemberDescription';
 
 import {
@@ -466,9 +467,32 @@ export class Bitwarden implements INodeType {
 
 				} else if (operation === 'update') {
 
+					const body = {
+						type: this.getNodeParameter('type', i),
+					} as IDataObject;
+
+					const {
+						collections,
+						externalId,
+						accessAll,
+					} = this.getNodeParameter('updateFields', i) as MemberUpdateFields;
+
+					if (collections) {
+						body.collections = collections.map((collectionId) => ({
+							id: collectionId,
+							ReadOnly: false,
+						}));
+					}
+
+					if (externalId) {
+						body.externalId = externalId;
+					}
+
+					body.AccessAll = accessAll || false;
+
 					const id = this.getNodeParameter('memberId', i);
 					const endpoint = `/public/members/${id}`;
-					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, {});
+					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 
 				// ----------------------------------
 				//       member: updateGroups
