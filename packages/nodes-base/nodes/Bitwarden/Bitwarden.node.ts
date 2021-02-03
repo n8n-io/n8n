@@ -36,6 +36,7 @@ import {
 } from './descriptions/GroupDescription';
 
 import {
+	MemberCreationAdditionalFields,
 	memberFields,
 	memberOperations,
 } from './descriptions/MemberDescription';
@@ -412,9 +413,32 @@ export class Bitwarden implements INodeType {
 
 				if (operation === 'create') {
 
-					const id = this.getNodeParameter('memberId', i);
-					const endpoint = `/public/members/${id}`;
-					responseData = await bitwardenApiRequest.call(this, 'POST', endpoint, {}, {});
+					const body = {
+						email: this.getNodeParameter('email', i),
+						type: this.getNodeParameter('type', i),
+					} as IDataObject;
+
+					const {
+						collections,
+						externalId,
+						accessAll,
+					} = this.getNodeParameter('additionalFields', i) as MemberCreationAdditionalFields;
+
+					if (collections) {
+						body.collections = collections.map((collectionId) => ({
+							id: collectionId,
+							ReadOnly: false,
+						}));
+					}
+
+					if (externalId) {
+						body.externalId = externalId;
+					}
+
+					body.AccessAll = accessAll || false;
+
+					const endpoint = '/public/members/';
+					responseData = await bitwardenApiRequest.call(this, 'POST', endpoint, {}, body);
 
 				// ----------------------------------
 				//       member: delete

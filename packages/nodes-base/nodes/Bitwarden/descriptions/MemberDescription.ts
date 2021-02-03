@@ -110,4 +110,112 @@ export const memberFields = [
 			},
 		},
 	},
+	// ----------------------------------
+	//       member: create
+	// ----------------------------------
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		default: '',
+		description: 'The email of the member to update.',
+		displayOptions: {
+			show: {
+				resource: [
+					'member',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Type',
+		name: 'type',
+		type: 'options',
+		default: {},
+		options: [
+			{
+				name: 'Owner',
+				value: 0,
+			},
+			{
+				name: 'Admin',
+				value: 1,
+			},
+			{
+				name: 'User',
+				value: 2,
+			},
+			{
+				name: 'Manager',
+				value: 3,
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'member',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		options: [
+			{
+				displayName: 'Collections',
+				name: 'collections',
+				type: 'multiOptions',
+				description: 'The collections to assign to this member.',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getCollections',
+				},
+			},
+			{
+				displayName: 'External ID',
+				name: 'externalId',
+				type: 'string',
+				description: 'The external identifier to set to this member.',
+				default: '',
+			},
+			{
+				displayName: 'Access All',
+				name: 'accessAll',
+				type: 'boolean',
+				default: false,
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'member',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
 ] as INodeProperties[];
+
+type MemberSchema = {
+	email: string;
+	collections: string[];
+	type: number;
+	accessAll: boolean;
+	externalId: string;
+};
+
+// export type MemberUpdateFields = MemberSchema;
+
+export type MemberCreationAdditionalFields = Omit<MemberSchema, 'email'>;
