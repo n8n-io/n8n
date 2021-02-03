@@ -23,7 +23,7 @@ export class TelegramTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Telegram Trigger',
 		name: 'telegramTrigger',
-		icon: 'file:telegram.png',
+		icon: 'file:telegram.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '=Updates: {{$parameter["updates"].join(", ")}}',

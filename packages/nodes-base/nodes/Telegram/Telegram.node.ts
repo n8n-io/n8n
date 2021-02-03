@@ -19,7 +19,7 @@ export class Telegram implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Telegram',
 		name: 'telegram',
-		icon: 'file:telegram.png',
+		icon: 'file:telegram.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -1643,10 +1643,10 @@ export class Telegram implements INodeType {
 					body.title = this.getNodeParameter('title', i) as string;
 
 				}
-			// } else if (resource === 'bot') {
-			// 	if (operation === 'info') {
-			// 		endpoint = 'getUpdates';
-			// 	}
+				// } else if (resource === 'bot') {
+				// 	if (operation === 'info') {
+				// 		endpoint = 'getUpdates';
+				// 	}
 			} else if (resource === 'file') {
 
 				if (operation === 'get') {
