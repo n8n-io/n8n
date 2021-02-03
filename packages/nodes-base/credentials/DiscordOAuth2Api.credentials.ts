@@ -5,6 +5,7 @@ import {
 
 const scopes = [
 	'identify',
+	'message.read',
 ];
 
 
@@ -34,7 +35,7 @@ export class DiscordOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
-			default: scopes.join(','),
+			default: scopes.join(' '),
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
