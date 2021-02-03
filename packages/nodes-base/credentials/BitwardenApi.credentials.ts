@@ -5,9 +5,9 @@ import {
 
 // https://bitwarden.com/help/article/public-api/#authentication
 
-export class BitwardenOAuth2Api implements ICredentialType {
-	name = 'bitwardenOAuth2Api';
-	displayName = 'Bitwarden OAuth2 API';
+export class BitwardenApi implements ICredentialType {
+	name = 'bitwardenApi';
+	displayName = 'Bitwarden API';
 	documentationUrl = 'bitwarden';
 	properties = [
 		{

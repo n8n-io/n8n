@@ -69,7 +69,7 @@ async function getAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 ): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('bitwardenOAuth2Api') as IDataObject;
+	const credentials = this.getCredentials('bitwardenApi') as IDataObject;
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -97,7 +97,7 @@ async function getAccessToken(
 }
 
 function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
-	const credentials = this.getCredentials('bitwardenOAuth2Api') as IDataObject;
+	const credentials = this.getCredentials('bitwardenApi') as IDataObject;
 
 	return credentials.environment === 'cloudHosted'
 		? 'https://identity.bitwarden.com/connect/token'
@@ -106,7 +106,7 @@ function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
 }
 
 function getBaseUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
-	const credentials = this.getCredentials('bitwardenOAuth2Api') as IDataObject;
+	const credentials = this.getCredentials('bitwardenApi') as IDataObject;
 
 	return credentials.environment === 'cloudHosted'
 		? 'https://api.bitwarden.com'

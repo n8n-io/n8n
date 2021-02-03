@@ -64,7 +64,7 @@ export class Bitwarden implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'bitwardenOAuth2Api',
+				name: 'bitwardenApi',
 				required: true,
 			},
 		],
