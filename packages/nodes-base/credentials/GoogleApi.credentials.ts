@@ -14,7 +14,7 @@ export class GoogleApi implements ICredentialType {
 			name: 'email',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			description: 'The Google Service account similar to user-808@project.iam.gserviceaccount.com.<br />See the <a href="https://github.com/jovotech/learn-jovo/blob/master/tutorials/google-spreadsheet-private-cms/README.md#google-api-console">tutorial</a> on how to create one.',
+			description: 'The Google Service account similar to user-808@project.iam.gserviceaccount.com.',
 
 		},
 		{
