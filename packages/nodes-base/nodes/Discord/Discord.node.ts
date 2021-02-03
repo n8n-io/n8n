@@ -16,6 +16,11 @@ import {
 } from './GenericFunctions';
 
 import {
+	channelOperations,
+	channelFields,
+} from './ChannelDescription';
+
+import {
 	userOperations,
 	userFields,
 } from './UserDescription';
@@ -48,14 +53,20 @@ export class Discord implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Channel',
+						value: 'channel',
+					},
+					{
 						name: 'User',
 						value: 'user',
 					},
 				],
-				default: 'user',
+				default: 'channel',
 				description: 'Resource to consume.',
 			},
-
+			// Channel
+			...channelOperations,
+			...channelFields,
 			// User
 			...userOperations,
 			...userFields,
@@ -74,6 +85,13 @@ export class Discord implements INodeType {
 			if (resource === 'user') {
 				if (operation === 'getCurrentUser') {
 					responseData = await discordApiRequest.call(this, 'GET', `/users/@me`);
+				}
+			}
+			if (resource === 'channel') {
+				if (operation === 'getChannel') {
+					const channelId = this.getNodeParameter('channelId', i) as string;
+
+					responseData = await discordApiRequest.call(this, 'GET', `/channels/${channelId}`);
 				}
 			}
 			if (Array.isArray(responseData)) {
