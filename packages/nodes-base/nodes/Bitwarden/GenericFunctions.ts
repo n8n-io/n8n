@@ -11,8 +11,6 @@ import {
 	OptionsWithUri,
 } from 'request';
 
-// import * as uuid from 'uuid/v4';
-
 /**
  * Make an authenticated API request to Bitwarden.
  */
@@ -22,15 +20,14 @@ export async function bitwardenApiRequest(
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
+	accessToken: string,
 	option: IDataObject = {},
 ): Promise<any> { // tslint:disable-line:no-any
-
-	const { access_token } =  await getAccessToken.call(this);
 
 	const options: OptionsWithUri = {
 		headers: {
 			'user-agent': 'n8n',
-			Authorization: `Bearer ${access_token}`,
+			Authorization: `Bearer ${accessToken}`,
 			'Content-Type': 'application/json',
 		},
 		method,
@@ -65,7 +62,7 @@ export async function bitwardenApiRequest(
 	}
 }
 
-async function getAccessToken(
+export async function getAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 ): Promise<any> { // tslint:disable-line:no-any
 
@@ -81,16 +78,17 @@ async function getAccessToken(
 			client_secret: credentials.clientSecret,
 			grant_type: 'client_credentials',
 			scope: 'api.organization',
-			deviceName: 'firefox', // TODO: How to set this?
-			deviceType: 3, // TODO: How to set this?
-			deviceIdentifier: 'aac2e34a-44db-42ab-a733-5322dd582c3d', // TODO: How to set this?
+			deviceName: 'n8n',
+			deviceType: 3, // TODO: Find out meaning of 0-20 enum
+			deviceIdentifier: 'n8n',
 		},
 		uri: getTokenUrl.call(this),
 		json: true,
 	};
 
 	try {
-		return await this.helpers.request!(options);
+		const { access_token } = await this.helpers.request!(options);
+		return access_token;
 	} catch (error) {
 		throw error;
 	}
