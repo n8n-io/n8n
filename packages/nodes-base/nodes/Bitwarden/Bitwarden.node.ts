@@ -42,11 +42,6 @@ import {
 } from './descriptions/MemberDescription';
 
 import {
-	policyFields,
-	policyOperations,
-} from './descriptions/PolicyDescription';
-
-import {
 	isEmpty,
 	partialRight,
 } from 'lodash';
@@ -94,10 +89,6 @@ export class Bitwarden implements INodeType {
 						name: 'Member',
 						value: 'member',
 					},
-					{
-						name: 'Policy',
-						value: 'policy',
-					},
 				],
 				default: 'collection',
 				description: 'Resource to consume',
@@ -110,8 +101,6 @@ export class Bitwarden implements INodeType {
 			...groupFields,
 			...memberOperations,
 			...memberFields,
-			...policyOperations,
-			...policyFields,
 		],
 	};
 
@@ -497,43 +486,6 @@ export class Bitwarden implements INodeType {
 					const endpoint = `/public/members/${memberId}/group-ids`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 					responseData = { success: true };
-
-				}
-
-			// *********************************************************************
-			// 															policy
-			// *********************************************************************
-
-			} else if (resource === 'policy') {
-
-				// ----------------------------------
-				//       policy: get
-				// ----------------------------------
-
-				if (operation === 'get') {
-
-					const id = this.getNodeParameter('policyId', i);
-					const endpoint = `/public/policies/${id}`;
-					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
-
-				// ----------------------------------
-				//       policy: getAll
-				// ----------------------------------
-
-				} else if (operation === 'getAll') {
-
-					const endpoint = '/public/policies';
-					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
-
-				// ----------------------------------
-				//        policy: update
-				// ----------------------------------
-
-				} else if (operation === 'update') {
-
-					const id = this.getNodeParameter('policyId', i);
-					const endpoint = `/public/policies/${id}`;
-					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, {});
 
 				}
 
