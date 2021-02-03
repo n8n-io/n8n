@@ -193,20 +193,24 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 		workflowExecuteBefore: [
 			async function (this: WorkflowHooks): Promise<void> {
 				// Push data to editor-ui once workflow finished
-				const pushInstance = Push.getInstance();
-				pushInstance.send('executionStarted', {
-					executionId: this.executionId,
-					mode: this.mode,
-					startedAt: new Date(),
-					retryOf: this.retryOf,
-					workflowId: this.workflowData.id as string,
-					workflowName: this.workflowData.name,
-				});
+				if (this.mode === 'manual') {
+					const pushInstance = Push.getInstance();
+					pushInstance.send('executionStarted', {
+						executionId: this.executionId,
+						mode: this.mode,
+						startedAt: new Date(),
+						retryOf: this.retryOf,
+						workflowId: this.workflowData.id as string,
+						workflowName: this.workflowData.name,
+					});
+				}
 			},
 		],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
-				pushExecutionFinished(this.mode, fullRunData, this.executionId, undefined, this.retryOf);
+				if (this.mode === 'manual') {
+					pushExecutionFinished(this.mode, fullRunData, this.executionId, undefined, this.retryOf);
+				}
 			},
 		],
 	};
