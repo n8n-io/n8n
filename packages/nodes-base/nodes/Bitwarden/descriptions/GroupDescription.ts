@@ -65,6 +65,7 @@ export const groupFields = [
 				operation: [
 					'delete',
 					'get',
+					'getMembers',
 					'update',
 				],
 			},
@@ -172,10 +173,67 @@ export const groupFields = [
 			},
 		},
 	},
+	// ----------------------------------
+	//       group: update
+	// ----------------------------------
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		options: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'The name of the group to update.',
+			},
+			{
+				displayName: 'Collections',
+				name: 'collections',
+				type: 'multiOptions',
+				description: 'The collections to assign to this group.',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getCollections',
+				},
+			},
+			{
+				displayName: 'External ID',
+				name: 'externalId',
+				type: 'string',
+				description: 'The external identifier to set to this group.',
+				default: '',
+			},
+			{
+				displayName: 'Access All',
+				name: 'accessAll',
+				type: 'boolean',
+				default: false,
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'group',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
 ] as INodeProperties[];
 
-export interface GroupCreationAdditionalFields {
+type GroupSchema = {
+	name: string;
 	collections: string[];
 	accessAll: boolean;
 	externalId: string;
-}
+};
+
+export type GroupUpdateFields = GroupSchema;
+
+export type GroupCreationAdditionalFields = Omit<GroupSchema, 'name'>;

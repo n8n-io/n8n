@@ -32,6 +32,7 @@ import {
 	GroupCreationAdditionalFields,
 	groupFields,
 	groupOperations,
+	GroupUpdateFields,
 } from './descriptions/GroupDescription';
 
 import {
@@ -300,7 +301,7 @@ export class Bitwarden implements INodeType {
 						body.externalId = externalId;
 					}
 
-					body.AccessAll = accessAll;
+					body.AccessAll = accessAll || false;
 
 					const endpoint = '/public/groups';
 					responseData = await bitwardenApiRequest.call(this, 'POST', endpoint, {}, body);
@@ -350,18 +351,45 @@ export class Bitwarden implements INodeType {
 
 				} else if (operation === 'update') {
 
+					const body = {} as IDataObject;
+
+					const {
+						name,
+						collections,
+						externalId,
+						accessAll,
+					} = this.getNodeParameter('updateFields', i) as GroupUpdateFields;
+
+					if (collections) {
+						body.collections = collections.map((collectionId) => ({
+							id: collectionId,
+							ReadOnly: false,
+						}));
+					}
+
+					if (name) {
+						body.name = name;
+					}
+
+					if (externalId) {
+						body.externalId = externalId;
+					}
+
+					body.AccessAll = accessAll || false;
+
 					const id = this.getNodeParameter('groupId', i);
-					const endpoint = `/public/groups/${id}/member-ids`;
-					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, {});
+					const endpoint = `/public/groups/${id}`;
+					console.log(body);
+					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 
 				// ----------------------------------
-				//       group: getMembers
+				//       group: updateMembers
 				// ----------------------------------
 
 				} else if (operation === 'updateMembers') {
 
 					const id = this.getNodeParameter('groupId', i);
-					const endpoint = `/public/groups/${id}`;
+					const endpoint = `/public/groups/${id}/member-ids`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, {});
 
 				}
