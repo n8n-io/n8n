@@ -453,8 +453,9 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 export function getWebhookBaseUrl() {
 	let urlBaseWebhook = GenericHelpers.getBaseUrl();
 
-	if (process.env.WEBHOOK_TUNNEL_URL !== undefined) {
-		urlBaseWebhook = process.env.WEBHOOK_TUNNEL_URL;
+	if (process.env.WEBHOOK_TUNNEL_URL !== undefined || process.env.WEBHOOK_URL !== undefined) {
+		// @ts-ignore
+		urlBaseWebhook = process.env.WEBHOOK_TUNNEL_URL || process.env.WEBHOOK_URL;
 	}
 
 	return urlBaseWebhook;

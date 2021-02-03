@@ -255,8 +255,8 @@ export class Start extends Command {
 					// @ts-ignore
 					const webhookTunnel = await localtunnel(port, tunnelSettings);
 
-					process.env.WEBHOOK_TUNNEL_URL = webhookTunnel.url + '/';
-					this.log(`Tunnel URL: ${process.env.WEBHOOK_TUNNEL_URL}\n`);
+					process.env.WEBHOOK_URL = webhookTunnel.url + '/';
+					this.log(`Tunnel URL: ${process.env.WEBHOOK_URL}\n`);
 					this.log('IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!');
 				}
 
