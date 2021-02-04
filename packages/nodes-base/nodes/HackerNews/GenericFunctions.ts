@@ -35,12 +35,12 @@ export async function hackerNewsApiRequest(this: IHookFunctions | IExecuteFuncti
 		return await this.helpers.request!(options);
 	} catch (error) {
 
-		const errorPath: INodeErrorPath = {
+		const path: INodeErrorPath = {
 			code: ['error', 'status'],
 			message: ['error', 'error'],
 		};
 
-		throw new NodeApiError('Hacker News', error, errorPath);
+		throw new NodeApiError('Hacker News', error, { path });
 	}
 }
 

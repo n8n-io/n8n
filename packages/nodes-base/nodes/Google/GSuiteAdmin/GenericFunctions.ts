@@ -36,12 +36,12 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		return await this.helpers.requestOAuth2.call(this, 'gSuiteAdminOAuth2Api', options);
 	} catch (error) {
 
-		const errorPath: INodeErrorPath = {
+		const path: INodeErrorPath = {
 			code: ['error', 'error', 'code'],
 			message: ['error', 'error', 'message'],
 		};
 
-		throw new NodeApiError('GSuite Admin', error, errorPath);
+		throw new NodeApiError('GSuite Admin', error, { path });
 	}
 }
 

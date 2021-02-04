@@ -51,12 +51,12 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		return await this.helpers.requestOAuth2.call(this, 'spotifyOAuth2Api', options);
 	} catch (error) {
 
-		const errorPath: INodeErrorPath = {
+		const path: INodeErrorPath = {
 			code: ['error', 'error', 'status'],
 			message: ['error', 'error', 'message'],
 		};
 
-		throw new NodeApiError('Spotify', error, errorPath);
+		throw new NodeApiError('Spotify', error, { path });
 	}
 }
 
