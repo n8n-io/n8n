@@ -298,7 +298,6 @@ export default mixins(
 			// and is so not allowed to be changed here.
 			this.$emit('closeDialog');
 			if (this.autoRefreshInterval) {
-				console.log('removing interval');
 				clearInterval(this.autoRefreshInterval);
 				this.autoRefreshInterval = undefined;
 			}
