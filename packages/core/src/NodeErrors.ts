@@ -32,29 +32,66 @@ export class NodeOperationError extends NodeError {
 
 export class NodeApiError extends NodeError {
 	httpCode: string;
+	codeProperties = ['statusCode', 'code', 'status', 'errorCode', 'status_code', 'error_code', 'type']; // transform to number and not NaN
+	messageProperties = [
+		'message',
+		'Message',
+		'msg',
+		'description',
+		'reason',
+		'detail',
+		'details',
+		'errorMessage',
+		'ErrorMessage',
+		'error_message',
+		'_error_message',
+		'errorDescription',
+		'error_description',
+		'error_summary',
+		'title',
+		'text',
+		'error', // error key just if error property is string
+		'err', // err key just if error property is string
+		'error_info' // error_info key just additional info, how to treat that?
+	];
+	deeperProperties = ['error', 'err', 'response', 'body', 'data'];
+
+	multiMessageProperties = ['messages']
+	multiDeeperProperties = ['errors',]
+
 
 	statusCodeMessages: IDataObject = {
+		'4XX': 'Your request is invalid or could not get processed by the service',
 		'400': 'Bad Request - please check the payload of your request',
 		'401': 'Authorization failed - please check your Credentials',
+		'402': 'Payment required - please check your payment details',
 		'403': 'Forbidden - please check your Credentials',
 		'404': 'The path you are requesting has not been found',
 		'405': 'Method not allowed - please check if you are using the right HTTP-Method',
 		'429': 'Too many requests - take a break! the service is receiving too many requests from you',
+
+		'5XX': 'The service failed to process your request - try again later',
 		'500': 'The service was not able to process your request and returned an error',
 		'502': 'Bad Gateway- service failed to handle your request',
-		'503': 'Service Unavailable - try again later',
+		'503': 'Service unavailable - try again later',
 		'504': 'Gateway timed out - try again later',
 	}
 
-  constructor(node: string, error: Error, path: IN8nErrorPathMapping) {
+  constructor(node: string, error: Error, path?: IN8nErrorPathMapping) {
     super(node, error);
 		this.name = "NodeApiError";
 		this.message = `${node}: `;
 
-		const standardError = this.standardizeError(error, path);
-		this.httpCode = standardError.code;
-		this.message += this.statusCodeMessages[this.httpCode];
-		this.subtitle = `[${standardError.code}]: ${standardError.message}`
+		if (path) {
+			const standardError = this.standardizeError(error, path);
+			this.httpCode = standardError.code;
+			this.message += this.statusCodeMessages[this.httpCode];
+			this.subtitle = `[${standardError.code}]: ${standardError.message}`
+			return;
+		}
+
+
+
 	}
 
 	/**
