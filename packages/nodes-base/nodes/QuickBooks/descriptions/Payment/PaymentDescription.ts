@@ -58,11 +58,11 @@ export const paymentFields = [
 	//         payment: create
 	// ----------------------------------
 	{
-		displayName: 'For Customer',
+		displayName: 'For Customer ID',
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The customer who the payment is for.',
+		description: 'The ID of the customer who the payment is for.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',

@@ -46,11 +46,11 @@ export const billFields = [
 	//         bill: create
 	// ----------------------------------
 	{
-		displayName: 'For Vendor',
+		displayName: 'For Vendor ID',
 		name: 'VendorRef',
 		type: 'options',
 		required: true,
-		description: 'The vendor who the bill is for.',
+		description: 'The ID of the vendor who the bill is for.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getVendors',

@@ -50,11 +50,11 @@ export const estimateFields = [
 	//         estimate: create
 	// ----------------------------------
 	{
-		displayName: 'For Customer',
+		displayName: 'For Customer ID',
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The customer who the estimate is for.',
+		description: 'The ID of the customer who the estimate is for.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
