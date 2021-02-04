@@ -107,7 +107,6 @@ import * as parseUrl from 'parseurl';
 import * as querystring from 'querystring';
 import * as Queue from '../src/Queue';
 import { OptionsWithUrl } from 'request-promise-native';
-import Bull = require('bull');
 
 class App {
 

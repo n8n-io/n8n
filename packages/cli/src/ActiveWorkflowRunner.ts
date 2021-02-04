@@ -35,7 +35,6 @@ import {
 } from 'n8n-workflow';
 
 import * as express from 'express';
-import config = require('../config');
 
 export class ActiveWorkflowRunner {
 	private activeWorkflows: ActiveWorkflows | null = null;

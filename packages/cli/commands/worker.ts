@@ -206,12 +206,8 @@ export class Worker extends Command {
 				// Wait till the database is ready
 				await startDbInitPromise;
 
-				// Connect to bull-queue
 				const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
-				// Disabling ready check is necessary as it allows worker to 
-				// quickly reconnect to Redis if Redis crashes or is unreachable
-				// for some time. With it enabled, worker might take minutes to realize
-				// redis is back up and resume working.
+
 				Worker.jobQueue = Queue.getInstance().getBullObjectInstance();
 				Worker.jobQueue.process(flags.concurrency, (job) => this.runJob(job, nodeTypes));
 
