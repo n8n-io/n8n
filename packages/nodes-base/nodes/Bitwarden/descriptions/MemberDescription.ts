@@ -80,7 +80,7 @@ export const memberFields = [
 		displayName: 'Type',
 		name: 'type',
 		type: 'options',
-		default: {},
+		default: 2,
 		required: true,
 		options: [
 			{
@@ -107,7 +107,6 @@ export const memberFields = [
 				],
 				operation: [
 					'create',
-					'update',
 				],
 			},
 		},
@@ -173,6 +172,22 @@ export const memberFields = [
 		},
 	},
 	{
+		displayName: 'Access All',
+		name: 'accessAll',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'member',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -195,12 +210,6 @@ export const memberFields = [
 				type: 'string',
 				description: 'The external identifier to set to this member.',
 				default: '',
-			},
-			{
-				displayName: 'Access All',
-				name: 'accessAll',
-				type: 'boolean',
-				default: false,
 			},
 		],
 		displayOptions: {

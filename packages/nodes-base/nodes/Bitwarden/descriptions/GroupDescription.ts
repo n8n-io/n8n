@@ -138,6 +138,23 @@ export const groupFields = [
 		},
 	},
 	{
+		displayName: 'Access All',
+		name: 'accessAll',
+		type: 'boolean',
+		default: false,
+		description: 'Allow this group to access all collections within the organization, instead of only its associated collections.<br>If set to true, this option overrides any collection assignments.',
+		displayOptions: {
+			show: {
+				resource: [
+					'group',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -160,12 +177,6 @@ export const groupFields = [
 				type: 'string',
 				description: 'The external identifier to set to this group.',
 				default: '',
-			},
-			{
-				displayName: 'Access All',
-				name: 'accessAll',
-				type: 'boolean',
-				default: false,
 			},
 		],
 		displayOptions: {

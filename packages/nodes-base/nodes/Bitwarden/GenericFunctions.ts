@@ -46,14 +46,12 @@ export async function bitwardenApiRequest(
 	}
 
 	try {
-		// console.log('------------------------------');
-		// console.log(loggedOptions);
-		// console.log('------------------------------');
-		console.log(options);
 		return await this.helpers.request!(options);
 	} catch (error) {
 
-		// console.log(error);
+		if (error.statusCode === 404) {
+			throw new Error('Bitwarden error response [404]: Not found');
+		}
 
 		throw error;
 	}
