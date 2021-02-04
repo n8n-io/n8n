@@ -124,6 +124,7 @@ export const groupFields = [
 		name: 'name',
 		type: 'string',
 		default: '',
+		required: true,
 		description: 'The name of the group to create.',
 		displayOptions: {
 			show: {

@@ -59,6 +59,9 @@ export async function bitwardenApiRequest(
 	}
 }
 
+/**
+ * Retrieve the access token needed for every API request to Bitwarden.
+ */
 export async function getAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 ): Promise<any> { // tslint:disable-line:no-any
@@ -76,7 +79,7 @@ export async function getAccessToken(
 			grant_type: 'client_credentials',
 			scope: 'api.organization',
 			deviceName: 'n8n',
-			deviceType: 3, // TODO: Find out meaning of 0-20 enum
+			deviceType: 2, // https://github.com/bitwarden/server/blob/master/src/Core/Enums/DeviceType.cs
 			deviceIdentifier: 'n8n',
 		},
 		uri: getTokenUrl.call(this),
@@ -91,6 +94,9 @@ export async function getAccessToken(
 	}
 }
 
+/**
+ * Supplement a `getAll` operation with `returnAll` and `limit` parameters.
+ */
 export async function handleGetAll(
 	this: IExecuteFunctions,
 	i: number,
@@ -110,6 +116,9 @@ export async function handleGetAll(
 
 }
 
+/**
+ * Return the access token URL based on the user's environment.
+ */
 function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
 	const { environment, domain } = this.getCredentials('bitwardenApi') as IDataObject;
 
@@ -119,6 +128,9 @@ function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
 
 }
 
+/**
+ * Return the base API URL based on the user's environment.
+ */
 function getBaseUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
 	const { environment, domain } = this.getCredentials('bitwardenApi') as IDataObject;
 
@@ -128,6 +140,9 @@ function getBaseUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
 
 }
 
+/**
+ * Load a resource so that it can be selected by name from a dropdown.
+ */
 export async function loadResource(
 	this: ILoadOptionsFunctions,
 	resource: string,
