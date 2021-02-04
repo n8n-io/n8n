@@ -5,6 +5,7 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
@@ -125,4 +126,24 @@ function getBaseUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
 		? 'https://api.bitwarden.com'
 		: `${domain}/api`;
 
+}
+
+export async function loadResource(
+	this: ILoadOptionsFunctions,
+	resource: string,
+) {
+	const returnData: INodePropertyOptions[] = [];
+	const token =  await getAccessToken.call(this);
+	const endpoint = `/public/${resource}`;
+
+	const { data } = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {}, token);
+
+	data.forEach(({id, name}: { id: string, name: string }) => {
+		returnData.push({
+			name,
+			value: id,
+		});
+	});
+
+	return returnData;
 }

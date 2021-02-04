@@ -6,7 +6,6 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -14,7 +13,8 @@ import {
 import {
 	bitwardenApiRequest as tokenlessBitwardenApiRequest,
 	getAccessToken,
-	handleGetAll as tokenlessGetAll,
+	handleGetAll as tokenlessHandleGetAll,
+	loadResource,
 } from './GenericFunctions';
 
 import {
@@ -108,43 +108,12 @@ export class Bitwarden implements INodeType {
 	methods = {
 		loadOptions: {
 			async getGroups(this: ILoadOptionsFunctions) {
-
-				const returnData: INodePropertyOptions[] = [];
-				const token =  await getAccessToken.call(this);
-				const endpoint = '/public/groups';
-
-				const { data } = await tokenlessBitwardenApiRequest.call(this, 'GET', endpoint, {}, {}, token);
-
-				data.forEach(({ id, name }: { id: string, name: string }) => {
-					returnData.push({
-						name: name || 'Unnamed',
-						value: id,
-					});
-				});
-
-				return returnData;
+				return await loadResource.call(this, 'groups');
 			},
 
 			async getCollections(this: ILoadOptionsFunctions) {
-
-				const returnData: INodePropertyOptions[] = [];
-				const token =  await getAccessToken.call(this);
-				const endpoint = '/public/collections';
-
-				const { data } = await tokenlessBitwardenApiRequest.call(this, 'GET', endpoint, {}, {}, token);
-
-				console.log(data);
-
-				data.forEach(({ id, externalId }: { id: string, externalId: string }) => {
-					returnData.push({
-						name: externalId || 'Unnamed',
-						value: id,
-					});
-				});
-
-				return returnData;
+				return await loadResource.call(this, 'collections');
 			},
-
 		},
 	};
 
@@ -159,7 +128,7 @@ export class Bitwarden implements INodeType {
 
 		const token = await getAccessToken.call(this);
 		const bitwardenApiRequest = partialRight(tokenlessBitwardenApiRequest, token);
-		const handleGetAll = partialRight(tokenlessGetAll, token);
+		const handleGetAll = partialRight(tokenlessHandleGetAll, token);
 
 		for (let i = 0; i < items.length; i++) {
 
