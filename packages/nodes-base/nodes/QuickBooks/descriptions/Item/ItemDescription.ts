@@ -34,7 +34,7 @@ export const itemFields = [
 	//         item: get
 	// ----------------------------------
 	{
-		displayName: 'item ID',
+		displayName: 'Item ID',
 		name: 'itemId',
 		type: 'string',
 		required: true,

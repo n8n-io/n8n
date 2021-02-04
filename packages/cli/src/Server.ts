@@ -391,7 +391,8 @@ class App {
 		}));
 
 		//support application/x-www-form-urlencoded post data
-		this.app.use(bodyParser.urlencoded({ extended: false,
+		this.app.use(bodyParser.urlencoded({
+			extended: false,
 			verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
@@ -721,7 +722,7 @@ class App {
 				// Make a copy of the object. If we don't do this, then when
 				// The method below is called the properties are removed for good
 				// This happens because nodes are returned as reference.
-				const nodeInfo: INodeTypeDescription = {...nodeData.description};
+				const nodeInfo: INodeTypeDescription = { ...nodeData.description };
 				if (req.query.includeProperties !== 'true') {
 					// @ts-ignore
 					delete nodeInfo.properties;
@@ -1311,36 +1312,36 @@ class App {
 			const { code, state: stateEncoded, realmId } = req.query;
 
 			if (code === undefined || stateEncoded === undefined) {
-					const errorResponse = new ResponseHelper.ResponseError('Insufficient parameters for OAuth2 callback. Received following query parameters: ' + JSON.stringify(req.query), undefined, 503);
-					return ResponseHelper.sendErrorResponse(res, errorResponse);
+				const errorResponse = new ResponseHelper.ResponseError('Insufficient parameters for OAuth2 callback. Received following query parameters: ' + JSON.stringify(req.query), undefined, 503);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			let state;
 			try {
-					state = JSON.parse(Buffer.from(stateEncoded as string, 'base64').toString());
+				state = JSON.parse(Buffer.from(stateEncoded as string, 'base64').toString());
 			} catch (error) {
-					const errorResponse = new ResponseHelper.ResponseError('Invalid state format returned', undefined, 503);
-					return ResponseHelper.sendErrorResponse(res, errorResponse);
+				const errorResponse = new ResponseHelper.ResponseError('Invalid state format returned', undefined, 503);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			const result = await Db.collections.Credentials!.findOne(state.cid);
 			if (result === undefined) {
-					const errorResponse = new ResponseHelper.ResponseError('The credential is not known.', undefined, 404);
-					return ResponseHelper.sendErrorResponse(res, errorResponse);
+				const errorResponse = new ResponseHelper.ResponseError('The credential is not known.', undefined, 404);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			let encryptionKey = undefined;
 			encryptionKey = await UserSettings.getEncryptionKey();
 			if (encryptionKey === undefined) {
-					const errorResponse = new ResponseHelper.ResponseError('No encryption key got found to decrypt the credentials!', undefined, 503);
-					return ResponseHelper.sendErrorResponse(res, errorResponse);
+				const errorResponse = new ResponseHelper.ResponseError('No encryption key got found to decrypt the credentials!', undefined, 503);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			// Decrypt the currently saved credentials
 			const workflowCredentials: IWorkflowCredentials = {
-					[result.type as string]: {
-							[result.name as string]: result as ICredentialsEncrypted,
-					},
+				[result.type as string]: {
+					[result.name as string]: result as ICredentialsEncrypted,
+				},
 			};
 			const mode: WorkflowExecuteMode = 'internal';
 			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
@@ -1349,29 +1350,29 @@ class App {
 
 			const token = new csrf();
 			if (decryptedDataOriginal.csrfSecret === undefined || !token.verify(decryptedDataOriginal.csrfSecret as string, state.token)) {
-					const errorResponse = new ResponseHelper.ResponseError('The OAuth2 callback state is invalid!', undefined, 404);
-					return ResponseHelper.sendErrorResponse(res, errorResponse);
+				const errorResponse = new ResponseHelper.ResponseError('The OAuth2 callback state is invalid!', undefined, 404);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			let options = {};
 
 			const oAuth2Parameters = {
-					clientId: _.get(oauthCredentials, 'clientId') as string,
-					clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string | undefined,
-					accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
-					authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-					redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
-					scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
+				clientId: _.get(oauthCredentials, 'clientId') as string,
+				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string | undefined,
+				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
+				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
+				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
+				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
 			};
 
 			if (_.get(oauthCredentials, 'authentication', 'header') as string === 'body') {
-					options = {
-							body: {
-									client_id: _.get(oauthCredentials, 'clientId') as string,
-									client_secret: _.get(oauthCredentials, 'clientSecret', '') as string,
-							},
-					};
-					delete oAuth2Parameters.clientSecret;
+				options = {
+					body: {
+						client_id: _.get(oauthCredentials, 'clientId') as string,
+						client_secret: _.get(oauthCredentials, 'clientSecret', '') as string,
+					},
+				};
+				delete oAuth2Parameters.clientSecret;
 			}
 
 			await this.externalHooks.run('oauth2.callback', [oAuth2Parameters]);
@@ -1383,21 +1384,21 @@ class App {
 			const oauthToken = await oAuthObj.code.getToken(`${oAuth2Parameters.redirectUri}?${queryParameters}`, options);
 
 			if (realmId !== undefined) {
-					_.set(oauthToken.data, 'realmId', realmId);
+				_.set(oauthToken.data, 'realmId', realmId);
 			}
 
 			if (oauthToken === undefined) {
-					const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', undefined, 404);
-					return ResponseHelper.sendErrorResponse(res, errorResponse);
+				const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', undefined, 404);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			if (decryptedDataOriginal.oauthTokenData) {
-					// Only overwrite supplied data as some providers do for example just return the
-					// refresh_token on the very first request and not on subsequent ones.
-					Object.assign(decryptedDataOriginal.oauthTokenData, oauthToken.data);
+				// Only overwrite supplied data as some providers do for example just return the
+				// refresh_token on the very first request and not on subsequent ones.
+				Object.assign(decryptedDataOriginal.oauthTokenData, oauthToken.data);
 			} else {
-					// No data exists so simply set
-					decryptedDataOriginal.oauthTokenData = oauthToken.data;
+				// No data exists so simply set
+				decryptedDataOriginal.oauthTokenData = oauthToken.data;
 			}
 
 			_.unset(decryptedDataOriginal, 'csrfSecret');
@@ -1411,7 +1412,7 @@ class App {
 			await Db.collections.Credentials!.update(state.cid, newCredentialsData);
 
 			res.sendFile(pathResolve(__dirname, '../../templates/oauth-callback.html'));
-	});
+		});
 
 
 		// ----------------------------------------
@@ -1495,7 +1496,7 @@ class App {
 			}
 
 			if (req.query.unflattedResponse === 'true') {
- 				const fullExecutionData = ResponseHelper.unflattenExecutionData(result);
+				const fullExecutionData = ResponseHelper.unflattenExecutionData(result);
 				return fullExecutionData as IExecutionResponse;
 			} else {
 				// Convert to response format in which the id is a string

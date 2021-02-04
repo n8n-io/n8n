@@ -121,27 +121,38 @@ export async function quickBooksApiRequestAllItems(
 	qs: IDataObject,
 	body: IDataObject,
 	resource: string,
-	limit?: number,
 ): Promise<any> { // tslint:disable-line:no-any
 
 	let responseData;
 	let startPosition = 1;
+	const maxResults = 1000;
 	const returnData: IDataObject[] = [];
 
+	const maxCount = await getCount.call(this, method, endpoint, qs);
+
+	const originalQuery = qs.query;
+	
 	do {
-		qs.query += ` MAXRESULTS 1000 STARTPOSITION ${startPosition}`;
+		qs.query = `${originalQuery} MAXRESULTS ${maxResults} STARTPOSITION ${startPosition}`;
 		responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, body);
 		returnData.push(...responseData.QueryResponse[capitalCase(resource)]);
+		startPosition += maxResults;
 
-		if (limit && returnData.length >= limit) {
-			return returnData;
-		}
-
-		startPosition = responseData.maxResults + 1;
-
-	} while (responseData.maxResults > returnData.length);
+	} while (maxCount > returnData.length);
 
 	return returnData;
+}
+
+async function getCount(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	qs: IDataObject,
+): Promise<any> { // tslint:disable-line:no-any
+
+	const responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, {});
+
+	return responseData.QueryResponse.totalCount;
 }
 
 /**
@@ -159,19 +170,21 @@ export async function handleListing(
 		query: `SELECT * FROM ${resource}`,
 	} as IDataObject;
 
+	const returnAll = this.getNodeParameter('returnAll', i);
+
 	const filters = this.getNodeParameter('filters', i) as IDataObject;
 	if (filters.query) {
 		qs.query += ` ${filters.query}`;
 	}
 
-	const returnAll = this.getNodeParameter('returnAll', i);
-
 	if (returnAll) {
 		return await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 	} else {
 		const limit = this.getNodeParameter('limit', i) as number;
-		responseData = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource, limit);
-		return responseData.splice(0, limit);
+		qs.query += ` MAXRESULTS ${limit}`;
+		responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, qs, {});
+		responseData = responseData.QueryResponse[capitalCase(resource)];
+		return responseData;
 	}
 }
 
@@ -244,7 +257,7 @@ export async function loadResource(
 		query: `SELECT * FROM ${resource}`,
 	} as IDataObject;
 
-	const { companyId } = this.getCredentials('quickBooksOAuth2Api') as { companyId: string };
+	const { oauthTokenData: { realmId: companyId } } = this.getCredentials('quickBooksOAuth2Api') as { oauthTokenData: { realmId: string } };
 	const endpoint = `/v3/company/${companyId}/query`;
 
 	const resourceItems = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
