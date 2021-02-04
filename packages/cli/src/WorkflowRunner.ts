@@ -41,6 +41,7 @@ import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
 
 import * as Bull from 'bull';
+import * as Queue from './Queue';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -57,11 +58,7 @@ export class WorkflowRunner {
 		const executionsMode = config.get('executions.mode') as string;
 
 		if (executionsMode === 'queue') {
-			// Connect to bull-queue
-			const prefix = config.get('queue.bull.prefix') as string;
-			const redisOptions = config.get('queue.bull.redis') as object;
-			// @ts-ignore
-			this.jobQueue = new Bull('jobs', { prefix, redis: redisOptions, enableReadyCheck: false });
+			this.jobQueue = Queue.getInstance().getBullObjectInstance();
 		}
 	}
 

@@ -105,6 +105,7 @@ import * as jwks from 'jwks-rsa';
 import * as timezones from 'google-timezones-json';
 import * as parseUrl from 'parseurl';
 import * as querystring from 'querystring';
+import * as Queue from '../src/Queue';
 import { OptionsWithUrl } from 'request-promise-native';
 import Bull = require('bull');
 
@@ -1428,13 +1429,7 @@ class App {
 			let executingWorkflowIds;
 
 			if (config.get('executions.mode') === 'queue') {
-				const prefix = config.get('queue.bull.prefix') as string;
-				const redisOptions = config.get('queue.bull.redis') as object;
-				// @ts-ignore
-				const queue = new Bull('jobs', { prefix, redis: redisOptions, enableReadyCheck: false });
-	
-				const currentJobs = await queue.getJobs(['active', 'waiting']);
-	
+				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
 				executingWorkflowIds = currentJobs.map(job => job.data.executionId) as string[];
 			} else {
 				executingWorkflowIds = this.activeExecutionsInstance.getActiveExecutions().map(execution => execution.id.toString()) as string[];
@@ -1637,12 +1632,7 @@ class App {
 		// Returns all the currently working executions
 		this.app.get(`/${this.restEndpoint}/executions-current`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionsSummary[]> => {
 			if (config.get('executions.mode') === 'queue') {
-				const prefix = config.get('queue.bull.prefix') as string;
-				const redisOptions = config.get('queue.bull.redis') as object;
-				// @ts-ignore
-				const queue = new Bull('jobs', { prefix, redis: redisOptions, enableReadyCheck: false });
-
-				const currentJobs = await queue.getJobs(['active', 'waiting']);
+				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
 
 				const currentlyRunningExecutionIds = currentJobs.map(job => job.data.executionId);
 
@@ -1708,14 +1698,9 @@ class App {
 		// Forces the execution to stop
 		this.app.post(`/${this.restEndpoint}/executions-current/:id/stop`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionsStopData> => {
 			if (config.get('executions.mode') === 'queue') {
-				const prefix = config.get('queue.bull.prefix') as string;
-				const redisOptions = config.get('queue.bull.redis') as object;
-				// @ts-ignore
-				const queue = new Bull('jobs', { prefix, redis: redisOptions, enableReadyCheck: false });
-	
-				const currentJobs = await queue.getJobs(['active', 'waiting']);
+				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
 
-				const job = currentJobs.find(job => job.data.executionId == req.params.id);
+				const job = currentJobs.find(job => job.data.executionId.toString() === req.params.id);
 
 				if (job) {
 					if (await job.isActive()) {
