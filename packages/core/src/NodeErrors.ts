@@ -1,16 +1,16 @@
 import {
 	IDataObject, // TODO: Remove me and create own type for Objects!!!
-	IN8nApiResponseError,
-	IN8nErrorPathMapping,
+	INodeErrorPath,
+	INodeErrorResolved,
 } from 'n8n-workflow';
 
 class NodeError extends Error {
 	subtitle: string | undefined;
-	cause: Error;
+	cause: Error | object;
 	node: string;
 	timestamp: number;
 
-  constructor(node: string, error: Error) {
+  constructor(node: string, error: Error | object) {
     super();
 		this.cause = error;
 		this.node = node;
@@ -32,7 +32,7 @@ export class NodeOperationError extends NodeError {
 
 export class NodeApiError extends NodeError {
 	httpCode: string;
-	codeProperties = ['statusCode', 'code', 'status', 'errorCode', 'status_code', 'error_code', 'type']; // transform to number and not NaN
+	codeProperties = ['statusCode', 'code', 'status', 'errorCode', 'status_code', 'error_code', 'type'];
 	messageProperties = [
 		'message',
 		'Message',
@@ -54,10 +54,10 @@ export class NodeApiError extends NodeError {
 		'err', // err key just if error property is string
 		'error_info' // error_info key just additional info, how to treat that?
 	];
-	deeperProperties = ['error', 'err', 'response', 'body', 'data'];
+	nestingProperties = ['error', 'err', 'response', 'body', 'data'];
 
 	multiMessageProperties = ['messages']
-	multiDeeperProperties = ['errors',]
+	multiNestingProperties = ['errors',]
 
 
 	statusCodeMessages: IDataObject = {
@@ -77,58 +77,62 @@ export class NodeApiError extends NodeError {
 		'504': 'Gateway timed out - try again later',
 	}
 
-  constructor(node: string, error: Error, path?: IN8nErrorPathMapping) {
+  constructor(node: string, error: Error | object, path?: INodeErrorPath) {
     super(node, error);
 		this.name = "NodeApiError";
 		this.message = `${node}: `;
 
 		if (path) {
-			const standardError = this.standardizeError(error, path);
-			this.httpCode = standardError.code;
+			const resolvedError = this.resolveError(error, path);
+			this.subtitle = `[${resolvedError.code}]: ${resolvedError.message}`
+			this.httpCode = resolvedError.code;
+			if (this.statusCodeMessages[this.httpCode] === undefined) {
+				switch (this.httpCode.charAt(0)) {
+					case '4':
+						this.message += this.statusCodeMessages['4XX'];
+						break;
+					case '5':
+						this.message += this.statusCodeMessages['5XX'];
+						break;
+					default:
+						this.message += 'UNKNOWN ERROR - check the detailed error for more information';
+				}
+				return;
+			}
 			this.message += this.statusCodeMessages[this.httpCode];
-			this.subtitle = `[${standardError.code}]: ${standardError.message}`
+			console.log(this);
 			return;
 		}
+		this.httpCode = '123';
 
-
+		// find code
+		// find message
+		// this.message += this.statusCodeMessages[this.httpCode];
+		// this.subtitle = `[${standardError.code}]: ${standardError.message}`
 
 	}
 
+
+
+
 	/**
-	 * Converts an API error object into a standard N8N error object based on the error path mapping provided.
+	 * Resolves an API error object into a standardized error object based on the error path provided.
 	 *
 	 * @export
 	 * @param {object} errorObject
-	 * @param {IN8nErrorPathMapping} errorPathMapping
-	 * @returns {IN8nApiResponseError}
+	 * @param {INodeErrorPath} errorPath
+	 * @returns {INodeErrorResolved}
 	 */
-	standardizeError(errorObject: object, errorPathMapping: IN8nErrorPathMapping): IN8nApiResponseError {
-		const apiResponseError: IN8nApiResponseError = {
+	private resolveError(errorObject: object, errorPath: INodeErrorPath): INodeErrorResolved {
+		const resolvedError: INodeErrorResolved = {
 			code: '',
 			message: '',
 		};
 
-		const findValueRecursively = (accumulator: any, currentValue: any) => accumulator[currentValue]; // tslint:disable-line:no-any
-
-		Object.entries(errorPathMapping).forEach(([key, path]) => {
-			apiResponseError[key] = path.reduce(findValueRecursively, errorObject).toString();
+		Object.entries(errorPath).forEach(([key, path]) => {
+			resolvedError[key] = path.reduce((accumulator: any, currentValue: any) => accumulator[currentValue], errorObject).toString();
 		});
 
-		return apiResponseError;
+		return resolvedError;
 	}
-
-	// /**
-	//  * Throws an error with a standard N8N error message.
-	//  *
-	//  * @export
-	//  * @param {string} nodeName
-	//  * @param {IN8nApiResponseError} apiResponseError
-	//  * @returns {never}
-	//  */
-	// throwApiResponseError(
-	// 	nodeName: string,
-	// 	apiResponseError: IN8nApiResponseError,
-	// ): never {
-	// 	throw new Error(`${nodeName} error response [${apiResponseError.code}]: ${apiResponseError.message}`);
-	// }
 }

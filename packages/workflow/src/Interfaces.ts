@@ -760,14 +760,13 @@ export interface IWorkflowSettings {
 	[key: string]: IDataObject | string | number | boolean | undefined;
 }
 
-export interface IN8nErrorPathMapping {
-	[key: string]: string[];
+export interface INodeErrorPath {
 	code: string[];
 	message: string[];
 }
 
-export interface IN8nApiResponseError {
-	[key: string]: string;
+export interface INodeErrorResolved {
+	[key: string]: GenericValue;
 	code: string;
 	message: string;
 }

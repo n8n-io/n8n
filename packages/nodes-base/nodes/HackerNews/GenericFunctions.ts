@@ -7,7 +7,7 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	IN8nErrorPathMapping,
+	INodeErrorPath,
 } from 'n8n-workflow';
 
 import {
@@ -35,12 +35,12 @@ export async function hackerNewsApiRequest(this: IHookFunctions | IExecuteFuncti
 		return await this.helpers.request!(options);
 	} catch (error) {
 
-		const errorPathMapping: IN8nErrorPathMapping = {
+		const errorPath: INodeErrorPath = {
 			code: ['error', 'status'],
 			message: ['error', 'error'],
 		};
 
-		throw new NodeApiError('Hacker News', error, errorPathMapping);
+		throw new NodeApiError('Hacker News', error, errorPath);
 	}
 }
 

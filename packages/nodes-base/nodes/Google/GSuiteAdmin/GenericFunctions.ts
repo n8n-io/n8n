@@ -11,7 +11,7 @@ import {
 
 import {
 	IDataObject,
-	IN8nErrorPathMapping,
+	INodeErrorPath,
 } from 'n8n-workflow';
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -36,12 +36,12 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		return await this.helpers.requestOAuth2.call(this, 'gSuiteAdminOAuth2Api', options);
 	} catch (error) {
 
-		const errorPathMapping: IN8nErrorPathMapping = {
+		const errorPath: INodeErrorPath = {
 			code: ['error', 'error', 'code'],
 			message: ['error', 'error', 'message'],
 		};
 
-		throw new NodeApiError('GSuite Admin', error, errorPathMapping);
+		throw new NodeApiError('GSuite Admin', error, errorPath);
 	}
 }
 
