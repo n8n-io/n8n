@@ -41,7 +41,6 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 			const credentials = this.getCredentials('hubspotDeveloperApi');
 
 			options.qs.hapikey = credentials!.apiKey as string;
-
 			return await this.helpers.request!(options);
 		} else {
 			// @ts-ignore
