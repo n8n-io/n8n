@@ -13,22 +13,22 @@ export const postOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Submit a post to a subreddit.',
+				description: 'Submit a post to a subreddit',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a post from a subreddit.',
+				description: 'Delete a post from a subreddit',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a post from a subreddit.',
+				description: 'Get a post from a subreddit',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all posts from a subreddit.',
+				description: 'Get all posts from a subreddit',
 			},
 		],
 		displayOptions: {
@@ -82,7 +82,7 @@ export const postFields = [
 			},
 		],
 		default: 'self',
-		description: 'The kind of the post to create',
+		description: 'The kind of the post to create.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -176,6 +176,7 @@ export const postFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//           post: delete
 	// ----------------------------------
@@ -198,6 +199,7 @@ export const postFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//           post: get
 	// ----------------------------------
@@ -238,6 +240,7 @@ export const postFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         post: getAll
 	// ----------------------------------
@@ -280,7 +283,7 @@ export const postFields = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 100,
 		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,

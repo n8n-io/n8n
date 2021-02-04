@@ -124,16 +124,15 @@ export class Reddit implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 
 			// *********************************************************************
-			// 															  post
+			//         post
 			// *********************************************************************
 
 			if (resource === 'post') {
 
-				// ----------------------------------
-				//         post: create
-				// ----------------------------------
-
 				if (operation === 'create') {
+					// ----------------------------------
+					//         post: create
+					// ----------------------------------
 
 					// https://www.reddit.com/dev/api/#POST_api_submit
 
@@ -154,11 +153,11 @@ export class Reddit implements INodeType {
 					responseData = await redditApiRequest.call(this, 'POST', 'api/submit', qs);
 
 					responseData = responseData.json.data;
+
+				} else if (operation === 'delete') {
 					// ----------------------------------
 					//         post: delete
 					// ----------------------------------
-
-				} else if (operation === 'delete') {
 
 					// https://www.reddit.com/dev/api/#POST_api_del
 
@@ -172,11 +171,10 @@ export class Reddit implements INodeType {
 
 					responseData = { success: true };
 
+				} else if (operation === 'get') {
 					// ----------------------------------
 					//         post: get
 					// ----------------------------------
-
-				} else if (operation === 'get') {
 
 					const subreddit = this.getNodeParameter('subreddit', i);
 					const postId = this.getNodeParameter('postId', i) as string;
@@ -185,11 +183,10 @@ export class Reddit implements INodeType {
 					responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
 					responseData = responseData[0].data.children[0].data;
 
+				} else if (operation === 'getAll') {
 					// ----------------------------------
 					//         post: getAll
 					// ----------------------------------
-
-				} else if (operation === 'getAll') {
 
 					// https://www.reddit.com/dev/api/#GET_hot
 					// https://www.reddit.com/dev/api/#GET_new
@@ -208,17 +205,16 @@ export class Reddit implements INodeType {
 
 				}
 
-				// *********************************************************************
-				// 														 postComment
-				// *********************************************************************
-
 			} else if (resource === 'postComment') {
 
-				// ----------------------------------
-				//        postComment: add
-				// ----------------------------------
+				// *********************************************************************
+				//        postComment
+				// *********************************************************************
 
-				if (operation === 'add') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//        postComment: create
+					// ----------------------------------
 
 					// https://www.reddit.com/dev/api/#POST_api_comment
 
@@ -233,6 +229,9 @@ export class Reddit implements INodeType {
 					responseData = responseData.json.data.things[0].data;
 
 				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//        postComment: getAll
+					// ----------------------------------
 
 					// https://www.reddit.com/r/{subrreddit}/comments/{postId}.json
 
@@ -242,7 +241,10 @@ export class Reddit implements INodeType {
 
 					responseData = await handleListing.call(this, i, endpoint);
 
-				} else if (operation === 'remove') {
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//        postComment: delete
+					// ----------------------------------
 
 					// https://www.reddit.com/dev/api/#POST_api_del
 
@@ -257,6 +259,9 @@ export class Reddit implements INodeType {
 					responseData = { success: true };
 
 				} else if (operation === 'reply') {
+					// ----------------------------------
+					//        postComment: reply
+					// ----------------------------------
 
 					// https://www.reddit.com/dev/api/#POST_api_comment
 
@@ -271,23 +276,21 @@ export class Reddit implements INodeType {
 					responseData = responseData.json.data.things[0].data;
 				}
 
-				// *********************************************************************
-				// 															  profile
-				// *********************************************************************
-
 			} else if (resource === 'profile') {
-
-				// ----------------------------------
-				//         profile: get
-				// ----------------------------------
-
-				// https://www.reddit.com/dev/api/#GET_api_v1_me
-				// https://www.reddit.com/dev/api/#GET_api_v1_me_karma
-				// https://www.reddit.com/dev/api/#GET_api_v1_me_prefs
-				// https://www.reddit.com/dev/api/#GET_api_v1_me_trophies
-				// https://www.reddit.com/dev/api/#GET_prefs_{where}
+				// *********************************************************************
+				//         pprofile
+				// *********************************************************************
 
 				if (operation === 'get') {
+					// ----------------------------------
+					//         profile: get
+					// ----------------------------------
+
+					// https://www.reddit.com/dev/api/#GET_api_v1_me
+					// https://www.reddit.com/dev/api/#GET_api_v1_me_karma
+					// https://www.reddit.com/dev/api/#GET_api_v1_me_prefs
+					// https://www.reddit.com/dev/api/#GET_api_v1_me_trophies
+					// https://www.reddit.com/dev/api/#GET_prefs_{where}
 
 					const endpoints: { [key: string]: string } = {
 						identity: 'me',
@@ -319,17 +322,16 @@ export class Reddit implements INodeType {
 					}
 				}
 
-				// *********************************************************************
-				// 															 subreddit
-				// *********************************************************************
-
 			} else if (resource === 'subreddit') {
 
-				// ----------------------------------
-				//        subreddit: get
-				// ----------------------------------
+				// *********************************************************************
+				//        subreddit
+				// *********************************************************************
 
 				if (operation === 'get') {
+					// ----------------------------------
+					//        subreddit: get
+					// ----------------------------------
 
 					// https://www.reddit.com/dev/api/#GET_r_{subreddit}_about
 					// https://www.reddit.com/dev/api/#GET_r_{subreddit}_about_rules
@@ -346,11 +348,10 @@ export class Reddit implements INodeType {
 						responseData = responseData.data;
 					}
 
+				} else if (operation === 'getAll') {
 					// ----------------------------------
 					//        subreddit: getAll
 					// ----------------------------------
-
-				} else if (operation === 'getAll') {
 
 					// https://www.reddit.com/dev/api/#GET_api_trending_subreddits
 					// https://www.reddit.com/dev/api/#POST_api_search_subreddits
@@ -369,7 +370,6 @@ export class Reddit implements INodeType {
 						}
 
 					} else if (filters.keyword) {
-
 						const qs: IDataObject = {};
 						qs.query = filters.keyword;
 
@@ -382,25 +382,22 @@ export class Reddit implements INodeType {
 							const limit = this.getNodeParameter('limit', 0) as number;
 							responseData = responseData.subreddits.splice(0, limit);
 						}
-
 					} else {
-
 						const endpoint = 'r/subreddits.json';
 						responseData = await handleListing.call(this, i, endpoint);
 					}
 				}
 
-				// *********************************************************************
-				// 															  user
-				// *********************************************************************
-
 			} else if (resource === 'user') {
-
-				// ----------------------------------
-				//           user: get
-				// ----------------------------------
+				// *********************************************************************
+				//           user
+				// *********************************************************************
 
 				if (operation === 'get') {
+
+					// ----------------------------------
+					//           user: get
+					// ----------------------------------
 
 					// https://www.reddit.com/dev/api/#GET_user_{username}_{where}
 

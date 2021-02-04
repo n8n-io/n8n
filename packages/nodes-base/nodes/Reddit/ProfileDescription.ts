@@ -38,22 +38,22 @@ export const profileFields = [
 			{
 				name: 'Identity',
 				value: 'identity',
-				description: 'Return the identity of the logged-in user.',
+				description: 'Return the identity of the logged-in user',
 			},
 			{
 				name: 'Blocked Users',
 				value: 'blockedUsers',
-				description: 'Return the blocked users of the logged-in user.',
+				description: 'Return the blocked users of the logged-in user',
 			},
 			{
 				name: 'Friends',
 				value: 'friends',
-				description: 'Return the friends of the logged-in user.',
+				description: 'Return the friends of the logged-in user',
 			},
 			{
 				name: 'Karma',
 				value: 'karma',
-				description: 'Return the subreddit karma for the logged-in user.',
+				description: 'Return the subreddit karma for the logged-in user',
 			},
 			{
 				name: 'Preferences',
@@ -63,7 +63,7 @@ export const profileFields = [
 			{
 				name: 'Trophies',
 				value: 'trophies',
-				description: 'Return the trophies of the logged-in user.',
+				description: 'Return the trophies of the logged-in user',
 			},
 		],
 		displayOptions: {

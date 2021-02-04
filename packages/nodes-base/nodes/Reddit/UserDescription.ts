@@ -57,20 +57,20 @@ export const userFields = [
 				value: 'about',
 			},
 			{
-				name: 'Overview',
-				value: 'overview',
-			},
-			{
-				name: 'Submitted',
-				value: 'submitted',
-			},
-			{
 				name: 'Comments',
 				value: 'comments',
 			},
 			{
 				name: 'Gilded',
 				value: 'gilded',
+			},
+			{
+				name: 'Overview',
+				value: 'overview',
+			},
+			{
+				name: 'Submitted',
+				value: 'submitted',
 			},
 		],
 		displayOptions: {
@@ -111,7 +111,7 @@ export const userFields = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 100,
 		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
@@ -126,10 +126,10 @@ export const userFields = [
 					'get',
 				],
 				details: [
-					'overview',
-					'submitted',
 					'comments',
 					'gilded',
+					'overview',
+					'submitted',
 				],
 				returnAll: [
 					false,

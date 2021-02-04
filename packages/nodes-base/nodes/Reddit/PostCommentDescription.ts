@@ -11,24 +11,24 @@ export const postCommentOperations = [
 		description: 'Operation to perform',
 		options: [
 			{
-				name: 'Add',
-				value: 'add',
-				description: 'Write a top-level comment in a post.',
+				name: 'Create',
+				value: 'create',
+				description: 'Create a top-level comment in a post',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Retrieve all comments in a post.',
+				description: 'Retrieve all comments in a post',
 			},
 			{
-				name: 'Remove',
-				value: 'remove',
-				description: 'Remove a comment from a post.',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Remove a comment from a post',
 			},
 			{
 				name: 'Reply',
 				value: 'reply',
-				description: 'Write a reply to a comment in a post.',
+				description: 'Write a reply to a comment in a post',
 			},
 		],
 		displayOptions: {
@@ -43,7 +43,7 @@ export const postCommentOperations = [
 
 export const postCommentFields = [
 	// ----------------------------------
-	//        postComment: add
+	//        postComment: create
 	// ----------------------------------
 	{
 		displayName: 'Post ID',
@@ -59,7 +59,7 @@ export const postCommentFields = [
 					'postComment',
 				],
 				operation: [
-					'add',
+					'create',
 				],
 			},
 		},
@@ -77,11 +77,12 @@ export const postCommentFields = [
 					'postComment',
 				],
 				operation: [
-					'add',
+					'create',
 				],
 			},
 		},
 	},
+
 	// ----------------------------------
 	//        postComment: getAll
 	// ----------------------------------
@@ -143,7 +144,7 @@ export const postCommentFields = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 100,
 		description: 'The number of results to return.',
 		typeOptions: {
 			minValue: 1,
@@ -163,6 +164,7 @@ export const postCommentFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//        postComment: delete
 	// ----------------------------------
@@ -180,11 +182,12 @@ export const postCommentFields = [
 					'postComment',
 				],
 				operation: [
-					'remove',
+					'delete',
 				],
 			},
 		},
 	},
+
 	// ----------------------------------
 	//        postComment: reply
 	// ----------------------------------
