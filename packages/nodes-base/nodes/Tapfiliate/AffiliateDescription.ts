@@ -49,6 +49,7 @@ export const affiliateFields = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		required: true,
 		default: '',
 		displayOptions: {
 			show: {
@@ -60,7 +61,7 @@ export const affiliateFields = [
 				],
 			},
 		},
-		description: `The affiliate’s email`,
+		description: `The affiliate’s email.`,
 	},
 	{
 		displayName: 'First Name',
@@ -78,7 +79,7 @@ export const affiliateFields = [
 			},
 		},
 		default: '',
-		description: `The affiliate’s firstname`,
+		description: `The affiliate’s firstname.`,
 	},
 	{
 		displayName: 'Last Name',
@@ -96,7 +97,7 @@ export const affiliateFields = [
 			},
 		},
 		default: '',
-		description: `The affiliate’s lastname`,
+		description: `The affiliate’s lastname.`,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -164,34 +165,18 @@ export const affiliateFields = [
 								name: 'country',
 								type: 'string',
 								default: '',
-								description: `The country’s ISO_3166-1 code. <a href="https://en.wikipedia.org/wiki/ISO_3166-1>Codes</a>`,
+								description: `The country’s ISO_3166-1 code. <a target="_blank" href="https://en.wikipedia.org/wiki/ISO_3166-1">Codes</a>.`,
 							},
 						],
 					},
 				],
 			},
 			{
-				displayName: 'Password',
-				name: 'password',
-				type: 'string',
-				typeOptions: {
-					password: true,
-				},
-				default: '',
-				description: `The password for the new account. If no password is given, one is generated and passed in the response`,
-			},
-			{
 				displayName: 'Company Name',
 				name: 'companyName',
 				type: 'string',
 				default: '',
-				description: `The affiliate’s company data`,
-			},
-			{
-				displayName: 'Postal Code',
-				name: 'postalCode',
-				type: 'string',
-				default: '',
+				description: `The affiliate’s company data,`,
 			},
 		],
 	},
@@ -201,6 +186,7 @@ export const affiliateFields = [
 	{
 		displayName: 'Affiliate ID',
 		name: 'affiliateId',
+		required: true,
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -221,6 +207,7 @@ export const affiliateFields = [
 		displayName: 'Affiliate ID',
 		name: 'affiliateId',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -299,28 +286,28 @@ export const affiliateFields = [
 				name: 'affiliate_group_id',
 				type: 'string',
 				default: '',
-				description: 'Retrieves affiliates for a certain affiliate group',
+				description: 'Retrieves affiliates for a certain affiliate group.',
 			},
 			{
 				displayName: 'Click ID',
 				name: 'click_id',
 				type: 'string',
 				default: '',
-				description: 'A click id',
+				description: 'Click ID.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'An email address',
+				description: 'An email address,',
 			},
 			{
 				displayName: 'Parent ID',
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: 'Retrieves children for a certain parent affiliate',
+				description: 'Retrieves children for a certain parent affiliate.',
 			},
 			{
 				displayName: 'Referral Code',
@@ -334,7 +321,7 @@ export const affiliateFields = [
 				name: 'source_id',
 				type: 'string',
 				default: '',
-				description: 'A source id',
+				description: 'The Source ID.',
 			},
 		],
 	},

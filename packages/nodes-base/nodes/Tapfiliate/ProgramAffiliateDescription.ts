@@ -54,6 +54,7 @@ export const programAffiliateFields = [
 		displayName: 'Program ID',
 		name: 'programId',
 		type: 'options',
+		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getPrograms',
 		},
@@ -68,12 +69,13 @@ export const programAffiliateFields = [
 				],
 			},
 		},
-		description: `The id of the Program to add the affiliate too. This id can be found as part of the url when viewing the program on the platform.`,
+		description: `The id of the Program to add the affiliate to. This id can be found as part of the URL when viewing the program on the platform.`,
 	},
 	{
 		displayName: 'Affiliate ID',
 		name: 'affiliateId',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -108,14 +110,14 @@ export const programAffiliateFields = [
 				name: 'approved',
 				type: 'boolean',
 				default: false,
-				description: `An optional approval status`,
+				description: `An optional approval status.`,
 			},
 			{
 				displayName: 'Coupon',
 				name: 'coupon',
 				type: 'string',
 				default: '',
-				description: 'An optional coupon for this affiliate',
+				description: 'An optional coupon for this affiliate.',
 			},
 		],
 	},
@@ -140,7 +142,7 @@ export const programAffiliateFields = [
 				],
 			},
 		},
-		description: `The id of the Program to add the affiliate too. This id can be found as part of the url when viewing the program on the platform.`,
+		description: `The id of the Program to add the affiliate to. This id can be found as part of the URL when viewing the program on the platform.`,
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -179,7 +181,7 @@ export const programAffiliateFields = [
 				],
 			},
 		},
-		description: `The id of the Program to add the affiliate too. This id can be found as part of the url when viewing the program on the platform.`,
+		description: `The id of the Program to add the affiliate to. This id can be found as part of the URL when viewing the program on the platform.`,
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -204,6 +206,7 @@ export const programAffiliateFields = [
 		displayName: 'Program ID',
 		name: 'programId',
 		type: 'options',
+		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getPrograms',
 		},
@@ -218,12 +221,13 @@ export const programAffiliateFields = [
 				],
 			},
 		},
-		description: `The id of the Program to add the affiliate too. This id can be found as part of the url when viewing the program on the platform.`,
+		description: `The id of the Program to add the affiliate to. This id can be found as part of the URL when viewing the program on the platform.`,
 	},
 	{
 		displayName: 'Affiliate ID',
 		name: 'affiliateId',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -246,6 +250,7 @@ export const programAffiliateFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getPrograms',
 		},
+		required: true,
 		default: '',
 		displayOptions: {
 			show: {
@@ -257,7 +262,7 @@ export const programAffiliateFields = [
 				],
 			},
 		},
-		description: `The id of the Program to add the affiliate too. This id can be found as part of the url when viewing the program on the platform.`,
+		description: `The id of the Program to add the affiliate to. This id can be found as part of the URL when viewing the program on the platform.`,
 	},
 	{
 		displayName: 'Return All',
@@ -322,28 +327,28 @@ export const programAffiliateFields = [
 				name: 'affiliate_group_id',
 				type: 'string',
 				default: '',
-				description: 'Retrieves affiliates for a certain affiliate group',
+				description: 'Retrieves affiliates for a certain affiliate group.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'An email address',
+				description: 'An email address.',
 			},
 			{
 				displayName: 'Parent ID',
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: 'Retrieves children for a certain parent affiliate',
+				description: 'Retrieves children for a certain parent affiliate.',
 			},
 			{
 				displayName: 'Source ID',
 				name: 'source_id',
 				type: 'string',
 				default: '',
-				description: 'A source id',
+				description: 'Source ID.',
 			},
 		],
 	},

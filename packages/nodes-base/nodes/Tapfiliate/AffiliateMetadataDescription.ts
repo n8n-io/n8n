@@ -44,6 +44,7 @@ export const affiliateMetadataFields = [
 		displayName: 'Affiliate ID',
 		name: 'affiliateId',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -107,6 +108,7 @@ export const affiliateMetadataFields = [
 		displayName: 'Affiliate ID',
 		name: 'affiliateId',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -143,6 +145,7 @@ export const affiliateMetadataFields = [
 		displayName: 'Affiliate ID',
 		name: 'affiliateId',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [

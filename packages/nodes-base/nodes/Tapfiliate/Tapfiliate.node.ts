@@ -77,10 +77,10 @@ export class Tapfiliate implements INodeType {
 			},
 			...affiliateOperations,
 			...affiliateFields,
-			...programAffiliateOperations,
-			...programAffiliateFields,
 			...affiliateMetadataOperations,
 			...affiliateMetadataFields,
+			...programAffiliateOperations,
+			...programAffiliateFields,
 		],
 	};
 
@@ -140,7 +140,6 @@ export class Tapfiliate implements INodeType {
 						};
 						delete body.companyName;
 					}
-
 					responseData = await tapfiliateApiRequest.call(this, 'POST', '/affiliates/', body);
 					returnData.push(responseData);
 				}
@@ -187,7 +186,6 @@ export class Tapfiliate implements INodeType {
 					if (metadata.length === 0) {
 						throw new Error('Metadata cannot be empty.');
 					}
-					console.log(metadata);
 					for (const { key, value } of metadata) {
 						await tapfiliateApiRequest.call(this, 'PUT', `/affiliates/${affiliateId}/meta-data/${key}/`, { value });
 					}

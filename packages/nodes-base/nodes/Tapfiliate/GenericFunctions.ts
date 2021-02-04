@@ -35,9 +35,14 @@ export async function tapfiliateApiRequest(this: IHookFunctions | IExecuteFuncti
 		Object.assign(options, option);
 	}
 	try {
-		//@ts-ignore
 		return await this.helpers.request!(options);
 	} catch (error) {
+		if (error.statusCode === 404) {
+			throw new Error(
+				`Tapfiliate error response [${error.statusCode}]: Not Found`,
+			);
+		}
+
 		if (error.response && error.response.body && error.response.body.errors) {
 
 			let errors = error.response.body.errors;
