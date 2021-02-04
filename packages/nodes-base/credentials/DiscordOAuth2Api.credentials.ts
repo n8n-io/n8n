@@ -5,6 +5,9 @@ import {
 
 const scopes = [
 	'bot',
+	'connections',
+	'guilds',
+	'identify',
 	'webhook.incoming',
 ];
 

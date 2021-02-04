@@ -16,9 +16,9 @@ import {
 } from './GenericFunctions';
 
 import {
-	channelFields,
-	channelOperations,
-} from './ChannelDescription';
+	messageFields,
+	messageOperations,
+} from './MessageDescription';
 
 import {
 	userFields,
@@ -53,10 +53,6 @@ export class Discord implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Channel',
-						value: 'channel',
-					},
-					{
 						name: 'Message',
 						value: 'message',
 					},
@@ -65,53 +61,15 @@ export class Discord implements INodeType {
 						value: 'user',
 					},
 				],
-				default: 'channel',
+				default: 'message',
 				description: 'Resource to consume.',
 			},
-			// Channel
-			...channelOperations,
-			...channelFields,
+			// Message
+			...messageOperations,
+			...messageFields,
 			// User
 			...userOperations,
 			...userFields,
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				displayOptions: {
-					show: {
-						resource: [
-							'message',
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Create',
-						value: 'create',
-						description: 'Create a message',
-					},
-				],
-				default: 'create',
-				description: 'The operation to perform.',
-			},
-			{
-				displayName: 'Content',
-				name: 'content',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						resource: [
-							'message',
-						],
-						operation: [
-							'create',
-						],
-					},
-				},
-			},
 		],
 	};
 
@@ -128,11 +86,16 @@ export class Discord implements INodeType {
 			if (resource === 'message') {
 				if (operation === 'create') {
 					const content = this.getNodeParameter('content', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
 					const { oauthTokenData } = this.getCredentials('discordOAuth2Api') as IDataObject;
 					const { webhook: { url } } = oauthTokenData as { webhook: { url: string } };
+
 					const body: IDataObject = {
 						content,
 					};
+					Object.assign(body, additionalFields);
+
 					responseData = await discordApiRequest.call(this, 'POST', '', body, {}, url);
 					responseData = { success: true };
 				}
@@ -141,12 +104,11 @@ export class Discord implements INodeType {
 				if (operation === 'getCurrentUser') {
 					responseData = await discordApiRequest.call(this, 'GET', `/users/@me`);
 				}
-			}
-			if (resource === 'channel') {
-				if (operation === 'getChannel') {
-					const channelId = this.getNodeParameter('channelId', i) as string;
-
-					responseData = await discordApiRequest.call(this, 'GET', `/channels/${channelId}`);
+				if (operation === 'getCurrentUserGuilds') {
+					responseData = await discordApiRequest.call(this, 'GET', `/users/@me/guilds`);
+				}
+				if (operation === 'getUserConnections') {
+					responseData = await discordApiRequest.call(this, 'GET', `/users/@me/connections`);
 				}
 			}
 			if (Array.isArray(responseData)) {

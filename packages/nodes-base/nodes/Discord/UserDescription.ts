@@ -18,7 +18,17 @@ export const userOperations = [
 			{
 				name: 'Get Current User',
 				value: 'getCurrentUser',
-				description: 'Returns details of the requesters account',
+				description: 'Returns the user object of the requester\'s account.',
+			},
+			{
+				name: 'Get Current User Guilds',
+				value: 'getCurrentUserGuilds',
+				description: 'Returns a list of partial guild objects the current user is a member of.',
+			},
+			{
+				name: 'Get User Connections',
+				value: 'getUserConnections',
+				description: 'Returns a list of connection objects.',
 			},
 		],
 		default: 'getCurrentUser',
@@ -29,8 +39,7 @@ export const userOperations = [
 export const userFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                activity:create                             */
+	/*                                user:getUser                                */
 	/* -------------------------------------------------------------------------- */
-
 
 ] as INodeProperties[];
