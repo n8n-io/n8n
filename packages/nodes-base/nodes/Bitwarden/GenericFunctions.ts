@@ -108,11 +108,13 @@ export async function handleGetAll(
 ) {
 	const responseData = await bitwardenApiRequest.call(this, method, endpoint, qs, body, token);
 	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-	const limit = this.getNodeParameter('limit', i) as number || -1;
 
-	return returnAll
-		? responseData.data
-		: responseData.data.slice(0, limit);
+	if (returnAll) {
+		return responseData.data;
+	} else {
+		const limit = this.getNodeParameter('limit', i) as number;
+		return responseData.data.slice(0, limit);
+	}
 
 }
 
