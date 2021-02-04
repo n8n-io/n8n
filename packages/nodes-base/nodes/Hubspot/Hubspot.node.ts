@@ -526,6 +526,26 @@ export class Hubspot implements INodeType {
 				}
 				return returnData;
 			},
+
+			// Get all the company custom properties to display them to user so that he can
+			// select them easily
+			async getCompanyCustomProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/companies/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					if (property.hubspotDefined === null) {
+						const propertyName = property.label;
+						const propertyId = property.name;
+						returnData.push({
+							name: propertyName,
+							value: propertyId,
+						});
+					}
+				}
+				return returnData;
+			},
+
 			/* -------------------------------------------------------------------------- */
 			/*                                 DEAL                                       */
 			/* -------------------------------------------------------------------------- */
@@ -1535,6 +1555,18 @@ export class Hubspot implements INodeType {
 								value: additionalFields.yearFounded,
 							});
 						}
+						if (additionalFields.customPropertiesUi) {
+							const customProperties = (additionalFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
+
+							if (customProperties) {
+								for (const customProperty of customProperties) {
+									body.push({
+										name: customProperty.property,
+										value: customProperty.value,
+									});
+								}
+							}
+						}
 						const endpoint = '/companies/v2/companies';
 						responseData = await hubspotApiRequest.call(this, 'POST', endpoint, { properties: body });
 					}
@@ -1746,6 +1778,18 @@ export class Hubspot implements INodeType {
 								name: 'founded_year',
 								value: updateFields.yearFounded,
 							});
+						}
+						if (updateFields.customPropertiesUi) {
+							const customProperties = (updateFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
+
+							if (customProperties) {
+								for (const customProperty of customProperties) {
+									body.push({
+										name: customProperty.property,
+										value: customProperty.value,
+									});
+								}
+							}
 						}
 						const endpoint = `/companies/v2/companies/${companyId}`;
 						responseData = await hubspotApiRequest.call(this, 'PUT', endpoint, { properties: body });
