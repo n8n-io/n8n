@@ -1707,23 +1707,78 @@ class App {
 
 		// Forces the execution to stop
 		this.app.post(`/${this.restEndpoint}/executions-current/:id/stop`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionsStopData> => {
-			const executionId = req.params.id;
+			if (config.get('executions.mode') === 'queue') {
+				const prefix = config.get('queue.bull.prefix') as string;
+				const redisOptions = config.get('queue.bull.redis') as object;
+				// @ts-ignore
+				const queue = new Bull('jobs', { prefix, redis: redisOptions, enableReadyCheck: false });
+	
+				const currentJobs = await queue.getJobs(['active', 'waiting']);
 
-			// Stopt he execution and wait till it is done and we got the data
-			const result = await this.activeExecutionsInstance.stopExecution(executionId);
+				const job = currentJobs.find(job => job.data.executionId == req.params.id);
 
-			if (result === undefined) {
-				throw new Error(`The execution id "${executionId}" could not be found.`);
+				if (job) {
+					if (await job.isActive()) {
+						// Job is already running so tell it to stop
+						await job.progress(-1);
+					} else {
+						// Job did not get started yet so remove from queue
+						try {
+							await job.remove();
+						} catch (e) {
+							await job.progress(-1);
+							// Could not remove job from queue (maybe it just started?)
+
+							const executionDb = await Db.collections.Execution?.findOne(req.params.id) as IExecutionFlattedDb;
+							const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
+
+							const returnData: IExecutionsStopData = {
+								mode: fullExecutionData.mode,
+								startedAt: new Date(fullExecutionData.startedAt),
+								stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : undefined,
+								finished: fullExecutionData.finished,
+							};
+				
+							return returnData;
+						}
+						
+					}
+				} else {
+					throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
+				}
+				
+
+				const executionDb = await Db.collections.Execution?.findOne(req.params.id) as IExecutionFlattedDb;
+				const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
+
+				const returnData: IExecutionsStopData = {
+					mode: fullExecutionData.mode,
+					startedAt: new Date(fullExecutionData.startedAt),
+					stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : undefined,
+					finished: fullExecutionData.finished,
+				};
+	
+				return returnData;
+	
+			} else {
+				const executionId = req.params.id;
+	
+				// Stopt he execution and wait till it is done and we got the data
+				const result = await this.activeExecutionsInstance.stopExecution(executionId);
+	
+				if (result === undefined) {
+					throw new Error(`The execution id "${executionId}" could not be found.`);
+				}
+	
+				const returnData: IExecutionsStopData = {
+					mode: result.mode,
+					startedAt: new Date(result.startedAt),
+					stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
+					finished: result.finished,
+				};
+	
+				return returnData;
 			}
-
-			const returnData: IExecutionsStopData = {
-				mode: result.mode,
-				startedAt: new Date(result.startedAt),
-				stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
-				finished: result.finished,
-			};
-
-			return returnData;
 		}));
 
 

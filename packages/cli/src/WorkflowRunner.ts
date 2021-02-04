@@ -256,24 +256,46 @@ export class WorkflowRunner {
 					await job.progress(-1);
 				} else {
 					// Job did not get started yet so remove from queue
-					await job.remove();
+					try {
+						await job.remove();
 
-					const fullRunData: IRun = {
-						data: {
-							resultData: {
-								error: {
-									message: 'Workflow has been canceled!',
-								} as IExecutionError,
-								runData: {},
+						const fullRunData: IRun = {
+							data: {
+								resultData: {
+									error: {
+										message: 'Workflow has been canceled!',
+									} as IExecutionError,
+									runData: {},
+								},
 							},
-						},
-						mode: data.executionMode,
-						startedAt: new Date(),
-						stoppedAt: new Date(),
-					};
-
-					this.activeExecutions.remove(executionId, fullRunData);
-					resolve(fullRunData);
+							mode: data.executionMode,
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+						};
+	
+						this.activeExecutions.remove(executionId, fullRunData);
+						resolve(fullRunData);
+					} catch (e) {
+						await job.progress(-1);
+						// Could not remove job from queue (maybe it just started?)
+						const fullRunData: IRun = {
+							data: {
+								resultData: {
+									error: {
+										message: 'Workflow has been canceled!',
+									} as IExecutionError,
+									runData: {},
+								},
+							},
+							mode: data.executionMode,
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+						};
+	
+						this.activeExecutions.remove(executionId, fullRunData);
+						resolve(fullRunData);
+					}
+					
 				}
 			});
 
