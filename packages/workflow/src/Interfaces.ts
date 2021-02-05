@@ -760,6 +760,10 @@ export interface IWorkflowSettings {
 	[key: string]: IDataObject | string | number | boolean | undefined;
 }
 
+export interface IErrorObject {
+	[key: string]: string | object | number | boolean | undefined | null | string[] | object[] | number[] | boolean[];
+}
+
 export interface INodeErrorPath {
 	code: string[];
 	message: string[];
@@ -770,3 +774,8 @@ export interface INodeErrorResolved {
 	code: string;
 	message: string;
 }
+
+export interface IStatusCodeMessages {
+	[key: string]: string;
+}
+
