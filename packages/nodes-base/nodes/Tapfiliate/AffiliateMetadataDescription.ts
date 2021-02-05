@@ -31,7 +31,7 @@ export const affiliateMetadataOperations = [
 				description: `Update affiliate's metadata`,
 			},
 		],
-		default: 'Add',
+		default: 'add',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
@@ -55,7 +55,7 @@ export const affiliateMetadataFields = [
 				],
 			},
 		},
-		description: 'The id of the affiliate.',
+		description: 'The ID of the affiliate.',
 	},
 	{
 		displayName: 'Metadata',
@@ -119,7 +119,7 @@ export const affiliateMetadataFields = [
 				],
 			},
 		},
-		description: 'The id of the affiliate.',
+		description: 'The ID of the affiliate.',
 	},
 	{
 		displayName: 'Key',
@@ -138,6 +138,7 @@ export const affiliateMetadataFields = [
 		default: '',
 		description: 'Name of the metadata key to remove.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                         affiliateMetadata:update                           */
 	/* -------------------------------------------------------------------------- */
@@ -156,7 +157,7 @@ export const affiliateMetadataFields = [
 				],
 			},
 		},
-		description: 'The id of the affiliate.',
+		description: 'The ID of the affiliate.',
 	},
 	{
 		displayName: 'Key',

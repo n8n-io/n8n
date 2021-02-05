@@ -110,8 +110,8 @@ export class Tapfiliate implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		if (resource === 'affiliate') {
-			//https://tapfiliate.com/docs/rest/#affiliates-affiliates-collection-post
 			if (operation === 'create') {
+				//https://tapfiliate.com/docs/rest/#affiliates-affiliates-collection-post
 				for (let i = 0; i < length; i++) {
 					const firstname = this.getNodeParameter('firstname', i) as string;
 					const lastname = this.getNodeParameter('lastname', i) as string;
@@ -144,24 +144,24 @@ export class Tapfiliate implements INodeType {
 					returnData.push(responseData);
 				}
 			}
-			//https://tapfiliate.com/docs/rest/#affiliates-affiliate-delete
 			if (operation === 'delete') {
+				//https://tapfiliate.com/docs/rest/#affiliates-affiliate-delete
 				for (let i = 0; i < length; i++) {
 					const affiliateId = this.getNodeParameter('affiliateId', i) as string;
 					responseData = await tapfiliateApiRequest.call(this, 'DELETE', `/affiliates/${affiliateId}/`);
 					returnData.push({ success: true });
 				}
 			}
-			//https://tapfiliate.com/docs/rest/#affiliates-affiliate-get
 			if (operation === 'get') {
+				//https://tapfiliate.com/docs/rest/#affiliates-affiliate-get
 				for (let i = 0; i < length; i++) {
 					const affiliateId = this.getNodeParameter('affiliateId', i) as string;
 					responseData = await tapfiliateApiRequest.call(this, 'GET', `/affiliates/${affiliateId}/`);
 					returnData.push(responseData);
 				}
 			}
-			//https://tapfiliate.com/docs/rest/#affiliates-affiliates-collection-get
 			if (operation === 'getAll') {
+				//https://tapfiliate.com/docs/rest/#affiliates-affiliates-collection-get
 				for (let i = 0; i < length; i++) {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
@@ -178,8 +178,8 @@ export class Tapfiliate implements INodeType {
 			}
 		}
 		if (resource === 'affiliateMetadata') {
-			//https://tapfiliate.com/docs/rest/#affiliates-meta-data-key-put
 			if (operation === 'add') {
+				//https://tapfiliate.com/docs/rest/#affiliates-meta-data-key-put
 				for (let i = 0; i < length; i++) {
 					const affiliateId = this.getNodeParameter('affiliateId', i) as string;
 					const metadata = (this.getNodeParameter('metadataUi', i) as IDataObject || {}).metadataValues as IDataObject[] || [];
@@ -192,8 +192,8 @@ export class Tapfiliate implements INodeType {
 					returnData.push({ success: true });
 				}
 			}
-			//https://tapfiliate.com/docs/rest/#affiliates-meta-data-key-delete
 			if (operation === 'remove') {
+				//https://tapfiliate.com/docs/rest/#affiliates-meta-data-key-delete
 				for (let i = 0; i < length; i++) {
 					const affiliateId = this.getNodeParameter('affiliateId', i) as string;
 					const key = this.getNodeParameter('key', i) as string;
@@ -201,8 +201,8 @@ export class Tapfiliate implements INodeType {
 					returnData.push({ success: true });
 				}
 			}
-			//https://tapfiliate.com/docs/rest/#affiliates-notes-collection-get
 			if (operation === 'update') {
+				//https://tapfiliate.com/docs/rest/#affiliates-notes-collection-get
 				for (let i = 0; i < length; i++) {
 					const affiliateId = this.getNodeParameter('affiliateId', i) as string;
 					const key = this.getNodeParameter('key', i) as string;
@@ -213,8 +213,8 @@ export class Tapfiliate implements INodeType {
 			}
 		}
 		if (resource === 'programAffiliate') {
-			//https://tapfiliate.com/docs/rest/#programs-program-affiliates-collection-post
 			if (operation === 'add') {
+				//https://tapfiliate.com/docs/rest/#programs-program-affiliates-collection-post
 				for (let i = 0; i < length; i++) {
 					const programId = this.getNodeParameter('programId', i) as string;
 					const affiliateId = this.getNodeParameter('affiliateId', i) as string;
@@ -230,8 +230,8 @@ export class Tapfiliate implements INodeType {
 					returnData.push(responseData);
 				}
 			}
-			//https://tapfiliate.com/docs/rest/#programs-approve-an-affiliate-for-a-program-put
 			if (operation === 'approve') {
+				//https://tapfiliate.com/docs/rest/#programs-approve-an-affiliate-for-a-program-put
 				for (let i = 0; i < length; i++) {
 					const programId = this.getNodeParameter('programId', i) as string;
 					const affiliateId = this.getNodeParameter('affiliateId', i) as string;
@@ -239,8 +239,8 @@ export class Tapfiliate implements INodeType {
 					returnData.push(responseData);
 				}
 			}
-			//https://tapfiliate.com/docs/rest/#programs-approve-an-affiliate-for-a-program-delete
 			if (operation === 'disapprove') {
+				//https://tapfiliate.com/docs/rest/#programs-approve-an-affiliate-for-a-program-delete
 				for (let i = 0; i < length; i++) {
 					const programId = this.getNodeParameter('programId', i) as string;
 					const affiliateId = this.getNodeParameter('affiliateId', i) as string;
@@ -248,8 +248,8 @@ export class Tapfiliate implements INodeType {
 					returnData.push(responseData);
 				}
 			}
-			//https://tapfiliate.com/docs/rest/#programs-affiliate-in-program-get
 			if (operation === 'get') {
+				//https://tapfiliate.com/docs/rest/#programs-affiliate-in-program-get
 				for (let i = 0; i < length; i++) {
 					const programId = this.getNodeParameter('programId', i) as string;
 					const affiliateId = this.getNodeParameter('affiliateId', i) as string;
@@ -257,8 +257,8 @@ export class Tapfiliate implements INodeType {
 					returnData.push(responseData);
 				}
 			}
-			//https://tapfiliate.com/docs/rest/#programs-program-affiliates-collection-get
 			if (operation === 'getAll') {
+				//https://tapfiliate.com/docs/rest/#programs-program-affiliates-collection-get
 				for (let i = 0; i < length; i++) {
 					const programId = this.getNodeParameter('programId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;

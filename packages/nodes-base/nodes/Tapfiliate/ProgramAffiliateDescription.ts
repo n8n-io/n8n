@@ -69,7 +69,7 @@ export const programAffiliateFields = [
 				],
 			},
 		},
-		description: `The id of the Program to add the affiliate to. This id can be found as part of the URL when viewing the program on the platform.`,
+		description: `The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.`,
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -86,7 +86,7 @@ export const programAffiliateFields = [
 				],
 			},
 		},
-		description: 'The id of the affiliate.',
+		description: 'The ID of the affiliate.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -109,7 +109,7 @@ export const programAffiliateFields = [
 				displayName: 'Approved',
 				name: 'approved',
 				type: 'boolean',
-				default: false,
+				default: true,
 				description: `An optional approval status.`,
 			},
 			{
@@ -121,6 +121,7 @@ export const programAffiliateFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 programAffiliate:approve                   */
 	/* -------------------------------------------------------------------------- */
@@ -142,7 +143,7 @@ export const programAffiliateFields = [
 				],
 			},
 		},
-		description: `The id of the Program to add the affiliate to. This id can be found as part of the URL when viewing the program on the platform.`,
+		description: `The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.`,
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -158,8 +159,9 @@ export const programAffiliateFields = [
 				],
 			},
 		},
-		description: 'The id of the affiliate.',
+		description: 'The ID of the affiliate.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 programAffiliate:disapprove                */
 	/* -------------------------------------------------------------------------- */
@@ -181,7 +183,7 @@ export const programAffiliateFields = [
 				],
 			},
 		},
-		description: `The id of the Program to add the affiliate to. This id can be found as part of the URL when viewing the program on the platform.`,
+		description: `The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.`,
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -197,8 +199,9 @@ export const programAffiliateFields = [
 				],
 			},
 		},
-		description: 'The id of the affiliate.',
+		description: 'The ID of the affiliate.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 affiliate:get                              */
 	/* -------------------------------------------------------------------------- */
@@ -221,7 +224,7 @@ export const programAffiliateFields = [
 				],
 			},
 		},
-		description: `The id of the Program to add the affiliate to. This id can be found as part of the URL when viewing the program on the platform.`,
+		description: `The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.`,
 	},
 	{
 		displayName: 'Affiliate ID',
@@ -238,8 +241,9 @@ export const programAffiliateFields = [
 				],
 			},
 		},
-		description: 'The id of the affiliate.',
+		description: 'The ID of the affiliate.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                          programAffiliate:getAll                           */
 	/* -------------------------------------------------------------------------- */
@@ -262,7 +266,7 @@ export const programAffiliateFields = [
 				],
 			},
 		},
-		description: `The id of the Program to add the affiliate to. This id can be found as part of the URL when viewing the program on the platform.`,
+		description: `The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform.`,
 	},
 	{
 		displayName: 'Return All',
