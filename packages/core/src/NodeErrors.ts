@@ -60,7 +60,8 @@ abstract class NodeError extends Error {
 
 		for(const key of potentialKeys) {
 			if (error[key] && (typeof error[key] === 'string' || typeof error[key] === 'number')) {
-				return typeof error[key] === 'string' ? error[key] : error[key]?.toString();
+				// @ts-ignore
+				return typeof error[key] === 'string' ? error[key] : error[key].toString();
 			}
 		}
 
@@ -187,7 +188,7 @@ export class NodeApiError extends NodeError {
 		};
 
 		Object.entries(errorPath).forEach(([key, path]) => {
-			resolvedError[key] = path.reduce((accumulator: INodeErrorResolved, currentValue: IErrorObject) => accumulator[currentValue], errorObject).toString();
+			resolvedError[key] = path.reduce((accumulator: INodeErrorResolved, currentValue: string) => accumulator[currentValue], errorObject).toString();
 		});
 
 		return resolvedError;
