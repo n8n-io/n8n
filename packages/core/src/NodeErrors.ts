@@ -66,7 +66,7 @@ abstract class NodeError extends Error {
 		}
 
 		for(const key of traversalKeys) {
-			if (error[key] && typeof error[key] === 'object') {
+			if (error[key] && typeof error[key] === 'object' && !Array.isArray(error[key])) {
 				return this.findProperty(error[key] as IErrorObject, potentialKeys, traversalKeys);
 			}
 		}
