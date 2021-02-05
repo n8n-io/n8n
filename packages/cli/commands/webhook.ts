@@ -97,6 +97,22 @@ export class Webhook extends Command {
 
 		// Wrap that the process does not close but we can still use async
 		await (async () => {
+			if (config.get('executions.mode') !== 'queue') {
+				/** 
+				 * It is technically possible to run without queues but
+				 * there are 2 known bugs when running in this mode:
+				 * - Executions list will be problematic as the main process
+				 * is not aware of current executions in the webhook processes
+				 * and therefore will display all current executions as error
+				 * as it is unable to determine if it is still running or crashed
+				 * - You cannot stop currently executing jobs from webhook processes
+				 * when running without queues as the main process cannot talk to
+				 * the wehbook processes to communicate workflow execution interruption.
+				 */
+
+				this.error('Webhook processes can only run with execution mode as queue.');
+			}
+
 			try {
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch(error => {
