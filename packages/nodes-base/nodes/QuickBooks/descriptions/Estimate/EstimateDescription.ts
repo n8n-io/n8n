@@ -19,6 +19,10 @@ export const estimateOperations = [
 				value: 'create',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 			},
@@ -148,6 +152,27 @@ export const estimateFields = [
 			},
 		},
 		options: estimateAdditionalFieldsOptions,
+	},
+	// ----------------------------------
+	//         estimate: delete
+	// ----------------------------------
+	{
+		displayName: 'Estimate ID',
+		name: 'estimateId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The ID of the estimate to delete.',
+		displayOptions: {
+			show: {
+				resource: [
+					'estimate',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
 	},
 	// ----------------------------------
 	//         estimate: get

@@ -19,6 +19,10 @@ export const billOperations = [
 				value: 'create',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 			},
@@ -137,9 +141,6 @@ export const billFields = [
 			},
 		],
 	},
-
-
-
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -157,6 +158,27 @@ export const billFields = [
 			},
 		},
 		options: billAdditionalFieldsOptions,
+	},
+	// ----------------------------------
+	//         bill: delete
+	// ----------------------------------
+	{
+		displayName: 'Bill ID',
+		name: 'billId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The ID of the bill to delete.',
+		displayOptions: {
+			show: {
+				resource: [
+					'bill',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
 	},
 	// ----------------------------------
 	//         bill: get

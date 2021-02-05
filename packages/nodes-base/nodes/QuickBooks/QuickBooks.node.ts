@@ -205,6 +205,25 @@ export class QuickBooks implements INodeType {
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 					responseData = responseData[capitalCase(resource)];
 
+				} else if (operation === 'delete') {
+
+					// ----------------------------------
+					//         bill: delete
+					// ----------------------------------
+
+					const qs = {
+						operation: 'delete',
+					} as IDataObject;
+
+					const body = {
+						Id: this.getNodeParameter('billId', i),
+						SyncToken: await getSyncToken.call(this, i, companyId, resource),
+					} as IDataObject;
+
+					const endpoint = `/v3/company/${companyId}/${resource}`;
+					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, body);
+					responseData = responseData[capitalCase(resource)];
+
 				} else if (operation === 'get') {
 
 					// ----------------------------------
@@ -444,6 +463,25 @@ export class QuickBooks implements INodeType {
 
 					const endpoint = `/v3/company/${companyId}/${resource}`;
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
+					responseData = responseData[capitalCase(resource)];
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------
+					//         estimate: delete
+					// ----------------------------------
+
+					const qs = {
+						operation: 'delete',
+					} as IDataObject;
+
+					const body = {
+						Id: this.getNodeParameter('estimateId', i),
+						SyncToken: await getSyncToken.call(this, i, companyId, resource),
+					} as IDataObject;
+
+					const endpoint = `/v3/company/${companyId}/${resource}`;
+					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, qs, body);
 					responseData = responseData[capitalCase(resource)];
 
 				} else if (operation === 'get') {
