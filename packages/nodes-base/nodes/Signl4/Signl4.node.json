@@ -1,7 +1,7 @@
 {
 	"node": "n8n-nodes-base.signl4",
-	"nodeVersion": "1.0",
-	"codexVersion": "1.0",
+	"nodeVersion": "1.1",
+	"codexVersion": "1.1",
 	"categories": [
 		"Communication",
 		"Development"

@@ -130,7 +130,7 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 	};
 }
 
-export async function downloadRecordAttachments(this: IExecuteFunctions, records: IRecord[], fieldNames: string[]): Promise<INodeExecutionData[]> {
+export async function downloadRecordAttachments(this: IExecuteFunctions | IPollFunctions, records: IRecord[], fieldNames: string[]): Promise<INodeExecutionData[]> {
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };

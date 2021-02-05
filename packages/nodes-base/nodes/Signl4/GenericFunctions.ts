@@ -8,17 +8,26 @@ import {
 
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 /**
  * Make an API request to SIGNL4
  *
  * @param {IHookFunctions | IExecuteFunctions} this
- * @param {object} message
+ * @param {string} method
+ * @param {string} contentType
+ * @param {string} body
+ * @param {object} query
+ * @param {string} teamSecret
+ * @param {object} options
  * @returns {Promise<any>}
+ *
  */
 
-export async function SIGNL4ApiRequest(this: IExecuteFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function SIGNL4ApiRequest(this: IExecuteFunctions, method: string, body: string, query: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	const credentials = this.getCredentials('signl4Api');
+
+	const teamSecret = credentials?.teamSecret as string;
 
 	let options: OptionsWithUri = {
 		headers: {
@@ -27,7 +36,7 @@ export async function SIGNL4ApiRequest(this: IExecuteFunctions, method: string, 
 		method,
 		body,
 		qs: query,
-		uri: uri || ``,
+		uri: `https://connect.signl4.com/webhook/${teamSecret}`,
 		json: true,
 	};
 
