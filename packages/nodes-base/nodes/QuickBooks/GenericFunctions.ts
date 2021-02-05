@@ -235,14 +235,16 @@ export async function handleBinaryData(
 	i: number,
 	companyId: string,
 	resource: string,
-	itemId: string,
+	resourceId: string,
 ) {
 	const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
-	const endpoint = `/v3/company/${companyId}/${resource}/${itemId}/pdf`;
+	const fileName = this.getNodeParameter('fileName', i) as string;
+	const endpoint = `/v3/company/${companyId}/${resource}/${resourceId}/pdf`;
 	const data = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {}, { encoding: null });
 
-	items[i].binary = items[i].binary !== undefined ? items[i].binary : {};
+	items[i].binary = items[i].binary ?? {};
 	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
+	items[i].binary![binaryProperty].fileName = fileName;
 
 	return this.prepareOutputData(items);
 }

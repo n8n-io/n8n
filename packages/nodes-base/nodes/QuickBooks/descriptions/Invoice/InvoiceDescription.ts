@@ -241,6 +241,27 @@ export const invoiceFields = [
 			},
 		},
 	},
+	{
+		displayName: 'File Name',
+		name: 'fileName',
+		type: 'string',
+		required: true,
+		default: 'data',
+		description: 'Name of the file that will be downloaded.',
+		displayOptions: {
+			show: {
+				resource: [
+					'invoice',
+				],
+				operation: [
+					'get',
+				],
+				download: [
+					true,
+				],
+			},
+		},
+	},
 	// ----------------------------------
 	//         invoice: getAll
 	// ----------------------------------

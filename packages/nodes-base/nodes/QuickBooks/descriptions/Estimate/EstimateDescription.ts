@@ -237,6 +237,27 @@ export const estimateFields = [
 			},
 		},
 	},
+	{
+		displayName: 'File Name',
+		name: 'fileName',
+		type: 'string',
+		required: true,
+		default: 'data',
+		description: 'Name of the file that will be downloaded.',
+		displayOptions: {
+			show: {
+				resource: [
+					'estimate',
+				],
+				operation: [
+					'get',
+				],
+				download: [
+					true,
+				],
+			},
+		},
+	},
 	// ----------------------------------
 	//         estimate: getAll
 	// ----------------------------------
