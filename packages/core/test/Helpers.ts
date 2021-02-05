@@ -301,7 +301,7 @@ class NodeTypesClass implements INodeTypes {
 						startsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 as string).startsWith(value2 as string),
 						isEmpty: (value1: NodeParameterValue) => [undefined, null, ''].includes(value1 as string),
 						regex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
-							const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimy]*)$'));
+							const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
 
 							let regex: RegExp;
 							if (!regexMatch) {
