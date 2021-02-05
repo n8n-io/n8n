@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.102.0",
+  "version": "0.103.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -212,7 +212,7 @@
       "dist/credentials/SurveyMonkeyOAuth2Api.credentials.js",
       "dist/credentials/TaigaCloudApi.credentials.js",
       "dist/credentials/TaigaServerApi.credentials.js",
-      "dist/credentials/TapfiliateApi.credentials.js",    
+      "dist/credentials/TapfiliateApi.credentials.js",
       "dist/credentials/TelegramApi.credentials.js",
       "dist/credentials/TheHiveApi.credentials.js",
       "dist/credentials/TimescaleDb.credentials.js",
