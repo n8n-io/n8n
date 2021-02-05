@@ -131,7 +131,7 @@ export async function quickBooksApiRequestAllItems(
 	const maxCount = await getCount.call(this, method, endpoint, qs);
 
 	const originalQuery = qs.query;
-	
+
 	do {
 		qs.query = `${originalQuery} MAXRESULTS ${maxResults} STARTPOSITION ${startPosition}`;
 		responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, body);
@@ -257,14 +257,14 @@ export async function loadResource(
 		query: `SELECT * FROM ${resource}`,
 	} as IDataObject;
 
-	const { oauthTokenData: { realmId: companyId } } = this.getCredentials('quickBooksOAuth2Api') as { oauthTokenData: { realmId: string } };
-	const endpoint = `/v3/company/${companyId}/query`;
+	const { oauthTokenData: { realmId } } = this.getCredentials('quickBooksOAuth2Api') as { oauthTokenData: { realmId: string } };
+	const endpoint = `/v3/company/${realmId}/query`;
 
 	const resourceItems = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 
-	resourceItems.forEach((resourceItem: { DisplayName: string, Id: string }) => {
+	resourceItems.forEach((resourceItem: { DisplayName: string, Name: string, Id: string }) => {
 		returnData.push({
-			name: resourceItem.DisplayName,
+			name: resourceItem.DisplayName || resourceItem.Name,
 			value: resourceItem.Id,
 		});
 	});

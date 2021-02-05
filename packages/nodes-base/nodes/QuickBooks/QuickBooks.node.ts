@@ -139,6 +139,10 @@ export class QuickBooks implements INodeType {
 			async getVendors(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'vendor');
 			},
+
+			async getItems(this: ILoadOptionsFunctions) {
+				return await loadResource.call(this, 'item');
+			},
 		},
 	};
 

@@ -109,8 +109,11 @@ export const estimateFields = [
 			{
 				displayName: 'Item ID',
 				name: 'itemId',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getItems',
+				},
 			},
 			{
 				displayName: 'Amount',
