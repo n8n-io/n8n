@@ -170,7 +170,7 @@ export const tweetFields = [
 				],
 			},
 		},
-		description: 'The ID of the tweet',
+		description: 'The ID of the tweet to delete.',
 	},
 
 	/* -------------------------------------------------------------------------- */
