@@ -1,0 +1,16 @@
+{
+	"node": "n8n-nodes-base.compression",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Core Nodes",
+		"Data & Storage"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.compression/"
+			}
+		]
+	}
+}

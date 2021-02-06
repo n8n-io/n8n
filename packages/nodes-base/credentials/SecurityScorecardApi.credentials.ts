@@ -6,6 +6,7 @@ import {
 export class SecurityScorecardApi implements ICredentialType {
 	name = 'securityScorecardApi';
 	displayName = 'SecurityScorecard API';
+	documentationUrl = 'securityScorecard';
 	properties = [
 		{
 			displayName: 'API Key',
