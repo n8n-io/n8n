@@ -195,6 +195,12 @@ export class Twitter implements INodeType {
 
 					responseData = await twitterApiRequest.call(this, 'POST', '/statuses/update.json', {}, body as unknown as IDataObject);
 				}
+				// https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/post-statuses-destroy-id
+				if (operation === 'delete') {
+					const tweetId = this.getNodeParameter('tweetId', i) as string;
+
+					responseData = await twitterApiRequest.call(this, 'POST', `/statuses/destroy/${tweetId}.json`, {}, {});
+				}
 				// https://developer.twitter.com/en/docs/tweets/search/api-reference/get-search-tweets
 				if (operation === 'search') {
 					const q = this.getNodeParameter('searchText', i) as string;
