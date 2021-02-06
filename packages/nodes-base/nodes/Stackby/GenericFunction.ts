@@ -9,24 +9,9 @@ import {
 } from 'request';
 
 import {
-	IBinaryKeyData,
 	IDataObject,
-	INodeExecutionData,
 	IPollFunctions,
 } from 'n8n-workflow';
-
-
-interface IAttachment {
-	url: string;
-	filename: string;
-	type: string;
-}
-
-export interface IRecord {
-	fields: {
-		[key: string]: string | IAttachment[],
-	};
-}
 
 /**
  * Make an API request to Airtable
@@ -37,19 +22,8 @@ export interface IRecord {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, endpoint: string, body: string, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('stackbyApiKey');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
-	query = query || {};
-
-	// For some reason for some endpoints the bearer auth does not work
-	// and it returns 404 like for the /meta request. So we always send
-	// it as query string.
-	query.api_key = credentials.apiKey;
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	const credentials = this.getCredentials('stackbyApi') as IDataObject;
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -59,7 +33,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		method,
 		body,
 		qs: query,
-		uri: uri || `https://dev9.stackby.com/api/betav1/${endpoint}`,
+		uri: uri || `https://stackby.com/api/betav1${endpoint}`,
 		json: true,
 	};
 
@@ -69,11 +43,11 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 
 	if (Object.keys(body).length === 0) {
 		delete options.body;
-	}	
+	}
+
 	try {
-		console.log(options, query.sort);
-		const value= await this.helpers.request!(options);
-		return value;
+		return await this.helpers.request!(options);
+	
 	} catch (error) {
 		if (error.statusCode === 401) {
 			// Return a clear error
@@ -82,19 +56,15 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 
 		if (error.response && error.response.body && error.response.body.error) {
 			// Try to return the error prettier
+			const message = error.response.body.error;
 
-			const stackbyError = error.response.body.error;
-
-			if (stackbyError.type && stackbyError.message) {
-				throw new Error(`stackby error response [${stackbyError.type}]: ${stackbyError.message}`);
-			}
+			throw new Error(`Stackby error response [${error.statusCode}]: ${message}`);
 		}
 
 		// Expected error data did not get returned so rhow the actual error
 		throw error;
 	}
 }
-
 
 /**
  * Make an API request to paginated Airtable endpoint
@@ -108,12 +78,11 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
  * @param {IDataObject} [query]
  * @returns {Promise<any>}
  */
-export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IPollFunctions, method: string, endpoint: string, body: string, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IPollFunctions, method: string, endpoint: string, body: IDataObject = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	if (query === undefined) {
-		query = {};
-	}
-	query.pageSize = 100;
+	query.maxrecord = 100;
+
+	query.offset = 0;
 
 	const returnData: IDataObject[] = [];
 
@@ -121,15 +90,19 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		console.log(responseData);
 		returnData.push.apply(returnData, responseData);
-
-		query.offset = responseData.offset;
-	} while (
-		responseData.offset !== undefined
-	);
+		query.offset+= query.maxrecord;
 	
-	return {
-		records: returnData,
+	} while (
+		responseData.length !== 0
+	);
+
+	return returnData;
+}
+
+export interface IRecord {
+	field: {
+		[key: string]: string
 	};
 }
+

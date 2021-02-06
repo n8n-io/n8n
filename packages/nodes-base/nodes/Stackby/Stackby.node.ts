@@ -1,26 +1,28 @@
-import { query } from 'express';
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+
 import {
 	apiRequest,
 	apiRequestAllItems,
+	IRecord,
 } from './GenericFunction';
-
-
 
 export class Stackby implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Stackby',
 		name: 'stackby',
-		icon:'file:stackby-logo.png',
+		icon: 'file:stackby.png',
 		group: ['transform'],
 		version: 1,
-		description: 'Node converts input data to chocolate',
+		description: 'Consume Stackby REST API',
 		defaults: {
 			name: 'Stackby',
 			color: '#772244',
@@ -29,38 +31,35 @@ export class Stackby implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				'name':'stackbyApiKey',
-				'required':true,
+				name: 'stackbyApi',
+				required: true,
 			},
 		],
 		properties: [
-			// Node properties which the user gets displayed and
-			// can change on the node.
 			{
-				displayName: 'My Operation',
+				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				options:[
+				options: [
 					{
-						name:'Append',
-						value:'append',
+						name: 'Append',
+						value: 'append',
 					},
 					{
-						name:'Delete',
-						value:'delete',
+						name: 'Delete',
+						value: 'delete',
 					},
 					{
-						name:'List',
-						value:'list',
+						name: 'List',
+						value: 'list',
 					},
 					{
-						name:'Read',
-						value:'read',
+						name: 'Read',
+						value: 'read',
 					},
 				],
-				default: 'read',
+				default: 'append',
 				placeholder: 'Action to perform',
-				description: 'The description text',
 			},
 			// ----------------------------------
 			//         All
@@ -87,19 +86,20 @@ export class Stackby implements INodeType {
 			//         read
 			// ----------------------------------
 			{
-				displayName: 'Id',
+				displayName: 'ID',
 				name: 'id',
 				type: 'string',
 				displayOptions: {
 					show: {
 						operation: [
-							'read','delete',
+							'read',
+							'delete',
 						],
 					},
 				},
 				default: '',
 				required: true,
-				description: 'Id of the record to return.',
+				description: 'ID of the record to return.',
 			},
 
 			// ----------------------------------
@@ -128,7 +128,7 @@ export class Stackby implements INodeType {
 						'operation': [
 							'list',
 						],
-						'returnAll':[
+						'returnAll': [
 							false,
 						],
 					},
@@ -141,26 +141,8 @@ export class Stackby implements INodeType {
 				description: 'Number of results to return.',
 			},
 			{
-				displayName: 'Offset',
-				name: 'offset',
-				type: 'number',
-				displayOptions: {
-					show: {
-						'operation': [
-							'list',
-						],
-					},
-				},
-				typeOptions: {
-					minValue: 0,
-					maxValue: 1000,
-				},
-				default: 0,
-				description: 'Number of results to return.',
-			},
-			{
-				displayName: 'Additional Options',
-				name: 'additionalOptions',
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
 				type: 'collection',
 				displayOptions: {
 					show: {
@@ -170,74 +152,8 @@ export class Stackby implements INodeType {
 					},
 				},
 				default: {},
-				description: 'Additional options which decide which records should be returned',
-				placeholder: 'Add Option',
+				placeholder: 'Add Field',
 				options: [
-					// {
-					// 	displayName: 'Fields',
-					// 	name: 'fields',
-					// 	type: 'string',
-					// 	typeOptions: {
-					// 		multipleValues: true,
-					// 		multipleValueButtonText: 'Add Field',
-					// 	},
-					// 	default: [],
-					// 	placeholder: 'Name',
-					// 	description: 'Only data for fields whose names are in this list will be included in the records.',
-					// },
-					// {
-					// 	displayName: 'Filter By Formula',
-					// 	name: 'filterByFormula',
-					// 	type: 'string',
-					// 	default: '',
-					// 	placeholder: 'NOT({Name} = \'\')',
-					// 	description: 'A formula used to filter records. The formula will be evaluated for each<br />record, and if the result is not 0, false, "", NaN, [], or #Error!<br />the record will be included in the response.',
-					// },
-					{
-						displayName: 'Sort',
-						name: 'sort',
-						placeholder: 'Add Sort Rule',
-						description: 'Defines how the returned records should be ordered.',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
-						options: [
-							{
-								name: 'property',
-								displayName: 'Property',
-								values: [
-									{
-										displayName: 'Field',
-										name: 'field',
-										type: 'string',
-										default: '',
-										description: 'Name of the field to sort on.',
-									},
-									{
-										displayName: 'Direction',
-										name: 'direction',
-										type: 'options',
-										options: [
-											{
-												name: 'ASC',
-												value: 'asc',
-												description: 'Sort in ascending order (small -> large)',
-											},
-											{
-												name: 'DESC',
-												value: 'desc',
-												description: 'Sort in descending order (large -> small)',
-											},
-										],
-										default: 'asc',
-										description: 'The sort direction.',
-									},
-								],
-							},
-						],
-					},
 					{
 						displayName: 'View',
 						name: 'view',
@@ -248,13 +164,12 @@ export class Stackby implements INodeType {
 					},
 				],
 			},
-
 			// ----------------------------------
 			//         append
 			// ----------------------------------
 			{
-				displayName: 'recordData',
-				name: 'recordData',
+				displayName: 'Columns',
+				name: 'columns',
 				type: 'string',
 				displayOptions: {
 					show: {
@@ -265,110 +180,85 @@ export class Stackby implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Enter Record Data',
+				placeholder: 'id,name,description',
+				description: 'Comma separated list of the properties which should used as columns for the new rows.',
 			},
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 		const items = this.getInputData();
-		let responseData;
-
-		//const returnData: IDataObject[] = [];
-		//let responseData;
-
-		const operation = this.getNodeParameter('operation', 0) as string;
-		console.log(operation);
-
-		const stackId = this.getNodeParameter('stackId', 0) as string;
-		const table = encodeURI(this.getNodeParameter('table', 0) as string);
 		const returnData: IDataObject[] = [];
-
-		const returnAll = false;
-		let endpoint = '';
-		let requestMethod = '';
-
-		let body = '';
+		const length = items.length as unknown as number;
+		let responseData;
 		const qs: IDataObject = {};
-
-		// Itterates over all input items and add the key "myString" with the
-		// value the parameter "myString" resolves to.
-		// (This could be a different value for each item in case it contains an expression)
-		// for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-		// 	myString = this.getNodeParameter('myString', itemIndex, '') as string;
-		// 	item = items[itemIndex];
-
-		// 	item.json['myString'] = myString;
-		// }
-
-		if(operation === 'read')
-		{
-			requestMethod = 'GET';
-			const rowIds=this.getNodeParameter('id', 0) as string;
-			//qs = {rowIds:rowIds};
-			endpoint = `rowlist/${stackId}/${table}?rowIds[]=${rowIds}`;
-			responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-			console.log('data is here',responseData);
-
-			returnData.push(responseData);
-		}
-
-		else if(operation === 'delete')
-		{
-			requestMethod = 'DELETE';
-			const rowIds=this.getNodeParameter('id', 0) as string;
-			//qs = {rowIds:rowIds};
-			endpoint = `rowdelete/${stackId}/${table}?rowIds[]=${rowIds}`;
-			responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-			console.log('data is here',responseData);
-
-			returnData.push(responseData);
-		}
-
-		else if(operation === 'append')
-		{	
-			requestMethod = 'POST';
-			const recordData=this.getNodeParameter('recordData', 0) as string;
-			endpoint = `rowcreate/${stackId}/${table}`;
-			body = recordData;
-			console.log('1',body);
-			body = JSON.parse(body);
-			console.log('2',body);
-			responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-			returnData.push(responseData);
-		}
-
-		else if(operation === 'list')
-		{
-			requestMethod = 'GET';
-			const returnAll=this.getNodeParameter('returnAll', 0) as boolean;
-			let limit=1000;
-			if(returnAll===false){
-				limit=this.getNodeParameter('limit', 0) as number;
+		const operation = this.getNodeParameter('operation', 0) as string;
+		if (operation === 'read') {
+			for (let i = 0; i < length; i++) {
+				const stackId = this.getNodeParameter('stackId', i) as string;
+				const table = encodeURI(this.getNodeParameter('table', i) as string);
+				const rowIds = this.getNodeParameter('id', 0) as string;
+				qs.rowIds = [rowIds];
+				responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
+				returnData.push.apply(returnData, responseData);
 			}
-			qs.offset=this.getNodeParameter('offset', 0) as number;
-			const additionalOptions = this.getNodeParameter('additionalOptions', 0, {}) as IDataObject;
+		}
+		if (operation === 'delete') {
+			for (let i = 0; i < length; i++) {
+				const stackId = this.getNodeParameter('stackId', i) as string;
+				const table = encodeURI(this.getNodeParameter('table', i) as string);
+				const rowIds = this.getNodeParameter('id', 0) as string;
+				qs.rowIds = [rowIds];
+				responseData = await apiRequest.call(this, 'DELETE', `/rowdelete/${stackId}/${table}`, {}, qs);
+				responseData = responseData.records;
+				returnData.push.apply(returnData, responseData);
+			}
+		}
 
-			for (const key of Object.keys(additionalOptions)) {
-				if (key === 'sort' && (additionalOptions.sort as IDataObject).property !== undefined) {
-					qs.sort = (additionalOptions[key] as IDataObject).property;
-				}  
-				else {
-					qs[key] = additionalOptions[key];
+		if (operation === 'append') {
+			const stackId = this.getNodeParameter('stackId', 0) as string;
+			const table = encodeURI(this.getNodeParameter('table', 0) as string);
+			const columns = this.getNodeParameter('columns', 0) as string;
+			const columnList = columns.split(',').map(column => column.trim());
+			const records: IRecord[] = [];
+			for (let i = 0; i < length; i++) {
+				//@ts-ignore
+				// tslint:disable-next-line: no-any
+				const record: { [key: string]: any } = {};
+				for (const column of columnList) {
+					if (items[i].json[column] === undefined) {
+						throw new Error(`Column ${column} does not exist on input`);
+					} else {
+						record[column] = items[i].json[column];
+					}
 				}
+				records.push({ field: record });
 			}
-			qs.maxrecord =  limit;
-			//qs.View = qs.view ? qs.view : null;
-
-			endpoint = `rowlist/${stackId}/${table}`;
-			const rowBody  = ''; 
-			responseData = await apiRequest.call(this, requestMethod, endpoint, rowBody, qs);
-			returnData.push(responseData);
+			responseData = await apiRequest.call(this, 'POST', `/rowcreate/${stackId}/${table}`, { records });
+			returnData.push.apply(returnData, responseData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		if (operation === 'list') {
+			for (let i = 0; i < length; i++) {
+				const stackId = this.getNodeParameter('stackId', i) as string;
+				const table = encodeURI(this.getNodeParameter('table', i) as string);
+				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
+				const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+				if (additionalFields.view) {
+					qs.view = additionalFields.view;
+				}
+
+				if (returnAll === true) {
+					responseData = await apiRequestAllItems.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
+				} else {
+					qs.maxrecord = this.getNodeParameter('limit', 0) as number;
+					responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
+				}
+				returnData.push.apply(returnData, responseData);
+			}
+		}
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
