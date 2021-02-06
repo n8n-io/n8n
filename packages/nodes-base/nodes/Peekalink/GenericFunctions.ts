@@ -21,7 +21,7 @@ export async function peekalinkApiRequest(this: IHookFunctions | IExecuteFunctio
 		}
 		let options: OptionsWithUri = {
 			headers: {
-				"X-API-Key": credentials.apiKey,
+				'X-API-Key': credentials.apiKey,
 			},
 			method,
 			qs,
