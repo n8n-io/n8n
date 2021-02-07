@@ -111,24 +111,7 @@ export class AwsSes implements INodeType {
 				default: 'create',
 				description: 'The operation to perform.',
 			},
-			{
-				displayName: 'Failure Redirection URL',
-				name: 'failureRedirectionURL',
-				type: 'string',
-				displayOptions: {
-					show: {
-						resource: [
-							'customVerificationEmail',
-						],
-						operation: [
-							'create',
-						],
-					},
-				},
-				required: true,
-				description: 'The URL that the recipient of the verification email is sent to if his or her address is not successfully verified.',
-				default: '',
-			},
+
 			{
 				displayName: 'From Email',
 				name: 'fromEmailAddress',
@@ -145,24 +128,6 @@ export class AwsSes implements INodeType {
 				},
 				required: true,
 				description: 'The email address that the custom verification email is sent from.',
-				default: '',
-			},
-			{
-				displayName: 'Success Redirection URL',
-				name: 'successRedirectionURL',
-				type: 'string',
-				displayOptions: {
-					show: {
-						resource: [
-							'customVerificationEmail',
-						],
-						operation: [
-							'create',
-						],
-					},
-				},
-				required: true,
-				description: 'The URL that the recipient of the verification email is sent to if his or her address is successfully verified.',
 				default: '',
 			},
 			{
@@ -220,6 +185,43 @@ export class AwsSes implements INodeType {
 				required: true,
 				description: 'The subject line of the custom verification email.',
 			},
+			{
+				displayName: 'Success Redirection URL',
+				name: 'successRedirectionURL',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'customVerificationEmail',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				required: true,
+				description: 'The URL that the recipient of the verification email is sent to if his or her address is successfully verified.',
+				default: '',
+			},
+			{
+				displayName: 'Failure Redirection URL',
+				name: 'failureRedirectionURL',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'customVerificationEmail',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				required: true,
+				description: 'The URL that the recipient of the verification email is sent to if his or her address is not successfully verified.',
+				default: '',
+			},
+
 			{
 				displayName: 'Email',
 				name: 'email',
@@ -1305,11 +1307,13 @@ export class AwsSes implements INodeType {
 					responseData = responseData.UpdateTemplateResponse;
 				}
 			}
+
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
-
 			} else {
-				returnData.push(responseData as IDataObject);
+				if (responseData !== undefined) {
+					returnData.push(responseData as IDataObject);
+				}
 			}
 		}
 
