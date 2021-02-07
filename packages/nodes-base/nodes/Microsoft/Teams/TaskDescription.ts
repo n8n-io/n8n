@@ -94,7 +94,7 @@ export const taskFields = [
 			},
 		},
 		default: '',
-		description: 'Channel name as it will appear to the user in Microsoft Teams.',
+		description: 'The ID of the Plan.',
 	},
 	{
 		displayName: 'Bucket ID',
@@ -118,7 +118,7 @@ export const taskFields = [
 			},
 		},
 		default: '',
-		description: 'Channel name as it will appear to the user in Microsoft Teams.',
+		description: 'The ID of the Bucket.',
 	},
 	{
 		displayName: 'Title',
@@ -201,6 +201,7 @@ export const taskFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:delete                                */
 	/* -------------------------------------------------------------------------- */
@@ -222,6 +223,7 @@ export const taskFields = [
 		default: '',
 		description: 'Task ID',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:get                                   */
 	/* -------------------------------------------------------------------------- */
@@ -243,6 +245,7 @@ export const taskFields = [
 		default: '',
 		description: 'Task ID',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -332,6 +335,7 @@ export const taskFields = [
 		default: 100,
 		description: 'How many results to return.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:update                                */
 	/* -------------------------------------------------------------------------- */
@@ -351,7 +355,7 @@ export const taskFields = [
 			},
 		},
 		default: '',
-		description: 'Task ID',
+		description: 'The ID of the Task.',
 	},
 	{
 		displayName: 'Update Fields',
