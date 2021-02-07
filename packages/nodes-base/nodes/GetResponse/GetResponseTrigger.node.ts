@@ -150,7 +150,7 @@ export class GetResponseTrigger implements INodeType {
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const lists = await getResponseApiRequestAllItems.call(this, 'GET', '/campaigns');
-				returnData.push({ name: '*', value: '*'});
+				returnData.push({ name: '*', value: '*' });
 				for (const list of lists) {
 					returnData.push({
 						name: list.name,
@@ -218,7 +218,7 @@ export class GetResponseTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const query = this.getQueryData() as IDataObject;
 		const listIds = this.getNodeParameter('listIds') as string[];
-		
+
 		if (!listIds.includes('*') && !listIds.includes(query['CAMPAIGN_ID'] as string)) {
 			return {};
 		}
