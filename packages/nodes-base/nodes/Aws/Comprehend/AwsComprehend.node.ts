@@ -11,20 +11,20 @@ import {
 
 import {
 	awsApiRequestREST,
-} from '../GenericFunctions';
+} from './GenericFunctions';
 
-export class AmazonComprehend implements INodeType {
+export class AwsComprehend implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Amazon Comprehend',
-		name: 'amazonComprehend',
+		displayName: 'AWS Comprehend',
+		name: 'awsComprehend',
 		icon: 'file:comprehend.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Sends data to Amazon Comprehend',
 		defaults: {
-			name: 'Amazon Comprehend',
-			color: '#305b94',
+			name: 'AWS Comprehend',
+			color: '#5aa08d',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -55,22 +55,72 @@ export class AmazonComprehend implements INodeType {
 				options: [
 					{
 						name: 'Detect Dominant Language',
-                        value: 'detectDominantLanguage',
-                        description: 'Identify the dominant language',
+						value: 'detectDominantLanguage',
+						description: 'Identify the dominant language',
 					},
 					{
 						name: 'Detect Sentiment',
-                        value: 'detectSentiment',
-                        description: 'Analyse the sentiment of the text',
+						value: 'detectSentiment',
+						description: 'Analyse the sentiment of the text',
 					},
 				],
 				default: 'detectDominantLanguage',
 				description: 'The operation to perform.',
-            },
-            {
-				displayName: 'LanguageCode',
+			},
+			{
+				displayName: 'Language Code',
 				name: 'languageCode',
-				type: 'string',
+				type: 'options',
+				options: [
+					{
+						name: 'English',
+						value: 'en',
+					},
+					{
+						name: 'Spanish',
+						value: 'es',
+					},
+					{
+						name: 'French',
+						value: 'fr',
+					},
+					{
+						name: 'German',
+						value: 'de',
+					},
+					{
+						name: 'Italian',
+						value: 'it',
+					},
+					{
+						name: 'Portuguese',
+						value: 'pt',
+					},
+					{
+						name: 'Arabic',
+						value: 'ar',
+					},
+					{
+						name: 'Hindi',
+						value: 'hi',
+					},
+					{
+						name: 'Japanese',
+						value: 'ja',
+					},
+					{
+						name: 'Korean',
+						value: 'ko',
+					},
+					{
+						name: 'Chinese',
+						value: 'zh',
+					},
+					{
+						name: 'Chinese (T)',
+						value: 'zh-TW',
+					},
+				],
 				default: 'en',
 				displayOptions: {
 					show: {
@@ -78,7 +128,7 @@ export class AmazonComprehend implements INodeType {
 							'text',
 						],
 						operation: [
-							'detectSentiment'
+							'detectSentiment',
 						],
 					},
 				},
@@ -101,35 +151,62 @@ export class AmazonComprehend implements INodeType {
 				},
 				description: 'The text to send.',
 			},
+			{
+				displayName: 'Simple',
+				name: 'simple',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'text',
+						],
+						operation: [
+							'detectDominantLanguage',
+						],
+					},
+				},
+				default: true,
+				description: 'When set to true a simplify version of the response will be used else the raw data.',
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		let body: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-
 		for (let i = 0; i < items.length; i++) {
 			if (resource === 'text') {
-				const text = this.getNodeParameter('text', i) as string;
-				body['Text'] = text;
-
-				// https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectDominantLanguage.html
+				//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectDominantLanguage.html
 				if (operation === 'detectDominantLanguage') {
-					const action = 'Comprehend_20171127.DetectDominantLanguage';
+					const text = this.getNodeParameter('text', i) as string;
+					const simple = this.getNodeParameter('simple', i) as boolean;
 
+					const body: IDataObject = {
+						Text: text,
+					};
+					const action = 'Comprehend_20171127.DetectDominantLanguage';
 					responseData = await awsApiRequestREST.call(this, 'comprehend', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+
+					if (simple === true) {
+						responseData = responseData.Languages.reduce((accumulator: { [key: string]: number }, currentValue: IDataObject) => {
+							accumulator[currentValue.LanguageCode as string] = currentValue.Score as number;
+							return accumulator;
+						}, {});
+					}
 				}
 
-				// https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectSentiment.html
+				//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectSentiment.html
 				if (operation === 'detectSentiment') {
 					const action = 'Comprehend_20171127.DetectSentiment';
+					const text = this.getNodeParameter('text', i) as string;
 					const languageCode = this.getNodeParameter('languageCode', i) as string;
-					body['LanguageCode'] = languageCode;
-
+					const body: IDataObject = {
+						Text: text,
+						LanguageCode: languageCode,
+					};
 					responseData = await awsApiRequestREST.call(this, 'comprehend', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
 				}
 			}
