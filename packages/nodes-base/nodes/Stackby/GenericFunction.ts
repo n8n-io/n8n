@@ -47,7 +47,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 
 	try {
 		return await this.helpers.request!(options);
-	
+
 	} catch (error) {
 		if (error.statusCode === 401) {
 			// Return a clear error
@@ -91,8 +91,8 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 		returnData.push.apply(returnData, responseData);
-		query.offset+= query.maxrecord;
-	
+		query.offset += query.maxrecord;
+
 	} while (
 		responseData.length !== 0
 	);

@@ -197,18 +197,19 @@ export class Stackby implements INodeType {
 			for (let i = 0; i < length; i++) {
 				const stackId = this.getNodeParameter('stackId', i) as string;
 				const table = encodeURI(this.getNodeParameter('table', i) as string);
-				const rowIds = this.getNodeParameter('id', 0) as string;
+				const rowIds = this.getNodeParameter('id', i) as string;
 				qs.rowIds = [rowIds];
 				responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
-				returnData.push.apply(returnData, responseData);
+				returnData.push.apply(returnData, responseData.map((data: any) => data.field));
 			}
 		}
 		if (operation === 'delete') {
 			for (let i = 0; i < length; i++) {
 				const stackId = this.getNodeParameter('stackId', i) as string;
 				const table = encodeURI(this.getNodeParameter('table', i) as string);
-				const rowIds = this.getNodeParameter('id', 0) as string;
+				const rowIds = this.getNodeParameter('id', i) as string;
 				qs.rowIds = [rowIds];
+
 				responseData = await apiRequest.call(this, 'DELETE', `/rowdelete/${stackId}/${table}`, {}, qs);
 				responseData = responseData.records;
 				returnData.push.apply(returnData, responseData);
@@ -216,13 +217,14 @@ export class Stackby implements INodeType {
 		}
 
 		if (operation === 'append') {
-			const stackId = this.getNodeParameter('stackId', 0) as string;
-			const table = encodeURI(this.getNodeParameter('table', 0) as string);
-			const columns = this.getNodeParameter('columns', 0) as string;
-			const columnList = columns.split(',').map(column => column.trim());
-			const records: IRecord[] = [];
+			const records: { [key: string]: IRecord[] } = {};
+			let key = '';
 			for (let i = 0; i < length; i++) {
-				//@ts-ignore
+				const stackId = this.getNodeParameter('stackId', i) as string;
+				const table = encodeURI(this.getNodeParameter('table', i) as string);
+				const columns = this.getNodeParameter('columns', i) as string;
+				const columnList = columns.split(',').map(column => column.trim());
+
 				// tslint:disable-next-line: no-any
 				const record: { [key: string]: any } = {};
 				for (const column of columnList) {
@@ -232,10 +234,20 @@ export class Stackby implements INodeType {
 						record[column] = items[i].json[column];
 					}
 				}
-				records.push({ field: record });
+				key = `${stackId}/${table}`;
+
+				if (records[key] === undefined) {
+					records[key] = [];
+				}
+				records[key].push({ field: record });
 			}
-			responseData = await apiRequest.call(this, 'POST', `/rowcreate/${stackId}/${table}`, { records });
-			returnData.push.apply(returnData, responseData);
+
+			for (const key of Object.keys(records)) {
+				responseData = await apiRequest.call(this, 'POST', `/rowcreate/${key}`, { records: records[key] });
+			}
+
+			// tslint:disable-next-line: no-any
+			returnData.push.apply(returnData, responseData.map((data: any) => data.field));
 		}
 
 		if (operation === 'list') {
@@ -256,7 +268,9 @@ export class Stackby implements INodeType {
 					qs.maxrecord = this.getNodeParameter('limit', 0) as number;
 					responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
 				}
-				returnData.push.apply(returnData, responseData);
+
+				// tslint:disable-next-line: no-any
+				returnData.push.apply(returnData, responseData.map((data: any) => data.field));
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

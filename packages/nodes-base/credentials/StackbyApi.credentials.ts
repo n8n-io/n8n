@@ -6,6 +6,7 @@ import {
 export class StackbyApi implements ICredentialType {
 	name = 'stackbyApi';
 	displayName = 'Stackby API';
+	documentationUrl = 'stackby';
 	properties = [
 		{
 			displayName: 'API Key',
