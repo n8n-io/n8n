@@ -41,7 +41,6 @@
 import Vue from 'vue';
 
 import {
-	IRunData,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
@@ -80,7 +79,6 @@ export default Vue.extend({
 			return this.$store.getters.activeNode;
 		},
 		nodeType (): INodeTypeDescription | null {
-			const activeNode = this.node;
 			if (this.node) {
 				return this.$store.getters.nodeType(this.node.type);
 			}

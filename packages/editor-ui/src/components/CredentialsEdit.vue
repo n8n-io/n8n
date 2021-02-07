@@ -48,8 +48,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
 import CredentialsInput from '@/components/CredentialsInput.vue';

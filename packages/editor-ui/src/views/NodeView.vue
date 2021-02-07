@@ -134,7 +134,6 @@ import RunData from '@/components/RunData.vue';
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
 import { debounce } from 'lodash';
-import axios from 'axios';
 import {
 	IConnection,
 	IConnections,
@@ -143,21 +142,16 @@ import {
 	INodeConnections,
 	INodeIssues,
 	INodeTypeDescription,
-	IRunData,
-	NodeInputConnections,
 	NodeHelpers,
 	Workflow,
 } from 'n8n-workflow';
 import {
 	IConnectionsUi,
 	IExecutionResponse,
-	IExecutionsStopData,
 	IN8nUISettings,
-	IStartRunData,
 	IWorkflowDb,
 	IWorkflowData,
 	INodeUi,
-	IRunDataUi,
 	IUpdateInformation,
 	IWorkflowDataUpdate,
 	XYPositon,
@@ -194,26 +188,6 @@ export default mixins(
 			activeNode () {
 				// When a node gets set as active deactivate the create-menu
 				this.createNodeActive = false;
-			},
-			nodes: {
-				async handler (val, oldVal) {
-					// Load a workflow
-					let workflowId = null as string | null;
-					if (this.$route && this.$route.params.name) {
-						workflowId = this.$route.params.name;
-					}
-				},
-				deep: true,
-			},
-			connections: {
-				async handler (val, oldVal) {
-					// Load a workflow
-					let workflowId = null as string | null;
-					if (this.$route && this.$route.params.name) {
-						workflowId = this.$route.params.name;
-					}
-				},
-				deep: true,
 			},
 		},
 		async beforeRouteLeave(to, from, next) {
@@ -710,7 +684,7 @@ export default mixins(
 
 				try {
 					this.stopExecutionInProgress = true;
-					const stopData: IExecutionsStopData = await this.restApi().stopCurrentExecution(executionId);
+					await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
 						title: 'Execution stopped',
 						message: `The execution with the id "${executionId}" got stopped!`,
@@ -723,9 +697,8 @@ export default mixins(
 			},
 
 			async stopWaitingForWebhook () {
-				let result;
 				try {
-					result = await this.restApi().removeTestWebhook(this.$store.getters.workflowId);
+					await this.restApi().removeTestWebhook(this.$store.getters.workflowId);
 				} catch (error) {
 					this.$showError(error, 'Problem deleting the test-webhook', 'There was a problem deleting webhook:');
 					return;
@@ -1214,7 +1187,6 @@ export default mixins(
 					// Display input names if they exist on connection
 					const targetNodeTypeData: INodeTypeDescription = this.$store.getters.nodeType(targetNode.type);
 					if (targetNodeTypeData.inputNames !== undefined) {
-						for (const input of targetNodeTypeData.inputNames) {
 							const inputName = targetNodeTypeData.inputNames[targetInfo.index];
 
 							if (info.connection.getOverlay('input-name-label')) {
@@ -1233,13 +1205,11 @@ export default mixins(
 									location: 0.8,
 								},
 							]);
-						}
 					}
 
 					// Display output names if they exist on connection
 					const sourceNodeTypeData: INodeTypeDescription = this.$store.getters.nodeType(sourceNode.type);
 					if (sourceNodeTypeData.outputNames !== undefined) {
-						for (const output of sourceNodeTypeData.outputNames) {
 							const outputName = sourceNodeTypeData.outputNames[sourceInfo.index];
 
 							if (info.connection.getOverlay('output-name-label')) {
@@ -1257,7 +1227,7 @@ export default mixins(
 									location: 0.2,
 								},
 							]);
-						}
+
 					}
 
 					// When connection gets made the output and input name get displayed
@@ -1809,7 +1779,6 @@ export default mixins(
 							}
 							const nodeSourceConnections = [];
 							for (connectionIndex = 0; connectionIndex < currentConnections[sourceNode][type][sourceIndex].length; connectionIndex++) {
-								const nodeConnection: NodeInputConnections = [];
 								connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
 								if (!createNodeNames.includes(connectionData.node)) {
 									// Node does not get created so skip input connection
@@ -2002,13 +1971,14 @@ export default mixins(
 
 		async mounted () {
 			this.$root.$on('importWorkflowData', async (data: IDataObject) => {
-				const resData = await this.importWorkflowData(data.data as IWorkflowDataUpdate);
-			});
+				await this.importWorkflowData(data.data as IWorkflowDataUpdate);
+			},
+			);
 
 			this.$root.$on('importWorkflowUrl', async (data: IDataObject) => {
 				const workflowData = await this.getWorkflowDataFromUrl(data.url as string);
 				if (workflowData !== undefined) {
-					const resData = await this.importWorkflowData(workflowData);
+					await this.importWorkflowData(workflowData);
 				}
 			});
 

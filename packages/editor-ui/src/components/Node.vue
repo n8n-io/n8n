@@ -51,10 +51,8 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import {
 	INode,
-	INodeIssueObjectProperty,
 	INodePropertyOptions,
 	INodeTypeDescription,
-	ITaskData,
 	NodeHelpers,
 } from 'n8n-workflow';
 

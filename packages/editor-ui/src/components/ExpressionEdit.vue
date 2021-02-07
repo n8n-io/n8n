@@ -48,10 +48,6 @@ import VariableSelector from '@/components/VariableSelector.vue';
 
 import { IVariableItemSelected } from '@/Interface';
 
-import {
-	Workflow,
-} from 'n8n-workflow';
-
 export default Vue.extend({
 	name: 'ExpressionEdit',
 	props: [

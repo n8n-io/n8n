@@ -19,10 +19,6 @@ import Vue from 'vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 
-import {
-	Workflow,
-} from 'n8n-workflow';
-
 export default Vue.extend({
 	name: 'CodeEdit',
 	props: [

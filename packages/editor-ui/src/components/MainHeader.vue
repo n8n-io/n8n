@@ -70,12 +70,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 
 import {
 	IExecutionResponse,
-	IExecutionsStopData,
-	IWorkflowDataUpdate,
 } from '../Interface';
 
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
@@ -87,7 +84,6 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
-import { saveAs } from 'file-saver';
 
 import mixins from 'vue-typed-mixins';
 
