@@ -200,6 +200,7 @@ export class Stackby implements INodeType {
 				const rowIds = this.getNodeParameter('id', i) as string;
 				qs.rowIds = [rowIds];
 				responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
+				// tslint:disable-next-line: no-any
 				returnData.push.apply(returnData, responseData.map((data: any) => data.field));
 			}
 		}
