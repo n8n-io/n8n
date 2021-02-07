@@ -73,12 +73,20 @@ export class AwsComprehend implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'English',
-						value: 'en',
+						name: 'Arabic',
+						value: 'ar',
 					},
 					{
-						name: 'Spanish',
-						value: 'es',
+						name: 'Chinese',
+						value: 'zh',
+					},
+					{
+						name: 'Chinese (T)',
+						value: 'zh-TW',
+					},
+					{
+						name: 'English',
+						value: 'en',
 					},
 					{
 						name: 'French',
@@ -89,20 +97,12 @@ export class AwsComprehend implements INodeType {
 						value: 'de',
 					},
 					{
-						name: 'Italian',
-						value: 'it',
-					},
-					{
-						name: 'Portuguese',
-						value: 'pt',
-					},
-					{
-						name: 'Arabic',
-						value: 'ar',
-					},
-					{
 						name: 'Hindi',
 						value: 'hi',
+					},
+					{
+						name: 'Italian',
+						value: 'it',
 					},
 					{
 						name: 'Japanese',
@@ -113,12 +113,12 @@ export class AwsComprehend implements INodeType {
 						value: 'ko',
 					},
 					{
-						name: 'Chinese',
-						value: 'zh',
+						name: 'Portuguese',
+						value: 'pt',
 					},
 					{
-						name: 'Chinese (T)',
-						value: 'zh-TW',
+						name: 'Spanish',
+						value: 'es',
 					},
 				],
 				default: 'en',
