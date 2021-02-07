@@ -265,6 +265,7 @@
       "dist/nodes/Affinity/AffinityTrigger.node.js",
       "dist/nodes/Automizy/Automizy.node.js",
       "dist/nodes/Aws/AwsLambda.node.js",
+      "dist/nodes/Aws/Comprehend/AwsComprehend.node.js",
       "dist/nodes/Aws/Rekognition/AwsRekognition.node.js",
       "dist/nodes/Aws/S3/AwsS3.node.js",
       "dist/nodes/Aws/SES/AwsSes.node.js",
