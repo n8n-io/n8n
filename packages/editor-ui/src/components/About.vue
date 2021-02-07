@@ -6,7 +6,7 @@
 					<el-col :span="8" class="info-name">
 						n8n Version:
 					</el-col>
-					<el-col :span="16">
+					<el-col :span="16" class="info-value">
 						{{versionCli}}
 					</el-col>
 				</el-row>
@@ -14,7 +14,7 @@
 					<el-col :span="8" class="info-name">
 						Source Code:
 					</el-col>
-					<el-col :span="16">
+					<el-col :span="16" class="info-value">
 						<a href="https://github.com/n8n-io/n8n" target="_blank">https://github.com/n8n-io/n8n</a>
 					</el-col>
 				</el-row>
@@ -22,7 +22,7 @@
 					<el-col :span="8" class="info-name">
 						License:
 					</el-col>
-					<el-col :span="16">
+					<el-col :span="16" class="info-value">
 						<a href="https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md" target="_blank">Apache 2.0 with Commons Clause</a>
 					</el-col>
 				</el-row>
@@ -38,8 +38,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 
@@ -81,7 +79,7 @@ export default mixins(
 	text-align: right;
 }
 
-.info-name {
+.info-name, .info-value {
 	line-height: 32px;
 }
 
