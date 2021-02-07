@@ -1,10 +1,8 @@
 {
 	"node": "n8n-nodes-base.discord",
-	"nodeVersion": "1.0",
-	"codexVersion": "1.0",
-	"categories": [
-		"Communication"
-	],
+	"nodeVersion": "2.0",
+	"codexVersion": "2.0",
+	"categories": ["Communication"],
 	"resources": {
 		"credentialDocumentation": [
 			{

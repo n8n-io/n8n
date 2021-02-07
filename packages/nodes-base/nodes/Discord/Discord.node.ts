@@ -1,11 +1,21 @@
-import { get } from 'lodash';
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IExecuteFunctions } from "n8n-core";
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from "n8n-workflow";
+
+interface DiscordWebhook {
+	content?: string;
+	username?: string;
+	avatar_url?: string;
+	tts?: boolean;
+	//* Not going to implement this yet as I don't know how I would do that with the node systems binary input.
+	file?: any;
+	embeds?: any[];
+	allowed_mentions?: {
+		parse: ('roles' | 'users' | 'everyone')[];
+		roles: string[];
+		users: string[];
+		replied_user: boolean;
+	};
+}
 
 export class Discord implements INodeType {
 	description: INodeTypeDescription = {
@@ -13,8 +23,8 @@ export class Discord implements INodeType {
 		name: 'discord',
 		icon: 'file:discord.png',
 		group: ['output'],
-		version: 1,
-		description: 'Sends data to Discord',
+		version: 2,
+		description: 'Send messages to Discord',
 		defaults: {
 			name: 'Discord',
 			color: '#7289da',
@@ -29,76 +39,148 @@ export class Discord implements INodeType {
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
+				required: true,
 				default: '',
-				description: 'The webhook url.',
+				placeholder: 'https://discord.com/api/webhooks/ID/TOKEN',
 			},
 			{
-				displayName: 'Text',
-				name: 'text',
+				displayName: 'Content',
+				name: 'content',
 				type: 'string',
 				typeOptions: {
+					maxValue: 2000,
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'The text to send.',
+				required: false,
+				placeholder: 'You are a pirate.',
+			},
+			{
+				displayName: 'Username',
+				name: 'username',
+				type: 'string',
+				default: '',
+				required: false,
+				placeholder: 'Captain Hook',
+			},
+			{
+				displayName: 'Avatar URL',
+				name: 'avatarUrl',
+				type: 'string',
+				default: '',
+				required: false,
+			},
+			{
+				displayName: 'TTS',
+				name: 'tts',
+				type: 'boolean',
+				default: false,
+				required: false,
+				description: 'Should this message be sent as a Text To Speech message?',
+			},
+			{
+				displayName: 'Embeds',
+				name: 'embeds',
+				type: 'json',
+				typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+				default: '',
+				required: false,
+			},
+			{
+				displayName: 'Allowed Mentions',
+				name: 'allowedMentions',
+				type: 'json',
+				typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+				default: '',
 			},
 		],
 	};
 
-
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const nodeInput = this.getInputData()[0].json as any,
+			returnData: IDataObject[] = [];
 
-		const requestMethod = 'POST';
+		let body: DiscordWebhook = {};
 
-		// For Post
-		let body: IDataObject;
+		const webhookUri = this.getNodeParameter('webhookUri', 0, '') as string;
 
-		for (let i = 0; i < items.length; i++) {
-			const webhookUri = this.getNodeParameter('webhookUri', i) as string;
-			body = {};
+		if (!webhookUri) throw Error('Webhook uri is required.');
 
-			body.content = this.getNodeParameter('text', i) as string;
+		body.content =
+			nodeInput['content'] ||
+			(this.getNodeParameter('content', 0, '') as string);
+		body.username =
+			nodeInput['username'] ||
+			(this.getNodeParameter('username', 0, '') as string);
+		body.avatar_url =
+			nodeInput['avatarUrl'] ||
+			(this.getNodeParameter('avatarUrl', 0, '') as string);
+		body.tts =
+			nodeInput['tts'] || (this.getNodeParameter('tts', 0, false) as boolean);
+		body.embeds =
+			nodeInput['embeds'] || (this.getNodeParameter('embeds', 0, '') as any);
+		body.allowed_mentions =
+			nodeInput['allowedMentions'] ||
+			(this.getNodeParameter('allowedMentions', 0, '') as any);
 
-			const options = {
-				method: requestMethod,
-				body,
-				uri: `${webhookUri}`,
-				headers: {
-					'content-type': 'application/json; charset=utf-8',
-				},
-				json: true,
-			};
+		if (!body.content && !body.embeds)
+			throw new Error('Either content or embeds must be set.');
 
-			let maxTries = 5;
-			do {
-				try {
-					await this.helpers.request(options);
-					break;
-				} catch (error) {
-					if (error.statusCode === 429) {
-						// Waiting rating limit
-						await new Promise((resolve) => {
-							setTimeout(async () => {
-								resolve();
-							}, get(error, 'response.body.retry_after', 150));
-						});
-					} else {
-						// If it's another error code then return the JSON response
-						throw error;
-					}
+		if (body.embeds) {
+			try {
+				//@ts-expect-error
+				body.embeds = JSON.parse(body.embeds);
+				if (!Array.isArray(body.embeds))
+					throw new Error('Embeds must be an array of embeds.');
+			} catch (e) {
+				throw new Error('Embeds must be valid JSON.');
+			}
+		}
+
+		//* Not used props, delete them from the payload as Discord won't need them :^
+		if (!body.content) delete body.content;
+		if (!body.username) delete body.username;
+		if (!body.avatar_url) delete body.avatar_url;
+		if (!body.embeds) delete body.embeds;
+		if (!body.allowed_mentions) delete body.allowed_mentions;
+
+		const options = {
+			method: 'POST',
+			body,
+			uri: webhookUri,
+			headers: {
+				'content-type': 'application/json; charset=utf-8',
+			},
+			json: true,
+		};
+
+		let maxTries = 5;
+		do {
+			try {
+				await this.helpers.request(options);
+				break;
+			} catch (error) {
+				if (error.statusCode === 429) {
+					//* Await ratelimit to be over
+					await new Promise<void>((resolve) =>
+						setTimeout(resolve, error.response.body.retry_after || 150)
+					);
+
+					continue;
 				}
 
-			} while (--maxTries);
-
-			if (maxTries <= 0) {
-				throw new Error('Could not send message. Max. amount of rate-limit retries got reached.');
+				//* Different Discord error, throw it
+				throw error;
 			}
+		} while (--maxTries);
 
-			returnData.push({success: true});
+		if (maxTries <= 0) {
+			throw new Error(
+				'Could not send Webhook message. Max. amount of rate-limit retries reached.'
+			);
 		}
+
+		returnData.push({ success: true });
 
 		return [this.helpers.returnJsonArray(returnData)];
 	}
