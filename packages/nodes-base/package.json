@@ -324,6 +324,7 @@
       "dist/nodes/Function.node.js",
       "dist/nodes/FunctionItem.node.js",
       "dist/nodes/GetResponse/GetResponse.node.js",
+      "dist/nodes/GetResponse/GetResponseTrigger.node.js",
       "dist/nodes/Ghost/Ghost.node.js",
       "dist/nodes/Github/Github.node.js",
       "dist/nodes/Github/GithubTrigger.node.js",
