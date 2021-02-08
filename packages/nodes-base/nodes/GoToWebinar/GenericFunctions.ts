@@ -61,13 +61,12 @@ export async function goToWebinarApiRequest(
 /**
  * Make an authenticated API request to GoToWebinar and return all results.
  */
-export async function quickBooksApiRequestAllItems(
+export async function goToWebinarApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
-	resource: string,
 ): Promise<any> { // tslint:disable-line:no-any
 
 	// TODO
@@ -105,7 +104,7 @@ export async function loadResource(
 	const { oauthTokenData: { realmId } } = this.getCredentials('quickBooksOAuth2Api') as { oauthTokenData: { realmId: string } };
 	const endpoint = `/v3/company/${realmId}/query`;
 
-	const resourceItems = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
+	const resourceItems = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {});
 
 	resourceItems.forEach((resourceItem: { DisplayName: string, Name: string, Id: string }) => {
 		returnData.push({
