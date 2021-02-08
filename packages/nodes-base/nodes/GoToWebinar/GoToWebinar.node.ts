@@ -173,44 +173,17 @@ export class QuickBooks implements INodeType {
 				} else if (operation === 'get') {
 
 					// ----------------------------------
-					//     attendee: getPollAnswers
+					//     attendee: getDetails
 					// ----------------------------------
 
 					const organizerKey = this.getNodeParameter('organizerKey', i) as string;
 					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 					const sessionKey = this.getNodeParameter('sessionKey', i) as string;
 					const registrantKey = this.getNodeParameter('registrantKey', i) as string;
+					const details = this.getNodeParameter('details', i) as string;
 
-					const endpoint = `/organizers/${organizerKey}/webinars/${webinarKey}/sessions/${sessionKey}/attendees/${registrantKey}/polls`;
+					const endpoint = `/organizers/${organizerKey}/webinars/${webinarKey}/sessions/${sessionKey}/attendees/${registrantKey}/${details}`;
 					responseData = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
-
-				} else if (operation === 'getAll') {
-
-					// ----------------------------------
-					//      attendee: getQuestions
-					// ----------------------------------
-
-					const organizerKey = this.getNodeParameter('organizerKey', i) as string;
-					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
-					const sessionKey = this.getNodeParameter('sessionKey', i) as string;
-					const registrantKey = this.getNodeParameter('registrantKey', i) as string;
-
-					const endpoint = `/organizers/${organizerKey}/webinars/${webinarKey}/sessions/${sessionKey}/attendees/${registrantKey}/questions`;
-					responseData = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
-
-				} else if (operation === 'update') {
-
-					// ----------------------------------
-					//     attendee: getSurveyAnswers
-					// ----------------------------------
-
-					const organizerKey = this.getNodeParameter('organizerKey', i) as string;
-					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
-					const sessionKey = this.getNodeParameter('sessionKey', i) as string;
-					const registrantKey = this.getNodeParameter('registrantKey', i) as string;
-
-					const endpoint = `/organizers/${organizerKey}/webinars/${webinarKey}/sessions/${sessionKey}/attendees/${registrantKey}/surveys`;
-					responseData = await goToWebinarApiRequest.call(this, 'PUT', endpoint, {}, {});
 
 				}
 
@@ -486,20 +459,12 @@ export class QuickBooks implements INodeType {
 					//         session: getDetails
 					// ----------------------------------
 
-					const details = this.getNodeParameter('details', i) as string;
-
 					const organizerKey = this.getNodeParameter('organizerKey', i) as string;
 					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 					const sessionKey = this.getNodeParameter('sessionKey', i) as string;
+					const details = this.getNodeParameter('details', i) as string;
 
-					const mapping: { [key: string]: string } = {
-						performance: `performance`,
-						polls: `polls`,
-						questions: `questions`,
-						surveys: `surveys`,
-					};
-
-					const endpoint = `/organizers/${organizerKey}/webinars/${webinarKey}/sessions/${sessionKey}/${mapping[details]}`;
+					const endpoint = `/organizers/${organizerKey}/webinars/${webinarKey}/sessions/${sessionKey}/${details}`;
 					responseData = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, {}, {});
 
 				}
