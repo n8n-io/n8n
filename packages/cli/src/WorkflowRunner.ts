@@ -223,11 +223,8 @@ export class WorkflowRunner {
 		const executionId = await this.activeExecutions.add(data, undefined);
 
 		const jobData: IBullJobData = {
-			destinationNode: data.destinationNode,
 			executionId,
 			loadStaticData: !!loadStaticData,
-			runData: data.runData,
-			startNodes: data.startNodes,
 		};
 
 		let priority = 100;

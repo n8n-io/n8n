@@ -34,11 +34,8 @@ export interface IActivationError {
 }
 
 export interface IBullJobData {
-	destinationNode?: string;
 	executionId: string;
 	loadStaticData: boolean;
-	runData?: IRunData;
-	startNodes?: string[];
 }
 
 export interface IBullJobResponse {

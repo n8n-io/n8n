@@ -141,16 +141,11 @@ export class Worker extends Command {
 		if (currentExecutionDb.data !== undefined) {
 			workflowExecute = new WorkflowExecute(additionalData, currentExecutionDb.mode, currentExecutionDb.data);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
-		} else if (jobData.runData === undefined || jobData.startNodes === undefined || jobData.startNodes.length === 0 || jobData.destinationNode === undefined) {
+		} else {
 			// Execute all nodes
-
 			// Can execute without webhook so go on
 			workflowExecute = new WorkflowExecute(additionalData, currentExecutionDb.mode);
-			workflowRun = workflowExecute.run(workflow, undefined, jobData.destinationNode);
-		} else {
-			// Execute only the nodes between start and destination nodes
-			workflowExecute = new WorkflowExecute(additionalData, currentExecutionDb.mode);
-			workflowRun = workflowExecute.runPartialWorkflow(workflow, jobData.runData, jobData.startNodes, jobData.destinationNode);
+			workflowRun = workflowExecute.run(workflow);
 		}
 
 		Worker.runningJobs[job.id] = workflowRun;
