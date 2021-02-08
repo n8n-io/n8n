@@ -22,7 +22,7 @@ export class Stackby implements INodeType {
 		icon: 'file:stackby.png',
 		group: ['transform'],
 		version: 1,
-		description: 'Consume Stackby REST API',
+		description: 'Read, Write, and Delete Data in Stackby',
 		defaults: {
 			name: 'Stackby',
 			color: '#772244',
