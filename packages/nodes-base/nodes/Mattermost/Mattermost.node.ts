@@ -25,7 +25,7 @@ export class Mattermost implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mattermost',
 		name: 'mattermost',
-		icon: 'file:mattermost.png',
+		icon: 'file:mattermost.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
