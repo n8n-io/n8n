@@ -57,6 +57,10 @@ export class Mattermost implements INodeType {
 						value: 'message',
 					},
 					{
+						name: 'Reaction',
+						value: 'reaction',
+					},
+					{
 						name: 'User',
 						value: 'user',
 					},
@@ -137,6 +141,37 @@ export class Mattermost implements INodeType {
 						name: 'Post',
 						value: 'post',
 						description: 'Post a message into a channel',
+					},
+				],
+				default: 'post',
+				description: 'The operation to perform',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Add a reaction to a post.',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Remove a reaction from a post',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all the reactions to one or more posts',
 					},
 				],
 				default: 'post',
@@ -937,6 +972,77 @@ export class Mattermost implements INodeType {
 					},
 				],
 			},
+
+			// ----------------------------------
+			//             reaction
+			// ----------------------------------
+			{
+				displayName: 'User ID',
+				name: 'userId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				description: 'The ID of the reacting user.',
+			},
+			{
+				displayName: 'Post ID',
+				name: 'postId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				description: 'The ID of the post to react to.',
+			},
+			{
+				displayName: 'Emoji Name',
+				name: 'emojiName',
+				type: 'string',
+				typeOptions: {
+					loadOptionsMethod: 'getEmojis',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				description: 'The name of the emoji to use for this reaction.',
+			},
+
 			// ----------------------------------
 			//              user
 			// ----------------------------------
@@ -1831,6 +1937,58 @@ export class Mattermost implements INodeType {
 					const otherOptions = this.getNodeParameter('otherOptions', i) as IDataObject;
 					Object.assign(body, otherOptions);
 				}
+
+			} else if (resource === 'reaction') {
+
+				// ----------------------------------
+				//         reaction:create
+				// ----------------------------------
+
+				// https://api.mattermost.com/#tag/reactions/paths/~1reactions/post
+
+				if (operation === 'create') {
+
+					body = {
+						user_id: this.getNodeParameter('userId', i) as string,
+						post_id: this.getNodeParameter('postId', i) as string,
+						emoji_name: this.getNodeParameter('emojiName', i) as string,
+						create_at: Date.now(),
+					} as IDataObject;
+
+					requestMethod = 'POST';
+					endpoint = 'reactions';
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------
+					//         reaction:delete
+					// ----------------------------------
+
+					// https://api.mattermost.com/#tag/reactions/paths/~1users~1{user_id}~1posts~1{post_id}~1reactions~1{emoji_name}/delete
+
+					const userId = this.getNodeParameter('userId', i) as string;
+					const postId = this.getNodeParameter('postId', i) as string;
+					const emojiName = this.getNodeParameter('emojiName', i) as string;
+
+					requestMethod = 'DELETE';
+					endpoint = `${userId}/posts/${postId}/reactions/${emojiName}`;
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------
+					//         reaction:getAll
+					// ----------------------------------
+
+					// https://api.mattermost.com/#tag/reactions/paths/~1posts~1ids~1reactions/post
+
+					const postIds = this.getNodeParameter('postIds', i) as string,
+					body = postIds.includes(',') ? postIds.split(',') : [postIds];
+
+					requestMethod = 'POST';
+					endpoint = 'posts/ids/reactions';
+
+				}
+
 			} else if (resource === 'user') {
 
 				if (operation === 'create') {
