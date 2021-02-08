@@ -1309,7 +1309,7 @@ class App {
 		this.app.get(`/${this.restEndpoint}/oauth2-credential/callback`, async (req: express.Request, res: express.Response) => {
 
 			// realmId it's currently just use for the quickbook OAuth2 flow
-			const { code, state: stateEncoded, realmId } = req.query;
+			const { code, state: stateEncoded } = req.query;
 
 			if (code === undefined || stateEncoded === undefined) {
 				const errorResponse = new ResponseHelper.ResponseError('Insufficient parameters for OAuth2 callback. Received following query parameters: ' + JSON.stringify(req.query), undefined, 503);
@@ -1383,8 +1383,8 @@ class App {
 
 			const oauthToken = await oAuthObj.code.getToken(`${oAuth2Parameters.redirectUri}?${queryParameters}`, options);
 
-			if (realmId !== undefined) {
-				_.set(oauthToken.data, 'realmId', realmId);
+			if (Object.keys(req.query).length > 2) {
+				_.set(oauthToken.data, 'callbackQueryString', _.omit(req.query, 'state', 'code'));
 			}
 
 			if (oauthToken === undefined) {

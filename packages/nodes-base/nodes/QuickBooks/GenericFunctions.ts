@@ -88,8 +88,7 @@ export async function quickBooksApiRequest(
 	if (
 		(resource === 'invoice' && (operation === 'void' || operation === 'delete')) ||
 		(resource === 'payment' && (operation === 'void' || operation === 'delete'))
-	)
-	 {
+	) {
 		options.headers!['Content-Type'] = 'application/json';
 	}
 
@@ -245,8 +244,9 @@ export async function handleBinaryData(
 	items[i].binary = items[i].binary ?? {};
 	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
 	items[i].binary![binaryProperty].fileName = fileName;
+	items[i].binary![binaryProperty].fileExtension = 'pdf';
 
-	return this.prepareOutputData(items);
+	return items;
 }
 
 export async function loadResource(
@@ -259,10 +259,23 @@ export async function loadResource(
 		query: `SELECT * FROM ${resource}`,
 	} as IDataObject;
 
-	const { oauthTokenData: { realmId } } = this.getCredentials('quickBooksOAuth2Api') as { oauthTokenData: { realmId: string } };
+	const { oauthTokenData: { callbackQueryString: { realmId } } } = this.getCredentials('quickBooksOAuth2Api') as { oauthTokenData: { callbackQueryString: { realmId: string } } };
 	const endpoint = `/v3/company/${realmId}/query`;
 
 	const resourceItems = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
+
+	if (resource === 'preferences') {
+		const { SalesFormsPrefs: { CustomField } } = resourceItems[0];
+		const customFields = CustomField[1].CustomField;
+		for (const customField of customFields) {
+			const length = customField.Name.length;
+			returnData.push({
+				name: customField.StringValue,
+				value: customField.Name.charAt(length - 1),
+			});
+		}
+		return returnData;
+	}
 
 	resourceItems.forEach((resourceItem: { DisplayName: string, Name: string, Id: string }) => {
 		returnData.push({
@@ -388,6 +401,11 @@ export function populateFields(
 			} else if (key === 'CustomFields') {
 				const { Field } = value as { Field: CustomField[] };
 				body.CustomField = Field;
+				const length = (body.CustomField as CustomField[]).length;
+				for (let i = 0; i < length; i++) {
+					//@ts-ignore
+					body.CustomField[i]['Type'] = 'StringType';
+				}
 
 			} else if (key === 'CustomerMemo') {
 				body.CustomerMemo = {
@@ -413,8 +431,6 @@ export function populateFields(
 		} else if (resource === 'payment') {
 			body[key] = value;
 		}
-
 	});
-
 	return body;
 }

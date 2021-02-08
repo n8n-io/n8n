@@ -6,6 +6,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -38,6 +39,7 @@ import {
 	populateFields,
 	processLines,
 	quickBooksApiRequest,
+	quickBooksApiRequestAllItems,
 } from './GenericFunctions';
 
 import {
@@ -136,6 +138,10 @@ export class QuickBooks implements INodeType {
 				return await loadResource.call(this, 'customer');
 			},
 
+			async getCustomFields(this: ILoadOptionsFunctions) {
+				return await loadResource.call(this, 'preferences');
+			},
+
 			async getVendors(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'vendor');
 			},
@@ -157,11 +163,11 @@ export class QuickBooks implements INodeType {
 
 		const { oauthTokenData } = this.getCredentials('quickBooksOAuth2Api') as IDataObject;
 		// @ts-ignore
-		const companyId = oauthTokenData.realmId;
+		const companyId = oauthTokenData.callbackQueryString.realmId;
 
 		for (let i = 0; i < items.length; i++) {
 
-			if (resource === 'bill')	{
+			if (resource === 'bill') {
 
 				// *********************************************************************
 				// 															  bill
@@ -499,7 +505,7 @@ export class QuickBooks implements INodeType {
 
 					if (download) {
 
-						return await handleBinaryData.call(this, items, i, companyId, resource, estimateId);
+						responseData = await handleBinaryData.call(this, items, i, companyId, resource, estimateId);
 
 					} else {
 
@@ -626,7 +632,7 @@ export class QuickBooks implements INodeType {
 
 					if (download) {
 
-						return await handleBinaryData.call(this, items, i, companyId, resource, invoiceId);
+						responseData = await handleBinaryData.call(this, items, i, companyId, resource, invoiceId);
 
 					} else {
 
@@ -709,7 +715,7 @@ export class QuickBooks implements INodeType {
 
 				}
 
-			} else if (resource === 'item')	{
+			} else if (resource === 'item') {
 
 				// *********************************************************************
 				// 															  item
@@ -798,7 +804,7 @@ export class QuickBooks implements INodeType {
 
 					if (download) {
 
-						return await handleBinaryData.call(this, items, i, companyId, resource, paymentId);
+						responseData = await handleBinaryData.call(this, items, i, companyId, resource, paymentId);
 
 					} else {
 
@@ -954,14 +960,17 @@ export class QuickBooks implements INodeType {
 				}
 
 			}
-
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
 				: returnData.push(responseData);
+		}
 
-			}
+		const download = this.getNodeParameter('download', 0, false) as boolean;
 
-		return [this.helpers.returnJsonArray(returnData)];
-
+		if (['invoice', 'estimate', 'payment'].includes(resource) && ['get'].includes(operation) && download) {
+			return this.prepareOutputData(responseData);
+		} else {
+			return [this.helpers.returnJsonArray(returnData)];
+		}
 	}
 }

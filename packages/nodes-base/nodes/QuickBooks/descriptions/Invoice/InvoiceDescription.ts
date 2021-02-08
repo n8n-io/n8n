@@ -246,7 +246,8 @@ export const invoiceFields = [
 		name: 'fileName',
 		type: 'string',
 		required: true,
-		default: 'data',
+		default: '',
+		placeholder: 'data.pdf',
 		description: 'Name of the file that will be downloaded.',
 		displayOptions: {
 			show: {

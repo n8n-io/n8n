@@ -193,6 +193,28 @@ export const paymentFields = [
 			},
 		},
 	},
+	{
+		displayName: 'File Name',
+		name: 'fileName',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'data.pdf',
+		description: 'Name of the file that will be downloaded.',
+		displayOptions: {
+			show: {
+				resource: [
+					'payment',
+				],
+				operation: [
+					'get',
+				],
+				download: [
+					true,
+				],
+			},
+		},
+	},
 	// ----------------------------------
 	//         payment: getAll
 	// ----------------------------------

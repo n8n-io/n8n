@@ -78,14 +78,17 @@ export const estimateAdditionalFieldsOptions = [
 				values: [
 					{
 						displayName: 'Field Definition ID',
-						name: 'DefinitionID',
-						type: 'string',
+						name: 'DefinitionId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getCustomFields',
+						},
 						default: '',
 						description: 'ID of the field to set',
 					},
 					{
 						displayName: 'Field Name',
-						name: 'Name',
+						name: 'StringValue',
 						type: 'string',
 						default: '',
 						description: 'Value of the field to set',
