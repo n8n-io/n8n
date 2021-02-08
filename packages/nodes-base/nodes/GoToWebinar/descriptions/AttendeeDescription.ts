@@ -20,7 +20,7 @@ export const attendeeOperations = [
 			},
 			{
 				name: 'Get Details',
-				value: 'getAll',
+				value: 'getDetails',
 			},
 		],
 		displayOptions: {
