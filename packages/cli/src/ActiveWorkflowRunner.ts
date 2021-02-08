@@ -139,29 +139,30 @@ export class ActiveWorkflowRunner {
 				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 			}
 
-			// set webhook to the first webhook result
+			let maxMatches = 0;
+			const pathElementsSet = new Set(pathElements);
+			// check if static elements match in path
 			// if more results have been returned choose the one with the most static-route matches
-			webhook = dynamicWebhooks[0];
-			if (dynamicWebhooks.length > 1) {
-				let maxMatches = 0;
-				const pathElementsSet = new Set(pathElements);
-				dynamicWebhooks.forEach(dynamicWebhook => {
-					const staticElements = dynamicWebhook.webhookPath.split('/').filter(ele => !ele.startsWith(':'));
-					const allStaticExist = staticElements.every(staticEle => pathElementsSet.has(staticEle));
+			dynamicWebhooks.forEach(dynamicWebhook => {
+				const staticElements = dynamicWebhook.webhookPath.split('/').filter(ele => !ele.startsWith(':'));
+				const allStaticExist = staticElements.every(staticEle => pathElementsSet.has(staticEle));
 
-					if (allStaticExist && staticElements.length > maxMatches) {
-						maxMatches = staticElements.length;
-						webhook = dynamicWebhook;
-					}
-				});
-				if (maxMatches === 0) {
-					throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+				if (allStaticExist && staticElements.length > maxMatches) {
+					maxMatches = staticElements.length;
+					webhook = dynamicWebhook;
 				}
+				// handle routes with no static elements
+				else if (staticElements.length === 0 && !webhook) {
+					webhook = dynamicWebhook;
+				}
+			});
+			if (webhook === undefined) {
+				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 			}
 
-			path = webhook.webhookPath;
+			path = webhook!.webhookPath;
 			// extracting params from path
-			webhook.webhookPath.split('/').forEach((ele, index) => {
+			webhook!.webhookPath.split('/').forEach((ele, index) => {
 				if (ele.startsWith(':')) {
 					// write params to req.params
 					req.params[ele.slice(1)] = pathElements[index];
