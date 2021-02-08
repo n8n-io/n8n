@@ -81,7 +81,7 @@ export class NodeOperationError extends NodeError {
 			error = new Error(error);
 		}
 		super('NodeOperationError', nodeType, error);
-		this.message = `${nodeType}: ${error.message}`;
+		this.message = error.message;
 	}
 }
 
@@ -102,38 +102,27 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
 	'504': 'Gateway timed out - try again later',
 };
 
+const UNKNOWN_ERROR_MESSAGE = 'UNKNOWN ERROR - check the detailed error for more information';
+
 export class NodeApiError extends NodeError {
 	httpCode: string | null;
 
 	constructor(
 		nodeType: string,
 		error: IErrorObject,
-		{path, message, description, httpCode}: {path?: INodeErrorPath, message?: string, description?: string, httpCode?: string} = {},
+		{message, description, httpCode}: {message?: string, description?: string, httpCode?: string} = {},
 	){
 		super('NodeApiError', nodeType, error);
-		this.message = `${nodeType}: `;
 		if (message) {
-			this.message += message;
+			this.message = message;
+			this.description = description;
 			this.httpCode = httpCode ?? null;
-			if (this.httpCode) {
-				this.description = `${this.httpCode} - ${description}`;
+			if (this.httpCode && this.description) {
+				this.description = `${this.httpCode} - ${this.description}`;
 			}
-			else  {
-				this.description = description;
+			else if (this.httpCode) {
+				this.description = `Status Code: ${this.httpCode}`;
 			}
-			return;
-		}
-
-		if (path) {
-			const resolvedError = this.resolveError(error, path);
-			this.httpCode = resolvedError.code;
-			if (this.httpCode) {
-				this.description = `${this.httpCode} - ${resolvedError.message}`;
-			}
-			else  {
-				this.description = resolvedError.message;
-			}
-			this.setMessage();
 			return;
 		}
 
@@ -149,48 +138,27 @@ export class NodeApiError extends NodeError {
 	 * @returns {void}
 	 */
 	private setMessage() {
-		const unknownError = 'UNKNOWN ERROR - check the detailed error for more information';
 
 		if (!this.httpCode) {
 			this.httpCode = null;
-			this.message += unknownError;
+			this.message = UNKNOWN_ERROR_MESSAGE;
 			return;
 		}
 
 		if (STATUS_CODE_MESSAGES[this.httpCode]) {
-			this.message += STATUS_CODE_MESSAGES[this.httpCode];
+			this.message = STATUS_CODE_MESSAGES[this.httpCode];
 			return;
 		}
 
 		switch (this.httpCode.charAt(0)) {
 			case '4':
-				this.message += STATUS_CODE_MESSAGES['4XX'];
+				this.message = STATUS_CODE_MESSAGES['4XX'];
 				break;
 			case '5':
-				this.message += STATUS_CODE_MESSAGES['5XX'];
+				this.message = STATUS_CODE_MESSAGES['5XX'];
 				break;
 			default:
-				this.message += unknownError;
+				this.message = UNKNOWN_ERROR_MESSAGE;
 		}
-	}
-
-	/**
-	 * Resolves an API error object into a standardized error object based on the error path provided.
-	 *
-	 * @param {object} errorObject
-	 * @param {INodeErrorPath} errorPath
-	 * @returns {INodeErrorResolved}
-	 */
-	private resolveError(errorObject: object, errorPath: INodeErrorPath): INodeErrorResolved {
-		const resolvedError: INodeErrorResolved = {
-			code: '',
-			message: '',
-		};
-
-		Object.entries(errorPath).forEach(([key, path]) => {
-			resolvedError[key] = path.reduce((accumulator: INodeErrorResolved, currentValue: string) => accumulator[currentValue], errorObject).toString();
-		});
-
-		return resolvedError;
 	}
 }
