@@ -106,7 +106,7 @@ export async function init(): Promise<IDatabaseCollections> {
 				database:  path.join(n8nFolder, 'database.sqlite'),
 				entityPrefix,
 				migrations: sqliteMigrations,
-				migrationsRun: true,
+				migrationsRun: false, // migrations for sqlite will be ran manually for now; see below
 				migrationsTableName: `${entityPrefix}migrations`,
 			};
 			break;
@@ -121,11 +121,30 @@ export async function init(): Promise<IDatabaseCollections> {
 		logging: false,
 	});
 
-	const connection = await createConnection(connectionOptions);
+	let connection = await createConnection(connectionOptions);
 
-	await connection.runMigrations({
-		transaction: 'none',
-	});
+	if (dbType === 'sqlite') {
+		// This specific migration changes database metadata.
+		// A field is now nullable. We need to reconnect so that
+		// n8n knows it has changed. Happens only on sqlite.
+		let migrations = [];
+		try {
+			migrations = await connection.query(`SELECT id FROM ${entityPrefix}migrations where name = "MakeStoppedAtNullable1607431743769"`);
+		} catch(error) {
+			// Migration table does not exist yet - it will be created after migrations run for the first time.
+		}
+
+		// If you remove this call, remember to turn back on the
+		// setting to run migrations automatically above.
+		await connection.runMigrations({
+			transaction: 'none',
+		});
+
+		if (migrations.length === 0) {
+			await connection.close();
+			connection = await createConnection(connectionOptions);
+		}
+	}
 
 	collections.Credentials = getRepository(entities.CredentialsEntity);
 	collections.Execution = getRepository(entities.ExecutionEntity);

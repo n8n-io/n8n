@@ -5,6 +5,7 @@ import {
 } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 const open = require('open');
+import * as Redis from 'ioredis';
 
 import * as config from '../config';
 import {
@@ -21,6 +22,7 @@ import {
 	Server,
 	TestWebhooks,
 } from "../src";
+import { IDataObject } from 'n8n-workflow';
 
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
@@ -157,6 +159,61 @@ export class Start extends Command {
 				// Wait till the database is ready
 				await startDbInitPromise;
 
+				if (config.get('executions.mode') === 'queue') {
+					const redisHost = config.get('queue.bull.redis.host');
+					const redisPassword = config.get('queue.bull.redis.password');
+					const redisPort = config.get('queue.bull.redis.port');
+					const redisDB = config.get('queue.bull.redis.db');
+					const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
+					let lastTimer = 0, cumulativeTimeout = 0;
+					
+					const settings = {
+						retryStrategy: (times: number): number | null => {
+							const now = Date.now();
+							if (now - lastTimer > 30000) {
+								// Means we had no timeout at all or last timeout was temporary and we recovered
+								lastTimer = now;
+								cumulativeTimeout = 0;
+							} else {
+								cumulativeTimeout += now - lastTimer;
+								lastTimer = now;
+								if (cumulativeTimeout > redisConnectionTimeoutLimit) {
+									console.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + ". Exiting process.");
+									process.exit(1);
+								}
+							}
+							return 500;
+						},
+					} as IDataObject;
+
+					if (redisHost) {
+						settings.host = redisHost;
+					}
+					if (redisPassword) {
+						settings.password = redisPassword;
+					}
+					if (redisPort) {
+						settings.port = redisPort;
+					}
+					if (redisDB) {
+						settings.db = redisDB;
+					}
+					
+					// This connection is going to be our heartbeat
+					// IORedis automatically pings redis and tries to reconnect
+					// We will be using the retryStrategy above
+					// to control how and when to exit.
+					const redis = new Redis(settings);
+
+					redis.on('error', (error) => {
+						if (error.toString().includes('ECONNREFUSED') === true) {
+							console.warn('Redis unavailable - trying to reconnect...');
+						} else {
+							console.warn('Error with Redis: ', error);
+						}
+					});
+				}
+				
 				const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
 
 				if (dbType === 'sqlite') {
