@@ -319,7 +319,7 @@ export default mixins(
 			
 			
 			if (this.autoRefresh) {
-				this.autoRefreshInterval = setInterval(this.refreshData, 10 * 1000); // refresh data every 10 secs
+				this.autoRefreshInterval = setInterval(this.loadAutoRefresh, 4 * 1000); // refresh data every 4 secs
 			}
 		},
 		handleCheckAllChange () {
@@ -409,6 +409,21 @@ export default mixins(
 			}
 
 			this.$store.commit('setActiveExecutions', activeExecutions);
+		},
+		async loadAutoRefresh () : Promise<void> {
+			let firstId: string | number | undefined = 0;
+			if (this.finishedExecutions.length !== 0) {
+				firstId = this.finishedExecutions[0].id;
+			}
+			const activeExecutionsPromise: Promise<IExecutionsListResponse> = this.restApi().getPastExecutions({}, 100, undefined, firstId);
+			const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> = this.restApi().getCurrentExecutions({});
+
+			const results = await Promise.all([activeExecutionsPromise, currentExecutionsPromise]);
+
+			this.$store.commit('setActiveExecutions', results[1]);
+
+			this.finishedExecutions.unshift.apply(this.finishedExecutions, results[0].results);
+			this.finishedExecutionsCount = results[0].count;
 		},
 		async loadFinishedExecutions (): Promise<void> {
 			if (this.filter.status === 'running') {

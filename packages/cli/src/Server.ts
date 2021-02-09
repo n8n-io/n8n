@@ -1462,10 +1462,10 @@ class App {
 				resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {[filterField]: filter[filterField]});
 			});
 			if (req.query.lastId) {
-				resultsQuery.andWhere(`execution.id <= :lastId`, {lastId: req.query.lastId});
+				resultsQuery.andWhere(`execution.id < :lastId`, {lastId: req.query.lastId});
 			}
 			if (req.query.firstId) {
-				resultsQuery.andWhere(`execution.id >= :firstId`, {firstId: req.query.firstId});
+				resultsQuery.andWhere(`execution.id > :firstId`, {firstId: req.query.firstId});
 			}
 			if (executingWorkflowIds.length > 0) {
 				resultsQuery.andWhere(`execution.id NOT IN (:...ids)`, {ids: executingWorkflowIds});
