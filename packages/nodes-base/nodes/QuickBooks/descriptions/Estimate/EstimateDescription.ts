@@ -156,6 +156,7 @@ export const estimateFields = [
 		},
 		options: estimateAdditionalFieldsOptions,
 	},
+
 	// ----------------------------------
 	//         estimate: delete
 	// ----------------------------------
@@ -177,6 +178,7 @@ export const estimateFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         estimate: get
 	// ----------------------------------
@@ -259,6 +261,7 @@ export const estimateFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         estimate: getAll
 	// ----------------------------------
@@ -333,6 +336,7 @@ export const estimateFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         estimate: send
 	// ----------------------------------
@@ -372,6 +376,7 @@ export const estimateFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         estimate: update
 	// ----------------------------------

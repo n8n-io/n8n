@@ -95,6 +95,7 @@ export const employeeFields = [
 		},
 		options: employeeAdditionalFieldsOptions,
 	},
+
 	// ----------------------------------
 	//         employee: get
 	// ----------------------------------
@@ -116,6 +117,7 @@ export const employeeFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         employee: getAll
 	// ----------------------------------
@@ -190,6 +192,7 @@ export const employeeFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         employee: update
 	// ----------------------------------

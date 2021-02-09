@@ -81,6 +81,7 @@ export const customerFields = [
 		},
 		options: customerAdditionalFieldsOptions,
 	},
+
 	// ----------------------------------
 	//         customer: get
 	// ----------------------------------
@@ -102,6 +103,7 @@ export const customerFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         customer: getAll
 	// ----------------------------------
@@ -176,6 +178,7 @@ export const customerFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         customer: update
 	// ----------------------------------

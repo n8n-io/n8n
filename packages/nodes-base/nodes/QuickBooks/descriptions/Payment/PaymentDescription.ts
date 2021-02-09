@@ -35,12 +35,12 @@ export const paymentOperations = [
 				value: 'send',
 			},
 			{
-				name: 'Void',
-				value: 'void',
-			},
-			{
 				name: 'Update',
 				value: 'update',
+			},
+			{
+				name: 'Void',
+				value: 'void',
 			},
 		],
 		displayOptions: {
@@ -112,6 +112,7 @@ export const paymentFields = [
 		},
 		options: paymentAdditionalFieldsOptions,
 	},
+
 	// ----------------------------------
 	//         payment: delete
 	// ----------------------------------
@@ -133,6 +134,7 @@ export const paymentFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         payment: get
 	// ----------------------------------
@@ -215,6 +217,7 @@ export const paymentFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         payment: getAll
 	// ----------------------------------
@@ -289,6 +292,7 @@ export const paymentFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         payment: send
 	// ----------------------------------
@@ -328,6 +332,7 @@ export const paymentFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         payment: void
 	// ----------------------------------
@@ -349,6 +354,7 @@ export const paymentFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         payment: update
 	// ----------------------------------

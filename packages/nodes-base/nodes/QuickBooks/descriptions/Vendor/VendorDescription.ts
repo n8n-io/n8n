@@ -81,6 +81,7 @@ export const vendorFields = [
 		},
 		options: vendorAdditionalFieldsOptions,
 	},
+
 	// ----------------------------------
 	//         vendor: get
 	// ----------------------------------
@@ -102,6 +103,7 @@ export const vendorFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         vendor: getAll
 	// ----------------------------------
@@ -176,6 +178,7 @@ export const vendorFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         vendor: update
 	// ----------------------------------

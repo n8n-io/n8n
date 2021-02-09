@@ -35,12 +35,12 @@ export const invoiceOperations = [
 				value: 'send',
 			},
 			{
-				name: 'Void',
-				value: 'void',
-			},
-			{
 				name: 'Update',
 				value: 'update',
+			},
+			{
+				name: 'Void',
+				value: 'void',
 			},
 		],
 		displayOptions: {
@@ -160,6 +160,7 @@ export const invoiceFields = [
 		},
 		options: invoiceAdditionalFieldsOptions,
 	},
+
 	// ----------------------------------
 	//         invoice: delete
 	// ----------------------------------
@@ -181,6 +182,7 @@ export const invoiceFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         invoice: get
 	// ----------------------------------
@@ -263,6 +265,7 @@ export const invoiceFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         invoice: getAll
 	// ----------------------------------
@@ -337,6 +340,7 @@ export const invoiceFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         invoice: send
 	// ----------------------------------
@@ -376,6 +380,7 @@ export const invoiceFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         invoice: void
 	// ----------------------------------
@@ -397,6 +402,7 @@ export const invoiceFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         invoice: update
 	// ----------------------------------
