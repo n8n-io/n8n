@@ -206,7 +206,7 @@ export class Webhook extends Command {
 
 				// Start to get active workflows and run their triggers
 				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
-				await activeWorkflowRunner.init();
+				await activeWorkflowRunner.initWebhooks();
 
 				const editorUrl = GenericHelpers.getBaseUrl();
 				this.log('Webhook listener waiting for requests.');
