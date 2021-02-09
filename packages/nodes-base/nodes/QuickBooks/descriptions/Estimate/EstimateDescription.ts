@@ -334,6 +334,45 @@ export const estimateFields = [
 		},
 	},
 	// ----------------------------------
+	//         estimate: send
+	// ----------------------------------
+	{
+		displayName: 'Estimate ID',
+		name: 'estimateId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The ID of the estimate to send.',
+		displayOptions: {
+			show: {
+				resource: [
+					'estimate',
+				],
+				operation: [
+					'send',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The email of the recipient of the estimate.',
+		displayOptions: {
+			show: {
+				resource: [
+					'estimate',
+				],
+				operation: [
+					'send',
+				],
+			},
+		},
+	},
+	// ----------------------------------
 	//         estimate: update
 	// ----------------------------------
 	{
