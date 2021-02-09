@@ -209,10 +209,10 @@ export default mixins(
 				display: none;
 			}
 		}
-    
-    >.parameter-collection {
-      border-left: 1px dashed #999;
-    }
+
+		>.parameter-collection {
+			border-left: 1px dashed #999;
+ 		}
 	}
 
 	.parameter-item {
