@@ -47,6 +47,11 @@ export class MySql implements INodeType {
 						description: 'Insert rows in database.',
 					},
 					{
+						name: 'Insert Ignore',
+						value: 'insert ignore',
+						description: 'Insert rows in database, ignoring any errors.',
+					},
+					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update rows in database.',
@@ -106,6 +111,40 @@ export class MySql implements INodeType {
 					show: {
 						operation: [
 							'insert',
+						],
+					},
+				},
+				default: '',
+				placeholder: 'id,name,description',
+				description: 'Comma separated list of the properties which should used as columns for the new rows.',
+			},
+			
+			// ----------------------------------
+			//         insert ignore
+			// ----------------------------------
+			{
+				displayName: 'Table',
+				name: 'table',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'insert ignore',
+						],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Name of the table in which to insert data to.',
+			},
+			{
+				displayName: 'Columns',
+				name: 'columns',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'insert ignore',
 						],
 					},
 				},
@@ -217,6 +256,22 @@ export class MySql implements INodeType {
 			const insertItems = copyInputItems(items, columns);
 			const insertPlaceholder = `(${columns.map(column => '?').join(',')})`;
 			const insertSQL = `INSERT INTO ${table}(${columnString}) VALUES ${items.map(item => insertPlaceholder).join(',')};`;
+			const queryItems = insertItems.reduce((collection, item) => collection.concat(Object.values(item as any)), []); // tslint:disable-line:no-any
+			const queryResult = await connection.query(insertSQL, queryItems);
+
+			returnItems = this.helpers.returnJsonArray(queryResult[0] as IDataObject);
+
+		} else if (operation === 'insert ignore') {
+			// ----------------------------------
+			//         insert
+			// ----------------------------------
+
+			const table = this.getNodeParameter('table', 0) as string;
+			const columnString = this.getNodeParameter('columns', 0) as string;
+			const columns = columnString.split(',').map(column => column.trim());
+			const insertItems = copyInputItems(items, columns);
+			const insertPlaceholder = `(${columns.map(column => '?').join(',')})`;
+			const insertSQL = `INSERT IGNORE INTO ${table}(${columnString}) VALUES ${items.map(item => insertPlaceholder).join(',')};`;
 			const queryItems = insertItems.reduce((collection, item) => collection.concat(Object.values(item as any)), []); // tslint:disable-line:no-any
 			const queryResult = await connection.query(insertSQL, queryItems);
 
