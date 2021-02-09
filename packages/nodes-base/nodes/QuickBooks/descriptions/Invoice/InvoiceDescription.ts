@@ -58,11 +58,11 @@ export const invoiceFields = [
 	//         invoice: create
 	// ----------------------------------
 	{
-		displayName: 'For Customer ID',
+		displayName: 'For Customer',
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the customer who the invoice is for.',
+		description: 'The customer who the invoice is for.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -111,7 +111,7 @@ export const invoiceFields = [
 				],
 			},
 			{
-				displayName: 'Item ID',
+				displayName: 'Item',
 				name: 'itemId',
 				type: 'options',
 				default: [],
