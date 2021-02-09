@@ -32,6 +32,28 @@ export class Queue {
 	getBullObjectInstance(): Bull.Queue {
 		return this.jobQueue;
 	}
+
+	/**
+	 * 
+	 * @param job A Bull.Job instance
+	 * @returns boolean true if we were able to securely stop the job
+	 */
+	async stopJob(job: Bull.Job): Promise<boolean> {
+		if (await job.isActive()) {
+			// Job is already running so tell it to stop
+			await job.progress(-1);
+			return true;
+		} else {
+			// Job did not get started yet so remove from queue
+			try {
+				await job.remove();
+				return true;
+			} catch (e) {
+				await job.progress(-1);
+			}
+		}
+		return false;
+	}
 }
 
 let activeQueueInstance: Queue | undefined;

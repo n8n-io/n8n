@@ -248,51 +248,23 @@ export class WorkflowRunner {
 		const workflowExecution: PCancelable<IRun> = new PCancelable(async (resolve, reject, onCancel) => {
 			onCancel.shouldReject = false;
 			onCancel(async () => {
-				if (await job.isActive()) {
-					// Job is already running so tell it to stop
-					await job.progress(-1);
-				} else {
-					// Job did not get started yet so remove from queue
-					try {
-						await job.remove();
+				await Queue.getInstance().stopJob(job);
 
-						const fullRunData: IRun = {
-							data: {
-								resultData: {
-									error: {
-										message: 'Workflow has been canceled!',
-									} as IExecutionError,
-									runData: {},
-								},
-							},
-							mode: data.executionMode,
-							startedAt: new Date(),
-							stoppedAt: new Date(),
-						};
-	
-						this.activeExecutions.remove(executionId, fullRunData);
-						resolve(fullRunData);
-					} catch (e) {
-						await job.progress(-1);
-						// Could not remove job from queue (maybe it just started?)
-						const fullRunData: IRun = {
-							data: {
-								resultData: {
-									error: {
-										message: 'Workflow has been canceled!',
-									} as IExecutionError,
-									runData: {},
-								},
-							},
-							mode: data.executionMode,
-							startedAt: new Date(),
-							stoppedAt: new Date(),
-						};
-	
-						this.activeExecutions.remove(executionId, fullRunData);
-						resolve(fullRunData);
-					}
-				}
+				const fullRunData :IRun = {
+					data: {
+						resultData: {
+							error: {
+								message: 'Workflow has been canceled!',
+							} as IExecutionError,
+							runData: {},
+						},
+					},
+					mode: data.executionMode,
+					startedAt: new Date(),
+					stoppedAt: new Date(),
+				};
+				this.activeExecutions.remove(executionId, fullRunData);
+				resolve(fullRunData);
 			});
 
 			const jobData: Promise<IBullJobResponse> = job.finished();

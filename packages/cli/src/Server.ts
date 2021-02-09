@@ -1706,36 +1706,11 @@ class App {
 
 				const job = currentJobs.find(job => job.data.executionId.toString() === req.params.id);
 
-				if (job) {
-					if (await job.isActive()) {
-						// Job is already running so tell it to stop
-						await job.progress(-1);
-					} else {
-						// Job did not get started yet so remove from queue
-						try {
-							await job.remove();
-						} catch (e) {
-							await job.progress(-1);
-							// Could not remove job from queue (maybe it just started?)
-
-							const executionDb = await Db.collections.Execution?.findOne(req.params.id) as IExecutionFlattedDb;
-							const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
-
-							const returnData: IExecutionsStopData = {
-								mode: fullExecutionData.mode,
-								startedAt: new Date(fullExecutionData.startedAt),
-								stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : undefined,
-								finished: fullExecutionData.finished,
-							};
-				
-							return returnData;
-						}
-						
-					}
-				} else {
+				if (!job) {
 					throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
+				} else {
+					await Queue.getInstance().stopJob(job);
 				}
-				
 
 				const executionDb = await Db.collections.Execution?.findOne(req.params.id) as IExecutionFlattedDb;
 				const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
