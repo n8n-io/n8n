@@ -6,11 +6,14 @@ import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
+	NodeApiMultiError,
 } from 'n8n-core';
 
 import {
 	IDataObject,
 } from 'n8n-workflow';
+
+
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const options: OptionsWithUri = {
@@ -33,17 +36,22 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'googleCalendarOAuth2Api', options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error) {
 
-			let errors = error.response.body.error.errors;
+		throw new NodeApiMultiError('Google Calendar', error, (errorArray: any) => { // tslint:disable-line:no-any
+			return errorArray.map((error: any) => error.message).join('|'); // tslint:disable-line:no-any
+		});
 
-			errors = errors.map((e: IDataObject) => e.message);
-			// Try to return the error prettier
-			throw new Error(
-				`Google Calendar error response [${error.statusCode}]: ${errors.join('|')}`,
-			);
-		}
-		throw error;
+		// if (error.response && error.response.body && error.response.body.error) {
+
+		// 	let errors = error.response.body.error.errors;
+
+		// 	errors = errors.map((e: IDataObject) => e.message);
+		// 	// Try to return the error prettier
+		// 	throw new Error(
+		// 		`Google Calendar error response [${error.statusCode}]: ${errors.join('|')}`,
+		// 	);
+		// }
+		// throw error;
 	}
 }
 

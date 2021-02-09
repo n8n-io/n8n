@@ -184,5 +184,6 @@ export class NodeApiMultiError extends NodeApiError {
 		this.setMessage();
 
 		this.description = this.findProperty(error, MULTI_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES, callback);
+		console.log(this); // TODO: Delete later
 	}
 }
