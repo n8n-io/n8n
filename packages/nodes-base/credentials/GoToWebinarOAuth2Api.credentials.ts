@@ -5,8 +5,8 @@ import {
 
 // TODO
 const scopes = [
-	'com.intuit.quickbooks.accounting',
-	'com.intuit.quickbooks.payment',
+	'Profile',
+	'GoToMeeting, GoToWebinar, or GoToTraining',
 ];
 
 // https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization
@@ -23,19 +23,19 @@ export class GoToWebinarOAuth2Api implements ICredentialType {
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'https://appcenter.intuit.com/connect/oauth2',
+			default: 'https://api.getgo.com/oauth/v2/authorize',
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer',
+			default: 'https://api.getgo.com/oauth/v2/token',
 		},
 		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
-			default: scopes.join(' '),
+			default: scopes.join('|'),
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
@@ -48,22 +48,6 @@ export class GoToWebinarOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden' as NodePropertyTypes,
 			default: 'header',
-		},
-		{
-			displayName: 'Environment',
-			name: 'environment',
-			type: 'options' as NodePropertyTypes,
-			default: 'sandbox',
-			options: [
-				{
-					name: 'Production',
-					value: 'production',
-				},
-				{
-					name: 'Sandbox',
-					value: 'sandbox',
-				},
-			],
 		},
 	];
 }

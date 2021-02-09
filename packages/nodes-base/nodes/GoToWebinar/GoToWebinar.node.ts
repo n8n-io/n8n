@@ -34,7 +34,7 @@ import {
 	isEmpty,
 } from 'lodash';
 
-export class QuickBooks implements INodeType {
+export class GoToWebinar implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GoToWebinar',
 		name: 'GoToWebinar',
