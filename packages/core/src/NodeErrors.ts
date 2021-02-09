@@ -1,7 +1,5 @@
 import {
 	IErrorObject,
-	INodeErrorPath,
-	INodeErrorResolved,
 	IStatusCodeMessages,
 } from 'n8n-workflow';
 
@@ -31,8 +29,7 @@ const ERROR_CODE_PROPERTIES = ['statusCode', 'status', 'code', 'status_code', 'e
 
 const ERROR_NESTING_PROPERTIES = ['error', 'err', 'response', 'body', 'data'];
 
-// const MULTI_MESSAGE_PROPERTIES = ['messages'];
-// const MULTI_NESTING_PROPERTIES = ['errors'];
+const MULTI_MESSAGE_PROPERTIES = ['messages', 'errors'];
 
 abstract class NodeError extends Error {
 	description: string | null | undefined;
@@ -56,21 +53,33 @@ abstract class NodeError extends Error {
 	 * @param {string[]} traversalKeys
 	 * @returns {string | null}
 	 */
-	protected findProperty(error: IErrorObject, potentialKeys: string[], traversalKeys: string[]): string | null {
-
+	protected findProperty(
+		error: IErrorObject,
+		potentialKeys: string[],
+		traversalKeys: string[],
+		callback?: Function,
+	): string | null {
 		for(const key of potentialKeys) {
-			if (error[key] && (typeof error[key] === 'string' || typeof error[key] === 'number')) {
-				// @ts-ignore
-				return typeof error[key] === 'string' ? error[key] : error[key].toString();
+			if (error[key]) {
+				if (typeof error[key] === 'string') return error[key] as string;
+				if (typeof error[key] === 'number') return error[key]!.toString();
+				if (Array.isArray(error[key]) && callback) {
+					return callback(error[key]);
+				}
 			}
 		}
 
-		for(const key of traversalKeys) {
-			if (error[key] && typeof error[key] === 'object' && !Array.isArray(error[key])) {
-				return this.findProperty(error[key] as IErrorObject, potentialKeys, traversalKeys);
+		for (const key of traversalKeys) {
+			if (this.isTraversableObject(error[key])) {
+				return this.findProperty(error[key] as IErrorObject, potentialKeys, traversalKeys, callback);
 			}
 		}
+
 		return null;
+	}
+
+	protected isTraversableObject(value: any): value is IErrorObject {
+		return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
 	}
 }
 
@@ -81,7 +90,7 @@ export class NodeOperationError extends NodeError {
 			error = new Error(error);
 		}
 		super('NodeOperationError', nodeType, error);
-		this.message = error.message;
+		this.message = `${nodeType}: ${error.message}`;
 	}
 }
 
@@ -113,8 +122,9 @@ export class NodeApiError extends NodeError {
 		{message, description, httpCode}: {message?: string, description?: string, httpCode?: string} = {},
 	){
 		super('NodeApiError', nodeType, error);
-		if (message) {
-			this.message = message;
+		this.message = `${nodeType}: `;
+		if (message || message === '') {
+			this.message += message;
 			this.description = description;
 			this.httpCode = httpCode ?? null;
 			if (this.httpCode && this.description) {
@@ -137,28 +147,42 @@ export class NodeApiError extends NodeError {
 	 *
 	 * @returns {void}
 	 */
-	private setMessage() {
+	protected setMessage() {
 
 		if (!this.httpCode) {
 			this.httpCode = null;
-			this.message = UNKNOWN_ERROR_MESSAGE;
+			this.message += UNKNOWN_ERROR_MESSAGE;
 			return;
 		}
 
 		if (STATUS_CODE_MESSAGES[this.httpCode]) {
-			this.message = STATUS_CODE_MESSAGES[this.httpCode];
+			this.message += STATUS_CODE_MESSAGES[this.httpCode];
 			return;
 		}
 
 		switch (this.httpCode.charAt(0)) {
 			case '4':
-				this.message = STATUS_CODE_MESSAGES['4XX'];
+				this.message += STATUS_CODE_MESSAGES['4XX'];
 				break;
 			case '5':
-				this.message = STATUS_CODE_MESSAGES['5XX'];
+				this.message += STATUS_CODE_MESSAGES['5XX'];
 				break;
 			default:
-				this.message = UNKNOWN_ERROR_MESSAGE;
+				this.message += UNKNOWN_ERROR_MESSAGE;
 		}
+	}
+}
+
+export class NodeApiMultiError extends NodeApiError {
+	constructor(
+		nodeType: string,
+		error: IErrorObject,
+		callback: Function,
+	){
+		super(nodeType, error, {message: ''});
+		this.httpCode = this.findProperty(error, ERROR_CODE_PROPERTIES, ERROR_NESTING_PROPERTIES);
+		this.setMessage();
+
+		this.description = this.findProperty(error, MULTI_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES, callback);
 	}
 }

@@ -764,12 +764,6 @@ export interface IErrorObject {
 	[key: string]: string | object | number | boolean | undefined | null | string[] | object[] | number[] | boolean[];
 }
 
-export interface INodeErrorResolved {
-	[key: string]: GenericValue;
-	code: string;
-	message: string;
-}
-
 export interface IStatusCodeMessages {
 	[key: string]: string;
 }

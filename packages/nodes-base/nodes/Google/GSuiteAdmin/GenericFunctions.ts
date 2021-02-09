@@ -11,7 +11,6 @@ import {
 
 import {
 	IDataObject,
-	INodeErrorPath,
 } from 'n8n-workflow';
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any

@@ -9,7 +9,6 @@ import {
 
 import {
 	IDataObject,
-	INodeErrorPath,
 } from 'n8n-workflow';
 
 /**

@@ -7,7 +7,6 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeErrorPath,
 } from 'n8n-workflow';
 
 import {
