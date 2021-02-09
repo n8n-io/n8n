@@ -85,6 +85,7 @@ import {
 	IRunData,
 	IWorkflowCredentials,
 	Workflow,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import {
@@ -1082,9 +1083,10 @@ class App {
 					[result.name as string]: result as ICredentialsEncrypted,
 				},
 			};
+			const mode: WorkflowExecuteMode = 'internal';
 			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, true);
-			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type);
+			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
 
@@ -1172,9 +1174,10 @@ class App {
 					[result.name as string]: result as ICredentialsEncrypted,
 				},
 			};
+			const mode: WorkflowExecuteMode = 'internal';
 			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, true);
-			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type);
+			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const options: OptionsWithUrl = {
 				method: 'POST',
@@ -1243,9 +1246,10 @@ class App {
 					[result.name as string]: result as ICredentialsEncrypted,
 				},
 			};
+			const mode: WorkflowExecuteMode = 'internal';
 			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, true);
-			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type);
+			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const token = new csrf();
 			// Generate a CSRF prevention token and send it as a OAuth2 state stringma/ERR
@@ -1340,9 +1344,10 @@ class App {
 					[result.name as string]: result as ICredentialsEncrypted,
 				},
 			};
+			const mode: WorkflowExecuteMode = 'internal';
 			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, true);
-			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type);
+			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const token = new csrf();
 			if (decryptedDataOriginal.csrfSecret === undefined || !token.verify(decryptedDataOriginal.csrfSecret as string, state.token)) {
@@ -1813,7 +1818,6 @@ class App {
 
 			let response;
 			try {
-				delete req.params[0];
 				response = await this.testWebhooks.callTestWebhook('HEAD', requestUrl, req, res);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);
@@ -1855,7 +1859,6 @@ class App {
 
 			let response;
 			try {
-				delete req.params[0];
 				response = await this.testWebhooks.callTestWebhook('GET', requestUrl, req, res);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);
@@ -1877,7 +1880,6 @@ class App {
 
 			let response;
 			try {
-				delete req.params[0];
 				response = await this.testWebhooks.callTestWebhook('POST', requestUrl, req, res);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);

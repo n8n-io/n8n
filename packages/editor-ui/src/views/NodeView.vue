@@ -406,6 +406,17 @@ export default mixins(
 				this.mouseUpMoveWorkflow(e);
 			},
 			wheelScroll (e: WheelEvent) {
+				//* Control + scroll zoom
+				if (e.ctrlKey) {
+					if (e.deltaY > 0) {
+						this.setZoom('out');
+					} else {
+						this.setZoom('in');
+					}
+
+					e.preventDefault();
+					return;
+				}
 				this.wheelMoveWorkflow(e);
 			},
 			keyUp (e: KeyboardEvent) {

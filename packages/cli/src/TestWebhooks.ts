@@ -54,6 +54,14 @@ export class TestWebhooks {
 	 * @memberof TestWebhooks
 	 */
 	async callTestWebhook(httpMethod: WebhookHttpMethod, path: string, request: express.Request, response: express.Response): Promise<IResponseCallbackData> {
+		// Reset request parameters
+		request.params = {};
+
+		// Remove trailing slash
+		if (path.endsWith('/')) {
+			path = path.slice(0, -1);
+		}
+
 		let webhookData: IWebhookData | undefined = this.activeWebhooks!.get(httpMethod, path);
 
 		// check if path is dynamic
@@ -65,6 +73,7 @@ export class TestWebhooks {
 				// The requested webhook is not registered
 				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 			}
+
 			path = webhookData.path;
 			// extracting params from path
 			path.split('/').forEach((ele, index) => {

@@ -34,6 +34,9 @@ export class ActiveWebhooks {
 		if (workflow.id === undefined) {
 			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
 		}
+		if (webhookData.path.endsWith('/')) {
+			webhookData.path = webhookData.path.slice(0, -1);
+		}
 
 		const webhookKey = this.getWebhookKey(webhookData.httpMethod, webhookData.path, webhookData.webhookId);
 
@@ -89,27 +92,24 @@ export class ActiveWebhooks {
 			return undefined;
 		}
 
-		// set webhook to the first webhook result
-		// if more results have been returned choose the one with the most route-matches
-		let webhook = this.webhookUrls[webhookKey][0];
-		if (this.webhookUrls[webhookKey].length > 1) {
-			let maxMatches = 0;
-			const pathElementsSet = new Set(path.split('/'));
-			this.webhookUrls[webhookKey].forEach(dynamicWebhook => {
-				const intersection =
-					dynamicWebhook.path
-					.split('/')
-					.reduce((acc, element) => pathElementsSet.has(element) ? acc += 1 : acc, 0);
+		let webhook: IWebhookData | undefined;
+		let maxMatches = 0;
+		const pathElementsSet = new Set(path.split('/'));
+		// check if static elements match in path
+		// if more results have been returned choose the one with the most static-route matches
+		this.webhookUrls[webhookKey].forEach(dynamicWebhook => {
+			const staticElements = dynamicWebhook.path.split('/').filter(ele => !ele.startsWith(':'));
+			const allStaticExist = staticElements.every(staticEle => pathElementsSet.has(staticEle));
 
-				if (intersection > maxMatches) {
-					maxMatches = intersection;
-					webhook = dynamicWebhook;
-				}
-			});
-			if (maxMatches === 0) {
-				return undefined;
+			if (allStaticExist && staticElements.length > maxMatches) {
+				maxMatches = staticElements.length;
+				webhook = dynamicWebhook;
 			}
-		}
+			// handle routes with no static elements
+			else if (staticElements.length === 0 && !webhook) {
+				webhook = dynamicWebhook;
+			}
+		});
 
 		return webhook;
 	}

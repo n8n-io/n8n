@@ -18,6 +18,7 @@ import {
 interface IBodyCreateTask {
 	content: string;
 	project_id?: number;
+	section_id?: number;
 	parent?: number;
 	order?: number;
 	label_ids?: number[];
@@ -273,6 +274,19 @@ export class Todoist implements INodeType {
 						default: 1,
 						description: 'Task priority from 1 (normal) to 4 (urgent).',
 					},
+					{
+						displayName: 'Section',
+						name: 'section',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getSections',
+							loadOptionsDependsOn: [
+								'project',
+							],
+						},
+						default: {},
+						description: 'The section you want to operate on.',
+					},
 				],
 			},
 			{
@@ -399,6 +413,29 @@ export class Todoist implements INodeType {
 				return returnData;
 			},
 
+			// Get all the available sections in the selected project, to display them
+			// to user so that he can select one easily
+			async getSections(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const projectId = this.getCurrentNodeParameter('project') as number;
+				if (projectId) {
+					const qs: IDataObject = {project_id: projectId};
+					const sections = await todoistApiRequest.call(this, 'GET', '/sections', {}, qs);
+					for (const section of sections) {
+						const sectionName = section.name;
+						const sectionId = section.id;
+
+						returnData.push({
+							name: sectionName,
+							value: sectionId,
+						});
+					}
+				}
+
+				return returnData;
+			},
+
 			// Get all the available labels to display them to user so that he can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -456,6 +493,10 @@ export class Todoist implements INodeType {
 
 					if (labels !== undefined && labels.length !== 0) {
 						body.label_ids = labels;
+					}
+
+					if (options.section) {
+						body.section_id = options.section as number;
 					}
 
 					responseData = await todoistApiRequest.call(this, 'POST', '/tasks', body);

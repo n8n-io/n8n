@@ -16,6 +16,11 @@ export const messageOperations = [
 		},
 		options: [
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Deletes a message',
+			},
+			{
 				name: 'Get Permalink',
 				value: 'getPermalink',
 				description: 'Get Permanent Link of a message',
@@ -33,7 +38,7 @@ export const messageOperations = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Updates a message.',
+				description: 'Updates a message',
 			},
 		],
 		default: 'post',
@@ -1680,4 +1685,46 @@ export const messageFields = [
 		],
 	},
 
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:delete
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Channel',
+		name: 'channelId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		description: 'Channel containing the message to be deleted.',
+	},
+	{
+		displayName: 'Timestamp',
+		name: 'timestamp',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		description: `Timestamp of the message to be deleted.`,
+	},
 ] as INodeProperties[];

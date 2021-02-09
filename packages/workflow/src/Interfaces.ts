@@ -103,7 +103,7 @@ export abstract class ICredentialsHelper {
 	}
 
 	abstract getCredentials(name: string, type: string): ICredentials;
-	abstract getDecrypted(name: string, type: string, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): ICredentialDataDecryptedObject;
+	abstract getDecrypted(name: string, type: string, mode: WorkflowExecuteMode, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): ICredentialDataDecryptedObject;
 	abstract updateCredentials(name: string, type: string, data: ICredentialDataDecryptedObject): Promise<void>;
 }
 

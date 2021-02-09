@@ -292,7 +292,6 @@ export class WorkflowRunner {
 						this.activeExecutions.remove(executionId, fullRunData);
 						resolve(fullRunData);
 					}
-					
 				}
 			});
 

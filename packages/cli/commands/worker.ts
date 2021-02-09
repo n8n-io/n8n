@@ -113,10 +113,7 @@ export class Worker extends Command {
 		const jobData = job.data as IBullJobData;
 		const executionDb = await Db.collections.Execution!.findOne(jobData.executionId) as IExecutionFlattedDb;
 		const currentExecutionDb = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
-		
-
-		console.log(`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id})`);
-		// TODO: Can in the future query most of that data from the DB to lighten redis load
+		console.log(`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id} | Execution: ${jobData.executionId})`);
 
 		let staticData = currentExecutionDb.workflowData!.staticData;
 		if (jobData.loadStaticData === true) {
