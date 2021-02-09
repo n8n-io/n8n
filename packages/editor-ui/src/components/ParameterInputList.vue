@@ -33,7 +33,7 @@
 						<font-awesome-icon icon="question-circle"/>
 					</el-tooltip>
 				</div>
-				<div>
+				<div class="parameter-collection">
 					<collection-parameter
 						v-if="parameter.type === 'collection'"
 						:parameter="parameter"
@@ -208,8 +208,11 @@ export default mixins(
 			.parameter-info {
 				display: none;
 			}
-
 		}
+    
+    >.parameter-collection {
+      border-left: 1px dashed #999;
+    }
 	}
 
 	.parameter-item {
