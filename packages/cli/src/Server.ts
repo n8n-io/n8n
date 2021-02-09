@@ -8,7 +8,9 @@ import {
 	resolve as pathResolve,
 } from 'path';
 import {
+	getConnection,
 	getConnectionManager,
+	In,
 } from 'typeorm';
 import * as bodyParser from 'body-parser';
 require('body-parser-xml')(bodyParser);
@@ -1426,32 +1428,42 @@ class App {
 				limit = parseInt(req.query.limit as string, 10);
 			}
 
+			const executingWorkflowIds = this.activeExecutionsInstance.getActiveExecutions().map(execution => execution.id.toString()) as string[];
+
 			const countFilter = JSON.parse(JSON.stringify(filter));
-			if (req.query.lastId) {
-				filter.id = LessThan(req.query.lastId);
-			} else if (req.query.firstId) {
-				filter.id = MoreThanOrEqual(req.query.firstId);
-			}
 			countFilter.select = ['id'];
+			countFilter.where = {id: Not(In(executingWorkflowIds))};
 
-			const resultsPromise = Db.collections.Execution!.find({
-				select: [
-					'id',
-					'finished',
-					'mode',
-					'retryOf',
-					'retrySuccessId',
-					'startedAt',
-					'stoppedAt',
-					'workflowData',
-				],
-				where: filter,
-				order: {
-					id: 'DESC',
-				},
-				take: limit,
+			const resultsQuery = await Db.collections.Execution!
+				.createQueryBuilder("execution")
+				.select([
+					'execution.id',
+					'execution.finished',
+					'execution.mode',
+					'execution.retryOf',
+					'execution.retrySuccessId',
+					'execution.startedAt',
+					'execution.stoppedAt',
+					'execution.workflowData',
+				])
+				.orderBy('execution.id', 'DESC')
+				.take(limit);
+
+			Object.keys(filter).forEach((filterField) => {
+				resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {[filterField]: filter[filterField]});
 			});
+			if (req.query.lastId) {
+				resultsQuery.andWhere(`execution.id <= :lastId`, {lastId: req.query.lastId});
+			}
+			if (req.query.firstId) {
+				resultsQuery.andWhere(`execution.id >= :firstId`, {firstId: req.query.firstId});
+			}
+			if (executingWorkflowIds.length > 0) {
+				resultsQuery.andWhere(`execution.id NOT IN (:...ids)`, {ids: executingWorkflowIds});
+			}
 
+			const resultsPromise = resultsQuery.getMany();
+			
 			const countPromise = Db.collections.Execution!.count(countFilter);
 
 			const results: IExecutionFlattedDb[] = await resultsPromise;
@@ -1529,11 +1541,19 @@ class App {
 				workflowData: fullExecutionData.workflowData,
 			};
 
-			const lastNodeExecuted = data!.executionData!.resultData.lastNodeExecuted as string;
+			const lastNodeExecuted = data!.executionData!.resultData.lastNodeExecuted as string | undefined;
 
-			// Remove the old error and the data of the last run of the node that it can be replaced
-			delete data!.executionData!.resultData.error;
-			data!.executionData!.resultData.runData[lastNodeExecuted].pop();
+			if (lastNodeExecuted) {
+				// Remove the old error and the data of the last run of the node that it can be replaced
+				delete data!.executionData!.resultData.error;
+				const length = data!.executionData!.resultData.runData[lastNodeExecuted].length;
+				if (length > 0 && data!.executionData!.resultData.runData[lastNodeExecuted][length - 1].error !== undefined) {
+					// Remove results only if it is an error. 
+					// If we are retrying due to a crash, the information is simply success info from last node
+					data!.executionData!.resultData.runData[lastNodeExecuted].pop();
+					// Stack will determine what to run next
+				}
+			}
 
 			if (req.body.loadWorkflow === true) {
 				// Loads the currently saved workflow to execute instead of the
@@ -1647,7 +1667,7 @@ class App {
 			const returnData: IExecutionsStopData = {
 				mode: result.mode,
 				startedAt: new Date(result.startedAt),
-				stoppedAt: new Date(result.stoppedAt),
+				stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
 				finished: result.finished,
 			};
 
