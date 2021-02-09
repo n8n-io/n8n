@@ -216,7 +216,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [
-		'https://www.googleapis.com/auth/books',
+		'https://mail.google.com/',
 	];
 
 	const now = moment().unix();
