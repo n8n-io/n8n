@@ -86,7 +86,7 @@ export class GoToWebinar implements INodeType {
 						value: 'webinar',
 					},
 				],
-				default: 'webinar',
+				default: 'attendee',
 				description: 'Resource to consume',
 			},
 			...attendeeFields,
@@ -128,10 +128,6 @@ export class GoToWebinar implements INodeType {
 
 		let responseData;
 		const returnData: IDataObject[] = [];
-
-		const { oauthTokenData } = this.getCredentials('quickBooksOAuth2Api') as IDataObject;
-		// @ts-ignore
-		const companyId = oauthTokenData.realmId;
 
 		for (let i = 0; i < items.length; i++) {
 

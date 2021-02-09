@@ -3,20 +3,12 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-// TODO
-const scopes = [
-	'Profile',
-	'GoToMeeting, GoToWebinar, or GoToTraining',
-];
-
-// https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization
-
 export class GoToWebinarOAuth2Api implements ICredentialType {
 	name = 'goToWebinarOAuth2Api';
 	extends = [
 		'oAuth2Api',
 	];
-	displayName = 'Go To Webinar OAuth2 API';
+	displayName = 'GoToWebinar OAuth2 API';
 	documentationUrl = 'goToWebinar';
 	properties = [
 		{
@@ -35,7 +27,7 @@ export class GoToWebinarOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
-			default: scopes.join('|'),
+			default: '', // set when creating the OAuth client
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
