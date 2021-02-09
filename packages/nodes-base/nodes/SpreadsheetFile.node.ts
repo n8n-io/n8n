@@ -300,20 +300,6 @@ export class SpreadsheetFile implements INodeType {
 						description: 'In some cases and file formats, it is necessary to read<br />specifically as string else some special character get interpreted wrong.',
 					},
 					{
-						displayName: 'Delimiter',
-						name: 'delimiter',
-						type: 'string',
-						displayOptions: {
-							show: {
-								'/operation': [
-									'fromFile',
-								]
-							},
-						},
-						default: '',
-						description: 'Change the delimiter for reading.',
-					},
-					{
 						displayName: 'Range',
 						name: 'range',
 						type: 'string',
@@ -358,20 +344,6 @@ export class SpreadsheetFile implements INodeType {
 						default: false,
 						description: 'If the data should be returned RAW instead of parsed.',
 					},
-					{
-						displayName: 'Delimiter',
-						name: 'delimiter',
-						type: 'string',
-						displayOptions: {
-							show: {
-								'/operation': [
-									'fromJson',
-								]
-							},
-						},
-						default: '',
-						description: 'Change the delimiter for reading.',
-					},
 					// ----------------------------------
 					//         toFile
 					// ----------------------------------
@@ -408,23 +380,6 @@ export class SpreadsheetFile implements INodeType {
 						description: 'File name to set in binary data. By default will "spreadsheet.<fileFormat>" be used.',
 					},
 					{
-						displayName: 'Delimiter',
-						name: 'delimiter',
-						type: 'string',
-						displayOptions: {
-							show: {
-								'/operation': [
-									'toFile',
-								],
-								'/fileFormat': [
-									'csv',
-								],
-							},
-						},
-						default: '',
-						description: 'Change the delimiter for writing.',
-					},
-					{
 						displayName: 'Sheet Name',
 						name: 'sheetName',
 						type: 'string',
@@ -444,24 +399,14 @@ export class SpreadsheetFile implements INodeType {
 						description: 'Name of the sheet to create in the spreadsheet.',
 					},
 					// ----------------------------------
-					//         toJson
+					//         csv
 					// ----------------------------------
 					{
 						displayName: 'Delimiter',
 						name: 'delimiter',
 						type: 'string',
-						displayOptions: {
-							show: {
-								'/operation': [
-									'toJson',
-								],
-								'/fileFormat': [
-									'csv',
-								],
-							},
-						},
 						default: '',
-						description: 'Change the delimiter for writing.',
+						description: 'Change the csv delimiter.',
 					},
 				],
 			},
