@@ -32,6 +32,7 @@ import {
 
 import {
 	isEmpty,
+	omit,
 } from 'lodash';
 
 export class GoToWebinar implements INodeType {
@@ -129,8 +130,12 @@ export class GoToWebinar implements INodeType {
 		let responseData;
 		const returnData: IDataObject[] = [];
 
-		const accountKey = '4921628863573542782'; // TODO: Retrieve from oauthToken on line 1381 in Server.ts
-		const organizerKey = '5120804295433537405'; // TODO: Retrieve from oauthToken on line 1381 in Server.ts
+		const { oauthTokenData } = this.getCredentials('goToWebinarOAuth2Api') as {
+			oauthTokenData: { account_key: string, organizer_key: string }
+		};
+
+		const accountKey = oauthTokenData.account_key;
+		const organizerKey = oauthTokenData.organizer_key;
 
 		for (let i = 0; i < items.length; i++) {
 
@@ -462,13 +467,11 @@ export class GoToWebinar implements INodeType {
 					//         webinar: create
 					// ----------------------------------
 
+					const { timesProperties } = this.getNodeParameter('times', i) as IDataObject;
+
 					const body = {
 						subject: this.getNodeParameter('subject', i) as string,
-						times: [
-							{ startTime: this.getNodeParameter('startTime', i) as IDataObject,
-								endTime: this.getNodeParameter('endTime', i) as IDataObject,
-							},
-						],
+						times: timesProperties,
 					} as IDataObject;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -494,7 +497,7 @@ export class GoToWebinar implements INodeType {
 					}
 
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}`;
-					responseData = await goToWebinarApiRequest.call(this, 'DELETE', endpoint, qs, {});
+					await goToWebinarApiRequest.call(this, 'DELETE', endpoint, qs, {});
 					responseData = { success: true };
 
 				} else if (operation === 'get') {
@@ -537,9 +540,18 @@ export class GoToWebinar implements INodeType {
 						notifyParticipants: this.getNodeParameter('notifyParticipants', i) as boolean,
 					} as IDataObject;
 
-					const body = {} as IDataObject;
+					let body = {};
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					let updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (updateFields.times) {
+						const { times } = updateFields as { times: { timesProperties: Array<{startTime: string, endTime: string}> } };
+						body = {
+							times: times.timesProperties,
+						} as IDataObject;
+						updateFields = omit(updateFields, ['times']);
+					}
+
 					Object.assign(body, updateFields);
 
 					if (isEmpty(updateFields)) {
@@ -547,7 +559,8 @@ export class GoToWebinar implements INodeType {
 					}
 
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}`;
-					responseData = await goToWebinarApiRequestAllItems.call(this, 'PUT', endpoint, qs, body);
+					await goToWebinarApiRequestAllItems.call(this, 'PUT', endpoint, qs, body);
+					responseData = { success: true };
 
 				}
 

@@ -88,12 +88,14 @@ export const webinarFields = [
 		},
 	},
 	{
-		displayName: 'Start Time',
-		name: 'startTime',
-		type: 'dateTime',
+		displayName: 'Times',
+		name: 'times',
+		type: 'fixedCollection',
 		required: true,
-		default: '',
-		description: '',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -104,24 +106,28 @@ export const webinarFields = [
 				],
 			},
 		},
-	},
-	{
-		displayName: 'End Time',
-		name: 'endTime',
-		type: 'dateTime',
-		required: true,
-		default: '',
-		description: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'webinar',
-				],
-				operation: [
-					'create',
+		options: [
+			{
+				displayName: 'Times Properties',
+				name: 'timesProperties',
+				values: [
+					{
+						displayName: 'Start Time',
+						name: 'startTime',
+						type: 'dateTime',
+						required: true,
+						default: '',
+					},
+					{
+						displayName: 'End Time',
+						name: 'endTime',
+						type: 'dateTime',
+						required: true,
+						default: '',
+					},
 				],
 			},
-		},
+		],
 	},
 	{
 		displayName: 'Additional Fields',
@@ -190,6 +196,19 @@ export const webinarFields = [
 				description: '',
 			},
 			{
+				displayName: 'Timezone',
+				name: 'timezone',
+				type: 'options',
+				required: true,
+				default: '',
+				placeholder: '2020-12-11T09:00:00Z',
+				description: '',
+				options: timezones.map(tz => ({ name: tz.replace(/_/g, ' '), value: tz })),
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+			},
+			{
 				displayName: 'Webinar Type',
 				name: 'webinarType',
 				type: 'options',
@@ -210,19 +229,6 @@ export const webinarFields = [
 						value: 'sequence',
 					},
 				],
-			},
-			{
-				displayName: 'Timezone',
-				name: 'timezone',
-				type: 'options',
-				required: true,
-				default: '',
-				placeholder: '2020-12-11T09:00:00Z',
-				description: '',
-				options: timezones.map(tz => ({ name: tz.replace(/_/g, ' '), value: tz })),
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 		],
 	},
@@ -253,6 +259,171 @@ export const webinarFields = [
 				required: false,
 				default: false,
 				description: '',
+			},
+		],
+	},
+	// ----------------------------------
+	//         webinar: update
+	// ----------------------------------
+	{
+		displayName: 'Notify Participants',
+		name: 'notifyParticipants',
+		type: 'boolean',
+		required: true,
+		default: false,
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'webinar',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				resource: [
+					'webinar',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				required: false,
+				default: '',
+				description: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+			},
+			{
+				displayName: 'ExperienceType',
+				name: 'experienceType',
+				type: 'options',
+				required: false,
+				default: '',
+				description: '',
+				options: [
+					{
+						name: 'Single Session',
+						value: 'single_session',
+					},
+					{
+						name: 'Series',
+						value: 'series',
+					},
+					{
+						name: 'Sequence',
+						value: 'sequence',
+					},
+				],
+			},
+			{
+				displayName: 'Is On-Demand',
+				name: 'isOnDemand',
+				type: 'boolean',
+				required: false,
+				default: false,
+				description: '',
+			},
+			{
+				displayName: 'Is Password Protected',
+				name: 'isPasswordProtected',
+				type: 'boolean',
+				required: false,
+				default: false,
+				description: '',
+			},
+			{
+				displayName: 'Times',
+				name: 'times',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						displayName: 'Times Properties',
+						name: 'timesProperties',
+						values: [
+							{
+								displayName: 'Start Time',
+								name: 'startTime',
+								type: 'dateTime',
+								required: true,
+								default: '',
+							},
+							{
+								displayName: 'End Time',
+								name: 'endTime',
+								type: 'dateTime',
+								required: true,
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Subject',
+				name: 'subject',
+				type: 'string',
+				required: false,
+				default: '',
+				description: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+			},
+			{
+				displayName: 'Timezone',
+				name: 'timezone',
+				type: 'options',
+				required: true,
+				default: '',
+				placeholder: '2020-12-11T09:00:00Z',
+				description: '',
+				options: timezones.map(tz => ({ name: tz.replace(/_/g, ' '), value: tz })),
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+			},
+			{
+				displayName: 'Webinar Type',
+				name: 'webinarType',
+				type: 'options',
+				required: false,
+				default: '',
+				description: '',
+				options: [
+					{
+						name: 'Single Session',
+						value: 'single_session',
+					},
+					{
+						name: 'Series',
+						value: 'series',
+					},
+					{
+						name: 'Sequence',
+						value: 'sequence',
+					},
+				],
 			},
 		],
 	},
