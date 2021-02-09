@@ -76,6 +76,10 @@ export class ActiveWorkflowRunner {
 		}
 	}
 
+	async initWebhooks() {
+		this.activeWorkflows = new ActiveWorkflows();
+	}
+
 	/**
 	 * Removes all the currently active workflows
 	 *

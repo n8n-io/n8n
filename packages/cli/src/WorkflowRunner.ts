@@ -41,6 +41,7 @@ import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
 
 import * as Bull from 'bull';
+import * as Queue from './Queue';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -57,11 +58,7 @@ export class WorkflowRunner {
 		const executionsMode = config.get('executions.mode') as string;
 
 		if (executionsMode === 'queue') {
-			// Connect to bull-queue
-			const prefix = config.get('queue.bull.prefix') as string;
-			const redisOptions = config.get('queue.bull.redis') as object;
-			// @ts-ignore
-			this.jobQueue = new Bull('jobs', { prefix, redis: redisOptions, enableReadyCheck: false });
+			this.jobQueue = Queue.getInstance().getBullObjectInstance();
 		}
 	}
 
@@ -251,30 +248,23 @@ export class WorkflowRunner {
 		const workflowExecution: PCancelable<IRun> = new PCancelable(async (resolve, reject, onCancel) => {
 			onCancel.shouldReject = false;
 			onCancel(async () => {
-				if (await job.isActive()) {
-					// Job is already running so tell it to stop
-					await job.progress(-1);
-				} else {
-					// Job did not get started yet so remove from queue
-					await job.remove();
+				await Queue.getInstance().stopJob(job);
 
-					const fullRunData: IRun = {
-						data: {
-							resultData: {
-								error: {
-									message: 'Workflow has been canceled!',
-								} as IExecutionError,
-								runData: {},
-							},
+				const fullRunData :IRun = {
+					data: {
+						resultData: {
+							error: {
+								message: 'Workflow has been canceled!',
+							} as IExecutionError,
+							runData: {},
 						},
-						mode: data.executionMode,
-						startedAt: new Date(),
-						stoppedAt: new Date(),
-					};
-
-					this.activeExecutions.remove(executionId, fullRunData);
-					resolve(fullRunData);
-				}
+					},
+					mode: data.executionMode,
+					startedAt: new Date(),
+					stoppedAt: new Date(),
+				};
+				this.activeExecutions.remove(executionId, fullRunData);
+				resolve(fullRunData);
 			});
 
 			const jobData: Promise<IBullJobResponse> = job.finished();
