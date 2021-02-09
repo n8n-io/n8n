@@ -120,6 +120,11 @@ export class ActiveWorkflowRunner {
 		// Reset request parameters
 		req.params = {};
 
+		// Remove trailing slash
+		if (path.endsWith('/')) {
+			path = path.slice(0, -1);
+		}
+
 		let webhook = await Db.collections.Webhook?.findOne({ webhookPath: path, method: httpMethod }) as IWebhookDb;
 		let webhookId: string | undefined;
 
@@ -134,31 +139,30 @@ export class ActiveWorkflowRunner {
 				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 			}
 
-			// set webhook to the first webhook result
-			// if more results have been returned choose the one with the most route-matches
-			webhook = dynamicWebhooks[0];
-			if (dynamicWebhooks.length > 1) {
-				let maxMatches = 0;
-				const pathElementsSet = new Set(pathElements);
-				dynamicWebhooks.forEach(dynamicWebhook => {
-					const intersection =
-						dynamicWebhook.webhookPath
-						.split('/')
-						.reduce((acc, element) => pathElementsSet.has(element) ? acc += 1 : acc, 0);
+			let maxMatches = 0;
+			const pathElementsSet = new Set(pathElements);
+			// check if static elements match in path
+			// if more results have been returned choose the one with the most static-route matches
+			dynamicWebhooks.forEach(dynamicWebhook => {
+				const staticElements = dynamicWebhook.webhookPath.split('/').filter(ele => !ele.startsWith(':'));
+				const allStaticExist = staticElements.every(staticEle => pathElementsSet.has(staticEle));
 
-					if (intersection > maxMatches) {
-						maxMatches = intersection;
-						webhook = dynamicWebhook;
-					}
-				});
-				if (maxMatches === 0) {
-					throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+				if (allStaticExist && staticElements.length > maxMatches) {
+					maxMatches = staticElements.length;
+					webhook = dynamicWebhook;
 				}
+				// handle routes with no static elements
+				else if (staticElements.length === 0 && !webhook) {
+					webhook = dynamicWebhook;
+				}
+			});
+			if (webhook === undefined) {
+				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 			}
 
-			path = webhook.webhookPath;
+			path = webhook!.webhookPath;
 			// extracting params from path
-			webhook.webhookPath.split('/').forEach((ele, index) => {
+			webhook!.webhookPath.split('/').forEach((ele, index) => {
 				if (ele.startsWith(':')) {
 					// write params to req.params
 					req.params[ele.slice(1)] = pathElements[index];
@@ -297,6 +301,9 @@ export class ActiveWorkflowRunner {
 
 			if (webhook.webhookPath.startsWith('/')) {
 				webhook.webhookPath = webhook.webhookPath.slice(1);
+			}
+			if (webhook.webhookPath.endsWith('/')) {
+				webhook.webhookPath = webhook.webhookPath.slice(0, -1);
 			}
 
 			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
