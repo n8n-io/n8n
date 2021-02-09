@@ -1,4 +1,9 @@
 import { IExecuteFunctions } from 'n8n-core';
+
+import {
+	BINARY_ENCODING,
+} from 'n8n-core';
+
 import {
 	INodeExecutionData,
 	INodeType,
@@ -6,7 +11,7 @@ import {
 	INodeParameters,
 } from 'n8n-workflow';
 
-import { set } from 'lodash';
+import { get, set } from 'lodash';
 
 export class TextManipulation implements INodeType {
 	description: INodeTypeDescription = {
@@ -46,15 +51,116 @@ export class TextManipulation implements INodeType {
 						displayName: 'Text with manipulations',
 						values: [
 							{
+								displayName: 'Read Operation',
+								name: 'readOperation',
+								type: 'options',
+								options: [
+									{
+										name: 'Text',
+										value: 'fromText',
+										description: 'Declare text directly',
+									},
+									{
+										name: 'Read from file',
+										value: 'fromFile',
+										description: 'Read text from file',
+									},
+									{
+										name: 'Read from JSON',
+										value: 'fromJSON',
+										description: 'Read text from json',
+									},
+								],
+								default: 'fromText',
+							},
+							{
+								displayName: 'Binary Property',
+								name: 'binaryPropertyName',
+								required: true,
+								displayOptions: {
+									show: {
+										readOperation: [
+											'fromFile',
+										],
+									},
+								},
+								type: 'string',
+								default: 'data',
+								description: 'Name of the binary property from which to read.',
+							},
+							{
+								displayName: 'Source Key',
+								name: 'sourceKey',
+								required: true,
+								displayOptions: {
+									show: {
+										readOperation: [
+											'fromJSON',
+										],
+									},
+								},
+								type: 'string',
+								default: 'data',
+								description: 'The name of the JSON key to get data from.<br />It is also possible to define deep keys by using dot-notation like for example:<br />"level1.level2.currentKey"',
+							},
+							{
 								displayName: 'Text',
 								name: 'text',
+								required: true,
+								displayOptions: {
+									show: {
+										readOperation: [
+											'fromText',
+										],
+									},
+								},
 								type: 'string',
 								default: '',
 								description: 'Plain text.',
 							},
 							{
+								displayName: 'Write Operation',
+								name: 'writeOperation',
+								type: 'options',
+								options: [
+									{
+										name: 'Write to file',
+										value: 'toFile',
+										description: 'Write manipulated text to file',
+									},
+									{
+										name: 'Read from JSON',
+										value: 'toJSON',
+										description: 'Write manipulated text to json',
+									},
+								],
+								default: 'fromText',
+							},
+							{
+								displayName: 'File Name',
+								name: 'fileName',
+								required: true,
+								type: 'string',
+								displayOptions: {
+									show: {
+										writeOperation: [
+											'toFile',
+										],
+									},
+								},
+								default: '',
+								description: 'File name to set in binary data.',
+							},
+							{
 								displayName: 'Destination Key',
 								name: 'destinationKey',
+								displayOptions: {
+									show: {
+										writeOperation: [
+											'toJSON',
+										],
+									},
+								},
 								type: 'string',
 								default: 'data',
 								required: true,
@@ -231,13 +337,14 @@ export class TextManipulation implements INodeType {
 												displayOptions: {
 													show: {
 														action: [
-															'encodeDecode',
+															'lowerCase',
+															'upperCase',
 														],
 													},
 												},
 												type: 'boolean',
 												default: false,
-												description: 'If you wan\'t to use the localbase method.',
+												description: 'If you want to use the localbase method.',
 											},
 											{
 												displayName: 'Language',
@@ -245,7 +352,8 @@ export class TextManipulation implements INodeType {
 												displayOptions: {
 													show: {
 														action: [
-															'encodeDecode',
+															'lowerCase',
+															'upperCase',
 														],
 														useLocale: [
 															true,
@@ -255,7 +363,7 @@ export class TextManipulation implements INodeType {
 												type: 'string',
 												default: 'en',
 												required: true,
-												description: 'Operation to decide where the the data should be mapped to.',
+												description: 'Which locale should be used for convention.',
 											},
 											{
 												displayName: 'Replace Mode',
@@ -600,6 +708,7 @@ export class TextManipulation implements INodeType {
 			
 			const newItem: INodeExecutionData = {
 				json: {},
+				binary: {},
 			};
 			
 			if (keepOnlySet !== true) {
@@ -612,7 +721,22 @@ export class TextManipulation implements INodeType {
 			}
 			
 			(this.getNodeParameter('textsWithManipulations.textWithManipulations', itemIndex, []) as INodeParameters[]).forEach((textWithManipulations) => {
-				text = textWithManipulations.text as string;
+				switch(textWithManipulations.readOperation) {
+					case 'fromFile':
+						if (item.binary === undefined || item.binary[textWithManipulations.binaryPropertyName as string] === undefined) {
+							return;
+						}
+						text = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING).toString();
+						break;
+					case 'fromJSON':
+						text = get(item.json, textWithManipulations.sourceKey as string) as string;
+						break;
+					case 'fromText':
+						text = textWithManipulations.text as string;
+						break;
+					default:
+						throw new Error('fromFile, fromJSON or fromText are valid options');
+				}
 				((textWithManipulations.manipulations as INodeParameters).manipulation as INodeParameters[]).forEach((manipulation) => {
 					switch(manipulation.action) {
 						case 'encodeDecode':
@@ -637,28 +761,28 @@ export class TextManipulation implements INodeType {
 							else text = text.toLowerCase();
 							break;
 						case 'replace':
-              switch(manipulation.replaceMode) {
-                case 'normal':
-                  if(manipulation.replaceAll) {
-                    text = TextManipulation.replaceAll(text, manipulation.substring as string, manipulation.value as string);
-                  } else {
-                    text = text.replace(manipulation.substring as string, manipulation.value as string);
-                  }
-                  break;
-                case 'regex':
-                  const regexMatch = (manipulation.regex as string).match(new RegExp('^/(.*?)/([gimusy]*)$'));
-	
-                  if (!regexMatch) {
-                    text = text.replace(new RegExp(manipulation.regex as string), manipulation.pattern as string);
-                  } else if (regexMatch.length === 1) {
-                    text = text.replace(new RegExp(regexMatch[1]), manipulation.pattern as string);
-                  } else {
-                    text = text.replace(new RegExp(regexMatch[1], regexMatch[2]), manipulation.pattern as string);
-                  }
-                  break;
-                default:
-                  throw new Error('normal or regex are valid options');
-              }
+							switch(manipulation.replaceMode) {
+								case 'normal':
+									if(manipulation.replaceAll) {
+										text = TextManipulation.replaceAll(text, manipulation.substring as string, manipulation.value as string);
+									} else {
+										text = text.replace(manipulation.substring as string, manipulation.value as string);
+									}
+									break;
+								case 'regex':
+									const regexMatch = (manipulation.regex as string).match(new RegExp('^/(.*?)/([gimusy]*)$'));
+						
+									if (!regexMatch) {
+										text = text.replace(new RegExp(manipulation.regex as string), manipulation.pattern as string);
+									} else if (regexMatch.length === 1) {
+										text = text.replace(new RegExp(regexMatch[1]), manipulation.pattern as string);
+									} else {
+										text = text.replace(new RegExp(regexMatch[1], regexMatch[2]), manipulation.pattern as string);
+									}
+									break;
+								default:
+									throw new Error('normal or regex are valid options');
+							}
 							break;
 						case 'trim':
 							switch(manipulation.trim) {
@@ -715,7 +839,17 @@ export class TextManipulation implements INodeType {
 							throw new Error('encodeDecode, upperCase, lowerCase, replace, trim, pad, substring or repeat are valid options');
 					}
 				});
-				set(newItem.json, textWithManipulations.destinationKey as string, text);
+				switch(textWithManipulations.writeOperation) {
+					case 'toFile':
+						newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(Buffer.from(text), textWithManipulations.fileName);
+						break;
+					case 'toJSON':
+						set(newItem.json, textWithManipulations.destinationKey as string, text);
+						break;
+					default:
+						throw new Error('toFile or toJSON are valid options');
+				}
+				
 			});
 			
 			returnData.push(newItem);
