@@ -178,7 +178,7 @@ export const paymentFields = [
 		type: 'string',
 		required: true,
 		default: 'data',
-		description: 'Name of the binary property to which to write to',
+		description: 'Name of the binary property to which to write to.',
 		displayOptions: {
 			show: {
 				resource: [
