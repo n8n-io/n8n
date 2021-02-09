@@ -765,8 +765,11 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 
 		nodeWebhookPath = nodeWebhookPath.toString();
 
-		if (nodeWebhookPath.charAt(0) === '/') {
+		if (nodeWebhookPath.startsWith('/')) {
 			nodeWebhookPath = nodeWebhookPath.slice(1);
+		}
+		if (nodeWebhookPath.endsWith('/')) {
+			nodeWebhookPath = nodeWebhookPath.slice(0, -1);
 		}
 
 		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['isFullPath'], 'internal', false) as boolean;
@@ -827,8 +830,11 @@ export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookD
 
 		nodeWebhookPath = nodeWebhookPath.toString();
 
-		if (nodeWebhookPath.charAt(0) === '/') {
+		if (nodeWebhookPath.startsWith('/')) {
 			nodeWebhookPath = nodeWebhookPath.slice(1);
+		}
+		if (nodeWebhookPath.endsWith('/')) {
+			nodeWebhookPath = nodeWebhookPath.slice(0, -1);
 		}
 
 		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['isFullPath'], mode, false) as boolean;
