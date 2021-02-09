@@ -78,7 +78,7 @@ abstract class NodeError extends Error {
 		return null;
 	}
 
-	protected isTraversableObject(value: any): value is IErrorObject {
+	protected isTraversableObject(value: any): value is IErrorObject { // tslint:disable-line:no-any
 		return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
 	}
 }
