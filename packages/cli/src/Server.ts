@@ -62,6 +62,7 @@ import {
 	ResponseHelper,
 	TestWebhooks,
 	WebhookHelpers,
+	WebhookServer,
 	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
 	WorkflowRunner,
@@ -105,6 +106,7 @@ import * as jwks from 'jwks-rsa';
 import * as timezones from 'google-timezones-json';
 import * as parseUrl from 'parseurl';
 import * as querystring from 'querystring';
+import * as Queue from '../src/Queue';
 import { OptionsWithUrl } from 'request-promise-native';
 
 class App {
@@ -1428,7 +1430,14 @@ class App {
 				limit = parseInt(req.query.limit as string, 10);
 			}
 
-			const executingWorkflowIds = this.activeExecutionsInstance.getActiveExecutions().map(execution => execution.id.toString()) as string[];
+			let executingWorkflowIds;
+
+			if (config.get('executions.mode') === 'queue') {
+				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
+				executingWorkflowIds = currentJobs.map(job => job.data.executionId) as string[];
+			} else {
+				executingWorkflowIds = this.activeExecutionsInstance.getActiveExecutions().map(execution => execution.id.toString()) as string[];
+			}
 
 			const countFilter = JSON.parse(JSON.stringify(filter));
 			countFilter.select = ['id'];
@@ -1453,10 +1462,10 @@ class App {
 				resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {[filterField]: filter[filterField]});
 			});
 			if (req.query.lastId) {
-				resultsQuery.andWhere(`execution.id <= :lastId`, {lastId: req.query.lastId});
+				resultsQuery.andWhere(`execution.id < :lastId`, {lastId: req.query.lastId});
 			}
 			if (req.query.firstId) {
-				resultsQuery.andWhere(`execution.id >= :firstId`, {firstId: req.query.firstId});
+				resultsQuery.andWhere(`execution.id > :firstId`, {firstId: req.query.firstId});
 			}
 			if (executingWorkflowIds.length > 0) {
 				resultsQuery.andWhere(`execution.id NOT IN (:...ids)`, {ids: executingWorkflowIds});
@@ -1626,52 +1635,114 @@ class App {
 
 		// Returns all the currently working executions
 		this.app.get(`/${this.restEndpoint}/executions-current`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionsSummary[]> => {
-			const executingWorkflows = this.activeExecutionsInstance.getActiveExecutions();
+			if (config.get('executions.mode') === 'queue') {
+				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
 
-			const returnData: IExecutionsSummary[] = [];
+				const currentlyRunningExecutionIds = currentJobs.map(job => job.data.executionId);
 
-			let filter: any = {}; // tslint:disable-line:no-any
-			if (req.query.filter) {
-				filter = JSON.parse(req.query.filter as string);
-			}
-
-			for (const data of executingWorkflows) {
-				if (filter.workflowId !== undefined && filter.workflowId !== data.workflowId) {
-					continue;
-				}
-				returnData.push(
-					{
-						idActive: data.id.toString(),
-						workflowId: data.workflowId.toString(),
-						mode: data.mode,
-						retryOf: data.retryOf,
-						startedAt: new Date(data.startedAt),
+				const resultsQuery = await Db.collections.Execution!
+					.createQueryBuilder("execution")
+					.select([
+						'execution.id',
+						'execution.workflowId',
+						'execution.mode',
+						'execution.retryOf',
+						'execution.startedAt',
+					])
+					.orderBy('execution.id', 'DESC')
+					.andWhere(`execution.id IN (:...ids)`, {ids: currentlyRunningExecutionIds});
+					
+				if (req.query.filter) {
+					const filter = JSON.parse(req.query.filter as string);
+					if (filter.workflowId !== undefined) {
+						resultsQuery.andWhere('execution.workflowId = :workflowId', {workflowId: filter.workflowId});
 					}
-				);
-			}
+				}
 
-			return returnData;
+				const results = await resultsQuery.getMany();
+
+				return results.map(result => {
+					return {
+						idActive: result.id,
+						workflowId: result.workflowId,
+						mode: result.mode,
+						retryOf: result.retryOf !== null ? result.retryOf : undefined,
+						startedAt: new Date(result.startedAt),
+					} as IExecutionsSummary;
+				});
+			} else {
+				const executingWorkflows = this.activeExecutionsInstance.getActiveExecutions();
+
+				const returnData: IExecutionsSummary[] = [];
+	
+				let filter: any = {}; // tslint:disable-line:no-any
+				if (req.query.filter) {
+					filter = JSON.parse(req.query.filter as string);
+				}
+	
+				for (const data of executingWorkflows) {
+					if (filter.workflowId !== undefined && filter.workflowId !== data.workflowId) {
+						continue;
+					}
+					returnData.push(
+						{
+							idActive: data.id.toString(),
+							workflowId: data.workflowId.toString(),
+							mode: data.mode,
+							retryOf: data.retryOf,
+							startedAt: new Date(data.startedAt),
+						}
+					);
+				}
+	
+				return returnData;
+			}
 		}));
 
 		// Forces the execution to stop
 		this.app.post(`/${this.restEndpoint}/executions-current/:id/stop`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionsStopData> => {
-			const executionId = req.params.id;
+			if (config.get('executions.mode') === 'queue') {
+				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
 
-			// Stopt he execution and wait till it is done and we got the data
-			const result = await this.activeExecutionsInstance.stopExecution(executionId);
+				const job = currentJobs.find(job => job.data.executionId.toString() === req.params.id);
 
-			if (result === undefined) {
-				throw new Error(`The execution id "${executionId}" could not be found.`);
+				if (!job) {
+					throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
+				} else {
+					await Queue.getInstance().stopJob(job);
+				}
+
+				const executionDb = await Db.collections.Execution?.findOne(req.params.id) as IExecutionFlattedDb;
+				const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
+
+				const returnData: IExecutionsStopData = {
+					mode: fullExecutionData.mode,
+					startedAt: new Date(fullExecutionData.startedAt),
+					stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : undefined,
+					finished: fullExecutionData.finished,
+				};
+	
+				return returnData;
+	
+			} else {
+				const executionId = req.params.id;
+	
+				// Stopt he execution and wait till it is done and we got the data
+				const result = await this.activeExecutionsInstance.stopExecution(executionId);
+	
+				if (result === undefined) {
+					throw new Error(`The execution id "${executionId}" could not be found.`);
+				}
+	
+				const returnData: IExecutionsStopData = {
+					mode: result.mode,
+					startedAt: new Date(result.startedAt),
+					stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
+					finished: result.finished,
+				};
+	
+				return returnData;
 			}
-
-			const returnData: IExecutionsStopData = {
-				mode: result.mode,
-				startedAt: new Date(result.startedAt),
-				stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
-				finished: result.finished,
-			};
-
-			return returnData;
 		}));
 
 
@@ -1711,88 +1782,9 @@ class App {
 		// Webhooks
 		// ----------------------------------------
 
-		// HEAD webhook requests
-		this.app.head(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
-
-			let response;
-			try {
-				response = await this.activeWorkflowRunner.executeWebhook('HEAD', requestUrl, req, res);
-			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-		});
-
-		// OPTIONS webhook requests
-		this.app.options(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
-
-			let allowedMethods: string[];
-			try {
-				allowedMethods = await this.activeWorkflowRunner.getWebhookMethods(requestUrl);
-				allowedMethods.push('OPTIONS');
-
-				// Add custom "Allow" header to satisfy OPTIONS response.
-				res.append('Allow', allowedMethods);
-			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(res, {}, true, 204);
-		});
-
-		// GET webhook requests
-		this.app.get(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
-
-			let response;
-			try {
-				response = await this.activeWorkflowRunner.executeWebhook('GET', requestUrl, req, res);
-			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-		});
-
-		// POST webhook requests
-		this.app.post(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
-
-			let response;
-			try {
-				response = await this.activeWorkflowRunner.executeWebhook('POST', requestUrl, req, res);
-			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-		});
+		if (config.get('endpoints.disableProductionWebhooksOnMainProcess') !== true) {
+			WebhookServer.registerProductionWebhooks.apply(this);
+		}
 
 		// HEAD webhook requests (test for UI)
 		this.app.head(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {

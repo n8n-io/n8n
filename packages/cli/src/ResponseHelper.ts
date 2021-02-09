@@ -188,6 +188,7 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): 
 		startedAt: fullExecutionData.startedAt,
 		stoppedAt: fullExecutionData.stoppedAt,
 		finished: fullExecutionData.finished ? fullExecutionData.finished : false,
+		workflowId: fullExecutionData.workflowId,
 	});
 
 	return returnData;

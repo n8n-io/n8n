@@ -39,6 +39,7 @@ import {
 
 import * as config from '../config';
 import * as Bull from 'bull';
+import * as Queue from '../src/Queue';
 
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';
@@ -112,7 +113,6 @@ export class Worker extends Command {
 		const jobData = job.data as IBullJobData;
 		const executionDb = await Db.collections.Execution!.findOne(jobData.executionId) as IExecutionFlattedDb;
 		const currentExecutionDb = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
-
 		console.log(`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id} | Execution: ${jobData.executionId})`);
 
 		let staticData = currentExecutionDb.workflowData!.staticData;
@@ -203,16 +203,9 @@ export class Worker extends Command {
 				// Wait till the database is ready
 				await startDbInitPromise;
 
-				// Connect to bull-queue
-				const prefix = config.get('queue.bull.prefix') as string;
-				const redisOptions = config.get('queue.bull.redis') as IDataObject;
 				const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
-				// Disabling ready check is necessary as it allows worker to
-				// quickly reconnect to Redis if Redis crashes or is unreachable
-				// for some time. With it enabled, worker might take minutes to realize
-				// redis is back up and resume working.
-				redisOptions.enableReadyCheck = false;
-				Worker.jobQueue = new Bull('jobs', { prefix, redis: redisOptions });
+
+				Worker.jobQueue = Queue.getInstance().getBullObjectInstance();
 				Worker.jobQueue.process(flags.concurrency, (job) => this.runJob(job, nodeTypes));
 
 				const versions = await GenericHelpers.getVersions();
