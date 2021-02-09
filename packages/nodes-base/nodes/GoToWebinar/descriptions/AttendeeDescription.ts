@@ -35,7 +35,93 @@ export const attendeeOperations = [
 
 export const attendeeFields = [
 	// ----------------------------------
-	//         attendee: create
+	//     attendee: shared fields
 	// ----------------------------------
-
+	{
+		displayName: 'Organizer Key',
+		name: 'organizerKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'attendee',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Webinar Key',
+		name: 'webinarKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'attendee',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Session Key',
+		name: 'sessionKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'attendee',
+				],
+			},
+		},
+	},
+	// ----------------------------------
+	//          attendee: get
+	// ----------------------------------
+	{
+		displayName: 'Registrant Key',
+		name: 'registrantKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'attendee',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+	// ----------------------------------
+	//       attendee: getDetails
+	// ----------------------------------
+	{
+		displayName: 'Details',
+		name: 'details',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'attendee',
+				],
+				operation: [
+					'getDetails',
+				],
+			},
+		},
+	},
 ] as INodeProperties[];
