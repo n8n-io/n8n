@@ -462,12 +462,13 @@ export class GoToWebinar implements INodeType {
 					//         webinar: create
 					// ----------------------------------
 
-					const startTime = this.getNodeParameter('startTime', i) as IDataObject;
-					const endTime = this.getNodeParameter('endTime', i) as IDataObject;
-
 					const body = {
 						subject: this.getNodeParameter('subject', i) as string,
-						times: [{ startTime, endTime }],
+						times: [
+							{ startTime: this.getNodeParameter('startTime', i) as IDataObject,
+								endTime: this.getNodeParameter('endTime', i) as IDataObject,
+							},
+						],
 					} as IDataObject;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -484,12 +485,17 @@ export class GoToWebinar implements INodeType {
 
 					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 
-					const qs = {
-						sendCancellationEmails: this.getNodeParameter('sendCancellationEmails', i) as boolean,
-					};
+					const { sendCancellationEmails } = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const qs = {} as IDataObject;
+
+					if (sendCancellationEmails) {
+						qs.sendCancellationEmails = sendCancellationEmails;
+					}
 
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}`;
 					responseData = await goToWebinarApiRequest.call(this, 'DELETE', endpoint, qs, {});
+					responseData = { success: true };
 
 				} else if (operation === 'get') {
 

@@ -226,4 +226,34 @@ export const webinarFields = [
 			},
 		],
 	},
+	// ----------------------------------
+	//         webinar: delete
+	// ----------------------------------
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				resource: [
+					'webinar',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Send Cancellation E-mails',
+				name: 'sendCancellationEmails',
+				type: 'boolean',
+				required: false,
+				default: false,
+				description: '',
+			},
+		],
+	},
 ] as INodeProperties[];
