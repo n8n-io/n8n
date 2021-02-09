@@ -30,7 +30,7 @@
 					</el-col>
 					<el-col :span="4">&nbsp;
 					</el-col>
-					<el-col :span="4">
+					<el-col :span="4" class="autorefresh">
 						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">Auto refresh</el-checkbox>
 					</el-col>
 				</el-row>
@@ -316,8 +316,8 @@ export default mixins(
 				clearInterval(this.autoRefreshInterval);
 				this.autoRefreshInterval = undefined;
 			}
-			
-			
+
+
 			if (this.autoRefresh) {
 				this.autoRefreshInterval = setInterval(this.loadAutoRefresh, 4 * 1000); // refresh data every 4 secs
 			}
@@ -586,6 +586,11 @@ export default mixins(
 </script>
 
 <style scoped lang="scss">
+
+.autorefresh {
+	padding-right: 0.5em;
+	text-align: right;
+}
 
 .filters {
 	line-height: 2em;
