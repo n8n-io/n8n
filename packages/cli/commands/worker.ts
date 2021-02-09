@@ -112,10 +112,8 @@ export class Worker extends Command {
 		const jobData = job.data as IBullJobData;
 		const executionDb = await Db.collections.Execution!.findOne(jobData.executionId) as IExecutionFlattedDb;
 		const currentExecutionDb = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
-		
 
-		console.log(`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id})`);
-		// TODO: Can in the future query most of that data from the DB to lighten redis load
+		console.log(`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id} | Execution: ${jobData.executionId})`);
 
 		let staticData = currentExecutionDb.workflowData!.staticData;
 		if (jobData.loadStaticData === true) {
@@ -209,7 +207,7 @@ export class Worker extends Command {
 				const prefix = config.get('queue.bull.prefix') as string;
 				const redisOptions = config.get('queue.bull.redis') as IDataObject;
 				const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
-				// Disabling ready check is necessary as it allows worker to 
+				// Disabling ready check is necessary as it allows worker to
 				// quickly reconnect to Redis if Redis crashes or is unreachable
 				// for some time. With it enabled, worker might take minutes to realize
 				// redis is back up and resume working.
