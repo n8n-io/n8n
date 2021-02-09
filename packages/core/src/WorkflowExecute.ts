@@ -615,7 +615,7 @@ export class WorkflowExecute {
 									//       be executed in the meantime
 									await new Promise((resolve) => {
 										setTimeout(() => {
-											resolve();
+											resolve(undefined);
 										}, waitBetweenTries);
 									});
 								}
@@ -689,7 +689,7 @@ export class WorkflowExecute {
 							// Add the execution data again so that it can get restarted
 							this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
 
-							this.executeHook('nodeExecuteAfter', [executionNode.name, taskData]);
+							this.executeHook('nodeExecuteAfter', [executionNode.name, taskData, this.runExecutionData]);
 
 							break;
 						}
@@ -700,11 +700,13 @@ export class WorkflowExecute {
 						'main': nodeSuccessData,
 					} as ITaskDataConnections);
 
-					this.executeHook('nodeExecuteAfter', [executionNode.name, taskData]);
-
 					this.runExecutionData.resultData.runData[executionNode.name].push(taskData);
 
 					if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode && this.runExecutionData.startData.destinationNode === executionNode.name) {
+						// Before stopping, make sure we are executing hooks so
+						// That frontend is notified for example for manual executions.
+						await this.executeHook('nodeExecuteAfter', [executionNode.name, taskData, this.runExecutionData]);
+
 						// If destination node is defined and got executed stop execution
 						continue;
 					}
@@ -736,6 +738,13 @@ export class WorkflowExecute {
 							}
 						}
 					}
+
+					// If we got here, it means that we did not stop executing from manual executions / destination.
+					// Execute hooks now to make sure that all hooks are executed properly
+					// Await is needed to make sure that we don't fall into concurrency problems
+					// When saving node execution data
+					await this.executeHook('nodeExecuteAfter', [executionNode.name, taskData, this.runExecutionData]);
+
 				}
 
 				return Promise.resolve();
@@ -760,7 +769,6 @@ export class WorkflowExecute {
 					// Static data of workflow changed
 					newStaticData = workflow.staticData;
 				}
-
 				await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]).catch(error => {
 					console.error('There was a problem running hook "workflowExecuteAfter"', error);
 				});

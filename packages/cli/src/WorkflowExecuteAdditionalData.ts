@@ -4,6 +4,7 @@ import {
 	ExternalHooks,
 	IExecutionDb,
 	IExecutionFlattedDb,
+	IExecutionResponse,
 	IPushDataExecutionFinished,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
@@ -221,6 +222,68 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 				await externalHooks.run('workflow.preExecute', [workflow, this.mode]);
 			},
 		],
+		nodeExecuteAfter: [
+			async function (nodeName: string, data: ITaskData, executionData: IRunExecutionData): Promise<void> {
+				if (this.workflowData.settings !== undefined) {
+					if (this.workflowData.settings.saveExecutionProgress === false) {
+						return;
+					} else if (this.workflowData.settings.saveExecutionProgress !== true && !config.get('executions.saveExecutionProgress') as boolean) {
+						return;
+					}
+				} else if (!config.get('executions.saveExecutionProgress') as boolean) {
+					return;
+				}
+
+				const execution = await Db.collections.Execution!.findOne(this.executionId);
+
+				if (execution === undefined) {
+					// Something went badly wrong if this happens.
+					// This check is here mostly to make typescript happy.
+					return undefined; 
+				}
+				const fullExecutionData: IExecutionResponse = ResponseHelper.unflattenExecutionData(execution);
+
+				if (fullExecutionData.finished) {
+					// We already received ´workflowExecuteAfter´ webhook, so this is just an async call
+					// that was left behind. We skip saving because the other call should have saved everything
+					// so this one is safe to ignore
+					return;
+				}
+
+
+				if (fullExecutionData.data === undefined) {
+					fullExecutionData.data = {
+						startData: {
+						},
+						resultData: {
+							runData: {},
+						},
+						executionData: {
+							contextData: {},
+							nodeExecutionStack: [],
+							waitingExecution: {},
+						},
+					};
+				}
+
+				if (Array.isArray(fullExecutionData.data.resultData.runData[nodeName])) {
+					// Append data if array exists
+					fullExecutionData.data.resultData.runData[nodeName].push(data);
+				} else {
+					// Initialize array and save data
+					fullExecutionData.data.resultData.runData[nodeName] = [data];
+				}
+
+				fullExecutionData.data.executionData = executionData.executionData;
+
+				// Set last executed node so that it may resume on failure
+				fullExecutionData.data.resultData.lastNodeExecuted = nodeName;
+				
+				const flattenedExecutionData = ResponseHelper.flattenExecutionData(fullExecutionData);
+
+				await Db.collections.Execution!.update(this.executionId, flattenedExecutionData as IExecutionFlattedDb);
+			},
+		],
 	};
 }
 
@@ -262,6 +325,8 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					if (isManualMode && saveManualExecutions === false) {
+						// Data is always saved, so we remove from database
+						Db.collections.Execution!.delete(this.executionId);
 						return;
 					}
 
@@ -280,6 +345,8 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						if (!isManualMode) {
 							executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
 						}
+						// Data is always saved, so we remove from database
+						Db.collections.Execution!.delete(this.executionId);
 						return;
 					}
 
@@ -303,16 +370,16 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
 					// Save the Execution in DB
-					const executionResult = await Db.collections.Execution!.save(executionData as IExecutionFlattedDb);
+					await Db.collections.Execution!.update(this.executionId, executionData as IExecutionFlattedDb);
 
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
 						// await Db.collections.Execution!.save(executionData as IExecutionFlattedDb);
-						await Db.collections.Execution!.update(this.retryOf, { retrySuccessId: executionResult.id });
+						await Db.collections.Execution!.update(this.retryOf, { retrySuccessId: this.executionId });
 					}
 
 					if (!isManualMode) {
-						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, executionResult ? executionResult.id as string : undefined, this.retryOf);
+						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, this.retryOf);
 					}
 				} catch (error) {
 					if (!isManualMode) {
@@ -485,8 +552,34 @@ export function getWorkflowHooksIntegrated(mode: WorkflowExecuteMode, executionI
 	const hookFunctions = hookFunctionsSave(optionalParameters.parentProcessMode);
 	const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
 	for (const key of Object.keys(preExecuteFunctions)) {
+		if (hookFunctions[key] === undefined) {
+			hookFunctions[key] = [];
+		}
 		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 	}
+	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
+}
+
+
+/**
+ * Returns WorkflowHooks instance for main process if workflow runs via worker
+ */
+export function getWorkflowHooksWorkerMain(mode: WorkflowExecuteMode, executionId: string, workflowData: IWorkflowBase, optionalParameters?: IWorkflowHooksOptionalParameters): WorkflowHooks {
+	optionalParameters = optionalParameters || {};
+	const hookFunctions = hookFunctionsPush();
+	const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
+	for (const key of Object.keys(preExecuteFunctions)) {
+		if (hookFunctions[key] === undefined) {
+			hookFunctions[key] = [];
+		}
+		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+	}
+
+	// When running with worker mode, main process executes
+	// Only workflowExecuteBefore + workflowExecuteAfter
+	// So to avoid confusion, we are removing other hooks.
+	hookFunctions.nodeExecuteBefore = [];
+	hookFunctions.nodeExecuteAfter = [];
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
 }
 
@@ -503,15 +596,22 @@ export function getWorkflowHooksMain(data: IWorkflowExecutionDataProcess, execut
 	const hookFunctions = hookFunctionsSave();
 	const pushFunctions = hookFunctionsPush();
 	for (const key of Object.keys(pushFunctions)) {
+		if (hookFunctions[key] === undefined) {
+			hookFunctions[key] = [];
+		}
 		hookFunctions[key]!.push.apply(hookFunctions[key], pushFunctions[key]);
 	}
 
 	if (isMainProcess) {
 		const preExecuteFunctions = hookFunctionsPreExecute();
 		for (const key of Object.keys(preExecuteFunctions)) {
+			if (hookFunctions[key] === undefined) {
+				hookFunctions[key] = [];
+			}
 			hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 		}
 	}
 
 	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, { sessionId: data.sessionId, retryOf: data.retryOf as string});
 }
+
