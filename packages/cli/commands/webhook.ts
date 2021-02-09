@@ -1,10 +1,7 @@
-import * as localtunnel from 'localtunnel';
 import {
-	TUNNEL_SUBDOMAIN_ENV,
 	UserSettings,
 } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
-const open = require('open');
 import * as Redis from 'ioredis';
 
 import * as config from '../config';
@@ -13,14 +10,13 @@ import {
 	ActiveWorkflowRunner,
 	CredentialsOverwrites,
 	CredentialTypes,
-	DatabaseType,
 	Db,
 	ExternalHooks,
 	GenericHelpers,
 	LoadNodesAndCredentials,
 	NodeTypes,
-	Server,
 	TestWebhooks,
+	WebhookServer,
 } from "../src";
 import { IDataObject } from 'n8n-workflow';
 
@@ -29,43 +25,19 @@ let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExistCode = 0;
 
 
-export class Start extends Command {
-	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
+export class Webhook extends Command {
+	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
 
 	static examples = [
-		`$ n8n start`,
-		`$ n8n start --tunnel`,
-		`$ n8n start -o`,
-		`$ n8n start --tunnel -o`,
+		`$ n8n webhook`,
 	];
 
 	static flags = {
 		help: flags.help({ char: 'h' }),
-		open: flags.boolean({
-			char: 'o',
-			description: 'opens the UI automatically in browser',
-		}),
-		tunnel: flags.boolean({
-			description: 'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
-		}),
 	};
 
-
 	/**
-	 * Opens the UI in browser
-	 */
-	static openBrowser() {
-		const editorUrl = GenericHelpers.getBaseUrl();
-
-		open(editorUrl, { wait: true })
-			.catch((error: Error) => {
-				console.log(`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`);
-			});
-	}
-
-
-	/**
-	 * Stoppes the n8n in a graceful way.
+	 * Stops the n8n in a graceful way.
 	 * Make for example sure that all the webhooks from third party services
 	 * get removed.
 	 */
@@ -82,10 +54,8 @@ export class Start extends Command {
 				process.exit(processExistCode);
 			}, 30000);
 
-			const skipWebhookDeregistration = config.get('endpoints.skipWebhoooksDeregistrationOnShutdown') as boolean;
-
 			const removePromises = [];
-			if (activeWorkflowRunner !== undefined && skipWebhookDeregistration !== true) {
+			if (activeWorkflowRunner !== undefined) {
 				removePromises.push(activeWorkflowRunner.removeAll());
 			}
 
@@ -120,13 +90,29 @@ export class Start extends Command {
 
 	async run() {
 		// Make sure that n8n shuts down gracefully if possible
-		process.on('SIGTERM', Start.stopProcess);
-		process.on('SIGINT', Start.stopProcess);
+		process.on('SIGTERM', Webhook.stopProcess);
+		process.on('SIGINT', Webhook.stopProcess);
 
-		const { flags } = this.parse(Start);
+		const { flags } = this.parse(Webhook);
 
 		// Wrap that the process does not close but we can still use async
 		await (async () => {
+			if (config.get('executions.mode') !== 'queue') {
+				/** 
+				 * It is technically possible to run without queues but
+				 * there are 2 known bugs when running in this mode:
+				 * - Executions list will be problematic as the main process
+				 * is not aware of current executions in the webhook processes
+				 * and therefore will display all current executions as error
+				 * as it is unable to determine if it is still running or crashed
+				 * - You cannot stop currently executing jobs from webhook processes
+				 * when running without queues as the main process cannot talk to
+				 * the wehbook processes to communicate workflow execution interruption.
+				 */
+
+				this.error('Webhook processes can only run with execution mode as queue.');
+			}
+
 			try {
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch(error => {
@@ -216,91 +202,15 @@ export class Start extends Command {
 					});
 				}
 				
-				const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
-
-				if (dbType === 'sqlite') {
-					const shouldRunVacuum = config.get('database.sqlite.executeVacuumOnStartup') as number;
-					if (shouldRunVacuum) {
-						Db.collections.Execution!.query("VACUUM;");
-					}
-				}
-
-				if (flags.tunnel === true) {
-					this.log('\nWaiting for tunnel ...');
-
-					let tunnelSubdomain;
-					if (process.env[TUNNEL_SUBDOMAIN_ENV] !== undefined && process.env[TUNNEL_SUBDOMAIN_ENV] !== '') {
-						tunnelSubdomain = process.env[TUNNEL_SUBDOMAIN_ENV];
-					} else if (userSettings.tunnelSubdomain !== undefined) {
-						tunnelSubdomain = userSettings.tunnelSubdomain;
-					}
-
-					if (tunnelSubdomain === undefined) {
-						// When no tunnel subdomain did exist yet create a new random one
-						const availableCharacters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-						userSettings.tunnelSubdomain = Array.from({ length: 24 }).map(() => {
-							return availableCharacters.charAt(Math.floor(Math.random() * availableCharacters.length));
-						}).join('');
-
-						await UserSettings.writeUserSettings(userSettings);
-					}
-
-					const tunnelSettings: localtunnel.TunnelConfig = {
-						host: 'https://hooks.n8n.cloud',
-						subdomain: tunnelSubdomain,
-					};
-
-					const port = config.get('port') as number;
-
-					// @ts-ignore
-					const webhookTunnel = await localtunnel(port, tunnelSettings);
-
-					process.env.WEBHOOK_URL = webhookTunnel.url + '/';
-					this.log(`Tunnel URL: ${process.env.WEBHOOK_URL}\n`);
-					this.log('IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!');
-				}
-
-				await Server.start();
+				await WebhookServer.start();
 
 				// Start to get active workflows and run their triggers
 				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
-				await activeWorkflowRunner.init();
+				await activeWorkflowRunner.initWebhooks();
 
 				const editorUrl = GenericHelpers.getBaseUrl();
-				this.log(`\nEditor is now accessible via:\n${editorUrl}`);
+				this.log('Webhook listener waiting for requests.');
 
-				// Allow to open n8n editor by pressing "o"
-				if (Boolean(process.stdout.isTTY) && process.stdin.setRawMode) {
-					process.stdin.setRawMode(true);
-					process.stdin.resume();
-					process.stdin.setEncoding('utf8');
-					let inputText = '';
-
-					if (flags.open === true) {
-						Start.openBrowser();
-					}
-					this.log(`\nPress "o" to open in Browser.`);
-					process.stdin.on("data", (key : string) => {
-						if (key === 'o') {
-							Start.openBrowser();
-							inputText = '';
-						} else if (key.charCodeAt(0) === 3) {
-							// Ctrl + c got pressed
-							Start.stopProcess();
-						} else {
-							// When anything else got pressed, record it and send it on enter into the child process
-							if (key.charCodeAt(0) === 13) {
-								// send to child process and print in terminal
-								process.stdout.write('\n');
-								inputText = '';
-							} else {
-								// record it and write into terminal
-								inputText += key;
-								process.stdout.write(key);
-							}
-						}
-					});
-				}
 			} catch (error) {
 				this.error(`There was an error: ${error.message}`);
 

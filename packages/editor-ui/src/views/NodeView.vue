@@ -147,6 +147,7 @@ import {
 	NodeInputConnections,
 	NodeHelpers,
 	Workflow,
+	IRun,
 } from 'n8n-workflow';
 import {
 	IConnectionsUi,
@@ -161,6 +162,7 @@ import {
 	IUpdateInformation,
 	IWorkflowDataUpdate,
 	XYPositon,
+	IPushDataExecutionFinished,
 } from '../Interface';
 
 export default mixins(
@@ -728,7 +730,37 @@ export default mixins(
 						type: 'success',
 					});
 				} catch (error) {
-					this.$showError(error, 'Problem stopping execution', 'There was a problem stopping the execuction:');
+					// Execution stop might fail when the execution has already finished. Let's treat this here.
+					const execution = await this.restApi().getExecution(executionId) as IExecutionResponse;
+					if (execution.finished) {
+						const executedData = {
+							data: execution.data,
+							finished: execution.finished,
+							mode: execution.mode,
+							startedAt: execution.startedAt,
+							stoppedAt: execution.stoppedAt,
+						} as IRun;
+						const pushData = {
+							data: executedData,
+							executionIdActive: executionId,
+							executionIdDb: executionId,
+							retryOf: execution.retryOf,
+						} as IPushDataExecutionFinished;
+						this.$store.commit('finishActiveExecution', pushData);
+						this.$titleSet(execution.workflowData.name, 'IDLE');
+						this.$store.commit('setExecutingNode', null);
+						this.$store.commit('setWorkflowExecutionData', executedData);
+						this.$store.commit('removeActiveAction', 'workflowRunning');
+						this.$showMessage({
+							title: 'Workflow finished executing',
+							message: 'Unable to stop operation in time. Workflow finished executing already.',
+							type: 'success',
+						});
+					} else {
+						this.$showError(error, 'Problem stopping execution', 'There was a problem stopping the execuction:');
+					}
+
+					
 				}
 				this.stopExecutionInProgress = false;
 			},

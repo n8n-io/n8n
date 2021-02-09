@@ -28,7 +28,10 @@
 							</el-option>
 						</el-select>
 					</el-col>
-					<el-col :span="8">&nbsp;
+					<el-col :span="4">&nbsp;
+					</el-col>
+					<el-col :span="4" class="autorefresh">
+						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">Auto refresh</el-checkbox>
 					</el-col>
 				</el-row>
 			</div>
@@ -191,6 +194,8 @@ export default mixins(
 			finishedExecutionsCount: 0,
 
 			checkAll: false,
+			autoRefresh: true,
+			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
 
 			filter: {
 				status: 'ALL',
@@ -292,6 +297,10 @@ export default mixins(
 			// Handle the close externally as the visible parameter is an external prop
 			// and is so not allowed to be changed here.
 			this.$emit('closeDialog');
+			if (this.autoRefreshInterval) {
+				clearInterval(this.autoRefreshInterval);
+				this.autoRefreshInterval = undefined;
+			}
 			return false;
 		},
 		displayExecution (execution: IExecutionShortResponse) {
@@ -300,6 +309,18 @@ export default mixins(
 				params: { id: execution.id },
 			});
 			this.closeDialog();
+		},
+		handleAutoRefreshToggle () {
+			if (this.autoRefreshInterval) {
+				// Clear any previously existing intervals (if any - there shouldn't)
+				clearInterval(this.autoRefreshInterval);
+				this.autoRefreshInterval = undefined;
+			}
+
+
+			if (this.autoRefresh) {
+				this.autoRefreshInterval = setInterval(this.loadAutoRefresh, 4 * 1000); // refresh data every 4 secs
+			}
 		},
 		handleCheckAllChange () {
 			if (this.checkAll === false) {
@@ -389,6 +410,27 @@ export default mixins(
 
 			this.$store.commit('setActiveExecutions', activeExecutions);
 		},
+		async loadAutoRefresh () : Promise<void> {
+			let firstId: string | number | undefined = 0;
+			if (this.finishedExecutions.length !== 0) {
+				firstId = this.finishedExecutions[0].id;
+			}
+			const activeExecutionsPromise: Promise<IExecutionsListResponse> = this.restApi().getPastExecutions({}, 100, undefined, firstId);
+			const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> = this.restApi().getCurrentExecutions({});
+
+			const results = await Promise.all([activeExecutionsPromise, currentExecutionsPromise]);
+
+			for (const activeExecution of results[1]) {
+				if (activeExecution.workflowId !== undefined && activeExecution.workflowName === undefined) {
+					activeExecution.workflowName = this.getWorkflowName(activeExecution.workflowId);
+				}
+			}
+
+			this.$store.commit('setActiveExecutions', results[1]);
+
+			this.finishedExecutions.unshift.apply(this.finishedExecutions, results[0].results);
+			this.finishedExecutionsCount = results[0].count;
+		},
 		async loadFinishedExecutions (): Promise<void> {
 			if (this.filter.status === 'running') {
 				this.finishedExecutions = [];
@@ -459,6 +501,7 @@ export default mixins(
 
 			await this.loadWorkflows();
 			await this.refreshData();
+			this.handleAutoRefreshToggle();
 		},
 		async retryExecution (execution: IExecutionShortResponse, loadWorkflow?: boolean) {
 			this.isDataLoading = true;
@@ -543,6 +586,11 @@ export default mixins(
 </script>
 
 <style scoped lang="scss">
+
+.autorefresh {
+	padding-right: 0.5em;
+	text-align: right;
+}
 
 .filters {
 	line-height: 2em;
