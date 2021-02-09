@@ -637,21 +637,28 @@ export class TextManipulation implements INodeType {
 							else text = text.toLowerCase();
 							break;
 						case 'replace':
-							if(manipulation.useRegex) {
-								const regexMatch = (manipulation.regex as string).match(new RegExp('^/(.*?)/([gimusy]*)$'));
+              switch(manipulation.replaceMode) {
+                case 'normal':
+                  if(manipulation.replaceAll) {
+                    text = TextManipulation.replaceAll(text, manipulation.substring as string, manipulation.value as string);
+                  } else {
+                    text = text.replace(manipulation.substring as string, manipulation.value as string);
+                  }
+                  break;
+                case 'regex':
+                  const regexMatch = (manipulation.regex as string).match(new RegExp('^/(.*?)/([gimusy]*)$'));
 	
-								if (!regexMatch) {
-									text = text.replace(new RegExp(manipulation.regex as string), manipulation.value as string);
-								} else if (regexMatch.length === 1) {
-									text = text.replace(new RegExp(regexMatch[1]), manipulation.value as string);
-								} else {
-									text = text.replace(new RegExp(regexMatch[1], regexMatch[2]), manipulation.value as string);
-								}
-							} else if(manipulation.replaceAll) {
-								text = TextManipulation.replaceAll(text, manipulation.substring as string, manipulation.value as string);
-							} else {
-								text = text.replace(manipulation.substring as string, manipulation.value as string);
-							}
+                  if (!regexMatch) {
+                    text = text.replace(new RegExp(manipulation.regex as string), manipulation.pattern as string);
+                  } else if (regexMatch.length === 1) {
+                    text = text.replace(new RegExp(regexMatch[1]), manipulation.pattern as string);
+                  } else {
+                    text = text.replace(new RegExp(regexMatch[1], regexMatch[2]), manipulation.pattern as string);
+                  }
+                  break;
+                default:
+                  throw new Error('normal or regex are valid options');
+              }
 							break;
 						case 'trim':
 							switch(manipulation.trim) {
