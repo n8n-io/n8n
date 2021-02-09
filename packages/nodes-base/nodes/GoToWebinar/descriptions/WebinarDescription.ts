@@ -19,8 +19,8 @@ export const webinarOperations = [
 				value: 'delete',
 			},
 			{
-				name: 'get',
-				value: 'Get',
+				name: 'Get',
+				value: 'get',
 			},
 			{
 				name: 'Get All',
