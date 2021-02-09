@@ -38,21 +38,6 @@ export const attendeeFields = [
 	//     attendee: shared fields
 	// ----------------------------------
 	{
-		displayName: 'Organizer Key',
-		name: 'organizerKey',
-		type: 'string',
-		required: true,
-		default: '',
-		description: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'attendee',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
 		type: 'string',
