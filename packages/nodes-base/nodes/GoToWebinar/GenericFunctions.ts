@@ -50,7 +50,8 @@ export async function goToWebinarApiRequest(
 	}
 
 	try {
-		return await this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
+		console.log(options);
+		return await this.helpers.requestOAuth2!.call(this, 'goToWebinarOAuth2Api', options);
 	} catch (error) {
 
 		// TODO
@@ -101,7 +102,7 @@ export async function loadResource(
 		query: `SELECT * FROM ${resource}`,
 	} as IDataObject;
 
-	const { oauthTokenData: { realmId } } = this.getCredentials('quickBooksOAuth2Api') as { oauthTokenData: { realmId: string } };
+	const { oauthTokenData: { realmId } } = this.getCredentials('goToWebinarOAuth2Api') as { oauthTokenData: { realmId: string } };
 	const endpoint = `/v3/company/${realmId}/query`;
 
 	const resourceItems = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {});
