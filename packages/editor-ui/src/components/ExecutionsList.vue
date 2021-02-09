@@ -420,6 +420,12 @@ export default mixins(
 
 			const results = await Promise.all([activeExecutionsPromise, currentExecutionsPromise]);
 
+			for (const activeExecution of results[1]) {
+				if (activeExecution.workflowId !== undefined && activeExecution.workflowName === undefined) {
+					activeExecution.workflowName = this.getWorkflowName(activeExecution.workflowId);
+				}
+			}
+
 			this.$store.commit('setActiveExecutions', results[1]);
 
 			this.finishedExecutions.unshift.apply(this.finishedExecutions, results[0].results);
