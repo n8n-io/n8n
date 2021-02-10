@@ -177,12 +177,25 @@ export class NodeApiMultiError extends NodeApiError {
 	constructor(
 		nodeType: string,
 		error: IErrorObject,
-		callback: Function,
 	){
 		super(nodeType, error, {message: ''});
 		this.httpCode = this.findProperty(error, ERROR_CODE_PROPERTIES, ERROR_NESTING_PROPERTIES);
 		this.setMessage();
 
-		this.description = this.findProperty(error, MULTI_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES, callback);
+		this.description = this.findProperty(error, MULTI_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES, this.findMultiMessages);
+	}
+
+	private findMultiMessages(errors: Array<IErrorObject | string>): string | null {
+		return errors.map((error: IErrorObject | string) => {
+			if (typeof error === 'string') {
+				return error;
+			}
+			if (this.isTraversableObject(error)) {
+				return this.findProperty(error, ERROR_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES);
+			}
+			return null;
+		})
+		.filter((message: string | null) => message !== null)
+		.join(' | ');
 	}
 }
