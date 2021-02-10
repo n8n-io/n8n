@@ -35,7 +35,117 @@ export const sessionOperations = [
 
 export const sessionFields = [
 	// ----------------------------------
-	//         session: create
+	//         session: getAll
 	// ----------------------------------
-
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Return all results.',
+		displayOptions: {
+			show: {
+				resource: [
+					'session',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 10,
+		description: 'The number of results to return.',
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'session',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Time Range',
+		name: 'times',
+		type: 'fixedCollection',
+		required: true,
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'session',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Times Properties',
+				name: 'timesProperties',
+				values: [
+					{
+						displayName: 'Start Time',
+						name: 'startTime',
+						type: 'dateTime',
+						default: '',
+					},
+					{
+						displayName: 'End Time',
+						name: 'endTime',
+						type: 'dateTime',
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				resource: [
+					'session',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Filter By Webinar',
+				name: 'filterByWebinar',
+				type: 'boolean',
+				default: false,
+				description: '',
+			},
+			{
+				displayName: 'Webinar Key',
+				name: 'webinarKey',
+				type: 'string',
+				default: '',
+				description: '',
+			},
+		],
+	},
 ] as INodeProperties[];
