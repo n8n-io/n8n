@@ -174,22 +174,27 @@ export class NodeApiError extends NodeError {
 }
 
 export class NodeApiMultiError extends NodeApiError {
+	callback: DefaultMultiErrorsCallback = (errorsArray: DefaultMultiErrorsArray) =>
+		errorsArray.map(({ message }) => message).join('|');
+
 	constructor(
 		nodeType: string,
 		error: IErrorObject,
-		callback: NodeApiMultiErrorsCallback,
+		customCallback?: NodeApiMultiErrorsCallback,
 	){
 		super(nodeType, error, {message: ''});
+		if (customCallback) this.callback = customCallback;
+
 		this.httpCode = this.findProperty(error, ERROR_CODE_PROPERTIES, ERROR_NESTING_PROPERTIES);
 		this.setMessage();
 
-		this.description = this.findProperty(error, MULTI_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES, callback);
+		this.description = this.findProperty(error, MULTI_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES, this.callback);
 		console.log(this); // TODO: Delete later
 	}
 }
 
-export type NodeApiMultiErrorsCallback = GoogleMultiErrorsCallback;
+export type NodeApiMultiErrorsCallback = DefaultMultiErrorsCallback;
 
-export type GoogleMultiErrorsCallback = (array: GoogleMultiErrorsArray) => string;
+export type DefaultMultiErrorsCallback = (array: DefaultMultiErrorsArray) => string;
 
-export type GoogleMultiErrorsArray = Array<{ message: string }>;
+export type DefaultMultiErrorsArray = Array<{ message: string }>;

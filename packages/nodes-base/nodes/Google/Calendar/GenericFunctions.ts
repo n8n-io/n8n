@@ -3,7 +3,6 @@ import {
  } from 'request';
 
 import {
-	GoogleMultiErrorsArray,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
@@ -38,9 +37,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		return await this.helpers.requestOAuth2.call(this, 'googleCalendarOAuth2Api', options);
 	} catch (error) {
 
-		throw new NodeApiMultiError('Google Calendar', error, (errorsArray: GoogleMultiErrorsArray) =>
-			errorsArray.map(({ message }) => message).join('|'),
-		);
+		throw new NodeApiMultiError('Google Calendar', error);
 
 		// if (error.response && error.response.body && error.response.body.error) {
 
