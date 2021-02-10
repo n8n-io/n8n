@@ -26,6 +26,7 @@ import {
 } from './descriptions';
 
 import {
+	CoorganizerCreateBody,
 	goToWebinarApiRequest,
 	goToWebinarApiRequestAllItems,
 } from './GenericFunctions';
@@ -206,18 +207,16 @@ export class GoToWebinar implements INodeType {
 
 					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 
-					const body = {
-						external: true, // TODO: If the co-organizer has no GoToWebinar account, this value has to be set to 'true'
-					} as IDataObject;
+					const body: CoorganizerCreateBody = [
+						{
+							givenName: this.getNodeParameter('givenName', i) as string,
+							email: this.getNodeParameter('email', i) as string,
+							external: this.getNodeParameter('isExternal', i) as boolean,
+						},
+					];
 
-					const { givenName, email } = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					if (givenName) {
-						body.givenName = givenName;
-					}
-
-					if (email) {
-						body.email = email;
+					if (!body[0].external) {
+						body[0].organizerKey = this.getNodeParameter('organizerKey', i) as string;
 					}
 
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/coorganizers`;

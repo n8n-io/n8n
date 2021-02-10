@@ -22,7 +22,7 @@ export async function goToWebinarApiRequest(
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
-	body: IDataObject,
+	body: IDataObject | CoorganizerCreateBody,
 	option: IDataObject = {},
 ): Promise<any> { // tslint:disable-line:no-any
 
@@ -126,3 +126,10 @@ export async function loadResource(
 
 	return returnData;
 }
+
+export type CoorganizerCreateBody = Array<{
+	givenName: string;
+	email: string;
+	external: boolean;
+	organizerKey?: string;
+}>;
