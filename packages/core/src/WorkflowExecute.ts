@@ -655,6 +655,7 @@ export class WorkflowExecute {
 							executionError = {
 								message: error.message,
 								stack: error.stack,
+								description: error.description, // TEMP - for displaying new error class in UI
 							};
 						}
 					}

@@ -34,6 +34,7 @@ export interface IExecutionError {
 	message: string;
 	node?: string;
 	stack?: string;
+	description?: string; // TEMP - for displaying new error class in UI
 }
 
 // Get used to gives nodes access to credentials

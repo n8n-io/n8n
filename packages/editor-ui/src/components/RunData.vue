@@ -82,6 +82,7 @@
 			<span v-if="node && workflowRunData !== null && workflowRunData.hasOwnProperty(node.name)">
 				<div v-if="workflowRunData[node.name][runIndex].error" class="error-display">
 					<div class="error-message">ERROR: {{workflowRunData[node.name][runIndex].error.message}}</div>
+					<pre><code>{{workflowRunData[node.name][runIndex].error.description}}</code></pre>
 					<pre><code>{{workflowRunData[node.name][runIndex].error.stack}}</code></pre>
 				</div>
 				<span v-else>
