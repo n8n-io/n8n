@@ -559,7 +559,7 @@ export class GoToWebinar implements INodeType {
 					}
 
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}`;
-					await goToWebinarApiRequestAllItems.call(this, 'PUT', endpoint, qs, body);
+					await goToWebinarApiRequest.call(this, 'PUT', endpoint, qs, body);
 					responseData = { success: true };
 
 				}
