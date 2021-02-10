@@ -3,6 +3,7 @@ import {
  } from 'request';
 
 import {
+	GoogleMultiErrorsArray,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
@@ -37,9 +38,9 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		return await this.helpers.requestOAuth2.call(this, 'googleCalendarOAuth2Api', options);
 	} catch (error) {
 
-		throw new NodeApiMultiError('Google Calendar', error, (errorArray: any) => { // tslint:disable-line:no-any
-			return errorArray.map((error: any) => error.message).join('|'); // tslint:disable-line:no-any
-		});
+		throw new NodeApiMultiError('Google Calendar', error, (errorsArray: GoogleMultiErrorsArray) =>
+			errorsArray.map(({ message }) => message).join('|'),
+		);
 
 		// if (error.response && error.response.body && error.response.body.error) {
 

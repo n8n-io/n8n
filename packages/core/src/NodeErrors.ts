@@ -57,14 +57,14 @@ abstract class NodeError extends Error {
 		error: IErrorObject,
 		potentialKeys: string[],
 		traversalKeys: string[],
-		callback?: Function,
+		callback?: NodeApiMultiErrorsCallback,
 	): string | null {
 		for(const key of potentialKeys) {
 			if (error[key]) {
 				if (typeof error[key] === 'string') return error[key] as string;
 				if (typeof error[key] === 'number') return error[key]!.toString();
 				if (Array.isArray(error[key]) && callback) {
-					return callback(error[key]);
+					return callback(error[key] as any[]); // tslint:disable-line:no-any
 				}
 			}
 		}
@@ -177,7 +177,7 @@ export class NodeApiMultiError extends NodeApiError {
 	constructor(
 		nodeType: string,
 		error: IErrorObject,
-		callback: Function,
+		callback: NodeApiMultiErrorsCallback,
 	){
 		super(nodeType, error, {message: ''});
 		this.httpCode = this.findProperty(error, ERROR_CODE_PROPERTIES, ERROR_NESTING_PROPERTIES);
@@ -187,3 +187,9 @@ export class NodeApiMultiError extends NodeApiError {
 		console.log(this); // TODO: Delete later
 	}
 }
+
+export type NodeApiMultiErrorsCallback = GoogleMultiErrorsCallback;
+
+export type GoogleMultiErrorsCallback = (array: GoogleMultiErrorsArray) => string;
+
+export type GoogleMultiErrorsArray = Array<{ message: string }>;
