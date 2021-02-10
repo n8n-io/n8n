@@ -148,4 +148,84 @@ export const sessionFields = [
 			},
 		],
 	},
+
+	// ----------------------------------
+	//      session: shared fields
+	// ----------------------------------
+	{
+		displayName: 'Webinar Key',
+		name: 'webinarKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'session',
+				],
+				operation: [
+					'get',
+					'getDetails',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Session Key',
+		name: 'sessionKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'session',
+				],
+				operation: [
+					'get',
+					'getDetails',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------
+	//        session: getDetails
+	// ----------------------------------
+	{
+		displayName: 'Details',
+		name: 'details',
+		type: 'options',
+		default: 'performance',
+		options: [
+			{
+				name: 'Performance',
+				value: 'performance',
+			},
+			{
+				name: 'Polls',
+				value: 'polls',
+			},
+			{
+				name: 'Questions',
+				value: 'questions',
+			},
+			{
+				name: 'Surveys',
+				value: 'surveys',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'session',
+				],
+				operation: [
+					'getDetails',
+				],
+			},
+		},
+	},
 ] as INodeProperties[];
