@@ -68,28 +68,38 @@ export async function goToWebinarApiRequestAllItems(
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
+	resource: string,
 ): Promise<any> { // tslint:disable-line:no-any
 
-	// TODO
+	const resourceToResponseKey: { [key: string]: string } = {
+		session: 'sessionInfoResources',
+		webinar: 'webinars',
+	};
 
-	// let responseData;
-	// let startPosition = 1;
-	// const maxResults = 1000;
-	// const returnData: IDataObject[] = [];
+	const key = resourceToResponseKey[resource];
 
-	// const maxCount = await getCount.call(this, method, endpoint, qs);
+	let returnData: IDataObject[] = [];
+	let responseData;
 
-	// const originalQuery = qs.query;
+	do {
+		responseData = await goToWebinarApiRequest.call(this, method, endpoint, qs, body);
 
-	// do {
-	// 	qs.query = `${originalQuery} MAXRESULTS ${maxResults} STARTPOSITION ${startPosition}`;
-	// 	responseData = await goToWebinarApiRequest.call(this, method, endpoint, qs, body);
-	// 	returnData.push(...responseData.data);
-	// 	startPosition += maxResults;
+		if (!responseData._embedded) {
+			return returnData;
+		}
 
-	// } while (maxCount > returnData.length);
+		returnData.push(...responseData._embedded[key]);
 
-	// return returnData;
+		if (qs.limit && returnData.length >= qs.limit) {
+			returnData = returnData.splice(0, qs.limit as number);
+			return returnData;
+		}
+
+	} while (
+		responseData.totalElements && responseData.totalElements > returnData.length
+	);
+
+	return returnData;
 }
 
 export async function loadResource(
@@ -98,21 +108,21 @@ export async function loadResource(
 ) {
 	const returnData: INodePropertyOptions[] = [];
 
-	const qs = {
-		query: `SELECT * FROM ${resource}`,
-	} as IDataObject;
+	// const qs = {
+	// 	query: `SELECT * FROM ${resource}`,
+	// } as IDataObject;
 
-	const { oauthTokenData: { realmId } } = this.getCredentials('goToWebinarOAuth2Api') as { oauthTokenData: { realmId: string } };
-	const endpoint = `/v3/company/${realmId}/query`;
+	// const { oauthTokenData: { realmId } } = this.getCredentials('goToWebinarOAuth2Api') as { oauthTokenData: { realmId: string } };
+	// const endpoint = `/v3/company/${realmId}/query`;
 
-	const resourceItems = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {});
+	// const resourceItems = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {});
 
-	resourceItems.forEach((resourceItem: { DisplayName: string, Name: string, Id: string }) => {
-		returnData.push({
-			name: resourceItem.DisplayName || resourceItem.Name,
-			value: resourceItem.Id,
-		});
-	});
+	// resourceItems.forEach((resourceItem: { DisplayName: string, Name: string, Id: string }) => {
+	// 	returnData.push({
+	// 		name: resourceItem.DisplayName || resourceItem.Name,
+	// 		value: resourceItem.Id,
+	// 	});
+	// });
 
 	return returnData;
 }
