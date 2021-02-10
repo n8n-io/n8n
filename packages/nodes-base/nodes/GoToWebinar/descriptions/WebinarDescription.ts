@@ -262,6 +262,89 @@ export const webinarFields = [
 			},
 		],
 	},
+
+	// ----------------------------------
+	//         webinar: getAll
+	// ----------------------------------
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Return all results.',
+		displayOptions: {
+			show: {
+				resource: [
+					'webinar',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 10,
+		description: 'The number of results to return.',
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'webinar',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Time Range',
+		name: 'times',
+		type: 'fixedCollection',
+		required: true,
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'webinar',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Times Properties',
+				name: 'timesProperties',
+				values: [
+					{
+						displayName: 'Start Time',
+						name: 'startTime',
+						type: 'dateTime',
+						default: '',
+					},
+					{
+						displayName: 'End Time',
+						name: 'endTime',
+						type: 'dateTime',
+						default: '',
+					},
+				],
+			},
+		],
+	},
+
 	// ----------------------------------
 	//         webinar: update
 	// ----------------------------------
