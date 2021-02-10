@@ -15,6 +15,10 @@ export const coorganizerOperations = [
 				value: 'create',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+			},
+			{
 				name: 'Get All',
 				value: 'getAll',
 			},
@@ -124,6 +128,44 @@ export const coorganizerFields = [
 				],
 				isExternal: [
 					false,
+				],
+			},
+		},
+	},
+
+	// ----------------------------------
+	//         coorganizer: create
+	// ----------------------------------
+	{
+		displayName: 'Webinar Key',
+		name: 'webinarKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'coorganizer',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Organizer Key',
+		name: 'organizerKey',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'coorganizer',
+				],
+				operation: [
+					'delete',
 				],
 			},
 		},
