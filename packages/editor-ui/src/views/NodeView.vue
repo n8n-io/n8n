@@ -964,7 +964,7 @@ export default mixins(
 					return originalName;
 				}
 
-				const nameMatch = originalName.match(/(.*[a-zA-Z])(\d*)/);
+				const nameMatch = originalName.match(/(.*\D+)(\d*)/);
 				let ignore, baseName, nameIndex, uniqueName;
 				let index = 1;
 
