@@ -35,6 +35,8 @@ import {
 	omit,
 } from 'lodash';
 
+import moment = require('moment');
+
 export class GoToWebinar implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GoToWebinar',
@@ -403,7 +405,7 @@ export class GoToWebinar implements INodeType {
 					const sessionKey = this.getNodeParameter('sessionKey', i) as string;
 
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/sessions/${sessionKey}`;
-					responseData = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, {}, {});
+					responseData = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
 
 				} else if (operation === 'getAll') {
 
@@ -411,30 +413,39 @@ export class GoToWebinar implements INodeType {
 					//         session: getAll
 					// ----------------------------------
 
-					const {
-						fromTime,
-						toTime,
-						byOrganizer,
-						byWebinar,
-					} = this.getNodeParameter('filters', i) as IDataObject;
+					const times = this.getNodeParameter('times', i) as IDataObject;
 
-					const qs = { fromTime, toTime } as IDataObject;
+					if (isEmpty(times)) {
+						throw new Error('Please enter a time range.');
+					}
 
-					if (byOrganizer) {
+					const { timesProperties: { startTime, endTime } } = times as {
+						timesProperties: { startTime: string, endTime: string }
+					};
 
-						const endpoint = `organizers/${organizerKey}/sessions`;
-						responseData = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {});
+					const qs = {
+						fromTime: moment(startTime).format(),
+						toTime: moment(endTime).format(),
+					} as IDataObject;
 
-					} else if (byWebinar) {
+					const { filterByWebinar, webinarKey } = this.getNodeParameter('additionalFields', i) as {
+						filterByWebinar: boolean,
+						webinarKey: string,
+					};
 
-						const webinarKey = this.getNodeParameter('webinarKey', i) as IDataObject;
+					if (filterByWebinar) {
+
+						if (!webinarKey) {
+							throw new Error('Please enter a webinar key to filter by webinar.');
+						}
+
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/sessions`;
-						responseData = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {});
+						responseData = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 
 					} else {
 
 						const endpoint = `organizers/${organizerKey}/sessions`;
-						responseData = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {});
+						responseData = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 
 					}
 
@@ -517,16 +528,29 @@ export class GoToWebinar implements INodeType {
 					//         webinar: getAll
 					// ----------------------------------
 
-					// TODO: not required in UI
-					const {
-						fromTime,
-						toTime,
-					} = this.getNodeParameter('filters', i) as IDataObject;
+					const times = this.getNodeParameter('times', i) as IDataObject;
 
-					const qs = { fromTime, toTime } as IDataObject;
+					if (isEmpty(times)) {
+						throw new Error('Please enter a time range.');
+					}
+
+					const { timesProperties: { startTime, endTime } } = times as {
+						timesProperties: { startTime: string, endTime: string }
+					};
+
+					const qs = {
+						fromTime: moment(startTime).format(),
+						toTime: moment(endTime).format(),
+					} as IDataObject;
+
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					if (!returnAll) {
+						qs.limit = this.getNodeParameter('limit', 0) as number;
+					}
 
 					const endpoint = `/accounts/${accountKey}/webinars`;
-					responseData = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {});
+					responseData = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 
 				} else if (operation === 'update') {
 
@@ -545,7 +569,10 @@ export class GoToWebinar implements INodeType {
 					let updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 					if (updateFields.times) {
-						const { times } = updateFields as { times: { timesProperties: Array<{startTime: string, endTime: string}> } };
+						const { times } = updateFields as {
+							times: { timesProperties: Array<{startTime: string, endTime: string}> }
+						};
+
 						body = {
 							times: times.timesProperties,
 						} as IDataObject;
