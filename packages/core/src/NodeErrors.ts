@@ -185,7 +185,7 @@ export class NodeApiMultiError extends NodeApiError {
 		this.description = this.findProperty(error, MULTI_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES, this.findMultiMessages);
 	}
 
-	private findMultiMessages(errors: Array<IErrorObject | string>): string | null {
+	private findMultiMessages(errors: Array<IErrorObject | string>): string {
 		return errors.map((error: IErrorObject | string) => {
 			if (typeof error === 'string') {
 				return error;
