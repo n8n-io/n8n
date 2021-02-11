@@ -2,6 +2,7 @@ export const employeeAdditionalFieldsOptions = [
 	{
 		displayName: 'Active',
 		name: 'Active',
+		description: 'Whether the employee is currently enabled for use by QuickBooks.',
 		type: 'boolean',
 		default: false,
 	},
@@ -77,6 +78,7 @@ export const employeeAdditionalFieldsOptions = [
 	{
 		displayName: 'Print-On-Check Name',
 		name: 'PrintOnCheckName',
+		description: 'Name of the employee as printed on a check.',
 		type: 'string',
 		default: '',
 	},
