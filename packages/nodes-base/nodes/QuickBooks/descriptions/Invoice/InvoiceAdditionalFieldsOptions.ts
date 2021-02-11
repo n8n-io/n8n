@@ -2,6 +2,7 @@ export const invoiceAdditionalFieldsOptions = [
 	{
 		displayName: 'Balance',
 		name: 'Balance',
+		description: 'The balance reflecting any payments made against the transaction.',
 		type: 'number',
 		default: 0,
 	},
@@ -59,12 +60,14 @@ export const invoiceAdditionalFieldsOptions = [
 	{
 		displayName: 'Billing Email',
 		name: 'BillEmail',
+		description: 'E-mail address to which the invoice will be sent.',
 		type: 'string',
 		default: '',
 	},
 	{
 		displayName: 'Customer Memo',
 		name: 'CustomerMemo',
+		description: 'User-entered message to the customer. This message is visible to end user on their transactions.',
 		type: 'string',
 		default: '',
 	},
@@ -106,12 +109,14 @@ export const invoiceAdditionalFieldsOptions = [
 	{
 		displayName: 'Document Number',
 		name: 'DocNumber',
+		description: 'Reference number for the transaction.',
 		type: 'string',
 		default: '',
 	},
 	{
 		displayName: 'Due Date',
 		name: 'DueDate',
+		description: 'Date when the payment of the transaction is due.',
 		type: 'dateTime',
 		default: '',
 	},
@@ -164,12 +169,14 @@ export const invoiceAdditionalFieldsOptions = [
 	{
 		displayName: 'Total Amount',
 		name: 'TotalAmt',
+		description: 'Total amount of the transaction.',
 		type: 'number',
 		default: 0,
 	},
 	{
 		displayName: 'Transaction Date',
 		name: 'TxnDate',
+		description: 'Date when the transaction occurred.',
 		type: 'dateTime',
 		default: '',
 	},

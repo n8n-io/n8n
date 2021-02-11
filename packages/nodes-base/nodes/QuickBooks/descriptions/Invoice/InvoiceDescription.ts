@@ -62,7 +62,7 @@ export const invoiceFields = [
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The customer who the invoice is for.',
+		description: 'The ID of the customer who the invoice is for.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -83,6 +83,7 @@ export const invoiceFields = [
 		name: 'Line',
 		type: 'collection',
 		placeholder: 'Add Line Item Property',
+		description: 'Individual line item of a transaction.',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -122,12 +123,14 @@ export const invoiceFields = [
 			{
 				displayName: 'Amount',
 				name: 'Amount',
+				description: 'Monetary amount of the line item.',
 				type: 'number',
 				default: 0,
 			},
 			{
 				displayName: 'Description',
 				name: 'Description',
+				description: 'Textual description of the line item.',
 				type: 'string',
 				default: '',
 				typeOptions: {
@@ -137,6 +140,7 @@ export const invoiceFields = [
 			{
 				displayName: 'Position',
 				name: 'LineNum',
+				description: 'Position of the line item relative to others.',
 				type: 'number',
 				default: 1,
 			},
