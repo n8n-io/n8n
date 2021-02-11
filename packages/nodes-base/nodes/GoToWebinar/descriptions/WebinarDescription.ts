@@ -88,7 +88,7 @@ export const webinarFields = [
 		},
 	},
 	{
-		displayName: 'Times',
+		displayName: 'Time Range',
 		name: 'times',
 		type: 'fixedCollection',
 		required: true,

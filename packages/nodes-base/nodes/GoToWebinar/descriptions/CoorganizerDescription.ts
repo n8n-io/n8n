@@ -170,4 +170,26 @@ export const coorganizerFields = [
 			},
 		},
 	},
+
+	// ----------------------------------
+	//        coorganizer: getAll
+	// ----------------------------------
+	{
+		displayName: 'Webinar Key',
+		name: 'webinarKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'coorganizer',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
 ] as INodeProperties[];
