@@ -1,5 +1,6 @@
 import {
 	IErrorObject,
+	INode,
 	IStatusCodeMessages,
 } from 'n8n-workflow';
 
@@ -35,14 +36,14 @@ const MULTI_MESSAGE_PROPERTIES = ['messages', 'errors', 'errorMessages'];
 abstract class NodeError extends Error {
 	description: string | null | undefined;
 	cause: Error | IErrorObject;
-	nodeType: string;
+	node: INode;
 	timestamp: number;
 
-	constructor(name: string, nodeType: string, error: Error | IErrorObject) {
+	constructor(name: string, node: INode, error: Error | IErrorObject) {
 		super();
 		this.name = name;
 		this.cause = error;
-		this.nodeType = nodeType;
+		this.node = node;
 		this.timestamp = new Date().getTime();
 	}
 
@@ -86,12 +87,12 @@ abstract class NodeError extends Error {
 
 export class NodeOperationError extends NodeError {
 
-	constructor(nodeType: string, error: Error | string) {
+	constructor(node: INode, error: Error | string) {
 		if (typeof error === 'string') {
 			error = new Error(error);
 		}
-		super('NodeOperationError', nodeType, error);
-		this.message = `${nodeType}: ${error.message}`;
+		super('NodeOperationError', node, error);
+		this.message = `${this.node.name}: ${error.message}`;
 	}
 }
 
@@ -118,12 +119,12 @@ export class NodeApiError extends NodeError {
 	httpCode: string | null;
 
 	constructor(
-		nodeType: string,
+		node: INode,
 		error: IErrorObject,
 		{message, description, httpCode}: {message?: string, description?: string, httpCode?: string} = {},
 	){
-		super('NodeApiError', nodeType, error);
-		this.message = `${nodeType}: `;
+		super('NodeApiError', node, error);
+		this.message = `${this.node.name}: `;
 		if (message || message === '') {
 			this.message += message;
 			this.description = description;
@@ -176,11 +177,11 @@ export class NodeApiError extends NodeError {
 
 export class NodeApiMultiError extends NodeApiError {
 	constructor(
-		nodeType: string,
+		node: INode,
 		error: IErrorObject,
-		customCallback?: (errors: Array<IErrorObject | string>) => string,
+		customCallback?: (errors: Array<IErrorObject | string>) => string | null,
 	){
-		super(nodeType, error, {message: ''});
+		super(node, error, {message: ''});
 		const callback = customCallback || this.findMultiMessages;
 
 		this.httpCode = this.findProperty(error, ERROR_CODE_PROPERTIES, ERROR_NESTING_PROPERTIES);

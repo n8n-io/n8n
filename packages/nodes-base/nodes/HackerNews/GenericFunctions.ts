@@ -34,7 +34,7 @@ export async function hackerNewsApiRequest(this: IHookFunctions | IExecuteFuncti
 		return await this.helpers.request!(options);
 	} catch (error) {
 
-		throw new NodeApiError('Hacker News', error);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

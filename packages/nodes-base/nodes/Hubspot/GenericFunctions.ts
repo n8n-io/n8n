@@ -7,6 +7,8 @@ import {
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
+	NodeApiError,
+	NodeApiMultiError,
 } from 'n8n-core';
 
 import {
@@ -48,27 +50,10 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 			return await this.helpers.requestOAuth2!.call(this, 'hubspotOAuth2Api', options, { tokenType: 'Bearer' });
 		}
 	} catch (error) {
-		let errorMessages;
-
-		if (error.response && error.response.body) {
-
-			if (error.response.body.message) {
-
-				errorMessages = [error.response.body.message];
-
-			} else if (error.response.body.errors) {
-				// Try to return the error prettier
-				errorMessages = error.response.body.errors;
-
-				if (errorMessages[0].message) {
-					// @ts-ignore
-					errorMessages = errorMessages.map(errorItem => errorItem.message);
-				}
-			}
-			throw new Error(`Hubspot error response [${error.statusCode}]: ${errorMessages.join('|')}`);
+		if (error.response?.body?.errors) {
+			throw new NodeApiMultiError(this.getNode(), error);
 		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

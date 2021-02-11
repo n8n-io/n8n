@@ -305,16 +305,16 @@ export function getCredentials(workflow: Workflow, node: INode, type: string, ad
 	// Get the NodeType as it has the information if the credentials are required
 	const nodeType = workflow.nodeTypes.getByName(node.type);
 	if (nodeType === undefined) {
-		throw new NodeOperationError(node.type, `Node type "${node.type}" is not known so can not get credentials!`);
+		throw new NodeOperationError(node, `Node type "${node.type}" is not known so can not get credentials!`);
 	}
 
 	if (nodeType.description.credentials === undefined) {
-		throw new NodeOperationError(node.type, `Node type "${node.type}" does not have any credentials defined!`);
+		throw new NodeOperationError(node, `Node type "${node.type}" does not have any credentials defined!`);
 	}
 
 	const nodeCredentialDescription = nodeType.description.credentials.find((credentialTypeDescription) => credentialTypeDescription.name === type);
 	if (nodeCredentialDescription === undefined) {
-		throw new NodeOperationError(node.type, `Node type "${node.type}" does not have any credentials of type "${type}" defined!`);
+		throw new NodeOperationError(node, `Node type "${node.type}" does not have any credentials of type "${type}" defined!`);
 	}
 
 	if (NodeHelpers.displayParameter(additionalData.currentNodeParameters || node.parameters, nodeCredentialDescription, node.parameters) === false) {
@@ -329,10 +329,10 @@ export function getCredentials(workflow: Workflow, node: INode, type: string, ad
 		if (nodeCredentialDescription.required === true) {
 			// Credentials are required so error
 			if (!node.credentials) {
-				throw new NodeOperationError(node.type,'Node does not have any credentials set!');
+				throw new NodeOperationError(node,'Node does not have any credentials set!');
 			}
 			if (!node.credentials[type]) {
-				throw new NodeOperationError(node.type,`Node does not have any credentials set for "${type}"!`);
+				throw new NodeOperationError(node,`Node does not have any credentials set for "${type}"!`);
 			}
 		} else {
 			// Credentials are not required so resolve with undefined
