@@ -134,7 +134,7 @@ export const coorganizerFields = [
 	},
 
 	// ----------------------------------
-	//         coorganizer: create
+	//         coorganizer: delete
 	// ----------------------------------
 	{
 		displayName: 'Webinar Key',
@@ -159,6 +159,24 @@ export const coorganizerFields = [
 		name: 'organizerKey',
 		type: 'string',
 		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'coorganizer',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Is External',
+		name: 'isExternal',
+		type: 'boolean',
+		required: true,
+		default: false,
+		description: 'Whether the co-organizer has no GoToWebinar account.',
 		displayOptions: {
 			show: {
 				resource: [
