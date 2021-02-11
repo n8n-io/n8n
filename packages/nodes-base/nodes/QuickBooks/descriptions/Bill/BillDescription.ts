@@ -54,7 +54,7 @@ export const billFields = [
 		name: 'VendorRef',
 		type: 'options',
 		required: true,
-		description: 'The ID vendor who the bill is for.',
+		description: 'The ID of the vendor who the bill is for.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getVendors',
@@ -75,6 +75,7 @@ export const billFields = [
 		name: 'Line',
 		type: 'collection',
 		placeholder: 'Add Line Item Property',
+		description: 'Individual line item of a transaction.',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -124,12 +125,14 @@ export const billFields = [
 			{
 				displayName: 'Amount',
 				name: 'Amount',
+				description: 'Monetary amount of the line item.',
 				type: 'number',
 				default: 0,
 			},
 			{
 				displayName: 'Description',
 				name: 'Description',
+				description: 'Textual description of the line item.',
 				type: 'string',
 				default: '',
 				typeOptions: {
@@ -139,6 +142,7 @@ export const billFields = [
 			{
 				displayName: 'Position',
 				name: 'LineNum',
+				description: 'Position of the line item relative to others.',
 				type: 'number',
 				default: 1,
 			},
