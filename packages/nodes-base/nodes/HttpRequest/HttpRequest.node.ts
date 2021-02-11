@@ -15,6 +15,8 @@ interface OptionDataParamters {
 	[key: string]: OptionData;
 }
 
+export * from './HttpRequest_v1.node';
+export * from './HttpRequest_v2.node';
 
 export class HttpRequest implements INodeVersionedType {
 

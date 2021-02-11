@@ -6,6 +6,8 @@ import {
 	ICredentialType,
 	INodeType,
 	INodeTypeData,
+	INodeVersionedType,
+	NodeHelpers,
 } from 'n8n-workflow';
 
 import * as config from '../config';
@@ -156,7 +158,7 @@ class LoadNodesAndCredentialsClass {
 
 		const tempModule = require(filePath);
 		try {
-			tempNode = new tempModule[nodeName]() as INodeType;
+			tempNode = NodeHelpers.getVersionedTypeNode(new tempModule[nodeName]() as INodeType | INodeVersionedType);
 		} catch (error) {
 			console.error(`Error loading node "${nodeName}" from: "${filePath}"`);
 			throw error;
