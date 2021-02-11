@@ -2,18 +2,21 @@ export const customerAdditionalFieldsOptions = [
 	{
 		displayName: 'Active',
 		name: 'Active',
+		description: 'Whether the customer is currently enabled for use by QuickBooks.',
 		type: 'boolean',
-		default: false,
+		default: true,
 	},
 	{
 		displayName: 'Balance',
 		name: 'Balance',
+		description: 'Open balance amount or amount unpaid by the customer.',
 		type: 'string',
 		default: '',
 	},
 	{
 		displayName: 'Balance With Jobs',
 		name: 'BalanceWithJobs',
+		description: 'Cumulative open balance amount for the customer (or job) and all its sub-jobs.',
 		type: 'number',
 		default: 0,
 	},
@@ -71,6 +74,7 @@ export const customerAdditionalFieldsOptions = [
 	{
 		displayName: 'Bill With Parent',
 		name: 'BillWithParent',
+		description: 'Bill this customer together with its parent.',
 		type: 'boolean',
 		default: false,
 	},
@@ -131,14 +135,16 @@ export const customerAdditionalFieldsOptions = [
 		default: '',
 	},
 	{
-		displayName: 'Print on Check Name',
+		displayName: 'Print-On-Check Name',
 		name: 'PrintOnCheckName',
+		description: 'Name of the customer as printed on a check.',
 		type: 'string',
 		default: '',
 	},
 	{
 		displayName: 'Taxable',
 		name: 'Taxable',
+		description: 'Whether transactions for this customer are taxable.',
 		type: 'boolean',
 		default: false,
 	},
