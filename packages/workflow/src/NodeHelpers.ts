@@ -9,6 +9,7 @@ import {
 	INodeProperties,
 	INodePropertyCollection,
 	INodeType,
+	INodeVersionedType,
 	IParameterDependencies,
 	IRunExecutionData,
 	IWebhookData,
@@ -1202,5 +1203,13 @@ export function mergeNodeProperties(mainProperties: INodeProperties[], addProper
 			// Property exists already, so overwrite
 			mainProperties[existingIndex] = property;
 		}
+	}
+}
+
+export function getVersionedTypeNode(object: INodeVersionedType | INodeType, version?: number): INodeType {
+	if('getNodeType' in object) {
+		return object.getNodeType(version);
+	} else {
+		return object;
 	}
 }

@@ -2,6 +2,7 @@ import {
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
+	INodeVersionedType,
 	NodeHelpers,
 } from 'n8n-workflow';
 
@@ -15,27 +16,31 @@ class NodeTypesClass implements INodeTypes {
 		// Some nodeTypes need to get special parameters applied like the
 		// polling nodes the polling times
 		for (const nodeTypeData of Object.values(nodeTypes)) {
-			const applyParameters = NodeHelpers.getSpecialNodeParameters(nodeTypeData.type);
+			const nodeType = NodeHelpers.getVersionedTypeNode(nodeTypeData.type);
+			const applyParameters = NodeHelpers.getSpecialNodeParameters(nodeType);
 
 			if (applyParameters.length) {
-				nodeTypeData.type.description.properties.unshift.apply(nodeTypeData.type.description.properties, applyParameters);
+				nodeType.description.properties.unshift.apply(nodeType.description.properties, applyParameters);
 			}
 		}
 		this.nodeTypes = nodeTypes;
 	}
 
 	getAll(): INodeType[] {
-		return Object.values(this.nodeTypes).map((data) => data.type);
+		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedTypeNode(data.type));
 	}
 
 	getByName(nodeType: string): INodeType | undefined {
 		if (this.nodeTypes[nodeType] === undefined) {
 			throw new Error(`The node-type "${nodeType}" is not known!`);
 		}
-		return this.nodeTypes[nodeType].type;
+		return this.getByNameAndVersion(nodeType);
+	}
+
+	getByNameAndVersion(nodeType: string, version?: number): INodeType {
+		return NodeHelpers.getVersionedTypeNode(this.nodeTypes[nodeType].type);
 	}
 }
-
 
 
 let nodeTypesInstance: NodeTypesClass | undefined;
