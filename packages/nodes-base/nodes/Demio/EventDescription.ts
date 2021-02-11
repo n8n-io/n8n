@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const eventOperations = [
 	{
@@ -36,12 +38,53 @@ export const eventOperations = [
 
 export const eventFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                   event:getAll                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   event:getAll                             */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'event',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'event',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -80,9 +123,9 @@ export const eventFields = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                   event:get                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   event:get                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Event ID',
 		name: 'eventId',
@@ -126,7 +169,7 @@ export const eventFields = [
 				description: 'Return only active dates in series',
 			},
 			{
-				displayName: 'Date ID',
+				displayName: 'Session ID',
 				name: 'date_id',
 				type: 'string',
 				default: '',
@@ -135,9 +178,29 @@ export const eventFields = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                   event:register                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   event:register                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Event ID',
+		name: 'eventId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getEvents',
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'event',
+				],
+				operation: [
+					'register',
+				],
+			},
+		},
+		default: '',
+		description: 'Event ID',
+	},
 	{
 		displayName: 'First Name',
 		name: 'firstName',
@@ -192,18 +255,43 @@ export const eventFields = [
 		},
 		options: [
 			{
-				displayName: 'Custom Fields',
-				name: 'custom_field',
+				displayName: 'Company',
+				name: 'company',
 				type: 'string',
 				default: '',
-				description: 'The value of the custom field. Each custom field\'s unique identifier<br /> can be found within the Event\'s Registration block in the Customize tab.',
+				description: 'The value for the predefined Company field.',
 			},
 			{
-				displayName: 'Event ID',
-				name: 'id',
-				type: 'string',
-				default: '',
-				description: 'Event ID',
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'string',
+								default: '',
+								description: 'Each custom field\'s unique identifier<br /> can be found within the Event\'s Registration block in the Customize tab.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'The value to set on custom field.',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Event Registration URL',
@@ -213,11 +301,11 @@ export const eventFields = [
 				description: 'Event Registration page URL. It can be useful when you<br /> do not know Event ID, but have Event link.',
 			},
 			{
-				displayName: 'Event Date ID',
-				name: 'date_id',
+				displayName: 'GDPR',
+				name: 'gdpr',
 				type: 'string',
 				default: '',
-				description: 'Event Date ID. If not defined, system uses nearest active Date.',
+				description: 'The value for the predefined GDPR field.',
 			},
 			{
 				displayName: 'Last Name',
@@ -227,20 +315,6 @@ export const eventFields = [
 				description: 'The value for the predefined Last Name field.',
 			},
 			{
-				displayName: 'Company',
-				name: 'company',
-				type: 'string',
-				default: '',
-				description: 'The value for the predefined Company field.',
-			},
-			{
-				displayName: 'Website',
-				name: 'website',
-				type: 'string',
-				default: '',
-				description: 'The value for the predefined Website field.',
-			},
-			{
 				displayName: 'Phone Number',
 				name: 'phone_number',
 				type: 'string',
@@ -248,11 +322,24 @@ export const eventFields = [
 				description: 'The value for the predefined Phone Number field.',
 			},
 			{
-				displayName: 'GDPR',
-				name: 'gdpr',
+				displayName: 'Session ID',
+				name: 'date_id',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getEventSessions',
+					loadOptionsDependsOn: [
+						'eventId',
+					],
+				},
+				default: '',
+				description: 'Event Session ID',
+			},
+			{
+				displayName: 'Website',
+				name: 'website',
 				type: 'string',
 				default: '',
-				description: 'The value for the predefined GDPR field.',
+				description: 'The value for the predefined Website field.',
 			},
 		],
 	},

@@ -26,16 +26,42 @@ export const reportOperations = [
 
 export const reportFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                   report:get                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   report:get                               */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Event Date ID',
-		name: 'eventDateId',
-		type: 'string',
+		displayName: 'Event ID',
+		name: 'eventId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getEvents',
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'report',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+		default: '',
+		description: 'Event ID',
+	},
+	{
+		displayName: 'Session ID',
+		name: 'dateId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getEventSessions',
+			loadOptionsDependsOn: [
+				'eventId',
+			],
+		},
 		default: '',
 		required: true,
-		description: 'Event Date ID',
+		description: 'ID of the session',
 		displayOptions: {
 			show: {
 				resource: [
@@ -48,8 +74,8 @@ export const reportFields = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Filters',
+		name: 'filters',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
