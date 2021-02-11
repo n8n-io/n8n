@@ -58,7 +58,7 @@ export const estimateFields = [
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The customer who the estimate is for.',
+		description: 'The ID of the customer who the estimate is for.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
@@ -79,6 +79,7 @@ export const estimateFields = [
 		name: 'Line',
 		type: 'collection',
 		placeholder: 'Add Line Item Property',
+		description: 'Individual line item of a transaction.',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -118,12 +119,14 @@ export const estimateFields = [
 			{
 				displayName: 'Amount',
 				name: 'Amount',
+				description: 'Monetary amount of the line item.',
 				type: 'number',
 				default: 0,
 			},
 			{
 				displayName: 'Description',
 				name: 'Description',
+				description: 'Textual description of the line item.',
 				type: 'string',
 				default: '',
 				typeOptions: {
@@ -133,6 +136,7 @@ export const estimateFields = [
 			{
 				displayName: 'Position',
 				name: 'LineNum',
+				description: 'Position of the line item relative to others.',
 				type: 'number',
 				default: 1,
 			},

@@ -59,6 +59,7 @@ export const estimateAdditionalFieldsOptions = [
 	{
 		displayName: 'Billing Email',
 		name: 'BillEmail',
+		description: 'E-mail address to which the estimate will be sent.',
 		type: 'string',
 		default: '',
 	},
@@ -100,12 +101,14 @@ export const estimateAdditionalFieldsOptions = [
 	{
 		displayName: 'Customer Memo',
 		name: 'CustomerMemo',
+		description: 'User-entered message to the customer. This message is visible to end user on their transactions.',
 		type: 'string',
 		default: '',
 	},
 	{
 		displayName: 'Document Number',
 		name: 'DocNumber',
+		description: 'Reference number for the transaction.',
 		type: 'string',
 		default: '',
 	},
@@ -203,19 +206,22 @@ export const estimateAdditionalFieldsOptions = [
 	{
 		displayName: 'Total Amount',
 		name: 'TotalAmt',
+		description: 'Total amount of the transaction.',
 		type: 'number',
 		default: 0,
 	},
 	{
 		displayName: 'Transaction Date',
 		name: 'TxnDate',
+		description: 'Date when the transaction occurred.',
 		type: 'dateTime',
 		default: '',
 	},
 	{
 		displayName: 'Total Tax',
 		name: 'TotalTax',
-		type: 'string',
-		default: '',
+		description: 'Total amount of tax incurred.',
+		type: 'number',
+		default: 0,
 	},
 ];
