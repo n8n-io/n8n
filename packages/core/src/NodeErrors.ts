@@ -20,6 +20,7 @@ const ERROR_MESSAGE_PROPERTIES = [
 	'error_summary',
 	'title',
 	'text',
+	'field',
 	'error',
 	'err',
 	'type',
@@ -29,7 +30,7 @@ const ERROR_CODE_PROPERTIES = ['statusCode', 'status', 'code', 'status_code', 'e
 
 const ERROR_NESTING_PROPERTIES = ['error', 'err', 'response', 'body', 'data'];
 
-const MULTI_MESSAGE_PROPERTIES = ['messages', 'errors'];
+const MULTI_MESSAGE_PROPERTIES = ['messages', 'errors', 'errorMessages'];
 
 abstract class NodeError extends Error {
 	description: string | null | undefined;
@@ -177,12 +178,15 @@ export class NodeApiMultiError extends NodeApiError {
 	constructor(
 		nodeType: string,
 		error: IErrorObject,
+		customCallback?: (errors: Array<IErrorObject | string>) => string,
 	){
 		super(nodeType, error, {message: ''});
+		const callback = customCallback || this.findMultiMessages;
+
 		this.httpCode = this.findProperty(error, ERROR_CODE_PROPERTIES, ERROR_NESTING_PROPERTIES);
 		this.setMessage();
 
-		this.description = this.findProperty(error, MULTI_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES, this.findMultiMessages);
+		this.description = this.findProperty(error, MULTI_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES, callback);
 	}
 
 	private findMultiMessages(errors: Array<IErrorObject | string>): string {
