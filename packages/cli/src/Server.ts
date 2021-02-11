@@ -1472,7 +1472,7 @@ class App {
 			}
 
 			const resultsPromise = resultsQuery.getMany();
-			
+
 			const countPromise = Db.collections.Execution!.count(countFilter);
 
 			const results: IExecutionFlattedDb[] = await resultsPromise;
@@ -1557,7 +1557,7 @@ class App {
 				delete data!.executionData!.resultData.error;
 				const length = data!.executionData!.resultData.runData[lastNodeExecuted].length;
 				if (length > 0 && data!.executionData!.resultData.runData[lastNodeExecuted][length - 1].error !== undefined) {
-					// Remove results only if it is an error. 
+					// Remove results only if it is an error.
 					// If we are retrying due to a crash, the information is simply success info from last node
 					data!.executionData!.resultData.runData[lastNodeExecuted].pop();
 					// Stack will determine what to run next
@@ -1651,7 +1651,7 @@ class App {
 					])
 					.orderBy('execution.id', 'DESC')
 					.andWhere(`execution.id IN (:...ids)`, {ids: currentlyRunningExecutionIds});
-					
+
 				if (req.query.filter) {
 					const filter = JSON.parse(req.query.filter as string);
 					if (filter.workflowId !== undefined) {
@@ -1674,12 +1674,12 @@ class App {
 				const executingWorkflows = this.activeExecutionsInstance.getActiveExecutions();
 
 				const returnData: IExecutionsSummary[] = [];
-	
+
 				let filter: any = {}; // tslint:disable-line:no-any
 				if (req.query.filter) {
 					filter = JSON.parse(req.query.filter as string);
 				}
-	
+
 				for (const data of executingWorkflows) {
 					if (filter.workflowId !== undefined && filter.workflowId !== data.workflowId) {
 						continue;
@@ -1687,14 +1687,14 @@ class App {
 					returnData.push(
 						{
 							idActive: data.id.toString(),
-							workflowId: data.workflowId.toString(),
+							workflowId: data.workflowId === undefined ? '' : data.workflowId.toString(),
 							mode: data.mode,
 							retryOf: data.retryOf,
 							startedAt: new Date(data.startedAt),
 						}
 					);
 				}
-	
+
 				return returnData;
 			}
 		}));
@@ -1721,26 +1721,26 @@ class App {
 					stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : undefined,
 					finished: fullExecutionData.finished,
 				};
-	
+
 				return returnData;
-	
+
 			} else {
 				const executionId = req.params.id;
-	
+
 				// Stopt he execution and wait till it is done and we got the data
 				const result = await this.activeExecutionsInstance.stopExecution(executionId);
-	
+
 				if (result === undefined) {
 					throw new Error(`The execution id "${executionId}" could not be found.`);
 				}
-	
+
 				const returnData: IExecutionsStopData = {
 					mode: result.mode,
 					startedAt: new Date(result.startedAt),
 					stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
 					finished: result.finished,
 				};
-	
+
 				return returnData;
 			}
 		}));
