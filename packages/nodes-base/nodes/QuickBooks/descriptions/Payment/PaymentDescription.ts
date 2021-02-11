@@ -81,6 +81,7 @@ export const paymentFields = [
 	{
 		displayName: 'Total Amount',
 		name: 'TotalAmt',
+		description: 'Total amount of the transaction.',
 		type: 'number',
 		default: 0,
 		displayOptions: {
