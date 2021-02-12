@@ -132,8 +132,11 @@ export const sessionFields = [
 			{
 				displayName: 'Webinar Key',
 				name: 'webinarKey',
-				type: 'string',
-				default: '',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getWebinars',
+				},
+				default: {},
 				description: '',
 			},
 		],
@@ -145,9 +148,12 @@ export const sessionFields = [
 	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getWebinars',
+		},
 		required: true,
-		default: '',
+		default: {},
 		description: '',
 		displayOptions: {
 			show: {
