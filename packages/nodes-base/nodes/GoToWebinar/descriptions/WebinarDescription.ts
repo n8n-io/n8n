@@ -44,29 +44,6 @@ export const webinarOperations = [
 
 export const webinarFields = [
 	// ----------------------------------
-	//     webinar: shared fields
-	// ----------------------------------
-	{
-		displayName: 'Webinar Key',
-		name: 'webinarKey',
-		type: 'string',
-		required: true,
-		default: '',
-		description: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'webinar',
-				],
-				operation: [
-					'delete',
-					'get',
-					'update',
-				],
-			},
-		},
-	},
-	// ----------------------------------
 	//         webinar: create
 	// ----------------------------------
 	{
@@ -236,6 +213,24 @@ export const webinarFields = [
 	//         webinar: delete
 	// ----------------------------------
 	{
+		displayName: 'Webinar Key',
+		name: 'webinarKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'Key of the webinar to delete.',
+		displayOptions: {
+			show: {
+				resource: [
+					'webinar',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -262,7 +257,27 @@ export const webinarFields = [
 			},
 		],
 	},
-
+	// ----------------------------------
+	//         webinar: getAll
+	// ----------------------------------
+	{
+		displayName: 'Webinar Key',
+		name: 'webinarKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'Key of the webinar to retrieve.',
+		displayOptions: {
+			show: {
+				resource: [
+					'webinar',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
 	// ----------------------------------
 	//         webinar: getAll
 	// ----------------------------------
@@ -339,12 +354,14 @@ export const webinarFields = [
 								displayName: 'Start Time',
 								name: 'fromTime',
 								type: 'dateTime',
+								description: 'Start of the datetime range for the webinar.',
 								default: '',
 							},
 							{
 								displayName: 'End Time',
 								name: 'toTime',
 								type: 'dateTime',
+								description: 'End of the datetime range for the webinar.',
 								default: '',
 							},
 						],
@@ -353,10 +370,27 @@ export const webinarFields = [
 			},
 		],
 	},
-
 	// ----------------------------------
 	//         webinar: update
 	// ----------------------------------
+	{
+		displayName: 'Webinar Key',
+		name: 'webinarKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'Key of the webinar to update.',
+		displayOptions: {
+			show: {
+				resource: [
+					'webinar',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
 	{
 		displayName: 'Notify Participants',
 		name: 'notifyParticipants',
@@ -431,7 +465,7 @@ export const webinarFields = [
 				type: 'boolean',
 				required: false,
 				default: false,
-				description: '',
+				description: 'Whether the webinar may be watched anytime.',
 			},
 			{
 				displayName: 'Is Password Protected',
@@ -439,7 +473,7 @@ export const webinarFields = [
 				type: 'boolean',
 				required: false,
 				default: false,
-				description: '',
+				description: 'Whether the webinar requires a password for attendees to join.',
 			},
 			{
 				displayName: 'Times',
@@ -477,7 +511,7 @@ export const webinarFields = [
 				type: 'string',
 				required: false,
 				default: '',
-				description: '',
+				description: 'Name or topic of the webinar.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -489,7 +523,7 @@ export const webinarFields = [
 				required: true,
 				default: '',
 				placeholder: '2020-12-11T09:00:00Z',
-				description: '',
+				description: 'Timezone where the webinar is to take place.',
 				options: timezones.map(tz => ({ name: tz.replace(/_/g, ' '), value: tz })),
 				typeOptions: {
 					alwaysOpenEditWindow: true,
