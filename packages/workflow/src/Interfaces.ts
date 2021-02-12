@@ -481,7 +481,11 @@ export interface ITriggerResponse {
 	manualTriggerResponse?: Promise<INodeExecutionData[][]>;
 }
 
-export interface INodeType {
+export interface INodeTypeBase {
+	description: INodeTypeBaseDescription;
+}
+
+export interface INodeType extends INodeTypeBase {
 	description: INodeTypeDescription;
 	execute?(this: IExecuteFunctions): Promise<INodeExecutionData[][] | null>;
 	executeSingle?(this: IExecuteSingleFunctions): Promise<INodeExecutionData>;
@@ -550,15 +554,19 @@ export interface IWorfklowIssues {
 	[key: string]: INodeIssues;
 }
 
-export interface INodeTypeDescription {
+export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
 	icon?: string;
 	group: string[];
-	version: number;
 	description: string;
-	defaults: INodeParameters;
 	documentationUrl?: string;
+	subtitle?: string;
+}
+
+export interface INodeTypeDescription extends INodeTypeBaseDescription {
+	version: number;
+	defaults: INodeParameters;
 	inputs: string[];
 	inputNames?: string[];
 	outputs: string[];
@@ -567,7 +575,6 @@ export interface INodeTypeDescription {
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: boolean;
-	subtitle?: string;
 	hooks?: {
 		[key: string]: INodeHookDescription[] | undefined;
 		activate?: INodeHookDescription[];
@@ -638,6 +645,7 @@ export interface INodeTypes {
 	init(nodeTypes?: INodeTypeData): Promise<void>;
 	getAll(): INodeType[];
 	getByName(nodeType: string): INodeType | undefined;
+	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
 }
 
 

@@ -2,7 +2,6 @@ import {
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
-	INodeVersionedType,
 	NodeHelpers,
 } from 'n8n-workflow';
 
@@ -38,7 +37,7 @@ class NodeTypesClass implements INodeTypes {
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedTypeNode(this.nodeTypes[nodeType].type);
+		return NodeHelpers.getVersionedTypeNode(this.nodeTypes[nodeType].type, version);
 	}
 }
 

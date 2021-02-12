@@ -679,6 +679,7 @@ class App {
 				const credentials = await WorkflowCredentials(workflowData.nodes);
 				const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
 				const nodeTypes = NodeTypes();
+				
 				const workflowInstance = new Workflow({ id: workflowData.id, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: false, nodeTypes, staticData: undefined, settings: workflowData.settings });
 				const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, activationMode, sessionId, destinationNode);
 				if (needsWebhook === true) {

@@ -5,6 +5,7 @@ import {
 import {
 	ICredentialType,
 	INodeType,
+	INodeTypeBase,
 	INodeTypeData,
 	INodeVersionedType,
 	NodeHelpers,
@@ -153,12 +154,12 @@ class LoadNodesAndCredentialsClass {
 	 * @memberof N8nPackagesInformationClass
 	 */
 	async loadNodeFromFile(packageName: string, nodeName: string, filePath: string): Promise<void> {
-		let tempNode: INodeType;
+		let tempNode: INodeType | INodeTypeBase ;
 		let fullNodeName: string;
 
 		const tempModule = require(filePath);
 		try {
-			tempNode = NodeHelpers.getVersionedTypeNode(new tempModule[nodeName]() as INodeType | INodeVersionedType);
+			tempNode = new tempModule[nodeName]();
 		} catch (error) {
 			console.error(`Error loading node "${nodeName}" from: "${filePath}"`);
 			throw error;
@@ -182,8 +183,10 @@ class LoadNodesAndCredentialsClass {
 			return;
 		}
 
+		const tempNodeType = NodeHelpers.getVersionedTypeNode(tempNode as unknown as INodeType | INodeVersionedType);
+		tempNodeType.description.name = fullNodeName;
 		this.nodeTypes[fullNodeName] = {
-			type: tempNode,
+			type: tempNodeType,
 			sourcePath: filePath,
 		};
 	}

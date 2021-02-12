@@ -194,6 +194,17 @@ export const workflowHelpers = mixins(
 							description: nodeTypeDescription,
 						};
 					},
+					getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
+						const nodeTypeDescription = this.$store.getters.nodeType(nodeType);
+
+						if (nodeTypeDescription === null) {
+							return undefined;
+						}
+
+						return {
+							description: nodeTypeDescription,
+						};
+					},
 				};
 
 				let workflowId = this.$store.getters.workflowId;
