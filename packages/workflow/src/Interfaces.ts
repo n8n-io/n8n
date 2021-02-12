@@ -505,7 +505,7 @@ export interface INodeType extends INodeTypeBase {
 	};
 }
 
-export interface INodeVersionedType {
+export interface INodeVersionedType extends INodeTypeBase {
 	nodeVersions: {
 		[key: number]: INodeType
 	};

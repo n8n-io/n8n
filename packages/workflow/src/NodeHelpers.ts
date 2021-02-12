@@ -1208,7 +1208,9 @@ export function mergeNodeProperties(mainProperties: INodeProperties[], addProper
 
 export function getVersionedTypeNode(object: INodeVersionedType | INodeType, version?: number): INodeType {
 	if('getNodeType' in object) {
-		return object.getNodeType(version);
+		const nodeType = object.getNodeType(version);
+		nodeType.description.name = object.description.name;
+		return nodeType;
 	} else {
 		return object;
 	}

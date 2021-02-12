@@ -58,6 +58,7 @@ export class Workflow {
 		let nodeType: INodeType | undefined;
 		for (const node of parameters.nodes) {
 			this.nodes[node.name] = node;
+
 			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			if (nodeType === undefined) {
@@ -911,7 +912,7 @@ export class Workflow {
 			return undefined;
 		}
 
-		const nodeType = this.nodeTypes.getByName(node.type);
+		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		if (nodeType === undefined) {
 			throw new Error(`Node type "${node.type}" is not known so can not run it!`);
 		}

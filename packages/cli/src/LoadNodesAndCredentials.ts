@@ -154,7 +154,7 @@ class LoadNodesAndCredentialsClass {
 	 * @memberof N8nPackagesInformationClass
 	 */
 	async loadNodeFromFile(packageName: string, nodeName: string, filePath: string): Promise<void> {
-		let tempNode: INodeType | INodeTypeBase ;
+		let tempNode: INodeType | INodeVersionedType ;
 		let fullNodeName: string;
 
 		const tempModule = require(filePath);
@@ -183,10 +183,8 @@ class LoadNodesAndCredentialsClass {
 			return;
 		}
 
-		const tempNodeType = NodeHelpers.getVersionedTypeNode(tempNode as unknown as INodeType | INodeVersionedType);
-		tempNodeType.description.name = fullNodeName;
 		this.nodeTypes[fullNodeName] = {
-			type: tempNodeType,
+			type: tempNode,
 			sourcePath: filePath,
 		};
 	}
