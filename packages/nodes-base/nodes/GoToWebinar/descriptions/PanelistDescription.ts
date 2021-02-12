@@ -39,7 +39,82 @@ export const panelistOperations = [
 
 export const panelistFields = [
 	// ----------------------------------
-	//         panelist: create
+	//        panelist: create
 	// ----------------------------------
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'panelist',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'panelist',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Webinar Key',
+		name: 'webinarKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'panelist',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	// ----------------------------------
+	//        panelist: getAll
+	// ----------------------------------
+	{
+		displayName: 'Webinar Key',
+		name: 'webinarKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'panelist',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
 
 ] as INodeProperties[];

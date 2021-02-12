@@ -29,6 +29,7 @@ import {
 	CoorganizerCreateBody,
 	goToWebinarApiRequest,
 	goToWebinarApiRequestAllItems,
+	PanelistCreateBody,
 } from './GenericFunctions';
 
 import {
@@ -145,7 +146,7 @@ export class GoToWebinar implements INodeType {
 			if (resource === 'attendee')	{
 
 				// *********************************************************************
-				// 															  attendee
+				//                            attendee
 				// *********************************************************************
 
 				// https://developer.goto.com/GoToWebinarV2/#tag/Attendees
@@ -194,7 +195,7 @@ export class GoToWebinar implements INodeType {
 			} else if (resource === 'coorganizer') {
 
 				// *********************************************************************
-				// 															coorganizer
+				//                            coorganizer
 				// *********************************************************************
 
 				// https://developer.goto.com/GoToWebinarV2/#tag/Co-organizers
@@ -207,13 +208,13 @@ export class GoToWebinar implements INodeType {
 
 					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 
-					const body: CoorganizerCreateBody = [
+					const body = [
 						{
 							givenName: this.getNodeParameter('givenName', i) as string,
 							email: this.getNodeParameter('email', i) as string,
 							external: this.getNodeParameter('isExternal', i) as boolean,
 						},
-					];
+					] as IDataObject[];
 
 					if (!body[0].external) {
 						body[0].organizerKey = this.getNodeParameter('organizerKey', i) as string;
@@ -273,7 +274,7 @@ export class GoToWebinar implements INodeType {
 			} else if (resource === 'panelist') {
 
 				// *********************************************************************
-				// 															panelist
+				//                            panelist
 				// *********************************************************************
 
 				// https://developer.goto.com/GoToWebinarV2/#tag/Panelists
@@ -286,10 +287,12 @@ export class GoToWebinar implements INodeType {
 
 					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 
-					const body = {
-						email: this.getNodeParameter('email', i) as string,
-						name: this.getNodeParameter('name', i) as string,
-					} as IDataObject;
+					const body = [
+						{
+							name: this.getNodeParameter('name', i) as string,
+							email: this.getNodeParameter('email', i) as string,
+						},
+					] as IDataObject[];
 
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/panelists`;
 					responseData = await goToWebinarApiRequest.call(this, 'POST', endpoint, {}, body);
@@ -334,7 +337,7 @@ export class GoToWebinar implements INodeType {
 			} else if (resource === 'estimate') {
 
 				// *********************************************************************
-				// 															registrant
+				//                            registrant
 				// *********************************************************************
 
 				// https://developer.goto.com/GoToWebinarV2/#tag/Registrants
@@ -399,7 +402,7 @@ export class GoToWebinar implements INodeType {
 			} else if (resource === 'session') {
 
 				// *********************************************************************
-				// 															session
+				//                              session
 				// *********************************************************************
 
 				// https://developer.goto.com/GoToWebinarV2/#tag/Sessions
@@ -481,7 +484,7 @@ export class GoToWebinar implements INodeType {
 			} else if (resource === 'webinar')	{
 
 				// *********************************************************************
-				// 															  webinar
+				//                               webinar
 				// *********************************************************************
 
 				// https://developer.goto.com/GoToWebinarV2/#tag/Webinars
