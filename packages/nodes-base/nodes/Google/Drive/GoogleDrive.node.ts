@@ -1003,6 +1003,7 @@ export class GoogleDrive implements INodeType {
 							show: {
 								'/operation': [
 									'share',
+									'create',
 								],
 								'/resource': [
 									'file',
@@ -2061,6 +2062,7 @@ export class GoogleDrive implements INodeType {
 
 					const qs = {
 						fields: queryFields,
+						supportsAllDrives: options.supportsAllDrives,
 					};
 
 					const response = await googleApiRequest.call(this, 'POST', '/drive/v3/files', body, qs);
