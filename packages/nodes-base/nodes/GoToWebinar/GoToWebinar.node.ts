@@ -357,27 +357,17 @@ export class GoToWebinar implements INodeType {
 						email: this.getNodeParameter('email', i) as string,
 					} as IDataObject;
 
-					let additionalFields = this.getNodeParameter('additionalFields', i) as {
-						resendConfirmation?: boolean,
-						fullAddress?: {
-							details: {
-								address: string;
-								city: string;
-								state: string;
-								zipCode: string;
-								country: string;
-							}
+					let additionalFields = this.getNodeParameter('additionalFields', i) as Partial<{
+						resendConfirmation: boolean,
+						fullAddress: {
+							details: { [key: string]: string }
 						}
-						responses?: {
+						responses: {
 							details: [
-								{
-									questionKey: string;
-									responseText: string;
-									answerKey: string;
-								}
+								{ [key: string]: string }
 							]
 						}
-					};
+					}>;
 
 					if (additionalFields.resendConfirmation) {
 						qs.resendConfirmation = additionalFields.resendConfirmation;
@@ -410,6 +400,7 @@ export class GoToWebinar implements INodeType {
 
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/registrants/${registrantKey}`;
 					responseData = await goToWebinarApiRequest.call(this, 'DELETE', endpoint, {}, {});
+					responseData = { success: true };
 
 				} else if (operation === 'get') {
 

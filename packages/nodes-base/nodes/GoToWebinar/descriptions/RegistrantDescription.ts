@@ -294,4 +294,82 @@ export const registrantFields = [
 			},
 		},
 	},
+	// ----------------------------------
+	//         registrant: delete
+	// ----------------------------------
+	{
+		displayName: 'Webinar Key',
+		name: 'webinarKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The key of the webinar whose registrant to delete.',
+		displayOptions: {
+			show: {
+				resource: [
+					'registrant',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Registrant Key',
+		name: 'registrantKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The key of the registrant to delete.',
+		displayOptions: {
+			show: {
+				resource: [
+					'registrant',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+	// ----------------------------------
+	//         registrant: get
+	// ----------------------------------
+	{
+		displayName: 'Webinar Key',
+		name: 'webinarKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The key of the webinar whose registrant to retrieve.',
+		displayOptions: {
+			show: {
+				resource: [
+					'registrant',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Registrant Key',
+		name: 'registrantKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The key of the registrant to retrieve.',
+		displayOptions: {
+			show: {
+				resource: [
+					'registrant',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
 ] as INodeProperties[];
