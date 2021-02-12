@@ -110,12 +110,14 @@ export const sessionFields = [
 								displayName: 'Start Time',
 								name: 'fromTime',
 								type: 'dateTime',
+								description: 'Start of the datetime range for the session.',
 								default: '',
 							},
 							{
 								displayName: 'End Time',
 								name: 'toTime',
 								type: 'dateTime',
+								description: 'End of the datetime range for the session.',
 								default: '',
 							},
 						],
@@ -123,11 +125,11 @@ export const sessionFields = [
 				],
 			},
 			{
-				displayName: 'Filter By Webinar',
+				displayName: 'Filter by Webinar',
 				name: 'filterByWebinar',
 				type: 'boolean',
 				default: false,
-				description: '',
+				description: 'Filter the sessions to retrieve by the webinar to which they belong.',
 			},
 			{
 				displayName: 'Webinar Key',
@@ -137,7 +139,7 @@ export const sessionFields = [
 					loadOptionsMethod: 'getWebinars',
 				},
 				default: {},
-				description: '',
+				description: 'Webinar by which to filter the sessions to retrieve.',
 			},
 		],
 	},
@@ -154,7 +156,7 @@ export const sessionFields = [
 		},
 		required: true,
 		default: {},
-		description: '',
+		description: 'Key of the webinar to which the session belongs.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -199,18 +201,22 @@ export const sessionFields = [
 			{
 				name: 'Performance',
 				value: 'performance',
+				description: 'Performance details for a webinar session.',
 			},
 			{
 				name: 'Polls',
 				value: 'polls',
+				description: 'Questions and answers for polls from a webinar session.',
 			},
 			{
 				name: 'Questions',
 				value: 'questions',
+				description: 'Questions and answers for a past webinar session.',
 			},
 			{
 				name: 'Surveys',
 				value: 'surveys',
+				description: 'Surveys for a past webinar session.',
 			},
 		],
 		displayOptions: {
