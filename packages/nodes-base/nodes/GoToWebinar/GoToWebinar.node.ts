@@ -26,10 +26,8 @@ import {
 } from './descriptions';
 
 import {
-	CoorganizerCreateBody,
 	goToWebinarApiRequest,
 	goToWebinarApiRequestAllItems,
-	PanelistCreateBody,
 } from './GenericFunctions';
 
 import {

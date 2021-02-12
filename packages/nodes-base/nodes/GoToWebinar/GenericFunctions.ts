@@ -126,15 +126,3 @@ export async function loadResource(
 
 	return returnData;
 }
-
-export type CoorganizerCreateBody = Array<{
-	givenName: string;
-	email: string;
-	external: boolean;
-	organizerKey?: string;
-}>;
-
-export type PanelistCreateBody = Array<{
-	name: string;
-	email: string;
-}>;
