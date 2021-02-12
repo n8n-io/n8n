@@ -52,9 +52,10 @@ export async function goToWebinarApiRequest(
 	try {
 		console.log(options);
 		return await this.helpers.requestOAuth2!.call(this, 'goToWebinarOAuth2Api', options);
+
 	} catch (error) {
 
-		if (error.statusCode === 401) {
+		if (error.statusCode === 403) {
 			throw new Error('The Go To Webinar credentials are invalid!');
 		}
 
@@ -90,12 +91,14 @@ export async function goToWebinarApiRequestAllItems(
 
 	do {
 		responseData = await goToWebinarApiRequest.call(this, method, endpoint, qs, body);
-		console.log(responseData);
-		if (!responseData._embedded) {
-			return returnData;
-		}
 
-		returnData.push(...responseData._embedded[key]);
+		if (!responseData.page.totalElements) {
+			return [];
+		} else if (responseData._embedded && responseData._embedded[key]) {
+			returnData.push(...responseData._embedded[key]);
+		} else {
+			returnData.push(...responseData);
+		}
 
 		if (qs.limit && returnData.length >= qs.limit) {
 			returnData = returnData.splice(0, qs.limit as number);

@@ -171,6 +171,14 @@ export class GoToWebinar implements INodeType {
 					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 					const sessionKey = this.getNodeParameter('sessionKey', i) as string;
 
+					const qs = {} as IDataObject;
+
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					if (!returnAll) {
+						qs.limit = this.getNodeParameter('limit', 0) as number;
+					}
+
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/sessions/${sessionKey}/attendees`;
 					responseData = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
 
@@ -246,6 +254,14 @@ export class GoToWebinar implements INodeType {
 
 					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 
+					const qs = {} as IDataObject;
+
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					if (!returnAll) {
+						qs.limit = this.getNodeParameter('limit', 0) as number;
+					}
+
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/coorganizers`;
 					responseData = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
 
@@ -315,6 +331,14 @@ export class GoToWebinar implements INodeType {
 					// ----------------------------------
 
 					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
+
+					const qs = {} as IDataObject;
+
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					if (!returnAll) {
+						qs.limit = this.getNodeParameter('limit', 0) as number;
+					}
 
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/panelists`;
 					responseData = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
@@ -422,8 +446,16 @@ export class GoToWebinar implements INodeType {
 
 					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 
+					const qs = {} as IDataObject;
+
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					if (!returnAll) {
+						qs.limit = this.getNodeParameter('limit', 0) as number;
+					}
+
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/registrants`;
-					responseData = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 					console.log(responseData);
 
 				}
@@ -455,6 +487,12 @@ export class GoToWebinar implements INodeType {
 					// ----------------------------------
 
 					const qs = {} as IDataObject;
+
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					if (!returnAll) {
+						qs.limit = this.getNodeParameter('limit', 0) as number;
+					}
 
 					const {
 						filterByWebinar,
@@ -576,12 +614,15 @@ export class GoToWebinar implements INodeType {
 
 					const qs = {} as IDataObject;
 
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					if (!returnAll) {
+						qs.limit = this.getNodeParameter('limit', 0) as number;
+					}
+
 					const { times } = this.getNodeParameter('additionalFields', i) as {
 						times: {
-							timesProperties: {
-								fromTime: string,
-								toTime: string,
-							}
+							timesProperties: { [key: string]: string }
 						}
 					};
 
@@ -591,12 +632,6 @@ export class GoToWebinar implements INodeType {
 					} else {
 						qs.fromTime = moment().subtract(1, 'years').format();
 						qs.toTime = moment().format();
-					}
-
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-					if (!returnAll) {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
 					}
 
 					const endpoint = `accounts/${accountKey}/webinars`;
@@ -620,12 +655,13 @@ export class GoToWebinar implements INodeType {
 
 					if (updateFields.times) {
 						const { times } = updateFields as {
-							times: { timesProperties: Array<{startTime: string, endTime: string}> }
+							times: { timesProperties: Array<{ startTime: string, endTime: string }> }
 						};
 
 						body = {
 							times: times.timesProperties,
 						} as IDataObject;
+
 						updateFields = omit(updateFields, ['times']);
 					}
 
