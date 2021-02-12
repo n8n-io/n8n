@@ -257,11 +257,16 @@ export class GoToWebinar implements INodeType {
 					// ----------------------------------
 
 					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
-					const coorganizerKey = this.getNodeParameter('organizerKey', i) as string;
+					const coorganizerKey = this.getNodeParameter('coorganizerKey', i) as string;
+
+					const qs = {
+						external: this.getNodeParameter('isExternal', i) as boolean,
+					};
 
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/coorganizers/${coorganizerKey}/resendInvitation`;
 
-					responseData = await goToWebinarApiRequest.call(this, 'POST', endpoint, {}, {});
+					responseData = await goToWebinarApiRequest.call(this, 'POST', endpoint, qs, {});
+					responseData = { success: true };
 
 				}
 

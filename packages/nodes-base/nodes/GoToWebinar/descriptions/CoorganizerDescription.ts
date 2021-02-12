@@ -210,4 +210,60 @@ export const coorganizerFields = [
 			},
 		},
 	},
+
+	// ----------------------------------
+	//      coorganizer: reinvite
+	// ----------------------------------
+	{
+		displayName: 'Webinar Key',
+		name: 'webinarKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'coorganizer',
+				],
+				operation: [
+					'reinvite',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Co-Organizer Key',
+		name: 'coorganizerKey',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'coorganizer',
+				],
+				operation: [
+					'reinvite',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Is External',
+		name: 'isExternal',
+		type: 'boolean',
+		required: true,
+		default: false,
+		description: 'Whether the co-organizer has no GoToWebinar account.',
+		displayOptions: {
+			show: {
+				resource: [
+					'coorganizer',
+				],
+				operation: [
+					'reinvite',
+				],
+			},
+		},
+	},
 ] as INodeProperties[];
