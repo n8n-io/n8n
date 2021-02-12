@@ -93,7 +93,7 @@ export async function goToWebinarApiRequestAllItems(
 	do {
 		responseData = await goToWebinarApiRequest.call(this, method, endpoint, qs, body);
 
-		if (!responseData.page.totalElements) {
+		if (responseData.page && responseData.page.totalElements === 0) {
 			return [];
 		} else if (responseData._embedded && responseData._embedded[key]) {
 			returnData.push(...responseData._embedded[key]);
@@ -111,6 +111,21 @@ export async function goToWebinarApiRequestAllItems(
 	);
 
 	return returnData;
+}
+
+export async function handleGetAll(
+	this: IExecuteFunctions,
+	endpoint: string,
+	qs: IDataObject,
+	body: IDataObject,
+	resource: string) {
+	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+	if (!returnAll) {
+		qs.limit = this.getNodeParameter('limit', 0) as number;
+	}
+
+	return await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, body, resource);
 }
 
 export async function loadWebinars(this: ILoadOptionsFunctions) {

@@ -28,6 +28,7 @@ import {
 import {
 	goToWebinarApiRequest,
 	goToWebinarApiRequestAllItems,
+	handleGetAll,
 	loadWebinars,
 } from './GenericFunctions';
 
@@ -164,16 +165,8 @@ export class GoToWebinar implements INodeType {
 					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 					const sessionKey = this.getNodeParameter('sessionKey', i) as string;
 
-					const qs = {} as IDataObject;
-
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-					if (!returnAll) {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
-					}
-
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/sessions/${sessionKey}/attendees`;
-					responseData = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = await handleGetAll.call(this, endpoint, {}, {}, resource);
 
 				} else if (operation === 'get') {
 
@@ -247,16 +240,8 @@ export class GoToWebinar implements INodeType {
 
 					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 
-					const qs = {} as IDataObject;
-
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-					if (!returnAll) {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
-					}
-
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/coorganizers`;
-					responseData = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = await handleGetAll.call(this, endpoint, {}, {}, resource);
 
 				} else if (operation === 'reinvite') {
 
@@ -325,16 +310,8 @@ export class GoToWebinar implements INodeType {
 
 					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 
-					const qs = {} as IDataObject;
-
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-					if (!returnAll) {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
-					}
-
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/panelists`;
-					responseData = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = await handleGetAll.call(this, endpoint, {}, {}, resource);
 
 				} else if (operation === 'reinvite') {
 
@@ -439,17 +416,8 @@ export class GoToWebinar implements INodeType {
 
 					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 
-					const qs = {} as IDataObject;
-
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-					if (!returnAll) {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
-					}
-
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/registrants`;
-					responseData = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
-					console.log(responseData);
+					responseData = await handleGetAll.call(this, endpoint, {}, {}, resource);
 
 				}
 
@@ -495,10 +463,7 @@ export class GoToWebinar implements INodeType {
 						filterByWebinar: boolean,
 						webinarKey: string,
 						times: {
-							timesProperties: {
-								fromTime: string;
-								toTime: string;
-							}
+							timesProperties: { [key: string]: string }
 						}
 					};
 
