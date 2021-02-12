@@ -54,7 +54,14 @@ export async function goToWebinarApiRequest(
 		return await this.helpers.requestOAuth2!.call(this, 'goToWebinarOAuth2Api', options);
 	} catch (error) {
 
-		// TODO
+		if (error.statusCode === 401) {
+			throw new Error('The Go To Webinar credentials are invalid!');
+		}
+
+		if (error.statusCode && error?.error?.description) {
+			throw new Error(`Go To Webinar error response [${error.statusCode}]: ${error.error.description}`);
+		}
+
 		throw error;
 	}
 }
