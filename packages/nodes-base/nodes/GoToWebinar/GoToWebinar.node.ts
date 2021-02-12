@@ -28,6 +28,7 @@ import {
 import {
 	goToWebinarApiRequest,
 	goToWebinarApiRequestAllItems,
+	loadWebinars,
 } from './GenericFunctions';
 
 import {
@@ -109,17 +110,9 @@ export class GoToWebinar implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// async getCustomers(this: ILoadOptionsFunctions) {
-			// 	return await loadResource.call(this, 'customer');
-			// },
-
-			// async getVendors(this: ILoadOptionsFunctions) {
-			// 	return await loadResource.call(this, 'vendor');
-			// },
-
-			// async getItems(this: ILoadOptionsFunctions) {
-			// 	return await loadResource.call(this, 'item');
-			// },
+			async getWebinars(this: ILoadOptionsFunctions) {
+				return await loadWebinars.call(this);
+			},
 		},
 	};
 

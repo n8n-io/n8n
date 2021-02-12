@@ -1,3 +1,4 @@
+import moment = require('moment');
 import {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -112,27 +113,28 @@ export async function goToWebinarApiRequestAllItems(
 	return returnData;
 }
 
-export async function loadResource(
-	this: ILoadOptionsFunctions,
-	resource: string,
-) {
+export async function loadWebinars(this: ILoadOptionsFunctions) {
+	const { oauthTokenData } = this.getCredentials('goToWebinarOAuth2Api') as {
+		oauthTokenData: { account_key: string }
+	};
+
+	const endpoint = `accounts/${oauthTokenData.account_key}/webinars`;
+
+	const qs = {
+		fromTime: moment().subtract(1, 'years').format(),
+		toTime: moment().add(1, 'years').format(),
+	};
+
+	const resourceItems = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, 'webinar');
+
 	const returnData: INodePropertyOptions[] = [];
 
-	// const qs = {
-	// 	query: `SELECT * FROM ${resource}`,
-	// } as IDataObject;
-
-	// const { oauthTokenData: { realmId } } = this.getCredentials('goToWebinarOAuth2Api') as { oauthTokenData: { realmId: string } };
-	// const endpoint = `/v3/company/${realmId}/query`;
-
-	// const resourceItems = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {});
-
-	// resourceItems.forEach((resourceItem: { DisplayName: string, Name: string, Id: string }) => {
-	// 	returnData.push({
-	// 		name: resourceItem.DisplayName || resourceItem.Name,
-	// 		value: resourceItem.Id,
-	// 	});
-	// });
+	resourceItems.forEach((item: { subject: string, webinarKey: string }) => {
+		returnData.push({
+			name: item.subject,
+			value: item.webinarKey,
+		});
+	});
 
 	return returnData;
 }

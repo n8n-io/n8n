@@ -80,9 +80,12 @@ export const coorganizerFields = [
 	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getWebinars',
+		},
 		required: true,
-		default: '',
+		default: {},
 		description: '',
 		displayOptions: {
 			show: {
@@ -195,9 +198,12 @@ export const coorganizerFields = [
 	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getWebinars',
+		},
 		required: true,
-		default: '',
+		default: {},
 		description: '',
 		displayOptions: {
 			show: {

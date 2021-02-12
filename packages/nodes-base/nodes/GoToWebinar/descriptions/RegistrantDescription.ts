@@ -44,9 +44,12 @@ export const registrantFields = [
 	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getWebinars',
+		},
 		required: true,
-		default: '',
+		default: {},
 		description: 'The key of the webinar for which the registrant is created.',
 		displayOptions: {
 			show: {
@@ -279,9 +282,12 @@ export const registrantFields = [
 	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getWebinars',
+		},
 		required: true,
-		default: '',
+		default: {},
 		description: 'The key of the webinar to retrieve registrants from.',
 		displayOptions: {
 			show: {
@@ -294,9 +300,6 @@ export const registrantFields = [
 			},
 		},
 	},
-	// ----------------------------------
-	//         registrant: getAll
-	// ----------------------------------
 	{
 		displayName: 'Return All',
 		name: 'returnAll',

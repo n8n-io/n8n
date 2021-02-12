@@ -40,9 +40,12 @@ export const attendeeFields = [
 	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getWebinars',
+		},
 		required: true,
-		default: '',
+		default: {},
 		description: '',
 		displayOptions: {
 			show: {
