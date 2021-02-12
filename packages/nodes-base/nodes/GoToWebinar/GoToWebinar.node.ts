@@ -308,6 +308,7 @@ export class GoToWebinar implements INodeType {
 
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/panelists/${panelistKey}`;
 					responseData = await goToWebinarApiRequest.call(this, 'DELETE', endpoint, {}, {});
+					responseData = { success: true };
 
 				} else if (operation === 'getAll') {
 
@@ -331,6 +332,7 @@ export class GoToWebinar implements INodeType {
 
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/panelists/${panelistKey}/resendInvitation`;
 					responseData = await goToWebinarApiRequest.call(this, 'POST', endpoint, {}, {});
+					responseData = { success: true };
 
 				}
 

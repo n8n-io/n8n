@@ -116,5 +116,83 @@ export const panelistFields = [
 			},
 		},
 	},
+	// ----------------------------------
+	//        panelist: delete
+	// ----------------------------------
+	{
+		displayName: 'Webinar Key',
+		name: 'webinarKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'panelist',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Panelist Key',
+		name: 'panelistKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'panelist',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
 
+	// ----------------------------------
+	//        panelist: delete
+	// ----------------------------------
+	{
+		displayName: 'Webinar Key',
+		name: 'webinarKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'panelist',
+				],
+				operation: [
+					'reinvite',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Panelist Key',
+		name: 'panelistKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'panelist',
+				],
+				operation: [
+					'reinvite',
+				],
+			},
+		},
+	},
 ] as INodeProperties[];
