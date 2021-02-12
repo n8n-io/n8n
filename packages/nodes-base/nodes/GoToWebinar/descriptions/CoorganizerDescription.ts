@@ -47,7 +47,7 @@ export const coorganizerFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: '',
+		description: 'The co-organizer\'s given name.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -65,7 +65,7 @@ export const coorganizerFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: '',
+		description: 'The co-organizer\'s email address.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -86,7 +86,7 @@ export const coorganizerFields = [
 		},
 		required: true,
 		default: {},
-		description: '',
+		description: 'Key of the webinar that the co-organizer is hosting.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -120,7 +120,7 @@ export const coorganizerFields = [
 		displayName: 'Organizer Key',
 		name: 'organizerKey',
 		type: 'string',
-		default: '',
+		default: 'The co-organizer\'s organizer key for the webinar.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -145,7 +145,7 @@ export const coorganizerFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: '',
+		description: 'Key of the webinar to delete.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -159,9 +159,10 @@ export const coorganizerFields = [
 	},
 	{
 		displayName: 'Organizer Key',
-		name: 'organizerKey',
+		name: 'coorganizerKey',
 		type: 'string',
 		default: '',
+		description: 'Key of the co-organizer to delete.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -191,7 +192,6 @@ export const coorganizerFields = [
 			},
 		},
 	},
-
 	// ----------------------------------
 	//        coorganizer: getAll
 	// ----------------------------------
@@ -204,7 +204,7 @@ export const coorganizerFields = [
 		},
 		required: true,
 		default: {},
-		description: '',
+		description: 'Key of the webinar to retrieve all co-organizers from.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -257,7 +257,6 @@ export const coorganizerFields = [
 			},
 		},
 	},
-
 	// ----------------------------------
 	//      coorganizer: reinvite
 	// ----------------------------------
@@ -267,7 +266,7 @@ export const coorganizerFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: '',
+		description: 'Key of the webinar to reinvite the co-organizer to.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -284,6 +283,7 @@ export const coorganizerFields = [
 		name: 'coorganizerKey',
 		type: 'string',
 		default: '',
+		description: 'Key of the co-organizer to reinvite.',
 		displayOptions: {
 			show: {
 				resource: [
