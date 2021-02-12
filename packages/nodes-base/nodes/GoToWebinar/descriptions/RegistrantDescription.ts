@@ -50,7 +50,7 @@ export const registrantFields = [
 		},
 		required: true,
 		default: {},
-		description: 'The key of the webinar for which the registrant is created.',
+		description: 'Key of the webinar of the registrant to create.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -67,6 +67,7 @@ export const registrantFields = [
 		name: 'firstName',
 		type: 'string',
 		default: '',
+		description: 'First name of the registrant to create.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -83,6 +84,7 @@ export const registrantFields = [
 		name: 'lastName',
 		type: 'string',
 		default: '',
+		description: 'Last name of the registrant to create.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -99,6 +101,7 @@ export const registrantFields = [
 		name: 'email',
 		type: 'string',
 		default: '',
+		description: 'Email address of the registrant to create.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -132,6 +135,7 @@ export const registrantFields = [
 				name: 'fullAddress',
 				placeholder: 'Add Address Fields',
 				type: 'fixedCollection',
+				description: 'Full address of the registrant to create.',
 				default: {},
 				options: [
 					{
@@ -199,7 +203,7 @@ export const registrantFields = [
 				default: '',
 			},
 			{
-				displayName: 'Phone',
+				displayName: 'Telephone',
 				name: 'phone',
 				type: 'string',
 				default: '',
@@ -209,21 +213,21 @@ export const registrantFields = [
 				name: 'purchasingRole',
 				type: 'string',
 				default: '',
-				description: 'The registrant\'s role in purchasing the product.',
+				description: 'Registrant\'s role in purchasing the product.',
 			},
 			{
 				displayName: 'Purchasing Time Frame',
 				name: 'purchasingTimeFrame',
 				type: 'string',
 				default: '',
-				description: 'The time frame within which the product will be purchased.',
+				description: 'Time frame within which the product will be purchased.',
 			},
 			{
 				displayName: 'Questions and Comments',
 				name: 'questionsAndComments',
 				type: 'string',
 				default: '',
-				description: 'Any questions or comments the registrant made at the time of registration.',
+				description: 'Questions or comments made by the registrant during registration.',
 			},
 			{
 				displayName: 'Resend Confirmation',
@@ -236,7 +240,7 @@ export const registrantFields = [
 				name: 'responses',
 				placeholder: 'Add Response',
 				type: 'fixedCollection',
-				description: 'Set the answers of all questions.',
+				description: 'Set the answers to all questions.',
 				default: {},
 				options: [
 					{
@@ -272,7 +276,7 @@ export const registrantFields = [
 				name: 'source',
 				type: 'string',
 				default: '',
-				description: 'The source that led to the registration',
+				description: 'The source that led to the registration.',
 			},
 		],
 	},
@@ -350,7 +354,7 @@ export const registrantFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The key of the webinar whose registrant to delete.',
+		description: 'Key of the webinar of the registrant to delete.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -368,7 +372,7 @@ export const registrantFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The key of the registrant to delete.',
+		description: 'Key of the registrant to delete.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -389,7 +393,7 @@ export const registrantFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The key of the webinar whose registrant to retrieve.',
+		description: 'Key of the webinar of the registrant to retrieve.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -407,7 +411,7 @@ export const registrantFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The key of the registrant to retrieve.',
+		description: 'Key of the registrant to retrieve.',
 		displayOptions: {
 			show: {
 				resource: [
