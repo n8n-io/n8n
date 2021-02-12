@@ -47,7 +47,7 @@ export const panelistFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: '',
+		description: 'Name of the panelist to create.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -65,7 +65,7 @@ export const panelistFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: '',
+		description: 'Email address of the panelist to create.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -86,7 +86,7 @@ export const panelistFields = [
 		},
 		required: true,
 		default: {},
-		description: '',
+		description: 'Key of the webinar that the panelist will present at.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -110,7 +110,7 @@ export const panelistFields = [
 		},
 		required: true,
 		default: {},
-		description: '',
+		description: 'Key of the webinar to retrieve all panelists from.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -163,7 +163,6 @@ export const panelistFields = [
 			},
 		},
 	},
-
 	// ----------------------------------
 	//        panelist: delete
 	// ----------------------------------
@@ -173,7 +172,7 @@ export const panelistFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: '',
+		description: 'Key of the webinar to delete the panelist from.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -191,7 +190,7 @@ export const panelistFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: '',
+		description: 'Key of the panelist to delete.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -203,9 +202,8 @@ export const panelistFields = [
 			},
 		},
 	},
-
 	// ----------------------------------
-	//        panelist: delete
+	//        panelist: reinvite
 	// ----------------------------------
 	{
 		displayName: 'Webinar Key',
@@ -213,7 +211,7 @@ export const panelistFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: '',
+		description: 'Key of the webinar to reinvite the panelist to.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -231,7 +229,7 @@ export const panelistFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: '',
+		description: 'Key of the panelist to reinvite.',
 		displayOptions: {
 			show: {
 				resource: [
