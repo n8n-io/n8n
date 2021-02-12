@@ -83,7 +83,7 @@ export async function goToWebinarApiRequestAllItems(
 
 	do {
 		responseData = await goToWebinarApiRequest.call(this, method, endpoint, qs, body);
-
+		console.log(responseData);
 		if (!responseData._embedded) {
 			return returnData;
 		}

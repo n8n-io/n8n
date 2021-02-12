@@ -334,7 +334,7 @@ export class GoToWebinar implements INodeType {
 
 				}
 
-			} else if (resource === 'estimate') {
+			} else if (resource === 'registrant') {
 
 				// *********************************************************************
 				//                            registrant
@@ -350,17 +350,54 @@ export class GoToWebinar implements INodeType {
 
 					const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 
+					const qs = {} as IDataObject;
 					const body = {
 						firstName: this.getNodeParameter('firstName', i) as string,
 						lastName: this.getNodeParameter('lastName', i) as string,
 						email: this.getNodeParameter('email', i) as string,
 					} as IDataObject;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					let additionalFields = this.getNodeParameter('additionalFields', i) as {
+						resendConfirmation?: boolean,
+						fullAddress?: {
+							details: {
+								address: string;
+								city: string;
+								state: string;
+								zipCode: string;
+								country: string;
+							}
+						}
+						responses?: {
+							details: [
+								{
+									questionKey: string;
+									responseText: string;
+									answerKey: string;
+								}
+							]
+						}
+					};
+
+					if (additionalFields.resendConfirmation) {
+						qs.resendConfirmation = additionalFields.resendConfirmation;
+						additionalFields = omit(additionalFields, ['resendConfirmation']);
+					}
+
+					if (additionalFields.fullAddress) {
+						Object.assign(body, additionalFields.fullAddress.details);
+						additionalFields = omit(additionalFields, ['fullAddress']);
+					}
+
+					if (additionalFields.responses) {
+						Object.assign(body, additionalFields.responses.details[0]);
+						additionalFields = omit(additionalFields, ['responses']);
+					}
+
 					Object.assign(body, additionalFields);
 
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/registrants`;
-					responseData = await goToWebinarApiRequest.call(this, 'POST', endpoint, {}, body);
+					responseData = await goToWebinarApiRequest.call(this, 'POST', endpoint, qs, body);
 
 				} else if (operation === 'delete') {
 
@@ -396,6 +433,7 @@ export class GoToWebinar implements INodeType {
 
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/registrants`;
 					responseData = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
+					console.log(responseData);
 
 				}
 
