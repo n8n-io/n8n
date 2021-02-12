@@ -79,43 +79,6 @@ export const sessionFields = [
 		},
 	},
 	{
-		displayName: 'Time Range',
-		name: 'times',
-		type: 'fixedCollection',
-		required: true,
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'session',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Times Properties',
-				name: 'timesProperties',
-				values: [
-					{
-						displayName: 'Start Time',
-						name: 'startTime',
-						type: 'dateTime',
-						default: '',
-					},
-					{
-						displayName: 'End Time',
-						name: 'endTime',
-						type: 'dateTime',
-						default: '',
-					},
-				],
-			},
-		],
-	},
-	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -132,6 +95,33 @@ export const sessionFields = [
 		},
 		default: {},
 		options: [
+			{
+				displayName: 'Time Range',
+				name: 'times',
+				type: 'fixedCollection',
+				required: true,
+				default: {},
+				options: [
+					{
+						displayName: 'Times Properties',
+						name: 'timesProperties',
+						values: [
+							{
+								displayName: 'Start Time',
+								name: 'fromTime',
+								type: 'dateTime',
+								default: '',
+							},
+							{
+								displayName: 'End Time',
+								name: 'toTime',
+								type: 'dateTime',
+								default: '',
+							},
+						],
+					},
+				],
+			},
 			{
 				displayName: 'Filter By Webinar',
 				name: 'filterByWebinar',

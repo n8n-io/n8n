@@ -417,30 +417,35 @@ export class GoToWebinar implements INodeType {
 					//         session: getAll
 					// ----------------------------------
 
-					const times = this.getNodeParameter('times', i) as IDataObject;
+					const qs = {} as IDataObject;
 
-					if (isEmpty(times)) {
-						throw new Error('Please enter a time range.');
-					}
-
-					const { timesProperties: { startTime, endTime } } = times as {
-						timesProperties: { startTime: string, endTime: string }
-					};
-
-					const qs = {
-						fromTime: moment(startTime).format(),
-						toTime: moment(endTime).format(),
-					} as IDataObject;
-
-					const { filterByWebinar, webinarKey } = this.getNodeParameter('additionalFields', i) as {
+					const {
+						filterByWebinar,
+						webinarKey,
+						times,
+					} = this.getNodeParameter('additionalFields', i) as {
 						filterByWebinar: boolean,
 						webinarKey: string,
+						times: {
+							timesProperties: {
+								fromTime: string;
+								toTime: string;
+							}
+						}
 					};
+
+					if (times) {
+						qs.fromTime = moment(times.timesProperties.fromTime).format();
+						qs.toTime = moment(times.timesProperties.toTime).format();
+					} else {
+						qs.fromTime = moment().subtract(1, 'years').format();
+						qs.toTime = moment().format();
+					}
 
 					if (filterByWebinar) {
 
 						if (!webinarKey) {
-							throw new Error('Please enter a webinar key to filter by webinar.');
+							throw new Error('Please enter a webinar key to filter by.');
 						}
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/sessions`;
@@ -532,20 +537,24 @@ export class GoToWebinar implements INodeType {
 					//         webinar: getAll
 					// ----------------------------------
 
-					const times = this.getNodeParameter('times', i) as IDataObject;
+					const qs = {} as IDataObject;
 
-					if (isEmpty(times)) {
-						throw new Error('Please enter a time range.');
-					}
-
-					const { timesProperties: { startTime, endTime } } = times as {
-						timesProperties: { startTime: string, endTime: string }
+					const { times } = this.getNodeParameter('additionalFields', i) as {
+						times: {
+							timesProperties: {
+								fromTime: string,
+								toTime: string,
+							}
+						}
 					};
 
-					const qs = {
-						fromTime: moment(startTime).format(),
-						toTime: moment(endTime).format(),
-					} as IDataObject;
+					if (times) {
+						qs.fromTime = moment(times.timesProperties.fromTime).format();
+						qs.toTime = moment(times.timesProperties.toTime).format();
+					} else {
+						qs.fromTime = moment().subtract(1, 'years').format();
+						qs.toTime = moment().format();
+					}
 
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
@@ -553,7 +562,7 @@ export class GoToWebinar implements INodeType {
 						qs.limit = this.getNodeParameter('limit', 0) as number;
 					}
 
-					const endpoint = `/accounts/${accountKey}/webinars`;
+					const endpoint = `accounts/${accountKey}/webinars`;
 					responseData = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 
 				} else if (operation === 'update') {

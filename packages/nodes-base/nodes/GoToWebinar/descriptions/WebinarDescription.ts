@@ -308,11 +308,10 @@ export const webinarFields = [
 		},
 	},
 	{
-		displayName: 'Time Range',
-		name: 'times',
-		type: 'fixedCollection',
-		required: true,
-		default: {},
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
 				resource: [
@@ -323,22 +322,32 @@ export const webinarFields = [
 				],
 			},
 		},
+		default: {},
 		options: [
 			{
-				displayName: 'Times Properties',
-				name: 'timesProperties',
-				values: [
+				displayName: 'Time Range',
+				name: 'times',
+				type: 'fixedCollection',
+				required: true,
+				default: {},
+				options: [
 					{
-						displayName: 'Start Time',
-						name: 'startTime',
-						type: 'dateTime',
-						default: '',
-					},
-					{
-						displayName: 'End Time',
-						name: 'endTime',
-						type: 'dateTime',
-						default: '',
+						displayName: 'Times Properties',
+						name: 'timesProperties',
+						values: [
+							{
+								displayName: 'Start Time',
+								name: 'fromTime',
+								type: 'dateTime',
+								default: '',
+							},
+							{
+								displayName: 'End Time',
+								name: 'toTime',
+								type: 'dateTime',
+								default: '',
+							},
+						],
 					},
 				],
 			},
