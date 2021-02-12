@@ -46,7 +46,7 @@ export const attendeeFields = [
 		},
 		required: true,
 		default: {},
-		description: '',
+		description: 'Key of the webinar that the attendee attended.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -61,7 +61,7 @@ export const attendeeFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: '',
+		description: 'Key of the session that the attendee attended.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -79,7 +79,7 @@ export const attendeeFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: '',
+		description: 'Registrant key of the attendee at the webinar session.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -97,10 +97,27 @@ export const attendeeFields = [
 	{
 		displayName: 'Details',
 		name: 'details',
-		type: 'string',
+		type: 'options',
 		required: true,
 		default: '',
-		description: '',
+		description: 'The details to retrieve for the attendee.',
+		options: [
+			{
+				name: 'Polls',
+				value: 'polls',
+				description: 'Poll answers from the attendee in a webinar session.',
+			},
+			{
+				name: 'Questions',
+				value: 'questions',
+				description: 'Questions asked by the attendee in a webinar session.',
+			},
+			{
+				name: 'Survey Answers',
+				value: 'surveyAnswers',
+				description: 'Survey answers from the attendee in a webinar session.',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: [
@@ -112,7 +129,6 @@ export const attendeeFields = [
 			},
 		},
 	},
-
 	// ----------------------------------
 	//         attendee: getAll
 	// ----------------------------------
