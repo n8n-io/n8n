@@ -89,6 +89,32 @@ export const nodeDescription: INodeTypeDescription = {
 		//         find
 		// ----------------------------------
 		{
+			displayName: 'Limit',
+			name: 'limit',
+			type: "number",
+			displayOptions: {
+				show: {
+					operation: ['find'],
+				},
+			},
+			default: 0,
+			required: true,
+			description: 'Use limit to specify the maximum number of documents or 0 for unlimited documents.',
+		},
+		{
+			displayName: 'Skip',
+			name: 'skip',
+			type: "number",
+			displayOptions: {
+				show: {
+					operation: ['find'],
+				},
+			},
+			default: 0,
+			required: true,
+			description: 'The number of documents to skip in the results set.',
+		},
+		{
 			displayName: 'Query (JSON format)',
 			name: 'query',
 			type: 'json',
@@ -105,7 +131,23 @@ export const nodeDescription: INodeTypeDescription = {
 			required: true,
 			description: 'MongoDB Find query.',
 		},
-
+		{
+			displayName: 'Sort (JSON format)',
+			name: 'sort',
+			type: 'json',
+			typeOptions: {
+				rows: 2,
+			},
+			displayOptions: {
+				show: {
+					operation: ['find'],
+				},
+			},
+			default: '{}',
+			placeholder: '{ field: -1 }',
+			required: true,
+			description: 'A json that defines the sort order of the result set.',
+		},
 		// ----------------------------------
 		//         insert
 		// ----------------------------------

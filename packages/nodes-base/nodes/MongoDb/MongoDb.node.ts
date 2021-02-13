@@ -48,10 +48,23 @@ export class MongoDb implements INodeType {
 			//         find
 			// ----------------------------------
 
-			const queryResult = await mdb
+			let query = mdb
 				.collection(this.getNodeParameter('collection', 0) as string)
 				.find(JSON.parse(this.getNodeParameter('query', 0) as string))
-				.toArray();
+
+			const limit = this.getNodeParameter('limit', 0) as number
+			const skip = this.getNodeParameter('skip', 0) as number
+			const sort = JSON.parse(this.getNodeParameter('sort', 0) as string)
+			if (skip > 0) {
+				query = query.skip(skip)
+			}
+			if (limit > 0) {
+				query = query.limit(limit)
+			}
+			if (sort && Object.keys(sort).length !== 0 && sort.constructor === Object) {
+				query = query.sort(sort)
+			}
+			const queryResult = await query.toArray();
 
 			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
 		} else if (operation === 'insert') {
