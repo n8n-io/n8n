@@ -179,8 +179,7 @@ export interface IExecutionsStopData {
 }
 
 export interface IExecutionsSummary {
-	id?: string; // executionIdDb
-	idActive?: string; // executionIdActive
+	id: string;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	retryOf?: string;
@@ -327,8 +326,7 @@ export type IPushDataType = 'executionFinished' | 'executionStarted' | 'nodeExec
 
 export interface IPushDataExecutionFinished {
 	data: IRun;
-	executionIdActive: string;
-	executionIdDb?: string;
+	executionId: string;
 	retryOf?: string;
 }
 

@@ -101,9 +101,6 @@ export class WorkflowRunner {
 		// Remove from active execution with empty data. That will
 		// set the execution to failed.
 		this.activeExecutions.remove(executionId, fullRunData);
-
-		// Also send to Editor UI
-		WorkflowExecuteAdditionalData.pushExecutionFinished(executionMode, fullRunData, executionId);
 	}
 
 	/**
@@ -175,7 +172,7 @@ export class WorkflowRunner {
 			workflowExecution = workflowExecute.processRunExecutionData(workflow);
 		} else if (data.runData === undefined || data.startNodes === undefined || data.startNodes.length === 0 || data.destinationNode === undefined) {
 			// Execute all nodes
-			
+
 			// Can execute without webhook so go on
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 			workflowExecution = workflowExecute.run(workflow, undefined, data.destinationNode);
@@ -298,7 +295,7 @@ export class WorkflowRunner {
 					}, queueRecoveryInterval * 1000);
 				});
 
-				
+
 				const clearWatchdogInterval = () => {
 					if (watchDogInterval) {
 						clearInterval(watchDogInterval);
@@ -332,7 +329,7 @@ export class WorkflowRunner {
 				await jobData;
 			}
 
-			
+
 
 			const executionDb = await Db.collections.Execution!.findOne(executionId) as IExecutionFlattedDb;
 			const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;

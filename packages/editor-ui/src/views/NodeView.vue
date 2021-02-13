@@ -742,8 +742,7 @@ export default mixins(
 						} as IRun;
 						const pushData = {
 							data: executedData,
-							executionIdActive: executionId,
-							executionIdDb: executionId,
+							executionId: executionId,
 							retryOf: execution.retryOf,
 						} as IPushDataExecutionFinished;
 						this.$store.commit('finishActiveExecution', pushData);
@@ -759,8 +758,6 @@ export default mixins(
 					} else {
 						this.$showError(error, 'Problem stopping execution', 'There was a problem stopping the execuction:');
 					}
-
-					
 				}
 				this.stopExecutionInProgress = false;
 			},
