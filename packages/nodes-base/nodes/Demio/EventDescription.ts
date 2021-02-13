@@ -118,7 +118,6 @@ export const eventFields = [
 					},
 				],
 				default: '',
-				description: '',
 			},
 		],
 	},

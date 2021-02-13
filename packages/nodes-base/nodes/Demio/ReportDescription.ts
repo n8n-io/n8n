@@ -100,20 +100,20 @@ export const reportFields = [
 						value: 'attended',
 					},
 					{
-						name: 'Did Not Attend',
-						value: 'did-not-attend',
+						name: 'Banned',
+						value: 'banned',
 					},
 					{
 						name: 'Completed',
 						value: 'completed',
 					},
 					{
-						name: 'Left Early',
-						value: 'left-early',
+						name: 'Did Not Attend',
+						value: 'did-not-attend',
 					},
 					{
-						name: 'Banned',
-						value: 'banned',
+						name: 'Left Early',
+						value: 'left-early',
 					},
 				],
 				default: '',
