@@ -1670,7 +1670,7 @@ class App {
 
 				return results.map(result => {
 					return {
-						idActive: result.id,
+						id: result.id,
 						workflowId: result.workflowId,
 						mode: result.mode,
 						retryOf: result.retryOf !== null ? result.retryOf : undefined,
@@ -1693,7 +1693,7 @@ class App {
 					}
 					returnData.push(
 						{
-							idActive: data.id.toString(),
+							id: data.id.toString(),
 							workflowId: data.workflowId === undefined ? '' : data.workflowId.toString(),
 							mode: data.mode,
 							retryOf: data.retryOf,

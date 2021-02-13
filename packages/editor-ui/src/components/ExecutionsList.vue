@@ -57,7 +57,6 @@
 					<template slot-scope="scope">
 						{{convertToDisplayDate(scope.row.startedAt)}}<br />
 						<small v-if="scope.row.id">ID: {{scope.row.id}}</small>
-						<small v-if="scope.row.idActive && scope.row.id === undefined && scope.row.stoppedAt === undefined">Active-ID: {{scope.row.idActive}}</small>
 					</template>
 				</el-table-column>
 				<el-table-column property="workflowName" label="Name">
@@ -126,8 +125,8 @@
 				</el-table-column>
 				<el-table-column label="" width="100" align="center">
 					<template slot-scope="scope">
-						<span v-if="scope.row.stoppedAt === undefined && scope.row.idActive">
-							<el-button circle title="Stop Execution" @click.stop="stopExecution(scope.row.idActive)" :loading="stoppingExecutions.includes(scope.row.idActive)" size="mini">
+						<span v-if="scope.row.stoppedAt === undefined">
+							<el-button circle title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" size="mini">
 								<font-awesome-icon icon="stop" />
 							</el-button>
 						</span>

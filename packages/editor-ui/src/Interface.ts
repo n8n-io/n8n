@@ -314,8 +314,7 @@ export interface IExecutionsListResponse {
 }
 
 export interface IExecutionsCurrentSummaryExtended {
-	id?: string;
-	idActive: string;
+	id: string;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	retryOf?: string;
@@ -334,8 +333,7 @@ export interface IExecutionsStopData {
 }
 
 export interface IExecutionsSummary {
-	id?: string; // executionIdDb
-	idActive?: string; // executionIdActive
+	id: string;
 	mode: WorkflowExecuteMode;
 	finished?: boolean;
 	retryOf?: string;
@@ -370,8 +368,7 @@ export interface IPushDataExecutionStarted {
 
 export interface IPushDataExecutionFinished {
 	data: IRun;
-	executionIdActive: string;
-	executionIdDb?: string;
+	executionId: string;
 	retryOf?: string;
 }
 
