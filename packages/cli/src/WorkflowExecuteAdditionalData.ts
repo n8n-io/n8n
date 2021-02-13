@@ -118,42 +118,6 @@ function pruneExecutionData(): void {
 
 
 /**
- * Pushes the execution out to all connected clients
- *
- * @param {WorkflowExecuteMode} mode The mode in which the workflow got started in
- * @param {IRun} fullRunData The RunData of the finished execution
- * @param {string} executionIdActive The id of the finished execution
- * @param {string} [executionIdDb] The database id of finished execution
- */
-export function pushExecutionFinished(mode: WorkflowExecuteMode, fullRunData: IRun, executionIdActive: string, executionIdDb?: string, retryOf?: string) {
-	// Clone the object except the runData. That one is not supposed
-	// to be send. Because that data got send piece by piece after
-	// each node which finished executing
-	const pushRunData = {
-		...fullRunData,
-		data: {
-			...fullRunData.data,
-			resultData: {
-				...fullRunData.data.resultData,
-				runData: {},
-			},
-		},
-	};
-
-	// Push data to editor-ui once workflow finished
-	const sendData: IPushDataExecutionFinished = {
-		executionIdActive,
-		executionIdDb,
-		data: pushRunData,
-		retryOf,
-	};
-
-	const pushInstance = Push.getInstance();
-	pushInstance.send('executionFinished', sendData);
-}
-
-
-/**
  * Returns hook functions to push data to Editor-UI
  *
  * @returns {IWorkflowExecuteHooks}
@@ -192,25 +156,52 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 		],
 		workflowExecuteBefore: [
 			async function (this: WorkflowHooks): Promise<void> {
-				// Push data to editor-ui once workflow finished
-				if (this.mode === 'manual') {
-					const pushInstance = Push.getInstance();
-					pushInstance.send('executionStarted', {
-						executionId: this.executionId,
-						mode: this.mode,
-						startedAt: new Date(),
-						retryOf: this.retryOf,
-						workflowId: this.workflowData.id as string,
-						workflowName: this.workflowData.name,
-					});
+				// Push data to session which started the workflow
+				if (this.sessionId === undefined) {
+					return;
 				}
+				const pushInstance = Push.getInstance();
+				pushInstance.send('executionStarted', {
+					executionId: this.executionId,
+					mode: this.mode,
+					startedAt: new Date(),
+					retryOf: this.retryOf,
+					workflowId: this.workflowData.id as string,
+					workflowName: this.workflowData.name,
+				}, this.sessionId);
 			},
 		],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
-				if (this.mode === 'manual') {
-					pushExecutionFinished(this.mode, fullRunData, this.executionId, undefined, this.retryOf);
+				// Push data to session which started the workflow
+				if (this.sessionId === undefined) {
+					return;
 				}
+
+				// Clone the object except the runData. That one is not supposed
+				// to be send. Because that data got send piece by piece after
+				// each node which finished executing
+				const pushRunData = {
+					...fullRunData,
+					data: {
+						...fullRunData.data,
+						resultData: {
+							...fullRunData.data.resultData,
+							runData: {},
+						},
+					},
+				};
+
+				// Push data to editor-ui once workflow finished
+				// TODO: Look at this again
+				const sendData: IPushDataExecutionFinished = {
+					executionId: this.executionId,
+					data: pushRunData,
+					retryOf: this.retryOf,
+				};
+
+				const pushInstance = Push.getInstance();
+				pushInstance.send('executionFinished', sendData, this.sessionId);
 			},
 		],
 	};
@@ -243,7 +234,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 				if (execution === undefined) {
 					// Something went badly wrong if this happens.
 					// This check is here mostly to make typescript happy.
-					return undefined; 
+					return undefined;
 				}
 				const fullExecutionData: IExecutionResponse = ResponseHelper.unflattenExecutionData(execution);
 
@@ -282,7 +273,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 
 				// Set last executed node so that it may resume on failure
 				fullExecutionData.data.resultData.lastNodeExecuted = nodeName;
-				
+
 				const flattenedExecutionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
 				await Db.collections.Execution!.update(this.executionId, flattenedExecutionData as IExecutionFlattedDb);
