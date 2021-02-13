@@ -9,9 +9,8 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	actionNetworkApiRequestREST, constructODIFilterString, constructPersonSignupHelperPayload
-} from './GenericFunctions';
+import { createPersonSignupHelperFields, createFilterFields } from './UserInterface';
+import { actionNetworkApiRequestREST, constructODIFilterString, constructPersonSignupHelperPayload } from './GenericFunctions';
 
 export class ActionNetwork implements INodeType {
 	description: INodeTypeDescription = {
@@ -39,12 +38,7 @@ export class ActionNetwork implements INodeType {
 				displayName: 'API Version',
 				name: 'version',
 				type: 'options',
-				options: [
-					{
-						name: 'Version 2',
-						value: 'v2',
-					},
-				],
+				options: [{ name: 'Version 2', value: 'v2', },],
 				default: 'v2',
 				description: 'API version',
 			},
@@ -53,35 +47,159 @@ export class ActionNetwork implements INodeType {
 				name: 'resource',
 				type: 'options',
 				options: [
-					{
-						name: 'Person',
-						value: 'people',
-					},
+					{ name: 'Person', value: 'people', },
+					{ name: 'Petition', value: 'petitions' },
+					{ name: 'Event', value: 'events' },
+					{ name: 'Form', value: 'forms' },
+					{ name: 'Fundraising Page', value: 'fundraising_pages' },
+					{ name: 'Event Campaign', value: 'event_campaigns' },
+					{ name: 'Campaign', value: 'campaigns' },
+					{ name: "Message", value: 'messages' }
 				],
 				default: 'people',
 				description: 'The resource to work with.',
 			},
 			{
-				displayName: 'Operation',
+				displayName: 'Resource ID',
+				name: 'resource_id',
+				type: 'string',
+				required: false,
+				default: '',
+				displayOptions: {
+					show: {
+						resource: ['events', 'petitions', 'forms', 'fundraising_pages', 'campaigns'],
+						method: ['POST', 'GET']
+					}
+				}
+			},
+			//
+			{
+				displayName: 'Related Resource',
+				name: 'related_resource',
+				type: 'options',
+				options: [
+					{ name: 'N/A', value: '' },
+					{ name: 'Attendance', value: 'attendances' },
+				],
+				required: false,
+				default: '',
+				description: 'A resource related to its parent resource',
+				displayOptions: { show: { resource: ['events'] }, hide: { resource_id: [''] } }
+			},
+			/**
+			 * Signature
+			 */
+			{
+				displayName: 'Related Resource',
+				name: 'related_resource',
+				type: 'options',
+				options: [
+					{ name: 'N/A', value: '' },
+					{ name: 'Signature', value: 'signatures' },
+				],
+				required: false,
+				default: '',
+				description: 'A resource related to its parent resource',
+				displayOptions: { show: { resource: ['petitions'] }, hide: { resource_id: [''] } }
+			},
+			//
+			{
+				displayName: 'Related Resource',
+				name: 'related_resource',
+				type: 'options',
+				options: [
+					{ name: 'N/A', value: '' },
+					{ name: 'Submission', value: 'submissions' },
+				],
+				required: false,
+				default: '',
+				description: 'A resource related to its parent resource',
+				displayOptions: { show: { resource: ['forms'] }, hide: { resource_id: [''] } }
+			},
+			/**
+			 * Donation
+			 */
+			{
+				displayName: 'Related Resource',
+				name: 'related_resource',
+				type: 'options',
+				options: [
+					{ name: 'N/A', value: '' },
+					{ name: 'Donation', value: 'donations' },
+				],
+				required: false,
+				default: '',
+				description: 'A resource related to its parent resource',
+				displayOptions: { show: { resource: ['fundraising_pages'] }, hide: { resource_id: [''] } }
+			},
+			/**
+			 * Outreach
+			 */
+			{
+				displayName: 'Related Resource',
+				name: 'related_resource',
+				type: 'options',
+				options: [
+					{ name: 'N/A', value: '' },
+					{ name: 'Outreach' , value: 'outreaches' },
+				],
+				required: false,
+				default: '',
+				description: 'A resource related to its parent resource',
+				displayOptions: { show: { resource: ['campaigns'] }, hide: { resource_id: [''] } }
+			},
+			//
+			{
+				displayName: 'Related Resource ID',
+				name: 'related_resource_id',
+				type: 'string',
+				required: false,
+				default: '',
+				displayOptions: {
+					show: {
+						related_resource: ['signatures', 'attendances', 'submissions', 'donations', 'outreaches'],
+						method: ['POST', 'GET']
+					},
+					hide: {
+						resource: ['people'],
+						method: ['POST']
+					}
+				}
+			},
+			/**
+			 * Operations
+			 */
+			{
+				displayName: 'Operations',
 				name: 'method',
 				type: 'options',
 				options: [
 					{
-						name: 'List People',
+						name: 'Retrieve',
 						value: 'GET',
-						description: 'Retrieve a collection of person resources',
+						description: 'Retrieve a collection of resources'
 					},
 					{
-						name: 'Create/Update Person',
+						name: 'Create',
 						value: 'POST',
-						description: 'Create a new person',
+						description: 'Create a new resource'
 					},
 				],
 				default: 'GET',
-				description: 'The operation to perform on this resource.',
+				description: 'The operation to perform on this resource.'
+			},
+			/**
+			 * List resources
+			 */
+			{
+				displayName: 'Include Metadata',
+				description: "When disabled, you'll get a list of items",
+				name: 'include_metadata',
+				type: 'boolean',
+				default: false,
 				displayOptions: {
 					show: {
-						resource: ['people']
+						method: ['GET']
 					}
 				}
 			},
@@ -97,329 +215,165 @@ export class ActionNetwork implements INodeType {
 				}
 			},
 			{
-				displayName: 'Filter Logic',
-				name: 'filter_logic',
-				type: 'options',
-				required: false,
-				options: [
-					{ value: 'and', name: "All" },
-					{ value: 'or', name: "Any" }
-				],
+				displayName: 'Items (max 25)',
+				name: 'per_page',
+				type: 'number',
+				default: 25,
 				displayOptions: {
 					show: {
-						resource: [
-							'people',
-						],
-						method: [
-							'GET'
-						]
+						method: ['GET']
+					}
+				}
+			},
+			...createFilterFields({
+				properties: [ 'identifier', 'created_date', 'modified_date', 'family_name', 'given_name', 'email_address', 'region', 'postal_code', ],
+				displayOptions: {
+					show: {
+						resource: [ 'people', ],
+						method: [ 'GET' ]
+					}
+				}
+			}),
+			...createFilterFields({
+				properties: [ 'identifier', 'created_date', 'modified_date', 'origin_system', 'title' ],
+				displayOptions: {
+					show: {
+						resource: [ 'petitions', 'events', 'forms', 'fundraising_pages', 'event_campaigns', 'campaigns', 'advocacy_campaigns', ],
+						method: [ 'GET' ]
+					}
+				}
+			}),
+			...createFilterFields({
+				properties: [ 'identifier', 'created_date', 'modified_date' ],
+				displayOptions: {
+					show: {
+						related_resource: [ 'signatures', 'attendances', 'submissions', 'donations', 'outreaches'  ],
+						method: [ 'GET' ]
+					}
+				}
+			}),
+			/**
+			 * People data
+			 */
+			{
+				displayName: 'Unique Person URL',
+				description: "E.g. https://actionnetwork.org/api/v2/people/c945d6fe-929e-11e3-a2e9-12313d316c29",
+				name: 'osdi:person',
+				type: 'string',
+				required: false,
+				default: '',
+				displayOptions: {
+					show: {
+						related_resource: ['attendances', 'submissions', 'signatures', 'donations', ],
+						method: ['POST']
 					},
-				},
-				default: 'and',
+					hide: {
+						resource: ['people'],
+						method: ['POST']
+					}
+				}
+			},
+			...createPersonSignupHelperFields({
+				displayOptions: {
+					show: {
+						related_resource: ['attendances', 'submissions', 'signatures', 'donations'],
+						method: [ 'POST' ]
+					}
+				}
+			}),
+			...createPersonSignupHelperFields({
+				displayOptions: {
+					show: {
+						resource: ['people'],
+						method: [ 'POST' ]
+					}
+				}
+			}),
+			/**
+			 * Other POST form data
+			 */
+			{
+				displayName: 'Signature Comment',
+				name: 'comments',
+				type: 'string',
+				required: false,
+				default: '',
+				displayOptions: { show: { related_resource: ['signatures'], method: ['POST'] } }
 			},
 			{
-				displayName: 'Filters',
-				name: 'filters',
-				type: 'fixedCollection',
-				default: '',
-				placeholder: 'Add Filter',
+				displayName: 'Send Autorespond Email',
+				name: 'autorespond',
+				type: 'boolean',
+				required: false,
+				default: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'people',
-						],
-						method: [
-							'GET'
-						]
-					},
-				},
+						related_resource: ['attendances', 'submissions', 'signatures'],
+						method: ['POST']
+					}
+				}
+			},
+			{
+				displayName: 'Donation Recipients',
+				name: 'recipients',
+				type: 'fixedCollection',
+				default: '',
+				placeholder: 'Add Donation Recipient',
+				displayOptions: { show: { related_resource: ['donations'], method: ['POST'] } },
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
-						name: 'filters',
-						displayName: 'Filters',
+						name: 'recipients',
+						displayName: 'Recipients',
 						values: [
 							{
-								displayName: 'Filter Property',
-								name: 'property',
-								type: 'options',
-								default: '',
-								options: [
-									{ name: 'identifier', value: 'identifier' },
-									{ name: 'created_date', value: 'created_date' },
-									{ name: 'modified_date', value: 'modified_date' },
-									{ name: 'family_name', value: 'family_name' },
-									{ name: 'given_name', value: 'given_name' },
-									{ name: 'email_address', value: 'email_address' },
-									{ name: 'region', value: 'region' },
-									{ name: 'postal_code', value: 'postal_code' },
-								]
-							},
-							{
-								displayName: 'Operation',
-								name: 'operation',
-								type: 'options',
-								options: [
-									{
-										name: 'eq',
-										value: 'eq',
-									},
-									{
-										name: 'lt',
-										value: 'lt',
-									},
-									{
-										name: 'gt',
-										value: 'gt',
-									},
-								],
-								default: 'eq',
-							},
-							{
-								displayName: 'Matching Term',
-								name: 'search_term',
+								displayName: 'Name',
+								name: 'display_name',
 								type: 'string',
 								default: '',
+							},
+							{
+								displayName: 'Amount',
+								name: 'amount',
+								type: 'number',
+								default: 0,
 							},
 						]
 					}
 				]
 			},
 			{
-				displayName: 'First / Given Name',
-				name: 'given_name',
-				type: 'string',
-				required: false,
-				displayOptions: {
-					show: {
-						resource: [
-							'people',
-						],
-						method: [
-							'POST'
-						]
-					},
-				},
-				default: '',
-			},
-			{
-				displayName: 'Last / Family Name',
-				name: 'family_name',
-				type: 'string',
-				required: false,
-				displayOptions: {
-					show: {
-						resource: [
-							'people',
-						],
-						method: [
-							'POST'
-						]
-					},
-				},
-				default: '',
-			},
-			{
-				displayName: 'Additional Fields',
-				name: 'additional_fields',
+				displayName: 'Outreach Targets',
+				name: 'targets',
 				type: 'fixedCollection',
 				default: '',
-				placeholder: 'Add Field',
-				displayOptions: {
-					show: {
-						resource: [
-							'people',
-						],
-						method: [
-							'POST'
-						]
-					},
-				},
+				placeholder: 'Add Donation Recipient',
+				displayOptions: { show: { related_resource: ['outreaches'], method: ['POST'] } },
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
-						name: 'email_addresses',
-						displayName: 'Email Addresses',
+						name: 'targets',
+						displayName: 'Targets',
 						values: [
 							{
-								displayName: 'Address',
-								name: 'address',
+								displayName: 'First / Given Name',
+								name: 'given_name',
 								type: 'string',
 								default: '',
 							},
 							{
-								displayName: 'Primary',
-								name: 'primary',
-								type: 'boolean',
-								default: true,
-							},
-							{
-								displayName: 'Status',
-								name: 'status',
-								type: 'options',
-								options: [
-									{
-										name: 'unsubscribed',
-										value: 'unsubscribed',
-									},
-									{
-										name: 'subscribed',
-										value: 'subscribed',
-									},
-								],
-								default: 'subscribed',
-							},
-						],
-					},
-					{
-						name: 'postal_addresses',
-						displayName: 'Postal Addresses',
-						values: [
-							{
-								displayName: 'street_address',
-								name: 'street_address',
+								displayName: 'Last / Family Name',
+								name: 'family_name',
 								type: 'string',
 								default: '',
 							},
-							{
-								displayName: 'locality',
-								name: 'locality',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'region',
-								name: 'region',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'postal_code',
-								name: 'postal_code',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'country',
-								name: 'country',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'language',
-								name: 'language',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'latitude',
-								name: 'latitude',
-								type: 'number',
-								default: '',
-							},
-							{
-								displayName: 'longitude',
-								name: 'longitude',
-								type: 'number',
-								default: '',
-							},
-							{
-								displayName: 'accuracy',
-								name: 'address',
-								type: 'options',
-								options: [
-									{
-										value: 'Approximate',
-										name: 'Approximate'
-									}
-								],
-								default: 'Approximate',
-							},
-							{
-								displayName: 'Primary',
-								name: 'primary',
-								type: 'boolean',
-								default: true,
-							},
-						],
-					},
-					{
-						name: 'phone_numbers',
-						displayName: 'Phone Numbers',
-						values: [
-							{
-								displayName: 'Number',
-								name: 'number',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Type',
-								name: 'number_type',
-								type: 'options',
-								options: [
-									{
-										name: 'Mobile',
-										value: 'Mobile',
-									},
-								],
-								default: 'Mobile',
-							},
-							{
-								displayName: 'Primary',
-								name: 'primary',
-								type: 'boolean',
-								default: true,
-							},
-							{
-								displayName: 'Status',
-								name: 'status',
-								type: 'options',
-								options: [
-									{
-										name: 'unsubscribed',
-										value: 'unsubscribed',
-									},
-									{
-										name: 'subscribed',
-										value: 'subscribed',
-									},
-								],
-								default: 'subscribed',
-							},
-						],
-					},
-					{
-						name: 'add_tags',
-						displayName: 'Tags',
-						type: 'string',
-						default: '',
-					},
-					{
-						name: 'custom_fields',
-						displayName: 'Custom Fields',
-						values: [
-							{
-								displayName: 'Key',
-								name: 'key',
-								type: 'string',
-								description: 'Custom field name as defined in Action Network',
-								default: '',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								description: 'Custom field value',
-								default: '',
-							},
-						],
-					},
-				],
+						]
+					}
+				]
 			},
 		],
 	};
@@ -432,40 +386,132 @@ export class ActionNetwork implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const method = this.getNodeParameter('method', 0) as string;
 		for (let i = 0; i < items.length; i++) {
-			if (resource === 'people') {
-				if (method === 'GET') {
-					// Docs: https://actionnetwork.org/docs/v2/get-people/
-					const page = this.getNodeParameter('page', 0) as string;
-					let url = `/api/${version}/${resource}?page=${page || 1}`
+			let url = `/api/${version}/${resource}`
 
-					// OData filtering
-					// Docs: https://actionnetwork.org/docs/v2#odata
-					// @ts-ignore
-					const { filters } = this.getNodeParameter('filters', 0, []) as IDataObject[] | undefined;
-					if (filters) {
-						const filter_logic = this.getNodeParameter('filter_logic', 0, 'and') as string;
-						url += `&filter=${encodeURIComponent(constructODIFilterString(filters, filter_logic))}`
+			// Specify a resource
+			const resource_id = this.getNodeParameter('resource_id', i, '') as any
+			if (resource_id) {
+				url += `/${resource_id}`
+			}
+
+			// Specify a related resource
+			const related_resource = this.getNodeParameter('related_resource', i, '') as any
+			if (resource_id) {
+				url += `/${related_resource}`
+			} else if (resource === 'messages' && !!resource_id) {
+				url += '/send'
+			}
+
+			// Specificy a specific related resource
+			const related_resource_id = this.getNodeParameter('related_resource_id', i, '') as any
+			if (resource_id) {
+				url += `/${related_resource_id}`
+			}
+
+			if (method === 'POST') {
+				let body = {}
+
+				const person_link = this.getNodeParameter('osdi:person', i, '') as any
+				if (person_link && ['attendances', 'signatures', 'submissions', 'donations'].includes(related_resource)) {
+					body = {
+						...body,
+						_links: { 'osdi:person': { href: person_link } }
 					}
-
-					responseData = await actionNetworkApiRequestREST.call(this, method, url)
-				}
-				if (method === 'POST') {
+				} else {
 					// Docs: https://actionnetwork.org/docs/v2/person_signup_helper
 					const additional_fields = this.getNodeParameter('additional_fields', i) as any
-					const body = constructPersonSignupHelperPayload({
-						family_name: this.getNodeParameter('family_name', i),
-						given_name: this.getNodeParameter('given_name', i),
-						postal_addresses: additional_fields.postal_addresses,
-						email_addresses: additional_fields.email_addresses,
-						phone_numbers: additional_fields.phone_numbers,
-						add_tags: additional_fields.add_tags,
-						custom_fields: additional_fields.custom_fields
-					})
-
-					responseData = await actionNetworkApiRequestREST.call(
-						this, method, `/api/${version}/${resource}`, JSON.stringify(body)
-					)
+					body = {
+						...body,
+						...constructPersonSignupHelperPayload({
+							family_name: this.getNodeParameter('family_name', i),
+							given_name: this.getNodeParameter('given_name', i),
+							postal_addresses: additional_fields.postal_addresses,
+							email_addresses: additional_fields.email_addresses,
+							phone_numbers: additional_fields.phone_numbers,
+							add_tags: additional_fields.add_tags,
+							custom_fields: additional_fields.custom_fields
+						})
+					}
 				}
+
+				if (['attendances', 'signatures', 'submissions'].includes(resource)) {
+					// @ts-ignore
+					body.triggers = {
+						"autoresponse": {
+							"enabled": this.getNodeParameter('autorespond', i) as boolean
+						}
+					}
+				}
+
+				if (resource === 'signatures') {
+					// @ts-ignore
+					body.comments = this.getNodeParameter('comments', i, undefined) as any
+				}
+
+				if (resource === 'donations') {
+					const { recipients } = this.getNodeParameter('recipients', i, undefined) as any
+					if (recipients) {
+						// @ts-ignore
+						body.recipients = recipients.map(n => ({ ...n, amount: n.amount.toFixed(2) }))
+					}
+				}
+
+				if (resource === 'outreaches') {
+					// @ts-ignore
+					const { targets } = this.getNodeParameter('targets', i, undefined) as any
+					if (targets) {
+						// @ts-ignore
+						body.targets = targets.map(n => ({ ...n, amount: n.amount.toFixed(2) }))
+					}
+				}
+
+				responseData = await actionNetworkApiRequestREST.call(this, method, url, JSON.stringify(body))
+			} else if (method === 'GET') {
+				// Pagination and item count
+				const page = this.getNodeParameter('page', 0) as string;
+				const per_page = Math.max(1, Math.min(25, this.getNodeParameter('per_page', 0) as number));
+				url += `?page=${page || 1}&per_page=${per_page}`
+
+				// OData filtering
+				// Docs: https://actionnetwork.org/docs/v2#odata
+				// @ts-ignore
+				const { filters } = this.getNodeParameter('filters', 0, []) as IDataObject[] | undefined;
+				if (filters) {
+					const filter_logic = this.getNodeParameter('filter_logic', 0, 'and') as string;
+					url += `&filter=${encodeURIComponent(constructODIFilterString(filters, filter_logic))}`
+				}
+
+				responseData = await actionNetworkApiRequestREST.call(this, method, url)
+
+				try {
+					// Identify where the list of data is
+					const firstDataKey = Object.keys(responseData['_embedded'])[0]
+
+					// Try to identify a dictionary of IDs
+					// Particularly useful for pulling out the Action Network ID of an item for a further operation on it
+					// e.g. find an event, get its ID and then sign someone up to it via its ID
+					for (const i in responseData['_embedded'][firstDataKey] as any[]) {
+						responseData['_embedded'][firstDataKey][i].identifierDictionary = responseData['_embedded'][firstDataKey][i].identifiers?.reduce(
+							(dict: any, id: string) => {
+								try {
+									const [prefix, suffix] = id.split(':');
+									dict[prefix] = suffix;
+								} catch (e) {}
+								return dict;
+							}, {}
+						)
+					}
+
+					// And optionally generate data items from the request, if possible
+					const include_metadata = this.getNodeParameter('include_metadata', 0) as boolean
+					if (!include_metadata) {
+						responseData = responseData['_embedded'][firstDataKey]
+					}
+				} catch (e) {}
+			}
+
+			if (responseData === undefined) {
+				throw new Error("This operation has not been implemented")
 			}
 
 			if (Array.isArray(responseData)) {
