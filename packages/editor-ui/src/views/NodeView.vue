@@ -742,7 +742,7 @@ export default mixins(
 						} as IRun;
 						const pushData = {
 							data: executedData,
-							executionId: executionId,
+							executionId,
 							retryOf: execution.retryOf,
 						} as IPushDataExecutionFinished;
 						this.$store.commit('finishActiveExecution', pushData);
