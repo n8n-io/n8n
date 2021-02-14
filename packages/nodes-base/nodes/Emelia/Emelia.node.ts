@@ -1,36 +1,36 @@
-import { IExecuteFunctions } from 'n8n-core'
+import { IExecuteFunctions } from 'n8n-core';
 import {
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
-} from 'n8n-workflow'
-import { emeliaGrapqlRequest } from './GenericFunctions'
+	INodeType,
+	INodeTypeDescription
+} from 'n8n-workflow';
+import { emeliaGrapqlRequest } from './GenericFunctions';
 
 interface Campaign {
-	_id: string
-	name: string
+	_id: string;
+	name: string;
 }
 
 interface ContactsList {
-	_id: string
-	name: string
-	contactCount: number
+	_id: string;
+	name: string;
+	contactCount: number;
 }
 
 export class Emelia implements INodeType {
-	description: INodeTypeDescription
+	description: INodeTypeDescription;
 	methods: {
 		loadOptions: {
 			getCampaigns(
-				this: ILoadOptionsFunctions
-			): Promise<INodePropertyOptions[]>
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]>;
 			getContactsLists(
-				this: ILoadOptionsFunctions
-			): Promise<INodePropertyOptions[]>
-		}
-	}
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]>;
+		};
+	};
 
 	constructor() {
 		this.description = {
@@ -86,7 +86,7 @@ export class Emelia implements INodeType {
 						{
 							name: 'Add Contact to a campaign',
 							value: 'addContactToCampaign',
-							description: `Add a contact to an existant campaign, if its RUNNING the campaign will be automatically added to the loop.`,
+							description: `Add a contact to an existant campaign, if its RUNNING the campaign will be automatically added to the loop.`
 						},
 					],
 					default: 'addContactToCampaign',
@@ -106,7 +106,7 @@ export class Emelia implements INodeType {
 						{
 							name: 'Add Contact to a list',
 							value: 'addContactToList',
-							description: `Add a contact to an existant list. If the campaign is already started you should use "Add Contact to a campaign" method instead.`,
+							description: `Add a contact to an existant list. If the campaign is already started you should use "Add Contact to a campaign" method instead.`
 						},
 					],
 					default: 'addContactToList',
@@ -124,7 +124,7 @@ export class Emelia implements INodeType {
 						show: {
 							operation: ['addContactToCampaign'],
 							resource: ['campaign'],
-						},
+						}
 					},
 					default: '',
 				},
@@ -154,32 +154,26 @@ export class Emelia implements INodeType {
 						'Contact data to send to Emelia, must be in JSON format. All items must have an `email` field. Every fields will be added on contact details on Emelia',
 					displayOptions: {
 						show: {
-							operation: [
-								'addContactToCampaign',
-								'addContactToList',
-							],
+							operation: ['addContactToCampaign', 'addContactToList'],
 						},
 					},
 				},
-			],
-		}
+			]
+		};
 
 		this.methods = {
 			loadOptions: {
 				async getCampaigns() {
 					const responseData = await emeliaGrapqlRequest.call(this, {
-						query:
-							'query GetCampaigns {\ncampaigns {\n_id\nname\n}\n}',
+						query: 'query GetCampaigns {\ncampaigns {\n_id\nname\n}\n}',
 						operationName: 'GetCampaigns',
 						variables: '{}',
-					})
+					});
 
-					return responseData.data.campaigns.map(
-						(campaign: Campaign) => ({
-							name: campaign.name,
-							value: campaign._id,
-						})
-					)
+					return responseData.data.campaigns.map((campaign: Campaign) => ({
+						name: campaign.name,
+						value: campaign._id,
+					}));
 				},
 				async getContactsLists() {
 					const responseData = await emeliaGrapqlRequest.call(this, {
@@ -187,30 +181,28 @@ export class Emelia implements INodeType {
 							'query GetContactsLists {\ncontact_lists {\n_id\nname\ncontactCount\n}\n}',
 						operationName: 'GetContactsLists',
 						variables: '{}',
-					})
+					});
 
-					return responseData.data.contact_lists.map(
-						(list: ContactsList) => ({
-							name: list.name,
-							value: list._id,
-						})
-					)
-				},
-			},
-		}
+					return responseData.data.contact_lists.map((list: ContactsList) => ({
+						name: list.name,
+						value: list._id,
+					}));
+				}
+			}
+		};
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData()
-		const returnData: any = []
-		const resource = this.getNodeParameter('resource', 0)
-		const operation = this.getNodeParameter('operation', 0)
+		const items = this.getInputData();
+		const returnData: Array<{success: boolean, contactId: string}> = [];
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			if (resource === 'campaign') {
 				if (operation === 'addContactToCampaign') {
-					const campaignId = this.getNodeParameter('campaignId', 0)
-					const contactData = this.getNodeParameter('contactData', i)
+					const campaignId = this.getNodeParameter('campaignId', 0);
+					const contactData = this.getNodeParameter('contactData', i);
 					const responseData = await emeliaGrapqlRequest.call(this, {
 						query:
 							'mutation AddContactToCampaignHook($id: ID!, $contact: JSON!)  {addContactToCampaignHook(id: $id, contact: $contact) }',
@@ -222,18 +214,18 @@ export class Emelia implements INodeType {
 									? contactData
 									: JSON.parse(contactData as string),
 						},
-					})
+					});
 
 					returnData.push({
 						success: true,
 						contactId: responseData.data.addContactToCampaignHook,
-					})
+					});
 				}
 			}
 			if (resource === 'contactsLists') {
 				if (operation === 'addContactToList') {
-					const listId = this.getNodeParameter('contactsListsId', 0)
-					const contactData = this.getNodeParameter('contactData', i)
+					const listId = this.getNodeParameter('contactsListsId', 0);
+					const contactData = this.getNodeParameter('contactData', i);
 					const responseData = await emeliaGrapqlRequest.call(this, {
 						query:
 							'mutation AddContactsToListHook($id: ID!, $contact: JSON!)  {addContactsToListHook(id: $id, contact: $contact) }',
@@ -245,18 +237,16 @@ export class Emelia implements INodeType {
 									? contactData
 									: JSON.parse(contactData as string),
 						},
-					})
-
-					console.log(responseData)
+					});
 
 					returnData.push({
 						success: true,
 						contactId: responseData.data.addContactsToListHook,
-					})
+					});
 				}
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)]
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

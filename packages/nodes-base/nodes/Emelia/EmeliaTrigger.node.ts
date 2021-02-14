@@ -1,35 +1,35 @@
 import {
-	INodeType,
-	INodeTypeDescription,
+	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
-	IHookFunctions,
-} from 'n8n-workflow'
-import { emeliaGrapqlRequest, emeliaApiRequest } from './GenericFunctions'
+} from 'n8n-workflow';
+import { emeliaApiRequest, emeliaGrapqlRequest } from './GenericFunctions';
 
 interface Campaign {
-	_id: string
-	name: string
+	_id: string;
+	name: string;
 }
 
 export class EmeliaTrigger implements INodeType {
-	description: INodeTypeDescription
+	description: INodeTypeDescription;
 	methods: {
 		loadOptions: {
 			getCampaigns(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]>
 		}
-	}
+	};
 	// @ts-ignore
 	webhookMethods: {
 		default: {
 			create(this: IHookFunctions): Promise<boolean>
 			delete(this: IHookFunctions): Promise<boolean>
 		}
-	}
+	};
 
 	constructor() {
 		this.description = {
@@ -113,82 +113,82 @@ export class EmeliaTrigger implements INodeType {
 							'query GetCampaigns {\ncampaigns {\n_id\nname\n}\n}',
 						operationName: 'GetCampaigns',
 						variables: '{}',
-					})
+					});
 
 					return responseData.data.campaigns.map(
 						(campaign: Campaign) => ({
 							name: campaign.name,
 							value: campaign._id,
-						})
-					)
+						}),
+					);
 				},
 			},
-		}
+		};
 
 		this.webhookMethods = {
 			default: {
 				async create(this: IHookFunctions): Promise<boolean> {
 					const webhookUrl = this.getNodeWebhookUrl(
-						'default'
-					) as string
-					const webhookData = this.getWorkflowStaticData('node')
+						'default',
+					) as string;
+					const webhookData = this.getWorkflowStaticData('node');
 					const events = this.getNodeParameter('events', [
 						'REPLIED',
-					]) as string[]
+					]) as string[];
 					const campaignId = this.getNodeParameter(
 						'campaignId',
-						''
-					) as string
+						'',
+					) as string;
 					const body = {
 						hookUrl: webhookUrl,
 						events,
 						campaignId,
-					}
+					};
 					const { webhookId } = await emeliaApiRequest.call(
 						this,
 						'POST',
 						'/webhook/webhook',
-						body
-					)
-					webhookData.webhookId = webhookId
-					return true
+						body,
+					);
+					webhookData.webhookId = webhookId;
+					return true;
 				},
 				async delete(this: IHookFunctions): Promise<boolean> {
 					const webhookData = this.getWorkflowStaticData('node')
 					const webhookUrl = this.getNodeWebhookUrl(
-						'default'
-					) as string
+						'default',
+					) as string;
 					const campaignId = this.getNodeParameter(
 						'campaignId',
-						''
-					) as string
+						'',
+					) as string;
 
 					try {
 						const body = {
 							hookUrl: webhookUrl,
 							campaignId,
-						}
+						};
 
 						await emeliaApiRequest.call(
 							this,
 							'DELETE',
 							'/webhook/webhook',
-							body
-						)
+							body,
+						);
 					} catch (error) {
-						return false
+						return false;
 					}
-					delete webhookData.webhookId
-					return true
+					delete webhookData.webhookId;
+					return true;
 				},
 			},
 		}
 	}
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const req = this.getRequestObject()
+		const req = this.getRequestObject();
 		return {
 			workflowData: [this.helpers.returnJsonArray(req.body)],
-		}
+		};
 	}
 }
