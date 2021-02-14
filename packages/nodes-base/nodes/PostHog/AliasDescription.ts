@@ -16,7 +16,7 @@ export const aliasOperations = [
 		},
 		options: [
 			{
-				name: 'create',
+				name: 'Create',
 				value: 'create',
 				description: 'Create an alias',
 			},
@@ -47,7 +47,7 @@ export const aliasFields = [
 			},
 		},
 		default: '',
-		description: 'The name of the alias',
+		description: 'The name of the alias.',
 	},
 	{
 		displayName: 'Distinct ID',
@@ -65,7 +65,7 @@ export const aliasFields = [
 			},
 		},
 		default: '',
-		description: `User's distinct id`,
+		description: `The user's distinct ID.`,
 	},
 	{
 		displayName: 'Additional Fields',

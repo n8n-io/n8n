@@ -46,7 +46,7 @@ export const identityFields = [
 			},
 		},
 		default: '',
-		description: `identity's distinct id`,
+		description: `The identity's distinct ID.`,
 	},
 	{
 		displayName: 'Additional Fields',

@@ -16,7 +16,7 @@ export const eventOperations = [
 		},
 		options: [
 			{
-				name: 'create',
+				name: 'Create',
 				value: 'create',
 				description: 'Create an event',
 			},
@@ -47,7 +47,7 @@ export const eventFields = [
 			},
 		},
 		default: '',
-		description: 'The name of the event',
+		description: 'The name of the event.',
 	},
 	{
 		displayName: 'Distinct ID',
@@ -65,7 +65,7 @@ export const eventFields = [
 			},
 		},
 		default: '',
-		description: `User's distinct id`,
+		description: `The user's distinct ID.`,
 	},
 	{
 		displayName: 'Additional Fields',

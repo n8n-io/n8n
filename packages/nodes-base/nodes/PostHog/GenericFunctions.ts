@@ -50,17 +50,14 @@ export async function posthogApiRequest(this: IExecuteFunctions | ILoadOptionsFu
 
 export interface IEvent {
 	event: string;
-	// tslint:disable-next-line: no-any
-	properties: { [key: string]: any };
+	properties: { [key: string]: any }; // tslint:disable-line:no-any
 }
 
 export interface IAlias {
 	type: string;
 	event: string;
-	// tslint:disable-next-line: no-any
-	properties: { [key: string]: any };
-	// tslint:disable-next-line: no-any
-	context: { [key: string]: any };
+	properties: { [key: string]: any }; // tslint:disable-line:no-any
+	context: { [key: string]: any }; // tslint:disable-line:no-any
 }
 
 export interface ITrack {
@@ -70,10 +67,8 @@ export interface ITrack {
 	messageId?: string;
 	distinct_id: string;
 	category?: string;
-	// tslint:disable-next-line: no-any
-	properties: { [key: string]: any };
-	// tslint:disable-next-line: no-any
-	context: { [key: string]: any };
+	properties: { [key: string]: any }; // tslint:disable-line:no-any
+	context: { [key: string]: any }; // tslint:disable-line:no-any
 }
 
 
@@ -81,6 +76,5 @@ export interface IIdentity {
 	event: string;
 	messageId?: string;
 	distinct_id: string;
-	// tslint:disable-next-line: no-any
-	properties: { [key: string]: any };
+	properties: { [key: string]: any }; // tslint:disable-line:no-any
 }

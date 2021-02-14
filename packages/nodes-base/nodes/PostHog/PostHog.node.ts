@@ -200,7 +200,7 @@ export class PostHog implements INodeType {
 					delete event.propertiesUi;
 
 					responseData = await posthogApiRequest.call(this, 'POST', '/batch', event);
-					
+
 					returnData.push(responseData);
 				}
 			}

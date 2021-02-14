@@ -71,7 +71,7 @@ export const trackFields = [
 			},
 		},
 		default: '',
-		description: `User's distinct id`,
+		description: `The user's distinct ID.`,
 	},
 	{
 		displayName: 'Additional Fields',
