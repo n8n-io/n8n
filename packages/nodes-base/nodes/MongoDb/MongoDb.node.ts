@@ -106,6 +106,9 @@ export class MongoDb implements INodeType {
 			let updateKey = this.getNodeParameter('updateKey', 0) as string;
 			updateKey = updateKey.trim();
 
+			const options = (this.getNodeParameter('upsert', 0) as boolean)
+				? { upsert: true } : undefined;
+
 			if (!fields.includes(updateKey)) {
 				fields.push(updateKey);
 			}
@@ -123,7 +126,7 @@ export class MongoDb implements INodeType {
 
 				await mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
-					.updateOne(filter, { $set: item });
+					.updateOne(filter, { $set: item }, options);
 			}
 
 			returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);

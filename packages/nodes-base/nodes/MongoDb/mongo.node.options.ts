@@ -197,5 +197,17 @@ export const nodeDescription: INodeTypeDescription = {
 			description:
 				'Comma separated list of the fields to be included into the new document.',
 		},
+		{
+			displayName: 'Upsert',
+			name: 'upsert',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					operation: ['update'],
+				},
+			},
+			default: false,
+			description: `Perform an insert if no documents match the update key`,
+		},
 	],
 };
