@@ -155,7 +155,7 @@ export const sessionFields = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: {},
+		default: [],
 		description: 'Key of the webinar to which the session belongs.',
 		displayOptions: {
 			show: {

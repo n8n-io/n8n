@@ -49,7 +49,7 @@ export const registrantFields = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: {},
+		default: [],
 		description: 'Key of the webinar of the registrant to create.',
 		displayOptions: {
 			show: {
@@ -291,7 +291,7 @@ export const registrantFields = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: {},
+		default: [],
 		description: 'The key of the webinar to retrieve registrants from.',
 		displayOptions: {
 			show: {
@@ -351,9 +351,12 @@ export const registrantFields = [
 	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getWebinars',
+		},
 		required: true,
-		default: '',
+		default: [],
 		description: 'Key of the webinar of the registrant to delete.',
 		displayOptions: {
 			show: {
@@ -390,9 +393,12 @@ export const registrantFields = [
 	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getWebinars',
+		},
 		required: true,
-		default: '',
+		default: [],
 		description: 'Key of the webinar of the registrant to retrieve.',
 		displayOptions: {
 			show: {

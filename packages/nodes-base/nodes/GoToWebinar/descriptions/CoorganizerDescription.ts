@@ -85,7 +85,7 @@ export const coorganizerFields = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: {},
+		default: [],
 		description: 'Key of the webinar that the co-organizer is hosting.',
 		displayOptions: {
 			show: {
@@ -142,9 +142,12 @@ export const coorganizerFields = [
 	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getWebinars',
+		},
 		required: true,
-		default: '',
+		default: [],
 		description: 'Key of the webinar to delete.',
 		displayOptions: {
 			show: {
@@ -203,7 +206,7 @@ export const coorganizerFields = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: {},
+		default: [],
 		description: 'Key of the webinar to retrieve all co-organizers from.',
 		displayOptions: {
 			show: {

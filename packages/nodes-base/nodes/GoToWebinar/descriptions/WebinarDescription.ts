@@ -215,9 +215,12 @@ export const webinarFields = [
 	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getWebinars',
+		},
 		required: true,
-		default: '',
+		default: [],
 		description: 'Key of the webinar to delete.',
 		displayOptions: {
 			show: {
@@ -258,14 +261,17 @@ export const webinarFields = [
 		],
 	},
 	// ----------------------------------
-	//         webinar: getAll
+	//         webinar: get
 	// ----------------------------------
 	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getWebinars',
+		},
 		required: true,
-		default: '',
+		default: [],
 		description: 'Key of the webinar to retrieve.',
 		displayOptions: {
 			show: {
@@ -376,9 +382,12 @@ export const webinarFields = [
 	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getWebinars',
+		},
 		required: true,
-		default: '',
+		default: [],
 		description: 'Key of the webinar to update.',
 		displayOptions: {
 			show: {

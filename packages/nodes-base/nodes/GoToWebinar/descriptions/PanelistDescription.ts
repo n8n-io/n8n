@@ -85,7 +85,7 @@ export const panelistFields = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: {},
+		default: [],
 		description: 'Key of the webinar that the panelist will present at.',
 		displayOptions: {
 			show: {
@@ -109,7 +109,7 @@ export const panelistFields = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: {},
+		default: [],
 		description: 'Key of the webinar to retrieve all panelists from.',
 		displayOptions: {
 			show: {
@@ -169,9 +169,12 @@ export const panelistFields = [
 	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getWebinars',
+		},
 		required: true,
-		default: '',
+		default: [],
 		description: 'Key of the webinar to delete the panelist from.',
 		displayOptions: {
 			show: {
@@ -208,9 +211,12 @@ export const panelistFields = [
 	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getWebinars',
+		},
 		required: true,
-		default: '',
+		default: [],
 		description: 'Key of the webinar to reinvite the panelist to.',
 		displayOptions: {
 			show: {

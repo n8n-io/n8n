@@ -45,7 +45,7 @@ export const attendeeFields = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: {},
+		default: [],
 		description: 'Key of the webinar that the attendee attended.',
 		displayOptions: {
 			show: {
