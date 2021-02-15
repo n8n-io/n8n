@@ -578,7 +578,7 @@ export class Trello implements INodeType {
 
 					const name = this.getNodeParameter('name', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(qs, {name, ...additionalFields});
+					Object.assign(qs, { name, ...additionalFields });
 
 				} else if (operation === 'deleteCheckItem') {
 					// ----------------------------------
