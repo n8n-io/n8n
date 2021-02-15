@@ -145,14 +145,17 @@ export const webinarFields = [
 					{
 						name: 'Single Session',
 						value: 'single_session',
+						description: 'Webinar with one single meeting.',
 					},
 					{
 						name: 'Series',
 						value: 'series',
+						description: 'Webinar with multiple meetings times where attendees choose only one to attend.',
 					},
 					{
 						name: 'Sequence',
 						value: 'sequence',
+						description: 'Webinar with multiple meeting times where attendees are expected to be the same for all sessions.',
 					},
 				],
 			},
@@ -196,14 +199,17 @@ export const webinarFields = [
 					{
 						name: 'Single Session',
 						value: 'single_session',
+						description: 'Webinar with one single meeting.',
 					},
 					{
 						name: 'Series',
 						value: 'series',
+						description: 'Webinar with multiple meetings times where attendees choose only one to attend.',
 					},
 					{
 						name: 'Sequence',
 						value: 'sequence',
+						description: 'Webinar with multiple meeting times where attendees are expected to be the same for all sessions.',
 					},
 				],
 			},
@@ -457,14 +463,17 @@ export const webinarFields = [
 					{
 						name: 'Single Session',
 						value: 'single_session',
+						description: 'Webinar with one single meeting.',
 					},
 					{
 						name: 'Series',
 						value: 'series',
+						description: 'Webinar with multiple meetings times where attendees choose only one to attend.',
 					},
 					{
 						name: 'Sequence',
 						value: 'sequence',
+						description: 'Webinar with multiple meeting times where attendees are expected to be the same for all sessions.',
 					},
 				],
 			},
@@ -549,14 +558,17 @@ export const webinarFields = [
 					{
 						name: 'Single Session',
 						value: 'single_session',
+						description: 'Webinar with one single meeting.',
 					},
 					{
 						name: 'Series',
 						value: 'series',
+						description: 'Webinar with multiple meetings times where attendees choose only one to attend.',
 					},
 					{
 						name: 'Sequence',
 						value: 'sequence',
+						description: 'Webinar with multiple meeting times where attendees are expected to be the same for all sessions.',
 					},
 				],
 			},
