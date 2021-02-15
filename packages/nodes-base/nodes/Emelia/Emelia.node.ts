@@ -3,6 +3,7 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -201,18 +202,33 @@ export class Emelia implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: Array<{success: boolean, contactId: string}> = [];
+		const returnData: IDataObject[] = [];
+
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
+
 			if (resource === 'campaign') {
+
+				// **********************************
+				//            campaign
+				// **********************************
+
 				if (operation === 'addContactToCampaign') {
-					const campaignId = this.getNodeParameter('campaignId', 0);
+
+					// ----------------------------------
+					//   campaign: addContactToCampaign
+					// ----------------------------------
+
+					const campaignId = this.getNodeParameter('campaignId', i);
 					const contactData = this.getNodeParameter('contactData', i);
+
 					const responseData = await emeliaGrapqlRequest.call(this, {
-						query:
-							'mutation AddContactToCampaignHook($id: ID!, $contact: JSON!)  {addContactToCampaignHook(id: $id, contact: $contact) }',
+						query: `
+							mutation AddContactToCampaignHook($id: ID!, $contact: JSON!) {
+								addContactToCampaignHook(id: $id, contact: $contact)
+						}`,
 						operationName: 'AddContactToCampaignHook',
 						variables: {
 							id: campaignId,
@@ -229,13 +245,27 @@ export class Emelia implements INodeType {
 					});
 				}
 			}
+
 			if (resource === 'contactsLists') {
+
+				// **********************************
+				//         contactsLists
+				// **********************************
+
 				if (operation === 'addContactToList') {
-					const listId = this.getNodeParameter('contactsListsId', 0);
+
+					// ----------------------------------
+					//  contactsLists: addContactToList
+					// ----------------------------------
+
+					const listId = this.getNodeParameter('contactsListsId', i);
 					const contactData = this.getNodeParameter('contactData', i);
+
 					const responseData = await emeliaGrapqlRequest.call(this, {
-						query:
-							'mutation AddContactsToListHook($id: ID!, $contact: JSON!)  {addContactsToListHook(id: $id, contact: $contact) }',
+						query: `
+							mutation AddContactsToListHook($id: ID!, $contact: JSON!) {
+								addContactsToListHook(id: $id, contact: $contact)
+							}`,
 						operationName: 'AddContactsToListHook',
 						variables: {
 							id: listId,
