@@ -1,6 +1,6 @@
 import { ICredentialType, NodePropertyTypes } from 'n8n-workflow';
 
-export class EmeliaCredentials implements ICredentialType {
+export class EmeliaApi implements ICredentialType {
 	name = 'emeliaApi';
 	displayName = 'Emelia API';
 	properties = [
