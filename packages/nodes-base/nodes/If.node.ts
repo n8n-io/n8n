@@ -31,6 +31,7 @@ export class If implements INodeType {
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
+					sortable: true,
 				},
 				description: 'The type of values to compare.',
 				default: {},

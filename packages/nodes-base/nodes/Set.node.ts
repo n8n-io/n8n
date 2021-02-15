@@ -38,6 +38,7 @@ export class Set implements INodeType {
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
+					sortable: true,
 				},
 				description: 'The value to set.',
 				default: {},
