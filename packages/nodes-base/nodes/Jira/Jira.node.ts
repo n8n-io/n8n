@@ -127,7 +127,7 @@ export class Jira implements INodeType {
 					{
 						name: 'User',
 						value: 'user',
-						description: 'Create and delete a user from a team.',
+						description: 'Get, create and delete a user.',
 					},
 				],
 				default: 'issue',
