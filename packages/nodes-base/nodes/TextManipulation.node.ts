@@ -9,6 +9,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	INodeParameters,
+	IDataObject,
+	IBinaryKeyData,
 } from 'n8n-workflow';
 
 import { get, set } from 'lodash';
@@ -81,12 +83,13 @@ export class TextManipulation implements INodeType {
 									show: {
 										readOperation: [
 											'fromFile',
+											'toFile',
 										],
 									},
 								},
 								type: 'string',
 								default: 'data',
-								description: 'Name of the binary property from which to read.',
+								description: 'Name of the binary property for the binary data.',
 							},
 							{
 								displayName: 'Source Key',
@@ -696,37 +699,32 @@ export class TextManipulation implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		
-        let keepOnlySet;
-		let item;
-		
+        let keepOnlySet: boolean;
+		let item: INodeExecutionData;
 		let text: string;
 		
         for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, false) as boolean;
 			
 			item = items[itemIndex];
-			
-			const newItem: INodeExecutionData = {
-				json: {},
-				binary: {},
-			};
+			let newItemJson: IDataObject = {};
+			const newItemBinary: IBinaryKeyData = {};
 			
 			if (keepOnlySet !== true) {
 				if (item.binary !== undefined) {
-					newItem.binary = {};
-					Object.assign(newItem.binary, item.binary);
+					Object.assign(newItemBinary, item.binary);
 				}
 
-				newItem.json = JSON.parse(JSON.stringify(item.json));
+				newItemJson = JSON.parse(JSON.stringify(item.json));
 			}
 			
-			(this.getNodeParameter('textsWithManipulations.textWithManipulations', itemIndex, []) as INodeParameters[]).forEach((textWithManipulations) => {
+			for (const textWithManipulations of (this.getNodeParameter('textsWithManipulations.textWithManipulations', itemIndex, []) as INodeParameters[])) {
 				switch(textWithManipulations.readOperation) {
 					case 'fromFile':
 						if (item.binary === undefined || item.binary[textWithManipulations.binaryPropertyName as string] === undefined) {
-							return;
+							continue;
 						}
-						text = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING).toString();
+						text = Buffer.from(item.binary[textWithManipulations.binaryPropertyName as string].data, BINARY_ENCODING).toString();
 						break;
 					case 'fromJSON':
 						text = get(item.json, textWithManipulations.sourceKey as string) as string;
@@ -737,7 +735,7 @@ export class TextManipulation implements INodeType {
 					default:
 						throw new Error('fromFile, fromJSON or fromText are valid options');
 				}
-				((textWithManipulations.manipulations as INodeParameters).manipulation as INodeParameters[]).forEach((manipulation) => {
+				for(const manipulation of ((textWithManipulations.manipulations as INodeParameters).manipulation as INodeParameters[])) {
 					switch(manipulation.action) {
 						case 'encodeDecode':
 							if(manipulation.encodeWith == 'url') {
@@ -838,21 +836,23 @@ export class TextManipulation implements INodeType {
 						default:
 							throw new Error('encodeDecode, upperCase, lowerCase, replace, trim, pad, substring or repeat are valid options');
 					}
-				});
+				}
 				switch(textWithManipulations.writeOperation) {
 					case 'toFile':
-						newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(Buffer.from(text), textWithManipulations.fileName);
+						newItemBinary![textWithManipulations.binaryPropertyName as string] = await this.helpers.prepareBinaryData(Buffer.from(text), textWithManipulations.fileName as string);
 						break;
 					case 'toJSON':
-						set(newItem.json, textWithManipulations.destinationKey as string, text);
+						set(newItemJson, textWithManipulations.destinationKey as string, text);
 						break;
 					default:
 						throw new Error('toFile or toJSON are valid options');
 				}
 				
+			}
+			returnData.push({
+				json: newItemJson,
+				binary: Object.keys(newItemBinary).length === 0 ? undefined : newItemBinary
 			});
-			
-			returnData.push(newItem);
         }
 
 		return this.prepareOutputData(returnData);
