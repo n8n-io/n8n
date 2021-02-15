@@ -157,6 +157,10 @@
 												<div class="label">File Name: </div>
 												<div class="value">{{binaryData.fileName}}</div>
 											</div>
+											<div v-if="binaryData.dir">
+												<div class="label">Directory: </div>
+												<div class="value">{{binaryData.dir}}</div>
+											</div>
 											<div v-if="binaryData.fileExtension">
 												<div class="label">File Extension:</div>
 												<div class="value">{{binaryData.fileExtension}}</div>
