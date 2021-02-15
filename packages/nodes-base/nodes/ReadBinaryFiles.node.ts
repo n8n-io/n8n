@@ -47,6 +47,14 @@ export class ReadBinaryFiles implements INodeType {
 				required: true,
 				description: 'Name of the binary property to which to<br />write the data of the read files.',
 			},
+			{
+				displayName: 'Full Path',
+				name: 'fullPath',
+				type: 'boolean',
+				default: false,
+				required: true,
+				description: 'Use the full path as the "File Name".',
+			},
 		],
 	};
 
@@ -54,6 +62,7 @@ export class ReadBinaryFiles implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const fileSelector = this.getNodeParameter('fileSelector', 0) as string;
 		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+		const fullPath = this.getNodeParameter('fullPath', 0) as boolean;
 
 		const files = await glob(fileSelector);
 
@@ -64,7 +73,7 @@ export class ReadBinaryFiles implements INodeType {
 		for (const filePath of files) {
 			data = await fsReadFileAsync(filePath) as Buffer;
 
-			fileName = path.parse(filePath).base;
+			fileName = fullPath ? filePath : path.parse(filePath).base;
 			item = {
 				binary: {
 					[dataPropertyName]: await this.helpers.prepareBinaryData(data, fileName),
