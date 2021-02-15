@@ -26,150 +26,151 @@ interface ContactsList {
 }
 
 export class Emelia implements INodeType {
-	description: INodeTypeDescription;
-	methods: {
-		loadOptions: {
-			getCampaigns(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]>;
-			getContactsLists(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]>;
-		};
+	description: INodeTypeDescription = {
+		displayName: 'Emelia',
+		name: 'emelia',
+		icon: 'file:emelia.png',
+		group: ['input'],
+		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		description: 'Consume the Emelia API',
+		defaults: {
+			name: 'Emelia',
+			color: '#e18063',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
+			{
+				name: 'emeliaApi',
+				required: true,
+			},
+		],
+		properties: [
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
+					{
+						name: 'Campaign',
+						value: 'campaign',
+					},
+					{
+						name: 'Contacts Lists',
+						value: 'contactsLists',
+					},
+				],
+				default: 'campaign',
+				required: true,
+				description: 'The resource to operate on.',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'campaign',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Add Contact to a campaign',
+						value: 'addContactToCampaign',
+						description: 'Add a contact to an existant campaign. If it is running, the campaign will be automatically added to the loop.',
+					},
+				],
+				default: 'addContactToCampaign',
+				description: 'The operation to perform.',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'contactsLists',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Add Contact to a list',
+						value: 'addContactToList',
+						description: 'Add a contact to an existing list. If the campaign is already started, use the "Add Contact to a campaign" method instead.',
+					},
+				],
+				default: 'addContactToList',
+				description: 'The operation to perform.',
+			},
+			{
+				displayName: 'Campaign',
+				name: 'campaignId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getCampaigns',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'addContactToCampaign',
+						],
+						resource: [
+							'campaign',
+						],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName: 'List',
+				name: 'contactsListsId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getContactsLists',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'addContactToList',
+						],
+						resource: [
+							'contactsLists',
+						],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName: 'JSON Contact Data',
+				name: 'contactData',
+				type: 'string',
+				required: true,
+				default: '{}',
+				description: 'Contact data to send to Emelia, must be in JSON format. All items must have an `email` field. Every fields will be added on contact details on Emelia',
+				displayOptions: {
+					show: {
+						operation: [
+							'addContactToCampaign',
+							'addContactToList',
+						],
+					},
+				},
+			},
+		],
 	};
 
-	constructor() {
-		this.description = {
-			displayName: 'Emelia',
-			name: 'emelia',
-			icon: 'file:emelia.png',
-			group: ['input'],
-			version: 1,
-			subtitle: '={{$parameter["operation"]}}',
-			description: 'Consume Emelia GraphQL API',
-			defaults: {
-				name: 'Emelia',
-				color: '#e18063',
-			},
-			inputs: ['main'],
-			outputs: ['main'],
-			credentials: [
-				{
-					name: 'emeliaApi',
-					required: true,
-				},
-			],
-			properties: [
-				{
-					displayName: 'Resource',
-					name: 'resource',
-					type: 'options',
-					options: [
-						{
-							name: 'Campaign',
-							value: 'campaign',
-						},
-						{
-							name: 'Contacts Lists',
-							value: 'contactsLists',
-						},
-					],
-					default: 'campaign',
-					required: true,
-					description: 'The resource to operate on.',
-				},
-				{
-					displayName: 'Operation',
-					name: 'operation',
-					type: 'options',
-					required: true,
-					displayOptions: {
-						show: {
-							resource: ['campaign'],
-						},
-					},
-					options: [
-						{
-							name: 'Add Contact to a campaign',
-							value: 'addContactToCampaign',
-							description: `Add a contact to an existant campaign, if its RUNNING the campaign will be automatically added to the loop.`
-						},
-					],
-					default: 'addContactToCampaign',
-					description: 'The operation to perform.',
-				},
-				{
-					displayName: 'Operation',
-					name: 'operation',
-					type: 'options',
-					required: true,
-					displayOptions: {
-						show: {
-							resource: ['contactsLists'],
-						},
-					},
-					options: [
-						{
-							name: 'Add Contact to a list',
-							value: 'addContactToList',
-							description: `Add a contact to an existant list. If the campaign is already started you should use "Add Contact to a campaign" method instead.`
-						},
-					],
-					default: 'addContactToList',
-					description: 'The operation to perform.',
-				},
-				{
-					displayName: 'Campaign',
-					name: 'campaignId',
-					type: 'options',
-					typeOptions: {
-						loadOptionsMethod: 'getCampaigns',
-					},
-					required: true,
-					displayOptions: {
-						show: {
-							operation: ['addContactToCampaign'],
-							resource: ['campaign'],
-						}
-					},
-					default: '',
-				},
-				{
-					displayName: 'List',
-					name: 'contactsListsId',
-					type: 'options',
-					typeOptions: {
-						loadOptionsMethod: 'getContactsLists',
-					},
-					required: true,
-					displayOptions: {
-						show: {
-							operation: ['addContactToList'],
-							resource: ['contactsLists'],
-						},
-					},
-					default: '',
-				},
-				{
-					displayName: 'JSON Contact Data',
-					name: 'contactData',
-					type: 'string',
-					required: true,
-					default: '{}',
-					description:
-						'Contact data to send to Emelia, must be in JSON format. All items must have an `email` field. Every fields will be added on contact details on Emelia',
-					displayOptions: {
-						show: {
-							operation: ['addContactToCampaign', 'addContactToList'],
-						},
-					},
-				},
-			]
-		};
-
-		this.methods = {
+		methods = {
 			loadOptions: {
-				async getCampaigns() {
+				async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 					const responseData = await emeliaGrapqlRequest.call(this, {
 						query: 'query GetCampaigns {\ncampaigns {\n_id\nname\n}\n}',
 						operationName: 'GetCampaigns',
@@ -181,10 +182,10 @@ export class Emelia implements INodeType {
 						value: campaign._id,
 					}));
 				},
-				async getContactsLists() {
+
+				async getContactsLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 					const responseData = await emeliaGrapqlRequest.call(this, {
-						query:
-							'query GetContactsLists {\ncontact_lists {\n_id\nname\ncontactCount\n}\n}',
+						query: 'query GetContactsLists {\ncontact_lists {\n_id\nname\ncontactCount\n}\n}',
 						operationName: 'GetContactsLists',
 						variables: '{}',
 					});
@@ -193,10 +194,10 @@ export class Emelia implements INodeType {
 						name: list.name,
 						value: list._id,
 					}));
-				}
-			}
+				},
+			},
 		};
-	}
+
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
