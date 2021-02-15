@@ -738,7 +738,7 @@ export class GoogleDrive implements INodeType {
 				displayName: 'Resolve Data',
 				name: 'resolveData',
 				type: 'boolean',
-				default: true,
+				default: false,
 				displayOptions: {
 					show: {
 						operation: [
@@ -805,9 +805,15 @@ export class GoogleDrive implements INodeType {
 				placeholder: 'Add Option',
 				default: {},
 				displayOptions: {
-					hide: {
-						resource: [
-							'drive',
+					show: {
+						'/operation': [
+							'copy',
+							'list',
+							'share',
+						],
+						'/resource': [
+							'file',
+							'folder',
 						],
 					},
 				},
