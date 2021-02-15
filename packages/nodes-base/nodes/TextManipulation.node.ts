@@ -107,6 +107,21 @@ export class TextManipulation implements INodeType {
 								description: 'The name of the JSON key to get data from.<br />It is also possible to define deep keys by using dot-notation like for example:<br />"level1.level2.currentKey"',
 							},
 							{
+								displayName: 'Skip Non-String',
+								name: 'skipNonString',
+								required: true,
+								displayOptions: {
+									show: {
+										readOperation: [
+											'fromJSON',
+										],
+									},
+								},
+								type: 'boolean',
+								default: false,
+								description: 'Non-string data is skipped. If not, these will be converted automatically.',
+							},
+							{
 								displayName: 'Text',
 								name: 'text',
 								required: true,
@@ -760,7 +775,14 @@ export class TextManipulation implements INodeType {
 						text = Buffer.from(item.binary[textWithManipulations.binaryPropertyName as string].data, BINARY_ENCODING).toString();
 						break;
 					case 'fromJSON':
-						text = get(item.json, textWithManipulations.sourceKey as string) as string;
+						const value = get(item.json, textWithManipulations.sourceKey as string);
+						if(typeof value == 'string') {
+							text = value as string;
+						} else if(textWithManipulations.skipNonString) {
+							continue;
+						} else {
+							text = (value || '').toString();
+						}
 						break;
 					case 'fromText':
 						text = textWithManipulations.text as string;
