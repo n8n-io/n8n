@@ -132,12 +132,12 @@ export class TextManipulation implements INodeType {
 										description: 'Write manipulated text to file',
 									},
 									{
-										name: 'Read from JSON',
+										name: 'Write to JSON',
 										value: 'toJSON',
 										description: 'Write manipulated text to json',
 									},
 								],
-								default: 'fromText',
+								default: 'toJSON',
 							},
 							{
 								displayName: 'File Name',
@@ -718,7 +718,7 @@ export class TextManipulation implements INodeType {
 				newItemJson = JSON.parse(JSON.stringify(item.json));
 			}
 			
-			for (const textWithManipulations of (this.getNodeParameter('textsWithManipulations.textWithManipulations', itemIndex, []) as INodeParameters[])) {
+			for (const textWithManipulations of (this.getNodeParameter('textsWithManipulations.textWithManipulations', itemIndex, []) as INodeParameters[]) || []) {
 				switch(textWithManipulations.readOperation) {
 					case 'fromFile':
 						if (item.binary === undefined || item.binary[textWithManipulations.binaryPropertyName as string] === undefined) {
@@ -735,7 +735,8 @@ export class TextManipulation implements INodeType {
 					default:
 						throw new Error('fromFile, fromJSON or fromText are valid options');
 				}
-				for(const manipulation of ((textWithManipulations.manipulations as INodeParameters).manipulation as INodeParameters[])) {
+
+				for(const manipulation of ((textWithManipulations.manipulations as INodeParameters).manipulation as INodeParameters[]) || []) {
 					switch(manipulation.action) {
 						case 'encodeDecode':
 							if(manipulation.encodeWith == 'url') {
