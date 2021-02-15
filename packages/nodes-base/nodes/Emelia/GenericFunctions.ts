@@ -1,10 +1,16 @@
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
-	ILoadOptionsFunctions
+	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IHookFunctions } from 'n8n-workflow';
-import { ICredentialDataDecryptedObject } from 'n8n-workflow';
+
+import {
+	IHookFunctions,
+} from 'n8n-workflow';
+
+import {
+	ICredentialDataDecryptedObject,
+} from 'n8n-workflow';
 
 export async function emeliaApiRequest(
 	this:

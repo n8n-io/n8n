@@ -1,4 +1,7 @@
-import { ICredentialType, NodePropertyTypes } from 'n8n-workflow';
+import {
+	ICredentialType,
+	NodePropertyTypes,
+} from 'n8n-workflow';
 
 export class EmeliaApi implements ICredentialType {
 	name = 'emeliaApi';

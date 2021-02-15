@@ -1,4 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions
+} from 'n8n-core';
+
 import {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -6,7 +9,10 @@ import {
 	INodeType,
 	INodeTypeDescription
 } from 'n8n-workflow';
-import { emeliaGrapqlRequest } from './GenericFunctions';
+
+import {
+	emeliaGrapqlRequest,
+} from './GenericFunctions';
 
 interface Campaign {
 	_id: string;

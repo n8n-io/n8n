@@ -7,7 +7,11 @@ import {
 	IWebhookFunctions,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { emeliaApiRequest, emeliaGrapqlRequest } from './GenericFunctions';
+
+import {
+	emeliaApiRequest,
+	emeliaGrapqlRequest,
+} from './GenericFunctions';
 
 interface Campaign {
 	_id: string;
