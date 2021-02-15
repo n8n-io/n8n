@@ -192,6 +192,11 @@ export class TextManipulation implements INodeType {
 												type: 'options',
 												options: [
 													{
+														name: 'Concat',
+														value: 'concat',
+														description: 'Add string to the start or/and end',
+													},
+													{
 														name: 'Encode/Decode',
 														value: 'encodeDecode',
 														description: 'Encode and Decode string',
@@ -233,6 +238,34 @@ export class TextManipulation implements INodeType {
 													},
 												],
 												default: 'lowerCase',
+											},
+											{
+												displayName: 'Before',
+												name: 'before',
+												displayOptions: {
+													show: {
+														action: [
+															'concat',
+														],
+													},
+												},
+												type: 'string',
+												default: '',
+												description: 'String which should add to the start.',
+											},
+											{
+												displayName: 'After',
+												name: 'after',
+												displayOptions: {
+													show: {
+														action: [
+															'concat',
+														],
+													},
+												},
+												type: 'string',
+												default: '',
+												description: 'String which should add to the end.',
 											},
 											{
 												displayName: 'Encode with',
@@ -738,6 +771,9 @@ export class TextManipulation implements INodeType {
 
 				for(const manipulation of ((textWithManipulations.manipulations as INodeParameters).manipulation as INodeParameters[]) || []) {
 					switch(manipulation.action) {
+						case 'concat':
+							text = (manipulation.before || '') + text + (manipulation.after || '');
+							break;
 						case 'encodeDecode':
 							if(manipulation.encodeWith == 'url') {
 								if(manipulation.decodeWith != 'url') {
