@@ -97,7 +97,7 @@ abstract class NodeError extends Error {
 		return null;
 	}
 
-	protected isTraversableObject(value: any): value is IErrorObject { // tslint:disable-line:no-any
+	private isTraversableObject(value: any): value is IErrorObject { // tslint:disable-line:no-any
 		return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
 	}
 }
@@ -142,7 +142,7 @@ export class NodeApiError extends NodeError {
 	){
 		super('NodeApiError', node, error);
 		this.message = `${this.node.name}: `;
-		if (message || message === '') {
+		if (message) {
 			this.message += message;
 			this.description = description;
 			this.httpCode = httpCode ?? null;
@@ -166,7 +166,7 @@ export class NodeApiError extends NodeError {
 	 *
 	 * @returns {void}
 	 */
-	protected setMessage() {
+	private setMessage() {
 
 		if (!this.httpCode) {
 			this.httpCode = null;
