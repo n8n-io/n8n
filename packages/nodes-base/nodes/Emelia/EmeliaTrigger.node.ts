@@ -22,7 +22,7 @@ export class EmeliaTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Emelia Trigger',
 		name: 'emeliaTrigger',
-		icon: 'file:emelia.png',
+		icon: 'file:emelia.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Emelia campaign activity events via webhooks',

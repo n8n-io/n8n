@@ -30,7 +30,7 @@ export class Emelia implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Emelia',
 		name: 'emelia',
-		icon: 'file:emelia.png',
+		icon: 'file:emelia.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -169,36 +169,35 @@ export class Emelia implements INodeType {
 		],
 	};
 
-		methods = {
-			loadOptions: {
-				async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-					const responseData = await emeliaGrapqlRequest.call(this, {
-						query: 'query GetCampaigns {\ncampaigns {\n_id\nname\n}\n}',
-						operationName: 'GetCampaigns',
-						variables: '{}',
-					});
+	methods = {
+		loadOptions: {
+			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const responseData = await emeliaGrapqlRequest.call(this, {
+					query: 'query GetCampaigns {\ncampaigns {\n_id\nname\n}\n}',
+					operationName: 'GetCampaigns',
+					variables: '{}',
+				});
 
-					return responseData.data.campaigns.map((campaign: Campaign) => ({
-						name: campaign.name,
-						value: campaign._id,
-					}));
-				},
-
-				async getContactsLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-					const responseData = await emeliaGrapqlRequest.call(this, {
-						query: 'query GetContactsLists {\ncontact_lists {\n_id\nname\ncontactCount\n}\n}',
-						operationName: 'GetContactsLists',
-						variables: '{}',
-					});
-
-					return responseData.data.contact_lists.map((list: ContactsList) => ({
-						name: list.name,
-						value: list._id,
-					}));
-				},
+				return responseData.data.campaigns.map((campaign: Campaign) => ({
+					name: campaign.name,
+					value: campaign._id,
+				}));
 			},
-		};
 
+			async getContactsLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const responseData = await emeliaGrapqlRequest.call(this, {
+					query: 'query GetContactsLists {\ncontact_lists {\n_id\nname\ncontactCount\n}\n}',
+					operationName: 'GetContactsLists',
+					variables: '{}',
+				});
+
+				return responseData.data.contact_lists.map((list: ContactsList) => ({
+					name: list.name,
+					value: list._id,
+				}));
+			},
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
