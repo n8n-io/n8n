@@ -8,7 +8,6 @@ import {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	NodeApiError,
-	NodeApiMultiError,
 } from 'n8n-core';
 
 import {
@@ -50,9 +49,6 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 			return await this.helpers.requestOAuth2!.call(this, 'hubspotOAuth2Api', options, { tokenType: 'Bearer' });
 		}
 	} catch (error) {
-		if (error.response?.body?.errors) {
-			throw new NodeApiMultiError(this.getNode(), error);
-		}
 		throw new NodeApiError(this.getNode(), error);
 	}
 }

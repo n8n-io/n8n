@@ -8,11 +8,14 @@ const ERROR_MESSAGE_PROPERTIES = [
 	'message',
 	'Message',
 	'msg',
+	'messages',
 	'description',
 	'reason',
 	'detail',
 	'details',
+	'errors',
 	'errorMessage',
+	'errorMessages',
 	'ErrorMessage',
 	'error_message',
 	'_error_message',
@@ -30,8 +33,6 @@ const ERROR_MESSAGE_PROPERTIES = [
 const ERROR_CODE_PROPERTIES = ['statusCode', 'status', 'code', 'status_code', 'errorCode', 'error_code'];
 
 const ERROR_NESTING_PROPERTIES = ['error', 'err', 'response', 'body', 'data'];
-
-const MULTI_MESSAGE_PROPERTIES = ['messages', 'errors', 'errorMessages'];
 
 abstract class NodeError extends Error {
 	description: string | null | undefined;
@@ -59,21 +60,37 @@ abstract class NodeError extends Error {
 		error: IErrorObject,
 		potentialKeys: string[],
 		traversalKeys: string[],
-		callback?: Function,
 	): string | null {
 		for(const key of potentialKeys) {
 			if (error[key]) {
 				if (typeof error[key] === 'string') return error[key] as string;
 				if (typeof error[key] === 'number') return error[key]!.toString();
-				if (Array.isArray(error[key]) && callback) {
-					return callback(error[key]);
+				if (Array.isArray(error[key])) {
+					// @ts-ignore
+					const resolvedErrors: string[] = error[key].map((error) => {
+							if (typeof error === 'string') return error;
+							if (typeof error === 'number') return error.toString();
+							if (this.isTraversableObject(error)) {
+								return this.findProperty(error, potentialKeys, traversalKeys);
+							}
+							return null;
+						})
+						.filter((errorValue: string | null) => errorValue !== null);
+
+					if (resolvedErrors.length === 0) {
+						return null;
+					}
+					return resolvedErrors.join(' | ');
 				}
 			}
 		}
 
 		for (const key of traversalKeys) {
 			if (this.isTraversableObject(error[key])) {
-				return this.findProperty(error[key] as IErrorObject, potentialKeys, traversalKeys, callback);
+				const property = this.findProperty(error[key] as IErrorObject, potentialKeys, traversalKeys);
+				if (property) {
+					return property;
+				}
 			}
 		}
 
@@ -172,35 +189,5 @@ export class NodeApiError extends NodeError {
 			default:
 				this.message += UNKNOWN_ERROR_MESSAGE;
 		}
-	}
-}
-
-export class NodeApiMultiError extends NodeApiError {
-	constructor(
-		node: INode,
-		error: IErrorObject,
-		customCallback?: (errors: Array<IErrorObject | string>) => string | null,
-	){
-		super(node, error, {message: ''});
-		const callback = customCallback || this.findMultiMessages;
-
-		this.httpCode = this.findProperty(error, ERROR_CODE_PROPERTIES, ERROR_NESTING_PROPERTIES);
-		this.setMessage();
-
-		this.description = this.findProperty(error, MULTI_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES, callback);
-	}
-
-	private findMultiMessages(errors: Array<IErrorObject | string>): string {
-		return errors.map((error: IErrorObject | string) => {
-			if (typeof error === 'string') {
-				return error;
-			}
-			if (this.isTraversableObject(error)) {
-				return this.findProperty(error, ERROR_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES);
-			}
-			return null;
-		})
-		.filter((message: string | null) => message !== null)
-		.join(' | ');
 	}
 }

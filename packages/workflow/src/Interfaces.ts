@@ -755,7 +755,6 @@ export interface IWorkflowHooksOptionalParameters {
 	sessionId?: string;
 }
 
-
 export interface IWorkflowSettings {
 	[key: string]: IDataObject | string | number | boolean | undefined;
 }
@@ -767,4 +766,3 @@ export interface IErrorObject {
 export interface IStatusCodeMessages {
 	[key: string]: string;
 }
-
