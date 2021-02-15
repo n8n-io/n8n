@@ -52,7 +52,7 @@ export async function goToWebinarApiRequest(
 
 	try {
 		console.log(options);
-		return await this.helpers.requestOAuth2!.call(this, 'goToWebinarOAuth2Api', options);
+		return await this.helpers.requestOAuth2!.call(this, 'goToWebinarOAuth2Api', options, { check403: true });
 
 	} catch (error) {
 

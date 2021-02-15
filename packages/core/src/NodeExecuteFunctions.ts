@@ -161,8 +161,10 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 
 	return this.helpers.request!(newRequestOptions)
 		.catch(async (error: IResponseError) => {
+			const statusCodeReturned = oAuth2Options?.check403 ? 403 : 401;
+
 			// TODO: Check if also other codes are possible
-			if (error.statusCode === 401) {
+			if (error.statusCode === statusCodeReturned) {
 				// Token is probably not valid anymore. So try refresh it.
 
 				const tokenRefreshOptions: IDataObject = {};
