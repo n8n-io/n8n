@@ -40,6 +40,9 @@ export class Execute extends Command {
 		id: flags.string({
 			description: 'id of the workflow to execute',
 		}),
+		rawOutput: flags.boolean({
+			description: 'Outputs only JSON data, with no other text',
+		}),
 	};
 
 
@@ -172,9 +175,10 @@ export class Execute extends Command {
 				error.stack = data.data.resultData.error.stack;
 				throw error;
 			}
-
-			this.log('Execution was successfull:');
-			this.log('====================================');
+			if (flags.rawOutput === undefined) {
+				this.log('Execution was successfull:');
+				this.log('====================================');
+			}
 			this.log(JSON.stringify(data, null, 2));
 		} catch (e) {
 			console.error('\nGOT ERROR');
