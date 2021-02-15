@@ -107,7 +107,7 @@ export class EmeliaTrigger implements INodeType {
 					],
 				},
 			],
-		}
+		},
 
 		this.methods = {
 			loadOptions: {
@@ -158,7 +158,7 @@ export class EmeliaTrigger implements INodeType {
 					return true;
 				},
 				async delete(this: IHookFunctions): Promise<boolean> {
-					const webhookData = this.getWorkflowStaticData('node')
+					const webhookData = this.getWorkflowStaticData('node');
 					const webhookUrl = this.getNodeWebhookUrl(
 						'default',
 					) as string;
@@ -186,7 +186,7 @@ export class EmeliaTrigger implements INodeType {
 					return true;
 				},
 			},
-		}
+		};
 	}
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
