@@ -8,7 +8,9 @@ import {
 	resolve as pathResolve,
 } from 'path';
 import {
+	getConnection,
 	getConnectionManager,
+	In,
 } from 'typeorm';
 import * as bodyParser from 'body-parser';
 require('body-parser-xml')(bodyParser);
@@ -60,6 +62,7 @@ import {
 	ResponseHelper,
 	TestWebhooks,
 	WebhookHelpers,
+	WebhookServer,
 	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
 	WorkflowRunner,
@@ -103,6 +106,7 @@ import * as jwks from 'jwks-rsa';
 import * as timezones from 'google-timezones-json';
 import * as parseUrl from 'parseurl';
 import * as querystring from 'querystring';
+import * as Queue from '../src/Queue';
 import { OptionsWithUrl } from 'request-promise-native';
 
 class App {
@@ -391,7 +395,8 @@ class App {
 		}));
 
 		//support application/x-www-form-urlencoded post data
-		this.app.use(bodyParser.urlencoded({ extended: false,
+		this.app.use(bodyParser.urlencoded({
+			extended: false,
 			verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
@@ -721,7 +726,7 @@ class App {
 				// Make a copy of the object. If we don't do this, then when
 				// The method below is called the properties are removed for good
 				// This happens because nodes are returned as reference.
-				const nodeInfo: INodeTypeDescription = {...nodeData.description};
+				const nodeInfo: INodeTypeDescription = { ...nodeData.description };
 				if (req.query.includeProperties !== 'true') {
 					// @ts-ignore
 					delete nodeInfo.properties;
@@ -1306,6 +1311,8 @@ class App {
 
 		// Verify and store app code. Generate access tokens and store for respective credential.
 		this.app.get(`/${this.restEndpoint}/oauth2-credential/callback`, async (req: express.Request, res: express.Response) => {
+
+			// realmId it's currently just use for the quickbook OAuth2 flow
 			const { code, state: stateEncoded } = req.query;
 
 			if (code === undefined || stateEncoded === undefined) {
@@ -1380,6 +1387,10 @@ class App {
 
 			const oauthToken = await oAuthObj.code.getToken(`${oAuth2Parameters.redirectUri}?${queryParameters}`, options);
 
+			if (Object.keys(req.query).length > 2) {
+				_.set(oauthToken.data, 'callbackQueryString', _.omit(req.query, 'state', 'code'));
+			}
+
 			if (oauthToken === undefined) {
 				const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', undefined, 404);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
@@ -1426,31 +1437,48 @@ class App {
 				limit = parseInt(req.query.limit as string, 10);
 			}
 
-			const countFilter = JSON.parse(JSON.stringify(filter));
-			if (req.query.lastId) {
-				filter.id = LessThan(req.query.lastId);
-			} else if (req.query.firstId) {
-				filter.id = MoreThanOrEqual(req.query.firstId);
-			}
-			countFilter.select = ['id'];
+			let executingWorkflowIds;
 
-			const resultsPromise = Db.collections.Execution!.find({
-				select: [
-					'id',
-					'finished',
-					'mode',
-					'retryOf',
-					'retrySuccessId',
-					'startedAt',
-					'stoppedAt',
-					'workflowData',
-				],
-				where: filter,
-				order: {
-					id: 'DESC',
-				},
-				take: limit,
+			if (config.get('executions.mode') === 'queue') {
+				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
+				executingWorkflowIds = currentJobs.map(job => job.data.executionId) as string[];
+			} else {
+				executingWorkflowIds = this.activeExecutionsInstance.getActiveExecutions().map(execution => execution.id.toString()) as string[];
+			}
+
+			const countFilter = JSON.parse(JSON.stringify(filter));
+			countFilter.select = ['id'];
+			countFilter.where = {id: Not(In(executingWorkflowIds))};
+
+			const resultsQuery = await Db.collections.Execution!
+				.createQueryBuilder("execution")
+				.select([
+					'execution.id',
+					'execution.finished',
+					'execution.mode',
+					'execution.retryOf',
+					'execution.retrySuccessId',
+					'execution.startedAt',
+					'execution.stoppedAt',
+					'execution.workflowData',
+				])
+				.orderBy('execution.id', 'DESC')
+				.take(limit);
+
+			Object.keys(filter).forEach((filterField) => {
+				resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {[filterField]: filter[filterField]});
 			});
+			if (req.query.lastId) {
+				resultsQuery.andWhere(`execution.id < :lastId`, {lastId: req.query.lastId});
+			}
+			if (req.query.firstId) {
+				resultsQuery.andWhere(`execution.id > :firstId`, {firstId: req.query.firstId});
+			}
+			if (executingWorkflowIds.length > 0) {
+				resultsQuery.andWhere(`execution.id NOT IN (:...ids)`, {ids: executingWorkflowIds});
+			}
+
+			const resultsPromise = resultsQuery.getMany();
 
 			const countPromise = Db.collections.Execution!.count(countFilter);
 
@@ -1489,7 +1517,7 @@ class App {
 			}
 
 			if (req.query.unflattedResponse === 'true') {
- 				const fullExecutionData = ResponseHelper.unflattenExecutionData(result);
+				const fullExecutionData = ResponseHelper.unflattenExecutionData(result);
 				return fullExecutionData as IExecutionResponse;
 			} else {
 				// Convert to response format in which the id is a string
@@ -1529,11 +1557,19 @@ class App {
 				workflowData: fullExecutionData.workflowData,
 			};
 
-			const lastNodeExecuted = data!.executionData!.resultData.lastNodeExecuted as string;
+			const lastNodeExecuted = data!.executionData!.resultData.lastNodeExecuted as string | undefined;
 
-			// Remove the old error and the data of the last run of the node that it can be replaced
-			delete data!.executionData!.resultData.error;
-			data!.executionData!.resultData.runData[lastNodeExecuted].pop();
+			if (lastNodeExecuted) {
+				// Remove the old error and the data of the last run of the node that it can be replaced
+				delete data!.executionData!.resultData.error;
+				const length = data!.executionData!.resultData.runData[lastNodeExecuted].length;
+				if (length > 0 && data!.executionData!.resultData.runData[lastNodeExecuted][length - 1].error !== undefined) {
+					// Remove results only if it is an error.
+					// If we are retrying due to a crash, the information is simply success info from last node
+					data!.executionData!.resultData.runData[lastNodeExecuted].pop();
+					// Stack will determine what to run next
+				}
+			}
 
 			if (req.body.loadWorkflow === true) {
 				// Loads the currently saved workflow to execute instead of the
@@ -1606,52 +1642,114 @@ class App {
 
 		// Returns all the currently working executions
 		this.app.get(`/${this.restEndpoint}/executions-current`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionsSummary[]> => {
-			const executingWorkflows = this.activeExecutionsInstance.getActiveExecutions();
+			if (config.get('executions.mode') === 'queue') {
+				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
 
-			const returnData: IExecutionsSummary[] = [];
+				const currentlyRunningExecutionIds = currentJobs.map(job => job.data.executionId);
 
-			let filter: any = {}; // tslint:disable-line:no-any
-			if (req.query.filter) {
-				filter = JSON.parse(req.query.filter as string);
-			}
+				const resultsQuery = await Db.collections.Execution!
+					.createQueryBuilder("execution")
+					.select([
+						'execution.id',
+						'execution.workflowId',
+						'execution.mode',
+						'execution.retryOf',
+						'execution.startedAt',
+					])
+					.orderBy('execution.id', 'DESC')
+					.andWhere(`execution.id IN (:...ids)`, {ids: currentlyRunningExecutionIds});
 
-			for (const data of executingWorkflows) {
-				if (filter.workflowId !== undefined && filter.workflowId !== data.workflowId) {
-					continue;
-				}
-				returnData.push(
-					{
-						idActive: data.id.toString(),
-						workflowId: data.workflowId.toString(),
-						mode: data.mode,
-						retryOf: data.retryOf,
-						startedAt: new Date(data.startedAt),
+				if (req.query.filter) {
+					const filter = JSON.parse(req.query.filter as string);
+					if (filter.workflowId !== undefined) {
+						resultsQuery.andWhere('execution.workflowId = :workflowId', {workflowId: filter.workflowId});
 					}
-				);
-			}
+				}
 
-			return returnData;
+				const results = await resultsQuery.getMany();
+
+				return results.map(result => {
+					return {
+						id: result.id,
+						workflowId: result.workflowId,
+						mode: result.mode,
+						retryOf: result.retryOf !== null ? result.retryOf : undefined,
+						startedAt: new Date(result.startedAt),
+					} as IExecutionsSummary;
+				});
+			} else {
+				const executingWorkflows = this.activeExecutionsInstance.getActiveExecutions();
+
+				const returnData: IExecutionsSummary[] = [];
+
+				let filter: any = {}; // tslint:disable-line:no-any
+				if (req.query.filter) {
+					filter = JSON.parse(req.query.filter as string);
+				}
+
+				for (const data of executingWorkflows) {
+					if (filter.workflowId !== undefined && filter.workflowId !== data.workflowId) {
+						continue;
+					}
+					returnData.push(
+						{
+							id: data.id.toString(),
+							workflowId: data.workflowId === undefined ? '' : data.workflowId.toString(),
+							mode: data.mode,
+							retryOf: data.retryOf,
+							startedAt: new Date(data.startedAt),
+						}
+					);
+				}
+
+				return returnData;
+			}
 		}));
 
 		// Forces the execution to stop
 		this.app.post(`/${this.restEndpoint}/executions-current/:id/stop`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionsStopData> => {
-			const executionId = req.params.id;
+			if (config.get('executions.mode') === 'queue') {
+				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
 
-			// Stopt he execution and wait till it is done and we got the data
-			const result = await this.activeExecutionsInstance.stopExecution(executionId);
+				const job = currentJobs.find(job => job.data.executionId.toString() === req.params.id);
 
-			if (result === undefined) {
-				throw new Error(`The execution id "${executionId}" could not be found.`);
+				if (!job) {
+					throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
+				} else {
+					await Queue.getInstance().stopJob(job);
+				}
+
+				const executionDb = await Db.collections.Execution?.findOne(req.params.id) as IExecutionFlattedDb;
+				const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
+
+				const returnData: IExecutionsStopData = {
+					mode: fullExecutionData.mode,
+					startedAt: new Date(fullExecutionData.startedAt),
+					stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : undefined,
+					finished: fullExecutionData.finished,
+				};
+
+				return returnData;
+
+			} else {
+				const executionId = req.params.id;
+
+				// Stopt he execution and wait till it is done and we got the data
+				const result = await this.activeExecutionsInstance.stopExecution(executionId);
+
+				if (result === undefined) {
+					throw new Error(`The execution id "${executionId}" could not be found.`);
+				}
+
+				const returnData: IExecutionsStopData = {
+					mode: result.mode,
+					startedAt: new Date(result.startedAt),
+					stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
+					finished: result.finished,
+				};
+
+				return returnData;
 			}
-
-			const returnData: IExecutionsStopData = {
-				mode: result.mode,
-				startedAt: new Date(result.startedAt),
-				stoppedAt: new Date(result.stoppedAt),
-				finished: result.finished,
-			};
-
-			return returnData;
 		}));
 
 
@@ -1691,88 +1789,9 @@ class App {
 		// Webhooks
 		// ----------------------------------------
 
-		// HEAD webhook requests
-		this.app.head(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
-
-			let response;
-			try {
-				response = await this.activeWorkflowRunner.executeWebhook('HEAD', requestUrl, req, res);
-			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-		});
-
-		// OPTIONS webhook requests
-		this.app.options(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
-
-			let allowedMethods: string[];
-			try {
-				allowedMethods = await this.activeWorkflowRunner.getWebhookMethods(requestUrl);
-				allowedMethods.push('OPTIONS');
-
-				// Add custom "Allow" header to satisfy OPTIONS response.
-				res.append('Allow', allowedMethods);
-			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(res, {}, true, 204);
-		});
-
-		// GET webhook requests
-		this.app.get(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
-
-			let response;
-			try {
-				response = await this.activeWorkflowRunner.executeWebhook('GET', requestUrl, req, res);
-			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-		});
-
-		// POST webhook requests
-		this.app.post(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
-
-			let response;
-			try {
-				response = await this.activeWorkflowRunner.executeWebhook('POST', requestUrl, req, res);
-			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-		});
+		if (config.get('endpoints.disableProductionWebhooksOnMainProcess') !== true) {
+			WebhookServer.registerProductionWebhooks.apply(this);
+		}
 
 		// HEAD webhook requests (test for UI)
 		this.app.head(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {

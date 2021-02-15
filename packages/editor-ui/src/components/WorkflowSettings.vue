@@ -99,6 +99,25 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
+						Save Execution Progress:
+						<el-tooltip class="setting-info" placement="top" effect="light">
+							<div slot="content" v-html="helpTexts.saveExecutionProgress"></div>
+							<font-awesome-icon icon="question-circle" />
+						</el-tooltip>
+					</el-col>
+					<el-col :span="14" class="ignore-key-press">
+						<el-select v-model="workflowSettings.saveExecutionProgress" placeholder="Select Option" size="small" filterable>
+							<el-option
+								v-for="option of saveExecutionProgressOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key">
+							</el-option>
+						</el-select>
+					</el-col>
+				</el-row>
+				<el-row>
+					<el-col :span="10" class="setting-name">
 						Timeout Workflow:
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.executionTimeoutToggle"></div>
@@ -135,7 +154,6 @@
 						</el-col>
 					</el-row>
 				</div>
-
 				<div class="action-buttons">
 					<el-button type="success" @click="saveSettings">
 						Save
@@ -178,6 +196,7 @@ export default mixins(
 				timezone: 'The timezone in which the workflow should run. Gets for example used by "Cron" node.',
 				saveDataErrorExecution: 'If data data of executions should be saved in case they failed.',
 				saveDataSuccessExecution: 'If data data of executions should be saved in case they succeed.',
+				saveExecutionProgress: 'If data should be saved after each node, allowing you to resume in case of errors from where it stopped. May increase latency.',
 				saveManualExecutions: 'If data data of executions should be saved when started manually from the editor.',
 				executionTimeoutToggle: 'Cancel workflow execution after defined time',
 				executionTimeout: 'After what time the workflow should timeout.',
@@ -186,10 +205,12 @@ export default mixins(
 				timezone: 'America/New_York',
 				saveDataErrorExecution: 'all',
 				saveDataSuccessExecution: 'all',
+				saveExecutionProgress: false,
 				saveManualExecutions: false,
 			},
 			saveDataErrorExecutionOptions: [] as Array<{ key: string, value: string }>,
 			saveDataSuccessExecutionOptions: [] as Array<{ key: string, value: string }>,
+			saveExecutionProgressOptions: [] as Array<{ key: string | boolean, value: string }>,
 			saveManualOptions: [] as Array<{ key: string | boolean, value: string }>,
 			timezones: [] as Array<{ key: string, value: string }>,
 			workflowSettings: {} as IWorkflowSettings,
@@ -247,6 +268,25 @@ export default mixins(
 					{
 						key: 'none',
 						value: 'Do not save',
+					},
+				],
+			);
+		},
+		async loadSaveExecutionProgressOptions () {
+			this.saveExecutionProgressOptions.length = 0;
+			this.saveExecutionProgressOptions.push.apply( // eslint-disable-line no-useless-call
+				this.saveExecutionProgressOptions, [
+					{
+						key: 'DEFAULT',
+						value: 'Default - ' + (this.defaultValues.saveExecutionProgress === true ? 'Yes' : 'No'),
+					},
+					{
+						key: true,
+						value: 'Yes',
+					},
+					{
+						key: false,
+						value: 'No',
 					},
 				],
 			);
@@ -334,6 +374,7 @@ export default mixins(
 			promises.push(this.loadWorkflows());
 			promises.push(this.loadSaveDataErrorExecutionOptions());
 			promises.push(this.loadSaveDataSuccessExecutionOptions());
+			promises.push(this.loadSaveExecutionProgressOptions());
 			promises.push(this.loadSaveManualOptions());
 			promises.push(this.loadTimezones());
 
@@ -353,6 +394,9 @@ export default mixins(
 			}
 			if (workflowSettings.saveDataSuccessExecution === undefined) {
 				workflowSettings.saveDataSuccessExecution = 'DEFAULT';
+			}
+			if (workflowSettings.saveExecutionProgress === undefined) {
+				workflowSettings.saveExecutionProgress = 'DEFAULT';
 			}
 			if (workflowSettings.saveManualExecutions === undefined) {
 				workflowSettings.saveManualExecutions = 'DEFAULT';
