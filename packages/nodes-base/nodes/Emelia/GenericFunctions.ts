@@ -1,59 +1,18 @@
 import {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
 	IHookFunctions,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import {
-	ICredentialDataDecryptedObject,
-} from 'n8n-workflow';
-
-export async function emeliaApiRequest(
-	this:
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IHookFunctions,
-	method: string,
-	path: string,
-	body: object = {},
-	qs: object = {},
-	option: object = {},
-) {
-	const credentials = this.getCredentials('emeliaApi');
-	const options = {
-		headers: {
-			Authorization: (credentials as ICredentialDataDecryptedObject).apiKey,
-		},
-		method,
-		body,
-		qs,
-		uri: `https://graphql.emelia.io${path}`,
-		json: true,
-	};
-	try {
-		if (this.helpers.request) {
-			return await this.helpers.request.call(this, options);
-		} else {
-			return {};
-		}
-	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error) {
-			const message = error.response.body.error;
-			throw new Error(
-				`Emelia error response [${error.statusCode}]: ${message}`,
-			);
-		}
-		throw error;
-	}
-}
-
-export async function emeliaGrapqlRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+/**
+ * Make an authenticated GraphQL request to Emelia.
+ */
+export async function emeliaGraphqlRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	body: object = {},
 ) {
 	const response = await emeliaApiRequest.call(this, 'POST', '/graphql', body);
@@ -64,3 +23,83 @@ export async function emeliaGrapqlRequest(
 
 	return response;
 }
+
+/**
+ * Make an authenticated REST API request to Emelia, used for trigger node.
+ */
+export async function emeliaApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	method: string,
+	endpoint: string,
+	body: object = {},
+	qs: object = {},
+) {
+	const { apiKey } = this.getCredentials('emeliaApi') as { apiKey: string };
+
+	const options = {
+		headers: {
+			Authorization: apiKey,
+		},
+		method,
+		body,
+		qs,
+		uri: `https://graphql.emelia.io${endpoint}`,
+		json: true,
+	};
+
+	try {
+
+		return await this.helpers.request!.call(this, options);
+
+	} catch (error) {
+
+		if (error?.response?.body?.error) {
+			const { error: errorMessage } = error.response.body;
+			throw new Error(
+				`Emelia error response [${error.statusCode}]: ${errorMessage}`,
+			);
+		}
+
+		throw error;
+	}
+}
+
+/**
+ * Load resources so that the user can select them easily.
+ */
+export async function loadResource(
+	this: ILoadOptionsFunctions,
+	resource: 'campaign' | 'contactList',
+): Promise<INodePropertyOptions[]> {
+	const mapping: { [key in 'campaign' | 'contactList']: { query: string, key: string } } = {
+		campaign: {
+				query: `
+				query GetCampaigns {
+					campaigns {
+						_id
+						name
+					}
+				}`,
+				key: 'campaigns',
+			},
+		contactList: {
+			query: `
+			query GetContactLists {
+				contact_lists {
+					_id
+					name
+				}
+			}`,
+			key: 'contact_lists',
+		},
+	};
+
+	const responseData = await emeliaGraphqlRequest.call(this, { query: mapping[resource].query });
+
+	return responseData.data[mapping[resource].key].map((campaign: { name: string, _id: string }) => ({
+		name: campaign.name,
+		value: campaign._id,
+	}));
+
+}
+
