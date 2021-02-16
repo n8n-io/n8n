@@ -247,9 +247,9 @@ export class TextManipulation implements INodeType {
 														description: 'Add string to the beginning or/and end.',
 													},
 													{
-														name: 'Encode/Decode',
-														value: 'encodeDecode',
-														description: 'Encode and Decode string.',
+														name: 'Decode/Encode',
+														value: 'decodeEncode',
+														description: 'Decode and Encode string.',
 													},
 													{
 														name: 'Upper Case',
@@ -318,12 +318,12 @@ export class TextManipulation implements INodeType {
 												description: 'String to be added at the end.',
 											},
 											{
-												displayName: 'Encode with',
-												name: 'encodeWith',
+												displayName: 'Decode with',
+												name: 'decodeWith',
 												displayOptions: {
 													show: {
 														action: [
-															'encodeDecode',
+															'decodeEncode',
 														],
 													},
 												},
@@ -368,12 +368,12 @@ export class TextManipulation implements INodeType {
 												default: 'utf8',
 											},
 											{
-												displayName: 'Decode with',
-												name: 'decodeWith',
+												displayName: 'Encode with',
+												name: 'encodeWith',
 												displayOptions: {
 													show: {
 														action: [
-															'encodeDecode',
+															'decodeEncode',
 														],
 													},
 												},
@@ -832,7 +832,7 @@ export class TextManipulation implements INodeType {
 							case 'concat':
 								text = (manipulation.before || '') + text + (manipulation.after || '');
 								break;
-							case 'encodeDecode':
+							case 'decodeEncode':
 								if(manipulation.encodeWith == 'url') {
 									if(manipulation.decodeWith != 'url') {
 										if(manipulation.decodeWith != 'utf8') text = Buffer.from(text, manipulation.decodeWith as any).toString('utf8');
@@ -917,7 +917,7 @@ export class TextManipulation implements INodeType {
 										if (manipulation.endLength == null || manipulation.endLength < 0) {
 											throw new Error('The Length has to be set to at least 0 or higher!');
 										}
-										if(manipulation.startPosition || 0 < 0) text = text.substring(manipulation.startPosition as number, text.length + (manipulation.startPosition as number) + (manipulation.endLength as number));
+										if((manipulation.startPosition || 0) < 0) text = text.substring(manipulation.startPosition as number, text.length + (manipulation.startPosition as number) + (manipulation.endLength as number));
 										else text = text.substring(manipulation.startPosition as number, (manipulation.startPosition as number) + (manipulation.endLength as number));
 										break;
 									default:
@@ -925,11 +925,11 @@ export class TextManipulation implements INodeType {
 								}
 								break;
 							case 'repeat':
-								if(manipulation.times || 0 < 0) throw new Error('The Target Length has to be set to at least 0 or higher!');
+								if((manipulation.times || 0) < 0) throw new Error('The Times has to be set to at least 0 or higher!');
 								text = text.repeat(manipulation.times as number);
 								break;
 							default:
-								throw new Error('encodeDecode, upperCase, lowerCase, replace, trim, pad, substring or repeat are valid options');
+								throw new Error('decodeEncode, upperCase, lowerCase, replace, trim, pad, substring or repeat are valid options');
 						}
 					}
 					switch(dataSource.writeOperation) {
