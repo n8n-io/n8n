@@ -53,6 +53,11 @@ export async function bitwardenApiRequest(
 			throw new Error('Bitwarden error response [404]: Not found');
 		}
 
+		if (error?.response?.body?.Message) {
+			const message = error?.response?.body?.Message;
+			throw new Error(`Bitwarden error response [${error.statusCode}]: ${message}`);
+		}
+		//TODO handle Errors array
 		throw error;
 	}
 }
@@ -113,7 +118,6 @@ export async function handleGetAll(
 		const limit = this.getNodeParameter('limit', i) as number;
 		return responseData.data.slice(0, limit);
 	}
-
 }
 
 /**
@@ -148,14 +152,14 @@ export async function loadResource(
 	resource: string,
 ) {
 	const returnData: INodePropertyOptions[] = [];
-	const token =  await getAccessToken.call(this);
+	const token = await getAccessToken.call(this);
 	const endpoint = `/public/${resource}`;
 
 	const { data } = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {}, token);
 
-	data.forEach(({id, name}: { id: string, name: string }) => {
+	data.forEach(({ id, name }: { id: string, name: string }) => {
 		returnData.push({
-			name,
+			name: name || id,
 			value: id,
 		});
 	});

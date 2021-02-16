@@ -58,7 +58,7 @@ export class Bitwarden implements INodeType {
 		description: 'Consume the Bitwarden API',
 		defaults: {
 			name: 'Bitwarden',
-			color: '#6610f2',
+			color: '#175DDC',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -132,7 +132,7 @@ export class Bitwarden implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 
-			if (resource === 'collection')	{
+			if (resource === 'collection') {
 
 				// *********************************************************************
 				// 															collection
@@ -487,18 +487,14 @@ export class Bitwarden implements INodeType {
 					const endpoint = `/public/members/${memberId}/group-ids`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 					responseData = { success: true };
-
 				}
-
 			}
 
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
 				: returnData.push(responseData);
-
-			}
+		}
 
 		return [this.helpers.returnJsonArray(returnData)];
-
 	}
 }
