@@ -52,139 +52,173 @@ export class TextManipulation implements INodeType {
 						name: 'textWithManipulations',
 						displayName: 'Text with manipulations',
 						values: [
-							{
-								displayName: 'Read Operation',
-								name: 'readOperation',
-								type: 'options',
-								options: [
-									{
-										name: 'Text',
-										value: 'fromText',
-										description: 'Declare text directly',
-									},
-									{
-										name: 'Read from file',
-										value: 'fromFile',
-										description: 'Read text from file',
-									},
-									{
-										name: 'Read from JSON',
-										value: 'fromJSON',
-										description: 'Read text from json',
-									},
-								],
-								default: 'fromText',
-							},
-							{
-								displayName: 'Binary Property',
-								name: 'binaryPropertyName',
-								required: true,
-								displayOptions: {
-									show: {
-										readOperation: [
-											'fromFile',
-											'toFile',
-										],
-									},
-								},
-								type: 'string',
-								default: 'data',
-								description: 'Name of the binary property for the binary data.',
-							},
-							{
-								displayName: 'Source Key',
-								name: 'sourceKey',
-								required: true,
-								displayOptions: {
-									show: {
-										readOperation: [
-											'fromJSON',
-										],
-									},
-								},
-								type: 'string',
-								default: 'data',
-								description: 'The name of the JSON key to get data from.<br />It is also possible to define deep keys by using dot-notation like for example:<br />"level1.level2.currentKey"',
-							},
-							{
-								displayName: 'Skip Non-String',
-								name: 'skipNonString',
-								required: true,
-								displayOptions: {
-									show: {
-										readOperation: [
-											'fromJSON',
-										],
-									},
-								},
-								type: 'boolean',
-								default: false,
-								description: 'Non-string data is skipped. If not, these will be converted automatically.',
-							},
-							{
-								displayName: 'Text',
-								name: 'text',
-								required: true,
-								displayOptions: {
-									show: {
-										readOperation: [
-											'fromText',
-										],
-									},
-								},
-								type: 'string',
-								default: '',
-								description: 'Plain text.',
-							},
-							{
-								displayName: 'Write Operation',
-								name: 'writeOperation',
-								type: 'options',
-								options: [
-									{
-										name: 'Write to file',
-										value: 'toFile',
-										description: 'Write manipulated text to file',
-									},
-									{
-										name: 'Write to JSON',
-										value: 'toJSON',
-										description: 'Write manipulated text to json',
-									},
-								],
-								default: 'toJSON',
-							},
-							{
-								displayName: 'File Name',
-								name: 'fileName',
-								required: true,
-								type: 'string',
-								displayOptions: {
-									show: {
-										writeOperation: [
-											'toFile',
-										],
-									},
-								},
-								default: '',
-								description: 'File name to set in binary data.',
-							},
-							{
-								displayName: 'Destination Key',
-								name: 'destinationKey',
-								displayOptions: {
-									show: {
-										writeOperation: [
-											'toJSON',
-										],
-									},
-								},
-								type: 'string',
-								default: 'data',
-								required: true,
-								placeholder: 'data',
-								description: 'The name the JSON key to copy data to. It is also possible<br />to define deep keys by using dot-notation like for example:<br />"level1.level2.newKey"',
-							},
+              {
+                name: 'dataSources',
+                displayName: 'Data Sources',
+                placeholder: 'Add Data Source',
+                type: 'fixedCollection',
+                typeOptions: {
+                  multipleValues: true,
+                  sortable: true,
+                },
+                description: 'The data sources for the manipulations.',
+                default: {},
+                options: [
+                  {
+                    name: 'dataSource',
+                    displayName: 'Data Source',
+                    values: [
+                      {
+                        displayName: 'Read Operation',
+                        name: 'readOperation',
+                        type: 'options',
+                        options: [
+                          {
+                            name: 'Text',
+                            value: 'fromText',
+                            description: 'Declare text directly',
+                          },
+                          {
+                            name: 'Read from file',
+                            value: 'fromFile',
+                            description: 'Read text from file',
+                          },
+                          {
+                            name: 'Read from JSON',
+                            value: 'fromJSON',
+                            description: 'Read text from json',
+                          },
+                        ],
+                        default: 'fromText',
+                      },
+                      {
+                        displayName: 'Binary Property',
+                        name: 'binaryPropertyName',
+                        required: true,
+                        displayOptions: {
+                          show: {
+                            readOperation: [
+                              'fromFile',
+                            ],
+                          },
+                        },
+                        type: 'string',
+                        default: 'data',
+                        description: 'Name of the binary property to read the binary data from.',
+                      },
+                      {
+                        displayName: 'Source Key',
+                        name: 'sourceKey',
+                        required: true,
+                        displayOptions: {
+                          show: {
+                            readOperation: [
+                              'fromJSON',
+                            ],
+                          },
+                        },
+                        type: 'string',
+                        default: 'data',
+                        description: 'The name of the JSON key to get data from.<br />It is also possible to define deep keys by using dot-notation like for example:<br />"level1.level2.currentKey"',
+                      },
+                      {
+                        displayName: 'Skip Non-String',
+                        name: 'skipNonString',
+                        required: true,
+                        displayOptions: {
+                          show: {
+                            readOperation: [
+                              'fromJSON',
+                            ],
+                          },
+                        },
+                        type: 'boolean',
+                        default: false,
+                        description: 'Non-string data is skipped. If not, these will be converted automatically.',
+                      },
+                      {
+                        displayName: 'Text',
+                        name: 'text',
+                        required: true,
+                        displayOptions: {
+                          show: {
+                            readOperation: [
+                              'fromText',
+                            ],
+                          },
+                        },
+                        type: 'string',
+                        default: '',
+                        description: 'Plain text.',
+                      },
+                      {
+                        displayName: 'Write Operation',
+                        name: 'writeOperation',
+                        type: 'options',
+                        options: [
+                          {
+                            name: 'Write to file',
+                            value: 'toFile',
+                            description: 'Write manipulated text to file',
+                          },
+                          {
+                            name: 'Write to JSON',
+                            value: 'toJSON',
+                            description: 'Write manipulated text to json',
+                          },
+                        ],
+                        default: 'toJSON',
+                      },
+                      {
+                        displayName: 'Destination Binary Property',
+                        name: 'destinationBinaryPropertyName',
+                        required: true,
+                        displayOptions: {
+                          show: {
+                            writeOperation: [
+                              'toFile',
+                            ],
+                          },
+                        },
+                        type: 'string',
+                        default: 'data',
+                        description: 'Name of the binary property to write binary data to.',
+                      },
+                      {
+                        displayName: 'File Name',
+                        name: 'fileName',
+                        type: 'string',
+                        displayOptions: {
+                          show: {
+                            writeOperation: [
+                              'toFile',
+                            ],
+                          },
+                        },
+                        default: '',
+                        placeholder: 'example.txt',
+                        description: 'File name to set in binary data.',
+                      },
+                      {
+                        displayName: 'Destination Key',
+                        name: 'destinationKey',
+                        displayOptions: {
+                          show: {
+                            writeOperation: [
+                              'toJSON',
+                            ],
+                          },
+                        },
+                        type: 'string',
+                        default: 'data',
+                        required: true,
+                        placeholder: 'data',
+                        description: 'The name the JSON key to copy data to. It is also possible<br />to define deep keys by using dot-notation like for example:<br />"level1.level2.newKey"',
+                      },
+                    ],
+                  },
+                ],
+              },
 							{
 								displayName: 'Manipulations',
 								name: 'manipulations',
@@ -747,11 +781,11 @@ export class TextManipulation implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		
-        let keepOnlySet: boolean;
+    let keepOnlySet: boolean;
 		let item: INodeExecutionData;
 		let text: string;
 		
-        for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+    for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, false) as boolean;
 			
 			item = items[itemIndex];
@@ -767,152 +801,153 @@ export class TextManipulation implements INodeType {
 			}
 			
 			for (const textWithManipulations of (this.getNodeParameter('textsWithManipulations.textWithManipulations', itemIndex, []) as INodeParameters[]) || []) {
-				switch(textWithManipulations.readOperation) {
-					case 'fromFile':
-						if (item.binary === undefined || item.binary[textWithManipulations.binaryPropertyName as string] === undefined) {
-							continue;
-						}
-						text = Buffer.from(item.binary[textWithManipulations.binaryPropertyName as string].data, BINARY_ENCODING).toString();
-						break;
-					case 'fromJSON':
-						const value = get(item.json, textWithManipulations.sourceKey as string);
-						if(typeof value == 'string') {
-							text = value as string;
-						} else if(textWithManipulations.skipNonString) {
-							continue;
-						} else {
-							text = (value || '').toString();
-						}
-						break;
-					case 'fromText':
-						text = textWithManipulations.text as string;
-						break;
-					default:
-						throw new Error('fromFile, fromJSON or fromText are valid options');
-				}
+        for(const dataSource of ((textWithManipulations.dataSources as INodeParameters).dataSource as INodeParameters[]) || []) {
+          switch(dataSource.readOperation) {
+            case 'fromFile':
+              if (item.binary === undefined || item.binary[dataSource.binaryPropertyName as string] === undefined) {
+                continue;
+              }
+              text = Buffer.from(item.binary[dataSource.binaryPropertyName as string].data, BINARY_ENCODING).toString();
+              break;
+            case 'fromJSON':
+              const value = get(item.json, dataSource.sourceKey as string);
+              if(typeof value == 'string') {
+                text = value as string;
+              } else if(dataSource.skipNonString) {
+                continue;
+              } else {
+                text = (value || '').toString();
+              }
+              break;
+            case 'fromText':
+              text = dataSource.text as string;
+              break;
+            default:
+              throw new Error('fromFile, fromJSON or fromText are valid options');
+          }
 
-				for(const manipulation of ((textWithManipulations.manipulations as INodeParameters).manipulation as INodeParameters[]) || []) {
-					switch(manipulation.action) {
-						case 'concat':
-							text = (manipulation.before || '') + text + (manipulation.after || '');
-							break;
-						case 'encodeDecode':
-							if(manipulation.encodeWith == 'url') {
-								if(manipulation.decodeWith != 'url') {
-									if(manipulation.decodeWith != 'utf8') text = Buffer.from(text, manipulation.decodeWith as string).toString('utf8');
-									text = encodeURI(text);
-								}
-							} else if(manipulation.decodeWith == 'url') {
-								text = decodeURI(text);
-								if(manipulation.encodeWith != 'utf8') text = Buffer.from(text).toString(manipulation.encodeWith as string);
-							} else {
-								text = Buffer.from(text, manipulation.decodeWith as string).toString(manipulation.encodeWith as string);
-							}
-							break;
-						case 'upperCase':
-							if(manipulation.useLocale) text = (text as any).toLocaleUpperCase(manipulation.language as string);
-							else text = text.toUpperCase();
-							break;
-						case 'lowerCase':
-							if(manipulation.useLocale) text = (text as any).toLocaleLowerCase(manipulation.language as string);
-							else text = text.toLowerCase();
-							break;
-						case 'replace':
-							switch(manipulation.replaceMode) {
-								case 'normal':
-									if(manipulation.replaceAll) {
-										text = TextManipulation.replaceAll(text, manipulation.substring as string, manipulation.value as string);
-									} else {
-										text = text.replace(manipulation.substring as string, manipulation.value as string);
-									}
-									break;
-								case 'regex':
-									const regexMatch = (manipulation.regex as string).match(new RegExp('^/(.*?)/([gimusy]*)$'));
-						
-									if (!regexMatch) {
-										text = text.replace(new RegExp(manipulation.regex as string), manipulation.pattern as string);
-									} else if (regexMatch.length === 1) {
-										text = text.replace(new RegExp(regexMatch[1]), manipulation.pattern as string);
-									} else {
-										text = text.replace(new RegExp(regexMatch[1], regexMatch[2]), manipulation.pattern as string);
-									}
-									break;
-								default:
-									throw new Error('normal or regex are valid options');
-							}
-							break;
-						case 'trim':
-							switch(manipulation.trim) {
-								case 'trimBoth':
-									text = text.trim();
-									break;
-								case 'trimStart':
-									text = text.trimStart();
-									break;
-								case 'trimEnd':
-									text = text.trimEnd();
-									break;
-								default:
-									throw new Error('trimBoth, trimStart or trimEnd are valid options');
-							}
-							break;
-						case 'pad':
-							if(manipulation.targetLength < 0) throw new Error('The Target Length has to be set to at least 0 or higher!');
-							switch(manipulation.pad) {
-								case 'padStart':
-									text = text.padStart(manipulation.targetLength as number, manipulation.padString as string);
-									break;
-								case 'padEnd':
-									text = text.padEnd(manipulation.targetLength as number, manipulation.padString as string);
-									break;
-								default:
-									throw new Error('padStart or padEnd are valid options');
-							}
-							break;
-						case 'substring':
-							switch (manipulation.end) {
-								case 'complete':
-									text = text.substring(manipulation.startPosition as number);
-									break;
-								case 'position':
-									text = text.substring(manipulation.startPosition as number, manipulation.endPosition as number);
-									break;
-								case 'length':
-									if (manipulation.endLength < 0) {
-										throw new Error('The Length has to be set to at least 0 or higher!');
-									}
-									if(manipulation.startPosition < 0) text = text.substring(manipulation.startPosition as number, text.length + (manipulation.startPosition as number) + (manipulation.endLength as number));
-									else text = text.substring(manipulation.startPosition as number, (manipulation.startPosition as number) + (manipulation.endLength as number));
-									break;
-								default:
-									throw new Error('complete, position or length are valid options');
-							}
-							break;
-						case 'repeat':
-							if(manipulation.times < 0) throw new Error('The Target Length has to be set to at least 0 or higher!');
-							text = text.repeat(manipulation.times as number);
-							break;
-						default:
-							throw new Error('encodeDecode, upperCase, lowerCase, replace, trim, pad, substring or repeat are valid options');
-					}
-				}
-				switch(textWithManipulations.writeOperation) {
-					case 'toFile':
-						newItemBinary![textWithManipulations.binaryPropertyName as string] = await this.helpers.prepareBinaryData(Buffer.from(text), textWithManipulations.fileName as string);
-						break;
-					case 'toJSON':
-						set(newItemJson, textWithManipulations.destinationKey as string, text);
-						break;
-					default:
-						throw new Error('toFile or toJSON are valid options');
-				}
-				
+          for(const manipulation of ((textWithManipulations.manipulations as INodeParameters).manipulation as INodeParameters[]) || []) {
+            switch(manipulation.action) {
+              case 'concat':
+                text = (manipulation.before || '') + text + (manipulation.after || '');
+                break;
+              case 'encodeDecode':
+                if(manipulation.encodeWith == 'url') {
+                  if(manipulation.decodeWith != 'url') {
+                    if(manipulation.decodeWith != 'utf8') text = Buffer.from(text, manipulation.decodeWith as string).toString('utf8');
+                    text = encodeURI(text);
+                  }
+                } else if(manipulation.decodeWith == 'url') {
+                  text = decodeURI(text);
+                  if(manipulation.encodeWith != 'utf8') text = Buffer.from(text).toString(manipulation.encodeWith as string);
+                } else {
+                  text = Buffer.from(text, manipulation.decodeWith as string).toString(manipulation.encodeWith as string);
+                }
+                break;
+              case 'upperCase':
+                if(manipulation.useLocale) text = (text as any).toLocaleUpperCase(manipulation.language as string);
+                else text = text.toUpperCase();
+                break;
+              case 'lowerCase':
+                if(manipulation.useLocale) text = (text as any).toLocaleLowerCase(manipulation.language as string);
+                else text = text.toLowerCase();
+                break;
+              case 'replace':
+                switch(manipulation.replaceMode) {
+                  case 'normal':
+                    if(manipulation.replaceAll) {
+                      text = TextManipulation.replaceAll(text, manipulation.substring as string, manipulation.value as string);
+                    } else {
+                      text = text.replace(manipulation.substring as string, manipulation.value as string);
+                    }
+                    break;
+                  case 'regex':
+                    const regexMatch = (manipulation.regex as string).match(new RegExp('^/(.*?)/([gimusy]*)$'));
+              
+                    if (!regexMatch) {
+                      text = text.replace(new RegExp(manipulation.regex as string), manipulation.pattern as string);
+                    } else if (regexMatch.length === 1) {
+                      text = text.replace(new RegExp(regexMatch[1]), manipulation.pattern as string);
+                    } else {
+                      text = text.replace(new RegExp(regexMatch[1], regexMatch[2]), manipulation.pattern as string);
+                    }
+                    break;
+                  default:
+                    throw new Error('normal or regex are valid options');
+                }
+                break;
+              case 'trim':
+                switch(manipulation.trim) {
+                  case 'trimBoth':
+                    text = text.trim();
+                    break;
+                  case 'trimStart':
+                    text = text.trimStart();
+                    break;
+                  case 'trimEnd':
+                    text = text.trimEnd();
+                    break;
+                  default:
+                    throw new Error('trimBoth, trimStart or trimEnd are valid options');
+                }
+                break;
+              case 'pad':
+                if(manipulation.targetLength < 0) throw new Error('The Target Length has to be set to at least 0 or higher!');
+                switch(manipulation.pad) {
+                  case 'padStart':
+                    text = text.padStart(manipulation.targetLength as number, manipulation.padString as string);
+                    break;
+                  case 'padEnd':
+                    text = text.padEnd(manipulation.targetLength as number, manipulation.padString as string);
+                    break;
+                  default:
+                    throw new Error('padStart or padEnd are valid options');
+                }
+                break;
+              case 'substring':
+                switch (manipulation.end) {
+                  case 'complete':
+                    text = text.substring(manipulation.startPosition as number);
+                    break;
+                  case 'position':
+                    text = text.substring(manipulation.startPosition as number, manipulation.endPosition as number);
+                    break;
+                  case 'length':
+                    if (manipulation.endLength < 0) {
+                      throw new Error('The Length has to be set to at least 0 or higher!');
+                    }
+                    if(manipulation.startPosition < 0) text = text.substring(manipulation.startPosition as number, text.length + (manipulation.startPosition as number) + (manipulation.endLength as number));
+                    else text = text.substring(manipulation.startPosition as number, (manipulation.startPosition as number) + (manipulation.endLength as number));
+                    break;
+                  default:
+                    throw new Error('complete, position or length are valid options');
+                }
+                break;
+              case 'repeat':
+                if(manipulation.times < 0) throw new Error('The Target Length has to be set to at least 0 or higher!');
+                text = text.repeat(manipulation.times as number);
+                break;
+              default:
+                throw new Error('encodeDecode, upperCase, lowerCase, replace, trim, pad, substring or repeat are valid options');
+            }
+          }
+          switch(dataSource.writeOperation) {
+            case 'toFile':
+              newItemBinary![dataSource.destinationBinaryPropertyName as string] = await this.helpers.prepareBinaryData(Buffer.from(text), dataSource.fileName as string);
+              break;
+            case 'toJSON':
+              set(newItemJson, dataSource.destinationKey as string, text);
+              break;
+            default:
+              throw new Error('toFile or toJSON are valid options');
+          }
+        }
 			}
 			returnData.push({
 				json: newItemJson,
 				binary: Object.keys(newItemBinary).length === 0 ? undefined : newItemBinary
 			});
-        }
+    }
 
 		return this.prepareOutputData(returnData);
 
