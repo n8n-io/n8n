@@ -61,8 +61,6 @@ export async function goToWebinarApiRequest(
 		Object.assign(options, option);
 	}
 
-	console.log(options);
-
 	try {
 		const response = await this.helpers.requestOAuth2!.call(this, 'goToWebinarOAuth2Api', options, { check403: true });
 
