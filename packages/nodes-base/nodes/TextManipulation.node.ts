@@ -925,7 +925,7 @@ export class TextManipulation implements INodeType {
 								}
 								break;
 							case 'repeat':
-								if(manipulation.times == null || < 0) throw new Error('The Times has to be set to at least 0 or higher!');
+								if(manipulation.times == null || manipulation.times < 0) throw new Error('The Times has to be set to at least 0 or higher!');
 								text = text.repeat(manipulation.times as number);
 								break;
 							default:
