@@ -13,7 +13,7 @@ import {
 	OptionsWithUri,
 } from 'request';
 
-import * as moment from'moment';
+import * as moment from 'moment';
 
 import * as losslessJSON from 'lossless-json';
 
@@ -27,7 +27,7 @@ export async function goToWebinarApiRequest(
 	qs: IDataObject,
 	body: IDataObject | IDataObject[],
 	option: IDataObject = {},
-): Promise<any> { // tslint:disable-line:no-any
+) {
 
 	const operation = this.getNodeParameter('operation', 0) as string;
 	const resource = this.getNodeParameter('resource', 0) as string;
@@ -70,7 +70,7 @@ export async function goToWebinarApiRequest(
 			return {};
 		}
 
-		//https://stackoverflow.com/questions/62190724/getting-gotowebinar-registrant
+		// https://stackoverflow.com/questions/62190724/getting-gotowebinar-registrant
 		return losslessJSON.parse(response, convertLosslessNumber);
 	} catch (error) {
 
@@ -103,7 +103,7 @@ export async function goToWebinarApiRequestAllItems(
 	qs: IDataObject,
 	body: IDataObject,
 	resource: string,
-): Promise<any> { // tslint:disable-line:no-any
+) {
 
 	const resourceToResponseKey: { [key: string]: string } = {
 		session: 'sessionInfoResources',
@@ -169,10 +169,10 @@ export async function loadWebinars(this: ILoadOptionsFunctions) {
 
 	const returnData: INodePropertyOptions[] = [];
 
-	resourceItems.forEach((item: { subject: string, webinarKey: string }) => {
+	resourceItems.forEach((item) => {
 		returnData.push({
-			name: item.subject,
-			value: item.webinarKey,
+			name: item.subject as string,
+			value: item.webinarKey as string,
 		});
 	});
 
