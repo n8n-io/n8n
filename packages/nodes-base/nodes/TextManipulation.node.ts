@@ -18,10 +18,11 @@ import { get, set } from 'lodash';
 export class TextManipulation implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TextManipulation',
-		name: 'regexReplace',
+		name: 'textManipulation',
+		icon: 'fa:i-cursor',
 		group: ['transform'],
 		version: 1,
-		description: 'To manipulate string values.',
+		description: 'Allows you to manipulate string values.',
 		defaults: {
 			name: 'TextManipulation',
 			color: '#772244',
@@ -39,186 +40,186 @@ export class TextManipulation implements INodeType {
 			{
 				displayName: 'Texts with manipulations',
 				name: 'textsWithManipulations',
-				placeholder: 'Add Text Manipulations',
+				placeholder: 'Add Texts Manipulations',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
 					sortable: true,
 				},
-				description: 'The texts with manipulations.',
+				description: 'The texts to manipulate.',
 				default: {},
 				options: [
 					{
-						name: 'textWithManipulations',
-						displayName: 'Text with manipulations',
+						name: 'textsWithManipulationsValues',
+						displayName: 'Texts with manipulations',
 						values: [
-              {
-                name: 'dataSources',
-                displayName: 'Data Sources',
-                placeholder: 'Add Data Source',
-                type: 'fixedCollection',
-                typeOptions: {
-                  multipleValues: true,
-                  sortable: true,
-                },
-                description: 'The data sources for the manipulations.',
-                default: {},
-                options: [
-                  {
-                    name: 'dataSource',
-                    displayName: 'Data Source',
-                    values: [
-                      {
-                        displayName: 'Read Operation',
-                        name: 'readOperation',
-                        type: 'options',
-                        options: [
-                          {
-                            name: 'Text',
-                            value: 'fromText',
-                            description: 'Declare text directly',
-                          },
-                          {
-                            name: 'Read from file',
-                            value: 'fromFile',
-                            description: 'Read text from file',
-                          },
-                          {
-                            name: 'Read from JSON',
-                            value: 'fromJSON',
-                            description: 'Read text from json',
-                          },
-                        ],
-                        default: 'fromText',
-                      },
-                      {
-                        displayName: 'Binary Property',
-                        name: 'binaryPropertyName',
-                        required: true,
-                        displayOptions: {
-                          show: {
-                            readOperation: [
-                              'fromFile',
-                            ],
-                          },
-                        },
-                        type: 'string',
-                        default: 'data',
-                        description: 'Name of the binary property to read the binary data from.',
-                      },
-                      {
-                        displayName: 'Source Key',
-                        name: 'sourceKey',
-                        required: true,
-                        displayOptions: {
-                          show: {
-                            readOperation: [
-                              'fromJSON',
-                            ],
-                          },
-                        },
-                        type: 'string',
-                        default: 'data',
-                        description: 'The name of the JSON key to get data from.<br />It is also possible to define deep keys by using dot-notation like for example:<br />"level1.level2.currentKey"',
-                      },
-                      {
-                        displayName: 'Skip Non-String',
-                        name: 'skipNonString',
-                        required: true,
-                        displayOptions: {
-                          show: {
-                            readOperation: [
-                              'fromJSON',
-                            ],
-                          },
-                        },
-                        type: 'boolean',
-                        default: false,
-                        description: 'Non-string data is skipped. If not, these will be converted automatically.',
-                      },
-                      {
-                        displayName: 'Text',
-                        name: 'text',
-                        required: true,
-                        displayOptions: {
-                          show: {
-                            readOperation: [
-                              'fromText',
-                            ],
-                          },
-                        },
-                        type: 'string',
-                        default: '',
-                        description: 'Plain text.',
-                      },
-                      {
-                        displayName: 'Write Operation',
-                        name: 'writeOperation',
-                        type: 'options',
-                        options: [
-                          {
-                            name: 'Write to file',
-                            value: 'toFile',
-                            description: 'Write manipulated text to file',
-                          },
-                          {
-                            name: 'Write to JSON',
-                            value: 'toJSON',
-                            description: 'Write manipulated text to json',
-                          },
-                        ],
-                        default: 'toJSON',
-                      },
-                      {
-                        displayName: 'Destination Binary Property',
-                        name: 'destinationBinaryPropertyName',
-                        required: true,
-                        displayOptions: {
-                          show: {
-                            writeOperation: [
-                              'toFile',
-                            ],
-                          },
-                        },
-                        type: 'string',
-                        default: 'data',
-                        description: 'Name of the binary property to write binary data to.',
-                      },
-                      {
-                        displayName: 'File Name',
-                        name: 'fileName',
-                        type: 'string',
-                        displayOptions: {
-                          show: {
-                            writeOperation: [
-                              'toFile',
-                            ],
-                          },
-                        },
-                        default: '',
-                        placeholder: 'example.txt',
-                        description: 'File name to set in binary data.',
-                      },
-                      {
-                        displayName: 'Destination Key',
-                        name: 'destinationKey',
-                        displayOptions: {
-                          show: {
-                            writeOperation: [
-                              'toJSON',
-                            ],
-                          },
-                        },
-                        type: 'string',
-                        default: 'data',
-                        required: true,
-                        placeholder: 'data',
-                        description: 'The name the JSON key to copy data to. It is also possible<br />to define deep keys by using dot-notation like for example:<br />"level1.level2.newKey"',
-                      },
-                    ],
-                  },
-                ],
-              },
+							{
+								name: 'dataSources',
+								displayName: 'Data Sources',
+								placeholder: 'Add Data Source',
+								type: 'fixedCollection',
+								typeOptions: {
+									multipleValues: true,
+									sortable: true,
+								},
+								description: 'The data sources for the manipulations.',
+								default: {},
+								options: [
+									{
+										name: 'dataSource',
+										displayName: 'Data Source',
+										values: [
+											{
+												displayName: 'Read Operation',
+												name: 'readOperation',
+												type: 'options',
+												options: [
+													{
+														name: 'Text',
+														value: 'fromText',
+														description: 'Declare text directly',
+													},
+													{
+														name: 'Read from file',
+														value: 'fromFile',
+														description: 'Read text from file',
+													},
+													{
+														name: 'Read from JSON',
+														value: 'fromJSON',
+														description: 'Read text from json',
+													},
+												],
+												default: 'fromText',
+											},
+											{
+												displayName: 'Binary Property',
+												name: 'binaryPropertyName',
+												required: true,
+												displayOptions: {
+													show: {
+														readOperation: [
+															'fromFile',
+														],
+													},
+												},
+												type: 'string',
+												default: 'data',
+												description: 'Name of the binary property from which the binary data is to be read.',
+											},
+											{
+												displayName: 'Source Key',
+												name: 'sourceKey',
+												required: true,
+												displayOptions: {
+													show: {
+														readOperation: [
+															'fromJSON',
+														],
+													},
+												},
+												type: 'string',
+												default: 'data',
+												description: 'The name of the JSON key to get data from.<br />It is also possible to define deep keys by using dot-notation like for example:<br />"level1.level2.currentKey"',
+											},
+											{
+												displayName: 'Skip Non-String',
+												name: 'skipNonString',
+												required: true,
+												displayOptions: {
+													show: {
+														readOperation: [
+															'fromJSON',
+														],
+													},
+												},
+												type: 'boolean',
+												default: false,
+												description: 'Non-string data will be skipped. If not, they will be converted automatically.',
+											},
+											{
+												displayName: 'Text',
+												name: 'text',
+												required: true,
+												displayOptions: {
+													show: {
+														readOperation: [
+															'fromText',
+														],
+													},
+												},
+												type: 'string',
+												default: '',
+												description: 'Plain text.',
+											},
+											{
+												displayName: 'Write Operation',
+												name: 'writeOperation',
+												type: 'options',
+												options: [
+													{
+														name: 'Write to file',
+														value: 'toFile',
+														description: 'Write the manipulated text to a file.',
+													},
+													{
+														name: 'Write to JSON',
+														value: 'toJSON',
+														description: 'Write the manipulated text to a json key.',
+													},
+												],
+												default: 'toJSON',
+											},
+											{
+												displayName: 'Destination Binary Property',
+												name: 'destinationBinaryPropertyName',
+												required: true,
+												displayOptions: {
+													show: {
+														writeOperation: [
+															'toFile',
+														],
+													},
+												},
+												type: 'string',
+												default: 'data',
+												description: 'Name of the binary property where the binary data should be written.',
+											},
+											{
+												displayName: 'File Name',
+												name: 'fileName',
+												type: 'string',
+												displayOptions: {
+													show: {
+														writeOperation: [
+															'toFile',
+														],
+													},
+												},
+												default: '',
+												placeholder: 'example.txt',
+												description: 'The file name to set.',
+											},
+											{
+												displayName: 'Destination Key',
+												name: 'destinationKey',
+												displayOptions: {
+													show: {
+														writeOperation: [
+															'toJSON',
+														],
+													},
+												},
+												type: 'string',
+												default: 'data',
+												required: true,
+												placeholder: 'data',
+												description: 'The name the JSON key to copy data to. It is also possible<br />to define deep keys by using dot-notation like for example:<br />"level1.level2.newKey"',
+											},
+										],
+									},
+								],
+							},
 							{
 								displayName: 'Manipulations',
 								name: 'manipulations',
@@ -228,7 +229,7 @@ export class TextManipulation implements INodeType {
 									multipleValues: true,
 									sortable: true,
 								},
-								description: 'The manipulations for the text.',
+								description: 'The manipulations for the data sources.',
 								default: {},
 								options: [
 									{
@@ -243,47 +244,47 @@ export class TextManipulation implements INodeType {
 													{
 														name: 'Concat',
 														value: 'concat',
-														description: 'Add string to the start or/and end',
+														description: 'Add string to the beginning or/and end.',
 													},
 													{
 														name: 'Encode/Decode',
 														value: 'encodeDecode',
-														description: 'Encode and Decode string',
+														description: 'Encode and Decode string.',
 													},
 													{
 														name: 'Upper Case',
 														value: 'upperCase',
-														description: 'Upper case all characters',
+														description: 'Upper case all characters.',
 													},
 													{
 														name: 'Lower Case',
 														value: 'lowerCase',
-														description: 'Lower case all characters',
+														description: 'Lower case all characters.',
 													},
 													{
 														name: 'Replace',
 														value: 'replace',
-														description: 'Replace substring',
+														description: 'Replace a substring or regex.',
 													},
 													{
 														name: 'Trim',
 														value: 'trim',
-														description: 'removes whitespace from start or/and end',
+														description: 'Removes whitespace from the beginning or/and end.',
 													},
 													{
 														name: 'Pad',
 														value: 'pad',
-														description: 'Pad string from start or end',
+														description: 'Pad the string at the beginning or end.',
 													},
 													{
 														name: 'Substring',
 														value: 'substring',
-														description: 'Get a substring',
+														description: 'Get a substring.',
 													},
 													{
 														name: 'Repeat',
 														value: 'repeat',
-														description: 'Repeat the string',
+														description: 'Repeat the string.',
 													},
 												],
 												default: 'lowerCase',
@@ -300,7 +301,7 @@ export class TextManipulation implements INodeType {
 												},
 												type: 'string',
 												default: '',
-												description: 'String which should add to the start.',
+												description: 'String to be added at the beginning.',
 											},
 											{
 												displayName: 'After',
@@ -314,7 +315,7 @@ export class TextManipulation implements INodeType {
 												},
 												type: 'string',
 												default: '',
-												description: 'String which should add to the end.',
+												description: 'String to be added at the end.',
 											},
 											{
 												displayName: 'Encode with',
@@ -448,7 +449,7 @@ export class TextManipulation implements INodeType {
 												type: 'string',
 												default: 'en',
 												required: true,
-												description: 'Which locale should be used for convention.',
+												description: 'Change the language of the localbase method.',
 											},
 											{
 												displayName: 'Replace Mode',
@@ -463,17 +464,17 @@ export class TextManipulation implements INodeType {
 												type: 'options',
 												options: [
 													{
-														name: 'Normal',
-														value: 'normal',
-														description: 'Replace a substring by a value',
+														name: 'Substring',
+														value: 'substring',
+														description: 'Replace a substring with a value.',
 													},
 													{
 														name: 'Regex',
 														value: 'regex',
-														description: 'Replace regex with a pattern',
+														description: 'Replace regex with a pattern.',
 													},
 												],
-												default: 'normal',
+												default: 'substring',
 											},
 											{
 												displayName: 'Regex',
@@ -521,7 +522,7 @@ export class TextManipulation implements INodeType {
 															'replace',
 														],
 														replaceMode: [
-															'normal'
+															'substring'
 														],
 													},
 												},
@@ -529,7 +530,7 @@ export class TextManipulation implements INodeType {
 												default: '',
 												required: true,
 												placeholder: '.*',
-												description: 'The substring of the text to be replaced.',
+												description: 'The substring to be replaced.',
 											},
 											{
 												displayName: 'Value',
@@ -540,14 +541,14 @@ export class TextManipulation implements INodeType {
 															'replace',
 														],
 														replaceMode: [
-															'normal'
+															'substring'
 														],
 													},
 												},
 												type: 'string',
 												default: '',
 												placeholder: '',
-												description: 'The value to replace with.',
+												description: 'The value that should replace the substring.',
 											},
 											{
 												displayName: 'Replace All',
@@ -558,14 +559,14 @@ export class TextManipulation implements INodeType {
 															'replace',
 														],
 														replaceMode: [
-															'normal'
+															'substring'
 														],
 													},
 												},
 												type: 'boolean',
 												default: true,
 												placeholder: '',
-												description: 'If you want to replace all substrings.',
+												description: 'Replace all substrings (not only the first).',
 											},
 											{
 												displayName: 'Trim',
@@ -582,17 +583,17 @@ export class TextManipulation implements INodeType {
 													{
 														name: 'Trim Both',
 														value: 'trimBoth',
-														description: 'Trim the string from both sides',
+														description: 'Removes whitespace from the beginning and end.',
 													},
 													{
 														name: 'Trim Start',
 														value: 'trimStart',
-														description: 'Trim the string from start',
+														description: 'Removes whitespace from the beginning.',
 													},
 													{
-														name: 'TrimEnd',
+														name: 'Trim End',
 														value: 'trimEnd',
-														description: 'Trim the string from end',
+														description: 'Removes whitespace from the end.',
 													},
 												],
 												default: 'trimBoth',
@@ -612,12 +613,12 @@ export class TextManipulation implements INodeType {
 													{
 														name: 'Pad Start',
 														value: 'padStart',
-														description: 'Pad the string from start',
+														description: 'Pad the string at the beginning.',
 													},
 													{
 														name: 'Pad End',
 														value: 'padEnd',
-														description: 'Trim the string from end',
+														description: 'Pad the string at the end.',
 													},
 												],
 												default: 'padStart',
@@ -654,7 +655,7 @@ export class TextManipulation implements INodeType {
 												type: 'string',
 												default: ' ',
 												required: true,
-												description: 'The string to pad the text.',
+												description: 'The filling string.',
 											},
 											{
 												displayName: 'Start Position',
@@ -669,7 +670,7 @@ export class TextManipulation implements INodeType {
 												type: 'number',
 												default: 0,
 												placeholder: '0',
-												description: 'The start position (begins with 0). Can also be negativ.',
+												description: 'The start position (string begins with 0). Can also be negativ.',
 											},
 											{
 												displayName: 'End',
@@ -686,21 +687,21 @@ export class TextManipulation implements INodeType {
 													{
 														name: 'Complete',
 														value: 'complete',
-														description: 'Select all to end.',
+														description: 'Selects everything to the end.',
 													},
 													{
 														name: 'Position',
 														value: 'position',
-														description: 'The end position of selected rows (exclusive end). Can also be negativ.',
+														description: 'Selects everything up to the position (exclusive position). Can also be negative.',
 													},
 													{
 														name: 'Length',
 														value: 'length',
-														description: 'The length of selected rows.',
+														description: 'The length of the selected rows.',
 													},
 												],
 												default: 'complete',
-												description: 'The end of selected rows.',
+												description: 'The end of the substring.',
 											},
 											{
 												displayName: 'Position',
@@ -718,7 +719,7 @@ export class TextManipulation implements INodeType {
 												type: 'number',
 												default: 1,
 												placeholder: '1',
-												description: 'The end of selected rows (exclusive end).',
+												description: 'The end position of the substring. Can also be negative.',
 											},
 											{
 												displayName: 'Length',
@@ -739,7 +740,7 @@ export class TextManipulation implements INodeType {
 												type: 'number',
 												default: 1,
 												placeholder: '1',
-												description: 'The length of selected rows.',
+												description: 'The length of the substring.',
 											},
 											{
 												displayName: 'Times',
@@ -758,7 +759,7 @@ export class TextManipulation implements INodeType {
 												default: 1,
 												required: true,
 												placeholder: '1',
-												description: 'The number of times to repeat the string.',
+												description: 'The number of times the string should be repeated.',
 											},
 										]
 									}
@@ -781,11 +782,11 @@ export class TextManipulation implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		
-    let keepOnlySet: boolean;
+		let keepOnlySet: boolean;
 		let item: INodeExecutionData;
 		let text: string;
 		
-    for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, false) as boolean;
 			
 			item = items[itemIndex];
@@ -800,154 +801,154 @@ export class TextManipulation implements INodeType {
 				newItemJson = JSON.parse(JSON.stringify(item.json));
 			}
 			
-			for (const textWithManipulations of (this.getNodeParameter('textsWithManipulations.textWithManipulations', itemIndex, []) as INodeParameters[]) || []) {
-        for(const dataSource of ((textWithManipulations.dataSources as INodeParameters).dataSource as INodeParameters[]) || []) {
-          switch(dataSource.readOperation) {
-            case 'fromFile':
-              if (item.binary === undefined || item.binary[dataSource.binaryPropertyName as string] === undefined) {
-                continue;
-              }
-              text = Buffer.from(item.binary[dataSource.binaryPropertyName as string].data, BINARY_ENCODING).toString();
-              break;
-            case 'fromJSON':
-              const value = get(item.json, dataSource.sourceKey as string);
-              if(typeof value == 'string') {
-                text = value as string;
-              } else if(dataSource.skipNonString) {
-                continue;
-              } else {
-                text = (value || '').toString();
-              }
-              break;
-            case 'fromText':
-              text = dataSource.text as string;
-              break;
-            default:
-              throw new Error('fromFile, fromJSON or fromText are valid options');
-          }
+			for (const textsWithManipulationsValues of (this.getNodeParameter('textsWithManipulations.textsWithManipulationsValues', itemIndex, []) as INodeParameters[]) || []) {
+				for(const dataSource of ((textsWithManipulationsValues.dataSources as INodeParameters).dataSource as INodeParameters[]) || []) {
+					switch(dataSource.readOperation) {
+						case 'fromFile':
+							if (item.binary === undefined || item.binary[dataSource.binaryPropertyName as string] === undefined) {
+								continue;
+							}
+							text = Buffer.from(item.binary[dataSource.binaryPropertyName as string].data, BINARY_ENCODING).toString();
+							break;
+						case 'fromJSON':
+							const value = get(item.json, dataSource.sourceKey as string);
+							if(typeof value == 'string') {
+								text = value as string;
+							} else if(dataSource.skipNonString) {
+								continue;
+							} else {
+								text = (value || '').toString();
+							}
+							break;
+						case 'fromText':
+							text = dataSource.text as string;
+							break;
+						default:
+							throw new Error('fromFile, fromJSON or fromText are valid options');
+					}
 
-          for(const manipulation of ((textWithManipulations.manipulations as INodeParameters).manipulation as INodeParameters[]) || []) {
-            switch(manipulation.action) {
-              case 'concat':
-                text = (manipulation.before || '') + text + (manipulation.after || '');
-                break;
-              case 'encodeDecode':
-                if(manipulation.encodeWith == 'url') {
-                  if(manipulation.decodeWith != 'url') {
-                    if(manipulation.decodeWith != 'utf8') text = Buffer.from(text, manipulation.decodeWith as string).toString('utf8');
-                    text = encodeURI(text);
-                  }
-                } else if(manipulation.decodeWith == 'url') {
-                  text = decodeURI(text);
-                  if(manipulation.encodeWith != 'utf8') text = Buffer.from(text).toString(manipulation.encodeWith as string);
-                } else {
-                  text = Buffer.from(text, manipulation.decodeWith as string).toString(manipulation.encodeWith as string);
-                }
-                break;
-              case 'upperCase':
-                if(manipulation.useLocale) text = (text as any).toLocaleUpperCase(manipulation.language as string);
-                else text = text.toUpperCase();
-                break;
-              case 'lowerCase':
-                if(manipulation.useLocale) text = (text as any).toLocaleLowerCase(manipulation.language as string);
-                else text = text.toLowerCase();
-                break;
-              case 'replace':
-                switch(manipulation.replaceMode) {
-                  case 'normal':
-                    if(manipulation.replaceAll) {
-                      text = TextManipulation.replaceAll(text, manipulation.substring as string, manipulation.value as string);
-                    } else {
-                      text = text.replace(manipulation.substring as string, manipulation.value as string);
-                    }
-                    break;
-                  case 'regex':
-                    const regexMatch = (manipulation.regex as string).match(new RegExp('^/(.*?)/([gimusy]*)$'));
-              
-                    if (!regexMatch) {
-                      text = text.replace(new RegExp(manipulation.regex as string), manipulation.pattern as string);
-                    } else if (regexMatch.length === 1) {
-                      text = text.replace(new RegExp(regexMatch[1]), manipulation.pattern as string);
-                    } else {
-                      text = text.replace(new RegExp(regexMatch[1], regexMatch[2]), manipulation.pattern as string);
-                    }
-                    break;
-                  default:
-                    throw new Error('normal or regex are valid options');
-                }
-                break;
-              case 'trim':
-                switch(manipulation.trim) {
-                  case 'trimBoth':
-                    text = text.trim();
-                    break;
-                  case 'trimStart':
-                    text = text.trimStart();
-                    break;
-                  case 'trimEnd':
-                    text = text.trimEnd();
-                    break;
-                  default:
-                    throw new Error('trimBoth, trimStart or trimEnd are valid options');
-                }
-                break;
-              case 'pad':
-                if(manipulation.targetLength < 0) throw new Error('The Target Length has to be set to at least 0 or higher!');
-                switch(manipulation.pad) {
-                  case 'padStart':
-                    text = text.padStart(manipulation.targetLength as number, manipulation.padString as string);
-                    break;
-                  case 'padEnd':
-                    text = text.padEnd(manipulation.targetLength as number, manipulation.padString as string);
-                    break;
-                  default:
-                    throw new Error('padStart or padEnd are valid options');
-                }
-                break;
-              case 'substring':
-                switch (manipulation.end) {
-                  case 'complete':
-                    text = text.substring(manipulation.startPosition as number);
-                    break;
-                  case 'position':
-                    text = text.substring(manipulation.startPosition as number, manipulation.endPosition as number);
-                    break;
-                  case 'length':
-                    if (manipulation.endLength < 0) {
-                      throw new Error('The Length has to be set to at least 0 or higher!');
-                    }
-                    if(manipulation.startPosition < 0) text = text.substring(manipulation.startPosition as number, text.length + (manipulation.startPosition as number) + (manipulation.endLength as number));
-                    else text = text.substring(manipulation.startPosition as number, (manipulation.startPosition as number) + (manipulation.endLength as number));
-                    break;
-                  default:
-                    throw new Error('complete, position or length are valid options');
-                }
-                break;
-              case 'repeat':
-                if(manipulation.times < 0) throw new Error('The Target Length has to be set to at least 0 or higher!');
-                text = text.repeat(manipulation.times as number);
-                break;
-              default:
-                throw new Error('encodeDecode, upperCase, lowerCase, replace, trim, pad, substring or repeat are valid options');
-            }
-          }
-          switch(dataSource.writeOperation) {
-            case 'toFile':
-              newItemBinary![dataSource.destinationBinaryPropertyName as string] = await this.helpers.prepareBinaryData(Buffer.from(text), dataSource.fileName as string);
-              break;
-            case 'toJSON':
-              set(newItemJson, dataSource.destinationKey as string, text);
-              break;
-            default:
-              throw new Error('toFile or toJSON are valid options');
-          }
-        }
+					for(const manipulation of ((textsWithManipulationsValues.manipulations as INodeParameters).manipulation as INodeParameters[]) || []) {
+						switch(manipulation.action) {
+							case 'concat':
+								text = (manipulation.before || '') + text + (manipulation.after || '');
+								break;
+							case 'encodeDecode':
+								if(manipulation.encodeWith == 'url') {
+									if(manipulation.decodeWith != 'url') {
+										if(manipulation.decodeWith != 'utf8') text = Buffer.from(text, manipulation.decodeWith as any).toString('utf8');
+										text = encodeURI(text);
+									}
+								} else if(manipulation.decodeWith == 'url') {
+									text = decodeURI(text);
+									if(manipulation.encodeWith != 'utf8') text = Buffer.from(text).toString(manipulation.encodeWith as any);
+								} else {
+									text = Buffer.from(text, manipulation.decodeWith as any).toString(manipulation.encodeWith as any);
+								}
+								break;
+							case 'upperCase':
+								if(manipulation.useLocale) text = (text as any).toLocaleUpperCase(manipulation.language as string);
+								else text = text.toUpperCase();
+								break;
+							case 'lowerCase':
+								if(manipulation.useLocale) text = (text as any).toLocaleLowerCase(manipulation.language as string);
+								else text = text.toLowerCase();
+								break;
+							case 'replace':
+								switch(manipulation.replaceMode) {
+									case 'substring':
+										if(manipulation.replaceAll) {
+											text = TextManipulation.replaceAll(text, manipulation.substring as string, manipulation.value as string);
+										} else {
+											text = text.replace(manipulation.substring as string, manipulation.value as string);
+										}
+										break;
+									case 'regex':
+										const regexMatch = (manipulation.regex as string).match(new RegExp('^/(.*?)/([gimusy]*)$'));
+							
+										if (!regexMatch) {
+											text = text.replace(new RegExp(manipulation.regex as string), manipulation.pattern as string);
+										} else if (regexMatch.length === 1) {
+											text = text.replace(new RegExp(regexMatch[1]), manipulation.pattern as string);
+										} else {
+											text = text.replace(new RegExp(regexMatch[1], regexMatch[2]), manipulation.pattern as string);
+										}
+										break;
+									default:
+										throw new Error('substring or regex are valid options');
+								}
+								break;
+							case 'trim':
+								switch(manipulation.trim) {
+									case 'trimBoth':
+										text = text.trim();
+										break;
+									case 'trimStart':
+										text = text.trimLeft();
+										break;
+									case 'trimEnd':
+										text = text.trimRight();
+										break;
+									default:
+										throw new Error('trimBoth, trimStart or trimEnd are valid options');
+								}
+								break;
+							case 'pad':
+								if(manipulation.targetLength == null || manipulation.targetLength < 0) throw new Error('The Target Length has to be set to at least 0 or higher!');
+								switch(manipulation.pad) {
+									case 'padStart':
+										text = text.padStart(manipulation.targetLength as number, manipulation.padString as string);
+										break;
+									case 'padEnd':
+										text = text.padEnd(manipulation.targetLength as number, manipulation.padString as string);
+										break;
+									default:
+										throw new Error('padStart or padEnd are valid options');
+								}
+								break;
+							case 'substring':
+								switch (manipulation.end) {
+									case 'complete':
+										text = text.substring(manipulation.startPosition as number);
+										break;
+									case 'position':
+										text = text.substring(manipulation.startPosition as number, manipulation.endPosition as number);
+										break;
+									case 'length':
+										if (manipulation.endLength == null || manipulation.endLength < 0) {
+											throw new Error('The Length has to be set to at least 0 or higher!');
+										}
+										if(manipulation.startPosition || 0 < 0) text = text.substring(manipulation.startPosition as number, text.length + (manipulation.startPosition as number) + (manipulation.endLength as number));
+										else text = text.substring(manipulation.startPosition as number, (manipulation.startPosition as number) + (manipulation.endLength as number));
+										break;
+									default:
+										throw new Error('complete, position or length are valid options');
+								}
+								break;
+							case 'repeat':
+								if(manipulation.times || 0 < 0) throw new Error('The Target Length has to be set to at least 0 or higher!');
+								text = text.repeat(manipulation.times as number);
+								break;
+							default:
+								throw new Error('encodeDecode, upperCase, lowerCase, replace, trim, pad, substring or repeat are valid options');
+						}
+					}
+					switch(dataSource.writeOperation) {
+						case 'toFile':
+							newItemBinary![dataSource.destinationBinaryPropertyName as string] = await this.helpers.prepareBinaryData(Buffer.from(text), dataSource.fileName as string);
+							break;
+						case 'toJSON':
+							set(newItemJson, dataSource.destinationKey as string, text);
+							break;
+						default:
+							throw new Error('toFile or toJSON are valid options');
+					}
+				}
 			}
 			returnData.push({
 				json: newItemJson,
 				binary: Object.keys(newItemBinary).length === 0 ? undefined : newItemBinary
 			});
-    }
+		}
 
 		return this.prepareOutputData(returnData);
 
