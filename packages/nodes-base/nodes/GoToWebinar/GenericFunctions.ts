@@ -74,10 +74,6 @@ export async function goToWebinarApiRequest(
 		return losslessJSON.parse(response, convertLosslessNumber);
 	} catch (error) {
 
-		if (error.statusCode === 403) {
-			throw new Error('The Go To Webinar credentials are invalid!');
-		}
-
 		if (error?.response?.body) {
 			let errorMessage;
 			const body = JSON.parse(error.response.body);
