@@ -6,25 +6,28 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription
 } from 'n8n-workflow';
 
 import {
-	emeliaGrapqlRequest,
+	emeliaGraphqlRequest,
+	loadResource,
 } from './GenericFunctions';
 
-interface Campaign {
-	_id: string;
-	name: string;
-}
+import {
+	campaignFields,
+	campaignOperations,
+} from './CampaignDescription';
 
-interface ContactsList {
-	_id: string;
-	name: string;
-	contactCount: number;
-}
+import {
+	contactListFields,
+	contactListOperations,
+} from './ContactListDescription';
+
+import {
+	isEmpty,
+} from 'lodash';
 
 export class Emelia implements INodeType {
 	description: INodeTypeDescription = {
@@ -33,7 +36,7 @@ export class Emelia implements INodeType {
 		icon: 'file:emelia.svg',
 		group: ['input'],
 		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		description: 'Consume the Emelia API',
 		defaults: {
 			name: 'Emelia',
@@ -58,143 +61,29 @@ export class Emelia implements INodeType {
 						value: 'campaign',
 					},
 					{
-						name: 'Contacts Lists',
-						value: 'contactsLists',
+						name: 'Contact List',
+						value: 'contactList',
 					},
 				],
 				default: 'campaign',
 				required: true,
 				description: 'The resource to operate on.',
 			},
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				required: true,
-				displayOptions: {
-					show: {
-						resource: [
-							'campaign',
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Add Contact to a campaign',
-						value: 'addContactToCampaign',
-						description: 'Add a contact to an existant campaign. If it is running, the campaign will be automatically added to the loop.',
-					},
-				],
-				default: 'addContactToCampaign',
-				description: 'The operation to perform.',
-			},
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				required: true,
-				displayOptions: {
-					show: {
-						resource: [
-							'contactsLists',
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Add Contact to a list',
-						value: 'addContactToList',
-						description: 'Add a contact to an existing list. If the campaign is already started, use the "Add Contact to a campaign" method instead.',
-					},
-				],
-				default: 'addContactToList',
-				description: 'The operation to perform.',
-			},
-			{
-				displayName: 'Campaign',
-				name: 'campaignId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getCampaigns',
-				},
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'addContactToCampaign',
-						],
-						resource: [
-							'campaign',
-						],
-					},
-				},
-				default: '',
-			},
-			{
-				displayName: 'List',
-				name: 'contactsListsId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getContactsLists',
-				},
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'addContactToList',
-						],
-						resource: [
-							'contactsLists',
-						],
-					},
-				},
-				default: '',
-			},
-			{
-				displayName: 'JSON Contact Data',
-				name: 'contactData',
-				type: 'string',
-				required: true,
-				default: '{}',
-				description: 'Contact data to send to Emelia, must be in JSON format. All items must have an `email` field. Every fields will be added on contact details on Emelia',
-				displayOptions: {
-					show: {
-						operation: [
-							'addContactToCampaign',
-							'addContactToList',
-						],
-					},
-				},
-			},
+			...campaignOperations,
+			...campaignFields,
+			...contactListOperations,
+			...contactListFields,
 		],
 	};
 
 	methods = {
 		loadOptions: {
-			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const responseData = await emeliaGrapqlRequest.call(this, {
-					query: 'query GetCampaigns {\ncampaigns {\n_id\nname\n}\n}',
-					operationName: 'GetCampaigns',
-					variables: '{}',
-				});
-
-				return responseData.data.campaigns.map((campaign: Campaign) => ({
-					name: campaign.name,
-					value: campaign._id,
-				}));
+			async getCampaigns(this: ILoadOptionsFunctions) {
+				return loadResource.call(this, 'campaign');
 			},
 
-			async getContactsLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const responseData = await emeliaGrapqlRequest.call(this, {
-					query: 'query GetContactsLists {\ncontact_lists {\n_id\nname\ncontactCount\n}\n}',
-					operationName: 'GetContactsLists',
-					variables: '{}',
-				});
-
-				return responseData.data.contact_lists.map((list: ContactsList) => ({
-					name: list.name,
-					value: list._id,
-				}));
+			async getContactLists(this: ILoadOptionsFunctions) {
+				return loadResource.call(this, 'contactList');
 			},
 		},
 	};
@@ -208,79 +97,278 @@ export class Emelia implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 
-			if (resource === 'campaign') {
+			try {
 
-				// **********************************
-				//            campaign
-				// **********************************
+				if (resource === 'campaign') {
 
-				if (operation === 'addContactToCampaign') {
+						// **********************************
+						//            campaign
+						// **********************************
 
-					// ----------------------------------
-					//   campaign: addContactToCampaign
-					// ----------------------------------
+						if (operation === 'addContact') {
 
-					const campaignId = this.getNodeParameter('campaignId', i);
-					const contactData = this.getNodeParameter('contactData', i);
+							// ----------------------------------
+							//       campaign: addContact
+							// ----------------------------------
 
-					const responseData = await emeliaGrapqlRequest.call(this, {
-						query: `
-							mutation AddContactToCampaignHook($id: ID!, $contact: JSON!) {
-								addContactToCampaignHook(id: $id, contact: $contact)
-						}`,
-						operationName: 'AddContactToCampaignHook',
-						variables: {
-							id: campaignId,
-							contact:
-								typeof contactData === 'object'
-									? contactData
-									: JSON.parse(contactData as string),
-						},
-					});
+							const contact = {
+								email: this.getNodeParameter('contactEmail', i) as string,
+							};
 
-					returnData.push({
-						success: true,
-						contactId: responseData.data.addContactToCampaignHook,
-					});
+							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+							if (!isEmpty(additionalFields)) {
+								Object.assign(contact, additionalFields);
+							}
+
+							const responseData = await emeliaGraphqlRequest.call(this, {
+								query: `
+									mutation AddContactToCampaignHook($id: ID!, $contact: JSON!) {
+										addContactToCampaignHook(id: $id, contact: $contact)
+								}`,
+								operationName: 'AddContactToCampaignHook',
+								variables: {
+									id: this.getNodeParameter('campaignId', i),
+									contact,
+								},
+							});
+
+							returnData.push({ contactId: responseData.data.addContactToCampaignHook });
+
+						}	else if (operation === 'create') {
+
+							// ----------------------------------
+							//        campaign: create
+							// ----------------------------------
+
+							const responseData = await emeliaGraphqlRequest.call(this, {
+								operationName: 'createCampaign',
+								query: `
+									mutation createCampaign($name: String!) {
+										createCampaign(name: $name) {
+											_id
+											name
+											status
+											createdAt
+											provider
+											startAt
+											estimatedEnd
+										}
+									}`,
+								variables: {
+									name: this.getNodeParameter('campaignName', i),
+								},
+							});
+
+							returnData.push(responseData.data.createCampaign);
+
+						} else if (operation === 'get') {
+
+							// ----------------------------------
+							//        campaign: get
+							// ----------------------------------
+
+							const responseData = await emeliaGraphqlRequest.call(this, {
+								query: `
+									query campaign($id: ID!){
+										campaign(id: $id){
+											_id
+											name
+											status
+											createdAt
+											schedule{
+												dailyContact
+												dailyLimit
+												minInterval
+												maxInterval
+												trackLinks
+												trackOpens
+												timeZone
+												days
+												start
+												end
+												eventToStopMails
+											}
+											provider
+											startAt
+											recipients{
+												total_count
+											}
+											estimatedEnd
+										}
+									}`,
+								operationName: 'campaign',
+								variables: {
+									id: this.getNodeParameter('campaignId', i),
+								},
+							});
+
+							returnData.push(responseData.data.campaign);
+
+						} else if (operation === 'getAll') {
+
+							// ----------------------------------
+							//        campaign: getAll
+							// ----------------------------------
+
+							const responseData = await emeliaGraphqlRequest.call(this, {
+								query: `
+									query all_campaigns {
+										all_campaigns {
+											_id
+											name
+											status
+											createdAt
+											stats {
+												mailsSent
+												uniqueOpensPercent
+												opens
+												linkClickedPercent
+												repliedPercent
+												bouncedPercent
+												unsubscribePercent
+												progressPercent
+											}
+										}
+									}`,
+								operationName: 'all_campaigns',
+							});
+
+							let campaigns = responseData.data.all_campaigns;
+
+							const returnAll = this.getNodeParameter('returnAll', i);
+
+							if (!returnAll) {
+								const limit = this.getNodeParameter('limit', i) as number;
+								campaigns = campaigns.slice(0, limit);
+							}
+
+							returnData.push(...campaigns);
+
+						} else if (operation === 'pause') {
+
+							// ----------------------------------
+							//        campaign: pause
+							// ----------------------------------
+
+							await emeliaGraphqlRequest.call(this, {
+								query: `
+									mutation pauseCampaign($id: ID!) {
+										pauseCampaign(id: $id)
+									}`,
+								operationName: 'pauseCampaign',
+								variables: {
+									id: this.getNodeParameter('campaignId', i),
+								},
+							});
+
+							returnData.push({ success: true });
+
+						} else if (operation === 'start') {
+
+							// ----------------------------------
+							//        campaign: start
+							// ----------------------------------
+
+							await emeliaGraphqlRequest.call(this, {
+								query: `
+									mutation startCampaign($id: ID!) {
+										startCampaign(id: $id)
+									}`,
+								operationName: 'startCampaign',
+								variables: {
+									id: this.getNodeParameter('campaignId', i),
+								},
+							});
+
+							returnData.push({ success: true });
+
+						}
+
+					} else if (resource === 'contactList') {
+
+						// **********************************
+						//           ContactList
+						// **********************************
+
+						if (operation === 'addContact') {
+
+							// ----------------------------------
+							//      contactList: addContact
+							// ----------------------------------
+
+							const contact = {
+								email: this.getNodeParameter('contactEmail', i) as string,
+							};
+
+							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+							if (!isEmpty(additionalFields)) {
+								Object.assign(contact, additionalFields);
+							}
+
+							const responseData = await emeliaGraphqlRequest.call(this, {
+								query: `
+									mutation AddContactsToListHook($id: ID!, $contact: JSON!) {
+										addContactsToListHook(id: $id, contact: $contact)
+									}`,
+								operationName: 'AddContactsToListHook',
+								variables: {
+									id: this.getNodeParameter('contactListId', i),
+									contact,
+								},
+							});
+
+							returnData.push({ contactId: responseData.data.addContactsToListHook });
+
+						} else if (operation === 'getAll') {
+
+							// ----------------------------------
+							//       contactList: getAll
+							// ----------------------------------
+
+							const responseData = await emeliaGraphqlRequest.call(this, {
+								query: `
+									query contact_lists{
+										contact_lists{
+											_id
+											name
+											contactCount
+											fields
+											usedInCampaign
+										}
+									}`,
+								operationName: 'contact_lists',
+							});
+
+							let contactLists = responseData.data.contact_lists;
+
+							const returnAll = this.getNodeParameter('returnAll', i);
+
+							if (!returnAll) {
+								const limit = this.getNodeParameter('limit', i) as number;
+								contactLists = contactLists.slice(0, limit);
+							}
+
+							returnData.push(...contactLists);
+
+							// returnData.push(responseData.data.contact_lists);
+
+						}
+
+					}
+
+			} catch (error) {
+
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
 				}
+
+				throw error;
+
 			}
 
-			if (resource === 'contactsLists') {
-
-				// **********************************
-				//         contactsLists
-				// **********************************
-
-				if (operation === 'addContactToList') {
-
-					// ----------------------------------
-					//  contactsLists: addContactToList
-					// ----------------------------------
-
-					const listId = this.getNodeParameter('contactsListsId', i);
-					const contactData = this.getNodeParameter('contactData', i);
-
-					const responseData = await emeliaGrapqlRequest.call(this, {
-						query: `
-							mutation AddContactsToListHook($id: ID!, $contact: JSON!) {
-								addContactsToListHook(id: $id, contact: $contact)
-							}`,
-						operationName: 'AddContactsToListHook',
-						variables: {
-							id: listId,
-							contact:
-								typeof contactData === 'object'
-									? contactData
-									: JSON.parse(contactData as string),
-						},
-					});
-
-					returnData.push({
-						success: true,
-						contactId: responseData.data.addContactsToListHook,
-					});
-				}
-			}
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
