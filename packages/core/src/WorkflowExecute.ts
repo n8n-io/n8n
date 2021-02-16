@@ -22,6 +22,8 @@ import {
 	NodeExecuteFunctions,
 } from './';
 
+import { get } from 'lodash';
+
 export class WorkflowExecute {
 	runExecutionData: IRunExecutionData;
 	private additionalData: IWorkflowExecuteAdditionalData;
@@ -234,6 +236,21 @@ export class WorkflowExecute {
 	}
 
 
+	/**
+	 * Checks the incoming connection does not receive any data
+	 */
+	incomingConnectionIsEmpty(runData: IRunData, inputConnections: IConnection[], runIndex: number): boolean {
+		// for (const inputConnection of workflow.connectionsByDestinationNode[nodeToAdd].main[0]) {
+		for (const inputConnection of inputConnections) {
+			const nodeIncomingData = get(runData, `[${inputConnection.node}][${runIndex}].data.main[${inputConnection.index}]`);
+			if (nodeIncomingData !== undefined && (nodeIncomingData as object[]).length !== 0) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+
 	addNodeToBeExecuted(workflow: Workflow, connectionData: IConnection, outputIndex: number, parentNodeName: string, nodeSuccessData: INodeExecutionData[][], runIndex: number): void {
 		let stillDataMissing = false;
 
@@ -299,7 +316,7 @@ export class WorkflowExecute {
 
 			if (nodeWasWaiting === false) {
 
-				// Get a list of all the output nodes that we can check for siblings eaiser
+				// Get a list of all the output nodes that we can check for siblings easier
 				const checkOutputNodes = [];
 				for (const outputIndexParent in workflow.connectionsBySourceNode[parentNodeName].main) {
 					if (!workflow.connectionsBySourceNode[parentNodeName].main.hasOwnProperty(outputIndexParent)) {
@@ -327,8 +344,12 @@ export class WorkflowExecute {
 						// previously processed one
 						if (inputData.node !== parentNodeName && checkOutputNodes.includes(inputData.node)) {
 							// So the parent node will be added anyway which
-							// will then process this node next. So nothing to do.
-							continue;
+							// will then process this node next. So nothing to do
+							// unless the incoming data of the node is empty
+							// because then it would not be executed
+							if (!this.incomingConnectionIsEmpty(this.runExecutionData.resultData.runData, workflow.connectionsByDestinationNode[inputData.node].main[0], runIndex)) {
+								continue;
+							}
 						}
 
 						// Check if it is already in the execution stack
@@ -384,7 +405,19 @@ export class WorkflowExecute {
 							continue;
 						}
 
-						if (workflow.connectionsByDestinationNode[nodeToAdd] === undefined)  {
+						let addEmptyItem = false;
+
+						if (workflow.connectionsByDestinationNode[nodeToAdd] === undefined) {
+							// Add empty item if the node does not have any input connections
+							addEmptyItem = true;
+						} else {
+							if (this.incomingConnectionIsEmpty(this.runExecutionData.resultData.runData, workflow.connectionsByDestinationNode[nodeToAdd].main[0], runIndex)) {
+								// Add empty item also if the input data is empty
+								addEmptyItem = true;
+							}
+						}
+
+						if (addEmptyItem === true) {
 							// Add only node if it does not have any inputs because else it will
 							// be added by its input node later anyway.
 							this.runExecutionData.executionData!.nodeExecutionStack.push(
