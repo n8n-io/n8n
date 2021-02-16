@@ -288,6 +288,21 @@ export class MicrosoftTeams implements INodeType {
 						responseData = responseData.splice(0, qs.limit);
 					}
 				}
+				//https://docs.microsoft.com/en-us/graph/api/channel-post-messagereply?view=graph-rest-beta&tabs=http
+				if (operation === 'replyTo') {
+					const teamId = this.getNodeParameter('teamId', i) as string;
+					const channelId = this.getNodeParameter('channelId', i) as string;
+					const replyToId = this.getNodeParameter('replyToId', i) as string;
+					const messageType = this.getNodeParameter('messageType', i) as string;
+					const message = this.getNodeParameter('message', i) as string;
+					const body: IDataObject = {
+						body: {
+							contentType: messageType,
+							content: message,
+						},
+					};
+					responseData = await microsoftApiRequest.call(this, 'POST', `/beta/teams/${teamId}/channels/${channelId}/messages/${replyToId}/replies`, body);
+				}
 			}
 			if (resource === 'task') {
 				//https://docs.microsoft.com/en-us/graph/api/planner-post-tasks?view=graph-rest-1.0&tabs=http
