@@ -2,7 +2,7 @@
 	"compilerOptions": {
 		"lib": [
 			"es2017",
-      "es2019.string"
+			"es2019.string"
 		],
 		"types": [
 			"node",
