@@ -134,7 +134,7 @@ export class EmailSend implements INodeType {
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			
 			item = items[itemIndex];
-			console.log(item,itemIndex)
+
 			const fromEmail = this.getNodeParameter('fromEmail', itemIndex) as string;
 			const toEmail = this.getNodeParameter('toEmail', itemIndex) as string;
 			const ccEmail = this.getNodeParameter('ccEmail', itemIndex) as string;
