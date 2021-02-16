@@ -1,4 +1,3 @@
-import moment = require('moment');
 import {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -7,13 +6,16 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeExecutionData,
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
 	OptionsWithUri,
 } from 'request';
+
+import * as moment from'moment';
+
+import * as losslessJSON from 'lossless-json';
 
 /**
  * Make an authenticated API request to GoToWebinar.
@@ -27,18 +29,27 @@ export async function goToWebinarApiRequest(
 	option: IDataObject = {},
 ): Promise<any> { // tslint:disable-line:no-any
 
+	const operation = this.getNodeParameter('operation', 0) as string;
+	const resource = this.getNodeParameter('resource', 0) as string;
+
 	const options: OptionsWithUri = {
 		headers: {
 			'user-agent': 'n8n',
+			'Accept': 'application/json',
+			'Content-Type': 'application/json',
 		},
 		method,
 		uri: `https://api.getgo.com/G2W/rest/v2/${endpoint}`,
 		qs,
-		body,
-		json: true,
+		body: JSON.stringify(body),
+		json: false,
 	};
 
-	if (!Object.keys(body).length) {
+	if (resource === 'session' && operation === 'getAll') {
+		options.headers!['Accept'] = 'application/vnd.citrix.g2wapi-v1.1+json';
+	}
+
+	if (['GET', 'DELETE'].includes(method)) {
 		delete options.body;
 	}
 
@@ -50,18 +61,32 @@ export async function goToWebinarApiRequest(
 		Object.assign(options, option);
 	}
 
-	try {
-		console.log(options);
-		return await this.helpers.requestOAuth2!.call(this, 'goToWebinarOAuth2Api', options, { check403: true });
+	console.log(options);
 
+	try {
+		const response = await this.helpers.requestOAuth2!.call(this, 'goToWebinarOAuth2Api', options, { check403: true });
+
+		if (response === '') {
+			return {};
+		}
+
+		//https://stackoverflow.com/questions/62190724/getting-gotowebinar-registrant
+		return losslessJSON.parse(response, convertLosslessNumber);
 	} catch (error) {
 
 		if (error.statusCode === 403) {
 			throw new Error('The Go To Webinar credentials are invalid!');
 		}
 
-		if (error.statusCode && error?.error?.description) {
-			throw new Error(`Go To Webinar error response [${error.statusCode}]: ${error.error.description}`);
+		if (error?.response?.body) {
+			let errorMessage;
+			const body = JSON.parse(error.response.body);
+			if (Array.isArray(body.validationErrorCodes)) {
+				errorMessage = (body.validationErrorCodes as IDataObject[]).map((e) => e.description).join('|');
+			} else {
+				errorMessage = body.description;
+			}
+			throw new Error(`Go To Webinar error response [${error.statusCode}]: ${errorMessage}`);
 		}
 
 		throw error;
@@ -93,7 +118,7 @@ export async function goToWebinarApiRequestAllItems(
 	do {
 		responseData = await goToWebinarApiRequest.call(this, method, endpoint, qs, body);
 
-		if (responseData.page && responseData.page.totalElements === 0) {
+		if (responseData.page && parseInt(responseData.page.totalElements, 10) === 0) {
 			return [];
 		} else if (responseData._embedded && responseData._embedded[key]) {
 			returnData.push(...responseData._embedded[key]);
@@ -107,7 +132,7 @@ export async function goToWebinarApiRequestAllItems(
 		}
 
 	} while (
-		responseData.totalElements && responseData.totalElements > returnData.length
+		responseData.totalElements && parseInt(responseData.totalElements, 10) > returnData.length
 	);
 
 	return returnData;
@@ -152,4 +177,14 @@ export async function loadWebinars(this: ILoadOptionsFunctions) {
 	});
 
 	return returnData;
+}
+
+// tslint:disable-next-line: no-any
+function convertLosslessNumber(key: any, value: any) {
+	if (value && value.isLosslessNumber) {
+		return value.toString();
+	}
+	else {
+		return value;
+	}
 }

@@ -120,7 +120,7 @@ export const coorganizerFields = [
 		displayName: 'Organizer Key',
 		name: 'organizerKey',
 		type: 'string',
-		default: 'The co-organizer\'s organizer key for the webinar.',
+		description: 'The co-organizer\'s organizer key for the webinar.',
 		displayOptions: {
 			show: {
 				resource: [

@@ -1,7 +1,6 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
-import { timezones } from './constants';
 
 export const webinarOperations = [
 	{
@@ -69,6 +68,7 @@ export const webinarFields = [
 		name: 'times',
 		type: 'fixedCollection',
 		required: true,
+		placeholder: 'Add Time Range',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -183,9 +183,9 @@ export const webinarFields = [
 				default: '',
 				placeholder: '2020-12-11T09:00:00Z',
 				description: '',
-				options: timezones.map(tz => ({ name: tz.replace(/_/g, ' '), value: tz })),
 				typeOptions: {
 					alwaysOpenEditWindow: true,
+					loadOptionsMethod: 'getTimezones',
 				},
 			},
 			{
@@ -355,6 +355,7 @@ export const webinarFields = [
 				displayName: 'Time Range',
 				name: 'times',
 				type: 'fixedCollection',
+				placeholder: 'Add Time Range',
 				required: true,
 				default: {},
 				options: [
@@ -542,9 +543,9 @@ export const webinarFields = [
 				default: '',
 				placeholder: '2020-12-11T09:00:00Z',
 				description: 'Timezone where the webinar is to take place.',
-				options: timezones.map(tz => ({ name: tz.replace(/_/g, ' '), value: tz })),
 				typeOptions: {
 					alwaysOpenEditWindow: true,
+					loadOptionsMethod: 'getTimezones',
 				},
 			},
 			{

@@ -6,6 +6,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -37,7 +38,7 @@ import {
 	omit,
 } from 'lodash';
 
-import moment = require('moment');
+import * as moment from 'moment-timezone';
 
 export class GoToWebinar implements INodeType {
 	description: INodeTypeDescription = {
@@ -114,6 +115,20 @@ export class GoToWebinar implements INodeType {
 			async getWebinars(this: ILoadOptionsFunctions) {
 				return await loadWebinars.call(this);
 			},
+			// Get all the timezones to display them to user so that he can
+			// select them easily
+			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				for (const timezone of moment.tz.names()) {
+					const timezoneName = timezone;
+					const timezoneId = timezone;
+					returnData.push({
+						name: timezoneName,
+						value: timezoneId,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -135,7 +150,7 @@ export class GoToWebinar implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 
-			if (resource === 'attendee')	{
+			if (resource === 'attendee') {
 
 				// *********************************************************************
 				//                            attendee
@@ -418,7 +433,6 @@ export class GoToWebinar implements INodeType {
 
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/registrants`;
 					responseData = await handleGetAll.call(this, endpoint, {}, {}, resource);
-
 				}
 
 			} else if (resource === 'session') {
@@ -506,7 +520,7 @@ export class GoToWebinar implements INodeType {
 
 				}
 
-			} else if (resource === 'webinar')	{
+			} else if (resource === 'webinar') {
 
 				// *********************************************************************
 				//                               webinar
@@ -585,6 +599,7 @@ export class GoToWebinar implements INodeType {
 					};
 
 					if (times) {
+						console.log('aqui');
 						qs.fromTime = moment(times.timesProperties.fromTime).format();
 						qs.toTime = moment(times.timesProperties.toTime).format();
 					} else {
@@ -632,18 +647,14 @@ export class GoToWebinar implements INodeType {
 					const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}`;
 					await goToWebinarApiRequest.call(this, 'PUT', endpoint, qs, body);
 					responseData = { success: true };
-
 				}
-
 			}
 
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
 				: returnData.push(responseData);
-
-			}
+		}
 
 		return [this.helpers.returnJsonArray(returnData)];
-
 	}
 }

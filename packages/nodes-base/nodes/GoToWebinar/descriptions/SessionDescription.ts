@@ -99,6 +99,7 @@ export const sessionFields = [
 				displayName: 'Time Range',
 				name: 'times',
 				type: 'fixedCollection',
+				placeholder: 'Add Time Range',
 				required: true,
 				default: {},
 				options: [
