@@ -10,7 +10,7 @@ import {
 
 import {
 	emeliaApiRequest,
-	emeliaGrapqlRequest,
+	emeliaGraphqlRequest,
 } from './GenericFunctions';
 
 interface Campaign {
@@ -95,7 +95,7 @@ export class EmeliaTrigger implements INodeType {
 	methods = {
 		loadOptions: {
 			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const responseData = await emeliaGrapqlRequest.call(this, {
+				const responseData = await emeliaGraphqlRequest.call(this, {
 					query: `
 					query GetCampaigns {
 						campaigns {
