@@ -4,6 +4,9 @@ import {
 	IStatusCodeMessages,
 } from 'n8n-workflow';
 
+/**
+ * Top-level properties where an error message can be found in an API response.
+ */
 const ERROR_MESSAGE_PROPERTIES = [
 	'message',
 	'Message',
@@ -30,10 +33,20 @@ const ERROR_MESSAGE_PROPERTIES = [
 	'type',
 ];
 
+/**
+ * Top-level properties where an HTTP error code can be found in an API response.
+ */
 const ERROR_CODE_PROPERTIES = ['statusCode', 'status', 'code', 'status_code', 'errorCode', 'error_code'];
 
+/**
+ * Properties in nested objects where an error message or code can be found in an API response.
+ */
 const ERROR_NESTING_PROPERTIES = ['error', 'err', 'response', 'body', 'data'];
 
+/**
+ * Abstract class from which `NodeOperationError` and `NodeApiError` inherit,
+ * with functionality for finding a value recursively inside an error object.
+ */
 abstract class NodeError extends Error {
 	description: string | null | undefined;
 	cause: Error | IErrorObject;
@@ -50,6 +63,22 @@ abstract class NodeError extends Error {
 
 	/**
 	 * Finds property through exploration based on potential keys and traversal keys.
+	 *
+	 * This method iterates over `potentialKeys` (an array of strings for the keys whose
+	 * property is an error code or an error message or an array of them) and, if the value at
+	 * the key is a truthy value, the type of the value is checked:
+	 * (1) if a string or number, the value is returned as a string; or
+	 * (2) if an array,
+	 * 		its string or number elements are collected as a long string,
+	 * 		its object elements are traversed recursively (restart this function
+	 *    with each object as a starting point)
+	 *
+	 * Then this method iterates over `traversalKeys` (an array of strings for the keys
+	 * whose properties are in nested objects where an error code or an error message can be
+	 * found) and, if the value at the key is a traversable object, its object elements are traversed
+	 * recursively (restart with the object as a starting point) and only truthy values are returned.
+	 *
+	 * Otherwise, if all the paths have been exhausted and no value is eligible, `null` is returned.
 	 *
 	 * @param {IErrorObject} error
 	 * @param {string[]} potentialKeys
@@ -97,11 +126,17 @@ abstract class NodeError extends Error {
 		return null;
 	}
 
-	private isTraversableObject(value: any): value is IErrorObject { // tslint:disable-line:no-any
+	/**
+	 * Check if a value is an object with at least one key, i.e. it can be traversed.
+	 */
+	private isTraversableObject(value: unknown): value is IErrorObject { // tslint:disable-line:no-any
 		return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
 	}
 }
 
+/**
+ * Class for instantiating an operational error, e.g. an invalid credentials error.
+ */
 export class NodeOperationError extends NodeError {
 
 	constructor(node: INode, error: Error | string) {
@@ -132,6 +167,10 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
 
 const UNKNOWN_ERROR_MESSAGE = 'UNKNOWN ERROR - check the detailed error for more information';
 
+/**
+ * Class for instantiating an error in an API response, e.g. a 404 Not Found response,
+ * with an HTTP error code, an error message and a description (stack trace header).
+ */
 export class NodeApiError extends NodeError {
 	httpCode: string | null;
 
