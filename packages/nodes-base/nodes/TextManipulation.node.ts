@@ -150,7 +150,7 @@ export class TextManipulation implements INodeType {
 													},
 												},
 												type: 'boolean',
-												default: false,
+												default: true,
 												description: 'Non-string data will be skipped. If not, they will be converted automatically.',
 											},
 											{
