@@ -5,7 +5,7 @@
 		<el-button
 			v-if="node && !isReadOnly"
 			:disabled="workflowRunning"
-			@click.stop="runWorkflow(node.name)"
+			@click.stop="runWorkflow(node.name);concealFullError()"
 			class="execute-node-button"
 			:title="`Executes this ${node.name} node after executing any previous nodes that have not yet returned data`"
 		>
@@ -18,7 +18,8 @@
 		</el-button>
 
 		<el-button
-			@click.stop="revealError"
+			@click.stop="revealFullError"
+			:disabled="workflowRunning"
 			class="reveal-full-error-button"
 			title="Reveal the full error returned by the API response."
 		>
@@ -609,9 +610,11 @@ export default mixins(
 					this.showData = true;
 				}
 			},
-			revealError() {
+			revealFullError() {
 				this.showFullError = true;
-				console.log("reveal error fired");
+			},
+			concealFullError() {
+				this.showFullError = false;
 			},
 		},
 		watch: {
