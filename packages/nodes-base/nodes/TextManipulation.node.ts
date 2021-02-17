@@ -105,7 +105,7 @@ export class TextManipulation implements INodeType {
 													},
 												},
 												type: 'boolean',
-												default: true,
+												default: false,
 												description: 'Fetches the new manipulated data instead of the raw data. If none are available, the raw data are taken.',
 											},
 											{
