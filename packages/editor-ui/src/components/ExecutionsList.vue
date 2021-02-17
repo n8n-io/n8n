@@ -414,10 +414,11 @@ export default mixins(
 			if (this.finishedExecutions.length !== 0) {
 				firstId = this.finishedExecutions[0].id;
 			}
-			const activeExecutionsPromise: Promise<IExecutionsListResponse> = this.restApi().getPastExecutions({}, 100, undefined, firstId);
+			const filter = this.workflowFilterPast;
+			const pastExecutionsPromise: Promise<IExecutionsListResponse> = this.restApi().getPastExecutions(filter, this.requestItemsPerRequest, undefined, firstId);
 			const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> = this.restApi().getCurrentExecutions({});
 
-			const results = await Promise.all([activeExecutionsPromise, currentExecutionsPromise]);
+			const results = await Promise.all([pastExecutionsPromise, currentExecutionsPromise]);
 
 			for (const activeExecution of results[1]) {
 				if (activeExecution.workflowId !== undefined && activeExecution.workflowName === undefined) {
