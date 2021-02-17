@@ -81,8 +81,7 @@
 		<div class="data-display-content">
 			<span v-if="node && workflowRunData !== null && workflowRunData.hasOwnProperty(node.name)">
 				<div v-if="workflowRunData[node.name][runIndex].error" class="error-display">
-					<div class="error-message">ERROR: {{workflowRunData[node.name][runIndex].error.message}}</div>
-					<pre><code>{{workflowRunData[node.name][runIndex].error.stack}}</code></pre>
+					<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
 				</div>
 				<span v-else>
 					<div v-if="showData === false" class="to-much-data">
@@ -222,6 +221,7 @@ import {
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
+import NodeErrorView from '@/components/Error/NodeViewError.vue';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -243,6 +243,7 @@ export default mixins(
 		name: 'RunData',
 		components: {
 			BinaryDataDisplay,
+			NodeErrorView,
 			VueJsonPretty,
 		},
 		data () {
@@ -732,13 +733,6 @@ export default mixins(
 
 			.text {
 				margin-bottom: 1em;
-			}
-		}
-
-		.error-display {
-			.error-message {
-				color: #ff0000;
-				font-weight: bold;
 			}
 		}
 
