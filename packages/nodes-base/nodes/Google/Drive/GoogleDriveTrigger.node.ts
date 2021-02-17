@@ -247,10 +247,11 @@ export class GoogleDriveTrigger implements INodeType {
 
 		// ignore sync message
 		if (headerData['x-goog-resource-state'] === 'sync') {
-			return {
-				webhookResponse: 'OK',
-			};
+			return {}
 		}
+
+		console.log('este es el evento')
+		console.log(headerData);
 
 		const resource = this.getNodeParameter('resource', 0);
 		const resolveData = this.getNodeParameter('resolveData', 0);
