@@ -93,6 +93,22 @@ export class TextManipulation implements INodeType {
 												default: 'fromText',
 											},
 											{
+												displayName: 'Get Manipulated Data',
+												name: 'getManipulatedData',
+												required: true,
+												displayOptions: {
+													show: {
+														readOperation: [
+															'fromFile',
+															'fromJSON',
+														],
+													},
+												},
+												type: 'boolean',
+												default: true,
+												description: 'Fetches the new manipulated data instead of the raw data. If none are available, the raw data are taken.',
+											},
+											{
 												displayName: 'Binary Property',
 												name: 'binaryPropertyName',
 												required: true,
@@ -805,13 +821,23 @@ export class TextManipulation implements INodeType {
 				for(const dataSource of ((textsWithManipulationsValues.dataSources as INodeParameters).dataSource as INodeParameters[]) || []) {
 					switch(dataSource.readOperation) {
 						case 'fromFile':
-							if (item.binary === undefined || item.binary[dataSource.binaryPropertyName as string] === undefined) {
+							if(dataSource.getManipulatedData) {
+								if(newItemBinary[dataSource.binaryPropertyName as string] === undefined) {
+									if (item.binary === undefined || item.binary[dataSource.binaryPropertyName as string] === undefined) {
+										continue;
+									}
+									text = Buffer.from(item.binary[dataSource.binaryPropertyName as string].data, BINARY_ENCODING).toString();
+								} else {
+									text = Buffer.from(newItemBinary[dataSource.binaryPropertyName as string].data, BINARY_ENCODING).toString();
+								}
+							} else if (item.binary === undefined || item.binary[dataSource.binaryPropertyName as string] === undefined) {
 								continue;
+							} else {
+								text = Buffer.from(item.binary[dataSource.binaryPropertyName as string].data, BINARY_ENCODING).toString();
 							}
-							text = Buffer.from(item.binary[dataSource.binaryPropertyName as string].data, BINARY_ENCODING).toString();
 							break;
 						case 'fromJSON':
-							const value = get(item.json, dataSource.sourceKey as string);
+							const value = (dataSource.getManipulatedData && get(newItemJson, dataSource.sourceKey as string)) || get(item.json, dataSource.sourceKey as string);
 							if(typeof value == 'string') {
 								text = value as string;
 							} else if(dataSource.skipNonString) {
