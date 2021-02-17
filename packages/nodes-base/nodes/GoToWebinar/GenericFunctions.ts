@@ -62,7 +62,7 @@ export async function goToWebinarApiRequest(
 	}
 
 	try {
-		const response = await this.helpers.requestOAuth2!.call(this, 'goToWebinarOAuth2Api', options, { check403: true });
+		const response = await this.helpers.requestOAuth2!.call(this, 'goToWebinarOAuth2Api', options, { refreshWhenStatusCode: 403 });
 
 		if (response === '') {
 			return {};

@@ -161,7 +161,7 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 
 	return this.helpers.request!(newRequestOptions)
 		.catch(async (error: IResponseError) => {
-			const statusCodeReturned = oAuth2Options?.check403 ? 403 : 401;
+			const statusCodeReturned = oAuth2Options?.refreshWhenStatusCode === undefined ? 401 : oAuth2Options?.refreshWhenStatusCode;
 
 			// TODO: Check if also other codes are possible
 			if (error.statusCode === statusCodeReturned) {
