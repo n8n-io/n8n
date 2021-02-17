@@ -14,17 +14,6 @@ export default Vue.extend({
 	props: [
 		'error',
 	],
-	data () {
-		return {
-			showFullError: false,
-		};
-	},
-	methods: {
-		revealError() {
-			this.showFullError = true;
-			console.log("reveal error fired");
-		},
-	},
 });
 </script>
 

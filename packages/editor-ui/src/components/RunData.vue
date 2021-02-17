@@ -18,6 +18,7 @@
 		</el-button>
 
 		<el-button
+			@click.stop="revealError"
 			class="reveal-full-error-button"
 			title="'Reveal the full error returned by the API response.'"
 		>
@@ -275,6 +276,8 @@ export default mixins(
 
 				MAX_DISPLAY_DATA_SIZE,
 				MAX_DISPLAY_ITEMS_AUTO_ALL,
+
+				showFullError: false,
 			};
 		},
 		computed: {
@@ -605,6 +608,10 @@ export default mixins(
 					// Data is reasonable small (< 200kb) so display it directly
 					this.showData = true;
 				}
+			},
+			revealError() {
+				this.showFullError = true;
+				console.log("reveal error fired");
 			},
 		},
 		watch: {
