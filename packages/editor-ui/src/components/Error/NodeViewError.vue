@@ -22,6 +22,7 @@ export default Vue.extend({
 	methods: {
 		revealError() {
 			this.showFullError = true;
+			console.log("reveal error fired");
 		},
 	},
 });

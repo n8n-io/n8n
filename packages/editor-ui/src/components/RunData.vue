@@ -17,6 +17,16 @@
 			Execute Node
 		</el-button>
 
+		<el-button
+			class="reveal-full-error-button"
+			title="'Reveal the full error returned by the API response.'"
+		>
+			<div class="run-icon-button">
+				<font-awesome-icon icon="plus" />
+			</div>
+			Reveal Full Error
+		</el-button>
+
 		<div class="header">
 			<div class="title-text">
 				<strong v-if="dataCount < maxDisplayItems">
@@ -774,6 +784,18 @@ export default mixins(
 	}
 	.execute-node-button:hover {
 		transform: scale(1.05);
+	}
+
+	.reveal-full-error-button {
+		position: absolute;
+		color: $--color-primary;
+		background-color: #fff;
+		border: 1px solid $--color-primary;
+		top: 10px;
+		right: 160px;
+		height: 30px;
+		padding: 7px;
+		width: 160px;
 	}
 
 	.run-icon-button {
