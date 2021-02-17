@@ -107,6 +107,10 @@ export class Asana implements INodeType {
 						value: 'taskTag',
 					},
 					{
+						name: 'Task Project',
+						value: 'taskProject',
+					},
+					{
 						name: 'User',
 						value: 'user',
 					},
@@ -921,6 +925,16 @@ export class Asana implements INodeType {
 						default: '',
 						description: 'The task notes',
 					},
+					{
+						displayName: 'Project IDs',
+						name: 'projects',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getProjects',
+						},
+						default: [],
+						description: 'The project to filter tasks on.',
+					},
 				],
 			},
 
@@ -1093,6 +1107,161 @@ export class Asana implements INodeType {
 				description: 'The ID of the comment to be removed',
 			},
 
+			// ----------------------------------
+			//         taskProject
+			// ----------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'taskProject',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Add',
+						value: 'add',
+						description: 'Add a task to a project',
+					},
+					{
+						name: 'Remove',
+						value: 'remove',
+						description: 'Remove a task from a project',
+					},
+				],
+				default: 'add',
+				description: 'The operation to perform.',
+			},
+			// ----------------------------------
+			//         taskProject:add
+			// ----------------------------------
+			{
+				displayName: 'Task ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'taskProject',
+						],
+					},
+				},
+				description: 'The ID of the task to add the project to',
+			},
+			{
+				displayName: 'Project ID',
+				name: 'project',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getProjects',
+				},
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'taskProject',
+						],
+					},
+				},
+				description: 'The project where the task will be added',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						resource: [
+							'taskProject',
+						],
+						operation: [
+							'add',
+						],
+					},
+				},
+				default: {},
+				description: 'Other properties to set',
+				placeholder: 'Add Field',
+				options: [
+					{
+						displayName: 'Insert After',
+						name: 'insert_after',
+						type: 'string',
+						default: '',
+						description: 'A task in the project to insert the task after, or null to insert at the beginning of the list.',
+					},
+					{
+						displayName: 'Insert Before',
+						name: 'insert_before',
+						type: 'string',
+						default: '',
+						description: 'A task in the project to insert the task before, or null to insert at the end of the list.',
+					},
+					{
+						displayName: 'Section',
+						name: 'section',
+						type: 'string',
+						default: '',
+						description: 'A section in the project to insert the task into. The task will be inserted at the bottom of the section.',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         taskProject:remove
+			// ----------------------------------
+			{
+				displayName: 'Task ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'remove',
+						],
+						resource: [
+							'taskProject',
+						],
+					},
+				},
+				description: 'The ID of the task to add the project to',
+			},
+			{
+				displayName: 'Project ID',
+				name: 'project',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getProjects',
+				},
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'remove',
+						],
+						resource: [
+							'taskProject',
+						],
+					},
+				},
+				description: 'The project where the task will be removed from',
+			},
 			// ----------------------------------
 			//         taskTag
 			// ----------------------------------
@@ -1952,7 +2121,49 @@ export class Asana implements INodeType {
 					responseData = { success: true };
 				}
 			}
+			if (resource === 'taskProject') {
+				if (operation === 'add') {
 
+					// ----------------------------------
+					//         taskProject:add
+					// ----------------------------------
+
+					const taskId = this.getNodeParameter('id', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					requestMethod = 'POST';
+
+					endpoint = `/tasks/${taskId}/addProject`;
+
+					body.project = this.getNodeParameter('project', i) as string;
+
+					Object.assign(body, additionalFields);
+
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = { success: true };
+				}
+
+				if (operation === 'remove') {
+
+					// ----------------------------------
+					//         taskProject:remove
+					// ----------------------------------
+
+					const taskId = this.getNodeParameter('id', i) as string;
+
+					requestMethod = 'POST';
+
+					endpoint = `/tasks/${taskId}/removeProject`;
+
+					body.project = this.getNodeParameter('project', i) as string;
+
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = { success: true };
+				}
+			}
 			if (resource === 'user') {
 				if (operation === 'get') {
 					// ----------------------------------

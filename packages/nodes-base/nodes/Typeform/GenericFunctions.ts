@@ -8,9 +8,13 @@ import {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-import { IDataObject } from 'n8n-workflow';
+import {
+	OptionsWithUri,
+} from 'request';
 
+import {
+	IDataObject,
+} from 'n8n-workflow';
 
 // Interface in Typeform
 export interface ITypeformDefinition {

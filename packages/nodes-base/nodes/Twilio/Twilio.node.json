@@ -1,0 +1,28 @@
+{
+	"node": "n8n-nodes-base.twilio",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Communication",
+		"Development"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/twilio"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.twilio/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Database Monitoring and Alerting with n8n",
+				"icon": "📡",
+				"url": "https://medium.com/n8n-io/database-monitoring-and-alerting-with-n8n-f5082df7bdb2"
+			}
+		]
+	}
+}

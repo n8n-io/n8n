@@ -10,6 +10,7 @@ import {
 	NodeHelpers,
 } from 'n8n-workflow';
 
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
@@ -17,6 +18,7 @@ import mixins from 'vue-typed-mixins';
 import { titleChange } from './titleChange';
 
 export const workflowRun = mixins(
+	externalHooks,
 	restApi,
 	workflowHelpers,
 	titleChange,
@@ -82,6 +84,7 @@ export const workflowRun = mixins(
 							duration: 0,
 						});
 						this.$titleSet(workflow.name as string, 'ERROR');
+						this.$externalHooks().run('workflow.runError', { errorMessages });
 						return;
 					}
 				}

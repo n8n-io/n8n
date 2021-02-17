@@ -240,10 +240,6 @@ export default mixins(
 				return returnValues.join('|');
 			},
 			node (): INodeUi | null {
-				if (this.isCredential === true) {
-					return null;
-				}
-
 				return this.$store.getters.activeNode;
 			},
 			displayTitle (): string {
@@ -314,7 +310,7 @@ export default mixins(
 				return false;
 			},
 			expressionValueComputed (): NodeParameterValue | null {
-				if (this.isCredential === true || this.node === null) {
+				if (this.node === null) {
 					return null;
 				}
 

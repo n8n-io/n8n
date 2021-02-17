@@ -84,6 +84,15 @@ export interface ICredentialsEncrypted {
 	data?: string;
 }
 
+export interface ICredentialsExpressionResolveValues {
+	connectionInputData: INodeExecutionData[];
+	itemIndex: number;
+	node: INode;
+	runExecutionData: IRunExecutionData | null;
+	runIndex: number;
+	workflow: Workflow;
+}
+
 export abstract class ICredentialsHelper {
 	encryptionKey: string;
 	workflowCredentials: IWorkflowCredentials;
@@ -94,7 +103,7 @@ export abstract class ICredentialsHelper {
 	}
 
 	abstract getCredentials(name: string, type: string): ICredentials;
-	abstract getDecrypted(name: string, type: string): ICredentialDataDecryptedObject;
+	abstract getDecrypted(name: string, type: string, mode: WorkflowExecuteMode, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): ICredentialDataDecryptedObject;
 	abstract updateCredentials(name: string, type: string, data: ICredentialDataDecryptedObject): Promise<void>;
 }
 
@@ -203,7 +212,7 @@ export interface IExecuteFunctions {
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
 	executeWorkflow(workflowInfo: IExecuteWorkflowInfo, inputData?: INodeExecutionData[]): Promise<any>; // tslint:disable-line:no-any
 	getContext(type: string): IContextObject;
-	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
+	getCredentials(type: string, itemIndex?: number): ICredentialDataDecryptedObject | undefined;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
@@ -312,6 +321,7 @@ export interface IWebhookFunctions {
 	getNode(): INode;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getNodeWebhookUrl: (name: string) => string | undefined;
+	getParamsData(): object;
 	getQueryData(): object;
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
@@ -567,6 +577,7 @@ export interface IWebhookData {
 	webhookDescription: IWebhookDescription;
 	workflowId: string;
 	workflowExecuteAdditionalData: IWorkflowExecuteAdditionalData;
+	webhookId?: string;
 }
 
 export interface IWebhookDescription {
@@ -632,7 +643,7 @@ export interface IRun {
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
-	stoppedAt: Date;
+	stoppedAt?: Date;
 }
 
 
@@ -715,7 +726,7 @@ export interface IWorkflowCredentials {
 
 export interface IWorkflowExecuteHooks {
 	[key: string]: Array<((...args: any[]) => Promise<void>)> | undefined; // tslint:disable-line:no-any
-	nodeExecuteAfter?: Array<((nodeName: string, data: ITaskData) => Promise<void>)>;
+	nodeExecuteAfter?: Array<((nodeName: string, data: ITaskData, executionData: IRunExecutionData) => Promise<void>)>;
 	nodeExecuteBefore?: Array<((nodeName: string) => Promise<void>)>;
 	workflowExecuteAfter?: Array<((data: IRun, newStaticData: IDataObject) => Promise<void>)>;
 	workflowExecuteBefore?: Array<((workflow: Workflow, data: IRunExecutionData) => Promise<void>)>;

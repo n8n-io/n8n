@@ -11,6 +11,7 @@ import {
 	IBinaryData,
 	IContextObject,
 	ICredentialDataDecryptedObject,
+	ICredentialsExpressionResolveValues,
 	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -298,7 +299,7 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
  * @param {IWorkflowExecuteAdditionalData} additionalData
  * @returns {(ICredentialDataDecryptedObject | undefined)}
  */
-export function getCredentials(workflow: Workflow, node: INode, type: string, additionalData: IWorkflowExecuteAdditionalData): ICredentialDataDecryptedObject | undefined {
+export function getCredentials(workflow: Workflow, node: INode, type: string, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, runExecutionData?: IRunExecutionData | null, runIndex?: number, connectionInputData?: INodeExecutionData[], itemIndex?: number): ICredentialDataDecryptedObject | undefined {
 
 	// Get the NodeType as it has the information if the credentials are required
 	const nodeType = workflow.nodeTypes.getByName(node.type);
@@ -338,9 +339,21 @@ export function getCredentials(workflow: Workflow, node: INode, type: string, ad
 		}
 	}
 
+	let expressionResolveValues: ICredentialsExpressionResolveValues | undefined;
+	if (connectionInputData && runExecutionData && runIndex !== undefined) {
+		expressionResolveValues = {
+			connectionInputData,
+			itemIndex: itemIndex || 0,
+			node,
+			runExecutionData,
+			runIndex,
+			workflow,
+		} as ICredentialsExpressionResolveValues;
+	}
+
 	const name = node.credentials[type];
 
-	const decryptedDataObject = additionalData.credentialsHelper.getDecrypted(name, type);
+	const decryptedDataObject = additionalData.credentialsHelper.getDecrypted(name, type, mode, false, expressionResolveValues);
 
 	return decryptedDataObject;
 }
@@ -374,7 +387,7 @@ export function getNode(node: INode): INode {
  * @param {*} [fallbackValue]
  * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object)}
  */
-export function getNodeParameter(workflow: Workflow, runExecutionData: IRunExecutionData | null, runIndex: number, connectionInputData: INodeExecutionData[], node: INode, parameterName: string, itemIndex: number, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object { //tslint:disable-line:no-any
+export function getNodeParameter(workflow: Workflow, runExecutionData: IRunExecutionData | null, runIndex: number, connectionInputData: INodeExecutionData[], node: INode, parameterName: string, itemIndex: number, mode: WorkflowExecuteMode, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object { //tslint:disable-line:no-any
 	const nodeType = workflow.nodeTypes.getByName(node.type);
 	if (nodeType === undefined) {
 		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
@@ -388,7 +401,7 @@ export function getNodeParameter(workflow: Workflow, runExecutionData: IRunExecu
 
 	let returnData;
 	try {
-		returnData = workflow.expression.getParameterValue(value, runExecutionData, runIndex, itemIndex, node.name, connectionInputData);
+		returnData = workflow.expression.getParameterValue(value, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, mode);
 	} catch (e) {
 		e.message += ` [Error in parameter: "${parameterName}"]`;
 		throw e;
@@ -423,7 +436,7 @@ export function continueOnFail(node: INode): boolean {
  * @param {boolean} [isTest]
  * @returns {(string | undefined)}
  */
-export function getNodeWebhookUrl(name: string, workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, isTest?: boolean): string | undefined {
+export function getNodeWebhookUrl(name: string, workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, isTest?: boolean): string | undefined {
 	let baseUrl = additionalData.webhookBaseUrl;
 	if (isTest === true) {
 		baseUrl = additionalData.webhookTestBaseUrl;
@@ -434,12 +447,12 @@ export function getNodeWebhookUrl(name: string, workflow: Workflow, node: INode,
 		return undefined;
 	}
 
-	const path = workflow.expression.getSimpleParameterValue(node, webhookDescription['path']);
+	const path = workflow.expression.getSimpleParameterValue(node, webhookDescription['path'], mode);
 	if (path === undefined) {
 		return undefined;
 	}
 
-	const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['isFullPath'], false) as boolean;
+	const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['isFullPath'], mode, false) as boolean;
 	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id!, node, path.toString(), isFullPath);
 }
 
@@ -525,7 +538,7 @@ export function getExecutePollFunctions(workflow: Workflow, node: INode, additio
 				throw new Error('Overwrite NodeExecuteFunctions.getExecutePullFunctions.__emit function!');
 			},
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData);
+				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
@@ -539,7 +552,7 @@ export function getExecutePollFunctions(workflow: Workflow, node: INode, additio
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] = [];
 
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, fallbackValue);
+				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, fallbackValue);
 			},
 			getRestApiUrl: (): string => {
 				return additionalData.restApiUrl;
@@ -588,7 +601,7 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
 			},
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData);
+				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getNode: () => {
 				return getNode(node);
@@ -602,7 +615,7 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] = [];
 
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, fallbackValue);
+				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, fallbackValue);
 			},
 			getNodeWebhookUrl: (name: string): string | undefined => {
 				return getNodeWebhookUrl(name, workflow, node, additionalData);
@@ -657,7 +670,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				return continueOnFail(node);
 			},
 			evaluateExpression: (expression: string, itemIndex: number) => {
-				return workflow.expression.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, itemIndex, node.name, connectionInputData);
+				return workflow.expression.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, mode);
 			},
 			async executeWorkflow(workflowInfo: IExecuteWorkflowInfo, inputData?: INodeExecutionData[]): Promise<any> { // tslint:disable-line:no-any
 				return additionalData.executeWorkflow(workflowInfo, additionalData, inputData);
@@ -665,8 +678,8 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
-			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData);
+			getCredentials(type: string, itemIndex?: number): ICredentialDataDecryptedObject | undefined {
+				return getCredentials(workflow, node, type, additionalData, mode, runExecutionData, runIndex, connectionInputData, itemIndex);
 			},
 			getInputData: (inputIndex = 0, inputName = 'main') => {
 
@@ -690,7 +703,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				return inputData[inputName][inputIndex] as INodeExecutionData[];
 			},
 			getNodeParameter: (parameterName: string, itemIndex: number, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object => { //tslint:disable-line:no-any
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, fallbackValue);
+				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, fallbackValue);
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
@@ -708,7 +721,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				return getWorkflowMetadata(workflow);
 			},
 			getWorkflowDataProxy: (itemIndex: number): IWorkflowDataProxyData => {
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, node.name, connectionInputData);
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, mode);
 				return dataProxy.getDataProxy();
 			},
 			getWorkflowStaticData(type: string): IDataObject {
@@ -755,13 +768,13 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 			},
 			evaluateExpression: (expression: string, evaluateItemIndex: number | undefined) => {
 				evaluateItemIndex = evaluateItemIndex === undefined ? itemIndex : evaluateItemIndex;
-				return workflow.expression.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, evaluateItemIndex, node.name, connectionInputData);
+				return workflow.expression.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, evaluateItemIndex, node.name, connectionInputData, mode);
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData);
+				return getCredentials(workflow, node, type, additionalData, mode, runExecutionData, runIndex, connectionInputData, itemIndex);
 			},
 			getInputData: (inputIndex = 0, inputName = 'main') => {
 				if (!inputData.hasOwnProperty(inputName)) {
@@ -801,13 +814,13 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 				return getTimezone(workflow, additionalData);
 			},
 			getNodeParameter: (parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object => { //tslint:disable-line:no-any
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, fallbackValue);
+				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, fallbackValue);
 			},
 			getWorkflow: () => {
 				return getWorkflowMetadata(workflow);
 			},
 			getWorkflowDataProxy: (): IWorkflowDataProxyData => {
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, node.name, connectionInputData);
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, mode);
 				return dataProxy.getDataProxy();
 			},
 			getWorkflowStaticData(type: string): IDataObject {
@@ -841,7 +854,7 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, additio
 	return ((workflow: Workflow, node: INode) => {
 		const that = {
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData);
+				return getCredentials(workflow, node, type, additionalData, 'internal');
 			},
 			getCurrentNodeParameter: (parameterName: string): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object | undefined => {
 				const nodeParameters = additionalData.currentNodeParameters;
@@ -862,7 +875,7 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, additio
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] = [];
 
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, fallbackValue);
+				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, 'internal' as WorkflowExecuteMode, fallbackValue);
 			},
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
@@ -900,7 +913,7 @@ export function getExecuteHookFunctions(workflow: Workflow, node: INode, additio
 	return ((workflow: Workflow, node: INode) => {
 		const that = {
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData);
+				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
@@ -914,10 +927,10 @@ export function getExecuteHookFunctions(workflow: Workflow, node: INode, additio
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] = [];
 
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, fallbackValue);
+				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, fallbackValue);
 			},
 			getNodeWebhookUrl: (name: string): string | undefined => {
-				return getNodeWebhookUrl(name, workflow, node, additionalData, isTest);
+				return getNodeWebhookUrl(name, workflow, node, additionalData, mode, isTest);
 			},
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
@@ -974,7 +987,7 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 				return additionalData.httpRequest.body;
 			},
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
-				return getCredentials(workflow, node, type, additionalData);
+				return getCredentials(workflow, node, type, additionalData, mode);
 			},
 			getHeaderData(): object {
 				if (additionalData.httpRequest === undefined) {
@@ -994,7 +1007,13 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] = [];
 
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, fallbackValue);
+				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, fallbackValue);
+			},
+			getParamsData(): object {
+				if (additionalData.httpRequest === undefined) {
+					throw new Error('Request is missing!');
+				}
+				return additionalData.httpRequest.params;
 			},
 			getQueryData(): object {
 				if (additionalData.httpRequest === undefined) {
@@ -1015,7 +1034,7 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 				return additionalData.httpResponse;
 			},
 			getNodeWebhookUrl: (name: string): string | undefined => {
-				return getNodeWebhookUrl(name, workflow, node, additionalData);
+				return getNodeWebhookUrl(name, workflow, node, additionalData, mode);
 			},
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);

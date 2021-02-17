@@ -48,8 +48,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
-			//@ts-ignore
-			return await this.helpers.request(options);
+			return await this.helpers.request!(options);
 		} else {
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'googleDriveOAuth2Api', options);
@@ -69,6 +68,8 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 
 			} else if (error.response.body.error.message) {
 				errorMessages = error.response.body.error.message;
+			} else if (error.response.body.error_description) {
+				errorMessages = error.response.body.error_description;
 			}
 
 			throw new Error(`Google Drive error response [${error.statusCode}]: ${errorMessages}`);
@@ -83,6 +84,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 
 	let responseData;
 	query.maxResults = 100;
+	query.pageSize = 100;
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
@@ -110,7 +112,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 	const signature = jwt.sign(
 		{
 			'iss': credentials.email as string,
-			'sub': credentials.email as string,
+			'sub': credentials.delegatedEmail || credentials.email as string,
 			'scope': scopes.join(' '),
 			'aud': `https://oauth2.googleapis.com/token`,
 			'iat': now,
@@ -140,8 +142,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 		json: true,
 	};
 
-	//@ts-ignore
-	return this.helpers.request(options);
+	return this.helpers.request!(options);
 }
 
 export async function createWebhook(this: ITriggerFunctions): Promise<boolean> {
