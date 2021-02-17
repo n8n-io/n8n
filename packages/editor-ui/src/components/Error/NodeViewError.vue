@@ -1,8 +1,10 @@
 <template>
   <div>
     <div class="error-message">ERROR: {{error.message}}</div>
-    <pre><code>{{error.stack}}</code></pre>
-		<div>ABC IVAN</div>
+		<div>TEMP - 'showFullError' state: {{ showFullError }}</div>
+		<div v-if="showFullError">
+    	<pre><code>{{error.stack}}</code></pre>
+		</div>
   </div>
 </template>
 
@@ -13,6 +15,7 @@ export default Vue.extend({
 	name: 'NodeErrorView',
 	props: [
 		'error',
+		'showFullError',
 	],
 });
 </script>

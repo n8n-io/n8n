@@ -20,7 +20,7 @@
 		<el-button
 			@click.stop="revealError"
 			class="reveal-full-error-button"
-			title="'Reveal the full error returned by the API response.'"
+			title="Reveal the full error returned by the API response."
 		>
 			<div class="run-icon-button">
 				<font-awesome-icon icon="plus" />
@@ -92,7 +92,7 @@
 		<div class="data-display-content">
 			<span v-if="node && workflowRunData !== null && workflowRunData.hasOwnProperty(node.name)">
 				<div v-if="workflowRunData[node.name][runIndex].error" class="error-display">
-					<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
+					<NodeErrorView :error="workflowRunData[node.name][runIndex].error" :showFullError="showFullError" />
 				</div>
 				<span v-else>
 					<div v-if="showData === false" class="to-much-data">
