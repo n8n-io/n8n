@@ -346,6 +346,11 @@ export class TextManipulation implements INodeType {
 												type: 'options',
 												options: [
 													{
+														name: 'Ascii',
+														value: 'ascii',
+														description: 'Ascii',
+													},
+													{
 														name: 'Base64',
 														value: 'base64',
 														description: 'Base64',
@@ -395,6 +400,11 @@ export class TextManipulation implements INodeType {
 												},
 												type: 'options',
 												options: [
+													{
+														name: 'Ascii',
+														value: 'ascii',
+														description: 'Ascii',
+													},
 													{
 														name: 'Base64',
 														value: 'base64',
