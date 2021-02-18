@@ -73,15 +73,15 @@ export async function loadResource(
 ): Promise<INodePropertyOptions[]> {
 	const mapping: { [key in 'campaign' | 'contactList']: { query: string, key: string } } = {
 		campaign: {
-				query: `
+			query: `
 				query GetCampaigns {
 					campaigns {
 						_id
 						name
 					}
 				}`,
-				key: 'campaigns',
-			},
+			key: 'campaigns',
+		},
 		contactList: {
 			query: `
 			query GetContactLists {

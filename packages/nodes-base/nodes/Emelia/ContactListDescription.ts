@@ -11,8 +11,8 @@ export const contactListOperations = [
 		description: 'Operation to perform',
 		options: [
 			{
-				name: 'Add Contact',
-				value: 'addContact',
+				name: 'Add',
+				value: 'add',
 			},
 			{
 				name: 'Get All',
@@ -31,7 +31,7 @@ export const contactListOperations = [
 
 export const contactListFields = [
 	// ----------------------------------
-	//      contactList: addContact
+	//      contactList: add
 	// ----------------------------------
 	{
 		displayName: 'Contact List ID',
@@ -49,7 +49,7 @@ export const contactListFields = [
 					'contactList',
 				],
 				operation: [
-					'addContact',
+					'add',
 				],
 			},
 		},
@@ -67,7 +67,7 @@ export const contactListFields = [
 					'contactList',
 				],
 				operation: [
-					'addContact',
+					'add',
 				],
 			},
 		},
@@ -84,17 +84,43 @@ export const contactListFields = [
 					'contactList',
 				],
 				operation: [
-					'addContact',
+					'add',
 				],
 			},
 		},
 		options: [
 			{
-				displayName: 'Custom',
-				name: 'custom',
-				type: 'string',
-				default: '',
-				description: 'JSON with custom keys and values for the contact to add.',
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'Filter by custom fields ',
+				default: {},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field Name',
+								name: 'fieldName',
+								type: 'string',
+								default: '',
+								description: 'The name of the field to add custom field to.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'The value to set on custom field.',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'First Name',
@@ -113,21 +139,21 @@ export const contactListFields = [
 			{
 				displayName: 'Last Contacted',
 				name: 'lastContacted',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 				description: 'Last contacted date of the contact to add.',
 			},
 			{
 				displayName: 'Last Open',
 				name: 'lastOpen',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 				description: 'Last opened date of the contact to add.',
 			},
 			{
 				displayName: 'Last Replied',
 				name: 'lastReplied',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 				description: 'Last replied date of the contact to add.',
 			},

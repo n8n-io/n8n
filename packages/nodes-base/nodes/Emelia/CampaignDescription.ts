@@ -106,11 +106,37 @@ export const campaignFields = [
 		},
 		options: [
 			{
-				displayName: 'Custom',
-				name: 'custom',
-				type: 'string',
-				default: '',
-				description: 'JSON with custom keys and values for the contact to add.',
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'Filter by custom fields ',
+				default: {},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field Name',
+								name: 'fieldName',
+								type: 'string',
+								default: '',
+								description: 'The name of the field to add custom field to.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'The value to set on custom field.',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'First Name',
@@ -192,11 +218,8 @@ export const campaignFields = [
 	{
 		displayName: 'Campaign ID',
 		name: 'campaignId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCampaigns',
-		},
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		description: 'The ID of the campaign to retrieve.',
 		displayOptions: {
@@ -262,11 +285,8 @@ export const campaignFields = [
 	{
 		displayName: 'Campaign ID',
 		name: 'campaignId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCampaigns',
-		},
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		description: 'The ID of the campaign to pause.<br>The campaign must be in RUNNING mode.',
 		displayOptions: {
@@ -287,11 +307,8 @@ export const campaignFields = [
 	{
 		displayName: 'Campaign ID',
 		name: 'campaignId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCampaigns',
-		},
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		description: 'The ID of the campaign to start.<br>Email provider and contacts must be set.',
 		displayOptions: {

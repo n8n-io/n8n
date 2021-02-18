@@ -61,31 +61,33 @@ export class EmeliaTrigger implements INodeType {
 				displayName: 'Events',
 				name: 'events',
 				type: 'multiOptions',
-				default: ['REPLIED'],
+				default: [
+					'replied',
+				],
 				options: [
 					{
-						value: 'REPLIED',
-						name: 'Email replied',
+						name: 'Email Bounced',
+						value: 'bounced',
 					},
 					{
-						value: 'OPENED',
-						name: 'Email opened',
+						name: 'Email Opened',
+						value: 'opened',
 					},
 					{
-						value: 'CLICKED',
-						name: 'Link clicked',
+						name: 'Email Replied',
+						value: 'replied',
 					},
 					{
-						value: 'SENT',
-						name: 'Email sent',
+						name: 'Email Sent',
+						value: 'sent',
 					},
 					{
-						name: 'Email bounced',
-						value: 'BOUNCED',
+						name: 'Link Clicked',
+						value: 'clicked',
 					},
 					{
-						value: 'UNSUBSCRIBED',
-						name: 'Unsubscribed contact',
+						name: 'Unsubscribed Contact',
+						value: 'unsubscribed',
 					},
 				],
 			},
@@ -119,15 +121,27 @@ export class EmeliaTrigger implements INodeType {
 
 	webhookMethods = {
 		default: {
+			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
+				const campaignId = this.getNodeParameter('campaignId') as string;
+				const { webhooks } = await emeliaApiRequest.call(this, 'GET', '/webhook');
+				for (const webhook of webhooks) {
+					if (webhook.url === webhookUrl && webhook.campaignId === campaignId) {
+						return true;
+					}
+				}
+
+				return false;
+			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
-				const events = this.getNodeParameter('events', ['REPLIED']) as string[];
+				const events = this.getNodeParameter('events') as string[];
 
-				const campaignId = this.getNodeParameter('campaignId', '') as string;
+				const campaignId = this.getNodeParameter('campaignId') as string;
 				const body = {
 					hookUrl: webhookUrl,
-					events,
+					events: events.map(e => e.toUpperCase()),
 					campaignId,
 				};
 
@@ -135,11 +149,10 @@ export class EmeliaTrigger implements INodeType {
 				webhookData.webhookId = webhookId;
 				return true;
 			},
-
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
-				const campaignId = this.getNodeParameter('campaignId', '') as string;
+				const campaignId = this.getNodeParameter('campaignId') as string;
 
 				try {
 					const body = {
@@ -160,7 +173,9 @@ export class EmeliaTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body)],
+			workflowData: [
+				this.helpers.returnJsonArray(req.body),
+			],
 		};
 	}
 }
