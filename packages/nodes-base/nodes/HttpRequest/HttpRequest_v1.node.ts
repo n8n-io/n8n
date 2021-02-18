@@ -7,6 +7,7 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { HttpRequestBase } from './HttpRequest_base.node';
@@ -23,21 +24,21 @@ interface OptionDataParamters {
 }
 
 
-export class HttpRequestV1 extends HttpRequestBase implements INodeType {
+export class HttpRequestV1 implements INodeType {
 
 	description: INodeTypeDescription;
 
-	constructor() {
-		super();
+	constructor(description: INodeTypeBaseDescription) {
+		// super();
 		this.description = {
-			...super.description,
+			...description,
 			displayName: 'HTTP Request V1',
-			name: 'httpRequest',
-			icon: 'fa:at',
-			group: ['input'],
+			// name: 'httpRequest',
+			// icon: 'fa:at',
+			// group: ['input'],
 			version: 1,
-			subtitle: '={{$parameter["requestMethod"] + ": " + $parameter["url"]}}',
-			description: 'Makes a HTTP request and returns the received data',
+			// subtitle: '={{$parameter["requestMethod"] + ": " + $parameter["url"]}}',
+			// description: 'Makes a HTTP request and returns the received data',
 			defaults: {
 				name: 'HTTP Request 1',
 				color: '#2200DD',
@@ -103,7 +104,7 @@ export class HttpRequestV1 extends HttpRequestBase implements INodeType {
 			],
 			properties: [
 				{
-					displayName: 'Authentication',
+					displayName: 'Authentication v1',
 					name: 'authentication',
 					type: 'options',
 					options: [
@@ -136,7 +137,7 @@ export class HttpRequestV1 extends HttpRequestBase implements INodeType {
 					description: 'The way to authenticate.',
 				},
 				{
-					displayName: 'Request Method',
+					displayName: 'Request Method v1',
 					name: 'requestMethod',
 					type: 'options',
 					options: [
@@ -169,7 +170,7 @@ export class HttpRequestV1 extends HttpRequestBase implements INodeType {
 					description: 'The request method to use.',
 				},
 				{
-					displayName: 'URL',
+					displayName: 'URL  v1',
 					name: 'url',
 					type: 'string',
 					default: '',
@@ -178,14 +179,14 @@ export class HttpRequestV1 extends HttpRequestBase implements INodeType {
 					required: true,
 				},
 				{
-					displayName: 'Ignore SSL Issues',
+					displayName: 'Ignore SSL Issues v1',
 					name: 'allowUnauthorizedCerts',
 					type: 'boolean',
 					default: false,
 					description: 'Still download the response even if SSL certificate validation is not possible.',
 				},
 				{
-					displayName: 'Response Format',
+					displayName: 'Response Format v1',
 					name: 'responseFormat',
 					type: 'options',
 					options: [
@@ -206,7 +207,7 @@ export class HttpRequestV1 extends HttpRequestBase implements INodeType {
 					description: 'The format in which the data gets returned from the URL.',
 				},
 				{
-					displayName: 'Property Name',
+					displayName: 'Property Name v1',
 					name: 'dataPropertyName',
 					type: 'string',
 					default: 'data',
@@ -221,7 +222,7 @@ export class HttpRequestV1 extends HttpRequestBase implements INodeType {
 					description: 'Name of the property to which to write the response data.',
 				},
 				{
-					displayName: 'Binary Property',
+					displayName: 'Binary Property v1',
 					name: 'dataPropertyName',
 					type: 'string',
 					default: 'data',

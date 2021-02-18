@@ -148,7 +148,7 @@ export const workflowHelpers = mixins(
 						continue;
 					}
 
-					nodeType = workflow.nodeTypes.getByName(node.type);
+					nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 					if (nodeType === undefined) {
 						// Node type is not known

@@ -141,6 +141,7 @@ import {
 	IDataObject,
 	INode,
 	INodeConnections,
+	INodeInformationApiBody,
 	INodeIssues,
 	INodeTypeDescription,
 	IRunData,
@@ -2028,8 +2029,13 @@ export default mixins(
 				this.$store.commit('setCredentials', credentials);
 			},
 			async loadNodesProperties(nodeNames: string[]): Promise<void> {
-				const allNodes = this.$store.getters.allNodeTypes;
-				const nodesToBeFetched = allNodes.filter((node: INodeTypeDescription) => nodeNames.includes(node.name) && !node.hasOwnProperty('properties')).map((node: INodeTypeDescription) => node.name) as string[];
+				const allNodes:INodeTypeDescription[] = this.$store.getters.allNodeTypes;
+				const nodesToBeFetched = allNodes.filter((node: INodeTypeDescription) => {
+					return nodeNames.includes(node.name) && !node.hasOwnProperty('properties');
+					}).map((node: INodeTypeDescription) => {
+						return ({name: node.name, version: node.version});
+						}) as INodeInformationApiBody[];
+
 				if (nodesToBeFetched.length > 0) {
 					// Only call API if node information is actually missing
 					this.startLoading();

@@ -22,7 +22,9 @@ export class LoadNodeParameterOptions {
 
 
 	constructor(nodeTypeName: string, nodeTypes: INodeTypes, currentNodeParameters: INodeParameters, credentials?: INodeCredentials) {
-		const nodeType = nodeTypes.getByName(nodeTypeName);
+		const nodeType = nodeTypes.getByNameAndVersion(nodeTypeName);
+		// ahsan
+		// todo add nodeversion in constructor
 
 		if (nodeType === undefined) {
 			throw new Error(`The node-type "${nodeTypeName}"  is not known!`);
@@ -83,7 +85,7 @@ export class LoadNodeParameterOptions {
 	getOptions(methodName: string, additionalData: IWorkflowExecuteAdditionalData): Promise<INodePropertyOptions[]> {
 		const node = this.workflow.getNode(TEMP_NODE_NAME);
 
-		const nodeType = this.workflow.nodeTypes.getByName(node!.type);
+		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node!.type, node!.typeVersion);
 
 		if (nodeType!.methods === undefined || nodeType!.methods.loadOptions === undefined || nodeType!.methods.loadOptions[methodName] === undefined) {
 			throw new Error(`The node-type "${node!.type}" does not have the method "${methodName}" defined!`);

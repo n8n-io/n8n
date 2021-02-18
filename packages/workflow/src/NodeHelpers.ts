@@ -745,7 +745,7 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 		return [];
 	}
 
-	const nodeType = workflow.nodeTypes.getByName(node.type) as INodeType;
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
 
 	if (nodeType.description.webhooks === undefined) {
 		// Node does not have any webhooks so return
@@ -809,7 +809,7 @@ export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookD
 		return [];
 	}
 
-	const nodeType = workflow.nodeTypes.getByName(node.type) as INodeType;
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
 
 	if (nodeType.description.webhooks === undefined) {
 		// Node does not have any webhooks so return
@@ -1214,4 +1214,19 @@ export function getVersionedTypeNode(object: INodeVersionedType | INodeType, ver
 	} else {
 		return object;
 	}
+}
+
+export function getVersionedTypeNodeAll(object: INodeVersionedType | INodeType): INodeType[] {
+	if(isNodeTypeVersioned(object)) {
+		return Object.values((object as INodeVersionedType).nodeVersions).map(element => {
+			element.description.name = object.description.name;
+			return element;
+		});
+	} else {
+		return [object as INodeType];
+	}
+}
+
+export function isNodeTypeVersioned(object: INodeVersionedType | INodeType): boolean {
+	return !!('getNodeType' in object);
 }

@@ -161,6 +161,10 @@ export interface IDataObject {
 	[key: string]: GenericValue | IDataObject | GenericValue[] | IDataObject[];
 }
 
+export interface INodeInformationApiBody {
+	name: string;
+	version: number;
+}
 
 export interface IGetExecutePollFunctions {
 	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): IPollFunctions;
@@ -648,8 +652,8 @@ export type WebhookResponseMode = 'onReceived' | 'lastNode';
 export interface INodeTypes {
 	nodeTypes: INodeTypeData;
 	init(nodeTypes?: INodeTypeData): Promise<void>;
-	getAll(): INodeType[];
-	getByName(nodeType: string): INodeType | undefined;
+	getAll(): Array<INodeType | INodeVersionedType>;
+	getByName(nodeType: string): INodeType | INodeVersionedType | undefined;
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
 }
 

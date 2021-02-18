@@ -774,9 +774,9 @@ export const store = new Vuex.Store({
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
 		},
-		nodeType: (state) => (nodeType: string): INodeTypeDescription | null => {
+		nodeType: (state) => (nodeType: string, typeVersion = 1): INodeTypeDescription | null => {
 			const foundType = state.nodeTypes.find(typeData => {
-				return typeData.name === nodeType;
+				return typeData.name === nodeType && typeData.version === typeVersion;
 			});
 
 			if (foundType === undefined) {

@@ -2,6 +2,7 @@ import {
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
+	INodeVersionedType,
 	NodeHelpers,
 } from 'n8n-workflow';
 
@@ -25,15 +26,15 @@ class NodeTypesClass implements INodeTypes {
 		this.nodeTypes = nodeTypes;
 	}
 
-	getAll(): INodeType[] {
-		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedTypeNode(data.type));
+	getAll(): Array<INodeType | INodeVersionedType> {
+		return Object.values(this.nodeTypes).map((data) => data.type);
 	}
 
-	getByName(nodeType: string): INodeType | undefined {
+	getByName(nodeType: string): INodeType | INodeVersionedType | undefined {
 		if (this.nodeTypes[nodeType] === undefined) {
 			throw new Error(`The node-type "${nodeType}" is not known!`);
 		}
-		return this.getByNameAndVersion(nodeType);
+		return this.nodeTypes[nodeType].type;
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {

@@ -108,7 +108,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
   */
  export async function executeWebhook(workflow: Workflow, webhookData: IWebhookData, workflowData: IWorkflowDb, workflowStartNode: INode, executionMode: WorkflowExecuteMode, sessionId: string | undefined, req: express.Request, res: express.Response, responseCallback: (error: Error | null, data: IResponseCallbackData) => void): Promise<string | undefined> {
 	// Get the nodeType to know which responseMode is set
-	const nodeType = workflow.nodeTypes.getByName(workflowStartNode.type);
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(workflowStartNode.type, workflowStartNode.typeVersion);
 	if (nodeType === undefined) {
 		const errorMessage = `The type of the webhook node "${workflowStartNode.name}" is not known.`;
 		responseCallback(new Error(errorMessage), {});

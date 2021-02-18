@@ -5,10 +5,8 @@ import {
 import {
 	ICredentialType,
 	INodeType,
-	INodeTypeBase,
 	INodeTypeData,
 	INodeVersionedType,
-	NodeHelpers,
 } from 'n8n-workflow';
 
 import * as config from '../config';

@@ -320,7 +320,7 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 export function getCredentials(workflow: Workflow, node: INode, type: string, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, runExecutionData?: IRunExecutionData | null, runIndex?: number, connectionInputData?: INodeExecutionData[], itemIndex?: number): ICredentialDataDecryptedObject | undefined {
 
 	// Get the NodeType as it has the information if the credentials are required
-	const nodeType = workflow.nodeTypes.getByName(node.type);
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
 		throw new NodeOperationError(node, `Node type "${node.type}" is not known so can not get credentials!`);
 	}
@@ -406,7 +406,7 @@ export function getNode(node: INode): INode {
  * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object)}
  */
 export function getNodeParameter(workflow: Workflow, runExecutionData: IRunExecutionData | null, runIndex: number, connectionInputData: INodeExecutionData[], node: INode, parameterName: string, itemIndex: number, mode: WorkflowExecuteMode, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object { //tslint:disable-line:no-any
-	const nodeType = workflow.nodeTypes.getByName(node.type);
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
 		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
 	}
@@ -503,7 +503,7 @@ export function getTimezone(workflow: Workflow, additionalData: IWorkflowExecute
  * @returns {(IWebhookDescription | undefined)}
  */
 export function getWebhookDescription(name: string, workflow: Workflow, node: INode): IWebhookDescription | undefined {
-	const nodeType = workflow.nodeTypes.getByName(node.type) as INodeType;
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
 
 	if (nodeType.description.webhooks === undefined) {
 		// Node does not have any webhooks so return

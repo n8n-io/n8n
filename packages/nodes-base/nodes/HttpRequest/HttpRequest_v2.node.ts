@@ -7,6 +7,7 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	NodeApiError,
 	NodeOperationError,
@@ -25,21 +26,15 @@ interface OptionDataParamters {
 }
 
 
-export class HttpRequestV2 extends HttpRequestBase implements INodeType {
+export class HttpRequestV2 implements INodeType {
 
 	description: INodeTypeDescription;
 
-	constructor() {
-		super();
+	constructor(description: INodeTypeBaseDescription) {
 		this.description = {
-			...super.description,
+			...description,
 			displayName: 'HTTP Request V2',
-			name: 'httpRequest',
-			icon: 'fa:at',
-			group: ['input'],
 			version: 2,
-			subtitle: '={{$parameter["requestMethod"] + ": " + $parameter["url"]}}',
-			description: 'Makes a HTTP request and returns the received data',
 			defaults: {
 				name: 'HTTP Request 2',
 				color: '#2200DD',
@@ -105,7 +100,7 @@ export class HttpRequestV2 extends HttpRequestBase implements INodeType {
 			],
 			properties: [
 				{
-					displayName: 'Authentication',
+					displayName: 'Authentication v2',
 					name: 'authentication',
 					type: 'options',
 					options: [
@@ -138,7 +133,7 @@ export class HttpRequestV2 extends HttpRequestBase implements INodeType {
 					description: 'The way to authenticate.',
 				},
 				{
-					displayName: 'Request Method',
+					displayName: 'Request Method v2',
 					name: 'requestMethod',
 					type: 'options',
 					options: [
@@ -171,7 +166,7 @@ export class HttpRequestV2 extends HttpRequestBase implements INodeType {
 					description: 'The request method to use.',
 				},
 				{
-					displayName: 'URL',
+					displayName: 'URL v2',
 					name: 'url',
 					type: 'string',
 					default: '',
@@ -180,14 +175,14 @@ export class HttpRequestV2 extends HttpRequestBase implements INodeType {
 					required: true,
 				},
 				{
-					displayName: 'Ignore SSL Issues',
+					displayName: 'Ignore SSL Issues v2',
 					name: 'allowUnauthorizedCerts',
 					type: 'boolean',
 					default: false,
 					description: 'Still download the response even if SSL certificate validation is not possible.',
 				},
 				{
-					displayName: 'Response Format',
+					displayName: 'Response Format v2',
 					name: 'responseFormat',
 					type: 'options',
 					options: [
@@ -208,7 +203,7 @@ export class HttpRequestV2 extends HttpRequestBase implements INodeType {
 					description: 'The format in which the data gets returned from the URL.',
 				},
 				{
-					displayName: 'Property Name',
+					displayName: 'Property Name v2',
 					name: 'dataPropertyName',
 					type: 'string',
 					default: 'data',
@@ -223,7 +218,7 @@ export class HttpRequestV2 extends HttpRequestBase implements INodeType {
 					description: 'Name of the property to which to write the response data.',
 				},
 				{
-					displayName: 'Binary Property',
+					displayName: 'Binary Property v2',
 					name: 'dataPropertyName',
 					type: 'string',
 					default: 'data',
@@ -239,7 +234,7 @@ export class HttpRequestV2 extends HttpRequestBase implements INodeType {
 				},
 
 				{
-					displayName: 'JSON/RAW Parameters',
+					displayName: 'JSON/RAW Parameters v2',
 					name: 'jsonParameters',
 					type: 'boolean',
 					default: false,
@@ -247,7 +242,7 @@ export class HttpRequestV2 extends HttpRequestBase implements INodeType {
 				},
 
 				{
-					displayName: 'Options',
+					displayName: 'Options v2',
 					name: 'options',
 					type: 'collection',
 					placeholder: 'Add Option',

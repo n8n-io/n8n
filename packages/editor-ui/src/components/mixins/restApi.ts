@@ -26,6 +26,7 @@ import {
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
+	INodeInformationApiBody,
 	INodeParameters,
 	INodePropertyOptions,
 	INodeTypeDescription,
@@ -152,8 +153,8 @@ export const restApi = Vue.extend({
 					return self.restApi().makeRestApiRequest('GET', `/node-types`);
 				},
 
-				getNodesInformation: (nodeList: string[]): Promise<INodeTypeDescription[]> => {
-					return self.restApi().makeRestApiRequest('POST', `/node-types`, {nodeNames: nodeList});
+				getNodesInformation: (nodeInfos: INodeInformationApiBody[]): Promise<INodeTypeDescription[]> => {
+					return self.restApi().makeRestApiRequest('POST', `/node-types`, {nodeInfos});
 				},
 
 				// Returns all the parameter options from the server

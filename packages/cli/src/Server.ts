@@ -80,11 +80,13 @@ import {
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
+	INodeInformationApiBody,
 	INodeParameters,
 	INodePropertyOptions,
 	INodeTypeDescription,
 	IRunData,
 	IWorkflowCredentials,
+	NodeHelpers,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -738,23 +740,25 @@ class App {
 
 		// Returns all the node-types
 		this.app.get(`/${this.restEndpoint}/node-types`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-
 			const returnData: INodeTypeDescription[] = [];
 
 			const nodeTypes = NodeTypes();
-
 			const allNodes = nodeTypes.getAll();
 
 			allNodes.forEach((nodeData) => {
 				// Make a copy of the object. If we don't do this, then when
 				// The method below is called the properties are removed for good
 				// This happens because nodes are returned as reference.
-				const nodeInfo: INodeTypeDescription = { ...nodeData.description };
-				if (req.query.includeProperties !== 'true') {
-					// @ts-ignore
-					delete nodeInfo.properties;
-				}
-				returnData.push(nodeInfo);
+
+				const allNodeTypes = NodeHelpers.getVersionedTypeNodeAll(nodeData);
+				allNodeTypes.forEach(element => {
+					const nodeInfo: INodeTypeDescription =  { ...element.description };
+						if (req.query.includeProperties !== 'true') {
+							// @ts-ignore
+							delete nodeInfo.properties;
+						}
+						returnData.push(nodeInfo);
+				});
 			});
 
 			return returnData;
@@ -763,16 +767,18 @@ class App {
 
 		// Returns node information baesd on namese
 		this.app.post(`/${this.restEndpoint}/node-types`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-			const nodeNames = _.get(req, 'body.nodeNames', []) as string[];
+			const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeInformationApiBody[];
 			const nodeTypes = NodeTypes();
 
-			return nodeNames.map(name => {
-				try {
-					return nodeTypes.getByName(name);
-				} catch (e) {
-					return undefined;
+			const returnData: INodeTypeDescription[] = [];
+			nodeInfos.forEach(nodeInfo => {
+				const nodeType = nodeTypes.getByNameAndVersion(nodeInfo.name, nodeInfo.version);
+				if(nodeType && nodeType.description) {
+					returnData.push(nodeType.description);
 				}
-			}).filter(nodeData => !!nodeData).map(nodeData => nodeData!.description);
+			});
+
+			return returnData;
 		}));
 
 
@@ -787,7 +793,7 @@ class App {
 			const nodeTypeName = `${req.params.scope ? `${req.params.scope}/` : ''}${req.params.nodeType}`;
 
 			const nodeTypes = NodeTypes();
-			const nodeType = nodeTypes.getByName(nodeTypeName);
+			const nodeType = nodeTypes.getByNameAndVersion(nodeTypeName);
 
 			if (nodeType === undefined) {
 				res.status(404).send('The nodeType is not known.');
