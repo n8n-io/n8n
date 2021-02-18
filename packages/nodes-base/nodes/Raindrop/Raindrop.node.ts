@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -88,9 +89,13 @@ export class Raindrop implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// async getCustomers(this: ILoadOptionsFunctions) {
-			// 	return await loadResource.call(this, 'customer');
-			// },
+			async getCollections(this: ILoadOptionsFunctions) {
+				const responseData = await raindropApiRequest.call(this, 'GET', '/collections', {}, {});
+				return responseData.items.map((item: { title: string, _id: string }) => ({
+					name: item.title,
+					value: item._id,
+				}));
+			},
 
 			// async getCustomFields(this: ILoadOptionsFunctions) {
 			// 	return await loadResource.call(this, 'preferences');
@@ -162,6 +167,7 @@ export class Raindrop implements INodeType {
 					const collectionId = this.getNodeParameter('collectionId', i);
 					const endpoint = `/collection/${collectionId}`;
 					responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = responseData.item;
 
 				} else if (operation === 'getAll') {
 

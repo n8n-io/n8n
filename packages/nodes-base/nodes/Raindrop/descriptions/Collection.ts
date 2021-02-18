@@ -43,6 +43,31 @@ export const collectionOperations = [
 
 export const collectionFields = [
 	// ----------------------------------
+	//       collection: get
+	// ----------------------------------
+	{
+		displayName: 'Collection ID',
+		name: 'collectionId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getCollections',
+		},
+		default: [],
+		required: true,
+		description: 'The ID of the collection to retrieve.',
+		displayOptions: {
+			show: {
+				resource: [
+					'collection',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------
 	//       collection: getAll
 	// ----------------------------------
 	{
@@ -74,6 +99,5 @@ export const collectionFields = [
 			},
 		],
 	},
-
 
 ] as INodeProperties[];
