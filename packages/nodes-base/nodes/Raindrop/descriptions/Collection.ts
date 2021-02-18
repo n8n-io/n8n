@@ -43,7 +43,37 @@ export const collectionOperations = [
 
 export const collectionFields = [
 	// ----------------------------------
-	//       collection: create
+	//       collection: getAll
 	// ----------------------------------
+	{
+		displayName: 'Type',
+		name: 'type',
+		type: 'options',
+		required: true,
+		default: 'parent',
+		displayOptions: {
+			show: {
+				resource: [
+					'collection',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Parent',
+				value: 'parent',
+				description: 'Root-level collections.',
+			},
+			{
+				name: 'Children',
+				value: 'children',
+				description: 'Nested collections.',
+			},
+		],
+	},
+
 
 ] as INodeProperties[];

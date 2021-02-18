@@ -72,7 +72,7 @@ export class Raindrop implements INodeType {
 						value: 'user',
 					},
 				],
-				default: 'raindrop',
+				default: 'collection',
 				description: 'Resource to consume',
 			},
 			...collectionOperations,
@@ -169,16 +169,12 @@ export class Raindrop implements INodeType {
 					//        collection: getAll
 					// ----------------------------------
 
-					const endpoint = '/collections';
+					const endpoint = this.getNodeParameter('type', i) === 'parent'
+					 ? '/collections'
+					 : '/collections/childrens';
+
 					responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
-
-					const includeChildrenCollections = this.getNodeParameter('includeChildrenCollections', i);
-
-					if (includeChildrenCollections) {
-						const endpoint = '/collections/childrens';
-						const children = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
-						responseData = {...responseData, ...children};
-					}
+					responseData = responseData.items;
 
 				} else if (operation === 'update') {
 
