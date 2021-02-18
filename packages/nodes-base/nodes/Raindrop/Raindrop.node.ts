@@ -342,6 +342,7 @@ export class Raindrop implements INodeType {
 					}
 
 					responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = responseData.user;
 
 				}
 
