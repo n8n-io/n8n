@@ -965,13 +965,9 @@ export class Jira implements INodeType {
 		}
 
 		if (resource === 'user') {
-
 			if (operation === 'create') {
-
 				// https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-users/#api-rest-api-3-user-post
-
 				for (let i = 0; i < length; i++) {
-
 					const body = {
 						name: this.getNodeParameter('username', i),
 						emailAddress: this.getNodeParameter('emailAddress', i),
@@ -984,27 +980,17 @@ export class Jira implements INodeType {
 
 					responseData = await jiraSoftwareCloudApiRequest.call(this, '/api/3/user', 'POST', body, {});
 					returnData.push(responseData);
-
 				}
-
 			} else if (operation === 'delete') {
-
 				// https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-users/#api-rest-api-3-user-delete
-
 				for (let i = 0; i < length; i++) {
-
 					qs.accountId = this.getNodeParameter('accountId', i);
 					responseData = await jiraSoftwareCloudApiRequest.call(this, '/api/3/user', 'DELETE', {}, qs);
-					returnData.push(responseData);
-
+					returnData.push({ success: true });
 				}
-
 			} else if (operation === 'get') {
-
 				// https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-users/#api-rest-api-3-user-get
-
 				for (let i = 0; i < length; i++) {
-
 					qs.accountId = this.getNodeParameter('accountId', i);
 
 					const { expand } = this.getNodeParameter('additionalFields', i) as { expand: string[] };
@@ -1015,11 +1001,8 @@ export class Jira implements INodeType {
 
 					responseData = await jiraSoftwareCloudApiRequest.call(this, '/api/3/user', 'GET', {}, qs);
 					returnData.push(responseData);
-
 				}
-
 			}
-
 		}
 
 		if (resource === 'issueAttachment' && (operation === 'getAll' || operation === 'get')) {
