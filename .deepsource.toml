@@ -31,7 +31,3 @@ enabled = true
     "/packages/nodes-base/package.json",
     "/packages/workflow/package.json"
     ]
-
-[[transformers]]
-name = "prettier"
-enabled = true
