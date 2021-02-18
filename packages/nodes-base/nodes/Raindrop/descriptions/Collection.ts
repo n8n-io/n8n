@@ -51,7 +51,7 @@ export const collectionFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Title of the collection to be created.',
+		description: 'Title of the collection to create.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -84,7 +84,7 @@ export const collectionFields = [
 				name: 'cover',
 				type: 'string',
 				default: '',
-				description: 'URL of an image to be used as cover for the collection.',
+				description: 'URL of an image to use as cover for the collection.',
 			},
 			{
 				displayName: 'Public',
@@ -265,7 +265,7 @@ export const collectionFields = [
 				type: 'string',
 				default: 'data',
 				placeholder: '',
-				description: 'Name of the binary property containing the data<br>for the image to be uploaded as a cover.',
+				description: 'Name of the binary property containing the data<br>for the image to upload as a cover.',
 			},
 			{
 				displayName: 'Public',
@@ -293,7 +293,7 @@ export const collectionFields = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the collection to be created.',
+				description: 'Title of the collection to update.',
 			},
 			{
 				displayName: 'View',

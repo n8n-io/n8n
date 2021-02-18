@@ -99,18 +99,6 @@ export class Raindrop implements INodeType {
 					value: item._id,
 				}));
 			},
-
-			// async getCustomFields(this: ILoadOptionsFunctions) {
-			// 	return await loadResource.call(this, 'preferences');
-			// },
-
-			// async getItems(this: ILoadOptionsFunctions) {
-			// 	return await loadResource.call(this, 'item');
-			// },
-
-			// async getVendors(this: ILoadOptionsFunctions) {
-			// 	return await loadResource.call(this, 'vendor');
-			// },
 		},
 	};
 
@@ -280,7 +268,8 @@ export class Raindrop implements INodeType {
 					//         raindrop: delete
 					// ----------------------------------
 
-					const endpoint = `/raindrop`;
+					const raindropId = this.getNodeParameter('raindropId', i);
+					const endpoint = `/raindrop/${raindropId}`;
 					responseData = await raindropApiRequest.call(this, 'DELETE', endpoint, {}, {});
 					responseData = { success: true };
 
@@ -293,6 +282,7 @@ export class Raindrop implements INodeType {
 					const raindropId = this.getNodeParameter('raindropId', i);
 					const endpoint = `/raindrop/${raindropId}`;
 					responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = responseData.item;
 
 				} else if (operation === 'getAll') {
 
@@ -303,6 +293,7 @@ export class Raindrop implements INodeType {
 					const collectionId = this.getNodeParameter('collectionId', i);
 					const endpoint = `/raindrops/${collectionId}`;
 					responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = responseData.items;
 
 				} else if (operation === 'update') {
 
@@ -312,18 +303,19 @@ export class Raindrop implements INodeType {
 
 					const raindropId = this.getNodeParameter('raindropId', i);
 
-					const body = {
-						id: raindropId,
-					};
+					const body = {} as IDataObject;
 
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-					if (!isEmpty(updateFields)) {
-						Object.assign(body, updateFields);
+					if (isEmpty(updateFields)) {
+						throw new Error(`Please enter at least one field to update for the ${resource}.`);
 					}
 
-					const endpoint = '/raindrop';
+					Object.assign(body, omit(updateFields, 'binaryPropertyName'));
+
+					const endpoint = `/raindrop/${raindropId}`;
 					responseData = await raindropApiRequest.call(this, 'PUT', endpoint, {}, body);
+					responseData = responseData.item;
 
 				}
 

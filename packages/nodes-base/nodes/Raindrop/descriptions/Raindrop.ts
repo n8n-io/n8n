@@ -103,4 +103,122 @@ export const raindropFields = [
 			},
 		],
 	},
+
+	// ----------------------------------
+	//       raindrop: delete
+	// ----------------------------------
+	{
+		displayName: 'Raindrop ID',
+		name: 'raindropId',
+		type: 'string',
+		default: '',
+		required: true,
+		description: 'The ID of the raindrop to delete.',
+		displayOptions: {
+			show: {
+				resource: [
+					'raindrop',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------
+	//       raindrop: get
+	// ----------------------------------
+	{
+		displayName: 'Raindrop ID',
+		name: 'raindropId',
+		type: 'string',
+		default: '',
+		required: true,
+		description: 'The ID of the raindrop to retrieve.',
+		displayOptions: {
+			show: {
+				resource: [
+					'raindrop',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------
+	//       raindrop: getAll
+	// ----------------------------------
+	{
+		displayName: 'Collection ID',
+		name: 'collectionId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getCollections',
+		},
+		default: [],
+		required: true,
+		description: 'The ID of the collection from which to retrieve all raindrops.',
+		displayOptions: {
+			show: {
+				resource: [
+					'raindrop',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------
+	//       raindrop: update
+	// ----------------------------------
+	{
+		displayName: 'Raindrop ID',
+		name: 'raindropId',
+		type: 'string',
+		default: '',
+		required: true,
+		description: 'The ID of the raindrop to update.',
+		displayOptions: {
+			show: {
+				resource: [
+					'raindrop',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'raindrop',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'Title of the raindrop to update.',
+			},
+
+		],
+	},
 ] as INodeProperties[];
