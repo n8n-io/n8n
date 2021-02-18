@@ -1,7 +1,7 @@
 {
 	"compilerOptions": {
 		"lib": [
-			"es2019"
+			"es2017"
 		],
 		"types": [
 			"node",
@@ -16,7 +16,7 @@
 		"preserveConstEnums": true,
 		"declaration": true,
 		"outDir": "./dist/",
-		"target": "es2019",
+		"target": "es2017",
 		"sourceMap": true,
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true
