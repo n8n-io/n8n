@@ -45,5 +45,62 @@ export const raindropFields = [
 	// ----------------------------------
 	//       raindrop: create
 	// ----------------------------------
-
+	{
+		displayName: 'Link',
+		name: 'link',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'Link of the raindrop to be created.',
+		displayOptions: {
+			show: {
+				resource: [
+					'raindrop',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'raindrop',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			// TODO: Add more options
+			{
+				displayName: 'Created',
+				name: 'create',
+				type: 'dateTime',
+				default: '',
+				description: 'Date and time when the raindrop was created.',
+			},
+			{
+				displayName: 'Sort Order',
+				name: 'sort',
+				type: 'number',
+				default: 1,
+				description: 'Descending sort order of this collection. The number is the position of the collection<br>among all the collections with the same parent ID.',
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'Title of the raindrop to be created.',
+			},
+		],
+	},
 ] as INodeProperties[];

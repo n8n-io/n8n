@@ -272,6 +272,7 @@ export class Raindrop implements INodeType {
 
 					const endpoint = `/raindrop`;
 					responseData = await raindropApiRequest.call(this, 'POST', endpoint, {}, body);
+					responseData = responseData.item;
 
 				} else if (operation === 'delete') {
 
