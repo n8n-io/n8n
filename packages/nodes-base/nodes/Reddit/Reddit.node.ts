@@ -130,6 +130,7 @@ export class Reddit implements INodeType {
 			if (resource === 'post') {
 
 				if (operation === 'create') {
+
 					// ----------------------------------
 					//         post: create
 					// ----------------------------------
@@ -155,6 +156,7 @@ export class Reddit implements INodeType {
 					responseData = responseData.json.data;
 
 				} else if (operation === 'delete') {
+
 					// ----------------------------------
 					//         post: delete
 					// ----------------------------------
@@ -172,6 +174,7 @@ export class Reddit implements INodeType {
 					responseData = { success: true };
 
 				} else if (operation === 'get') {
+
 					// ----------------------------------
 					//         post: get
 					// ----------------------------------
@@ -184,6 +187,7 @@ export class Reddit implements INodeType {
 					responseData = responseData[0].data.children[0].data;
 
 				} else if (operation === 'getAll') {
+
 					// ----------------------------------
 					//         post: getAll
 					// ----------------------------------
@@ -203,6 +207,45 @@ export class Reddit implements INodeType {
 
 					responseData = await handleListing.call(this, i, endpoint);
 
+				} else if (operation === 'search') {
+
+					// ----------------------------------
+					//         post: search
+					// ----------------------------------
+
+					// https://www.reddit.com/dev/api/#GET_search
+
+					const location = this.getNodeParameter('location', i);
+
+					const qs = {
+						q: this.getNodeParameter('keyword', i),
+						restrict_sr: location === 'subreddit',
+					} as IDataObject;
+
+					const { sort } = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (sort) {
+						qs.sort = sort;
+					}
+
+					let endpoint = '';
+
+					if (location === 'allReddit') {
+						endpoint = 'search.json';
+					} else {
+						const subreddit = this.getNodeParameter('subreddit', i);
+						endpoint = `r/${subreddit}/search.json`;
+					}
+
+					responseData = await handleListing.call(this, i, endpoint, qs);
+
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', 0) as number;
+						responseData = responseData.splice(0, limit);
+					}
+
 				}
 
 			} else if (resource === 'postComment') {
@@ -212,6 +255,7 @@ export class Reddit implements INodeType {
 				// *********************************************************************
 
 				if (operation === 'create') {
+
 					// ----------------------------------
 					//        postComment: create
 					// ----------------------------------
@@ -229,6 +273,7 @@ export class Reddit implements INodeType {
 					responseData = responseData.json.data.things[0].data;
 
 				} else if (operation === 'getAll') {
+
 					// ----------------------------------
 					//        postComment: getAll
 					// ----------------------------------
@@ -242,6 +287,7 @@ export class Reddit implements INodeType {
 					responseData = await handleListing.call(this, i, endpoint);
 
 				} else if (operation === 'delete') {
+
 					// ----------------------------------
 					//        postComment: delete
 					// ----------------------------------
@@ -259,6 +305,7 @@ export class Reddit implements INodeType {
 					responseData = { success: true };
 
 				} else if (operation === 'reply') {
+
 					// ----------------------------------
 					//        postComment: reply
 					// ----------------------------------
@@ -277,11 +324,13 @@ export class Reddit implements INodeType {
 				}
 
 			} else if (resource === 'profile') {
+
 				// *********************************************************************
-				//         pprofile
+				//         profile
 				// *********************************************************************
 
 				if (operation === 'get') {
+
 					// ----------------------------------
 					//         profile: get
 					// ----------------------------------
@@ -329,6 +378,7 @@ export class Reddit implements INodeType {
 				// *********************************************************************
 
 				if (operation === 'get') {
+
 					// ----------------------------------
 					//        subreddit: get
 					// ----------------------------------
@@ -349,6 +399,7 @@ export class Reddit implements INodeType {
 					}
 
 				} else if (operation === 'getAll') {
+
 					// ----------------------------------
 					//        subreddit: getAll
 					// ----------------------------------
@@ -389,6 +440,7 @@ export class Reddit implements INodeType {
 				}
 
 			} else if (resource === 'user') {
+
 				// *********************************************************************
 				//           user
 				// *********************************************************************
