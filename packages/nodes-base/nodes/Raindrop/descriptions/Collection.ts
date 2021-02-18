@@ -134,6 +134,32 @@ export const collectionFields = [
 			},
 		],
 	},
+
+	// ----------------------------------
+	//       collection: delete
+	// ----------------------------------
+	{
+		displayName: 'Collection ID',
+		name: 'collectionId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getCollections',
+		},
+		default: [],
+		required: true,
+		description: 'The ID of the collection to delete.',
+		displayOptions: {
+			show: {
+				resource: [
+					'collection',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+
 	// ----------------------------------
 	//       collection: get
 	// ----------------------------------

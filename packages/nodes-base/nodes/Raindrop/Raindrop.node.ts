@@ -159,8 +159,10 @@ export class Raindrop implements INodeType {
 					//        collection: delete
 					// ----------------------------------
 
-					const endpoint = `/collection`;
+					const collectionId = this.getNodeParameter('collectionId', i);
+					const endpoint = `/collection/${collectionId}`;
 					responseData = await raindropApiRequest.call(this, 'DELETE', endpoint, {}, {});
+					responseData = { success: true };
 
 				} else if (operation === 'get') {
 
@@ -252,6 +254,7 @@ export class Raindrop implements INodeType {
 
 					const endpoint = `/raindrop`;
 					responseData = await raindropApiRequest.call(this, 'DELETE', endpoint, {}, {});
+					responseData = { success: true };
 
 				} else if (operation === 'get') {
 
@@ -345,6 +348,7 @@ export class Raindrop implements INodeType {
 					}
 
 					responseData = await raindropApiRequest.call(this, 'DELETE', endpoint, {}, {});
+					responseData = { success: true };
 
 				} else if (operation === 'getAll') {
 
