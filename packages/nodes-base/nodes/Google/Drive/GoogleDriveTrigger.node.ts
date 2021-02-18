@@ -288,6 +288,8 @@ export class GoogleDriveTrigger implements INodeType {
 			}
 		}
 
+		console.log(headerData);
+
 		return {
 			workflowData: [
 				this.helpers.returnJsonArray({
@@ -298,6 +300,7 @@ export class GoogleDriveTrigger implements INodeType {
 	}
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		console.log('calling triggerf function')
 		const executeTrigger = async () => {
 			console.log("------------------ RENEWAL START ------------------");
 			await deleteWebhook.call(this);
@@ -319,7 +322,14 @@ export class GoogleDriveTrigger implements INodeType {
 			clearInterval(intervalObject);
 		}
 
+		const self = this;
+
+		async function manualTriggerFunction() {
+			self.emit([self.helpers.returnJsonArray([{}])]);
+		}
+
 		return {
+			manualTriggerFunction,
 			closeFunction,
 		};
 	}
