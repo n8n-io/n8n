@@ -138,16 +138,20 @@ export class Raindrop implements INodeType {
 
 					const body = {
 						title: this.getNodeParameter('title', i),
-					};
+					} as IDataObject;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i);
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (!isEmpty(additionalFields)) {
 						Object.assign(body, additionalFields);
 					}
 
-					const endpoint = `/collection`;
-					responseData = await raindropApiRequest.call(this, 'POST', endpoint, {}, body);
+					if (additionalFields.cover) {
+						body.cover = [body.cover];
+					}
+
+					responseData = await raindropApiRequest.call(this, 'POST', `/collection`, {}, body);
+					responseData = responseData.item;
 
 				} else if (operation === 'delete') {
 
