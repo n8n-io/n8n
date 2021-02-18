@@ -207,7 +207,7 @@ export class Reddit implements INodeType {
 
 					responseData = await handleListing.call(this, i, endpoint);
 
-				}  else if (operation === 'search') {
+				} else if (operation === 'search') {
 
 					// ----------------------------------
 					//         post: search
