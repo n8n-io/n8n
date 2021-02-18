@@ -39,12 +39,12 @@ const ERROR_MESSAGE_PROPERTIES = [
 const ERROR_CODE_PROPERTIES = ['statusCode', 'status', 'code', 'status_code', 'errorCode', 'error_code'];
 
 /**
- * Properties in nested objects where an error message or code can be found in an API response.
+ * Properties where an nested object can be found in an API response.
  */
 const ERROR_NESTING_PROPERTIES = ['error', 'err', 'response', 'body', 'data'];
 
 /**
- * Abstract class from which `NodeOperationError` and `NodeApiError` inherit,
+ * Base class for specific NodeError-types,
  * with functionality for finding a value recursively inside an error object.
  */
 abstract class NodeError extends Error {
@@ -63,9 +63,9 @@ abstract class NodeError extends Error {
 
 	/**
 	 * Finds property through exploration based on potential keys and traversal keys.
+	 * Depth-first approach.
 	 *
-	 * This method iterates over `potentialKeys` (an array of strings for the keys whose
-	 * property is an error code or an error message or an array of them) and, if the value at
+	 * This method iterates over `potentialKeys` and, if the value at
 	 * the key is a truthy value, the type of the value is checked:
 	 * (1) if a string or number, the value is returned as a string; or
 	 * (2) if an array,
@@ -73,10 +73,9 @@ abstract class NodeError extends Error {
 	 * 		its object elements are traversed recursively (restart this function
 	 *    with each object as a starting point)
 	 *
-	 * Then this method iterates over `traversalKeys` (an array of strings for the keys
-	 * whose properties are in nested objects where an error code or an error message can be
-	 * found) and, if the value at the key is a traversable object, its object elements are traversed
-	 * recursively (restart with the object as a starting point) and only truthy values are returned.
+	 * If nothing found via `potentialKeys` this method iterates over `traversalKeys` and
+	 * if the value at the key is a traversable object it restarts with the object as the new starting point (recursion).
+	 * If nothing found for the `traversalKey` exploration continues with remaining `traversalKeys`.
 	 *
 	 * Otherwise, if all the paths have been exhausted and no value is eligible, `null` is returned.
 	 *
