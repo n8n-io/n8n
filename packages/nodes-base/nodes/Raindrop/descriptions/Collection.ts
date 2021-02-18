@@ -51,7 +51,7 @@ export const collectionFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Title of the collection to be created',
+		description: 'Title of the collection to be created.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -80,29 +80,11 @@ export const collectionFields = [
 		},
 		options: [
 			{
-				displayName: 'View',
-				name: 'view',
-				type: 'options',
-				default: 'list',
-				description: 'View style of this collection.',
-				options: [
-					{
-						name: 'List',
-						value: 'list',
-					},
-					{
-						name: 'Simple',
-						value: 'simple',
-					},
-					{
-						name: 'Grid',
-						value: 'grid',
-					},
-					{
-						name: 'Masonry',
-						value: 'Masonry',
-					},
-				],
+				displayName: 'Cover',
+				name: 'cover',
+				type: 'string',
+				default: '',
+				description: 'URL of an image to be used as cover for the collection.',
 			},
 			{
 				displayName: 'Public',
@@ -126,11 +108,29 @@ export const collectionFields = [
 				description: 'Descending sort order of this collection. The number is the position of the collection<br>among all the collections with the same parent ID.',
 			},
 			{
-				displayName: 'Cover',
-				name: 'cover',
-				type: 'string',
-				default: '',
-				description: 'URL of an image to be used as cover for the collection.',
+				displayName: 'View',
+				name: 'view',
+				type: 'options',
+				default: 'list',
+				description: 'View style of this collection.',
+				options: [
+					{
+						name: 'List',
+						value: 'list',
+					},
+					{
+						name: 'Simple',
+						value: 'simple',
+					},
+					{
+						name: 'Grid',
+						value: 'grid',
+					},
+					{
+						name: 'Masonry',
+						value: 'Masonry',
+					},
+				],
 			},
 		],
 	},
@@ -218,4 +218,108 @@ export const collectionFields = [
 		],
 	},
 
+	// ----------------------------------
+	//       collection: update
+	// ----------------------------------
+	{
+		displayName: 'Collection ID',
+		name: 'collectionId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getCollections',
+		},
+		default: [],
+		required: true,
+		description: 'The ID of the collection to update.',
+		displayOptions: {
+			show: {
+				resource: [
+					'collection',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'collection',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Cover',
+				name: 'binaryPropertyName',
+				type: 'string',
+				default: 'data',
+				placeholder: '',
+				description: 'Name of the binary property containing the data<br>for the image to be uploaded as a cover.',
+			},
+			{
+				displayName: 'Public',
+				name: 'public',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the collection will be accessible without authentication.',
+			},
+			{
+				displayName: 'Parent ID',
+				name: 'parent$id', // TODO: `.` blocks rendering
+				type: 'string',
+				default: '',
+				description: 'ID of this collection\'s parent collection, if it is a child collection.',
+			},
+			{
+				displayName: 'Sort Order',
+				name: 'sort',
+				type: 'number',
+				default: 1,
+				description: 'Descending sort order of this collection. The number is the position of the collection<br>among all the collections with the same parent ID.',
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'Title of the collection to be created.',
+			},
+			{
+				displayName: 'View',
+				name: 'view',
+				type: 'options',
+				default: 'list',
+				description: 'View style of this collection.',
+				options: [
+					{
+						name: 'List',
+						value: 'list',
+					},
+					{
+						name: 'Simple',
+						value: 'simple',
+					},
+					{
+						name: 'Grid',
+						value: 'grid',
+					},
+					{
+						name: 'Masonry',
+						value: 'Masonry',
+					},
+				],
+			},
+		],
+	},
 ] as INodeProperties[];

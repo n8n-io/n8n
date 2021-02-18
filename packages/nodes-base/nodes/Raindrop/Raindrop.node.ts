@@ -1,8 +1,10 @@
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
+	IBinaryData,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -12,6 +14,7 @@ import {
 
 import {
 	isEmpty,
+	omit,
 } from 'lodash';
 
 import {
@@ -196,25 +199,49 @@ export class Raindrop implements INodeType {
 
 					const collectionId = this.getNodeParameter('collectionId', i);
 
-					const body = {
-						id: collectionId,
-					};
+					const body = {} as IDataObject;
 
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-					if (!isEmpty(updateFields)) {
-						Object.assign(body, updateFields);
+					if (isEmpty(updateFields)) {
+						throw new Error(`Please enter at least one field to update for the ${resource}.`);
 					}
 
+					Object.assign(body, omit(updateFields, 'binaryPropertyName'));
+
+					const endpoint = `/collection/${collectionId}`;
+					responseData = await raindropApiRequest.call(this, 'PUT', endpoint, {}, body);
+					responseData = responseData.item;
+
+					// cover-specific endpoint
+
 					if (updateFields.cover) {
+
+						if (!items[i].binary) {
+							throw new Error('No binary data exists on item!');
+						}
+
+						if (!updateFields.binaryPropertyName) {
+							throw new Error('Please enter a binary property to upload a cover image.');
+						}
+
+						const binaryPropertyName = updateFields.binaryPropertyName as string;
+
+						const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+
+						const formData = {
+							cover: {
+								value: Buffer.from(binaryData.data, BINARY_ENCODING),
+								options: {
+									filename: binaryData.fileName,
+									contentType: binaryData.mimeType,
+								},
+							},
+						};
+
 						const endpoint = `/collection/${collectionId}/cover`;
-						// TODO
-						// 'Content-Type': 'multipart/form-data'
-						//  formData: body
-						responseData = await raindropApiRequest.call(this, 'PUT', endpoint, {}, body);
-					} else {
-						const endpoint = '/collection';
-						responseData = await raindropApiRequest.call(this, 'PUT', endpoint, {}, body);
+						responseData = await raindropApiRequest.call(this, 'PUT', endpoint, {}, {}, { 'Content-Type': 'multipart/form-data', formData });
+						responseData = responseData.item;
 					}
 
 				}
