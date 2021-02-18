@@ -112,9 +112,11 @@
 							</div>
 							<table v-else-if="tableData !== null">
 								<tr>
+									<th></th>
 									<th v-for="column in tableData.columns" :key="column">{{column}}</th>
 								</tr>
 								<tr v-for="(row, index1) in tableData.data" :key="index1">
+									<td>{{ index1 }}</td>
 									<td v-for="(data, index2) in row" :key="index2">{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</td>
 								</tr>
 							</table>
@@ -726,7 +728,7 @@ export default mixins(
 			margin: 1em;
 		}
 
-		.to-much-data  {
+		.to-much-data {
 			margin: 1em;
 			text-align: center;
 
@@ -756,6 +758,11 @@ export default mixins(
 			}
 			td {
 				padding: 12px;
+			}
+			td:first-child {
+				width: 1%;
+				color: #aaa;
+				font-style: italic;
 			}
 			tr:nth-child(even) {
 				background: #fff;;
