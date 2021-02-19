@@ -719,7 +719,8 @@ class App {
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
 		this.app.get(`/${this.restEndpoint}/node-parameter-options`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodePropertyOptions[]> => {
-			const nodeType = req.query.nodeType as string;
+			const nodeTypeAndVersion = JSON.parse('' + req.query.nodeTypeAndVersion) as INodeTypeNameVersion;
+			console.log(nodeTypeAndVersion);
 			let credentials: INodeCredentials | undefined = undefined;
 			const currentNodeParameters = JSON.parse('' + req.query.currentNodeParameters) as INodeParameters;
 			if (req.query.credentials !== undefined) {
@@ -729,7 +730,7 @@ class App {
 
 			const nodeTypes = NodeTypes();
 
-			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, JSON.parse('' + req.query.currentNodeParameters), credentials!);
+			const loadDataInstance = new LoadNodeParameterOptions(nodeTypeAndVersion, nodeTypes, JSON.parse('' + req.query.currentNodeParameters), credentials!);
 
 			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
 			const workflowCredentials = await WorkflowCredentials(workflowData.nodes);

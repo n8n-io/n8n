@@ -3,6 +3,7 @@ import {
 	INodeCredentials,
 	INodeParameters,
 	INodePropertyOptions,
+	INodeTypeNameVersion,
 	INodeTypes,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
@@ -21,20 +22,17 @@ export class LoadNodeParameterOptions {
 	workflow: Workflow;
 
 
-	constructor(nodeTypeName: string, nodeTypes: INodeTypes, currentNodeParameters: INodeParameters, credentials?: INodeCredentials) {
-		const nodeType = nodeTypes.getByNameAndVersion(nodeTypeName);
-		// ahsan
-		// todo add nodeversion in constructor
-
+	constructor(nodeTypeNameAndVersion: INodeTypeNameVersion, nodeTypes: INodeTypes, currentNodeParameters: INodeParameters, credentials?: INodeCredentials) {
+		const nodeType = nodeTypes.getByNameAndVersion(nodeTypeNameAndVersion.name, nodeTypeNameAndVersion.version);
 		if (nodeType === undefined) {
-			throw new Error(`The node-type "${nodeTypeName}"  is not known!`);
+			throw new Error(`The node-type "${nodeTypeNameAndVersion.name} v${nodeTypeNameAndVersion.version}"  is not known!`);
 		}
 
 		const nodeData: INode = {
 			parameters: currentNodeParameters,
 			name: TEMP_NODE_NAME,
-			type: nodeTypeName,
-			typeVersion: 1,
+			type: nodeTypeNameAndVersion.name,
+			typeVersion: nodeTypeNameAndVersion.version,
 			position: [
 				0,
 				0,
