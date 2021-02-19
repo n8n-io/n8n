@@ -174,7 +174,6 @@ export class Stripe implements INodeType {
 
 			} else if (resource === 'charge') {
 
-
 				// *********************************************************************
 				//                             charge
 				// *********************************************************************
@@ -190,7 +189,7 @@ export class Stripe implements INodeType {
 					const body = {
 						amount: this.getNodeParameter('amount', i),
 						currency: this.getNodeParameter('currency', i),
-						customerId: this.getNodeParameter('customerId', i),
+						customer: this.getNodeParameter('customerId', i),
 					} as IDataObject;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -327,7 +326,6 @@ export class Stripe implements INodeType {
 
 			} else if (resource === 'invoice') {
 
-
 				// *********************************************************************
 				//                             paymentMethod
 				// *********************************************************************
@@ -341,7 +339,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'POST', endpoint, {}, {});
 
 				} else if (operation === 'delete') {
 
@@ -350,7 +348,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'DELETE', endpoint, {}, {});
 
 				} else if (operation === 'get') {
 
@@ -359,7 +357,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'GET', endpoint, {}, {});
 
 				} else if (operation === 'getAll') {
 
@@ -368,7 +366,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'GET', endpoint, {}, {});
 
 				} else if (operation === 'update') {
 
@@ -377,12 +375,11 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'POST', endpoint, {}, {});
 
 				}
 
 			} else if (resource === 'payout') {
-
 
 				// *********************************************************************
 				//                             payout
@@ -397,7 +394,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'POST', endpoint, {}, {});
 
 				} else if (operation === 'delete') {
 
@@ -406,7 +403,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'DELETE', endpoint, {}, {});
 
 				} else if (operation === 'get') {
 
@@ -415,7 +412,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'GET', endpoint, {}, {});
 
 				} else if (operation === 'getAll') {
 
@@ -424,7 +421,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'GET', endpoint, {}, {});
 
 				} else if (operation === 'update') {
 
@@ -433,12 +430,11 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'POST', endpoint, {}, {});
 
 				}
 
 			} else if (resource === 'product') {
-
 
 				// *********************************************************************
 				//                             product
@@ -453,7 +449,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'POST', endpoint, {}, {});
 
 				} else if (operation === 'delete') {
 
@@ -462,7 +458,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'DELETE', endpoint, {}, {});
 
 				} else if (operation === 'get') {
 
@@ -471,7 +467,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'GET', endpoint, {}, {});
 
 				} else if (operation === 'getAll') {
 
@@ -480,7 +476,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'GET', endpoint, {}, {});
 
 				} else if (operation === 'update') {
 
@@ -489,12 +485,11 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'POST', endpoint, {}, {});
 
 				}
 
 			} else if (resource === 'price') {
-
 
 				// *********************************************************************
 				//                             price
@@ -509,7 +504,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'POST', endpoint, {}, {});
 
 				} else if (operation === 'delete') {
 
@@ -518,7 +513,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'DELETE', endpoint, {}, {});
 
 				} else if (operation === 'get') {
 
@@ -527,7 +522,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'GET', endpoint, {}, {});
 
 				} else if (operation === 'getAll') {
 
@@ -536,7 +531,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'GET', endpoint, {}, {});
 
 				} else if (operation === 'update') {
 
@@ -545,7 +540,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'POST', endpoint, {}, {});
 
 				}
 
@@ -564,7 +559,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'POST', endpoint, {}, {});
 
 				} else if (operation === 'delete') {
 
@@ -573,7 +568,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'DELETE', endpoint, {}, {});
 
 				} else if (operation === 'get') {
 
@@ -582,7 +577,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'GET', endpoint, {}, {});
 
 				} else if (operation === 'getAll') {
 
@@ -591,7 +586,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'GET', endpoint, {}, {});
 
 				} else if (operation === 'update') {
 
@@ -600,10 +595,9 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'POST', endpoint, {}, {});
 
 				}
-
 
 			} else if (resource === 'subscription') {
 
@@ -620,7 +614,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'POST', endpoint, {}, {});
 
 				} else if (operation === 'delete') {
 
@@ -629,7 +623,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'DELETE', endpoint, {}, {});
 
 				} else if (operation === 'get') {
 
@@ -638,7 +632,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'GEt', endpoint, {}, {});
 
 				} else if (operation === 'getAll') {
 
@@ -647,7 +641,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'GET', endpoint, {}, {});
 
 				} else if (operation === 'update') {
 
@@ -656,7 +650,7 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'POST', endpoint, {}, {});
 
 				}
 

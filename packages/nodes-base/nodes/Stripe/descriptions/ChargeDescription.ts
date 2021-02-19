@@ -84,9 +84,12 @@ export const chargeFields = [
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
-		type: 'string',
+		type: 'options',
 		required: true,
-		default: '',
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getCustomers',
+		},
 		description: 'ID of the customer to be associated with this charge.',
 		displayOptions: {
 			show: {
