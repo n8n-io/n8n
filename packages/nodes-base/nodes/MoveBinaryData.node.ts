@@ -211,11 +211,25 @@ export class MoveBinaryData implements INodeType {
 							show: {
 								'/mode': [
 									'binaryToJson',
-									'jsonToBinary',
 								],
 							},
 						},
 						default: 'utf8',
+						description: 'Set the encoding of the data stream',
+					},
+					{
+						displayName: 'Encoding',
+						name: 'encoding',
+						type: 'options',
+						options: encodeDecodeOptions,
+						displayOptions: {
+							show: {
+								'/mode': [
+									'jsonToBinary',
+								],
+							},
+						},
+						default: 'utf16',
 						description: 'Set the encoding of the data stream',
 					},
 					{
