@@ -302,7 +302,6 @@ export class Raindrop implements INodeType {
 					const raindropId = this.getNodeParameter('raindropId', i);
 					const endpoint = `/raindrop/${raindropId}`;
 					responseData = await raindropApiRequest.call(this, 'DELETE', endpoint, {}, {});
-					responseData = { success: true };
 
 				} else if (operation === 'get') {
 
