@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -14,6 +15,8 @@ import {
 } from 'lodash';
 
 import {
+	adjustCustomerFields,
+	loadResource,
 	stripeApiRequest,
 } from './helpers';
 
@@ -42,7 +45,7 @@ import {
 export class Stripe implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Stripe',
-		name: 'raindrop',
+		name: 'stripe',
 		icon: 'file:stripe.svg',
 		group: ['transform'],
 		version: 1,
@@ -134,9 +137,9 @@ export class Stripe implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// async getCustomers(this: ILoadOptionsFunctions) {
-			// 	return await loadResource.call(this, 'customer');
-			// },
+			async getCustomers(this: ILoadOptionsFunctions) {
+				return await loadResource.call(this, 'customer');
+			},
 		},
 	};
 
@@ -196,7 +199,7 @@ export class Stripe implements INodeType {
 						Object.assign(body, additionalFields);
 					}
 
-					responseData = await stripeApiRequest.call(this, 'POST', '/charges', {}, body);
+					responseData = await stripeApiRequest.call(this, 'POST', '/charges', body, {});
 
 				} else if (operation === 'get') {
 
@@ -237,7 +240,7 @@ export class Stripe implements INodeType {
 					}
 
 					const chargeId = this.getNodeParameter('chargeId', i);
-					responseData = await stripeApiRequest.call(this, 'POST', `/charges/${chargeId}`, {}, body);
+					responseData = await stripeApiRequest.call(this, 'POST', `/charges/${chargeId}`, body, {});
 
 				}
 
@@ -255,8 +258,17 @@ export class Stripe implements INodeType {
 					//       customer: create
 					// ----------------------------------
 
-					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					const body = {
+						name: this.getNodeParameter('name', i),
+					} as IDataObject;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (!isEmpty(additionalFields)) {
+						Object.assign(body, adjustCustomerFields(additionalFields));
+					}
+
+					responseData = await stripeApiRequest.call(this, 'POST', `/customers`, body, {});
 
 				} else if (operation === 'delete') {
 
@@ -264,8 +276,8 @@ export class Stripe implements INodeType {
 					//        customer: delete
 					// ----------------------------------
 
-					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					const customerId = this.getNodeParameter('customerId', i);
+					responseData = await stripeApiRequest.call(this, 'DELETE', `/customers/${customerId}`, {}, {});
 
 				} else if (operation === 'get') {
 
@@ -273,8 +285,8 @@ export class Stripe implements INodeType {
 					//        customer: get
 					// ----------------------------------
 
-					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					const customerId = this.getNodeParameter('customerId', i);
+					responseData = await stripeApiRequest.call(this, 'GET', `/customers/${customerId}`, {}, {});
 
 				} else if (operation === 'getAll') {
 
@@ -282,8 +294,15 @@ export class Stripe implements INodeType {
 					//        customer: getAll
 					// ----------------------------------
 
-					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					const qs = {} as IDataObject;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					if (!isEmpty(filters)) {
+						qs.email = filters.email;
+					}
+
+					responseData = await stripeApiRequest.call(this, 'GET', '/customers', qs, {});
+					responseData = responseData.data;
 
 				} else if (operation === 'update') {
 
@@ -291,8 +310,18 @@ export class Stripe implements INodeType {
 					//        customer: update
 					// ----------------------------------
 
-					const endpoint = '';
-					responseData = await stripeApiRequest.call(this, '', endpoint, {}, {});
+					const body = {} as IDataObject;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (isEmpty(updateFields)) {
+						throw new Error(`Please enter at least one field to update for the ${resource}.`);
+					}
+
+					Object.assign(body, adjustCustomerFields(updateFields));
+
+					const customerId = this.getNodeParameter('customerId', i);
+					responseData = await stripeApiRequest.call(this, 'POST', `/customers/${customerId}`, body, {});
 
 				}
 

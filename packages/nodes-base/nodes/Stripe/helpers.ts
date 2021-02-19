@@ -3,6 +3,14 @@ import {
 	IHookFunctions,
 } from 'n8n-core';
 
+import {
+	flow,
+	isEmpty,
+	omit,
+} from 'lodash';
+
+import { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+
 /**
  * Make an API request to Stripe
  *
@@ -12,7 +20,7 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
+export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('stripeApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -29,9 +37,15 @@ export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions,
 		json: true,
 	};
 
+	if (!options.qs) {
+		delete options.qs;
+	}
+
 	try {
-		return await this.helpers.request(options);
+		console.log(options);
+		return await this.helpers.request!.call(this, options);
 	} catch (error) {
+		// console.log(error);
 		if (error.statusCode === 401) {
 			// Return a clear error
 			throw new Error('The Stripe credentials are not valid!');
@@ -45,4 +59,63 @@ export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions,
 		// If that data does not exist for some reason return the actual error
 		throw error;
 	}
+}
+
+/**
+ * Adjust n8n's shipping and metadata fields into a Stripe API compliant format.
+ */
+export const adjustCustomerFields = flow([adjustShippingAddress, adjustMetadata]);
+
+/**
+ * Convert n8n's `additionalFields` shipping object into a Stripe API request shipping object.
+ */
+function adjustShippingAddress(
+	customerFields: { shipping?: { shippingProperties: Array<{ address: { details: IDataObject }; name: string }> }  },
+) {
+	const shippingProperties = customerFields.shipping?.shippingProperties[0];
+
+	if (!shippingProperties?.address || isEmpty(shippingProperties.address)) return customerFields;
+
+	return {
+		shipping: {
+			...omit(shippingProperties, ['address']),
+			address: shippingProperties.address.details,
+		},
+	};
+}
+
+/**
+ * Convert n8n's `fixedCollection` metadata object into a Stripe API request metadata object.
+ */
+function adjustMetadata(
+	customerFields: { metadata?: { metadataProperties: Array<{ key: string; value: string }> } },
+) {
+	if (!customerFields.metadata || isEmpty(customerFields.metadata)) return customerFields;
+
+	let adjustedMetadata = {};
+
+	customerFields.metadata.metadataProperties.forEach(pair => {
+		adjustedMetadata = { ...adjustedMetadata, ...pair };
+	});
+
+	return {
+		...omit(customerFields, ['metadata']),
+		metadata: adjustedMetadata,
+	};
+}
+
+/**
+ * Load a resource so it can be selected by name from a dropdown.
+ */
+export async function loadResource(
+	this: ILoadOptionsFunctions,
+	resource: 'charge' | 'customer',
+): Promise<INodePropertyOptions[]> {
+
+	const responseData = await stripeApiRequest.call(this, 'GET', `/${resource}s`, {}, {});
+
+	return responseData.data.map(({ name, id }: { name: string, id: string }) => ({
+		name,
+		value: id,
+	}));
 }
