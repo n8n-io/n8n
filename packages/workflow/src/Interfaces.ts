@@ -735,7 +735,7 @@ export interface IWorkflowExecuteAdditionalData {
 	credentials: IWorkflowCredentials;
 	credentialsHelper: ICredentialsHelper;
 	encryptionKey: string;
-	executeWorkflow: (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[]) => Promise<any>; // tslint:disable-line:no-any
+	executeWorkflow: (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[], parentExecutionId?: string, loadedWorkflowData?: IWorkflowBase, loadedRunData?: any) => Promise<any>; // tslint:disable-line:no-any
 	// hooks?: IWorkflowExecuteHooks;
 	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;

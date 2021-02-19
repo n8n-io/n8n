@@ -437,7 +437,7 @@ export class WorkflowRunner {
 
 
 		// Listen to data from the subprocess
-		subprocess.on('message', (message: IProcessMessage) => {
+		subprocess.on('message', async (message: IProcessMessage) => {
 			if (message.type === 'end') {
 				clearTimeout(executionTimeout);
 				this.activeExecutions.remove(executionId!, message.data.runData);
@@ -454,6 +454,11 @@ export class WorkflowRunner {
 				const timeoutError = { message: 'Workflow execution timed out!' } as IExecutionError;
 
 				this.processError(timeoutError, startedAt, data.executionMode, executionId);
+			} else if (message.type === 'startExecution') {
+				const executionId = await this.activeExecutions.add(message.data.runData);
+				subprocess.send({ type: 'executionId', data: {executionId} } as IProcessMessage);
+			} else if (message.type === 'finishExecution') {
+				await this.activeExecutions.remove(message.data.executionId, message.data.result);
 			}
 		});
 
