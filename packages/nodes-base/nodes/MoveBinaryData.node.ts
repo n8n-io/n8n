@@ -214,7 +214,7 @@ export class MoveBinaryData implements INodeType {
 								],
 							},
 						},
-						default: 'utf8',
+						default: 'utf16',
 						description: 'Set the encoding of the data stream',
 					},
 					{
@@ -229,7 +229,7 @@ export class MoveBinaryData implements INodeType {
 								],
 							},
 						},
-						default: 'utf16',
+						default: 'utf8',
 						description: 'Set the encoding of the data stream',
 					},
 					{
