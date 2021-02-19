@@ -149,8 +149,8 @@ export const restApi = Vue.extend({
 				},
 
 				// Returns all node-types
-				getNodeTypes: (): Promise<INodeTypeDescription[]> => {
-					return self.restApi().makeRestApiRequest('GET', `/node-types`);
+				getNodeTypes: (onlyLatest = false): Promise<INodeTypeDescription[]> => {
+					return self.restApi().makeRestApiRequest('GET', `/node-types`, {onlyLatest});
 				},
 
 				getNodesInformation: (nodeInfos: INodeInformationApiBody[]): Promise<INodeTypeDescription[]> => {

@@ -130,7 +130,7 @@ export interface IRestApi {
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
 	getSettings(): Promise<IN8nUISettings>;
-	getNodeTypes(): Promise<INodeTypeDescription[]>;
+	getNodeTypes(onlyLatest?: boolean): Promise<INodeTypeDescription[]>;
 	getNodesInformation(nodeInfos: INodeInformationApiBody[]): Promise<INodeTypeDescription[]>;
 	getNodeParameterOptions(nodeType: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
 	removeTestWebhook(workflowId: string): Promise<boolean>;

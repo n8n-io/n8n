@@ -9,6 +9,7 @@ import {
 	INodeTypes,
 	INodeTypeData,
 	INodeTypeDescription,
+	INodeVersionedType,
 	IRunData,
 	IRunExecutionData,
 	IWorfklowIssues,
@@ -179,11 +180,11 @@ export const workflowHelpers = mixins(
 				const nodeTypes: INodeTypes = {
 					nodeTypes: {},
 					init: async (nodeTypes?: INodeTypeData): Promise<void> => { },
-					getAll: (): INodeType[] => {
+					getAll: (): Array<INodeType | INodeVersionedType> => {
 						// Does not get used in Workflow so no need to return it
 						return [];
 					},
-					getByName: (nodeType: string): INodeType | undefined => {
+					getByName: (nodeType: string): INodeType | INodeVersionedType | undefined => {
 						const nodeTypeDescription = this.$store.getters.nodeType(nodeType);
 
 						if (nodeTypeDescription === null) {
@@ -195,7 +196,7 @@ export const workflowHelpers = mixins(
 						};
 					},
 					getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
-						const nodeTypeDescription = this.$store.getters.nodeType(nodeType);
+						const nodeTypeDescription = this.$store.getters.nodeType(nodeType, version);
 
 						if (nodeTypeDescription === null) {
 							return undefined;

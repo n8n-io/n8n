@@ -83,6 +83,7 @@ import {
 	INodeInformationApiBody,
 	INodeParameters,
 	INodePropertyOptions,
+	INodeType,
 	INodeTypeDescription,
 	IRunData,
 	IWorkflowCredentials,
@@ -741,25 +742,35 @@ class App {
 		// Returns all the node-types
 		this.app.get(`/${this.restEndpoint}/node-types`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
 			const returnData: INodeTypeDescription[] = [];
+			const onlyLatest = req.query.onlyLatest === 'true';
 
 			const nodeTypes = NodeTypes();
 			const allNodes = nodeTypes.getAll();
 
-			allNodes.forEach((nodeData) => {
-				// Make a copy of the object. If we don't do this, then when
-				// The method below is called the properties are removed for good
-				// This happens because nodes are returned as reference.
+			const getNodeDescription = (nodeType: INodeType):INodeTypeDescription => {
+				const nodeInfo: INodeTypeDescription =  { ...nodeType.description };
+				if (req.query.includeProperties !== 'true') {
+					// @ts-ignore
+					delete nodeInfo.properties;
+				}
+				return nodeInfo;
+			};
 
-				const allNodeTypes = NodeHelpers.getVersionedTypeNodeAll(nodeData);
-				allNodeTypes.forEach(element => {
-					const nodeInfo: INodeTypeDescription =  { ...element.description };
-						if (req.query.includeProperties !== 'true') {
-							// @ts-ignore
-							delete nodeInfo.properties;
-						}
-						returnData.push(nodeInfo);
+			if(onlyLatest) {
+				allNodes.forEach((nodeData) => {
+					const nodeType = NodeHelpers.getVersionedTypeNode(nodeData);
+					const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
+					returnData.push(nodeInfo);
 				});
-			});
+			} else {
+				allNodes.forEach((nodeData) => {
+					const allNodeTypes = NodeHelpers.getVersionedTypeNodeAll(nodeData);
+					allNodeTypes.forEach(element => {
+						const nodeInfo: INodeTypeDescription = getNodeDescription(element);
+						returnData.push(nodeInfo);
+					});
+				});
+			}
 
 			return returnData;
 		}));

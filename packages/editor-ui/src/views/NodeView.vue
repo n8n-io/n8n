@@ -1687,13 +1687,13 @@ export default mixins(
 				// Before proceeding we must check if all nodes contain the `properties` attribute.
 				// Nodes are loaded without this information so we must make sure that all nodes
 				// being added have this information.
-				await this.loadNodesProperties(nodes.map(node => node.type));
+				await this.loadNodesProperties(nodes.map(node => ({name: node.type, version: node.typeVersion})));
 
 				// Add the node to the node-list
 				let nodeType: INodeTypeDescription | null;
 				let foundNodeIssues: INodeIssues | null;
 				nodes.forEach((node) => {
-					nodeType = this.$store.getters.nodeType(node.type);
+					nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
 
 					// Make sure that some properties always exist
 					if (!node.hasOwnProperty('disabled')) {
@@ -1800,7 +1800,7 @@ export default mixins(
 				let newName: string;
 				const createNodes: INode[] = [];
 
-				await this.loadNodesProperties(data.nodes.map(node => node.type));
+				await this.loadNodesProperties(data.nodes.map(node => ({name: node.type, version: node.typeVersion})));
 
 				data.nodes.forEach(node => {
 					if (nodeTypesCount[node.type] !== undefined) {
@@ -2019,6 +2019,9 @@ export default mixins(
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();
 				this.$store.commit('setNodeTypes', nodeTypes);
+
+				const nodeTypesOnlyDefault = await this.restApi().getNodeTypes(true);
+				this.$store.commit('setNodeTypesDefaultVersion', nodeTypesOnlyDefault);
 			},
 			async loadCredentialTypes (): Promise<void> {
 				const credentialTypes = await this.restApi().getCredentialTypes();
@@ -2028,10 +2031,10 @@ export default mixins(
 				const credentials = await this.restApi().getAllCredentials();
 				this.$store.commit('setCredentials', credentials);
 			},
-			async loadNodesProperties(nodeNames: string[]): Promise<void> {
+			async loadNodesProperties(nodeInfos: INodeInformationApiBody[]): Promise<void> {
 				const allNodes:INodeTypeDescription[] = this.$store.getters.allNodeTypes;
 				const nodesToBeFetched = allNodes.filter((node: INodeTypeDescription) => {
-					return nodeNames.includes(node.name) && !node.hasOwnProperty('properties');
+					return !!nodeInfos.find(n => n.name === node.name && n.version === node.version) && !node.hasOwnProperty('properties');
 					}).map((node: INodeTypeDescription) => {
 						return ({name: node.name, version: node.version});
 						}) as INodeInformationApiBody[];
