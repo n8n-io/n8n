@@ -104,7 +104,6 @@ class NodeTypesClass implements INodeTypes {
 	}
 
 	getByName(nodeType: string): INodeType {
-		console.log('HAHAHAAHAH');
 		return this.getByNameAndVersion(nodeType);
 	}
 

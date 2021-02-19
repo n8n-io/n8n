@@ -10,14 +10,14 @@ import { NodeVersionedType } from '../../src/NodeVersionedType';
 export class HttpRequest extends NodeVersionedType {
 	constructor() {
 		const description: INodeTypeBaseDescription = {
-		displayName: 'HTTP Request V1',
-		name: 'httpRequest',
-		icon: 'fa:at',
-		group: ['input'],
-		subtitle: '={{$parameter["requestMethod"] + ": " + $parameter["url"]}}',
-		description: 'Makes a HTTP request and returns the received data',
-	},
-	 nodeVersions: INodeVersions = {
+			displayName: 'HTTP Request V1',
+			name: 'httpRequest',
+			icon: 'fa:at',
+			group: ['input'],
+			subtitle: '={{$parameter["requestMethod"] + ": " + $parameter["url"]}}',
+			description: 'Makes a HTTP request and returns the received data',
+		},
+		nodeVersions: INodeVersions = {
 			1: new HttpRequestV1(description),
 			2: new HttpRequestV2(description),
 		},
