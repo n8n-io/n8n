@@ -161,7 +161,7 @@ export interface IDataObject {
 	[key: string]: GenericValue | IDataObject | GenericValue[] | IDataObject[];
 }
 
-export interface INodeInformationApiBody {
+export interface INodeTypeNameVersion {
 	name: string;
 	version: number;
 }

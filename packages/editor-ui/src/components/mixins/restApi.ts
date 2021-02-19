@@ -26,10 +26,10 @@ import {
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
-	INodeInformationApiBody,
 	INodeParameters,
 	INodePropertyOptions,
 	INodeTypeDescription,
+	INodeTypeNameVersion,
 } from 'n8n-workflow';
 
 /**
@@ -153,7 +153,7 @@ export const restApi = Vue.extend({
 					return self.restApi().makeRestApiRequest('GET', `/node-types`, {onlyLatest});
 				},
 
-				getNodesInformation: (nodeInfos: INodeInformationApiBody[]): Promise<INodeTypeDescription[]> => {
+				getNodesInformation: (nodeInfos: INodeTypeNameVersion[]): Promise<INodeTypeDescription[]> => {
 					return self.restApi().makeRestApiRequest('POST', `/node-types`, {nodeInfos});
 				},
 

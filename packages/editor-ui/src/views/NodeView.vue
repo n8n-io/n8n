@@ -141,10 +141,9 @@ import {
 	IDataObject,
 	INode,
 	INodeConnections,
-	INodeInformationApiBody,
 	INodeIssues,
 	INodeTypeDescription,
-	IRunData,
+	INodeTypeNameVersion,
 	NodeInputConnections,
 	NodeHelpers,
 	Workflow,
@@ -155,11 +154,9 @@ import {
 	IExecutionResponse,
 	IExecutionsStopData,
 	IN8nUISettings,
-	IStartRunData,
 	IWorkflowDb,
 	IWorkflowData,
 	INodeUi,
-	IRunDataUi,
 	IUpdateInformation,
 	IWorkflowDataUpdate,
 	XYPositon,
@@ -2031,13 +2028,18 @@ export default mixins(
 				const credentials = await this.restApi().getAllCredentials();
 				this.$store.commit('setCredentials', credentials);
 			},
-			async loadNodesProperties(nodeInfos: INodeInformationApiBody[]): Promise<void> {
+			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 				const allNodes:INodeTypeDescription[] = this.$store.getters.allNodeTypes;
-				const nodesToBeFetched = allNodes.filter((node: INodeTypeDescription) => {
-					return !!nodeInfos.find(n => n.name === node.name && n.version === node.version) && !node.hasOwnProperty('properties');
-					}).map((node: INodeTypeDescription) => {
-						return ({name: node.name, version: node.version});
-						}) as INodeInformationApiBody[];
+
+				const nodesToBeFetched:INodeTypeNameVersion[] = [];
+				allNodes.forEach(node => {
+					if(!!nodeInfos.find(n => n.name === node.name && n.version === node.version) && !node.hasOwnProperty('properties')) {
+						nodesToBeFetched.push({
+							name: node.name,
+							version: node.version,
+						});
+					}
+				});
 
 				if (nodesToBeFetched.length > 0) {
 					// Only call API if node information is actually missing

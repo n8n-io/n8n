@@ -80,11 +80,11 @@ import {
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
-	INodeInformationApiBody,
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	INodeTypeNameVersion,
 	IRunData,
 	IWorkflowCredentials,
 	NodeHelpers,
@@ -778,7 +778,7 @@ class App {
 
 		// Returns node information baesd on namese
 		this.app.post(`/${this.restEndpoint}/node-types`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-			const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeInformationApiBody[];
+			const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
 			const nodeTypes = NodeTypes();
 
 			const returnData: INodeTypeDescription[] = [];
