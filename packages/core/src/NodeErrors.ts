@@ -45,7 +45,7 @@ abstract class NodeError extends Error {
 		this.name = name;
 		this.cause = error;
 		this.node = node;
-		this.timestamp = new Date().getTime();
+		this.timestamp = Date.now();
 	}
 
 	/**
