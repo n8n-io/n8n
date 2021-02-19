@@ -1,7 +1,6 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
-import { parse } from 'path';
 
 export const raindropOperations = [
 	{
@@ -100,13 +99,6 @@ export const raindropFields = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Created',
-				name: 'create',
-				type: 'dateTime',
-				default: '',
-				description: 'Date and time when the raindrop was created.',
-			},
 			{
 				displayName: 'Important',
 				name: 'important',
@@ -306,13 +298,6 @@ export const raindropFields = [
 					loadOptionsMethod: 'getCollections',
 				},
 				default: '',
-			},
-			{
-				displayName: 'Created',
-				name: 'create',
-				type: 'dateTime',
-				default: '',
-				description: 'Date and time when the raindrop was created.',
 			},
 			{
 				displayName: 'Important',
