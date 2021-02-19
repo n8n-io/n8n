@@ -33,7 +33,7 @@ export const userFields = [
 		displayName: 'Self',
 		name: 'self',
 		type: 'boolean',
-		default: false,
+		default: true,
 		required: true,
 		description: 'Whether to return details on the logged-in user.',
 		displayOptions: {
@@ -52,6 +52,7 @@ export const userFields = [
 		name: 'userId',
 		type: 'string',
 		default: '',
+		required: true,
 		description: 'The ID of the user to retrieve.',
 		displayOptions: {
 			show: {

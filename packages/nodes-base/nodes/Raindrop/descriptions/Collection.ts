@@ -67,6 +67,7 @@ export const collectionFields = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -95,7 +96,7 @@ export const collectionFields = [
 			},
 			{
 				displayName: 'Parent ID',
-				name: 'parent.$id', // TODO: `.` blocks rendering
+				name: 'parentId',
 				type: 'string',
 				default: '',
 				description: 'ID of this collection\'s parent collection, if it is a child collection.',
@@ -141,11 +142,8 @@ export const collectionFields = [
 	{
 		displayName: 'Collection ID',
 		name: 'collectionId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCollections',
-		},
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		description: 'The ID of the collection to delete.',
 		displayOptions: {
@@ -166,11 +164,8 @@ export const collectionFields = [
 	{
 		displayName: 'Collection ID',
 		name: 'collectionId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCollections',
-		},
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		description: 'The ID of the collection to retrieve.',
 		displayOptions: {
@@ -217,6 +212,47 @@ export const collectionFields = [
 			},
 		],
 	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'collection',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'collection',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 10,
+		},
+		default: 5,
+		description: 'How many results to return.',
+	},
 
 	// ----------------------------------
 	//       collection: update
@@ -224,11 +260,8 @@ export const collectionFields = [
 	{
 		displayName: 'Collection ID',
 		name: 'collectionId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCollections',
-		},
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		description: 'The ID of the collection to update.',
 		displayOptions: {
@@ -261,7 +294,7 @@ export const collectionFields = [
 		options: [
 			{
 				displayName: 'Cover',
-				name: 'binaryPropertyName',
+				name: 'cover',
 				type: 'string',
 				default: 'data',
 				placeholder: '',
@@ -276,7 +309,7 @@ export const collectionFields = [
 			},
 			{
 				displayName: 'Parent ID',
-				name: 'parent$id', // TODO: `.` blocks rendering
+				name: 'parentId',
 				type: 'string',
 				default: '',
 				description: 'ID of this collection\'s parent collection, if it is a child collection.',

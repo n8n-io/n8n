@@ -18,14 +18,6 @@ export const tagOperations = [
 				name: 'Get All',
 				value: 'getAll',
 			},
-			{
-				name: 'Suggest',
-				value: 'suggest',
-			},
-			{
-				name: 'Update',
-				value: 'update',
-			},
 		],
 		displayOptions: {
 			show: {
@@ -41,5 +33,123 @@ export const tagFields = [
 	// ----------------------------------
 	//       tag: delete
 	// ----------------------------------
-
+	{
+		displayName: 'Tags',
+		name: 'tags',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'tag',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		description: 'Raindrop tags. Multiple can be set separated by comma.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'tag',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Collection ID',
+				name: 'collectionId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getCollections',
+				},
+				default: '',
+				description: `It's possible to restrict remove action to just one collection. It's optional`,
+			},
+		],
+	},
+	// ----------------------------------
+	//       tag: getAll
+	// ----------------------------------
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'tag',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'tag',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 10,
+		},
+		default: 5,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'tag',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Collection ID',
+				name: 'collectionId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getCollections',
+				},
+				default: '',
+			},
+		],
+	},
 ] as INodeProperties[];

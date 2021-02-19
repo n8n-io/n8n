@@ -36,13 +36,6 @@ export async function raindropApiRequest(
 		json: true,
 	};
 
-	// const resource = this.getNodeParameter('resource', 0) as string;
-	// const operation = this.getNodeParameter('operation', 0) as string;
-
-	// if (resource === 'collection' && operation === 'update' && method === 'PUT') {
-	// 	options.headers!['Content-Type'] = 'multipart/form-data';
-	// }
-
 	if (!Object.keys(body).length) {
 		delete options.body;
 	}
@@ -56,12 +49,14 @@ export async function raindropApiRequest(
 	}
 
 	try {
-		console.log(options);
 		return await this.helpers.requestOAuth2!.call(this, 'raindropOAuth2Api', options);
 
 	} catch (error) {
 
-		// TODO: Return error prettier
+		if (error?.response?.body?.errorMessage) {
+			const errorMessage = error?.response?.body?.errorMessage;
+			throw new Error(`Raindrop error response [${error.statusCode}]: ${errorMessage}`);
+		}
 
 		throw error;
 	}

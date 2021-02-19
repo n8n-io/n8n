@@ -1,6 +1,7 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
+import { parse } from 'path';
 
 export const raindropOperations = [
 	{
@@ -46,6 +47,25 @@ export const raindropFields = [
 	//       raindrop: create
 	// ----------------------------------
 	{
+		displayName: 'Collection ID',
+		name: 'collectionId',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'raindrop',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getCollections',
+		},
+		default: '',
+	},
+	{
 		displayName: 'Link',
 		name: 'link',
 		type: 'string',
@@ -67,6 +87,7 @@ export const raindropFields = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -79,7 +100,6 @@ export const raindropFields = [
 			},
 		},
 		options: [
-			// TODO: Add more options
 			{
 				displayName: 'Created',
 				name: 'create',
@@ -88,11 +108,36 @@ export const raindropFields = [
 				description: 'Date and time when the raindrop was created.',
 			},
 			{
-				displayName: 'Sort Order',
-				name: 'sort',
+				displayName: 'Important',
+				name: 'important',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Order',
+				name: 'order',
 				type: 'number',
-				default: 1,
-				description: 'Descending sort order of this collection. The number is the position of the collection<br>among all the collections with the same parent ID.',
+				default: 0,
+				description: 'For example if you want to move raindrop to the first place set this field to 0',
+			},
+			{
+				displayName: 'Please Parse',
+				name: 'pleaseParse',
+				type: 'boolean',
+				default: false,
+				description: 'Automatically parse meta data (cover, description, html) in the background',
+			},
+			{
+				displayName: 'Tag IDs',
+				name: 'tags',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsDependsOn: [
+						'collectionId',
+					],
+					loadOptionsMethod: 'getTags',
+				},
+				default: [],
 			},
 			{
 				displayName: 'Title',
@@ -172,6 +217,47 @@ export const raindropFields = [
 			},
 		},
 	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'raindrop',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'raindrop',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 10,
+		},
+		default: 5,
+		description: 'How many results to return.',
+	},
 
 	// ----------------------------------
 	//       raindrop: update
@@ -212,13 +298,55 @@ export const raindropFields = [
 		},
 		options: [
 			{
+				displayName: 'Collection ID',
+				name: 'collectionId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getCollections',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Created',
+				name: 'create',
+				type: 'dateTime',
+				default: '',
+				description: 'Date and time when the raindrop was created.',
+			},
+			{
+				displayName: 'Important',
+				name: 'important',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Order',
+				name: 'order',
+				type: 'number',
+				default: 0,
+				description: 'For example if you want to move raindrop to the first place set this field to 0',
+			},
+			{
+				displayName: 'Please Parse',
+				name: 'pleaseParse',
+				type: 'boolean',
+				default: false,
+				description: 'Automatically parse meta data (cover, description, html) in the background',
+			},
+			{
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'string',
+				default: '',
+				description: 'Raindrop tags. Multiple can be set separated by comma.',
+			},
+			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the raindrop to update.',
+				description: 'Title of the raindrop to be created.',
 			},
-
 		],
 	},
 ] as INodeProperties[];

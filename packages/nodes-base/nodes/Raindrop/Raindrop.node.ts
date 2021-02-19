@@ -99,6 +99,14 @@ export class Raindrop implements INodeType {
 					value: item._id,
 				}));
 			},
+			async getTags(this: ILoadOptionsFunctions) {
+				const collectionId = this.getCurrentNodeParameter('collectionId') as string;
+				const responseData = await raindropApiRequest.call(this, 'GET', `/tags/${collectionId}`, {}, {});
+				return responseData.items.map((item: { title: string, _id: string }) => ({
+					name: item._id,
+					value: item._id,
+				}));
+			},
 		},
 	};
 
@@ -141,6 +149,11 @@ export class Raindrop implements INodeType {
 						body.cover = [body.cover];
 					}
 
+					if (additionalFields.parentId) {
+						body['parent.$id'] = parseInt(additionalFields.parentId as string, 10) as number;
+						delete additionalFields.parentId;
+					}
+
 					responseData = await raindropApiRequest.call(this, 'POST', `/collection`, {}, body);
 					responseData = responseData.item;
 
@@ -153,7 +166,6 @@ export class Raindrop implements INodeType {
 					const collectionId = this.getNodeParameter('collectionId', i);
 					const endpoint = `/collection/${collectionId}`;
 					responseData = await raindropApiRequest.call(this, 'DELETE', endpoint, {}, {});
-					responseData = { success: true };
 
 				} else if (operation === 'get') {
 
@@ -172,12 +184,19 @@ export class Raindrop implements INodeType {
 					//        collection: getAll
 					// ----------------------------------
 
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
 					const endpoint = this.getNodeParameter('type', i) === 'parent'
-					 ? '/collections'
-					 : '/collections/childrens';
+						? '/collections'
+						: '/collections/childrens';
 
 					responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
 					responseData = responseData.items;
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', 0) as number;
+						responseData = responseData.slice(0, limit);
+					}
 
 				} else if (operation === 'update') {
 
@@ -195,6 +214,11 @@ export class Raindrop implements INodeType {
 						throw new Error(`Please enter at least one field to update for the ${resource}.`);
 					}
 
+					if (updateFields.parentId) {
+						body['parent.$id'] = parseInt(updateFields.parentId as string, 10) as number;
+						delete updateFields.parentId;
+					}
+
 					Object.assign(body, omit(updateFields, 'binaryPropertyName'));
 
 					const endpoint = `/collection/${collectionId}`;
@@ -209,11 +233,11 @@ export class Raindrop implements INodeType {
 							throw new Error('No binary data exists on item!');
 						}
 
-						if (!updateFields.binaryPropertyName) {
+						if (!updateFields.cover) {
 							throw new Error('Please enter a binary property to upload a cover image.');
 						}
 
-						const binaryPropertyName = updateFields.binaryPropertyName as string;
+						const binaryPropertyName = updateFields.cover as string;
 
 						const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
 
@@ -231,7 +255,6 @@ export class Raindrop implements INodeType {
 						responseData = await raindropApiRequest.call(this, 'PUT', endpoint, {}, {}, { 'Content-Type': 'multipart/form-data', formData });
 						responseData = responseData.item;
 					}
-
 				}
 
 			} else if (resource === 'raindrop') {
@@ -248,14 +271,22 @@ export class Raindrop implements INodeType {
 					//         raindrop: create
 					// ----------------------------------
 
-					const body = {
+					const body: IDataObject = {
 						link: this.getNodeParameter('link', i),
+						collection: {
+							'$id': this.getNodeParameter('collectionId', i),
+						},
 					};
 
-					const additionalFields = this.getNodeParameter('additionalFields', i);
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (!isEmpty(additionalFields)) {
 						Object.assign(body, additionalFields);
+					}
+
+					if (additionalFields.pleaseParse === true) {
+						body.pleaseParse = {};
+						delete additionalFields.pleaseParse;
 					}
 
 					const endpoint = `/raindrop`;
@@ -289,11 +320,18 @@ export class Raindrop implements INodeType {
 					// ----------------------------------
 					//         raindrop: getAll
 					// ----------------------------------
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					const collectionId = this.getNodeParameter('collectionId', i);
 					const endpoint = `/raindrops/${collectionId}`;
 					responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
 					responseData = responseData.items;
+
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', 0) as number;
+						responseData = responseData.slice(0, limit);
+					}
 
 				} else if (operation === 'update') {
 
@@ -311,12 +349,20 @@ export class Raindrop implements INodeType {
 						throw new Error(`Please enter at least one field to update for the ${resource}.`);
 					}
 
-					Object.assign(body, omit(updateFields, 'binaryPropertyName'));
+					if (updateFields.collectionId) {
+						body.collection = {
+							'$id': updateFields.collectionId,
+						};
+						delete updateFields.collectionId;
+					}
+
+					if (updateFields.tags) {
+						body.tags = (updateFields.tags as string).split(',') as string[];
+					}
 
 					const endpoint = `/raindrop/${raindropId}`;
 					responseData = await raindropApiRequest.call(this, 'PUT', endpoint, {}, body);
 					responseData = responseData.item;
-
 				}
 
 			} else if (resource === 'user') {
@@ -336,7 +382,7 @@ export class Raindrop implements INodeType {
 					const self = this.getNodeParameter('self', i);
 					let endpoint = '/user';
 
-					if (!self) {
+					if (self === false) {
 						const userId = this.getNodeParameter('userId', i);
 						endpoint += `/${userId}`;
 					}
@@ -362,14 +408,17 @@ export class Raindrop implements INodeType {
 
 					let endpoint = `/tags`;
 
-					const filter = this.getNodeParameter('filters', i) as IDataObject;
+					const body: IDataObject = {
+						tags: (this.getNodeParameter('tags', i) as string).split(',') as string[],
+					};
 
-					if (filter.collectionId) {
-						endpoint += `/${filter.collectionId}`;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.collectionId) {
+						endpoint += `/${additionalFields.collectionId}`;
 					}
 
-					responseData = await raindropApiRequest.call(this, 'DELETE', endpoint, {}, {});
-					responseData = { success: true };
+					responseData = await raindropApiRequest.call(this, 'DELETE', endpoint, {}, body);
 
 				} else if (operation === 'getAll') {
 
@@ -379,35 +428,7 @@ export class Raindrop implements INodeType {
 
 					let endpoint = `/tags`;
 
-					const filter = this.getNodeParameter('filters', i) as IDataObject;
-
-					if (filter.collectionId) {
-						endpoint += `/${filter.collectionId}`;
-					}
-
-					responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
-
-				} else if (operation === 'suggest') {
-
-					// ----------------------------------
-					//          tag: suggest
-					// ----------------------------------
-
-					const raindropId = this.getNodeParameter('raindropId', i) as IDataObject;
-					const endpoint = `tags/suggest/${raindropId}`;
-					responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
-
-				} else if (operation === 'update') {
-
-					// ----------------------------------
-					//          tag: update
-					// ----------------------------------
-
-					let endpoint = '/tags';
-
-					const body = {
-						replace: this.getNodeParameter('newTagName', i),
-					};
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					const filter = this.getNodeParameter('filters', i) as IDataObject;
 
@@ -415,10 +436,14 @@ export class Raindrop implements INodeType {
 						endpoint += `/${filter.collectionId}`;
 					}
 
-					responseData = await raindropApiRequest.call(this, 'PUT', endpoint, {}, body);
+					responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = responseData.items;
 
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', 0) as number;
+						responseData = responseData.slice(0, limit);
+					}
 				}
-
 			}
 
 			Array.isArray(responseData)
