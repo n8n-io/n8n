@@ -68,5 +68,4 @@ export const userFields = [
 			},
 		},
 	},
-
 ] as INodeProperties[];

@@ -49,7 +49,7 @@ export const tagFields = [
 				],
 			},
 		},
-		description: 'Raindrop tags. Multiple can be set separated by comma.',
+		description: 'One or more tags to delete. Enter comma-separated values to delete multiple tags.',
 	},
 	{
 		displayName: 'Additional Fields',
