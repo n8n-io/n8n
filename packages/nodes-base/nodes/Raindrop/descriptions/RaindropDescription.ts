@@ -114,13 +114,6 @@ export const raindropFields = [
 				description: 'Sort order for the raindrop. For example, to move it to first place, enter 0.',
 			},
 			{
-				displayName: 'Please Parse',
-				name: 'pleaseParse',
-				type: 'boolean',
-				default: false,
-				description: 'Automatically parse meta data (cover, description, HTML) in the background.',
-			},
-			{
 				displayName: 'Tag IDs',
 				name: 'tags',
 				type: 'multiOptions',
@@ -304,6 +297,7 @@ export const raindropFields = [
 				name: 'important',
 				type: 'boolean',
 				default: false,
+				description: 'Whether this raindrop is marked as favorite.',
 			},
 			{
 				displayName: 'Order',
@@ -311,13 +305,6 @@ export const raindropFields = [
 				type: 'number',
 				default: 0,
 				description: 'For example if you want to move raindrop to the first place set this field to 0',
-			},
-			{
-				displayName: 'Please Parse',
-				name: 'pleaseParse',
-				type: 'boolean',
-				default: false,
-				description: 'Automatically parse meta data (cover, description, html) in the background',
 			},
 			{
 				displayName: 'Tags',
