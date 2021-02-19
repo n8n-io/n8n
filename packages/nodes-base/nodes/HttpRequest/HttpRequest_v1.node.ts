@@ -10,7 +10,6 @@ import {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { HttpRequestBase } from './HttpRequest_base.node';
 
 import { OptionsWithUri } from 'request';
 
@@ -29,7 +28,6 @@ export class HttpRequestV1 implements INodeType {
 	description: INodeTypeDescription;
 
 	constructor(description: INodeTypeBaseDescription) {
-		// super();
 		this.description = {
 			...description,
 			displayName: 'HTTP Request V1',

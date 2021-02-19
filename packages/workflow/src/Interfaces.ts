@@ -485,15 +485,11 @@ export interface ITriggerResponse {
 	manualTriggerResponse?: Promise<INodeExecutionData[][]>;
 }
 
-export interface INodeTypeBase {
-	description: INodeTypeBaseDescription;
-}
-
 export interface INodeVersions {
 	[key: number]: INodeType;
 }
 
-export interface INodeType extends INodeTypeBase {
+export interface INodeType {
 	description: INodeTypeDescription;
 	execute?(this: IExecuteFunctions): Promise<INodeExecutionData[][] | null>;
 	executeSingle?(this: IExecuteSingleFunctions): Promise<INodeExecutionData>;
