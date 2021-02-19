@@ -19,7 +19,7 @@ export async function rocketchatApiRequest(this: IExecuteFunctions | ILoadOption
 		{
 			'X-Auth-Token': credentials.authKey,
 			'X-User-Id': credentials.userId,
-		}
+		},
 	);
 
 	const options: OptionsWithUri = {
