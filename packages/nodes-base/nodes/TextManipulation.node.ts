@@ -11,9 +11,22 @@ import {
 	INodeParameters,
 	IDataObject,
 	IBinaryKeyData,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import { get, set } from 'lodash';
+import * as iconv from 'iconv-lite';
+iconv.encodingExists('utf8');
+const bomAware: string[] = [];
+const encodeDecodeOptions: INodePropertyOptions[] = [];
+Object.keys((iconv as any).encodings).forEach(encoding => {
+	if(!(encoding.startsWith('_') || typeof (iconv as any).encodings[encoding] == 'string')) { // only encodings without direct alias or internals
+		if((iconv as any).encodings[encoding].bomAware) {
+			bomAware.push(encoding);
+		}
+		encodeDecodeOptions.push({ name: encoding, value: encoding});
+	}
+});
 
 export class TextManipulation implements INodeType {
 	description: INodeTypeDescription = {
@@ -91,6 +104,34 @@ export class TextManipulation implements INodeType {
 													},
 												],
 												default: 'fromText',
+											},
+											{
+												displayName: 'Decode with',
+												name: 'fileDecodeWith',
+												displayOptions: {
+													show: {
+														readOperation: [
+															'fromFile',
+														],
+													},
+												},
+												type: 'options',
+												options: encodeDecodeOptions,
+												default: 'utf8',
+											},
+											{
+												displayName: 'Strip BOM',
+												name: 'fileStripBOM',
+												displayOptions: {
+													show: {
+														readOperation: [
+															'fromFile',
+														],
+														fileDecodeWith: bomAware
+													},
+												},
+												type: 'boolean',
+												default: true,
 											},
 											{
 												displayName: 'Get Manipulated Data',
@@ -185,6 +226,34 @@ export class TextManipulation implements INodeType {
 													},
 												],
 												default: 'toJSON',
+											},
+											{
+												displayName: 'Encode with',
+												name: 'fileEncodeWith',
+												displayOptions: {
+													show: {
+														writeOperation: [
+															'toFile',
+														],
+													},
+												},
+												type: 'options',
+												options: encodeDecodeOptions,
+												default: 'utf8',
+											},
+											{
+												displayName: 'Add BOM',
+												name: 'fileAddBOM',
+												displayOptions: {
+													show: {
+														writeOperation: [
+															'toFile',
+														],
+														fileEncodeWith: bomAware
+													},
+												},
+												type: 'boolean',
+												default: false,
 											},
 											{
 												displayName: 'Destination Binary Property',
@@ -344,49 +413,22 @@ export class TextManipulation implements INodeType {
 													},
 												},
 												type: 'options',
-												options: [
-													{
-														name: 'Ascii',
-														value: 'ascii',
-														description: 'Ascii',
-													},
-													{
-														name: 'Base64',
-														value: 'base64',
-														description: 'Base64',
-													},
-													{
-														name: 'Base64Url',
-														value: 'base64url',
-														description: 'Base64Url',
-													},
-													{
-														name: 'Hex',
-														value: 'hex',
-														description: 'Hex',
-													},
-													{
-														name: 'Utf8',
-														value: 'utf8',
-														description: 'Utf8',
-													},
-													{
-														name: 'Utf16le',
-														value: 'utf16le',
-														description: 'Utf16le',
-													},
-													{
-														name: 'Latin1',
-														value: 'latin1',
-														description: 'Latin1',
-													},
-													{
-														name: 'Url',
-														value: 'url',
-														description: 'url',
-													},
-												],
+												options: encodeDecodeOptions,
 												default: 'utf8',
+											},
+											{
+												displayName: 'Strip BOM',
+												name: 'stripBOM',
+												displayOptions: {
+													show: {
+														action: [
+															'decodeEncode',
+														],
+														decodeWith: bomAware
+													},
+												},
+												type: 'boolean',
+												default: true,
 											},
 											{
 												displayName: 'Encode with',
@@ -399,49 +441,22 @@ export class TextManipulation implements INodeType {
 													},
 												},
 												type: 'options',
-												options: [
-													{
-														name: 'Ascii',
-														value: 'ascii',
-														description: 'Ascii',
-													},
-													{
-														name: 'Base64',
-														value: 'base64',
-														description: 'Base64',
-													},
-													{
-														name: 'Base64Url',
-														value: 'base64url',
-														description: 'Base64Url',
-													},
-													{
-														name: 'Hex',
-														value: 'hex',
-														description: 'Hex',
-													},
-													{
-														name: 'Utf8',
-														value: 'utf8',
-														description: 'Utf8',
-													},
-													{
-														name: 'Utf16le',
-														value: 'utf16le',
-														description: 'Utf16le',
-													},
-													{
-														name: 'Latin1',
-														value: 'latin1',
-														description: 'Latin1',
-													},
-													{
-														name: 'Url',
-														value: 'url',
-														description: 'url',
-													},
-												],
+												options: encodeDecodeOptions,
 												default: 'utf8',
+											},
+											{
+												displayName: 'Add BOM',
+												name: 'addBOM',
+												displayOptions: {
+													show: {
+														action: [
+															'decodeEncode',
+														],
+														encodeWith: bomAware
+													},
+												},
+												type: 'boolean',
+												default: false,
 											},
 											{
 												displayName: 'Use locale',
@@ -836,14 +851,26 @@ export class TextManipulation implements INodeType {
 									if (item.binary === undefined || item.binary[dataSource.binaryPropertyName as string] === undefined) {
 										continue;
 									}
-									text = Buffer.from(item.binary[dataSource.binaryPropertyName as string].data, BINARY_ENCODING).toString();
+									text = iconv.decode(
+										Buffer.from(item.binary[dataSource.binaryPropertyName as string].data, BINARY_ENCODING),
+										dataSource.fileDecodeWith as string,
+										{stripBOM: dataSource.fileStripBOM as boolean}
+									);
 								} else {
-									text = Buffer.from(newItemBinary[dataSource.binaryPropertyName as string].data, BINARY_ENCODING).toString();
+									text = iconv.decode(
+										Buffer.from(newItemBinary[dataSource.binaryPropertyName as string].data, BINARY_ENCODING),
+										dataSource.fileDecodeWith as string,
+										{stripBOM: dataSource.fileStripBOM as boolean}
+									);
 								}
 							} else if (item.binary === undefined || item.binary[dataSource.binaryPropertyName as string] === undefined) {
 								continue;
 							} else {
-								text = Buffer.from(item.binary[dataSource.binaryPropertyName as string].data, BINARY_ENCODING).toString();
+								text = iconv.decode(
+									Buffer.from(item.binary[dataSource.binaryPropertyName as string].data, BINARY_ENCODING),
+									dataSource.fileDecodeWith as string,
+									{stripBOM: dataSource.fileStripBOM as boolean}
+								);
 							}
 							break;
 						case 'fromJSON':
@@ -871,14 +898,28 @@ export class TextManipulation implements INodeType {
 							case 'decodeEncode':
 								if(manipulation.encodeWith == 'url') {
 									if(manipulation.decodeWith != 'url') {
-										if(manipulation.decodeWith != 'utf8') text = Buffer.from(text, manipulation.decodeWith as any).toString('utf8');
-										text = encodeURI(text);
+										text = encodeURI(iconv.decode(
+											Buffer.from(text),
+											manipulation.decodeWith as string,
+											{stripBOM: manipulation.stripBOM as boolean}
+										));
 									}
 								} else if(manipulation.decodeWith == 'url') {
-									text = decodeURI(text);
-									if(manipulation.encodeWith != 'utf8') text = Buffer.from(text).toString(manipulation.encodeWith as any);
+									text = iconv.encode(
+										decodeURI(text),
+										manipulation.encodeWith as string,
+										{addBOM: manipulation.addBOM as boolean}
+									).toString();
 								} else {
-									text = Buffer.from(text, manipulation.decodeWith as any).toString(manipulation.encodeWith as any);
+									text = iconv.encode(
+										iconv.decode(
+											Buffer.from(text),
+											manipulation.decodeWith as string,
+											{addBOM: manipulation.addBOM as boolean}
+										),
+										manipulation.encodeWith as string,
+										{stripBOM: manipulation.stripBOM as boolean}
+									).toString();
 								}
 								break;
 							case 'upperCase':
@@ -970,7 +1011,10 @@ export class TextManipulation implements INodeType {
 					}
 					switch(dataSource.writeOperation) {
 						case 'toFile':
-							newItemBinary![dataSource.destinationBinaryPropertyName as string] = await this.helpers.prepareBinaryData(Buffer.from(text), dataSource.fileName as string);
+							newItemBinary![dataSource.destinationBinaryPropertyName as string] = await this.helpers.prepareBinaryData(
+								iconv.encode(text, dataSource.fileEncodeWith as string, {addBOM: dataSource.fileAddBOM}),
+								dataSource.fileName as string
+							);
 							break;
 						case 'toJSON':
 							set(newItemJson, dataSource.destinationKey as string, text);
