@@ -2,7 +2,7 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, N8N_LOCALSTORAGE_WF_KEY } from '@/constants';
 
 import {
 	IConnection,
@@ -155,6 +155,7 @@ export const store = new Vuex.Store({
 		// ** Dirty: if current workflow state has been synchronized with database AKA has it been saved
 		setStateDirty (state, dirty : boolean) {
 			state.stateIsDirty = dirty;
+			saveWorkflowToLocalStorage(dirty, state.workflow);
 		},
 
 		// Selected Nodes
@@ -833,24 +834,23 @@ export const store = new Vuex.Store({
 			}
 			return workflowRunData[nodeName];
 		},
+		getWorkflowFromLocalStorage: (): IWorkflowDb | null => {
+			const localStorageWf = localStorage.getItem(N8N_LOCALSTORAGE_WF_KEY);
+			if(localStorageWf) {
+				return JSON.parse(localStorageWf) as IWorkflowDb;
+			}
+
+			return null;
+		},
 
 	},
 
 });
 
-// import Vue from 'vue';
-// import Vuex from 'vuex';
+// Helpers
 
-// Vue.use(Vuex)
-
-// export default new Vuex.Store({
-// 	state: {
-
-// 	},
-// 	mutations: {
-
-// 	},
-// 	actions: {
-
-// 	}
-// });
+function saveWorkflowToLocalStorage(dirtyState: boolean, workflow: IWorkflowDb) {
+	if(dirtyState) {
+		localStorage.setItem(N8N_LOCALSTORAGE_WF_KEY, JSON.stringify(workflow));
+	}
+}
