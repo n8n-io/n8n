@@ -23,12 +23,6 @@ export class BitwardenApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Access Token URL',
-			name: 'accessTokenUrl',
-			type: 'hidden' as NodePropertyTypes,
-			default: 'https://identity.bitwarden.com/connect/token',
-		},
-		{
 			displayName: 'Environment',
 			name: 'environment',
 			type: 'options' as NodePropertyTypes,
