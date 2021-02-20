@@ -441,7 +441,7 @@ export interface INodeProperties {
 	default: NodeParameterValue | INodeParameters | INodeParameters[] | NodeParameterValue[];
 	description?: string;
 	displayOptions?: IDisplayOptions;
-	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection >;
+	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>;
 	placeholder?: string;
 	isNodeSetting?: boolean;
 	noDataExpression?: boolean;
@@ -735,7 +735,7 @@ export interface IWorkflowExecuteAdditionalData {
 	credentials: IWorkflowCredentials;
 	credentialsHelper: ICredentialsHelper;
 	encryptionKey: string;
-	executeWorkflow: (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[]) => Promise<any>; // tslint:disable-line:no-any
+	executeWorkflow: (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[], parentExecutionId?: string, loadedWorkflowData?: IWorkflowBase, loadedRunData?: any) => Promise<any>; // tslint:disable-line:no-any
 	// hooks?: IWorkflowExecuteHooks;
 	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;
@@ -744,7 +744,7 @@ export interface IWorkflowExecuteAdditionalData {
 	timezone: string;
 	webhookBaseUrl: string;
 	webhookTestBaseUrl: string;
-	currentNodeParameters? : INodeParameters;
+	currentNodeParameters?: INodeParameters;
 }
 
 export type WorkflowExecuteMode = 'cli' | 'error' | 'integrated' | 'internal' | 'manual' | 'retry' | 'trigger' | 'webhook';
