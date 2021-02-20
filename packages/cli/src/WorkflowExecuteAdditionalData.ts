@@ -109,11 +109,11 @@ function pruneExecutionData(): void {
 
 		// throttle just on success to allow for self healing on failure
 		Db.collections.Execution!.delete({ stoppedAt: LessThanOrEqual(date.toISOString()) })
-		.then(data =>
-			setTimeout(() => {
-				throttling = false;
-			}, timeout * 1000)
-		).catch(err => throttling = false);
+			.then(data =>
+				setTimeout(() => {
+					throttling = false;
+				}, timeout * 1000)
+			).catch(err => throttling = false);
 	}
 }
 
@@ -283,6 +283,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 	};
 }
 
+
 /**
  * Returns hook functions to save workflow execution and call error workflow
  *
@@ -387,6 +388,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 	};
 }
 
+
 export async function getRunData(workflowData: IWorkflowBase, inputData?: INodeExecutionData[]): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
 
@@ -450,6 +452,7 @@ export async function getRunData(workflowData: IWorkflowBase, inputData?: INodeE
 
 	return runData;
 }
+
 
 export async function getWorkflowData(workflowInfo: IExecuteWorkflowInfo): Promise<IWorkflowBase> {
 	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
@@ -648,6 +651,6 @@ export function getWorkflowHooksMain(data: IWorkflowExecutionDataProcess, execut
 		}
 	}
 
-	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, { sessionId: data.sessionId, retryOf: data.retryOf as string});
+	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, { sessionId: data.sessionId, retryOf: data.retryOf as string });
 }
 
