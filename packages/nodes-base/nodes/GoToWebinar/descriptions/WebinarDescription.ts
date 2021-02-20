@@ -51,7 +51,6 @@ export const webinarFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -127,9 +126,7 @@ export const webinarFields = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				required: false,
 				default: '',
-				description: '',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -138,9 +135,7 @@ export const webinarFields = [
 				displayName: 'ExperienceType',
 				name: 'experienceType',
 				type: 'options',
-				required: false,
 				default: '',
-				description: '',
 				options: [
 					{
 						name: 'Single Session',
@@ -163,17 +158,13 @@ export const webinarFields = [
 				displayName: 'Is On-Demand',
 				name: 'isOnDemand',
 				type: 'boolean',
-				required: false,
 				default: false,
-				description: '',
 			},
 			{
 				displayName: 'Is Password Protected',
 				name: 'isPasswordProtected',
 				type: 'boolean',
-				required: false,
 				default: false,
-				description: '',
 			},
 			{
 				displayName: 'Timezone',
@@ -182,7 +173,6 @@ export const webinarFields = [
 				required: true,
 				default: '',
 				placeholder: '2020-12-11T09:00:00Z',
-				description: '',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 					loadOptionsMethod: 'getTimezones',
@@ -192,9 +182,7 @@ export const webinarFields = [
 				displayName: 'Webinar Type',
 				name: 'webinarType',
 				type: 'options',
-				required: false,
 				default: '',
-				description: '',
 				options: [
 					{
 						name: 'Single Session',
@@ -215,6 +203,7 @@ export const webinarFields = [
 			},
 		],
 	},
+
 	// ----------------------------------
 	//         webinar: delete
 	// ----------------------------------
@@ -260,12 +249,11 @@ export const webinarFields = [
 				displayName: 'Send Cancellation E-mails',
 				name: 'sendCancellationEmails',
 				type: 'boolean',
-				required: false,
 				default: false,
-				description: '',
 			},
 		],
 	},
+
 	// ----------------------------------
 	//         webinar: get
 	// ----------------------------------
@@ -290,6 +278,7 @@ export const webinarFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//         webinar: getAll
 	// ----------------------------------
@@ -383,6 +372,7 @@ export const webinarFields = [
 			},
 		],
 	},
+
 	// ----------------------------------
 	//         webinar: update
 	// ----------------------------------
@@ -413,7 +403,6 @@ export const webinarFields = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -446,9 +435,7 @@ export const webinarFields = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				required: false,
 				default: '',
-				description: '',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -457,9 +444,7 @@ export const webinarFields = [
 				displayName: 'ExperienceType',
 				name: 'experienceType',
 				type: 'options',
-				required: false,
 				default: '',
-				description: '',
 				options: [
 					{
 						name: 'Single Session',
@@ -482,7 +467,6 @@ export const webinarFields = [
 				displayName: 'Is On-Demand',
 				name: 'isOnDemand',
 				type: 'boolean',
-				required: false,
 				default: false,
 				description: 'Whether the webinar may be watched anytime.',
 			},
@@ -490,7 +474,6 @@ export const webinarFields = [
 				displayName: 'Is Password Protected',
 				name: 'isPasswordProtected',
 				type: 'boolean',
-				required: false,
 				default: false,
 				description: 'Whether the webinar requires a password for attendees to join.',
 			},
@@ -528,7 +511,6 @@ export const webinarFields = [
 				displayName: 'Subject',
 				name: 'subject',
 				type: 'string',
-				required: false,
 				default: '',
 				description: 'Name or topic of the webinar.',
 				typeOptions: {
@@ -552,9 +534,7 @@ export const webinarFields = [
 				displayName: 'Webinar Type',
 				name: 'webinarType',
 				type: 'options',
-				required: false,
 				default: '',
-				description: '',
 				options: [
 					{
 						name: 'Single Session',

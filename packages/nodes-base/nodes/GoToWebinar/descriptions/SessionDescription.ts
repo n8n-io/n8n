@@ -176,7 +176,6 @@ export const sessionFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: '',
 		displayOptions: {
 			show: {
 				resource: [

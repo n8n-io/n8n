@@ -17,7 +17,7 @@ export interface IOAuth2Options {
 	property?: string;
 	tokenType?: string;
 	keepBearer?: boolean;
-	refreshWhenStatusCode?: number;
+	tokenExpiredStatusCode?: number;
 }
 
 export interface IConnection {

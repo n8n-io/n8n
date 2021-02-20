@@ -195,6 +195,7 @@ export const coorganizerFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//        coorganizer: getAll
 	// ----------------------------------
@@ -260,6 +261,7 @@ export const coorganizerFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//      coorganizer: reinvite
 	// ----------------------------------
