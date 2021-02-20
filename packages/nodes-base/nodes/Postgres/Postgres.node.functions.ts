@@ -39,11 +39,22 @@ export function pgQuery(
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
-	input: INodeExecutionData[],
+	items: INodeExecutionData[],
 ): Promise<object[]> {
-	const queries: string[] = [];
-	for (let i = 0; i < input.length; i++) {
-		queries.push(getNodeParam('query', i) as string);
+	const propertiesString = getNodeParam('properties', 0) as string;
+	const properties = propertiesString.split(',').map(column => column.trim());
+	const paramsItems = getItemCopy(items, properties);
+	const valuesArray = paramsItems.map((row) => properties.map(col => row[col]));
+
+	const queries: { query: string | pgPromise.QueryFile,
+		values?: any,
+		options?: pgPromise.IFormattingOptions }[] = [];
+
+	for (let i = 0; i < items.length; i++) {
+		const query = getNodeParam('query', i) as string;
+		const values = valuesArray[i];
+		const queryFormat = { query: query, values: values };
+		queries.push(queryFormat);
 	}
 
 	return db.any(pgp.helpers.concat(queries));

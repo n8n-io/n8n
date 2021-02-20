@@ -72,9 +72,23 @@ export class Postgres implements INodeType {
 					},
 				},
 				default: '',
-				placeholder: 'SELECT id, name FROM product WHERE id < 40',
+				placeholder: 'SELECT id, name FROM product WHERE qty > $1 AND price <= $2',
 				required: true,
 				description: 'The SQL query to execute.',
+			},
+			{
+				displayName: 'Properties',
+				name: 'properties',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['executeQuery'],
+					},
+				},
+				default: '',
+				placeholder: 'qty,price',
+				description:
+					'Comma separated list of properties which should be used as query parameters.',
 			},
 
 			// ----------------------------------
