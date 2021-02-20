@@ -173,6 +173,7 @@ export const contactListFields = [
 			},
 		],
 	},
+
 	// ----------------------------------
 	//       contactList: getAll
 	// ----------------------------------

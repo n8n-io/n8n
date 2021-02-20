@@ -6,6 +6,7 @@ import {
 export class EmeliaApi implements ICredentialType {
 	name = 'emeliaApi';
 	displayName = 'Emelia API';
+	documentationUrl = 'emelia';
 	properties = [
 		{
 			displayName: 'API Key',

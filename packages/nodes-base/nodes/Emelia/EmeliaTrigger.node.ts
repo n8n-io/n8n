@@ -61,9 +61,8 @@ export class EmeliaTrigger implements INodeType {
 				displayName: 'Events',
 				name: 'events',
 				type: 'multiOptions',
-				default: [
-					'replied',
-				],
+				required: true,
+				default: [],
 				options: [
 					{
 						name: 'Email Bounced',

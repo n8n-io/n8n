@@ -322,7 +322,7 @@ export class Emelia implements INodeType {
 							//@ts-ignore
 							delete contact.customFieldsUi;
 						}
-						
+
 						const responseData = await emeliaGraphqlRequest.call(this, {
 							query: `
 									mutation AddContactsToListHook($id: ID!, $contact: JSON!) {
