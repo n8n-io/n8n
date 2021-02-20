@@ -76,6 +76,7 @@ export const groupFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//       group: getAll
 	// ----------------------------------
@@ -116,6 +117,7 @@ export const groupFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//       group: create
 	// ----------------------------------
@@ -190,6 +192,7 @@ export const groupFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//       group: update
 	// ----------------------------------
@@ -200,12 +203,12 @@ export const groupFields = [
 		placeholder: 'Add Field',
 		default: {},
 		options: [
+
 			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				description: 'The name of the group to update.',
+				displayName: 'Access All',
+				name: 'accessAll',
+				type: 'boolean',
+				default: false,
 			},
 			{
 				displayName: 'Collections',
@@ -225,10 +228,11 @@ export const groupFields = [
 				default: '',
 			},
 			{
-				displayName: 'Access All',
-				name: 'accessAll',
-				type: 'boolean',
-				default: false,
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'The name of the group to update.',
 			},
 		],
 		displayOptions: {
@@ -242,6 +246,7 @@ export const groupFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//      group: updateMembers
 	// ----------------------------------

@@ -135,7 +135,7 @@ export class Bitwarden implements INodeType {
 			if (resource === 'collection') {
 
 				// *********************************************************************
-				// 															collection
+				//       collection
 				// *********************************************************************
 
 				if (operation === 'delete') {
@@ -204,7 +204,7 @@ export class Bitwarden implements INodeType {
 			} else if (resource === 'event') {
 
 				// *********************************************************************
-				// 															event
+				//       event
 				// *********************************************************************
 
 				if (operation === 'getAll') {
@@ -223,7 +223,7 @@ export class Bitwarden implements INodeType {
 			} else if (resource === 'group') {
 
 				// *********************************************************************
-				// 															group
+				//       group
 				// *********************************************************************
 
 				if (operation === 'create') {
@@ -357,7 +357,7 @@ export class Bitwarden implements INodeType {
 			} else if (resource === 'member') {
 
 				// *********************************************************************
-				// 															member
+				//       member
 				// *********************************************************************
 
 				if (operation === 'create') {

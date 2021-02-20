@@ -75,11 +75,12 @@ export const eventFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Start Date',
-				name: 'start',
-				type: 'dateTime',
+				displayName: 'Acting User ID',
+				name: 'actingUserId',
+				type: 'string',
 				default: '',
-				description: 'The start date for the search.',
+				description: 'The unique identifier of the acting user.',
+				placeholder: '4a59c8c7-e05a-4d17-8e85-acc301343926',
 			},
 			{
 				displayName: 'End Date',
@@ -97,12 +98,11 @@ export const eventFields = [
 				placeholder: '5e59c8c7-e05a-4d17-8e85-acc301343926',
 			},
 			{
-				displayName: 'Acting User ID',
-				name: 'actingUserId',
-				type: 'string',
+				displayName: 'Start Date',
+				name: 'start',
+				type: 'dateTime',
 				default: '',
-				description: 'The unique identifier of the acting user.',
-				placeholder: '4a59c8c7-e05a-4d17-8e85-acc301343926',
+				description: 'The start date for the search.',
 			},
 		],
 		displayOptions: {

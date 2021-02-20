@@ -62,6 +62,7 @@ export const collectionFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//       collection: getAll
 	// ----------------------------------
@@ -102,6 +103,7 @@ export const collectionFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//       collection: update
 	// ----------------------------------
