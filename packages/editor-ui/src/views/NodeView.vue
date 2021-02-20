@@ -355,31 +355,31 @@ export default mixins(
 
 				await this.addNodes(JSON.parse(JSON.stringify(data.workflowData.nodes)), JSON.parse(JSON.stringify(data.workflowData.connections)));
 			},
-			async openWorkflow (workflowId: string) {
+			async openWorkflow (data: IWorkflowDb, dirty = false) {
 				this.resetWorkspace();
 
-				let data: IWorkflowDb | undefined;
-				try {
-					data = await this.restApi().getWorkflow(workflowId);
-				} catch (error) {
-					this.$showError(error, 'Problem opening workflow', 'There was a problem opening the workflow:');
-					return;
-				}
+				// let data: IWorkflowDb | undefined;
+				// try {
+				// 	data = await this.restApi().getWorkflow(workflowId);
+				// } catch (error) {
+				// 	this.$showError(error, 'Problem opening workflow', 'There was a problem opening the workflow:');
+				// 	return;
+				// }
 
-				if (data === undefined) {
-					throw new Error(`Workflow with id "${workflowId}" could not be found!`);
-				}
+				// if (!data || data === undefined) {
+				// 	throw new Error(`Workflow with id "${data.id}" could not be found!`);
+				// }
 
 				this.$store.commit('setActive', data.active || false);
-				this.$store.commit('setWorkflowId', workflowId);
-				this.$store.commit('setWorkflowName', {newName: data.name, setStateDirty: false});
+				this.$store.commit('setWorkflowId', data.id);
+				this.$store.commit('setWorkflowName', {newName: data.name, setStateDirty: dirty});
 				this.$store.commit('setWorkflowSettings', data.settings || {});
 
 				await this.addNodes(data.nodes, data.connections);
 
-				this.$store.commit('setStateDirty', false);
+				this.$store.commit('setStateDirty', dirty);
 
-				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
+				this.$externalHooks().run('workflow.open', { workflowId: data.id, workflowName: data.name });
 
 				return data;
 			},
@@ -1433,15 +1433,51 @@ export default mixins(
 						workflowId = this.$route.params.name;
 					}
 					if (workflowId !== null) {
-						const workflow = await this.restApi().getWorkflow(workflowId);
+						let workflow;
+						try {
+							workflow = await this.restApi().getWorkflow(workflowId);
+						}
+						catch(error) {
+							this.$showError(error, 'Problem opening workflow', 'There was a problem opening the workflow:');
+						}
+						if(!workflow) {
+							throw new Error(`Workflow with id "${workflowId}" could not be found!`);
+						}
+
 						this.$titleSet(workflow.name, 'IDLE');
-						// Open existing workflow
-						await this.openWorkflow(workflowId);
+
+						// compare local storage and db wfs
+						const localStorageWorkflow = this.$store.getters.getWorkflowFromLocalStorage(workflowId);
+
+						if(localStorageWorkflow && !result) {
+							// await this.importWorkflowData(localStorageWorkflow as IWorkflowDataUpdate);
+							await this.openWorkflow(localStorageWorkflow, true);
+						} else {
+							// Open existing workflow
+							await this.openWorkflow(workflow);
+						}
+
 					} else {
-						// Create new workflow
-						await this.newWorkflow();
+						// Check for WIP workflow in local storage
+						const localStorageWorkflow = this.$store.getters.getWorkflowFromLocalStorage(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+
+						let continueEditing = false;
+						if(localStorageWorkflow) {
+							continueEditing = await this.confirmMessage(`Looks like you have unsaved changes, continue editing workflow or hard reload?`, 'Continue with editing?', 'warning', 'Yes, continue editing.');
+						}
+
+						if(!result && continueEditing) {
+							await this.importWorkflowData(localStorageWorkflow as IWorkflowDataUpdate);
+						} else {
+							// Create new workflow
+							// ahsan
+							console.log('RESET WORKSPACE');
+							await this.newWorkflow();
+						}
 					}
 				}
+				
+				this.$store.commit('saveWorkflowToLocalStorage');
 
 				document.addEventListener('keydown', this.keyDown);
 				document.addEventListener('keyup', this.keyUp);
