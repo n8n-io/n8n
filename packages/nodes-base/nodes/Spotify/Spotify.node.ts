@@ -58,6 +58,10 @@ export class Spotify implements INodeType {
 						value: 'artist',
 					},
 					{
+						name: 'Library',
+						value: 'library',
+					},
+					{
 						name: 'Player',
 						value: 'player',
 					},
@@ -487,6 +491,30 @@ export class Spotify implements INodeType {
 				placeholder: 'spotify:track:0xE4LEFzSNGsz1F6kvXsHU',
 				description: `The track's Spotify URI or ID.`,
 			},
+			// --------------------------------------------------------------------------------------------------------
+			//         Library Operations
+			//		   Get saved tracks
+			// --------------------------------------------------------------------------------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'library',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get Saved Tracks',
+						value: 'getUserTracks',
+						description: `Get the user's saved tracks.`,
+					},
+				],
+				default: 'getUserTracks',
+			},
 			{
 				displayName: 'Return All',
 				name: 'returnAll',
@@ -498,6 +526,7 @@ export class Spotify implements INodeType {
 						resource: [
 							'album',
 							'artist',
+							'library',
 							'playlist',
 						],
 						operation: [
@@ -505,6 +534,7 @@ export class Spotify implements INodeType {
 							'getAlbums',
 							'getUserPlaylists',
 							'getNewReleases',
+							'getUserTracks',
 						],
 					},
 				},
@@ -521,6 +551,7 @@ export class Spotify implements INodeType {
 						resource: [
 							'album',
 							'artist',
+							'library',
 							'playlist',
 						],
 						operation: [
@@ -528,6 +559,7 @@ export class Spotify implements INodeType {
 							'getAlbums',
 							'getUserPlaylists',
 							'getNewReleases',
+							'getUserTracks',
 						],
 						returnAll: [
 							false,
@@ -939,6 +971,31 @@ export class Spotify implements INodeType {
 				}
 
 				responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+			// -----------------------------
+			//      Library Operations
+			// -----------------------------
+			} else if( resource === 'library') {
+				if(operation === 'getUserTracks') {
+					requestMethod = 'GET';
+
+					endpoint = '/me/tracks';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					propertyName = 'items';
+
+					if(!returnAll) {
+						const limit = this.getNodeParameter('limit', i) as number;
+
+						qs = {
+							limit,
+						};
+
+						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						responseData = responseData.items;
+					}
+				}
 			}
 
 			if (returnAll) {
