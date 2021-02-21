@@ -22,10 +22,10 @@ import {
 } from './GenericFunctions';
 
 import {
+	bookmarkFields,
+	bookmarkOperations,
 	collectionFields,
 	collectionOperations,
-	raindropFields,
-	raindropOperations,
 	tagFields,
 	tagOperations,
 	userFields,
@@ -60,12 +60,12 @@ export class Raindrop implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Collection',
-						value: 'collection',
+						name: 'Bookmark',
+						value: 'bookmark',
 					},
 					{
-						name: 'Raindrop',
-						value: 'raindrop',
+						name: 'Collection',
+						value: 'collection',
 					},
 					{
 						name: 'Tag',
@@ -79,10 +79,10 @@ export class Raindrop implements INodeType {
 				default: 'collection',
 				description: 'Resource to consume',
 			},
+			...bookmarkOperations,
+			...bookmarkFields,
 			...collectionOperations,
 			...collectionFields,
-			...raindropOperations,
-			...raindropFields,
 			...tagOperations,
 			...tagFields,
 			...userOperations,
@@ -120,8 +120,113 @@ export class Raindrop implements INodeType {
 		const returnData: IDataObject[] = [];
 
 		for (let i = 0; i < items.length; i++) {
+			if (resource === 'bookmark') {
 
-			if (resource === 'collection') {
+				// *********************************************************************
+				//                              bookmark
+				// *********************************************************************
+
+				// https://developer.raindrop.io/v1/raindrops
+
+				if (operation === 'create') {
+
+					// ----------------------------------
+					//         bookmark: create
+					// ----------------------------------
+
+					const body: IDataObject = {
+						link: this.getNodeParameter('link', i),
+						collection: {
+							'$id': this.getNodeParameter('collectionId', i),
+						},
+					};
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (!isEmpty(additionalFields)) {
+						Object.assign(body, additionalFields);
+					}
+
+					if (additionalFields.pleaseParse === true) {
+						body.pleaseParse = {};
+						delete additionalFields.pleaseParse;
+					}
+
+					const endpoint = `/raindrop`;
+					responseData = await raindropApiRequest.call(this, 'POST', endpoint, {}, body);
+					responseData = responseData.item;
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------
+					//         bookmark: delete
+					// ----------------------------------
+
+					const bookmarkId = this.getNodeParameter('bookmarkId', i);
+					const endpoint = `/raindrop/${bookmarkId}`;
+					responseData = await raindropApiRequest.call(this, 'DELETE', endpoint, {}, {});
+
+				} else if (operation === 'get') {
+
+					// ----------------------------------
+					//         bookmark: get
+					// ----------------------------------
+
+					const bookmarkId = this.getNodeParameter('bookmarkId', i);
+					const endpoint = `/raindrop/${bookmarkId}`;
+					responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = responseData.item;
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------
+					//         bookmark: getAll
+					// ----------------------------------
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					const collectionId = this.getNodeParameter('collectionId', i);
+					const endpoint = `/raindrops/${collectionId}`;
+					responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = responseData.items;
+
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', 0) as number;
+						responseData = responseData.slice(0, limit);
+					}
+
+				} else if (operation === 'update') {
+
+					// ----------------------------------
+					//         bookmark: update
+					// ----------------------------------
+
+					const bookmarkId = this.getNodeParameter('bookmarkId', i);
+
+					const body = {} as IDataObject;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (isEmpty(updateFields)) {
+						throw new Error(`Please enter at least one field to update for the ${resource}.`);
+					}
+
+					if (updateFields.collectionId) {
+						body.collection = {
+							'$id': updateFields.collectionId,
+						};
+						delete updateFields.collectionId;
+					}
+
+					if (updateFields.tags) {
+						body.tags = (updateFields.tags as string).split(',') as string[];
+					}
+
+					const endpoint = `/raindrop/${bookmarkId}`;
+					responseData = await raindropApiRequest.call(this, 'PUT', endpoint, {}, body);
+					responseData = responseData.item;
+				}
+			} else if (resource === 'collection') {
 
 				// *********************************************************************
 				//                             collection
@@ -255,113 +360,6 @@ export class Raindrop implements INodeType {
 						responseData = await raindropApiRequest.call(this, 'PUT', endpoint, {}, {}, { 'Content-Type': 'multipart/form-data', formData });
 						responseData = responseData.item;
 					}
-				}
-
-			} else if (resource === 'raindrop') {
-
-				// *********************************************************************
-				//                              raindrop
-				// *********************************************************************
-
-				// https://developer.raindrop.io/v1/raindrops
-
-				if (operation === 'create') {
-
-					// ----------------------------------
-					//         raindrop: create
-					// ----------------------------------
-
-					const body: IDataObject = {
-						link: this.getNodeParameter('link', i),
-						collection: {
-							'$id': this.getNodeParameter('collectionId', i),
-						},
-					};
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					if (!isEmpty(additionalFields)) {
-						Object.assign(body, additionalFields);
-					}
-
-					if (additionalFields.pleaseParse === true) {
-						body.pleaseParse = {};
-						delete additionalFields.pleaseParse;
-					}
-
-					const endpoint = `/raindrop`;
-					responseData = await raindropApiRequest.call(this, 'POST', endpoint, {}, body);
-					responseData = responseData.item;
-
-				} else if (operation === 'delete') {
-
-					// ----------------------------------
-					//         raindrop: delete
-					// ----------------------------------
-
-					const raindropId = this.getNodeParameter('raindropId', i);
-					const endpoint = `/raindrop/${raindropId}`;
-					responseData = await raindropApiRequest.call(this, 'DELETE', endpoint, {}, {});
-
-				} else if (operation === 'get') {
-
-					// ----------------------------------
-					//         raindrop: get
-					// ----------------------------------
-
-					const raindropId = this.getNodeParameter('raindropId', i);
-					const endpoint = `/raindrop/${raindropId}`;
-					responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
-					responseData = responseData.item;
-
-				} else if (operation === 'getAll') {
-
-					// ----------------------------------
-					//         raindrop: getAll
-					// ----------------------------------
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					const collectionId = this.getNodeParameter('collectionId', i);
-					const endpoint = `/raindrops/${collectionId}`;
-					responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
-					responseData = responseData.items;
-
-
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as number;
-						responseData = responseData.slice(0, limit);
-					}
-
-				} else if (operation === 'update') {
-
-					// ----------------------------------
-					//         raindrop: update
-					// ----------------------------------
-
-					const raindropId = this.getNodeParameter('raindropId', i);
-
-					const body = {} as IDataObject;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-					if (isEmpty(updateFields)) {
-						throw new Error(`Please enter at least one field to update for the ${resource}.`);
-					}
-
-					if (updateFields.collectionId) {
-						body.collection = {
-							'$id': updateFields.collectionId,
-						};
-						delete updateFields.collectionId;
-					}
-
-					if (updateFields.tags) {
-						body.tags = (updateFields.tags as string).split(',') as string[];
-					}
-
-					const endpoint = `/raindrop/${raindropId}`;
-					responseData = await raindropApiRequest.call(this, 'PUT', endpoint, {}, body);
-					responseData = responseData.item;
 				}
 
 			} else if (resource === 'user') {

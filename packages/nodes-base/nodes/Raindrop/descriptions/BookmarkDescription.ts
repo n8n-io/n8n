@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const raindropOperations = [
+export const bookmarkOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -34,16 +34,16 @@ export const raindropOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'raindrop',
+					'bookmark',
 				],
 			},
 		},
 	},
 ] as INodeProperties[];
 
-export const raindropFields = [
+export const bookmarkFields = [
 	// ----------------------------------
-	//       raindrop: create
+	//       bookmark: create
 	// ----------------------------------
 	{
 		displayName: 'Collection ID',
@@ -52,7 +52,7 @@ export const raindropFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'raindrop',
+					'bookmark',
 				],
 				operation: [
 					'create',
@@ -70,11 +70,11 @@ export const raindropFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Link of the raindrop to be created.',
+		description: 'Link of the bookmark to be created.',
 		displayOptions: {
 			show: {
 				resource: [
-					'raindrop',
+					'bookmark',
 				],
 				operation: [
 					'create',
@@ -91,7 +91,7 @@ export const raindropFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'raindrop',
+					'bookmark',
 				],
 				operation: [
 					'create',
@@ -104,14 +104,14 @@ export const raindropFields = [
 				name: 'important',
 				type: 'boolean',
 				default: false,
-				description: 'Whether this raindrop is marked as favorite.',
+				description: 'Whether this bookmark is marked as favorite.',
 			},
 			{
 				displayName: 'Order',
 				name: 'order',
 				type: 'number',
 				default: 0,
-				description: 'Sort order for the raindrop. For example, to move it to first place, enter 0.',
+				description: 'Sort order for the bookmark. For example, to move it to first place, enter 0.',
 			},
 			{
 				displayName: 'Tag IDs',
@@ -130,25 +130,25 @@ export const raindropFields = [
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the raindrop to create.',
+				description: 'Title of the bookmark to create.',
 			},
 		],
 	},
 
 	// ----------------------------------
-	//       raindrop: delete
+	//       bookmark: delete
 	// ----------------------------------
 	{
-		displayName: 'Raindrop ID',
-		name: 'raindropId',
+		displayName: 'Bookmark ID',
+		name: 'bookmarkId',
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The ID of the raindrop to delete.',
+		description: 'The ID of the bookmark to delete.',
 		displayOptions: {
 			show: {
 				resource: [
-					'raindrop',
+					'bookmark',
 				],
 				operation: [
 					'delete',
@@ -158,19 +158,19 @@ export const raindropFields = [
 	},
 
 	// ----------------------------------
-	//       raindrop: get
+	//       bookmark: get
 	// ----------------------------------
 	{
-		displayName: 'Raindrop ID',
-		name: 'raindropId',
+		displayName: 'Bookmark ID',
+		name: 'bookmarkId',
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The ID of the raindrop to retrieve.',
+		description: 'The ID of the bookmark to retrieve.',
 		displayOptions: {
 			show: {
 				resource: [
-					'raindrop',
+					'bookmark',
 				],
 				operation: [
 					'get',
@@ -180,7 +180,7 @@ export const raindropFields = [
 	},
 
 	// ----------------------------------
-	//       raindrop: getAll
+	//       bookmark: getAll
 	// ----------------------------------
 	{
 		displayName: 'Collection ID',
@@ -191,11 +191,11 @@ export const raindropFields = [
 		},
 		default: [],
 		required: true,
-		description: 'The ID of the collection from which to retrieve all raindrops.',
+		description: 'The ID of the collection from which to retrieve all bookmarks.',
 		displayOptions: {
 			show: {
 				resource: [
-					'raindrop',
+					'bookmark',
 				],
 				operation: [
 					'getAll',
@@ -210,7 +210,7 @@ export const raindropFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'raindrop',
+					'bookmark',
 				],
 				operation: [
 					'getAll',
@@ -227,7 +227,7 @@ export const raindropFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'raindrop',
+					'bookmark',
 				],
 				operation: [
 					'getAll',
@@ -246,19 +246,19 @@ export const raindropFields = [
 	},
 
 	// ----------------------------------
-	//       raindrop: update
+	//       bookmark: update
 	// ----------------------------------
 	{
-		displayName: 'Raindrop ID',
-		name: 'raindropId',
+		displayName: 'Bookmark ID',
+		name: 'bookmarkId',
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The ID of the raindrop to update.',
+		description: 'The ID of the bookmark to update.',
 		displayOptions: {
 			show: {
 				resource: [
-					'raindrop',
+					'bookmark',
 				],
 				operation: [
 					'update',
@@ -275,7 +275,7 @@ export const raindropFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'raindrop',
+					'bookmark',
 				],
 				operation: [
 					'update',
@@ -297,28 +297,28 @@ export const raindropFields = [
 				name: 'important',
 				type: 'boolean',
 				default: false,
-				description: 'Whether this raindrop is marked as favorite.',
+				description: 'Whether this bookmark is marked as favorite.',
 			},
 			{
 				displayName: 'Order',
 				name: 'order',
 				type: 'number',
 				default: 0,
-				description: 'For example if you want to move raindrop to the first place set this field to 0',
+				description: 'For example if you want to move bookmark to the first place set this field to 0',
 			},
 			{
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: 'Raindrop tags. Multiple can be set separated by comma.',
+				description: 'Bookmark tags. Multiple can be set separated by comma.',
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the raindrop to be created.',
+				description: 'Title of the bookmark to be created.',
 			},
 		],
 	},
