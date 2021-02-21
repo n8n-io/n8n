@@ -233,7 +233,7 @@ export class Telegram implements INodeType {
 					{
 						name: 'Send Location',
 						value: 'sendLocation',
-						description: 'Send a location'
+						description: 'Send a location',
 					},
 					{
 						name: 'Send Message',
@@ -828,19 +828,19 @@ export class Telegram implements INodeType {
 				typeOptions: {
 					numberPrecision: 10,
 					minValue: -90,
-					maxValue: 90
+					maxValue: 90,
 				},
 				displayOptions: {
 					show: {
 						operation: [
-							'sendLocation'
+							'sendLocation',
 						],
 						resource: [
-							'message'
-						]
-					}
+							'message',
+						],
+					},
 				},
-				description: 'Location latitude'
+				description: 'Location latitude',
 			},
 
 			{
@@ -850,20 +850,20 @@ export class Telegram implements INodeType {
 				typeOptions: {
 					numberPrecision: 10,
 					minValue: -180,
-					maxValue: 180
+					maxValue: 180,
 				},
 				default: 0.0,
 				displayOptions: {
 					show: {
 						operation: [
-							'sendLocation'
+							'sendLocation',
 						],
 						resource: [
-							'message'
-						]
-					}
+							'message',
+						],
+					},
 				},
-				description: 'Location longitude'
+				description: 'Location longitude',
 			},
 
 			// ----------------------------------
@@ -1070,7 +1070,7 @@ export class Telegram implements INodeType {
 							'sendSticker',
 							'sendVideo',
 							'sendAudio',
-							'sendLocation'
+							'sendLocation',
 						],
 						resource: [
 							'message',
