@@ -211,6 +211,8 @@ export class Raindrop implements INodeType {
 						throw new Error(`Please enter at least one field to update for the ${resource}.`);
 					}
 
+					Object.assign(body, updateFields);
+
 					if (updateFields.collectionId) {
 						body.collection = {
 							'$id': updateFields.collectionId,
