@@ -43,6 +43,11 @@ import {
 	NotificationRecipientsRestrictions,
 } from './IssueInterface';
 
+import {
+	userFields,
+	userOperations,
+} from './UserDescription';
+
 export class Jira implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Jira Software',
@@ -119,6 +124,11 @@ export class Jira implements INodeType {
 						value: 'issueComment',
 						description: 'Get, create, update, and delete a comment from an issue.',
 					},
+					{
+						name: 'User',
+						value: 'user',
+						description: 'Get, create and delete a user.',
+					},
 				],
 				default: 'issue',
 				description: 'Resource to consume.',
@@ -129,6 +139,8 @@ export class Jira implements INodeType {
 			...issueAttachmentFields,
 			...issueCommentOperations,
 			...issueCommentFields,
+			...userOperations,
+			...userFields,
 		],
 	};
 
@@ -947,6 +959,47 @@ export class Jira implements INodeType {
 						Object.assign(body, { body: json });
 					}
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/issue/${issueKey}/comment/${commentId}`, 'PUT', body, qs);
+					returnData.push(responseData);
+				}
+			}
+		}
+
+		if (resource === 'user') {
+			if (operation === 'create') {
+				// https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-users/#api-rest-api-3-user-post
+				for (let i = 0; i < length; i++) {
+					const body = {
+						name: this.getNodeParameter('username', i),
+						emailAddress: this.getNodeParameter('emailAddress', i),
+						displayName: this.getNodeParameter('displayName', i),
+					};
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					Object.assign(body, additionalFields);
+
+					responseData = await jiraSoftwareCloudApiRequest.call(this, '/api/3/user', 'POST', body, {});
+					returnData.push(responseData);
+				}
+			} else if (operation === 'delete') {
+				// https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-users/#api-rest-api-3-user-delete
+				for (let i = 0; i < length; i++) {
+					qs.accountId = this.getNodeParameter('accountId', i);
+					responseData = await jiraSoftwareCloudApiRequest.call(this, '/api/3/user', 'DELETE', {}, qs);
+					returnData.push({ success: true });
+				}
+			} else if (operation === 'get') {
+				// https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-users/#api-rest-api-3-user-get
+				for (let i = 0; i < length; i++) {
+					qs.accountId = this.getNodeParameter('accountId', i);
+
+					const { expand } = this.getNodeParameter('additionalFields', i) as { expand: string[] };
+
+					if (expand) {
+						qs.expand = expand.join(',');
+					}
+
+					responseData = await jiraSoftwareCloudApiRequest.call(this, '/api/3/user', 'GET', {}, qs);
 					returnData.push(responseData);
 				}
 			}
