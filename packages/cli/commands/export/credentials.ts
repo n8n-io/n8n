@@ -125,8 +125,7 @@ export class ExportCredentialsCommand extends Command {
 				}
 
 				for (let i = 0; i < credentials.length; i++) {
-					const c = credentials[i];
-					const {name, type, nodesAccess, data} = credentials[i];
+					const { name, type, nodesAccess, data } = credentials[i];
 					const credential = new Credentials(name, type, nodesAccess, data);
 					const plainData = credential.getData(encryptionKey);
 					(credentials[i] as ICredentialsDecryptedDb).data = plainData;
