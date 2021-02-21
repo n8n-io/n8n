@@ -231,6 +231,11 @@ export class Telegram implements INodeType {
 						description: 'Send a document',
 					},
 					{
+						name: 'Send Location',
+						value: 'sendLocation',
+						description: 'Send a location',
+					},
+					{
 						name: 'Send Message',
 						value: 'sendMessage',
 						description: 'Send a text message',
@@ -284,6 +289,7 @@ export class Telegram implements INodeType {
 							'sendAudio',
 							'sendChatAction',
 							'sendDocument',
+							'sendLocation',
 							'sendMessage',
 							'sendMediaGroup',
 							'sendPhoto',
@@ -812,6 +818,55 @@ export class Telegram implements INodeType {
 
 
 			// ----------------------------------
+			//         message:sendLocation
+			// ----------------------------------
+			{
+				displayName: 'Latitude',
+				name: 'latitude',
+				type: 'number',
+				default: 0.0,
+				typeOptions: {
+					numberPrecision: 10,
+					minValue: -90,
+					maxValue: 90,
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'sendLocation',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				description: 'Location latitude',
+			},
+
+			{
+				displayName: 'Longitude',
+				name: 'longitude',
+				type: 'number',
+				typeOptions: {
+					numberPrecision: 10,
+					minValue: -180,
+					maxValue: 180,
+				},
+				default: 0.0,
+				displayOptions: {
+					show: {
+						operation: [
+							'sendLocation',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				description: 'Location longitude',
+			},
+
+			// ----------------------------------
 			//         message:sendMediaGroup
 			// ----------------------------------
 			{
@@ -999,7 +1054,7 @@ export class Telegram implements INodeType {
 
 
 			// ----------------------------------
-			//         message:editMessageText/sendAnimation/sendAudio/sendMessage/sendPhoto/sendSticker/sendVideo
+			//         message:editMessageText/sendAnimation/sendAudio/sendLocation/sendMessage/sendPhoto/sendSticker/sendVideo
 			// ----------------------------------
 
 			{
@@ -1015,6 +1070,7 @@ export class Telegram implements INodeType {
 							'sendSticker',
 							'sendVideo',
 							'sendAudio',
+							'sendLocation',
 						],
 						resource: [
 							'message',
@@ -1340,6 +1396,7 @@ export class Telegram implements INodeType {
 							'sendAnimation',
 							'sendAudio',
 							'sendDocument',
+							'sendLocation',
 							'sendMessage',
 							'sendMediaGroup',
 							'sendPhoto',
@@ -1753,6 +1810,20 @@ export class Telegram implements INodeType {
 
 					body.chat_id = this.getNodeParameter('chatId', i) as string;
 					body.document = this.getNodeParameter('file', i) as string;
+
+					// Add additional fields and replyMarkup
+					addAdditionalFields.call(this, body, i);
+
+				} else if (operation === 'sendLocation') {
+					// ----------------------------------
+					//         message:sendLocation
+					// ----------------------------------
+
+					endpoint = 'sendLocation';
+
+					body.chat_id = this.getNodeParameter('chatId', i) as string;
+					body.latitude = this.getNodeParameter('latitude', i) as string;
+					body.longitude = this.getNodeParameter('longitude', i) as string;
 
 					// Add additional fields and replyMarkup
 					addAdditionalFields.call(this, body, i);
