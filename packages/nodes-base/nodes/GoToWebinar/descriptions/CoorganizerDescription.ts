@@ -42,42 +42,6 @@ export const coorganizerFields = [
 	//         coorganizer: create
 	// ----------------------------------
 	{
-		displayName: 'Given Name',
-		name: 'givenName',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'The co-organizer\'s given name.',
-		displayOptions: {
-			show: {
-				resource: [
-					'coorganizer',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Email',
-		name: 'email',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'The co-organizer\'s email address.',
-		displayOptions: {
-			show: {
-				resource: [
-					'coorganizer',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
 		type: 'options',
@@ -135,6 +99,46 @@ export const coorganizerFields = [
 			},
 		},
 	},
+	{
+		displayName: 'Given Name',
+		name: 'givenName',
+		type: 'string',
+		default: '',
+		description: 'The co-organizer\'s given name.',
+		displayOptions: {
+			show: {
+				resource: [
+					'coorganizer',
+				],
+				operation: [
+					'create',
+				],
+				isExternal: [
+					true,
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		default: '',
+		description: 'The co-organizer\'s email address.',
+		displayOptions: {
+			show: {
+				resource: [
+					'coorganizer',
+				],
+				operation: [
+					'create',
+				],
+				isExternal: [
+					true,
+				],
+			},
+		},
+	},
 
 	// ----------------------------------
 	//         coorganizer: delete
@@ -161,7 +165,7 @@ export const coorganizerFields = [
 		},
 	},
 	{
-		displayName: 'Organizer Key',
+		displayName: 'Co-Organizer Key',
 		name: 'coorganizerKey',
 		type: 'string',
 		default: '',
@@ -183,7 +187,6 @@ export const coorganizerFields = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Whether the co-organizer has no GoToWebinar account.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -194,6 +197,8 @@ export const coorganizerFields = [
 				],
 			},
 		},
+		description: `By default only internal co-organizers (with a GoToWebinar account) can be deleted.</br>
+		If you want to use this call for external co-organizers you have to set this parameter to 'true'.`,
 	},
 
 	// ----------------------------------
@@ -271,7 +276,8 @@ export const coorganizerFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Key of the webinar to reinvite the co-organizer to.',
+		description: `By default only internal co-organizers (with a GoToWebinar account) can be deleted.</br>
+		If you want to use this call for external co-organizers you have to set this parameter to 'true'.`,
 		displayOptions: {
 			show: {
 				resource: [

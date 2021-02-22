@@ -190,6 +190,44 @@ export const registrantFields = [
 				default: '',
 			},
 			{
+				displayName: 'MultiChoice Responses',
+				name: 'multiChoiceResponses',
+				placeholder: 'Add MultiChoice Response',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'Set the answers to all questions.',
+				default: {},
+				options: [
+					{
+						displayName: 'Details',
+						name: 'details',
+						values: [
+							{
+								displayName: 'Question Key',
+								name: 'questionKey',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getRegistranMultiChoiceQuestions',
+									loadOptionsDependsOn: [
+										'webinarKey',
+									],
+								},
+								default: '',
+							},
+							{
+								displayName: 'Answer Key',
+								name: 'AnswerKey',
+								type: 'string',
+								default: '',
+								description: 'Answer ID of the question.',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Number of Employees',
 				name: 'numberOfEmployees',
 				type: 'string',
@@ -236,10 +274,13 @@ export const registrantFields = [
 				default: false,
 			},
 			{
-				displayName: 'Responses',
-				name: 'responses',
-				placeholder: 'Add Response',
+				displayName: 'Simple Responses',
+				name: 'simpleResponses',
+				placeholder: 'Add Simple Response',
 				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
 				description: 'Set the answers to all questions.',
 				default: {},
 				options: [
@@ -250,7 +291,13 @@ export const registrantFields = [
 							{
 								displayName: 'Question Key',
 								name: 'questionKey',
-								type: 'string',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getRegistranSimpleQuestions',
+									loadOptionsDependsOn: [
+										'webinarKey',
+									],
+								},
 								default: '',
 							},
 							{
@@ -259,13 +306,6 @@ export const registrantFields = [
 								type: 'string',
 								default: '',
 								description: 'Text of the response to the question.',
-							},
-							{
-								displayName: 'Answer Key',
-								name: 'answerKey',
-								type: 'string',
-								default: '',
-								description: 'The numeric key of the answer to a multiple-choice question.',
 							},
 						],
 					},

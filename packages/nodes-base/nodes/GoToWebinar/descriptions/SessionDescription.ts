@@ -126,13 +126,6 @@ export const sessionFields = [
 				],
 			},
 			{
-				displayName: 'Filter by Webinar',
-				name: 'filterByWebinar',
-				type: 'boolean',
-				default: false,
-				description: 'Filter the sessions to retrieve by the webinar to which they belong.',
-			},
-			{
 				displayName: 'Webinar Key',
 				name: 'webinarKey',
 				type: 'options',

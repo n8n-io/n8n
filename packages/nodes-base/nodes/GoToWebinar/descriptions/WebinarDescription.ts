@@ -14,10 +14,10 @@ export const webinarOperations = [
 				name: 'Create',
 				value: 'create',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-			},
+			// {
+			// 	name: 'Delete',
+			// 	value: 'delete',
+			// },
 			{
 				name: 'Get',
 				value: 'get',
@@ -132,25 +132,22 @@ export const webinarFields = [
 				},
 			},
 			{
-				displayName: 'ExperienceType',
+				displayName: 'Experience Type',
 				name: 'experienceType',
 				type: 'options',
-				default: '',
+				default: 'classic',
 				options: [
 					{
-						name: 'Single Session',
-						value: 'single_session',
-						description: 'Webinar with one single meeting.',
+						name: 'Classic',
+						value: 'CLASSIC',
 					},
 					{
-						name: 'Series',
-						value: 'series',
-						description: 'Webinar with multiple meetings times where attendees choose only one to attend.',
+						name: 'Broadcast',
+						value: 'BROADCAST',
 					},
 					{
-						name: 'Sequence',
-						value: 'sequence',
-						description: 'Webinar with multiple meeting times where attendees are expected to be the same for all sessions.',
+						name: 'Simulive',
+						value: 'SIMULIVE',
 					},
 				],
 			},
@@ -180,9 +177,9 @@ export const webinarFields = [
 			},
 			{
 				displayName: 'Webinar Type',
-				name: 'webinarType',
+				name: 'type',
 				type: 'options',
-				default: '',
+				default: 'single_session',
 				options: [
 					{
 						name: 'Single Session',
@@ -210,12 +207,9 @@ export const webinarFields = [
 	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getWebinars',
-		},
+		type: 'string',
 		required: true,
-		default: [],
+		default: '',
 		description: 'Key of the webinar to delete.',
 		displayOptions: {
 			show: {
@@ -260,12 +254,9 @@ export const webinarFields = [
 	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getWebinars',
-		},
+		type: 'string',
 		required: true,
-		default: [],
+		default: '',
 		description: 'Key of the webinar to retrieve.',
 		displayOptions: {
 			show: {
@@ -379,12 +370,9 @@ export const webinarFields = [
 	{
 		displayName: 'Webinar Key',
 		name: 'webinarKey',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getWebinars',
-		},
+		type: 'string',
 		required: true,
-		default: [],
+		default: '',
 		description: 'Key of the webinar to update.',
 		displayOptions: {
 			show: {
@@ -441,25 +429,22 @@ export const webinarFields = [
 				},
 			},
 			{
-				displayName: 'ExperienceType',
+				displayName: 'Experience Type',
 				name: 'experienceType',
 				type: 'options',
-				default: '',
+				default: 'classic',
 				options: [
 					{
-						name: 'Single Session',
-						value: 'single_session',
-						description: 'Webinar with one single meeting.',
+						name: 'Classic',
+						value: 'CLASSIC',
 					},
 					{
-						name: 'Series',
-						value: 'series',
-						description: 'Webinar with multiple meetings times where attendees choose only one to attend.',
+						name: 'Broadcast',
+						value: 'BROADCAST',
 					},
 					{
-						name: 'Sequence',
-						value: 'sequence',
-						description: 'Webinar with multiple meeting times where attendees are expected to be the same for all sessions.',
+						name: 'Simulive',
+						value: 'SIMULIVE',
 					},
 				],
 			},
@@ -532,9 +517,9 @@ export const webinarFields = [
 			},
 			{
 				displayName: 'Webinar Type',
-				name: 'webinarType',
+				name: 'type',
 				type: 'options',
-				default: '',
+				default: 'single_session',
 				options: [
 					{
 						name: 'Single Session',

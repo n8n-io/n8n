@@ -30,7 +30,11 @@ import {
 	goToWebinarApiRequest,
 	goToWebinarApiRequestAllItems,
 	handleGetAll,
+	loadAnswers,
+	loadRegistranMultiChoiceQuestions,
+	loadRegistranSimpleQuestions,
 	loadWebinars,
+	loadWebinarSessions,
 } from './GenericFunctions';
 
 import {
@@ -115,6 +119,12 @@ export class GoToWebinar implements INodeType {
 			async getWebinars(this: ILoadOptionsFunctions) {
 				return await loadWebinars.call(this);
 			},
+			async getAnswers(this: ILoadOptionsFunctions) {
+				return await loadAnswers.call(this);
+			},
+			async getWebinarSessions(this: ILoadOptionsFunctions) {
+				return await loadWebinarSessions.call(this);
+			},
 			// Get all the timezones to display them to user so that he can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -128,6 +138,12 @@ export class GoToWebinar implements INodeType {
 					});
 				}
 				return returnData;
+			},
+			async getRegistranSimpleQuestions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await loadRegistranSimpleQuestions.call(this);
+			},
+			async getRegistranMultiChoiceQuestions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await loadRegistranMultiChoiceQuestions.call(this);
 			},
 		},
 	};
@@ -185,7 +201,7 @@ export class GoToWebinar implements INodeType {
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/sessions/${sessionKey}/attendees`;
 						responseData = await handleGetAll.call(this, endpoint, {}, {}, resource);
 
-					} else if (operation === 'get') {
+					} else if (operation === 'getDetails') {
 
 						// ----------------------------------
 						//     attendee: getDetails
@@ -217,20 +233,21 @@ export class GoToWebinar implements INodeType {
 
 						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 
-						const body = [
-							{
-								givenName: this.getNodeParameter('givenName', i) as string,
-								email: this.getNodeParameter('email', i) as string,
-								external: this.getNodeParameter('isExternal', i) as boolean,
-							},
-						] as IDataObject[];
+						const body = {
+							external: this.getNodeParameter('isExternal', i) as boolean,
+						} as IDataObject;
 
-						if (!body[0].external) {
-							body[0].organizerKey = this.getNodeParameter('organizerKey', i) as string;
+						if (body.external === false) {
+							body.organizerKey = this.getNodeParameter('organizerKey', i) as string;
+						}
+
+						if (body.external === true) {
+							body.givenName = this.getNodeParameter('givenName', i) as string;
+							body.email = this.getNodeParameter('email', i) as string;
 						}
 
 						const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/coorganizers`;
-						responseData = await goToWebinarApiRequest.call(this, 'POST', endpoint, {}, body);
+						responseData = await goToWebinarApiRequest.call(this, 'POST', endpoint, {}, [body]);
 
 					} else if (operation === 'delete') {
 
@@ -239,7 +256,7 @@ export class GoToWebinar implements INodeType {
 						// ----------------------------------
 
 						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
-						const coorganizerKey = this.getNodeParameter('organizerKey', i) as string;
+						const coorganizerKey = this.getNodeParameter('coorganizerKey', i) as string;
 
 						const qs = {
 							external: this.getNodeParameter('isExternal', i) as boolean,
@@ -366,6 +383,7 @@ export class GoToWebinar implements INodeType {
 							firstName: this.getNodeParameter('firstName', i) as string,
 							lastName: this.getNodeParameter('lastName', i) as string,
 							email: this.getNodeParameter('email', i) as string,
+							responses: [],
 						} as IDataObject;
 
 						let additionalFields = this.getNodeParameter('additionalFields', i) as Partial<{
@@ -373,11 +391,12 @@ export class GoToWebinar implements INodeType {
 							fullAddress: {
 								details: { [key: string]: string }
 							}
-							responses: {
-								details: [
-									{ [key: string]: string }
-								]
-							}
+							simpleResponses: [
+								{ [key: string]: string }
+							],
+							multiChoiceResponses: [
+								{ [key: string]: string }
+							],
 						}>;
 
 						if (additionalFields.resendConfirmation) {
@@ -390,9 +409,16 @@ export class GoToWebinar implements INodeType {
 							additionalFields = omit(additionalFields, ['fullAddress']);
 						}
 
-						if (additionalFields.responses) {
-							Object.assign(body, additionalFields.responses.details[0]);
-							additionalFields = omit(additionalFields, ['responses']);
+						if (additionalFields.simpleResponses) {
+							//@ts-ignore
+							body.responses.push(...additionalFields.simpleResponses.details);
+							additionalFields = omit(additionalFields, ['simpleResponses']);
+						}
+
+						if (additionalFields.multiChoiceResponses) {
+							//@ts-ignore
+							body.responses.push(...additionalFields.multiChoiceResponses.details);
+							additionalFields = omit(additionalFields, ['multiChoiceResponses']);
 						}
 
 						Object.assign(body, additionalFields);
@@ -472,7 +498,6 @@ export class GoToWebinar implements INodeType {
 						}
 
 						const {
-							filterByWebinar,
 							webinarKey,
 							times,
 						} = this.getNodeParameter('additionalFields', i) as {
@@ -491,11 +516,7 @@ export class GoToWebinar implements INodeType {
 							qs.toTime = moment().format();
 						}
 
-						if (filterByWebinar) {
-
-							if (!webinarKey) {
-								throw new Error('Please enter a webinar key to filter by.');
-							}
+						if (webinarKey !== undefined) {
 
 							const endpoint = `organizers/${organizerKey}/webinars/${webinarKey}/sessions`;
 							responseData = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
@@ -504,7 +525,6 @@ export class GoToWebinar implements INodeType {
 
 							const endpoint = `organizers/${organizerKey}/sessions`;
 							responseData = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
-
 						}
 
 					} else if (operation === 'getDetails') {
@@ -536,7 +556,7 @@ export class GoToWebinar implements INodeType {
 						//         webinar: create
 						// ----------------------------------
 
-						const { timesProperties } = this.getNodeParameter('times', i) as IDataObject;
+						const timesProperties = this.getNodeParameter('times.timesProperties', i, []) as IDataObject;
 
 						const body = {
 							subject: this.getNodeParameter('subject', i) as string,
@@ -601,7 +621,6 @@ export class GoToWebinar implements INodeType {
 						};
 
 						if (times) {
-							console.log('aqui');
 							qs.fromTime = moment(times.timesProperties.fromTime).format();
 							qs.toTime = moment(times.timesProperties.toTime).format();
 						} else {

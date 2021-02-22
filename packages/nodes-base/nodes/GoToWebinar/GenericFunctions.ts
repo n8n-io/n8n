@@ -173,6 +173,108 @@ export async function loadWebinars(this: ILoadOptionsFunctions) {
 	return returnData;
 }
 
+export async function loadWebinarSessions(this: ILoadOptionsFunctions) {
+	const { oauthTokenData } = this.getCredentials('goToWebinarOAuth2Api') as {
+		oauthTokenData: { organizer_key: string }
+	};
+
+	const webinarKey = this.getCurrentNodeParameter('webinarKey') as string;
+
+	const endpoint = `organizers/${oauthTokenData.organizer_key}/webinars/${webinarKey}/sessions`;
+
+	const resourceItems = await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, {}, {}, 'session');
+
+	const returnData: INodePropertyOptions[] = [];
+
+	resourceItems.forEach((item) => {
+		returnData.push({
+			name: `Date: ${moment(item.startTime as string).format('MM-DD-YYYY')} | From: ${moment(item.startTime as string).format('LT')} - To: ${moment(item.endTime as string).format('LT')}`,
+			value: item.sessionKey as string,
+		});
+	});
+
+	return returnData;
+}
+
+export async function loadRegistranSimpleQuestions(this: ILoadOptionsFunctions) {
+	const { oauthTokenData } = this.getCredentials('goToWebinarOAuth2Api') as {
+		oauthTokenData: { organizer_key: string }
+	};
+
+	const webinarkey = this.getNodeParameter('webinarKey') as string;
+
+	const endpoint = `organizers/${oauthTokenData.organizer_key}/webinars/${webinarkey}/registrants/fields`;
+
+	const { questions } = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
+
+	const returnData: INodePropertyOptions[] = [];
+
+	questions.forEach((item: IDataObject) => {
+		if (item.type === 'shortAnswer') {
+			returnData.push({
+				name: item.question as string,
+				value: item.questionKey as string,
+			});
+		}
+	});
+
+	return returnData;
+}
+
+export async function loadAnswers(this: ILoadOptionsFunctions) {
+	const { oauthTokenData } = this.getCredentials('goToWebinarOAuth2Api') as {
+		oauthTokenData: { organizer_key: string }
+	};
+
+	const webinarKey = this.getCurrentNodeParameter('webinarKey') as string;
+
+	const questionKey = this.getCurrentNodeParameter('questionKey') as string;
+
+	const endpoint = `organizers/${oauthTokenData.organizer_key}/webinars/${webinarKey}/registrants/fields`;
+
+	const { questions } = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
+
+	const returnData: INodePropertyOptions[] = [];
+
+	questions.forEach((item: IDataObject) => {
+		if (item.type === 'multiChoice' && item.questionKey === questionKey) {
+			for (const answer of item.answers as IDataObject[]) {
+				returnData.push({
+					name: answer.answer as string,
+					value: answer.answerKey as string,
+				});
+			}
+		}
+	});
+
+	return returnData;
+}
+
+export async function loadRegistranMultiChoiceQuestions(this: ILoadOptionsFunctions) {
+	const { oauthTokenData } = this.getCredentials('goToWebinarOAuth2Api') as {
+		oauthTokenData: { organizer_key: string }
+	};
+
+	const webinarkey = this.getNodeParameter('webinarKey') as string;
+
+	const endpoint = `organizers/${oauthTokenData.organizer_key}/webinars/${webinarkey}/registrants/fields`;
+
+	const { questions } = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
+
+	const returnData: INodePropertyOptions[] = [];
+
+	questions.forEach((item: IDataObject) => {
+		if (item.type === 'multipleChoice') {
+			returnData.push({
+				name: item.question as string,
+				value: item.questionKey as string,
+			});
+		}
+	});
+
+	return returnData;
+}
+
 // tslint:disable-next-line: no-any
 function convertLosslessNumber(key: any, value: any) {
 	if (value && value.isLosslessNumber) {

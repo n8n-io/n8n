@@ -45,7 +45,7 @@ export const attendeeFields = [
 			loadOptionsMethod: 'getWebinars',
 		},
 		required: true,
-		default: [],
+		default: '',
 		description: 'Key of the webinar that the attendee attended.',
 		displayOptions: {
 			show: {
@@ -58,8 +58,14 @@ export const attendeeFields = [
 	{
 		displayName: 'Session Key',
 		name: 'sessionKey',
-		type: 'string',
+		type: 'options',
 		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getWebinarSessions',
+			loadOptionsDependsOn: [
+				'webinarKey',
+			],
+		},
 		default: '',
 		description: 'Key of the session that the attendee attended.',
 		displayOptions: {
@@ -96,6 +102,24 @@ export const attendeeFields = [
 	// ----------------------------------
 	//       attendee: getDetails
 	// ----------------------------------
+	{
+		displayName: 'Registrant Key',
+		name: 'registrantKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'Registrant key of the attendee at the webinar session.',
+		displayOptions: {
+			show: {
+				resource: [
+					'attendee',
+				],
+				operation: [
+					'getDetails',
+				],
+			},
+		},
+	},
 	{
 		displayName: 'Details',
 		name: 'details',
