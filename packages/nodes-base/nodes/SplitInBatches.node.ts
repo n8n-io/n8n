@@ -53,9 +53,7 @@ export class SplitInBatches implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][] | null> {
-		// Get the input data and create a new array so that we can remove
-		// items without a problem
-		const items = this.getInputData().slice();
+		const items = this.getInputData();
 
 		const nodeContext = this.getContext('node');
 
@@ -71,24 +69,23 @@ export class SplitInBatches implements INodeType {
 			nodeContext.currentRunIndex = 0;
 			nodeContext.maxRunIndex = Math.ceil(items.length / batchSize);
 
-			// Get the items which should be returned
-			returnItems.push.apply(returnItems, items.splice(0, batchSize));
-
 			// Set the other items to be saved in the context to return at later runs
 			nodeContext.items = items;
+			
+			// Return this first batch of items
+			if(batchSize == 1) return this.prepareOutputData([items[0]]);
+			else return this.prepareOutputData(items.slice(0, batchSize));
 		} else {
 			// The node has been called before. So return the next batch of items.
 			nodeContext.currentRunIndex += 1;
-			returnItems.push.apply(returnItems, nodeContext.items.splice(0, batchSize));
-		}
-
-		nodeContext.noItemsLeft = nodeContext.items.length === 0;
-
-		if (returnItems.length === 0) {
-			// No data left to return so stop execution of the branch
+			if(batchSize == 1) {
+				const pos = nodeContext.currentRunIndex;
+				if(pos < nodeContext.items.length) return this.prepareOutputData([nodeContext.items[pos]]);
+			} else {
+				const pos = nodeContext.currentRunIndex * batchSize;
+				if(pos < nodeContext.items.length) return this.prepareOutputData(nodeContext.items.slice(pos, pos + batchSize));
+			}
 			return null;
 		}
-
-		return this.prepareOutputData(returnItems);
 	}
 }
