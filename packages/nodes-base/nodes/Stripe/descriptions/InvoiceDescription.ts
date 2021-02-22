@@ -114,7 +114,7 @@ export const invoiceFields = [
 				name: 'amount',
 				type: 'number',
 				default: 0,
-				description: 'The integer amount in cents of the charge to be applied to the upcoming invoice. Passing in a negative amount will reduce the <code>amount_due</code> on the invoice.',
+				description: 'Amount in cents to be collected for this charge, e.g. enter <code>100</code> for $1.00.',
 				typeOptions: {
 					minValue: 0,
 					maxValue: 99999999,
@@ -123,7 +123,7 @@ export const invoiceFields = [
 			{
 				displayName: 'Currency',
 				name: 'currency',
-				description: 'Three-letter ISO currency code, in lowercase. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>.',
+				description: 'Three-letter ISO currency code, e.g. USD or EUR. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>.',
 				type: 'string',
 				default: '',
 			},

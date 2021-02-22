@@ -42,12 +42,33 @@ export const chargeFields = [
 	//       charge: create
 	// ----------------------------------
 	{
+		displayName: 'Customer ID',
+		name: 'customerId',
+		type: 'options',
+		required: true,
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getCustomers',
+		},
+		description: 'ID of the customer to be associated with this charge.',
+		displayOptions: {
+			show: {
+				resource: [
+					'charge',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Amount',
 		name: 'amount',
 		type: 'number',
 		required: true,
 		default: 0,
-		description: 'Amount to be collected for this charge. Expressed in the smallest currency unit,<br>usually cents. For example, for $1.00 enter <code>100</code>.',
+		description: 'Amount in cents to be collected for this charge, e.g. enter <code>100</code> for $1.00.',
 		typeOptions: {
 			minValue: 0,
 			maxValue: 99999999,
@@ -69,28 +90,7 @@ export const chargeFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Three-letter ISO currency code, in lowercase. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>.',
-		displayOptions: {
-			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Customer ID',
-		name: 'customerId',
-		type: 'options',
-		required: true,
-		default: [],
-		typeOptions: {
-			loadOptionsMethod: 'getCustomers',
-		},
-		description: 'ID of the customer to be associated with this charge.',
+		description: 'Three-letter ISO currency code, e.g. USD or EUR. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -193,11 +193,15 @@ export const chargeFields = [
 				],
 			},
 			{
-				displayName: 'Source',
+				displayName: 'Source ID',
 				name: 'source',
-				type: 'string',
-				default: '',
-				description: 'A payment source to be charged, such as a credit card, a debit card, a bank account, etc.',
+				type: 'options',
+				required: true,
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getSources',
+				},
+				description: 'Payment source to be charged.',
 			},
 		],
 	},

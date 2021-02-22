@@ -41,7 +41,8 @@ export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions 
 		json: true,
 	};
 
-	if (!options.qs) {
+	// TODO
+	if (options.qs && Object.keys(options.qs).length === 0) {
 		delete options.qs;
 	}
 
@@ -72,6 +73,13 @@ export const adjustCustomerFields = flow([
 	adjustAddressFields,
 	adjustMetadataFields,
 	adjustShippingFields,
+]);
+
+/**
+ * Make n8n's invoice fields compliant with the Stripe API request object.
+ */
+export const adjustSourceFields = flow([
+	adjustMetadataFields,
 ]);
 
 /**
@@ -137,7 +145,7 @@ function adjustMetadataFields(
  */
 export async function loadResource(
 	this: ILoadOptionsFunctions,
-	resource: 'charge' | 'customer' | 'invoice',
+	resource: 'charge' | 'customer' | 'invoice' | 'source',
 ): Promise<INodePropertyOptions[]> {
 	const responseData = await stripeApiRequest.call(this, 'GET', `/${resource}s`, {}, {});
 

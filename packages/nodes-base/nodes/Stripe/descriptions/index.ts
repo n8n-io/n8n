@@ -7,4 +7,5 @@ export * from './PayoutDescription';
 export * from './ProductDescription';
 export * from './PriceDescription';
 export * from './RefundDescription';
+export * from './SourceDescription';
 export * from './SubscriptionDescription';

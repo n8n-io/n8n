@@ -17,6 +17,7 @@ import {
 import {
 	adjustCustomerFields,
 	adjustInvoiceFields,
+	adjustSourceFields,
 	loadResource,
 	stripeApiRequest,
 } from './helpers';
@@ -39,6 +40,8 @@ import {
 	productOperations,
 	refundFields,
 	refundOperations,
+	sourceFields,
+	sourceOperations,
 	subscriptionFields,
 	subscriptionOperations,
 } from './descriptions';
@@ -107,6 +110,10 @@ export class Stripe implements INodeType {
 						value: 'refund',
 					},
 					{
+						name: 'Source',
+						value: 'source',
+					},
+					{
 						name: 'Subscription',
 						value: 'subscription',
 					},
@@ -131,6 +138,8 @@ export class Stripe implements INodeType {
 			...priceFields,
 			...refundOperations,
 			...refundFields,
+			...sourceOperations,
+			...sourceFields,
 			...subscriptionOperations,
 			...subscriptionFields,
 		],
@@ -192,9 +201,9 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const body = {
-						amount: this.getNodeParameter('amount', i),
-						currency: this.getNodeParameter('currency', i),
 						customer: this.getNodeParameter('customerId', i),
+						currency: (this.getNodeParameter('currency', i) as string).toLowerCase(),
+						amount: this.getNodeParameter('amount', i),
 					} as IDataObject;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -704,6 +713,60 @@ export class Stripe implements INodeType {
 
 					const endpoint = '';
 					responseData = await stripeApiRequest.call(this, 'POST', endpoint, {}, {});
+
+				}
+
+			} else if (resource === 'source') {
+
+				// *********************************************************************
+				//                             source
+				// *********************************************************************
+
+				// https://stripe.com/docs/api/sources
+
+				if (operation === 'create') {
+
+					// ----------------------------------
+					//         source: create
+					// ----------------------------------
+
+					const customerId = this.getNodeParameter('customerId', i);
+
+					const body = {
+						type: this.getNodeParameter('type', i),
+					} as IDataObject;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (!isEmpty(additionalFields)) {
+						Object.assign(body, adjustSourceFields(additionalFields));
+					}
+
+					responseData = await stripeApiRequest.call(this, 'POST', '/sources', body, {});
+
+					// attach source to customer
+					const endpoint = `/customers/${customerId}/sources`;
+					await stripeApiRequest.call(this, 'POST', endpoint, { source: responseData.id }, {});
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------
+					//        source: delete
+					// ----------------------------------
+
+					const sourceId = this.getNodeParameter('sourceId', i);
+					const customerId = this.getNodeParameter('customerId', i);
+					const endpoint = `/customers/${customerId}/sources/${sourceId}`;
+					responseData = await stripeApiRequest.call(this, 'DELETE', endpoint, {}, {});
+
+				} else if (operation === 'get') {
+
+					// ----------------------------------
+					//        source: get
+					// ----------------------------------
+
+					const sourceId = this.getNodeParameter('sourceId', i);
+					responseData = await stripeApiRequest.call(this, 'GET', `/sources/${sourceId}`, {}, {});
 
 				}
 
