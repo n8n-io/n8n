@@ -11,7 +11,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import * as gm from 'gm';
+const gm = require('gm').subClass({imageMagick: true});
 import { file } from 'tmp-promise';
 import {
 	parse as pathParse,
