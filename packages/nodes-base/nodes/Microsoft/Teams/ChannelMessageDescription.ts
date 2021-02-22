@@ -24,12 +24,7 @@ export const channelMessageOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all messages',
-			},
-			{
-				name: 'Reply To',
-				value: 'replyTo',
-				description: 'Reply to a message thread',
-			},
+			}
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -134,6 +129,27 @@ export const channelMessageFields = [
 		default: '',
 		description: 'The content of the item.',
 	},
+	{
+		displayName: 'Reply To ID',
+		name: 'replyToId',
+		required: false,
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: false,
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'channelMessage',
+				],
+			},
+		},
+		default: '',
+		description: 'An optional ID of the message you want to reply to.',
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 channelMessage:getAll                      */
 	/* -------------------------------------------------------------------------- */
@@ -221,122 +237,5 @@ export const channelMessageFields = [
 		},
 		default: 100,
 		description: 'How many results to return.',
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                 channelMessage:replyTo                      */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Team ID',
-		name: 'teamId',
-		required: true,
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getTeams',
-		},
-		displayOptions: {
-			show: {
-				operation: [
-					'replyTo',
-				],
-				resource: [
-					'channelMessage',
-				],
-			},
-		},
-		default: '',
-		description: 'Team ID',
-	},
-	{
-		displayName: 'Channel ID',
-		name: 'channelId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getChannels',
-			loadOptionsDependsOn: [
-				'teamId',
-			],
-		},
-		displayOptions: {
-			show: {
-				operation: [
-					'replyTo',
-				],
-				resource: [
-					'channelMessage',
-				],
-			},
-		},
-		default: '',
-		description: 'Channel ID',
-	},
-	{
-		displayName: 'Reply To ID',
-		name: 'replyToId',
-		required: true,
-		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: false,
-		},
-		displayOptions: {
-			show: {
-				operation: [
-					'replyTo',
-				],
-				resource: [
-					'channelMessage',
-				],
-			},
-		},
-		default: '',
-		description: 'The ID of the message you want to reply to.',
-	},
-	{
-		displayName: 'Message Type',
-		name: 'messageType',
-		required: true,
-		type: 'options',
-		options: [
-			{
-				name: 'Text',
-				value: 'text',
-			},
-			{
-				name: 'HTML',
-				value: 'html',
-			},
-		],
-		displayOptions: {
-			show: {
-				operation: [
-					'replyTo',
-				],
-				resource: [
-					'channelMessage',
-				],
-			},
-		},
-		default: '',
-		description: 'The type of the content',
-	},
-	{
-		displayName: 'Message',
-		name: 'message',
-		required: true,
-		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		displayOptions: {
-			show: {
-				operation: [
-					'replyTo',
-				],
-				resource: [
-					'channelMessage',
-				],
-			},
-		},
-		default: '',
-		description: 'The content of the item.',
-	},
+	}
 ] as INodeProperties[];

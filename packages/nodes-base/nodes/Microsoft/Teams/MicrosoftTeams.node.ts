@@ -262,18 +262,26 @@ export class MicrosoftTeams implements INodeType {
 			}
 			if (resource === 'channelMessage') {
 				//https://docs.microsoft.com/en-us/graph/api/channel-post-messages?view=graph-rest-beta&tabs=http
+				//https://docs.microsoft.com/en-us/graph/api/channel-post-messagereply?view=graph-rest-beta&tabs=http
 				if (operation === 'create') {
 					const teamId = this.getNodeParameter('teamId', i) as string;
 					const channelId = this.getNodeParameter('channelId', i) as string;
 					const messageType = this.getNodeParameter('messageType', i) as string;
 					const message = this.getNodeParameter('message', i) as string;
+					// optional replyToId
+					const replyToId = this.getNodeParameter('replyToId', i) as string;
+
 					const body: IDataObject = {
 						body: {
 							contentType: messageType,
 							content: message,
 						},
 					};
-					responseData = await microsoftApiRequest.call(this, 'POST', `/beta/teams/${teamId}/channels/${channelId}/messages`, body);
+
+					if (replyToId)
+						responseData = await microsoftApiRequest.call(this, 'POST', `/beta/teams/${teamId}/channels/${channelId}/messages/${replyToId}/replies`, body);
+					else
+						responseData = await microsoftApiRequest.call(this, 'POST', `/beta/teams/${teamId}/channels/${channelId}/messages`, body);
 				}
 				//https://docs.microsoft.com/en-us/graph/api/channel-list-messages?view=graph-rest-beta&tabs=http
 				if (operation === 'getAll') {
@@ -287,21 +295,6 @@ export class MicrosoftTeams implements INodeType {
 						responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/beta/teams/${teamId}/channels/${channelId}/messages`, {});
 						responseData = responseData.splice(0, qs.limit);
 					}
-				}
-				//https://docs.microsoft.com/en-us/graph/api/channel-post-messagereply?view=graph-rest-beta&tabs=http
-				if (operation === 'replyTo') {
-					const teamId = this.getNodeParameter('teamId', i) as string;
-					const channelId = this.getNodeParameter('channelId', i) as string;
-					const replyToId = this.getNodeParameter('replyToId', i) as string;
-					const messageType = this.getNodeParameter('messageType', i) as string;
-					const message = this.getNodeParameter('message', i) as string;
-					const body: IDataObject = {
-						body: {
-							contentType: messageType,
-							content: message,
-						},
-					};
-					responseData = await microsoftApiRequest.call(this, 'POST', `/beta/teams/${teamId}/channels/${channelId}/messages/${replyToId}/replies`, body);
 				}
 			}
 			if (resource === 'task') {
