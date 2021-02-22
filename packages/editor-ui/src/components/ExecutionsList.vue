@@ -410,12 +410,13 @@ export default mixins(
 			this.$store.commit('setActiveExecutions', activeExecutions);
 		},
 		async loadAutoRefresh () : Promise<void> {
-			let firstId: string | number | undefined = 0;
-			if (this.finishedExecutions.length !== 0) {
-				firstId = this.finishedExecutions[0].id;
-			}
 			const filter = this.workflowFilterPast;
-			const pastExecutionsPromise: Promise<IExecutionsListResponse> = this.restApi().getPastExecutions(filter, this.requestItemsPerRequest, undefined, firstId);
+			// We cannot use firstId here as some executions finish out of order. Let's say
+			// You have execution ids 500 to 505 running.
+			// Suppose 504 finishes before 500, 501, 502 and 503.
+			// iF you use firstId, filtering id >= 504 you won't
+			// ever get ids 500, 501, 502 and 503 when they finish
+			const pastExecutionsPromise: Promise<IExecutionsListResponse> = this.restApi().getPastExecutions(filter, 30);
 			const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> = this.restApi().getCurrentExecutions({});
 
 			const results = await Promise.all([pastExecutionsPromise, currentExecutionsPromise]);
@@ -428,7 +429,28 @@ export default mixins(
 
 			this.$store.commit('setActiveExecutions', results[1]);
 
-			this.finishedExecutions.unshift.apply(this.finishedExecutions, results[0].results);
+			const alreadyPresentExecutionIds = this.finishedExecutions.map(exec => exec.id);
+			for(let i = results[0].results.length - 1; i > 0; i--) {
+				const currentItem = results[0].results[i];
+				// Check new results from end to start
+				// Add new items accordingly.
+				if (alreadyPresentExecutionIds.indexOf(currentItem.id) !== -1) {
+					// Execution that we received is already present.
+					continue;
+				}
+
+				// Find the correct position to place this newcomer
+				let j;
+				for (j = this.finishedExecutions.length - 1; j >= 0; j--) {
+					if (currentItem.id < this.finishedExecutions[j].id) {
+						this.finishedExecutions.splice(j + 1, 0, currentItem);
+						break;
+					}
+				}
+				if (j === -1) {
+					this.finishedExecutions.unshift(currentItem);
+				}
+			}
 			this.finishedExecutionsCount = results[0].count;
 		},
 		async loadFinishedExecutions (): Promise<void> {
