@@ -79,6 +79,97 @@ export const invoiceFields = [
 		},
 	},
 	{
+		displayName: 'Invoice Items',
+		name: 'invoiceItems',
+		type: 'collection',
+		placeholder: 'Add Invoice Item',
+		description: 'Individual item in an invoice.',
+		required: true,
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'invoice',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Customer ID',
+				name: 'customerId',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getCustomers',
+				},
+			},
+			{
+				displayName: 'Amount',
+				name: 'amount',
+				type: 'number',
+				default: 0,
+				description: 'The integer amount in cents of the charge to be applied to the upcoming invoice. Passing in a negative amount will reduce the <code>amount_due</code> on the invoice.',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 99999999,
+				},
+			},
+			{
+				displayName: 'Currency',
+				name: 'currency',
+				description: 'Three-letter ISO currency code, in lowercase. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				description: 'Arbitrary string to describe the invoice item.',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+			},
+			{
+				displayName: 'Metadata',
+				name: 'metadata',
+				type: 'fixedCollection',
+				placeholder: 'Add Metadata Item',
+				description: 'Set of key-value pairs to attach to the invoice to create.',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						displayName: 'Metadata Properties',
+						name: 'metadataProperties',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+		],
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',

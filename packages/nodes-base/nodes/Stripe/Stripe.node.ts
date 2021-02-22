@@ -358,6 +358,8 @@ export class Stripe implements INodeType {
 						customer: this.getNodeParameter('customerId', i),
 					} as IDataObject;
 
+					responseData = await stripeApiRequest.call(this, 'POST', `/invoices`, body, {});
+
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (!isEmpty(additionalFields)) {
