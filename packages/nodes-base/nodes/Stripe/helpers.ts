@@ -42,7 +42,7 @@ export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions 
 	}
 
 	try {
-		console.log(options);
+		console.log(JSON.stringify(options, null, 2));
 		return await this.helpers.request!.call(this, options);
 	} catch (error) {
 		// console.log(error);
@@ -62,19 +62,23 @@ export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions 
 }
 
 /**
- * Adjust n8n's shipping and metadata fields into a Stripe API compliant format.
+ * Adjust n8n's fields into fields compliant with the Stripe API request object.
  */
-export const adjustCustomerFields = flow([adjustShippingAddress, adjustMetadata]);
+export const adjustCustomerFields = flow([
+	adjustAddressFields,
+	adjustMetadataFields,
+	adjustShippingFields,
+]);
 
 /**
- * Convert n8n's `additionalFields` shipping object into a Stripe API request shipping object.
+ * Convert n8n's shipping object into a Stripe API request shipping object.
  */
-function adjustShippingAddress(
-	customerFields: { shipping?: { shippingProperties: Array<{ address: { details: IDataObject }; name: string }> }  },
+function adjustShippingFields(
+	shippingFields: { shipping?: { shippingProperties: Array<{ address: { details: IDataObject }; name: string }> }  },
 ) {
-	const shippingProperties = customerFields.shipping?.shippingProperties[0];
+	const shippingProperties = shippingFields.shipping?.shippingProperties[0];
 
-	if (!shippingProperties?.address || isEmpty(shippingProperties.address)) return customerFields;
+	if (!shippingProperties?.address || isEmpty(shippingProperties.address)) return shippingFields;
 
 	return {
 		shipping: {
@@ -85,9 +89,22 @@ function adjustShippingAddress(
 }
 
 /**
+ * Convert n8n's address object into a Stripe API request shipping object.
+ */
+function adjustAddressFields(
+	addressFields: { address: { details: IDataObject }  },
+) {
+
+	return {
+		address: addressFields.address.details,
+	};
+
+}
+
+/**
  * Convert n8n's `fixedCollection` metadata object into a Stripe API request metadata object.
  */
-function adjustMetadata(
+function adjustMetadataFields(
 	customerFields: { metadata?: { metadataProperties: Array<{ key: string; value: string }> } },
 ) {
 	if (!customerFields.metadata || isEmpty(customerFields.metadata)) return customerFields;
@@ -111,7 +128,6 @@ export async function loadResource(
 	this: ILoadOptionsFunctions,
 	resource: 'charge' | 'customer',
 ): Promise<INodePropertyOptions[]> {
-
 	const responseData = await stripeApiRequest.call(this, 'GET', `/${resource}s`, {}, {});
 
 	return responseData.data.map(({ name, id }: { name: string, id: string }) => ({

@@ -120,13 +120,6 @@ export const chargeFields = [
 		},
 		options: [
 			{
-				displayName: 'Customer ID',
-				name: 'customerId',
-				type: 'string',
-				default: '',
-				description: 'ID of the customer to be associated with this charge.',
-			},
-			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',

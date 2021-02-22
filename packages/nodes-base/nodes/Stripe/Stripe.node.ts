@@ -198,6 +198,8 @@ export class Stripe implements INodeType {
 						Object.assign(body, additionalFields);
 					}
 
+					// TODO: adjust and load update fields
+
 					responseData = await stripeApiRequest.call(this, 'POST', '/charges', body, {});
 
 				} else if (operation === 'get') {
@@ -238,6 +240,8 @@ export class Stripe implements INodeType {
 						throw new Error(`Please enter at least one field to update for the ${resource}.`);
 					}
 
+					// TODO: adjust and load update fields
+
 					const chargeId = this.getNodeParameter('chargeId', i);
 					responseData = await stripeApiRequest.call(this, 'POST', `/charges/${chargeId}`, body, {});
 
@@ -267,7 +271,7 @@ export class Stripe implements INodeType {
 						Object.assign(body, adjustCustomerFields(additionalFields));
 					}
 
-					responseData = await stripeApiRequest.call(this, 'POST', `/customers`, body, {});
+					responseData = await stripeApiRequest.call(this, 'POST', '/customers', body, {});
 
 				} else if (operation === 'delete') {
 
@@ -303,6 +307,13 @@ export class Stripe implements INodeType {
 					responseData = await stripeApiRequest.call(this, 'GET', '/customers', qs, {});
 					responseData = responseData.data;
 
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', 0) as number;
+						responseData = responseData.slice(0, limit);
+					}
+
 				} else if (operation === 'update') {
 
 					// ----------------------------------
@@ -324,10 +335,10 @@ export class Stripe implements INodeType {
 
 				}
 
-			} else if (resource === 'invoice') {
+			} else if (resource === 'paymentMethod') {
 
 				// *********************************************************************
-				//                             paymentMethod
+				//                           paymentMethod
 				// *********************************************************************
 
 				// https://stripe.com/docs/api/paymentMethod
