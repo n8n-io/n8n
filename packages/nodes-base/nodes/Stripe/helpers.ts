@@ -9,7 +9,11 @@ import {
 	omit,
 } from 'lodash';
 
-import { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import {
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+} from 'n8n-workflow';
 
 /**
  * Make an API request to Stripe
@@ -62,12 +66,19 @@ export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions 
 }
 
 /**
- * Adjust n8n's fields into fields compliant with the Stripe API request object.
+ * Make n8n's customer fields compliant with the Stripe API request object.
  */
 export const adjustCustomerFields = flow([
 	adjustAddressFields,
 	adjustMetadataFields,
 	adjustShippingFields,
+]);
+
+/**
+ * Make n8n's invoice fields compliant with the Stripe API request object.
+ */
+export const adjustInvoiceFields = flow([
+	adjustMetadataFields,
 ]);
 
 /**
@@ -126,7 +137,7 @@ function adjustMetadataFields(
  */
 export async function loadResource(
 	this: ILoadOptionsFunctions,
-	resource: 'charge' | 'customer',
+	resource: 'charge' | 'customer' | 'invoice',
 ): Promise<INodePropertyOptions[]> {
 	const responseData = await stripeApiRequest.call(this, 'GET', `/${resource}s`, {}, {});
 

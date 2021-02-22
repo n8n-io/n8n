@@ -16,6 +16,7 @@ import {
 
 import {
 	adjustCustomerFields,
+	adjustInvoiceFields,
 	loadResource,
 	stripeApiRequest,
 } from './helpers';
@@ -140,6 +141,10 @@ export class Stripe implements INodeType {
 			async getCustomers(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'customer');
 			},
+
+			async getInvoices(this: ILoadOptionsFunctions) {
+				return await loadResource.call(this, 'invoice');
+			},
 		},
 	};
 
@@ -178,7 +183,7 @@ export class Stripe implements INodeType {
 				//                             charge
 				// *********************************************************************
 
-				// https://stripe.com/docs/api/charge
+				// https://stripe.com/docs/api/charges
 
 				if (operation === 'create') {
 
@@ -253,7 +258,7 @@ export class Stripe implements INodeType {
 				//                             customer
 				// *********************************************************************
 
-				// https://stripe.com/docs/api/customer
+				// https://stripe.com/docs/api/customers
 
 				if (operation === 'create') {
 
@@ -332,6 +337,96 @@ export class Stripe implements INodeType {
 
 					const customerId = this.getNodeParameter('customerId', i);
 					responseData = await stripeApiRequest.call(this, 'POST', `/customers/${customerId}`, body, {});
+
+				}
+
+			} else if (resource === 'invoice') {
+
+				// *********************************************************************
+				//                           invoice
+				// *********************************************************************
+
+				// https://stripe.com/docs/api/invoices
+
+				if (operation === 'create') {
+
+					// ----------------------------------
+					//       invoice: create
+					// ----------------------------------
+
+					const body = {
+						customer: this.getNodeParameter('customerId', i),
+					} as IDataObject;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (!isEmpty(additionalFields)) {
+						Object.assign(body, adjustInvoiceFields(additionalFields));
+					}
+
+					responseData = await stripeApiRequest.call(this, 'POST', `/invoices`, body, {});
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------
+					//        invoice: delete
+					// ----------------------------------
+
+					const invoiceId = this.getNodeParameter('invoiceId', i);
+					responseData = await stripeApiRequest.call(this, 'DELETE', `/invoices/${invoiceId}`, {}, {});
+
+				} else if (operation === 'get') {
+
+					// ----------------------------------
+					//        invoice: get
+					// ----------------------------------
+
+					const invoiceId = this.getNodeParameter('invoiceId', i);
+					responseData = await stripeApiRequest.call(this, 'GET', `/invoices/${invoiceId}`, {}, {});
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------
+					//        invoice: getAll
+					// ----------------------------------
+
+					responseData = await stripeApiRequest.call(this, 'GET', '/invoices', {}, {});
+
+				} else if (operation === 'pay') {
+
+					// ----------------------------------
+					//        invoice: pay
+					// ----------------------------------
+
+					const invoiceId = this.getNodeParameter('invoiceId', i);
+					responseData = await stripeApiRequest.call(this, 'POST', `/invoices/${invoiceId}/pay`, {}, {});
+
+				} else if (operation === 'send') {
+
+					// ----------------------------------
+					//        invoice: send
+					// ----------------------------------
+
+					const invoiceId = this.getNodeParameter('invoiceId', i);
+					responseData = await stripeApiRequest.call(this, 'POST', `/invoices/${invoiceId}/send`, {}, {});
+
+				} else if (operation === 'update') {
+
+					// ----------------------------------
+					//        invoice: update
+					// ----------------------------------
+
+					const invoiceId = this.getNodeParameter('invoiceId', i);
+					responseData = await stripeApiRequest.call(this, 'POST', `/invoices/${invoiceId}`, {}, {});
+
+				} else if (operation === 'void') {
+
+					// ----------------------------------
+					//        invoice: void
+					// ----------------------------------
+
+					const invoiceId = this.getNodeParameter('invoiceId', i);
+					responseData = await stripeApiRequest.call(this, 'POST', `/invoices/${invoiceId}/void`, {}, {});
 
 				}
 
