@@ -114,16 +114,11 @@ export const bookmarkFields = [
 				description: 'Sort order for the bookmark. For example, to move it to first place, enter 0.',
 			},
 			{
-				displayName: 'Tag IDs',
+				displayName: 'Tags',
 				name: 'tags',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsDependsOn: [
-						'collectionId',
-					],
-					loadOptionsMethod: 'getTags',
-				},
-				default: [],
+				type: 'string',
+				default: '',
+				description: 'Bookmark tags. Multiple can be set separated by comma.',
 			},
 			{
 				displayName: 'Title',

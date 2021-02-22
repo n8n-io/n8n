@@ -99,14 +99,6 @@ export class Raindrop implements INodeType {
 					value: item._id,
 				}));
 			},
-			async getTags(this: ILoadOptionsFunctions) {
-				const collectionId = this.getCurrentNodeParameter('collectionId') as string;
-				const responseData = await raindropApiRequest.call(this, 'GET', `/tags/${collectionId}`, {}, {});
-				return responseData.items.map((item: { title: string, _id: string }) => ({
-					name: item._id,
-					value: item._id,
-				}));
-			},
 		},
 	};
 
@@ -150,6 +142,10 @@ export class Raindrop implements INodeType {
 					if (additionalFields.pleaseParse === true) {
 						body.pleaseParse = {};
 						delete additionalFields.pleaseParse;
+					}
+
+					if (additionalFields.tags) {
+						body.tags = (additionalFields.tags as string).split(',').map(tag => tag.trim()) as string[];
 					}
 
 					const endpoint = `/raindrop`;
@@ -221,7 +217,7 @@ export class Raindrop implements INodeType {
 					}
 
 					if (updateFields.tags) {
-						body.tags = (updateFields.tags as string).split(',') as string[];
+						body.tags = (updateFields.tags as string).split(',').map(tag => tag.trim()) as string[];
 					}
 
 					const endpoint = `/raindrop/${bookmarkId}`;
