@@ -135,7 +135,7 @@ export const webinarFields = [
 				displayName: 'Experience Type',
 				name: 'experienceType',
 				type: 'options',
-				default: 'classic',
+				default: 'CLASSIC',
 				options: [
 					{
 						name: 'Classic',
@@ -432,7 +432,7 @@ export const webinarFields = [
 				displayName: 'Experience Type',
 				name: 'experienceType',
 				type: 'options',
-				default: 'classic',
+				default: 'CLASSIC',
 				options: [
 					{
 						name: 'Classic',
