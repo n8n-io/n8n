@@ -550,7 +550,7 @@
     "@types/xml2js": "^0.4.3",
     "gulp": "^4.0.0",
     "jest": "^26.4.2",
-    "n8n-workflow": "~0.52.0",
+    "n8n-workflow": "~0.53.0",
     "ts-jest": "^26.3.0",
     "tslint": "^6.1.2",
     "typescript": "~3.9.7"
@@ -586,7 +586,7 @@
     "mqtt": "4.2.1",
     "mssql": "^6.2.0",
     "mysql2": "~2.1.0",
-    "n8n-core": "~0.63.0",
+    "n8n-core": "~0.64.0",
     "nodemailer": "^6.4.6",
     "pdf-parse": "^1.1.1",
     "pg": "^8.3.0",
