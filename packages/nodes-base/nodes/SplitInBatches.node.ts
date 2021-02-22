@@ -59,8 +59,6 @@ export class SplitInBatches implements INodeType {
 
 		const batchSize = this.getNodeParameter('batchSize', 0) as number;
 
-		const returnItems: INodeExecutionData[] = [];
-
 		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
 		if (nodeContext.items === undefined || options.reset === true) {
