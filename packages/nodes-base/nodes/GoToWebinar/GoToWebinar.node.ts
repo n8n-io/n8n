@@ -47,7 +47,7 @@ import * as moment from 'moment-timezone';
 export class GoToWebinar implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GoToWebinar',
-		name: 'GoToWebinar',
+		name: 'goToWebinar',
 		icon: 'file:gotowebinar.svg',
 		group: ['transform'],
 		version: 1,
