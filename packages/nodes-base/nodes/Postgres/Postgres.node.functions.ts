@@ -40,13 +40,13 @@ export function pgQuery(
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 	input: INodeExecutionData[],
-): Promise<object[]> {
+): Promise<object[][]> {
 	const queries: string[] = [];
 	for (let i = 0; i < input.length; i++) {
 		queries.push(getNodeParam('query', i) as string);
 	}
 
-	return db.any(pgp.helpers.concat(queries));
+	return db.multi(pgp.helpers.concat(queries));
 }
 
 /**

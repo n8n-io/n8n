@@ -233,7 +233,7 @@ export class Postgres implements INodeType {
 
 			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items);
 
-			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+			returnItems = this.helpers.returnJsonArray(queryResult.flat(1) as IDataObject[]);
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
