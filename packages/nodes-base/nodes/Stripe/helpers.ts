@@ -47,7 +47,6 @@ export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions 
 	}
 
 	try {
-		console.log(JSON.stringify(options, null, 2));
 		return await this.helpers.request!.call(this, options);
 	} catch (error) {
 		if (error.statusCode === 401) {
