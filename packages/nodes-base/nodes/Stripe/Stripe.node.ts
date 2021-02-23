@@ -128,6 +128,8 @@ export class Stripe implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 
+			try {
+
 			if (resource === 'balance') {
 
 				// *********************************************************************
@@ -432,9 +434,18 @@ export class Stripe implements INodeType {
 
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push({ error: error.message });
+				continue;
+			}
+
+			throw error;
+		}
+
+		Array.isArray(responseData)
+			? returnData.push(...responseData)
+			: returnData.push(responseData);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
