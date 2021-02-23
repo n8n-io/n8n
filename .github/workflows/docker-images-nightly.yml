@@ -46,4 +46,4 @@ jobs:
           file: ./docker/images/n8n-custom/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: n8nio/n8n:${{ github.event.inputs.tag || 'nightly' }}
+          tags: gerardlouw/n8n:${{ github.event.inputs.tag || 'nightly' }}
