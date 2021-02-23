@@ -3,5 +3,4 @@ export * from './CardDescription';
 export * from './ChargeDescription';
 export * from './CouponDescription';
 export * from './CustomerDescription';
-export * from './ProductDescription';
 export * from './SourceDescription';

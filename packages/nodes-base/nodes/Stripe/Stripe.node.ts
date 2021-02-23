@@ -32,8 +32,6 @@ import {
 	couponOperations,
 	customerFields,
 	customerOperations,
-	productFields,
-	productOperations,
 	sourceFields,
 	sourceOperations,
 } from './descriptions';
@@ -102,8 +100,6 @@ export class Stripe implements INodeType {
 			...couponFields,
 			...customerOperations,
 			...customerFields,
-			...productOperations,
-			...productFields,
 			...sourceOperations,
 			...sourceFields,
 		],
