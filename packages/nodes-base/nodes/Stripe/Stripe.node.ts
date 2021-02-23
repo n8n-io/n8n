@@ -218,8 +218,6 @@ export class Stripe implements INodeType {
 						Object.assign(body, adjustChargeFields(additionalFields));
 					}
 
-					// TODO: adjust and load update fields
-
 					responseData = await stripeApiRequest.call(this, 'POST', '/charges', body, {});
 
 				} else if (operation === 'get') {
@@ -253,7 +251,7 @@ export class Stripe implements INodeType {
 						throw new Error(`Please enter at least one field to update for the ${resource}.`);
 					}
 
-					// TODO: adjust and load update fields
+					Object.assign(body, adjustChargeFields(updateFields));
 
 					const chargeId = this.getNodeParameter('chargeId', i);
 					responseData = await stripeApiRequest.call(this, 'POST', `/charges/${chargeId}`, body, {});
