@@ -7,6 +7,7 @@ import {
 	IWorkflowExecutionDataProcessWithExecution,
 	NodeTypes,
 	WorkflowExecuteAdditionalData,
+	WorkflowHelpers,
 } from './';
 
 import {
@@ -17,12 +18,15 @@ import {
 import {
 	IDataObject,
 	IExecuteData,
+	IExecuteWorkflowInfo,
 	IExecutionError,
+	INodeExecutionData,
 	INodeType,
 	INodeTypeData,
 	IRun,
 	IRunExecutionData,
 	ITaskData,
+	IWorkflowExecuteAdditionalData,
 	IWorkflowExecuteHooks,
 	Workflow,
 	WorkflowHooks,
@@ -35,6 +39,7 @@ export class WorkflowRunnerProcess {
 	startedAt = new Date();
 	workflow: Workflow | undefined;
 	workflowExecute: WorkflowExecute | undefined;
+	executionIdCallback: (executionId: string) => void | undefined;
 
 
 	async runWorkflow(inputData: IWorkflowExecutionDataProcessWithExecution): Promise<IRun> {
@@ -92,16 +97,33 @@ export class WorkflowRunnerProcess {
 			await Db.init();
 		}
 
-		this.workflow = new Workflow({ id: this.data.workflowData.id as string | undefined, name: this.data.workflowData.name, nodes: this.data.workflowData!.nodes, connections: this.data.workflowData!.connections, active: this.data.workflowData!.active, nodeTypes, staticData: this.data.workflowData!.staticData, settings: this.data.workflowData!.settings});
+		this.workflow = new Workflow({ id: this.data.workflowData.id as string | undefined, name: this.data.workflowData.name, nodes: this.data.workflowData!.nodes, connections: this.data.workflowData!.connections, active: this.data.workflowData!.active, nodeTypes, staticData: this.data.workflowData!.staticData, settings: this.data.workflowData!.settings });
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(this.data.credentials);
 		additionalData.hooks = this.getProcessForwardHooks();
+
+		const executeWorkflowFunction = additionalData.executeWorkflow;
+		additionalData.executeWorkflow = async (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[] | undefined): Promise<Array<INodeExecutionData[] | null> | IRun> => {
+			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(workflowInfo);
+			const runData = await WorkflowExecuteAdditionalData.getRunData(workflowData, inputData);
+			await sendToParentProcess('startExecution', { runData });
+			const executionId: string = await new Promise((resolve) => {
+				this.executionIdCallback = (executionId: string) => {
+					resolve(executionId);
+				};
+			});
+			const result: IRun = await executeWorkflowFunction(workflowInfo, additionalData, inputData, executionId, workflowData, runData);
+			await sendToParentProcess('finishExecution', { executionId, result });
+
+			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(result);
+			return returnData!.data!.main;
+		};
 
 		if (this.data.executionData !== undefined) {
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode, this.data.executionData);
 			return this.workflowExecute.processRunExecutionData(this.workflow);
 		} else if (this.data.runData === undefined || this.data.startNodes === undefined || this.data.startNodes.length === 0 || this.data.destinationNode === undefined) {
 			// Execute all nodes
-			
+
 			// Can execute without webhook so go on
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
 			return this.workflowExecute.run(this.workflow, undefined, this.data.destinationNode);
@@ -257,6 +279,8 @@ process.on('message', async (message: IProcessMessage) => {
 
 			// Stop process
 			process.exit();
+		} else if (message.type === 'executionId') {
+			workflowRunner.executionIdCallback(message.data.executionId);
 		}
 	} catch (error) {
 		// Catch all uncaught errors and forward them to parent process
