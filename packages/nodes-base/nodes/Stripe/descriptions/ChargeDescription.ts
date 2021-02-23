@@ -103,6 +103,24 @@ export const chargeFields = [
 		},
 	},
 	{
+		displayName: 'Source ID',
+		name: 'source',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'ID of the customer\'s payment source to be charged.',
+		displayOptions: {
+			show: {
+				resource: [
+					'charge',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -161,7 +179,7 @@ export const chargeFields = [
 				name: 'receipt_email',
 				type: 'string',
 				default: '',
-				description: 'The email address to which the receipt for this charge will be sent.',
+				description: 'Email address to which the receipt for this charge will be sent.',
 			},
 			{
 				displayName: 'Shipping',
@@ -179,29 +197,70 @@ export const chargeFields = [
 							{
 								displayName: 'Address',
 								name: 'address',
-								type: 'string',
-								default: '',
+								type: 'fixedCollection',
+								description: 'Address of the customer being charged.',
+								placeholder: 'Add Field',
+								options: [
+									{
+										displayName: 'Details',
+										name: 'details',
+										values: [
+											{
+												displayName: 'City',
+												name: 'city',
+												description: 'City, district, suburb, town, or village.',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Country',
+												name: 'country',
+												description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>).',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Line 1',
+												name: 'line1',
+												description: 'Address line 1 (e.g., street, PO Box, or company name).',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Line 2',
+												name: 'line2',
+												description: 'Address line 2 (e.g., apartment, suite, unit, or building).',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Postal Code',
+												name: 'postal_code',
+												description: 'ZIP or postal code.',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'State',
+												name: 'state',
+												description: 'State, county, province, or region.',
+												type: 'string',
+												default: '',
+											},
+										],
+									},
+								],
 							},
 							{
 								displayName: 'Recipient Name',
 								name: 'name',
 								type: 'string',
+								description: 'Name of the person who will receive the shipment.',
 								default: '',
 							},
 						],
 					},
 				],
-			},
-			{
-				displayName: 'Source ID',
-				name: 'source',
-				type: 'options',
-				required: true,
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getSources',
-				},
-				description: 'Payment source to be charged.',
 			},
 		],
 	},

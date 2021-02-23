@@ -15,6 +15,7 @@ import {
 } from 'lodash';
 
 import {
+	adjustChargeFields,
 	adjustCustomerFields,
 	adjustSourceFields,
 	handleListing,
@@ -208,12 +209,13 @@ export class Stripe implements INodeType {
 						customer: this.getNodeParameter('customerId', i),
 						currency: (this.getNodeParameter('currency', i) as string).toLowerCase(),
 						amount: this.getNodeParameter('amount', i),
+						source: this.getNodeParameter('source', i),
 					} as IDataObject;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (!isEmpty(additionalFields)) {
-						Object.assign(body, additionalFields);
+						Object.assign(body, adjustChargeFields(additionalFields));
 					}
 
 					// TODO: adjust and load update fields

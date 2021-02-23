@@ -41,12 +41,12 @@ export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions 
 		json: true,
 	};
 
-	// TODO
 	if (options.qs && Object.keys(options.qs).length === 0) {
 		delete options.qs;
 	}
 
 	try {
+		console.log(JSON.stringify(options, null, 2));
 		return await this.helpers.request!.call(this, options);
 	} catch (error) {
 		if (error.statusCode === 401) {
@@ -68,6 +68,14 @@ export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions 
 		throw error;
 	}
 }
+
+/**
+ * Make n8n's charge fields compliant with the Stripe API request object.
+ */
+export const adjustChargeFields = flow([
+	adjustMetadataFields,
+	adjustShippingFields,
+]);
 
 /**
  * Make n8n's customer fields compliant with the Stripe API request object.
