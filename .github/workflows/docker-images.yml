@@ -20,19 +20,19 @@ jobs:
       run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
 
     - name: Build the Docker image of version
-      run: docker build --build-arg N8N_VERSION=${{steps.vars.outputs.tag}} -t n8nio/n8n:${{steps.vars.outputs.tag}} docker/images/n8n
+      run: docker build --build-arg N8N_VERSION=${{steps.vars.outputs.tag}} -t gerardlouw/n8n:${{steps.vars.outputs.tag}} docker/images/n8n
     - name: Push Docker image of version
-      run: docker push n8nio/n8n:${{steps.vars.outputs.tag}}
+      run: docker push gerardlouw/n8n:${{steps.vars.outputs.tag}}
     - name: Tag Docker image with latest
-      run: docker tag n8nio/n8n:${{steps.vars.outputs.tag}} n8nio/n8n:latest
+      run: docker tag gerardlouw/n8n:${{steps.vars.outputs.tag}} gerardlouw/n8n:latest
     - name: Push docker images of latest
-      run: docker push n8nio/n8n:latest
+      run: docker push gerardlouw/n8n:latest
 
     - name: Build the Docker image of version (Debian)
-      run: docker build --build-arg N8N_VERSION=${{steps.vars.outputs.tag}} -t n8nio/n8n:${{steps.vars.outputs.tag}}-debian docker/images/n8n-debian
+      run: docker build --build-arg N8N_VERSION=${{steps.vars.outputs.tag}} -t gerardlouw/n8n:${{steps.vars.outputs.tag}}-debian docker/images/n8n-debian
     - name: Push Docker image of version (Debian)
-      run: docker push n8nio/n8n:${{steps.vars.outputs.tag}}-debian
+      run: docker push gerardlouw/n8n:${{steps.vars.outputs.tag}}-debian
     - name: Tag Docker image with latest (Debian)
-      run: docker tag n8nio/n8n:${{steps.vars.outputs.tag}}-debian n8nio/n8n:latest-debian
+      run: docker tag gerardlouw/n8n:${{steps.vars.outputs.tag}}-debian gerardlouw/n8n:latest-debian
     - name: Push docker images of latest (Debian)
-      run: docker push n8nio/n8n:latest-debian
+      run: docker push gerardlouw/n8n:latest-debian
