@@ -239,7 +239,7 @@ export class TextManipulation implements INodeType {
 												},
 												type: 'options',
 												options: encodeDecodeOptions,
-												default: 'utf16',
+												default: 'utf8',
 											},
 											{
 												displayName: 'Add BOM',
