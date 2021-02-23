@@ -430,7 +430,7 @@ export default mixins(
 			this.$store.commit('setActiveExecutions', results[1]);
 
 			const alreadyPresentExecutionIds = this.finishedExecutions.map(exec => exec.id);
-			for(let i = results[0].results.length - 1; i > 0; i--) {
+			for(let i = results[0].results.length - 1; i >= 0; i--) {
 				const currentItem = results[0].results[i];
 				// Check new results from end to start
 				// Add new items accordingly.

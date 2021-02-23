@@ -520,6 +520,10 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	// different webooks
 	const additionalDataIntegrated = await getBase(credentials);
 	additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(runData.executionMode, executionId, workflowData!, { parentProcessMode: additionalData.hooks!.mode });
+	// Make sure we pass on the original executeWorkflow function we received
+	// This one already contains changes to talk to parent process
+	// and get executionID from `activeExecutions` running on main process
+	additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
 
 
 	// Execute the workflow
