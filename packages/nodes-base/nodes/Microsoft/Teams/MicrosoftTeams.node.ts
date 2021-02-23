@@ -268,8 +268,7 @@ export class MicrosoftTeams implements INodeType {
 					const channelId = this.getNodeParameter('channelId', i) as string;
 					const messageType = this.getNodeParameter('messageType', i) as string;
 					const message = this.getNodeParameter('message', i) as string;
-					// optional replyToId
-					const replyToId = this.getNodeParameter('replyToId', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
 					const body: IDataObject = {
 						body: {
@@ -278,10 +277,12 @@ export class MicrosoftTeams implements INodeType {
 						},
 					};
 
-					if (replyToId)
+					if (options.makeReply) {
+						const replyToId = options.makeReply as string;
 						responseData = await microsoftApiRequest.call(this, 'POST', `/beta/teams/${teamId}/channels/${channelId}/messages/${replyToId}/replies`, body);
-					else
+					} else {
 						responseData = await microsoftApiRequest.call(this, 'POST', `/beta/teams/${teamId}/channels/${channelId}/messages`, body);
+					}
 				}
 				//https://docs.microsoft.com/en-us/graph/api/channel-list-messages?view=graph-rest-beta&tabs=http
 				if (operation === 'getAll') {

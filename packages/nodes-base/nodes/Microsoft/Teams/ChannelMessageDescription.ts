@@ -24,7 +24,7 @@ export const channelMessageOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all messages',
-			}
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -130,25 +130,30 @@ export const channelMessageFields = [
 		description: 'The content of the item.',
 	},
 	{
-		displayName: 'Reply To ID',
-		name: 'replyToId',
-		required: false,
-		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: false,
-		},
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
 				resource: [
 					'channelMessage',
 				],
+				operation: [
+					'create',
+				],
 			},
 		},
-		default: '',
-		description: 'An optional ID of the message you want to reply to.',
+		options: [
+			{
+				displayName: 'Make Reply',
+				name: 'makeReply',
+				type: 'string',
+				default: '',
+				description: 'An optional ID of the message you want to reply to.',
+			},
+		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 channelMessage:getAll                      */
@@ -237,5 +242,5 @@ export const channelMessageFields = [
 		},
 		default: 100,
 		description: 'How many results to return.',
-	}
+	},
 ] as INodeProperties[];
