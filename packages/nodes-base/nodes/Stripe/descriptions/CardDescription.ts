@@ -58,6 +58,25 @@ export const cardFields = [
 			},
 		},
 	},
+	{
+		displayName: 'Token',
+		name: 'token',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'tok_1IMfKdJhRTnqS5TKQVG1LI9o',
+		description: 'Token representing sensitive card information.',
+		displayOptions: {
+			show: {
+				resource: [
+					'card',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
 
 	// ----------------------------------
 	//         card: delete

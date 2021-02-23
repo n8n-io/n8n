@@ -158,10 +158,13 @@ export class Stripe implements INodeType {
 					//          card: create
 					// ----------------------------------
 
+					const body = {
+						source: this.getNodeParameter('token', i),
+					} as IDataObject;
+
 					const customerId = this.getNodeParameter('customerId', i);
 					const endpoint = `/customers/${customerId}/sources`;
-					// TODO: token?
-					responseData = await stripeApiRequest.call(this, 'POST', endpoint, {}, {});
+					responseData = await stripeApiRequest.call(this, 'POST', endpoint, body, {});
 
 				} else if (operation === 'delete') {
 
