@@ -50,10 +50,14 @@ export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions 
 		console.log(JSON.stringify(options, null, 2));
 		return await this.helpers.request!.call(this, options);
 	} catch (error) {
-		// console.log(error);
 		if (error.statusCode === 401) {
 			// Return a clear error
 			throw new Error('The Stripe credentials are not valid!');
+		}
+
+		if (error.error.error.message) {
+			// Try to return the error prettier
+			throw new Error(`Stripe error response [${error.statusCode}]: ${error.error.error.message}`);
 		}
 
 		if (error.response && error.response.body && error.response.body.message) {
