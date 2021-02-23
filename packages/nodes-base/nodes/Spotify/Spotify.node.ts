@@ -867,7 +867,6 @@ export class Spotify implements INodeType {
 						body.tracks = [
 							{
 								uri: `${trackId}`,
-								positions: [0],
 							},
 						];
 
