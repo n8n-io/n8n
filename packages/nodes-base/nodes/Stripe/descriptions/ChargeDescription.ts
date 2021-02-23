@@ -207,6 +207,28 @@ export const chargeFields = [
 	},
 
 	// ----------------------------------
+	//       charge: get
+	// ----------------------------------
+	{
+		displayName: 'Charge ID',
+		name: 'chargeId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'ID of the charge to retrieve.',
+		displayOptions: {
+			show: {
+				resource: [
+					'charge',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------
 	//       charge: getAll
 	// ----------------------------------
 	{
@@ -254,6 +276,24 @@ export const chargeFields = [
 	// ----------------------------------
 	//       charge: update
 	// ----------------------------------
+	{
+		displayName: 'Charge ID',
+		name: 'chargeId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'ID of the charge to update.',
+		displayOptions: {
+			show: {
+				resource: [
+					'charge',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',

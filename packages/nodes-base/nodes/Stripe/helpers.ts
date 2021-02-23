@@ -76,36 +76,11 @@ export const adjustCustomerFields = flow([
 ]);
 
 /**
- * Make n8n's invoice fields compliant with the Stripe API request object.
+ * Make n8n's source fields compliant with the Stripe API request object.
  */
 export const adjustSourceFields = flow([
 	adjustMetadataFields,
 ]);
-
-/**
- * Make n8n's invoice fields compliant with the Stripe API request object.
- */
-export const adjustInvoiceFields = flow([
-	adjustMetadataFields,
-]);
-
-/**
- * Convert n8n's shipping object into a Stripe API request shipping object.
- */
-function adjustShippingFields(
-	shippingFields: { shipping?: { shippingProperties: Array<{ address: { details: IDataObject }; name: string }> }  },
-) {
-	const shippingProperties = shippingFields.shipping?.shippingProperties[0];
-
-	if (!shippingProperties?.address || isEmpty(shippingProperties.address)) return shippingFields;
-
-	return {
-		shipping: {
-			...omit(shippingProperties, ['address']),
-			address: shippingProperties.address.details,
-		},
-	};
-}
 
 /**
  * Convert n8n's address object into a Stripe API request shipping object.
@@ -113,11 +88,11 @@ function adjustShippingFields(
 function adjustAddressFields(
 	addressFields: { address: { details: IDataObject }  },
 ) {
+	if (!addressFields.address) return addressFields;
 
 	return {
 		address: addressFields.address.details,
 	};
-
 }
 
 /**
@@ -141,11 +116,29 @@ function adjustMetadataFields(
 }
 
 /**
+ * Convert n8n's shipping object into a Stripe API request shipping object.
+ */
+function adjustShippingFields(
+	shippingFields: { shipping?: { shippingProperties: Array<{ address: { details: IDataObject }; name: string }> }  },
+) {
+	const shippingProperties = shippingFields.shipping?.shippingProperties[0];
+
+	if (!shippingProperties?.address || isEmpty(shippingProperties.address)) return shippingFields;
+
+	return {
+		shipping: {
+			...omit(shippingProperties, ['address']),
+			address: shippingProperties.address.details,
+		},
+	};
+}
+
+/**
  * Load a resource so it can be selected by name from a dropdown.
  */
 export async function loadResource(
 	this: ILoadOptionsFunctions,
-	resource: 'charge' | 'customer' | 'invoice' | 'source',
+	resource: 'charge' | 'customer' | 'source',
 ): Promise<INodePropertyOptions[]> {
 	const responseData = await stripeApiRequest.call(this, 'GET', `/${resource}s`, {}, {});
 
@@ -153,4 +146,27 @@ export async function loadResource(
 		name,
 		value: id,
 	}));
+}
+
+/**
+ * Handles a Stripe listing by returning all items or up to a limit.
+ */
+export async function handleListing(
+	this: IExecuteFunctions,
+	resource: string,
+	qs: IDataObject = {},
+) {
+	let responseData;
+
+	responseData = await stripeApiRequest.call(this, 'GET', `/${resource}s`, qs, {});
+	responseData = responseData.data;
+
+	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+	if (!returnAll) {
+		const limit = this.getNodeParameter('limit', 0) as number;
+		responseData = responseData.slice(0, limit);
+	}
+
+	return responseData;
 }
