@@ -405,6 +405,8 @@ export class Stripe implements INodeType {
 
 					const body = {
 						type: this.getNodeParameter('type', i),
+						amount: this.getNodeParameter('amount', i),
+						currency: this.getNodeParameter('currency', i),
 					} as IDataObject;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;

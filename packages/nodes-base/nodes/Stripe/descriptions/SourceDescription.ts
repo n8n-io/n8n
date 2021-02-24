@@ -67,70 +67,48 @@ export const sourceFields = [
 		description: 'Type of source (payment instrument) to create.',
 		options: [
 			{
-				name: '3-D Secure',
-				value: 'three_d_secure',
-			},
-			{
-				name: 'ACH Credit Transfer',
-				value: 'ach_credit_transfer',
-			},
-			{
-				name: 'ACH Debit',
-				value: 'ach_debit',
-			},
-			{
-				name: 'Alipay',
-				value: 'alipay',
-			},
-			{
-				name: 'Bancontact',
-				value: 'bancontact',
-			},
-			{
-				name: 'Card',
-				value: 'card',
-			},
-			{
-				name: 'Card Present',
-				value: 'card_present',
-			},
-			{
-				name: 'EPS',
-				value: 'eps',
-			},
-			{
-				name: 'Giropay',
-				value: 'giropay',
-			},
-			{
-				name: 'Ideal',
-				value: 'ideal',
-			},
-			{
-				name: 'Multibanco',
-				value: 'multibanco',
-			},
-			{
-				name: 'Klarna',
-				value: 'klarna',
-			},
-			{
-				name: 'P24',
-				value: 'p24',
-			},
-			{
-				name: 'SEPA Debit',
-				value: 'sepa_debit',
-			},
-			{
-				name: 'Sofort',
-				value: 'sofort',
-			},
-			{
 				name: 'WeChat',
 				value: 'wechat',
 			},
 		],
+		displayOptions: {
+			show: {
+				resource: [
+					'source',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Amount',
+		name: 'amount',
+		type: 'number',
+		default: 0,
+		description: 'Amount in cents to be collected for this charge, e.g. enter <code>100</code> for $1.00.',
+		typeOptions: {
+			minValue: 0,
+			maxValue: 99999999,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'source',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Currency',
+		name: 'currency',
+		type: 'string',
+		default: '',
+		description: 'Three-letter ISO currency code, e.g. USD or EUR. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -159,24 +137,6 @@ export const sourceFields = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Amount',
-				name: 'amount',
-				type: 'number',
-				default: 0,
-				description: 'Amount in cents to be collected for this charge, e.g. enter <code>100</code> for $1.00.',
-				typeOptions: {
-					minValue: 0,
-					maxValue: 99999999,
-				},
-			},
-			{
-				displayName: 'Currency',
-				name: 'currency',
-				type: 'string',
-				default: '',
-				description: 'Three-letter ISO currency code, e.g. USD or EUR. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>.',
-			},
 			{
 				displayName: 'Metadata',
 				name: 'metadata',
