@@ -188,7 +188,8 @@ export class ExecuteAll extends Command {
 					}
 					continue;
 				}
-
+				
+				executionResult.executionTime = (Date.parse(data.stoppedAt as unknown as string) - Date.parse(data.startedAt as unknown as string))/1000; 
 				executionResult.finished = (data?.finished !== undefined) as boolean; 
 
 				if (data.data.resultData.error) {
