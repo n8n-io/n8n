@@ -15,7 +15,6 @@ import {
 } from 'lodash';
 
 import {
-	adjustCardTokenFields,
 	adjustChargeFields,
 	adjustCustomerFields,
 	adjustSourceFields,
@@ -463,11 +462,13 @@ export class Stripe implements INodeType {
 
 					const cardFields = this.getNodeParameter('cardFields', i) as IDataObject;
 
-					if (isEmpty(cardFields)) {
-						throw new Error('Please fill in all card fields to create a card token.');
-					}
+					['number', 'exp_month', 'exp_year', 'cvc'].forEach(field => {
+						if (cardFields[field] === undefined) {
+							throw new Error(`Please fill in ${field} to create a card token.`);
+						}
+					});
 
-					Object.assign(body, adjustCardTokenFields(cardFields));
+					Object.assign(body, { card: cardFields });
 
 					responseData = await stripeApiRequest.call(this, 'POST', '/tokens', body, {});
 
