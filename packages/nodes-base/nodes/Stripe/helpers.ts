@@ -87,13 +87,6 @@ export const adjustCustomerFields = flow([
 ]);
 
 /**
- * Make n8n's source fields compliant with the Stripe API request object.
- */
-export const adjustSourceFields = flow([
-	adjustMetadataFields,
-]);
-
-/**
  * Convert n8n's address object into a Stripe API request shipping object.
  */
 function adjustAddressFields(
@@ -102,6 +95,7 @@ function adjustAddressFields(
 	if (!addressFields.address) return addressFields;
 
 	return {
+		...omit(addressFields, ['address']),
 		address: addressFields.address.details,
 	};
 }
@@ -109,19 +103,19 @@ function adjustAddressFields(
 /**
  * Convert n8n's `fixedCollection` metadata object into a Stripe API request metadata object.
  */
-function adjustMetadataFields(
-	customerFields: { metadata?: { metadataProperties: Array<{ key: string; value: string }> } },
+export function adjustMetadataFields(
+	fields: { metadata?: { metadataProperties: Array<{ key: string; value: string }> } },
 ) {
-	if (!customerFields.metadata || isEmpty(customerFields.metadata)) return customerFields;
+	if (!fields.metadata || isEmpty(fields.metadata)) return fields;
 
 	let adjustedMetadata = {};
 
-	customerFields.metadata.metadataProperties.forEach(pair => {
+	fields.metadata.metadataProperties.forEach(pair => {
 		adjustedMetadata = { ...adjustedMetadata, ...pair };
 	});
 
 	return {
-		...omit(customerFields, ['metadata']),
+		...omit(fields, ['metadata']),
 		metadata: adjustedMetadata,
 	};
 }

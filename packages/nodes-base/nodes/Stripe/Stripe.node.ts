@@ -17,7 +17,7 @@ import {
 import {
 	adjustChargeFields,
 	adjustCustomerFields,
-	adjustSourceFields,
+	adjustMetadataFields,
 	handleListing,
 	loadResource,
 	stripeApiRequest,
@@ -182,8 +182,8 @@ export class Stripe implements INodeType {
 					// ----------------------------------
 
 					const customerId = this.getNodeParameter('customerId', i);
-					const sourceId = this.getNodeParameter('sourceId', i);
-					const endpoint = `/customers/${customerId}/sources/${sourceId}`;
+					const cardId = this.getNodeParameter('cardId', i);
+					const endpoint = `/customers/${customerId}/sources/${cardId}`;
 					responseData = await stripeApiRequest.call(this, 'DELETE', endpoint, {}, {});
 
 				} else if (operation === 'get') {
@@ -324,7 +324,7 @@ export class Stripe implements INodeType {
 					} as IDataObject;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
+					console.log(adjustCustomerFields(additionalFields));
 					if (!isEmpty(additionalFields)) {
 						Object.assign(body, adjustCustomerFields(additionalFields));
 					}
@@ -408,7 +408,7 @@ export class Stripe implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (!isEmpty(additionalFields)) {
-						Object.assign(body, adjustSourceFields(additionalFields));
+						Object.assign(body, adjustMetadataFields(additionalFields));
 					}
 
 					responseData = await stripeApiRequest.call(this, 'POST', '/sources', body, {});
@@ -464,7 +464,7 @@ export class Stripe implements INodeType {
 
 					['number', 'exp_month', 'exp_year', 'cvc'].forEach(field => {
 						if (cardFields[field] === undefined) {
-							throw new Error(`Please fill in ${field} to create a card token.`);
+							throw new Error('Please fill in all card fields to create a card token.');
 						}
 					});
 

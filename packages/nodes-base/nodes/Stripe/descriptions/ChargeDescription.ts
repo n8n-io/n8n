@@ -186,6 +186,7 @@ export const chargeFields = [
 				name: 'shipping',
 				type: 'fixedCollection',
 				description: 'Shipping information for the charge.',
+				placeholder: 'Add Field',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -198,6 +199,7 @@ export const chargeFields = [
 								displayName: 'Address',
 								name: 'address',
 								type: 'fixedCollection',
+								default: {},
 								description: 'Address of the customer being charged.',
 								placeholder: 'Add Field',
 								options: [
@@ -419,19 +421,69 @@ export const chargeFields = [
 				name: 'shipping',
 				type: 'fixedCollection',
 				description: 'Shipping information for the charge.',
-				typeOptions: {
-					multipleValues: true,
-				},
+				placeholder: 'Add Field',
 				options: [
 					{
 						displayName: 'Shipping Properties',
 						name: 'shippingProperties',
+						default: {},
 						values: [
 							{
-								displayName: 'Address',
+								displayName: 'Recipient Address',
 								name: 'address',
-								type: 'string',
-								default: '',
+								type: 'fixedCollection',
+								default: {},
+								placeholder: 'Add Address Details',
+								options: [
+									{
+										displayName: 'Details',
+										name: 'details',
+										values: [
+											{
+												displayName: 'City',
+												name: 'city',
+												description: 'City, district, suburb, town, or village.',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Country',
+												name: 'country',
+												description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>).',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Line 1',
+												name: 'line1',
+												description: 'Address line 1 (e.g., street, PO Box, or company name).',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Line 2',
+												name: 'line2',
+												description: 'Address line 2 (e.g., apartment, suite, unit, or building).',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Postal Code',
+												name: 'postal_code',
+												description: 'ZIP or postal code.',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'State',
+												name: 'state',
+												description: 'State, county, province, or region.',
+												type: 'string',
+												default: '',
+											},
+										],
+									},
+								],
 							},
 							{
 								displayName: 'Recipient Name',
@@ -442,13 +494,6 @@ export const chargeFields = [
 						],
 					},
 				],
-			},
-			{
-				displayName: 'Source',
-				name: 'source',
-				type: 'string',
-				default: '',
-				description: 'A payment source to be charged, such as a credit card, a debit card, a bank account, etc.',
 			},
 		],
 	},

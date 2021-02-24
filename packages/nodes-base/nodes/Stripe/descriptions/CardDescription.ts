@@ -103,12 +103,12 @@ export const cardFields = [
 		},
 	},
 	{
-		displayName: 'Source ID',
-		name: 'sourceId',
+		displayName: 'Card ID',
+		name: 'cardId',
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the source to delete.',
+		description: 'ID of the card to delete.',
 		displayOptions: {
 			show: {
 				resource: [

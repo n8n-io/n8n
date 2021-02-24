@@ -86,6 +86,7 @@ export const customerFields = [
 				type: 'fixedCollection',
 				description: 'Address of the customer to create.',
 				placeholder: 'Add Field',
+				default: {},
 				options: [
 					{
 						displayName: 'Details',
@@ -182,18 +183,11 @@ export const customerFields = [
 				],
 			},
 			{
-				displayName: 'Payment Method ID',
-				name: 'paymentMethodId',
-				type: 'string',
-				default: '',
-				description: 'ID of the payment method to associate with this customer.',
-			},
-			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Telephone number of this customer.',
+				description: 'Telephone number of the customer to create.',
 			},
 			{
 				displayName: 'Shipping',
@@ -453,6 +447,7 @@ export const customerFields = [
 				type: 'fixedCollection',
 				description: 'Address of the customer to update.',
 				placeholder: 'Add Field',
+				default: {},
 				options: [
 					{
 						displayName: 'Details',
@@ -554,13 +549,6 @@ export const customerFields = [
 				type: 'string',
 				default: '',
 				description: 'Full name or business name of the customer to create.',
-			},
-			{
-				displayName: 'Payment Method ID',
-				name: 'paymentMethodId',
-				type: 'string',
-				default: '',
-				description: 'ID of the payment method to associate with this customer.',
 			},
 			{
 				displayName: 'Phone',

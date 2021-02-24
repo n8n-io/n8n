@@ -49,10 +49,6 @@ export const couponFields = [
 				name: 'Once',
 				value: 'once',
 			},
-			{
-				name: 'Repeating',
-				value: 'repeating',
-			},
 		],
 		displayOptions: {
 			show: {
