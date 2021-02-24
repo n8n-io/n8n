@@ -44,6 +44,9 @@ export class ExecuteAll extends Command {
 		debug: flags.boolean({
 			description: 'Toggles on displaying all errors and debug messages.',
 		}),
+		json: flags.boolean({
+			description: 'Toggles on displaying results in JSON format.',
+		}),
 		snapshot: flags.string({
 			description: 'Enables snapshot saving. You must inform an existing folder to save snapshots via this param.',
 		}),
@@ -57,6 +60,7 @@ export class ExecuteAll extends Command {
 		const { flags } = this.parse(ExecuteAll);
 		
 		const debug = flags.debug !== undefined;
+		const json = flags.json !== undefined;
 
 		if (flags.snapshot !== undefined) {
 			if (fs.existsSync(flags.snapshot)) {
@@ -126,6 +130,19 @@ export class ExecuteAll extends Command {
 				this.log(`Starting execution of workflow ID ${workflowData.id}.`);
 			}
 			
+			const executionResult = {
+				workflowId: workflowData.id,
+				executionTime: 0,
+				finished: false,
+				nodes: workflowData.nodes.map(node => ({
+					name: node.name,
+					typeVersion: node.typeVersion,
+					type: node.type,
+				})),
+				error:'',
+				changes:'',
+			};
+
 			let startNode: INode | undefined= undefined;
 			for (const node of workflowData!.nodes) {
 				if (requiredNodeTypes.includes(node.type)) {
@@ -137,7 +154,12 @@ export class ExecuteAll extends Command {
 			if (startNode === undefined) {
 				// If the workflow does not contain a start-node we can not know what
 				// should be executed and with which data to start.
-				GenericHelpers.logOutput(`Workflow ID ${workflowData.id} cannot be started as it does not contain a "Start" node.`);
+				if (json === true) {
+					executionResult.error = 'Workflow cannot be started as it does not contain a "Start" node.';
+					GenericHelpers.logOutput(JSON.stringify(executionResult, null, 2));
+				}else{
+					GenericHelpers.logOutput(`Workflow ID ${workflowData.id} cannot be started as it does not contain a "Start" node.`);
+				}
 				continue;
 			}
 			
@@ -158,12 +180,24 @@ export class ExecuteAll extends Command {
 				const data = await activeExecutions.getPostExecutePromise(executionId);
 				
 				if (data === undefined) {
-					GenericHelpers.logOutput(`Workflow ${workflowData.id} did not return any data.`);
+					if (json === true) {
+						executionResult.error = 'Workflow did not return any data.';
+						GenericHelpers.logOutput(JSON.stringify(executionResult, null, 2));
+					}else{
+						GenericHelpers.logOutput(`Workflow ${workflowData.id} did not return any data.`);
+					}
 					continue;
 				}
-				
+
+				executionResult.finished = (data?.finished !== undefined) as boolean; 
+
 				if (data.data.resultData.error) {
-					GenericHelpers.logOutput(`Workflow ${workflowData.id} failed.`);
+					if (json === true) {
+						executionResult.error = data.data.resultData.error.message;
+						GenericHelpers.logOutput(JSON.stringify(executionResult, null, 2));
+					}else{
+						GenericHelpers.logOutput(`Workflow ${workflowData.id} failed.`);
+					}
 					if (debug === true) {
 						this.log(JSON.stringify(data, null, 2));
 						console.log(data.data.resultData.error);
@@ -172,7 +206,13 @@ export class ExecuteAll extends Command {
 				}
 
 				const serializedData = JSON.stringify(data, null, 2);
-				GenericHelpers.logOutput(`Workflow ${workflowData.id} succeeded.`);
+				if (json === true) {
+					if (flags.compare === undefined){
+						GenericHelpers.logOutput(JSON.stringify(executionResult, null, 2));
+					}
+				}else{
+					GenericHelpers.logOutput(`Workflow ${workflowData.id} succeeded.`);
+				}			
 				if (flags.compare !== undefined) {
 					const fileName = (flags.compare.endsWith(sep) ? flags.compare : flags.compare + sep) + `${workflowData.id}-snapshot.json`;
 					if (fs.existsSync(fileName) === true) {
@@ -181,17 +221,32 @@ export class ExecuteAll extends Command {
 
 						//@ts-ignore
 						const changes = diff(JSON.parse(contents), data, {keysOnly: true}); // types are outdated here
-
+						
 						if (changes !== undefined) {
 							// we have structural changes. Report them.
-							console.log(`Workflow ID ${workflowData.id} may contain breaking changes: `, changes);
+							if (json === true) {
+								executionResult.error = `Workflow may contain breaking changes`;
+								executionResult.changes = changes;
+								GenericHelpers.logOutput(JSON.stringify(executionResult, null, 2));
+							}else{
+								console.log(`Workflow ID ${workflowData.id} may contain breaking changes: `, changes);
+							}
 							if (debug === true) {
 								// @ts-ignore
 								console.log('Detailed changes: ', diffString(JSON.parse(contents), data, undefined, {keysOnly: true}));
 							}
+						}else{
+							if (json === true) {
+								GenericHelpers.logOutput(JSON.stringify(executionResult, null, 2));
+							}
 						}
 					} else {
-						GenericHelpers.logOutput(`Snapshot for ${workflowData.id} not found.`);
+						if (json === true) {
+							executionResult.error = 'Snapshot for not found.';
+							GenericHelpers.logOutput(JSON.stringify(executionResult, null, 2));
+						}else{
+							GenericHelpers.logOutput(`Snapshot for ${workflowData.id} not found.`);
+						}
 					}
 				}
 				// Save snapshots only after comparing - this is to make sure we're updating
@@ -202,15 +257,19 @@ export class ExecuteAll extends Command {
 				}
 
 			} catch (e) {
-				GenericHelpers.logOutput(`Workflow ${workflowData.id} failed.`);
+				if (json === true) {
+					executionResult.error = 'Workflow failed to execute.';
+					GenericHelpers.logOutput(JSON.stringify(executionResult, null, 2));
+				}else{
+					GenericHelpers.logOutput(`Workflow ${workflowData.id} failed to execute.`);
+				}
 				if (debug === true) {
 					console.error(e.message);
 					console.error(e.stack);
 				}
 			}
 			
-		}
-		
-		this.exit();
+		}		
+		this.exit(0);
 	}
 }
