@@ -286,6 +286,21 @@ export class TextManipulation implements INodeType {
 												description: 'The file name to set.',
 											},
 											{
+												displayName: 'Mime Type',
+												name: 'mimeType',
+												type: 'string',
+												displayOptions: {
+													show: {
+														writeOperation: [
+															'toFile',
+														],
+													},
+												},
+												default: 'text/plain',
+												placeholder: 'text/plain',
+												description: 'The mime-type to set. By default will the mime-type for plan text be set.',
+											},
+											{
 												displayName: 'Destination Key',
 												name: 'destinationKey',
 												displayOptions: {
@@ -640,6 +655,21 @@ export class TextManipulation implements INodeType {
 												default: 'trimBoth',
 											},
 											{
+												displayName: 'Trim String',
+												name: 'trimString',
+												displayOptions: {
+													show: {
+														action: [
+															'trim',
+														],
+													},
+												},
+												type: 'string',
+												default: ' ',
+												required: true,
+												description: 'The string to trim.',
+											},
+											{
 												displayName: 'Pad',
 												name: 'pad',
 												displayOptions: {
@@ -813,9 +843,30 @@ export class TextManipulation implements INodeType {
 		]
 	};
 
-	static replaceAll(str: string, substr: string, newSubstr: string) {
+	static escapeRegex(str: string) {
 		// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
-		return str.replace(new RegExp(substr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), newSubstr);
+		return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	}
+	static replaceAll(str: string, substr: string, newSubstr: string) {
+		return str.replace(new RegExp(TextManipulation.escapeRegex(substr), 'g'), newSubstr);
+	}
+	
+	static charsTrimLeft(str: string, chars: string) {
+		if(chars == ' ') return str.trimLeft();
+		chars = TextManipulation.escapeRegex(chars);
+		return str.replace(new RegExp('^(' + chars + ')+', 'g'), '');
+	}
+	
+	static charsTrimRight(str: string, chars: string) {
+		if(chars == ' ') return str.trimRight();
+		chars = TextManipulation.escapeRegex(chars);
+		return str.replace(new RegExp('(' + chars + ')+$', 'g'), '');
+	}
+	
+	static charsTrim(str: string, chars: string) {
+		if(chars == ' ') return str.trim();
+		chars = TextManipulation.escapeRegex(chars);
+		return str.replace(new RegExp('^(' + chars + ')+|(' + chars + ')+$', 'g'), '');
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -957,13 +1008,13 @@ export class TextManipulation implements INodeType {
 							case 'trim':
 								switch(manipulation.trim) {
 									case 'trimBoth':
-										text = text.trim();
+										text = TextManipulation.charsTrim(text, manipulation.trimString as string);
 										break;
 									case 'trimStart':
-										text = text.trimLeft();
+										text = TextManipulation.charsTrimLeft(text, manipulation.trimString as string);
 										break;
 									case 'trimEnd':
-										text = text.trimRight();
+										text = TextManipulation.charsTrimRight(text, manipulation.trimString as string);
 										break;
 									default:
 										throw new Error('trimBoth, trimStart or trimEnd are valid options');
@@ -1012,8 +1063,9 @@ export class TextManipulation implements INodeType {
 					switch(dataSource.writeOperation) {
 						case 'toFile':
 							newItemBinary![dataSource.destinationBinaryPropertyName as string] = await this.helpers.prepareBinaryData(
-								iconv.encode(text, dataSource.fileEncodeWith as string, {addBOM: dataSource.fileAddBOM}),
-								dataSource.fileName as string
+								iconv.encode(text, dataSource.fileEncodeWith as string, {addBOM: dataSource.fileAddBOM as boolean}),
+								dataSource.fileName as string,
+								dataSource.mimeType as string
 							);
 							break;
 						case 'toJSON':
