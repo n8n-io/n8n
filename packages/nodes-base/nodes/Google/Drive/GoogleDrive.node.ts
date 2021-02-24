@@ -810,6 +810,7 @@ export class GoogleDrive implements INodeType {
 							'copy',
 							'list',
 							'share',
+							'create',
 						],
 						'/resource': [
 							'file',
