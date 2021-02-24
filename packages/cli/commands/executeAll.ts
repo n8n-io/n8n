@@ -29,6 +29,7 @@ import {
 	diff,
 	diffString
 } from 'json-diff';
+import { ObjectID } from 'typeorm';
 
 export class ExecuteAll extends Command {
 	static description = '\nExecutes all workflows once';
@@ -46,6 +47,9 @@ export class ExecuteAll extends Command {
 		}),
 		json: flags.boolean({
 			description: 'Toggles on displaying results in JSON format.',
+		}),
+		output: flags.string({
+			description: 'Enable execution saving, You must inform an existing folder to save execution via this param',
 		}),
 		snapshot: flags.string({
 			description: 'Enables snapshot saving. You must inform an existing folder to save snapshots via this param.',
@@ -84,7 +88,22 @@ export class ExecuteAll extends Command {
 				return;
 			}
 		}
+
+		if (flags.output !== undefined) {
+			if (fs.existsSync(flags.output)) {
+				if (!fs.lstatSync(flags.output).isDirectory()) {
+					GenericHelpers.logOutput(`The paramenter --output must be an existing directory`);
+					return;
+				}
+			} else {
+				GenericHelpers.logOutput(`The paramenter --output must be an existing directory`);
+				return;
+			}
+		}
 		
+		if (flags.output !== undefined && json!==true) {
+			GenericHelpers.logOutput(`You must inform an json format --json when using --output`);
+		}
 		// Start directly with the init of the database to improve startup time
 		const startDbInitPromise = Db.init();
 		
@@ -120,6 +139,17 @@ export class ExecuteAll extends Command {
 		const credentialTypes = CredentialTypes();
 		await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
 		
+		const result:IResult = {
+			workflowsNumber:allWorkflows.length,
+			summary:{
+				failedExecutions:0,
+				succeeedExecution:0,
+				exceptions:0,
+			},
+			nodesCovered:{},
+			executions:[],
+		};
+
 		// Check if the workflow contains the required "Start" node
 		// "requiredNodeTypes" are also defined in editor-ui/views/NodeView.vue
 		const requiredNodeTypes = ['n8n-nodes-base.start'];
@@ -130,7 +160,7 @@ export class ExecuteAll extends Command {
 				this.log(`Starting execution of workflow ID ${workflowData.id}.`);
 			}
 			
-			const executionResult = {
+			const executionResult:IExecutionResult = {
 				workflowId: workflowData.id,
 				executionTime: 0,
 				finished: false,
@@ -156,7 +186,8 @@ export class ExecuteAll extends Command {
 				// should be executed and with which data to start.
 				if (json === true) {
 					executionResult.error = 'Workflow cannot be started as it does not contain a "Start" node.';
-					GenericHelpers.logOutput(JSON.stringify(executionResult, null, 2));
+					result.summary.failedExecutions++;
+					result.executions.push(executionResult);
 				}else{
 					GenericHelpers.logOutput(`Workflow ID ${workflowData.id} cannot be started as it does not contain a "Start" node.`);
 				}
@@ -182,20 +213,24 @@ export class ExecuteAll extends Command {
 				if (data === undefined) {
 					if (json === true) {
 						executionResult.error = 'Workflow did not return any data.';
-						GenericHelpers.logOutput(JSON.stringify(executionResult, null, 2));
+						result.summary.failedExecutions++;
+						result.executions.push(executionResult);
 					}else{
 						GenericHelpers.logOutput(`Workflow ${workflowData.id} did not return any data.`);
 					}
 					continue;
 				}
-				
+				workflowData.nodes.forEach(node => {
+					result.nodesCovered[node.type] = (result.nodesCovered[node.type] || 0) +1; 
+				});
 				executionResult.executionTime = (Date.parse(data.stoppedAt as unknown as string) - Date.parse(data.startedAt as unknown as string))/1000; 
 				executionResult.finished = (data?.finished !== undefined) as boolean; 
 
 				if (data.data.resultData.error) {
 					if (json === true) {
 						executionResult.error = data.data.resultData.error.message;
-						GenericHelpers.logOutput(JSON.stringify(executionResult, null, 2));
+						result.summary.failedExecutions++;
+						result.executions.push(executionResult);
 					}else{
 						GenericHelpers.logOutput(`Workflow ${workflowData.id} failed.`);
 					}
@@ -209,7 +244,8 @@ export class ExecuteAll extends Command {
 				const serializedData = JSON.stringify(data, null, 2);
 				if (json === true) {
 					if (flags.compare === undefined){
-						GenericHelpers.logOutput(JSON.stringify(executionResult, null, 2));
+						result.summary.succeeedExecution++;
+						result.executions.push(executionResult);
 					}
 				}else{
 					GenericHelpers.logOutput(`Workflow ${workflowData.id} succeeded.`);
@@ -228,7 +264,8 @@ export class ExecuteAll extends Command {
 							if (json === true) {
 								executionResult.error = `Workflow may contain breaking changes`;
 								executionResult.changes = changes;
-								GenericHelpers.logOutput(JSON.stringify(executionResult, null, 2));
+								result.summary.failedExecutions++;
+								result.executions.push(executionResult);
 							}else{
 								console.log(`Workflow ID ${workflowData.id} may contain breaking changes: `, changes);
 							}
@@ -238,13 +275,15 @@ export class ExecuteAll extends Command {
 							}
 						}else{
 							if (json === true) {
-								GenericHelpers.logOutput(JSON.stringify(executionResult, null, 2));
+								result.summary.succeeedExecution++;
+								result.executions.push(executionResult);
 							}
 						}
 					} else {
 						if (json === true) {
 							executionResult.error = 'Snapshot for not found.';
-							GenericHelpers.logOutput(JSON.stringify(executionResult, null, 2));
+							result.summary.failedExecutions++;
+							result.executions.push(executionResult);
 						}else{
 							GenericHelpers.logOutput(`Snapshot for ${workflowData.id} not found.`);
 						}
@@ -260,7 +299,8 @@ export class ExecuteAll extends Command {
 			} catch (e) {
 				if (json === true) {
 					executionResult.error = 'Workflow failed to execute.';
-					GenericHelpers.logOutput(JSON.stringify(executionResult, null, 2));
+					result.summary.exceptions++;
+					result.executions.push(executionResult);
 				}else{
 					GenericHelpers.logOutput(`Workflow ${workflowData.id} failed to execute.`);
 				}
@@ -270,7 +310,43 @@ export class ExecuteAll extends Command {
 				}
 			}
 			
-		}		
+		}
+		if (json === true){
+			if(flags.output !== undefined){
+				const fileName = (flags.output.endsWith(sep) ? flags.output : flags.output + sep) + `workflows-executions-${Date.now()}.json`;
+				fs.writeFileSync(fileName,JSON.stringify(result, null, 2));
+			}else{
+				GenericHelpers.logOutput(JSON.stringify(result, null, 2));
+			}
+		}
+		if(result.summary.succeeedExecution !== result.workflowsNumber){
+			this.exit(1);
+		}
 		this.exit(0);
 	}
+}
+
+interface IResult {
+	workflowsNumber:number;
+	summary:{
+		failedExecutions:number,
+		succeeedExecution:number,
+		exceptions:number,
+	};
+	nodesCovered:{
+		[key:string]:number
+	};
+	executions:IExecutionResult[];
+}
+interface IExecutionResult{
+	workflowId: string | number | ObjectID;
+	executionTime: number;
+	finished: boolean;
+	nodes: Array<{
+		name: string,
+		typeVersion: number,
+		type: string,
+	}>;
+	error: string;
+	changes: string;
 }
