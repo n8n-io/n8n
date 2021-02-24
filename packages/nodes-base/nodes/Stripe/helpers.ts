@@ -73,23 +73,23 @@ export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions 
  * Make n8n's charge fields compliant with the Stripe API request object.
  */
 export const adjustChargeFields = flow([
-	adjustMetadataFields,
-	adjustShippingFields,
+	adjustMetadata,
+	adjustShipping,
 ]);
 
 /**
  * Make n8n's customer fields compliant with the Stripe API request object.
  */
 export const adjustCustomerFields = flow([
-	adjustAddressFields,
-	adjustMetadataFields,
-	adjustShippingFields,
+	adjustShipping,
+	adjustAddress,
+	adjustMetadata,
 ]);
 
 /**
  * Convert n8n's address object into a Stripe API request shipping object.
  */
-function adjustAddressFields(
+function adjustAddress(
 	addressFields: { address: { details: IDataObject }  },
 ) {
 	if (!addressFields.address) return addressFields;
@@ -103,7 +103,7 @@ function adjustAddressFields(
 /**
  * Convert n8n's `fixedCollection` metadata object into a Stripe API request metadata object.
  */
-export function adjustMetadataFields(
+export function adjustMetadata(
 	fields: { metadata?: { metadataProperties: Array<{ key: string; value: string }> } },
 ) {
 	if (!fields.metadata || isEmpty(fields.metadata)) return fields;
@@ -123,7 +123,7 @@ export function adjustMetadataFields(
 /**
  * Convert n8n's shipping object into a Stripe API request shipping object.
  */
-function adjustShippingFields(
+function adjustShipping(
 	shippingFields: { shipping?: { shippingProperties: Array<{ address: { details: IDataObject }; name: string }> }  },
 ) {
 	const shippingProperties = shippingFields.shipping?.shippingProperties[0];
@@ -131,6 +131,7 @@ function adjustShippingFields(
 	if (!shippingProperties?.address || isEmpty(shippingProperties.address)) return shippingFields;
 
 	return {
+		...omit(shippingProperties, ['shipping']),
 		shipping: {
 			...omit(shippingProperties, ['address']),
 			address: shippingProperties.address.details,

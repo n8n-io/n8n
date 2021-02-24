@@ -17,7 +17,7 @@ import {
 import {
 	adjustChargeFields,
 	adjustCustomerFields,
-	adjustMetadataFields,
+	adjustMetadata,
 	handleListing,
 	loadResource,
 	stripeApiRequest,
@@ -324,10 +324,12 @@ export class Stripe implements INodeType {
 					} as IDataObject;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					console.log(adjustCustomerFields(additionalFields));
+
 					if (!isEmpty(additionalFields)) {
 						Object.assign(body, adjustCustomerFields(additionalFields));
 					}
+
+					console.log(body);
 
 					responseData = await stripeApiRequest.call(this, 'POST', '/customers', body, {});
 
@@ -408,7 +410,7 @@ export class Stripe implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (!isEmpty(additionalFields)) {
-						Object.assign(body, adjustMetadataFields(additionalFields));
+						Object.assign(body, adjustMetadata(additionalFields));
 					}
 
 					responseData = await stripeApiRequest.call(this, 'POST', '/sources', body, {});
