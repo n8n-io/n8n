@@ -46,7 +46,6 @@ export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions 
 	}
 
 	try {
-		console.log(JSON.stringify(options, null, 2));
 		return await this.helpers.request!.call(this, options);
 	} catch (error) {
 		if (error.statusCode === 401) {
@@ -73,8 +72,8 @@ export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions 
  * Make n8n's charge fields compliant with the Stripe API request object.
  */
 export const adjustChargeFields = flow([
-	adjustMetadata,
 	adjustShipping,
+	adjustMetadata,
 ]);
 
 /**
@@ -131,7 +130,7 @@ function adjustShipping(
 	if (!shippingProperties?.address || isEmpty(shippingProperties.address)) return shippingFields;
 
 	return {
-		...omit(shippingProperties, ['shipping']),
+		...omit(shippingFields, ['shipping']),
 		shipping: {
 			...omit(shippingProperties, ['address']),
 			address: shippingProperties.address.details,
