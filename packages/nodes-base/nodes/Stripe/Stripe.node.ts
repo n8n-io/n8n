@@ -15,6 +15,7 @@ import {
 } from 'lodash';
 
 import {
+	adjustCardTokenFields,
 	adjustChargeFields,
 	adjustCustomerFields,
 	adjustSourceFields,
@@ -35,6 +36,8 @@ import {
 	customerOperations,
 	sourceFields,
 	sourceOperations,
+	tokenFields,
+	tokenOperations,
 } from './descriptions';
 
 export class Stripe implements INodeType {
@@ -88,6 +91,10 @@ export class Stripe implements INodeType {
 						name: 'Source',
 						value: 'source',
 					},
+					{
+						name: 'Token',
+						value: 'token',
+					},
 				],
 				default: 'balance',
 				description: 'Resource to consume',
@@ -103,6 +110,8 @@ export class Stripe implements INodeType {
 			...customerFields,
 			...sourceOperations,
 			...sourceFields,
+			...tokenOperations,
+			...tokenFields,
 		],
 	};
 
@@ -431,11 +440,44 @@ export class Stripe implements INodeType {
 
 				}
 
+			} else if (resource === 'token') {
+
+				// *********************************************************************
+				//                             token
+				// *********************************************************************
+
+				// https://stripe.com/docs/api/tokens
+
+				if (operation === 'create') {
+
+					// ----------------------------------
+					//         token: create
+					// ----------------------------------
+
+					const type = this.getNodeParameter('type', i);
+					const body = {} as IDataObject;
+
+					if (type !== 'cardToken') {
+						throw new Error('Only card token creation implemented.');
+					}
+
+					const cardFields = this.getNodeParameter('cardFields', i) as IDataObject;
+
+					if (isEmpty(cardFields)) {
+						throw new Error('Please fill in all card fields to create a card token.');
+					}
+
+					Object.assign(body, adjustCardTokenFields(cardFields));
+
+					responseData = await stripeApiRequest.call(this, 'POST', '/tokens', body, {});
+
+				}
+
 			}
 
 		} catch (error) {
 			if (this.continueOnFail()) {
-				returnData.push({ error: error.message });
+				returnData.push({ error: error.error.error.message });
 				continue;
 			}
 

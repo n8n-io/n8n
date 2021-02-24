@@ -107,6 +107,17 @@ function adjustAddressFields(
 }
 
 /**
+ * Convert n8n's `fixedCollection` card token object into a Stripe API request card token object.
+ */
+export function adjustCardTokenFields(cardTokenFields: IDataObject) {
+	if (!cardTokenFields.cardProperties) return cardTokenFields;
+
+	return {
+		card: cardTokenFields.cardProperties,
+	};
+}
+
+/**
  * Convert n8n's `fixedCollection` metadata object into a Stripe API request metadata object.
  */
 function adjustMetadataFields(

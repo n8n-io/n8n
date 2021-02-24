@@ -59,7 +59,7 @@ export const cardFields = [
 		},
 	},
 	{
-		displayName: 'Token',
+		displayName: 'Card Token',
 		name: 'token',
 		type: 'string',
 		required: true,
