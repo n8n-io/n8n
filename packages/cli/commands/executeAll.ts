@@ -143,10 +143,10 @@ export class ExecuteAll extends Command {
 			workflowsNumber:allWorkflows.length,
 			summary:{
 				failedExecutions:0,
-				succeeedExecution:0,
+				succeededExecution:0,
 				exceptions:0,
 			},
-			nodesCovered:{},
+			coveredNodes:{},
 			executions:[],
 		};
 
@@ -221,7 +221,7 @@ export class ExecuteAll extends Command {
 					continue;
 				}
 				workflowData.nodes.forEach(node => {
-					result.nodesCovered[node.type] = (result.nodesCovered[node.type] || 0) +1; 
+					result.coveredNodes[node.type] = (result.coveredNodes[node.type] || 0) +1; 
 				});
 				executionResult.executionTime = (Date.parse(data.stoppedAt as unknown as string) - Date.parse(data.startedAt as unknown as string))/1000; 
 				executionResult.finished = (data?.finished !== undefined) as boolean; 
@@ -244,7 +244,7 @@ export class ExecuteAll extends Command {
 				const serializedData = JSON.stringify(data, null, 2);
 				if (json === true) {
 					if (flags.compare === undefined){
-						result.summary.succeeedExecution++;
+						result.summary.succeededExecution++;
 						result.executions.push(executionResult);
 					}
 				}else{
@@ -275,7 +275,7 @@ export class ExecuteAll extends Command {
 							}
 						}else{
 							if (json === true) {
-								result.summary.succeeedExecution++;
+								result.summary.succeededExecution++;
 								result.executions.push(executionResult);
 							}
 						}
@@ -319,7 +319,7 @@ export class ExecuteAll extends Command {
 				GenericHelpers.logOutput(JSON.stringify(result, null, 2));
 			}
 		}
-		if(result.summary.succeeedExecution !== result.workflowsNumber){
+		if(result.summary.succeededExecution !== result.workflowsNumber){
 			this.exit(1);
 		}
 		this.exit(0);
@@ -330,10 +330,10 @@ interface IResult {
 	workflowsNumber:number;
 	summary:{
 		failedExecutions:number,
-		succeeedExecution:number,
+		succeededExecution:number,
 		exceptions:number,
 	};
-	nodesCovered:{
+	coveredNodes:{
 		[key:string]:number
 	};
 	executions:IExecutionResult[];
