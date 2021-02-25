@@ -1,6 +1,6 @@
 import {
-	INodeProperties,
 	IDataObject,
+	INodeProperties
 } from 'n8n-workflow';
 
 import {
@@ -21,7 +21,7 @@ function capitalize(str: string): string {
 
 const operations = [];
 
-for(const group of (groups as IDataObject).groups as IDataObject[]) {
+for (const group of (groups as IDataObject).groups as IDataObject[]) {
 	const item = {
 		displayName: 'Operation',
 		name: 'tool',
@@ -39,21 +39,21 @@ for(const group of (groups as IDataObject).groups as IDataObject[]) {
 	};
 
 	const options = [];
-	for(const tool of (tools as IDataObject).processors as IDataObject[]){
+	for (const tool of (tools as IDataObject).processors as IDataObject[]) {
 		if (tool.g === group.name) {
-			const link = 'https://app.uproc.io/#/tools/processor/' + (tool.k as string).replace(/([A-Z]+)/g, "-$1").toLowerCase().replace('-', '/').replace('-', '/');
+			const link = 'https://app.uproc.io/#/tools/processor/' + (tool.k as string).replace(/([A-Z]+)/g, '-$1').toLowerCase().replace('-', '/').replace('-', '/');
 			const option = {
 				name: tool.d as string,
 				value: tool.k,
-				description: (tool.ed as string) + " <a href='" + link + "' target='_blank'>Info</a>"
+				description: (tool.ed as string) + ` <a href="${link}" target='_blank'>Info</a>`
 			};
 			options.push(option);
 		}
 	}
 
 	//Tool
-	item.options = <any>options.sort((a, b) => (a.name > b.name) ? 1 : -1);
-	item.default = <string>options[0].value;
+	item.options = (options.sort((a, b) => (a.name > b.name) ? 1 : -1) as any); // tslint:disable-line:no-any
+	item.default = (options[0].value as string);
 	operations.push(item);
 }
 
@@ -61,12 +61,12 @@ export const toolOperations = operations as INodeProperties[];
 
 let parameters = [];
 //all tools
-for(const tool of (tools as IDataObject).processors as IDataObject[]) {
+for (const tool of (tools as IDataObject).processors as IDataObject[]) {
 	//all parameters in tool
 	for (const param of (tool as IDataObject).p as IDataObject[]) {
 		const displayName = param.n as string;
-		const capitalizedDisplayName = capitalize(displayName.replace(/_/g, " "));
-		const description = "The '" + capitalizedDisplayName + "' value to use as a parameter for this Operation";
+		const capitalizedDisplayName = capitalize(displayName.replace(/_/g, ' '));
+		const description = `The "${capitalizedDisplayName}" value to use as a parameter for this Operation`;
 		const parameter = {
 			displayName: capitalizedDisplayName,
 			name: param.n,
