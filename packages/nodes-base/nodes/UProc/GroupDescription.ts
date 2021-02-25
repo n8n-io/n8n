@@ -1,6 +1,6 @@
 import {
-	IDataObject,
 	INodeProperties,
+	IDataObject,
 } from 'n8n-workflow';
 
 import {
@@ -18,7 +18,7 @@ const finalGroups = {
 
 const options = [];
 
-for (const group of (groups as IDataObject).groups as IDataObject[]) {
+for(const group of (groups as IDataObject).groups as IDataObject[]){
 	const item = {
 		name: group.translated,
 		value: group.name,
