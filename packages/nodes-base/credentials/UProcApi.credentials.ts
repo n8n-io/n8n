@@ -7,7 +7,7 @@ export class UProcApi implements ICredentialType {
 	name = 'uprocApi';
 	displayName = 'uProc API';
 	properties = [
-		{
+    {
 			displayName: 'Email',
 			name: 'email',
 			type: 'string' as NodePropertyTypes,
