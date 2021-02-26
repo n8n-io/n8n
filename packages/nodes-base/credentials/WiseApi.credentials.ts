@@ -4,7 +4,7 @@ import {
 } from 'n8n-workflow';
 
 export class WiseApi implements ICredentialType {
-	name = 'WiseApi';
+	name = 'wiseApi';
 	displayName = 'Wise API';
 	documentationUrl = 'wise';
 	properties = [
