@@ -36,6 +36,7 @@ import {
 } from 'n8n-workflow';
 
 import * as express from 'express';
+declare var logger: ILogger;
 
 export class ActiveWorkflowRunner {
 	private activeWorkflows: ActiveWorkflows | null = null;
@@ -43,7 +44,6 @@ export class ActiveWorkflowRunner {
 	private activationErrors: {
 		[key: string]: IActivationError;
 	} = {};
-
 
 	async init() {
 
@@ -59,7 +59,7 @@ export class ActiveWorkflowRunner {
 
 		this.activeWorkflows = new ActiveWorkflows();
 
-		const logger = (global as any).logger as ILogger;  // tslint:disable-line:no-any
+		logger = logger;
 
 		if (workflowsData.length !== 0) {
 			logger.info('\n ================================');
@@ -91,7 +91,6 @@ export class ActiveWorkflowRunner {
 	 */
 	async removeAll(): Promise<void> {
 		const activeWorkflowId: string[] = [];
-		const logger = (global as any).logger as ILogger;  // tslint:disable-line:no-any
 		logger.verbose('Call to remove all active workflows received.');
 
 		if (this.activeWorkflows !== null) {
@@ -122,7 +121,6 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async executeWebhook(httpMethod: WebhookHttpMethod, path: string, req: express.Request, res: express.Response): Promise<IResponseCallbackData> {
-		const logger = (global as any).logger as ILogger;  // tslint:disable-line:no-any
 		logger.debug(`Received webhoook ${httpMethod} for path ${path}`);
 		if (this.activeWorkflows === null) {
 			throw new ResponseHelper.ResponseError('The "activeWorkflows" instance did not get initialized yet.', 404, 404);
@@ -446,7 +444,6 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	getExecutePollFunctions(workflowData: IWorkflowDb, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode): IGetExecutePollFunctions {
-		const logger = (global as any).logger as ILogger;  // tslint:disable-line:no-any
 		return ((workflow: Workflow, node: INode) => {
 			const returnFunctions = NodeExecuteFunctions.getExecutePollFunctions(workflow, node, additionalData, mode);
 			returnFunctions.__emit = (data: INodeExecutionData[][]): void => {
@@ -469,7 +466,6 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	getExecuteTriggerFunctions(workflowData: IWorkflowDb, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode): IGetExecuteTriggerFunctions{
-		const logger = (global as any).logger as ILogger;  // tslint:disable-line:no-any
 		return ((workflow: Workflow, node: INode) => {
 			const returnFunctions = NodeExecuteFunctions.getExecuteTriggerFunctions(workflow, node, additionalData, mode);
 			returnFunctions.emit = (data: INodeExecutionData[][]): void => {
@@ -493,8 +489,6 @@ export class ActiveWorkflowRunner {
 		if (this.activeWorkflows === null) {
 			throw new Error(`The "activeWorkflows" instance did not get initialized yet.`);
 		}
-
-		const logger = (global as any).logger as ILogger;  // tslint:disable-line:no-any
 
 		let workflowInstance: Workflow;
 		try {
@@ -523,9 +517,8 @@ export class ActiveWorkflowRunner {
 			// Add the workflows which have webhooks defined
 			await this.addWorkflowWebhooks(workflowInstance, additionalData, mode);
 
-			if (workflowInstance.getTriggerNodes().length !== 0
-				|| workflowInstance.getPollNodes().length !== 0) {
-					await this.activeWorkflows.add(workflowId, workflowInstance, additionalData, getTriggerFunctions, getPollFunctions);
+			if (workflowInstance.getTriggerNodes().length !== 0	|| workflowInstance.getPollNodes().length !== 0) {
+				await this.activeWorkflows.add(workflowId, workflowInstance, additionalData, getTriggerFunctions, getPollFunctions);
 				logger.info(`Successfully activated workflow ${workflowData.name}`);
 			}
 

@@ -38,6 +38,8 @@ import {
 
 const activeExecutions = ActiveExecutions.getInstance();
 
+declare var logger: ILogger;
+
 /**
  * Returns all the webhooks which should be created for the give workflow
  *
@@ -113,8 +115,6 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 		responseCallback(new Error(errorMessage), {});
 		throw new ResponseHelper.ResponseError(errorMessage, 500, 500);
 	}
-
-	const logger = (global as any).logger as ILogger;  // tslint:disable-line:no-any
 
 	// Get the responseMode
 	const responseMode = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseMode'], 'onReceived');

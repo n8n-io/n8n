@@ -16,6 +16,7 @@ import {
 	IWorkflowData,
 } from './';
 
+declare var logger: ILogger;
 
 export class ActiveWorkflows {
 	private workflowData: {
@@ -165,7 +166,6 @@ export class ActiveWorkflows {
 
 		// The trigger function to execute when the cron-time got reached
 		const executeTrigger = async () => {
-			const logger = (global as any).logger as ILogger; // tslint:disable-line:no-any
 			logger.info(`Polling trigger initiated for workflow ${workflow.name}`, {workflowName: workflow.name, workflowId: workflow.id});
 			const pollResponse = await workflow.runPoll(node, pollFunctions);
 

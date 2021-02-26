@@ -760,7 +760,7 @@ export interface IWorkflowSettings {
 	[key: string]: IDataObject | string | number | boolean | undefined;
 }
 
-export type ILogTypes = "debug" | "verbose" | "info" | "warn" | "error";
+export type ILogTypes = 'debug' | 'verbose' | 'info' | 'warn' | 'error';
 
 export interface ILogger {
 	log: (type: ILogTypes, message: string, meta?: object) => void;

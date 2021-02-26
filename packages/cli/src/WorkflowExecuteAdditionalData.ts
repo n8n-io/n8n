@@ -46,6 +46,8 @@ import { LessThanOrEqual } from "typeorm";
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
+declare var logger: ILogger;
+
 /**
  * Checks if there was an error and if errorWorkflow or a trigger is defined. If so it collects
  * all the data and executes it
@@ -158,7 +160,6 @@ export function pushExecutionFinished(mode: WorkflowExecuteMode, fullRunData: IR
  * @returns {IWorkflowExecuteHooks}
  */
 function hookFunctionsPush(): IWorkflowExecuteHooks {
-	const logger = (global as any).logger as ILogger; // tslint:disable-line:no-any
 	return {
 		nodeExecuteBefore: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
@@ -235,7 +236,6 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
  * @returns {IWorkflowExecuteHooks}
  */
 function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
-	const logger = (global as any).logger as ILogger; // tslint:disable-line:no-any
 	return {
 		nodeExecuteBefore: [],
 		nodeExecuteAfter: [],

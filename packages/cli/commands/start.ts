@@ -22,8 +22,9 @@ import {
 	TestWebhooks,
 } from "../src";
 
-import { ILogger } from 'n8n-workflow';
-import { getInstance } from '../src/Logger';
+import { 
+	getInstance,
+} from '../src/Logger';
 
 const logger = getInstance();
 (global as any).logger = logger; // tslint:disable-line:no-any
@@ -72,7 +73,7 @@ export class Start extends Command {
 	 * get removed.
 	 */
 	static async stopProcess() {
-		logger.info(`\nStopping n8n...`);
+		logger.info('\nStopping n8n...');
 
 		try {
 			const externalHooks = ExternalHooks();

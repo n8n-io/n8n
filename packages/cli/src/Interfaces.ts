@@ -5,6 +5,7 @@ import {
 	ICredentialType,
 	IDataObject,
 	IExecutionError,
+	ILogger,
 	IRun,
 	IRunData,
 	IRunExecutionData,

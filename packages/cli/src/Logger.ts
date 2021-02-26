@@ -1,5 +1,5 @@
-import * as winston from "winston";
-import config = require("../config");
+import * as winston from 'winston';
+import config = require('../config');
 
 import {
 	ILogger,
