@@ -31,8 +31,8 @@ export async function wiseApiRequest(
 	};
 
 	const rootUrl = environment === 'live'
-		? 'https://api.transferwise.com/v2'
-		: 'https://api.sandbox.transferwise.tech/v2';
+		? 'https://api.transferwise.com/'
+		: 'https://api.sandbox.transferwise.tech/';
 
 	const options: OptionsWithUri = {
 		headers: {

@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -22,6 +23,10 @@ import {
 	transferFields,
 	transferOperations,
 } from './descriptions';
+
+import {
+	wiseApiRequest,
+} from './GenericFunctions';
 
 export class Wise implements INodeType {
 	description: INodeTypeDescription = {
@@ -95,9 +100,14 @@ export class Wise implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// async getCustomers(this: ILoadOptionsFunctions) {
-			// 	return await loadResource.call(this, 'customer');
-			// },
+			async getProfiles(this: ILoadOptionsFunctions) {
+				const profiles = await wiseApiRequest.call(this, 'GET', '/v1/profiles', {}, {});
+
+				return profiles.map(({ id, type }: { id: number, type: 'business' | 'personal' }) => ({
+					name: type.charAt(0).toUpperCase() + type.slice(1),
+					value: id,
+				}));
+			},
 		},
 	};
 
@@ -127,8 +137,45 @@ export class Wise implements INodeType {
 						// ----------------------------------
 
 						// https://api-docs.transferwise.com/#borderless-accounts-get-account-balance
+						// https://api-docs.transferwise.com/#borderless-accounts-get-available-currencies
+						// https://api-docs.transferwise.com/#borderless-accounts-get-account-statement
 
-						// ...
+						const details = this.getNodeParameter('details', i) as 'balance' | 'currencies' | 'statement' ;
+
+						if (details === 'balance') {
+
+							const profileId = this.getNodeParameter('profile', i);
+							const endpoint = `v1/borderless-accounts?profileId=${profileId}`;
+							responseData = await wiseApiRequest.call(this, 'GET', endpoint, {}, {});
+
+						} else if (details === 'currencies') {
+
+							const endpoint = 'v1/borderless-accounts/balance-currencies';
+							responseData = await wiseApiRequest.call(this, 'GET', endpoint, {}, {});
+
+						} else if (details === 'statement') {
+
+							const profileId = this.getNodeParameter('profile', i);
+							const borderlessAccountId = this.getNodeParameter('borderlessAccountId', i);
+							const endpoint = `v3/profiles/${profileId}/borderless-accounts/${borderlessAccountId}/statement.json`;
+
+							// TODO CSV and JSON available for endpoint
+
+							const qs = {
+								currency: this.getNodeParameter('currency', i),
+								intervalStart: this.getNodeParameter('intervalStart', i),
+								intervalEnd: this.getNodeParameter('intervalEnd', i),
+							} as IDataObject;
+
+							const { format } = this.getNodeParameter('additionalOptions', i) as IDataObject;
+
+							if (format !== undefined) {
+								qs.type = format;
+							}
+
+							responseData = await wiseApiRequest.call(this, 'GET', endpoint, qs, {});
+
+						}
 
 					}
 
@@ -303,9 +350,9 @@ export class Wise implements INodeType {
 				throw error;
 			}
 
-			// Array.isArray(responseData)
-			// 	? returnData.push(...responseData)
-			// 	: returnData.push(responseData);
+			Array.isArray(responseData)
+				? returnData.push(...responseData)
+				: returnData.push(responseData);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
