@@ -245,7 +245,7 @@
       "dist/credentials/WebflowApi.credentials.js",
       "dist/credentials/WebflowOAuth2Api.credentials.js",
       "dist/credentials/WekanApi.credentials.js",
-      "dist/credentials/WiseOAuth2Api.credentials.js",
+      "dist/credentials/WiseApi.credentials.js",
       "dist/credentials/WooCommerceApi.credentials.js",
       "dist/credentials/WordpressApi.credentials.js",
       "dist/credentials/WufooApi.credentials.js",
