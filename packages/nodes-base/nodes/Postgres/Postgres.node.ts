@@ -55,6 +55,30 @@ export class Postgres implements INodeType {
 				default: 'insert',
 				description: 'The operation to perform.',
 			},
+			{
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				options: [
+					{
+						name: 'Normal',
+						value: 'normal',
+						description: 'Execute all querys together',
+					},
+					{
+						name: 'Independently',
+						value: 'independently',
+						description: 'Execute each query independently',
+					},
+					{
+						name: 'Transaction',
+						value: 'transaction',
+						description: 'Execute all querys as a transaction',
+					},
+				],
+				default: 'normal',
+				description: 'The mode how the querys should execute.',
+			},
 
 			// ----------------------------------
 			//         executeQuery
@@ -225,13 +249,14 @@ export class Postgres implements INodeType {
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
+		const mode = this.getNodeParameter('mode', 0) as boolean;
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items);
+			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
 
 			returnItems = this.helpers.returnJsonArray(queryResult.flat(1) as IDataObject[]);
 		} else if (operation === 'insert') {
@@ -239,7 +264,7 @@ export class Postgres implements INodeType {
 			//         insert
 			// ----------------------------------
 
-			const [insertData, insertItems] = await pgInsert(this.getNodeParameter, pgp, db, items);
+			const [insertData, insertItems] = await pgInsert(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
 
 			// Add the id to the data
 			for (let i = 0; i < insertData.length; i++) {
@@ -255,7 +280,7 @@ export class Postgres implements INodeType {
 			//         update
 			// ----------------------------------
 
-			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items);
+			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
 
 			returnItems = this.helpers.returnJsonArray(updateItems);
 		} else {

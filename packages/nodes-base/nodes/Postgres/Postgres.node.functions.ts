@@ -3,7 +3,7 @@ import pgPromise = require('pg-promise');
 import pg = require('pg-promise/typescript/pg-subset');
 
 /**
- * Returns of copy of the items which only contains the json data and
+ * Returns of a shallow copy of the items which only contains the json data and
  * of that only the define properties
  *
  * @param {INodeExecutionData[]} items The items to copy
@@ -11,16 +11,12 @@ import pg = require('pg-promise/typescript/pg-subset');
  * @returns
  */
 export function getItemCopy(items: INodeExecutionData[], properties: string[]): IDataObject[] {
-	// Prepare the data to insert and copy it to be returned
+	// Prepare the data to insert
 	let newItem: IDataObject;
 	return items.map(item => {
 		newItem = {};
 		for (const property of properties) {
-			if (item.json[property] === undefined) {
-				newItem[property] = null;
-			} else {
-				newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
-			}
+			newItem[property] = item.json[property];
 		}
 		return newItem;
 	});
@@ -35,18 +31,33 @@ export function getItemCopy(items: INodeExecutionData[], properties: string[]): 
  * @param {input[]} input The Node's input data
  * @returns Promise<Array<object>>
  */
-export function pgQuery(
+export async function pgQuery(
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 	input: INodeExecutionData[],
+	mode: string,
+	continueOnFail: boolean,
 ): Promise<object[][]> {
-	const queries: string[] = [];
-	for (let i = 0; i < input.length; i++) {
-		queries.push(getNodeParam('query', i) as string);
-	}
-
-	return db.multi(pgp.helpers.concat(queries));
+	if(mode == 'normal' || mode == 'transaction') {
+		const queries: string[] = [];
+		for (let i = 0; i < input.length; i++) {
+			queries.push(getNodeParam('query', i) as string);
+		}
+		if(mode == 'normal') return db.multi(pgp.helpers.concat(queries));
+		return db.tx(t => return t.multi(pgp.helpers.concat(queries)));
+	} else if(mode == 'independently') {
+		return db.task(t => {
+      const result = [];
+			for (let i = 0; i < input.length; i++) {
+				try {
+					result.push(await t.any(getNodeParam('query', i) as string));
+				} catch(err) {
+					if(continueOnFail === false) result.push([{code: err.code, message: err.message}]);
+				}
+			}
+		});
+	} else throw new Error('normal, independently or transaction are valid options');
 }
 
 /**
@@ -63,6 +74,8 @@ export async function pgInsert(
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 	items: INodeExecutionData[],
+	mode: string,
+	continueOnFail: boolean,
 ): Promise<IDataObject[][]> {
 	const table = getNodeParam('table', 0) as string;
 	const schema = getNodeParam('schema', 0) as string;
@@ -103,6 +116,8 @@ export async function pgUpdate(
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 	items: INodeExecutionData[],
+	mode: string,
+	continueOnFail: boolean,
 ): Promise<IDataObject[]> {
 	const table = getNodeParam('table', 0) as string;
 	const schema = getNodeParam('schema', 0) as string;
