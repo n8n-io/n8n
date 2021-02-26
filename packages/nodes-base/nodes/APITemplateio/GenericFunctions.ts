@@ -7,57 +7,73 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-workflow';
-
-
-export async function apitemplateioApiRequest(
-	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	opt: any): Promise<any> { 
-	const credentials = this.getCredentials('apiTemplateioApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
-	let method = opt.method?opt.method:{};
-	let body =  opt.body?opt.body:{};
-	let uri =  opt.uri?opt.uri:null;
-	let query =  opt.query?opt.query:{};
-	let headers =  opt.headers?opt.headers:{};
+export async function apiTemplateIoApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	qs = {},
+	body = {},
+	) {
+	const { apiKey } = this.getCredentials('apiTemplateIoApi') as { apiKey: string };
 
 	const options: OptionsWithUri = {
 		headers: {
+			'user-agent': 'n8n',
 			Accept: 'application/json',
-			"X-API-KEY": `${credentials.apiKey}`,
+			'X-API-KEY': `${apiKey}`,
 		},
+		uri: `https://api.apitemplate.io/v1${endpoint}`,
 		method,
+		qs,
 		body,
 		followRedirect: true,
 		followAllRedirects: true,
-		qs: query,
-		uri: uri || `https://api.apitemplate.io/v1${opt.resource}`,
 		json: true,
 	};
 
-	
-
 	if (!Object.keys(body).length) {
-		delete options.form;
+		delete options.body;
 	}
-	if (!Object.keys(query).length) {
+
+	if (!Object.keys(qs).length) {
 		delete options.qs;
 	}
-	options.headers = Object.assign({}, options.headers, headers);
+
 	try {
+		console.log(JSON.stringify(options, null, 2));
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.message) {
+		if (error?.response?.body?.message) {
 			throw new Error(`APITemplate.io error response [${error.statusCode}]: ${error.response.body.message}`);
 		}
 		throw error;
 	}
 }
+
+export async function loadResource(
+	this: ILoadOptionsFunctions,
+	resource: 'image' | 'pdf',
+) {
+	const target = resource === 'image' ? ['JPEG', 'PNG'] : ['PDF'];
+	const templates = await apiTemplateIoApiRequest.call(this, 'GET', '/list-templates');
+	const filtered = templates.filter(({ format }: { format: 'PDF' | 'JPEG' | 'PNG' }) => target.includes(format));
+
+	return filtered.map(({ format, name, id }: { format: string, name: string, id: string }) => ({
+		name: `${name} (${format})`,
+		value: id,
+	}));
+}
+
+export type GroupsOfKeyValuePairs = {
+	data: [
+		{
+			json: {
+				data: Array<{ key: string, value: string }>
+			}
+		}
+	]
+};
+
+export type Overrides = {
+	overrides: Array<{ [key: string]: string }>
+};

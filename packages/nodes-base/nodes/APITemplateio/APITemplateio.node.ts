@@ -1,275 +1,353 @@
 import {
-    IExecuteFunctions,
+	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
-    IDataObject,
-    ILoadOptionsFunctions,
-    INodePropertyOptions,
-    INodeExecutionData,
-    INodeType,
-    INodeTypeDescription,
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
-	apitemplateioApiRequest,
+	apiTemplateIoApiRequest,
+	GroupsOfKeyValuePairs,
+	loadResource,
+	Overrides,
 } from './GenericFunctions';
 
-
-export class APITemplateio implements INodeType {
-    description: INodeTypeDescription = {
-        displayName: 'APITemplate.io',
-        name: 'apiTemplateio',
-        icon: 'file:apiTemplateio.svg',
-        group: ['transform'],
-        version: 1,
-        description: 'Consume APITemplate.io API',
-        defaults: {
-            name: 'APITemplateio',
-            color: '#FFD051',
-        },
-        inputs: ['main'],
-        outputs: ['main'],
+export class ApiTemplateIo implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'APITemplate.io',
+		name: 'apiTemplateIo',
+		icon: 'file:apiTemplateIo.svg',
+		group: ['transform'],
+		version: 1,
+		description: 'Consume the APITemplate.io API',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		defaults: {
+			name: 'APITemplate.Io',
+			color: '#FFD051',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
-				name: 'apiTemplateioApi',
+				name: 'apiTemplateIoApi',
 				required: true,
 			},
 		],
-        properties: [
-            {
-                displayName: 'Operation',
-                name: 'operation',
-                type: 'options',
-                options: [
-                    {
-                        name: 'Create',
-                        value: 'create',
-                    } ,
-                    {
-                        name: 'Get Account Information',
-                        value: 'get-account-information',
-                    }                    
-                ],
-                default: 'create',
-                required: true,
-                description: 'Operation',
-            },
-            {
-                displayName: 'Format',
-                name: 'format',
-                type: 'options',
-                options: [
-                    {
-                        name: 'Image',
-                        value: 'JPEG',
-                    }  ,
-                    {
-                        name: 'PDF',
-                        value: 'PDF',
-                    }                                         
-                ],
-                displayOptions: {
-                    show: {
-                        operation: [
-                            'create',
-                        ],
-                    },
-                },                   
-                default: 'JPEG',
-                required: true,
-                description: 'Operation',
-            },            
-            {
-                displayName: 'Template ID',
-                name: 'templateId',
-                type: 'options',
-                typeOptions: {
-                    loadOptionsMethod: 'getTemplates',
-                    loadOptionsDependsOn: [
-                        'format',
-                    ],                    
-                },  
-                displayOptions: {
-                    show: {
-                        operation: [
-                            'create',
-                        ],
-                    },
-                },                     
-                required: true,
-                default: '',
-                description: '',
-            },
-            {
-                displayName: 'Overrides',
-                name: 'overrides',
-                type: 'fixedCollection',
-                typeOptions: {
-                    multipleValues: true,
-                },
-                placeholder: 'Add Item',
-                displayOptions: {
-                    show: {
-                        format: [
-                            'JPEG',
-                        ],
-                        operation: [
-                            'create',
-                        ],
-                    },
-                },
-                default: {},
-                options: [
-                    {
-                        displayName: 'Values',
-                        name: 'overridesValues',
-                        values: [
-                            {
-                                displayName: 'Key',
-                                name: 'key',
-                                type: 'string',
-                                default: '',
-                                description: 'Key',
-                            },
-                            {
-                                displayName: 'Value',
-                                name: 'value',
-                                type: 'string',
-                                default: '',
-                                description: 'Value',
-                            },
-                        ],
-                    },
-                ],
-            },     
-            {
-                displayName: 'JSON',
-                name: 'json',
-                type: 'fixedCollection',
-                typeOptions: {
-                    multipleValues: true,
-                },
-                placeholder: 'Add Element',
-                displayOptions: {
-                    show: {
-                        format: [
-                            'PDF',
-                        ],
-                        operation: [
-                            'create',
-                        ],
-                    },
-                },
-                default: {},
-                options: [
-                    {
-                        displayName: 'Values',
-                        name: 'values',
-                        values: [
-                            {
-                                displayName: 'Key',
-                                name: 'key',
-                                type: 'string',
-                                default: '',
-                                description: 'Key',
-                            },
-                            {
-                                displayName: 'Value',
-                                name: 'value',
-                                type: 'string',
-                                default: '',
-                                description: 'Value',
-                            },
-                        ],
-                    },
-                ],
-            },                     
-        ],
-    };
-
-    methods = {
-		loadOptions: {
-			async getTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-                // https://docs.apitemplate.io/reference/api-reference.html#list-templates
-                const returnData: INodePropertyOptions[] = [];
-                const format = this.getNodeParameter('format', 0) as string;
-                const templates = await apitemplateioApiRequest.call(this,
-                    { 
-                        method: 'GET', 
-                        resource: '/list-templates', //This endpoint creates a PDF file with JSON data and your template
-                        query:{
-                            format: format
-                        }
-                });
-                
-				for (const template of templates) {
-					returnData.push({
-						name: template.format+" - "+template.name+" ("+template.id+")",
-						value: template.id,
-					});
-                }
-                
-				return returnData;
+		properties: [
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
+					{
+						name: 'Account',
+						value: 'account',
+					},
+					{
+						name: 'Image',
+						value: 'image',
+					},
+					{
+						name: 'PDF',
+						value: 'pdf',
+					},
+				],
+				default: 'image',
+				description: 'Resource to consume',
 			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				default: 'create',
+				required: true,
+				description: 'Operation to perform',
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: [
+							'image',
+							'pdf',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				default: 'create',
+				required: true,
+				description: 'Operation to perform',
+				options: [
+					{
+						name: 'Get',
+						value: 'get',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: [
+							'account',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Template ID',
+				name: 'templateId',
+				type: 'options',
+				required: true,
+				default: '',
+				description: 'ID of the image template to use.',
+				typeOptions: {
+					loadOptionsMethod: 'getImageTemplates',
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'image',
+						],
+						operation: [
+							'create',
+						]
+					},
+				},
+			},
+			{
+				displayName: 'Template ID',
+				name: 'templateId',
+				type: 'options',
+				required: true,
+				default: '',
+				description: 'ID of the PDF template to use.',
+				typeOptions: {
+					loadOptionsMethod: 'getPdfTemplates',
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'pdf',
+						],
+						operation: [
+							'create',
+						]
+					},
+				},
+			},
+			{
+				displayName: 'Overrides',
+				name: 'overrides',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Item',
+				default: {},
+				options: [
+					{
+						displayName: 'Data',
+						name: 'data',
+						values: [
+							{
+								displayName: 'JSON',
+								name: 'json',
+								type: 'fixedCollection',
+								typeOptions: {
+									multipleValues: true,
+								},
+								default: {},
+								options: [
+									{
+										displayName: 'Data',
+										name: 'data',
+										values: [
+											{
+												displayName: 'Key',
+												name: 'key',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Value',
+												name: 'value',
+												type: 'string',
+												default: '',
+											},
+										],
+									},
+								],
+							},
+						],
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: [
+							'image',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'JSON',
+				name: 'json',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Data',
+				default: {},
+				options: [
+					{
+						displayName: 'Data',
+						name: 'data',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: [
+							'pdf',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+			},
+		],
+	};
+
+	methods = {
+		loadOptions: {
+			async getImageTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await loadResource.call(this, 'image');
+			},
+
+			async getPdfTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return await loadResource.call(this, 'pdf');
+			}
 		},
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions) {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
-		let results = null;
-		
+		const length = items.length;
+
+		let responseData;
+
+		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+
 		for (let i = 0; i < length; i++) {
-            if (operation === 'create') {
-                const templateId = this.getNodeParameter('templateId', i) as string;
-                const format = this.getNodeParameter('format', 0) as string;
-                if (format === 'JPEG') {
-                    // https://docs.apitemplate.io/reference/api-reference.html#create-an-image-jpeg-and-png
-                    const overrides = (this.getNodeParameter('overrides', i) as IDataObject).overridesValues as IDataObject;
-                    let body = {
-                        overrides: overrides
-                    };
-                    results = await apitemplateioApiRequest.call(this,
-                        { 
-                            method: 'POST', 
-                            resource: '/n8n/create_image', //This endpoint creates a JPEG file(along with PNG) with JSON data and your template
-                            query:{
-                                template_id: templateId
-                            },
-                            body: body
-                    });
-                    returnData.push(results);
-                }else if(format === 'PDF'){
-                    // https://docs.apitemplate.io/reference/api-reference.html#create-a-pdf
-                    const values = (this.getNodeParameter('json', i) as IDataObject).values as IDataObject;
-                    let body = {
-                        list: values
-                    };
-                    results = await apitemplateioApiRequest.call(this,
-                        { 
-                            method: 'POST', 
-                            resource: '/n8n/create_pdf',
-                            query:{
-                                template_id: templateId
-                            },
-                            body: body
-                    });
-                    returnData.push(results);                    
-                }
-            }else if (operation=='get-account-information'){
-                results = await apitemplateioApiRequest.call(this,
-                    { 
-                        method: 'GET', 
-                        resource: '/account-information'
-                });
-                returnData.push(results);
-            }
+
+			if (resource === 'account') {
+
+				// *********************************************************************
+				//                               account
+				// *********************************************************************
+
+				if (operation === 'get') {
+
+					// ----------------------------------
+					//         account: get
+					// ----------------------------------
+
+					responseData = await apiTemplateIoApiRequest.call(this, 'GET', '/account-information');
+
+				}
+
+			} else if (resource === 'image') {
+
+				// *********************************************************************
+				//                               image
+				// *********************************************************************
+
+				if (operation === 'create') {
+
+					// ----------------------------------
+					//          image: create
+					// ----------------------------------
+
+					// https://docs.apitemplate.io/reference/api-reference.html#create-an-image-jpeg-and-png
+
+					const qs = {
+						template_id: this.getNodeParameter('templateId', i),
+					};
+
+					const overrides = this.getNodeParameter('overrides', i) as GroupsOfKeyValuePairs;
+					const body = { overrides: [] } as Overrides;
+
+					overrides.data.map(override => override.json.data).forEach(properties => {
+						const temp: { [key: string]: string } = {};
+						properties.forEach(property => temp[property.key] = property.value);
+						body.overrides.push(temp);
+					});
+
+					responseData = await apiTemplateIoApiRequest.call(this, 'POST', '/create', qs, body);
+
+				}
+
+			} else if (resource === 'pdf') {
+
+				// *********************************************************************
+				//                               pdf
+				// *********************************************************************
+
+				if (operation === 'create') {
+
+					// ----------------------------------
+					//          pdf: create
+					// ----------------------------------
+
+					// https://docs.apitemplate.io/reference/api-reference.html#create-a-pdf
+
+					const qs = {
+						template_id: this.getNodeParameter('templateId', i),
+					};
+
+					const { data } = this.getNodeParameter('json', i) as { data: Array<{ key: string, value: string }> };
+					const contents = {} as { [key: string]: string };
+					data.forEach(item => contents[item.key] = item.value)
+
+					responseData = await apiTemplateIoApiRequest.call(this, 'POST', '/create', qs, contents);
+
+				}
+			}
+
+			Array.isArray(responseData)
+				? returnData.push(...responseData)
+				: returnData.push(responseData);
 
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
- 

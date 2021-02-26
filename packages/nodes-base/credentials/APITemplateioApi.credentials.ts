@@ -3,10 +3,10 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class APITemplateioApi implements ICredentialType {
-	name = 'apiTemplateioApi';
-	displayName = 'APITemplateioApi API';
-	documentationUrl = 'apitemplateio';
+export class ApiTemplateIoApi implements ICredentialType {
+	name = 'apiTemplateIoApi';
+	displayName = 'APITemplate.Io API';
+	documentationUrl = 'apiTemplateIo';
 	properties = [
 		{
 			displayName: 'API Key',
