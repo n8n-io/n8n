@@ -74,6 +74,43 @@ export class If implements INodeType {
 						],
 					},
 					{
+						name: 'dateTime',
+						displayName: 'DateTime',
+						values: [
+							{
+								displayName: 'Value 1',
+								name: 'value1',
+								type: 'dateTime',
+								default: '',
+								description: 'The value to compare with the second one.',
+							},
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								options: [
+									{
+										name: 'After',
+										value: 'after',
+									},
+									{
+										name: 'Before',
+										value: 'before',
+									},
+								],
+								default: 'after',
+								description: 'Operation to decide where the the data should be mapped to.',
+							},
+							{
+								displayName: 'Value 2',
+								name: 'value2',
+								type: 'dateTime',
+								default: '',
+								description: 'The value to compare with the first one.',
+							},
+						],
+					},
+					{
 						name: 'number',
 						displayName: 'Number',
 						values: [
@@ -259,6 +296,8 @@ export class If implements INodeType {
 		const compareOperationFunctions: {
 			[key: string]: (value1: NodeParameterValue, value2: NodeParameterValue) => boolean;
 		} = {
+			after: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) > (value2 || 0),
+			before: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) < (value2 || 0),
 			contains: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || '').toString().includes((value2 || '').toString()),
 			notContains: (value1: NodeParameterValue, value2: NodeParameterValue) => !(value1 || '').toString().includes((value2 || '').toString()),
 			endsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 as string).endsWith(value2 as string),
@@ -286,9 +325,28 @@ export class If implements INodeType {
 			},
 		};
 
+		// Converts the input data of a dateTime into a number for easy compare
+		function convertDateTime(value: NodeParameterValue): number {
+			let returnValue: number | undefined = undefined;
+			if (typeof value === 'string') {
+				returnValue = new Date(value).getTime();
+			} else if (typeof value === 'number') {
+				returnValue = value;
+			} if ((value as any) instanceof Date) {
+				returnValue = (value as unknown as Date).getTime();
+			}
+
+			if (returnValue === undefined || isNaN(returnValue)) {
+				throw new Error(`The value "${value}" is not a valid DateTime.`);
+			}
+
+			return returnValue
+		}
+
 		// The different dataTypes to check the values in
 		const dataTypes = [
 			'boolean',
+			'dateTime',
 			'number',
 			'string',
 		];
@@ -297,6 +355,7 @@ export class If implements INodeType {
 		// which ones via output "false"
 		let dataType: string;
 		let compareOperationResult: boolean;
+		let value1: NodeParameterValue, value2: NodeParameterValue;
 		itemLoop:
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			item = items[itemIndex];
@@ -310,7 +369,16 @@ export class If implements INodeType {
 				// Check all the values of the current dataType
 				for (compareData of this.getNodeParameter(`conditions.${dataType}`, itemIndex, []) as INodeParameters[]) {
 					// Check if the values passes
-					compareOperationResult = compareOperationFunctions[compareData.operation as string](compareData.value1 as NodeParameterValue, compareData.value2 as NodeParameterValue);
+
+					value1 = compareData.value1 as NodeParameterValue;
+					value2 = compareData.value2 as NodeParameterValue;
+
+					if (dataType === 'dateTime') {
+						value1 = convertDateTime(value1);
+						value2 = convertDateTime(value2);
+					}
+
+					compareOperationResult = compareOperationFunctions[compareData.operation as string](value1, value2);
 
 					if (compareOperationResult === true && combineOperation === 'any') {
 						// If it passes and the operation is "any" we do not have to check any
