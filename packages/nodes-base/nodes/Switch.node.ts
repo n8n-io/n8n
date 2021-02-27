@@ -600,7 +600,7 @@ export class Switch implements INodeType {
 				returnValue = new Date(value).getTime();
 			} else if (typeof value === 'number') {
 				returnValue = value;
-			} if ((value as any) instanceof Date) {
+			} if ((value as unknown as object) instanceof Date) {
 				returnValue = (value as unknown as Date).getTime();
 			}
 
@@ -608,7 +608,7 @@ export class Switch implements INodeType {
 				throw new Error(`The value "${value}" is not a valid DateTime.`);
 			}
 
-			return returnValue
+			return returnValue;
 		}
 
 		function checkIndexRange(index: number) {
