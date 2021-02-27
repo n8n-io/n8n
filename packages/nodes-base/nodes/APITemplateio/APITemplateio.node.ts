@@ -120,7 +120,7 @@ export class ApiTemplateIo implements INodeType {
 						],
 						operation: [
 							'create',
-						]
+						],
 					},
 				},
 			},
@@ -141,7 +141,7 @@ export class ApiTemplateIo implements INodeType {
 						],
 						operation: [
 							'create',
-						]
+						],
 					},
 				},
 			},
@@ -253,7 +253,7 @@ export class ApiTemplateIo implements INodeType {
 
 			async getPdfTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return await loadResource.call(this, 'pdf');
-			}
+			},
 		},
 	};
 
@@ -336,7 +336,7 @@ export class ApiTemplateIo implements INodeType {
 
 					const { data } = this.getNodeParameter('json', i) as { data: Array<{ key: string, value: string }> };
 					const contents = {} as { [key: string]: string };
-					data.forEach(item => contents[item.key] = item.value)
+					data.forEach(item => contents[item.key] = item.value);
 
 					responseData = await apiTemplateIoApiRequest.call(this, 'POST', '/create', qs, contents);
 
