@@ -13,21 +13,24 @@ import * as attendance from './resources/attendance'
 import * as person from './resources/person'
 import * as petition from './resources/petition'
 import * as event from './resources/event'
+import * as signature from './resources/signature'
+import * as submission from './resources/submission'
+import * as form from './resources/form'
 
 const resources = [
 	{ name: 'Person', value: 'person', resolver: person.logic },
-	{ name: 'Petition', value: 'petitions', resolver: petition.logic },
+	{ name: 'Petition', value: 'petition', resolver: petition.logic },
 	{ name: 'Event', value: 'events', resolver: event.logic },
-	// TODO: { name: 'Form', value: 'forms' },
-	// TODO: { name: 'Fundraising Page', value: 'fundraising_pages' },
-	// TODO: { name: 'Event Campaign', value: 'event_campaigns' },
-	// TODO: { name: 'Campaign', value: 'campaigns' },
-	// TODO: { name: "Message", value: 'messages' },
+	{ name: 'Form', value: 'form', resolver: form.logic },
+	// TODO: { name: 'Fundraising Page', value: 'fundraising_page' },
+	// TODO: { name: 'Event Campaign', value: 'event_campaign' },
+	// TODO: { name: 'Campaign', value: 'campaign' },
+	// TODO: { name: "Message", value: 'message' },
 	{ name: 'Attendance', value: 'attendance', resolver: attendance.logic },
-	// TODO: { name: 'Signature', value: 'signatures' },
-	// TODO: { name: 'Submission', value: 'submissions' },
-	// TODO: { name: 'Donation', value: 'donations' },
-	// TODO: { name: 'Outreach' , value: 'outreaches' },
+	{ name: 'Signature', value: 'signature', resolver: signature.logic },
+	{ name: 'Submission', value: 'submissionn' },
+	// TODO: { name: 'Donation', value: 'donation' },
+	// TODO: { name: 'Outreach' , value: 'outreache' },
 ]
 
 const description = {
@@ -59,10 +62,13 @@ const description = {
 			default: resources[0].value,
 			description: 'The resource to operate on.',
 		},
-		...attendance.fields,
 		...person.fields,
+		...event.fields,
+		...attendance.fields,
 		...petition.fields,
-		...event.fields
+		...signature.fields,
+		...form.fields,
+		...submission.fields,
 	]
 };
 
