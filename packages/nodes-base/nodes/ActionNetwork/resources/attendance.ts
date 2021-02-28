@@ -196,9 +196,9 @@ export const logic = async (node: IExecuteFunctions) => {
 			}
 		}
 
-		const personRefURL = node.getNodeParameter('osdi:people', 0) as string;
+		const personRefURL = node.getNodeParameter('osdi:person', 0) as string;
 		if (personRefURL) {
-			body = { ...body, ...createResourceLink('osdi:people', personRefURL) }
+			body = { ...body, ...createResourceLink('osdi:person', personRefURL) }
 		} else {
 			body = { ...body, ...createPersonSignupHelperObject(node) }
 		}

@@ -5,7 +5,7 @@ import { IExecuteFunctions } from 'n8n-core/dist/src/Interfaces';
 import { actionNetworkApiRequest } from '../helpers/request';
 import { IDataObject } from '../../../../workflow/dist/src/Interfaces';
 
-// DOCS: https://actionnetwork.org/docs/v2/submission
+// DOCS: https://actionnetwork.org/docs/v2/submissions
 // Scenario: Retrieving a collection of submission resources (GET)
 // Scenario: Retrieving an individual submission resource (GET)
 // Scenario: Creating a new submission (POST)
@@ -196,9 +196,9 @@ export const logic = async (node: IExecuteFunctions) => {
 			}
 		}
 
-		const personRefURL = node.getNodeParameter('osdi:people', 0) as string;
+		const personRefURL = node.getNodeParameter('osdi:person', 0) as string;
 		if (personRefURL) {
-			body = { ...body, ...createResourceLink('osdi:people', personRefURL) }
+			body = { ...body, ...createResourceLink('osdi:person', personRefURL) }
 		} else {
 			body = { ...body, ...createPersonSignupHelperObject(node) }
 		}
