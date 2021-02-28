@@ -24,94 +24,35 @@ import * as advocacy_campaign from './resources/advocacy_campaign'
 import * as outreach from './resources/outreach'
 import * as wrapper from './resources/wrapper'
 import * as embed from './resources/embed'
+import * as message from './resources/message'
+import * as query from './resources/query'
 
 const resources = [
 	{ name: 'Person', value: 'person', resolver: person.logic },
+	{ name: "Message", value: 'message', resolver: message.logic },
 	{ name: 'Campaign', value: 'campaign', resolver: campaign.logic },
-	{ name: 'Petition', value: 'petition', resolver: petition.logic },
-	{ name: 'Signature', value: 'signature', resolver: signature.logic },
-	{ name: 'Event Campaign', value: 'event_campaign', resolver: event_campaign.logic },
-	{ name: 'Event', value: 'events', resolver: event.logic },
-	{ name: 'Submission', value: 'submissionn', resolver: submission.logic },
-	{ name: 'Fundraising Page', value: 'fundraising_page', resolver: fundraising_page.logic },
-	{ name: 'Donation', value: 'donation', resolver: donation.logic },
-	{ name: 'Attendance', value: 'attendance', resolver: attendance.logic },
-	{ name: 'Form', value: 'form', resolver: form.logic },
-	{ name: 'Campaign', value: 'campaign', resolver: campaign.logic },
-	{ name: "Advocacy Campaign", value: "advocacy_campaign", resolver: advocacy_campaign.logic },
-	{ name: 'Outreach' , value: 'outreach', resolver: outreach.logic },
-	// https://actionnetwork.org/docs/v2/schedule_helper
-	// https://actionnetwork.org/docs/v2/messages
-	// - Scenario: Schedule a message (POST)
-	// - Scenario: Cancel a message's scheduling (DELETE)
-	// TODO: { name: "Message", value: 'message' },
-	// https://actionnetwork.org/docs/v2/tags
+	{ name: ' ↳ Petition', value: 'petition', resolver: petition.logic },
+	{ name: '   ↳ Signature', value: 'signature', resolver: signature.logic },
+	{ name: ' ↳ Event Campaign', value: 'event_campaign', resolver: event_campaign.logic },
+	{ name: '   ↳ Event', value: 'event', resolver: event.logic },
+	{ name: '     ↳ Attendance', value: 'attendance', resolver: attendance.logic },
+	{ name: ' ↳ Fundraising Page', value: 'fundraising_page', resolver: fundraising_page.logic },
+	{ name: '   ↳ Donation', value: 'donation', resolver: donation.logic },
+	{ name: ' ↳ Form', value: 'form', resolver: form.logic },
+	{ name: '   ↳ Submission', value: 'submission', resolver: submission.logic },
+	{ name: " ↳ Advocacy Campaign", value: "advocacy_campaign", resolver: advocacy_campaign.logic },
+	{ name: '   ↳ Outreach' , value: 'outreach', resolver: outreach.logic },
+	{ name: 'Query', value: 'query', resolver: query.logic },
+	{ name: 'HTML Embed', value: 'embed', resolver: embed.logic },
+	{ name: 'HTML Wrapper', value: 'wrapper', resolver: wrapper.logic },
+	// TODO: https://actionnetwork.org/docs/v2/tags
 	// - Scenario: Retrieving a collection of tags (GET)
 	// - Scenario: Creating a new tag (POST)
-	// https://actionnetwork.org/docs/v2/taggings
+	// TODO: https://actionnetwork.org/docs/v2/taggings
 	// - Scenario: Retrieving a collection of tagged people (GET)
 	// - Scenario: Tag a person (POST)
 	// - Scenario: Untag a person (DELETE)
-	// Webhook Payloads
-	// - Action https://actionnetwork.org/docs/webhooks/action
-	// - Attendance https://actionnetwork.org/docs/webhooks/attendance
-	// - Donation https://actionnetwork.org/docs/webhooks/donation
-	// - Outreach https://actionnetwork.org/docs/webhooks/outreach
-	// - Signature https://actionnetwork.org/docs/webhooks/signature
-	// - Submission https://actionnetwork.org/docs/webhooks/submission
-	// - Upload https://actionnetwork.org/docs/webhooks/upload,
-	{ name: 'HTML Embed', value: 'embed', resolver: embed.logic },
-	{ name: 'HTML Wrapper', value: 'wrapper', resolver: wrapper.logic },
 ]
-
-const description = {
-	displayName: 'Action Network',
-	name: 'actionNetwork',
-	icon: 'file:actionnetwork.svg',
-	group: ['output'],
-	version: 1,
-	subtitle: '={{$parameter["method"] + " " + $parameter["resource"]}}',
-	description: 'Interact with an Action Network group\'s data',
-	defaults: {
-		name: 'Action Network',
-		color: '#9dd3ed',
-	},
-	inputs: ['main'],
-	outputs: ['main'],
-	credentials: [
-		{
-			name: 'ActionNetworkGroupApiToken',
-			required: true,
-		},
-	],
-	properties: [
-		{
-			displayName: 'Resource',
-			name: 'resource',
-			type: 'options',
-			options: resources.map(({ name, value }) => ({ name, value })),
-			default: resources[0].value,
-			description: 'The resource to operate on.',
-		},
-		...person.fields,
-		...campaign.fields,
-		...event_campaign.fields,
-		...event.fields,
-		...attendance.fields,
-		...petition.fields,
-		...signature.fields,
-		...form.fields,
-		...submission.fields,
-		...fundraising_page.fields,
-		...donation.fields,
-		...advocacy_campaign.fields,
-		...outreach.fields,
-		...embed.fields,
-		...wrapper.fields
-	]
-};
-
-console.error(JSON.stringify(description, null, 2))
 
 export class ActionNetwork implements INodeType {
 	description: INodeTypeDescription = {
@@ -120,7 +61,7 @@ export class ActionNetwork implements INodeType {
 		icon: 'file:actionnetwork.svg',
 		group: ['output'],
 		version: 1,
-		subtitle: '={{$parameter["method"] + " " + $parameter["resource"]}}',
+		subtitle: '={{$parameter["operation"] + " " + $parameter["resource"]}}',
 		description: 'Interact with an Action Network group\'s data',
 		defaults: {
 			name: 'Action Network',
@@ -140,17 +81,26 @@ export class ActionNetwork implements INodeType {
 				name: 'resource',
 				type: 'options',
 				options: resources.map(({ name, value }) => ({ name, value })),
-				default: resources[0].value,
+				default: 'person',
 				description: 'The resource to operate on.',
 			},
 			...person.fields,
+			...campaign.fields,
+			...event_campaign.fields,
 			...event.fields,
 			...attendance.fields,
 			...petition.fields,
 			...signature.fields,
 			...form.fields,
 			...submission.fields,
-			...embed.fields
+			...fundraising_page.fields,
+			...donation.fields,
+			...advocacy_campaign.fields,
+			...outreach.fields,
+			...message.fields,
+			...query.fields,
+			...embed.fields,
+			...wrapper.fields
 		]
 	};
 
