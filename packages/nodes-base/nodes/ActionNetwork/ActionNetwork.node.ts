@@ -10,6 +10,7 @@ import {
 } from 'n8n-workflow';
 
 import * as person from './resources/person'
+import * as campaign from './resources/campaign'
 import * as petition from './resources/petition'
 import * as signature from './resources/signature'
 import * as event_campaign from './resources/event_campaign'
@@ -24,6 +25,7 @@ import * as embed from './resources/embed'
 
 const resources = [
 	{ name: 'Person', value: 'person', resolver: person.logic },
+	{ name: 'Campaign', value: 'campaign', resolver: campaign.logic },
 	{ name: 'Petition', value: 'petition', resolver: petition.logic },
 	{ name: 'Signature', value: 'signature', resolver: signature.logic },
 	{ name: 'Event Campaign', value: 'event_campaign', resolver: event_campaign.logic },
@@ -33,7 +35,7 @@ const resources = [
 	{ name: 'Donation', value: 'donation', resolver: donation.logic },
 	{ name: 'Attendance', value: 'attendance', resolver: attendance.logic },
 	{ name: 'Form', value: 'form', resolver: form.logic },
-	// TODO: { name: 'Campaign', value: 'campaign' },
+	{ name: 'Campaign', value: 'campaign', resolver: campaign.logic },
 	// TODO: { name: "Message", value: 'message' },
 	// https://actionnetwork.org/docs/v2/messages
 	// TODO: Advocacy Campaigns
@@ -90,6 +92,7 @@ const description = {
 			description: 'The resource to operate on.',
 		},
 		...person.fields,
+		...campaign.fields,
 		...event_campaign.fields,
 		...event.fields,
 		...attendance.fields,
