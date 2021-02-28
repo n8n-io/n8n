@@ -26,6 +26,7 @@ import * as wrapper from './resources/wrapper'
 import * as embed from './resources/embed'
 import * as message from './resources/message'
 import * as query from './resources/query'
+import { createIdentifierDictionary } from './helpers/osdi';
 
 const resources = [
 	{ name: 'Person', value: 'person', resolver: person.logic },
@@ -122,15 +123,7 @@ export class ActionNetwork implements INodeType {
 				// Particularly useful for pulling out the Action Network ID of an item for a further operation on it
 				// e.g. find an event, get its ID and then sign someone up to it via its ID
 				for (const i in responseData['_embedded'][firstDataKey] as any[]) {
-					responseData['_embedded'][firstDataKey][i].identifierDictionary = responseData['_embedded'][firstDataKey][i].identifiers?.reduce(
-						(dict: any, id: string) => {
-							try {
-								const [prefix, suffix] = id.split(':');
-								dict[prefix] = suffix;
-							} catch (e) {}
-							return dict;
-						}, {}
-					)
+					responseData['_embedded'][firstDataKey][i].identifierDictionary = createIdentifierDictionary(responseData['_embedded'][firstDataKey][i].identifiers)
 				}
 
 				// And optionally generate data items from the request, if possible
@@ -139,7 +132,10 @@ export class ActionNetwork implements INodeType {
 					// @ts-ignore
 					responseData = responseData['_embedded'][firstDataKey]
 				}
-			} catch (e) {}
+			} catch (e) {
+				// Try and identify IDs from a single object
+				responseData.identifierDictionary = createIdentifierDictionary(responseData.identifiers)
+			}
 
 			// Add the responses onto the return chain
 			// TODO: correctly extract response items from the metadata wrapper
