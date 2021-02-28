@@ -16,21 +16,45 @@ import * as event from './resources/event'
 import * as signature from './resources/signature'
 import * as submission from './resources/submission'
 import * as form from './resources/form'
+import * as wrapper from './resources/wrapper'
+import * as embed from './resources/embed'
 
 const resources = [
 	{ name: 'Person', value: 'person', resolver: person.logic },
 	{ name: 'Petition', value: 'petition', resolver: petition.logic },
-	{ name: 'Event', value: 'events', resolver: event.logic },
-	{ name: 'Form', value: 'form', resolver: form.logic },
-	// TODO: { name: 'Fundraising Page', value: 'fundraising_page' },
+	{ name: 'Signature', value: 'signature', resolver: signature.logic },
 	// TODO: { name: 'Event Campaign', value: 'event_campaign' },
+	{ name: 'Event', value: 'events', resolver: event.logic },
+	{ name: 'Submission', value: 'submissionn', resolver: submission.logic },
+	// TODO: { name: 'Fundraising Page', value: 'fundraising_page' },
+	// TODO: { name: 'Donation', value: 'donation' },
+	{ name: 'Attendance', value: 'attendance', resolver: attendance.logic },
+	{ name: 'Form', value: 'form', resolver: form.logic },
 	// TODO: { name: 'Campaign', value: 'campaign' },
 	// TODO: { name: "Message", value: 'message' },
-	{ name: 'Attendance', value: 'attendance', resolver: attendance.logic },
-	{ name: 'Signature', value: 'signature', resolver: signature.logic },
-	{ name: 'Submission', value: 'submissionn' },
-	// TODO: { name: 'Donation', value: 'donation' },
-	// TODO: { name: 'Outreach' , value: 'outreache' },
+	// https://actionnetwork.org/docs/v2/messages
+	// TODO: Advocacy Campaigns
+	// TODO: { name: 'Outreach' , value: 'outreach' },
+	// https://actionnetwork.org/docs/v2/schedule_helper
+	// - Scenario: Schedule a message (POST)
+	// - Scenario: Cancel a message's scheduling (DELETE)
+	// https://actionnetwork.org/docs/v2/tags
+	// - Scenario: Retrieving a collection of tags (GET)
+	// - Scenario: Creating a new tag (POST)
+	// https://actionnetwork.org/docs/v2/taggings
+	// - Scenario: Retrieving a collection of tagged people (GET)
+	// - Scenario: Tag a person (POST)
+	// - Scenario: Untag a person (DELETE)
+	// Webhook Payloads
+	// - Action https://actionnetwork.org/docs/webhooks/action
+	// - Attendance https://actionnetwork.org/docs/webhooks/attendance
+	// - Donation https://actionnetwork.org/docs/webhooks/donation
+	// - Outreach https://actionnetwork.org/docs/webhooks/outreach
+	// - Signature https://actionnetwork.org/docs/webhooks/signature
+	// - Submission https://actionnetwork.org/docs/webhooks/submission
+	// - Upload https://actionnetwork.org/docs/webhooks/upload,
+	{ name: 'HTML Embed', value: 'embed', resolver: embed.logic },
+	{ name: 'HTML Wrapper', value: 'wrapper', resolver: wrapper.logic },
 ]
 
 const description = {
@@ -69,6 +93,8 @@ const description = {
 		...signature.fields,
 		...form.fields,
 		...submission.fields,
+		...embed.fields,
+		...wrapper.fields
 	]
 };
 
@@ -104,9 +130,14 @@ export class ActionNetwork implements INodeType {
 				default: resources[0].value,
 				description: 'The resource to operate on.',
 			},
-			...attendance.fields,
 			...person.fields,
-			...petition.fields
+			...event.fields,
+			...attendance.fields,
+			...petition.fields,
+			...signature.fields,
+			...form.fields,
+			...submission.fields,
+			...embed.fields
 		]
 	};
 
