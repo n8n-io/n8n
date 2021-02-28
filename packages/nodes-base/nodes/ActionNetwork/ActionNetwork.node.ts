@@ -31,17 +31,17 @@ const resources = [
 	{ name: 'Person', value: 'person', resolver: person.logic },
 	{ name: "Message", value: 'message', resolver: message.logic },
 	{ name: 'Campaign', value: 'campaign', resolver: campaign.logic },
-	{ name: ' ↳ Petition', value: 'petition', resolver: petition.logic },
-	{ name: '   ↳ Signature', value: 'signature', resolver: signature.logic },
-	{ name: ' ↳ Event Campaign', value: 'event_campaign', resolver: event_campaign.logic },
-	{ name: '   ↳ Event', value: 'event', resolver: event.logic },
-	{ name: '     ↳ Attendance', value: 'attendance', resolver: attendance.logic },
-	{ name: ' ↳ Fundraising Page', value: 'fundraising_page', resolver: fundraising_page.logic },
-	{ name: '   ↳ Donation', value: 'donation', resolver: donation.logic },
-	{ name: ' ↳ Form', value: 'form', resolver: form.logic },
-	{ name: '   ↳ Submission', value: 'submission', resolver: submission.logic },
-	{ name: " ↳ Advocacy Campaign", value: "advocacy_campaign", resolver: advocacy_campaign.logic },
-	{ name: '   ↳ Outreach' , value: 'outreach', resolver: outreach.logic },
+	{ name: 'Petition', value: 'petition', resolver: petition.logic },
+	{ name: 'Signature', value: 'signature', resolver: signature.logic },
+	{ name: 'Event Campaign', value: 'event_campaign', resolver: event_campaign.logic },
+	{ name: 'Event', value: 'event', resolver: event.logic },
+	{ name: 'Attendance', value: 'attendance', resolver: attendance.logic },
+	{ name: 'Fundraising Page', value: 'fundraising_page', resolver: fundraising_page.logic },
+	{ name: 'Donation', value: 'donation', resolver: donation.logic },
+	{ name: 'Form', value: 'form', resolver: form.logic },
+	{ name: 'Submission', value: 'submission', resolver: submission.logic },
+	{ name: "Advocacy Campaign", value: "advocacy_campaign", resolver: advocacy_campaign.logic },
+	{ name: 'Outreach' , value: 'outreach', resolver: outreach.logic },
 	{ name: 'Query', value: 'query', resolver: query.logic },
 	{ name: 'HTML Embed', value: 'embed', resolver: embed.logic },
 	{ name: 'HTML Wrapper', value: 'wrapper', resolver: wrapper.logic },
@@ -112,7 +112,7 @@ export class ActionNetwork implements INodeType {
 		const resourceResolver = resources.find(r => r.value === resource)?.resolver!
 
 		for (let i = 0; i < items.length; i++) {
-			let next = await resourceResolver(this)
+			const next = await resourceResolver(this)
 
 			// Add the responses onto the return chain
 			// TODO: correctly extract response items from the metadata wrapper
