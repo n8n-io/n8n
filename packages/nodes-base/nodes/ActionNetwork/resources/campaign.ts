@@ -21,7 +21,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'campaign' ],
-				method: [ 'GET' ]
+				operation: [ 'GET' ]
 			},
 		},
 	},
@@ -32,7 +32,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'campaign' ],
-				method: [ 'GET' ],
+				operation: [ 'GET' ],
 				campaign_id: [null, '', undefined]
 			}
 		}
@@ -43,7 +43,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'campaign' ],
-				method: [ 'GET' ],
+				operation: [ 'GET' ],
 				campaign_id: [null, '', undefined]
 			}
 		}

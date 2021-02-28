@@ -71,7 +71,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'attendance' ],
-				method: ['GET', 'PUT']
+				operation: ['GET', 'PUT']
 			}
 		}
 	},
@@ -90,7 +90,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'attendance' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 		options: [
@@ -110,7 +110,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'attendance' ],
-				method: [ 'POST' ]
+				operation: [ 'POST' ]
 			}
 		}
 	},
@@ -124,7 +124,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'attendance' ],
-				method: [ 'POST' ]
+				operation: [ 'POST' ]
 			}
 		}
 	},
@@ -132,7 +132,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: ['attendance'],
-				method: [ 'POST' ]
+				operation: [ 'POST' ]
 			}
 		}
 	}),
@@ -143,7 +143,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'attendance' ],
-				method: [ 'GET' ],
+				operation: [ 'GET' ],
 				attendance_id: [null, '', undefined]
 			}
 		}
@@ -154,7 +154,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'attendance' ],
-				method: [ 'GET' ],
+				operation: [ 'GET' ],
 				attendance_id: [null, '', undefined]
 			}
 		}
@@ -175,20 +175,20 @@ export const logic = async (node: IExecuteFunctions) => {
 	}
 
 	const attendance_id = node.getNodeParameter('attendance_id', 0) as string;
-	const method = node.getNodeParameter('method', 0) as 'GET' | 'PUT' | 'POST';
+	const operation = node.getNodeParameter('operation', 0) as 'GET' | 'PUT' | 'POST';
 
-	if (attendance_id && method === 'GET') {
-		return actionNetworkApiRequest.call(node, method, `${url}/${attendance_id}`) as Promise<IDataObject>
+	if (attendance_id && operation === 'GET') {
+		return actionNetworkApiRequest.call(node, operation, `${url}/${attendance_id}`) as Promise<IDataObject>
 	}
 
-	if (attendance_id && method === 'PUT') {
+	if (attendance_id && operation === 'PUT') {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers
 		}
-		return actionNetworkApiRequest.call(node, method, `${url}/${attendance_id}`, body) as Promise<IDataObject>
+		return actionNetworkApiRequest.call(node, operation, `${url}/${attendance_id}`, body) as Promise<IDataObject>
 	}
 
-	if (event_id && method === 'POST') {
+	if (event_id && operation === 'POST') {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
 			'triggers': {
@@ -205,7 +205,7 @@ export const logic = async (node: IExecuteFunctions) => {
 			body = { ...body, ...createPersonSignupHelperObject(node) }
 		}
 
-		return actionNetworkApiRequest.call(node, method, url, body) as Promise<IDataObject>
+		return actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>
 	}
 
 	// Otherwise list all

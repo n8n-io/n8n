@@ -311,7 +311,7 @@ export const fields = [
 				value: 'GET',
 			},
 			{
-				name: 'Create/Update by Email (POST)',
+				name: 'Create/Update by Email',
 				value: 'POST',
 			},
 		],
@@ -330,7 +330,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'person' ],
-				method: ['GET']
+				operation: ['GET']
 			}
 		}
 	},
@@ -341,7 +341,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: ['person'],
-				method: [ 'POST' ]
+				operation: [ 'POST' ]
 			}
 		}
 	}),
@@ -352,7 +352,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'person' ],
-				method: [ 'GET' ],
+				operation: [ 'GET' ],
 				person_id: [null, '', undefined]
 			}
 		}
@@ -363,7 +363,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'person' ],
-				method: [ 'GET' ],
+				operation: [ 'GET' ],
 				person_id: [null, '', undefined]
 			}
 		}
@@ -371,17 +371,17 @@ export const fields = [
 ] as INodeProperties[];
 
 export const logic = async (node: IExecuteFunctions) => {
-	const person_id = node.getNodeParameter('person_id', 0) as string;
-	const method = node.getNodeParameter('method', 0) as 'GET' | 'POST';
+	const person_id = node.getNodeParameter('person_id', 0, null) as string;
+	const operation = node.getNodeParameter('operation', 0) as 'GET' | 'POST';
 	let url = `/api/v2/people`
 
-	if (person_id && method === 'GET') {
-		return actionNetworkApiRequest.call(node, method, `${url}/${person_id}`) as Promise<IDataObject>
+	if (person_id && operation === 'GET') {
+		return actionNetworkApiRequest.call(node, operation, `${url}/${person_id}`) as Promise<IDataObject>
 	}
 
-	if (method === 'POST') {
+	if (operation === 'POST') {
 		let body = createPersonSignupHelperObject(node)
-		return actionNetworkApiRequest.call(node, method, url, body) as Promise<IDataObject>
+		return actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>
 	}
 
 	// Otherwise list all

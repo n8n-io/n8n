@@ -47,7 +47,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'fundraising_page' ],
-				method: [ 'PUT', 'GET' ]
+				operation: [ 'PUT', 'GET' ]
 			},
 		},
 	},
@@ -63,7 +63,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'fundraising_page' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 	},
@@ -76,7 +76,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'fundraising_page' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 	},
@@ -88,7 +88,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'fundraising_page' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 	},
@@ -104,7 +104,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'fundraising_page' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 		options: [
@@ -123,7 +123,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'fundraising_page' ],
-				method: [ 'GET' ],
+				operation: [ 'GET' ],
 				fundraising_page_id: [null, '', undefined]
 			}
 		}
@@ -134,7 +134,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'fundraising_page' ],
-				method: [ 'GET' ],
+				operation: [ 'GET' ],
 				fundraising_page_id: [null, '', undefined]
 			}
 		}
@@ -143,14 +143,14 @@ export const fields = [
 
 export const logic = async (node: IExecuteFunctions) => {
 	const fundraising_page_id = node.getNodeParameter('fundraising_page_id', 0) as string;
-	const method = node.getNodeParameter('method', 0) as 'GET' | 'PUT' | 'POST';
+	const operation = node.getNodeParameter('operation', 0) as 'GET' | 'PUT' | 'POST';
 	let url = `/api/v2/fundraising_pages`
 
-	if (fundraising_page_id && method === 'GET') {
-		return actionNetworkApiRequest.call(node, method, `${url}/${fundraising_page_id}`) as Promise<IDataObject>
+	if (fundraising_page_id && operation === 'GET') {
+		return actionNetworkApiRequest.call(node, operation, `${url}/${fundraising_page_id}`) as Promise<IDataObject>
 	}
 
-	if (fundraising_page_id && method === 'PUT') {
+	if (fundraising_page_id && operation === 'PUT') {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
@@ -159,10 +159,10 @@ export const logic = async (node: IExecuteFunctions) => {
 			origin_system: node.getNodeParameter('origin_system', 0) || undefined,
 		}
 
-		return actionNetworkApiRequest.call(node, method, `${url}/${fundraising_page_id}`, body) as Promise<IDataObject>
+		return actionNetworkApiRequest.call(node, operation, `${url}/${fundraising_page_id}`, body) as Promise<IDataObject>
 	}
 
-	if (method === 'POST') {
+	if (operation === 'POST') {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
@@ -171,7 +171,7 @@ export const logic = async (node: IExecuteFunctions) => {
 			origin_system: node.getNodeParameter('origin_system', 0) || undefined,
 		}
 
-		return actionNetworkApiRequest.call(node, method, url, body) as Promise<IDataObject>
+		return actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>
 	}
 
 	// Otherwise list all

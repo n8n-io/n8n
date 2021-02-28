@@ -47,7 +47,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'form' ],
-				method: [ 'PUT', 'GET' ]
+				operation: [ 'PUT', 'GET' ]
 			},
 		},
 	},
@@ -64,7 +64,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'form' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 	},
@@ -78,7 +78,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'form' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 	},
@@ -92,7 +92,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'form' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 	},
@@ -106,7 +106,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'form' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 	},
@@ -122,7 +122,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'form' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 		options: [
@@ -141,7 +141,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'form' ],
-				method: [ 'GET' ],
+				operation: [ 'GET' ],
 				form_id: [null, '', undefined]
 			}
 		}
@@ -152,7 +152,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'form' ],
-				method: [ 'GET' ],
+				operation: [ 'GET' ],
 				form_id: [null, '', undefined]
 			}
 		}
@@ -161,14 +161,14 @@ export const fields: INodeProperties[] = [
 
 export const logic = async (node: IExecuteFunctions) => {
 	const form_id = node.getNodeParameter('form_id', 0) as string;
-	const method = node.getNodeParameter('method', 0) as 'GET' | 'PUT' | 'POST';
+	const operation = node.getNodeParameter('operation', 0) as 'GET' | 'PUT' | 'POST';
 	let url = `/api/v2/forms`
 
-	if (form_id && method === 'GET') {
-		return actionNetworkApiRequest.call(node, method, `${url}/${form_id}`) as Promise<IDataObject>
+	if (form_id && operation === 'GET') {
+		return actionNetworkApiRequest.call(node, operation, `${url}/${form_id}`) as Promise<IDataObject>
 	}
 
-	if (form_id && method === 'PUT') {
+	if (form_id && operation === 'PUT') {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
@@ -178,10 +178,10 @@ export const logic = async (node: IExecuteFunctions) => {
 			title: node.getNodeParameter('title', 0) || undefined,
 		}
 
-		return actionNetworkApiRequest.call(node, method, `${url}/${form_id}`, body) as Promise<IDataObject>
+		return actionNetworkApiRequest.call(node, operation, `${url}/${form_id}`, body) as Promise<IDataObject>
 	}
 
-	if (method === 'POST') {
+	if (operation === 'POST') {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
@@ -191,7 +191,7 @@ export const logic = async (node: IExecuteFunctions) => {
 			title: node.getNodeParameter('title', 0) || undefined,
 		}
 
-		return actionNetworkApiRequest.call(node, method, url, body) as Promise<IDataObject>
+		return actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>
 	}
 
 	// Otherwise list forms

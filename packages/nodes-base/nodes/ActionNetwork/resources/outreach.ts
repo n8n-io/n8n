@@ -71,7 +71,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'outreach' ],
-				method: ['GET', 'PUT']
+				operation: ['GET', 'PUT']
 			}
 		}
 	},
@@ -90,7 +90,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'outreach' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 		options: [
@@ -136,7 +136,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'outreach' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		}
 	},
@@ -148,7 +148,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'outreach' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		}
 	},
@@ -162,7 +162,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'outreach' ],
-				method: [ 'POST' ]
+				operation: [ 'POST' ]
 			}
 		}
 	},
@@ -170,7 +170,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: ['outreach'],
-				method: [ 'POST' ]
+				operation: [ 'POST' ]
 			}
 		}
 	}),
@@ -181,7 +181,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'outreach' ],
-				method: [ 'GET' ],
+				operation: [ 'GET' ],
 				outreach_id: [null, '', undefined]
 			}
 		}
@@ -192,7 +192,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'outreach' ],
-				method: [ 'GET' ],
+				operation: [ 'GET' ],
 				outreach_id: [null, '', undefined]
 			}
 		}
@@ -213,23 +213,23 @@ export const logic = async (node: IExecuteFunctions) => {
 	}
 
 	const outreach_id = node.getNodeParameter('outreach_id', 0) as string;
-	const method = node.getNodeParameter('method', 0) as 'GET' | 'PUT' | 'POST';
+	const operation = node.getNodeParameter('operation', 0) as 'GET' | 'PUT' | 'POST';
 
-	if (outreach_id && method === 'GET') {
-		return actionNetworkApiRequest.call(node, method, `${url}/${outreach_id}`) as Promise<IDataObject>
+	if (outreach_id && operation === 'GET') {
+		return actionNetworkApiRequest.call(node, operation, `${url}/${outreach_id}`) as Promise<IDataObject>
 	}
 
-	if (outreach_id && method === 'PUT') {
+	if (outreach_id && operation === 'PUT') {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', 0, undefined) as any)?.identifiers,
 			'targets': (node.getNodeParameter('additional_properties', 0, undefined) as any)?.targets,
 			'subject': node.getNodeParameter('subject', 0, undefined),
 			'message': node.getNodeParameter('message', 0, undefined)
 		}
-		return actionNetworkApiRequest.call(node, method, `${url}/${outreach_id}`, body) as Promise<IDataObject>
+		return actionNetworkApiRequest.call(node, operation, `${url}/${outreach_id}`, body) as Promise<IDataObject>
 	}
 
-	if (advocacy_campaign_id && method === 'POST') {
+	if (advocacy_campaign_id && operation === 'POST') {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', 0, undefined) as any)?.identifiers,
 			'targets': (node.getNodeParameter('additional_properties', 0, undefined) as any)?.targets,
@@ -244,7 +244,7 @@ export const logic = async (node: IExecuteFunctions) => {
 			body = { ...body, ...createPersonSignupHelperObject(node) }
 		}
 
-		return actionNetworkApiRequest.call(node, method, url, body) as Promise<IDataObject>
+		return actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>
 	}
 
 	// Otherwise list all

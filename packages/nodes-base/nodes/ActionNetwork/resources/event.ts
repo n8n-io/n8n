@@ -47,7 +47,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'event' ],
-				method: [ 'GET' ]
+				operation: [ 'GET' ]
 			},
 		},
 	},
@@ -60,7 +60,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'event' ],
-				method: [ 'PUT', 'GET' ]
+				operation: [ 'PUT', 'GET' ]
 			},
 		},
 	},
@@ -77,7 +77,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'event' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 	},
@@ -91,7 +91,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'event' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 	},
@@ -105,7 +105,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'event' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 	},
@@ -119,7 +119,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'event' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 	},
@@ -131,7 +131,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'event' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 	},
@@ -143,7 +143,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'event' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 		options: [
@@ -203,7 +203,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'event' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 		options: [
@@ -222,7 +222,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'event' ],
-				method: [ 'GET' ],
+				operation: [ 'GET' ],
 				event_id: [null, '', undefined]
 			}
 		}
@@ -233,7 +233,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'event' ],
-				method: [ 'GET' ],
+				operation: [ 'GET' ],
 				event_id: [null, '', undefined]
 			}
 		}
@@ -242,14 +242,14 @@ export const fields: INodeProperties[] = [
 
 export const logic = async (node: IExecuteFunctions) => {
 	const event_id = node.getNodeParameter('event_id', 0) as string;
-	const method = node.getNodeParameter('method', 0) as 'GET' | 'PUT' | 'POST';
+	const operation = node.getNodeParameter('operation', 0) as 'GET' | 'PUT' | 'POST';
 	let url = `/api/v2/events`
 
-	if (event_id && method === 'GET') {
-		return actionNetworkApiRequest.call(node, method, `${url}/${event_id}`) as Promise<IDataObject>
+	if (event_id && operation === 'GET') {
+		return actionNetworkApiRequest.call(node, operation, `${url}/${event_id}`) as Promise<IDataObject>
 	}
 
-	if (event_id && method === 'PUT') {
+	if (event_id && operation === 'PUT') {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
@@ -262,7 +262,7 @@ export const logic = async (node: IExecuteFunctions) => {
 			start_date: node.getNodeParameter('start_date', 0) || undefined
 		}
 
-		return actionNetworkApiRequest.call(node, method, `${url}/${event_id}`, body) as Promise<IDataObject>
+		return actionNetworkApiRequest.call(node, operation, `${url}/${event_id}`, body) as Promise<IDataObject>
 	}
 
 	// If the event campaign is specified
@@ -272,7 +272,7 @@ export const logic = async (node: IExecuteFunctions) => {
 		url = `/api/v2/event_campaigns/${event_campaign_id}/events`
 	}
 
-	if (method === 'POST') {
+	if (operation === 'POST') {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
@@ -285,7 +285,7 @@ export const logic = async (node: IExecuteFunctions) => {
 			start_date: node.getNodeParameter('start_date', 0) || undefined
 		}
 
-		return actionNetworkApiRequest.call(node, method, url, body) as Promise<IDataObject>
+		return actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>
 	}
 
 	// Otherwise list events

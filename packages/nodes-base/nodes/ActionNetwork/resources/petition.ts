@@ -47,7 +47,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'petition' ],
-				method: [ 'PUT', 'GET' ]
+				operation: [ 'PUT', 'GET' ]
 			},
 		},
 	},
@@ -63,7 +63,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'petition' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 	},
@@ -76,7 +76,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'petition' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 	},
@@ -88,7 +88,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'petition' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 	},
@@ -100,7 +100,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'petition' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 	},
@@ -116,7 +116,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'petition' ],
-				method: [ 'POST', 'PUT' ]
+				operation: [ 'POST', 'PUT' ]
 			}
 		},
 		options: [
@@ -141,7 +141,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'petition' ],
-				method: [ 'GET' ],
+				operation: [ 'GET' ],
 				petition_id: [null, '', undefined]
 			}
 		}
@@ -152,7 +152,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'petition' ],
-				method: [ 'GET' ],
+				operation: [ 'GET' ],
 				petition_id: [null, '', undefined]
 			}
 		}
@@ -161,14 +161,14 @@ export const fields = [
 
 export const logic = async (node: IExecuteFunctions) => {
 	const petition_id = node.getNodeParameter('petition_id', 0) as string;
-	const method = node.getNodeParameter('method', 0) as 'GET' | 'PUT' | 'POST';
+	const operation = node.getNodeParameter('operation', 0) as 'GET' | 'PUT' | 'POST';
 	let url = `/api/v2/petitions`
 
-	if (petition_id && method === 'GET') {
-		return actionNetworkApiRequest.call(node, method, `${url}/${petition_id}`) as Promise<IDataObject>
+	if (petition_id && operation === 'GET') {
+		return actionNetworkApiRequest.call(node, operation, `${url}/${petition_id}`) as Promise<IDataObject>
 	}
 
-	if (petition_id && method === 'PUT') {
+	if (petition_id && operation === 'PUT') {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
@@ -179,10 +179,10 @@ export const logic = async (node: IExecuteFunctions) => {
 			title: node.getNodeParameter('title', 0) || undefined
 		}
 
-		return actionNetworkApiRequest.call(node, method, `${url}/${petition_id}`, body) as Promise<IDataObject>
+		return actionNetworkApiRequest.call(node, operation, `${url}/${petition_id}`, body) as Promise<IDataObject>
 	}
 
-	if (method === 'POST') {
+	if (operation === 'POST') {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
@@ -193,7 +193,7 @@ export const logic = async (node: IExecuteFunctions) => {
 			title: node.getNodeParameter('title', 0) || undefined
 		}
 
-		return actionNetworkApiRequest.call(node, method, url, body) as Promise<IDataObject>
+		return actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>
 	}
 
 	// Otherwise list all
