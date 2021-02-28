@@ -109,7 +109,7 @@ export const fields = [
 		name: 'additional_properties',
 		type: 'fixedCollection',
 		default: '',
-		placeholder: 'Add custom ID for attendance',
+		placeholder: 'Add data',
 		typeOptions: {
 			multipleValues: true,
 		},
