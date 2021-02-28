@@ -23,8 +23,8 @@ export const createResourceLink = (name: string, href: string) => {
 
 export const createListOperations = createFields([
 	{
-		displayName: 'Include Metadata',
-		description: "When disabled, you'll get a list of items",
+		displayName: 'Include API Metadata',
+		description: "Disable for data in a list. Enable for pagination or API metadata.",
 		name: 'include_metadata',
 		type: 'boolean',
 		default: false,

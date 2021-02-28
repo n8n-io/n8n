@@ -112,14 +112,41 @@ export class ActionNetwork implements INodeType {
 		const resourceResolver = resources.find(r => r.value === resource)?.resolver!
 
 		for (let i = 0; i < items.length; i++) {
-			const next = await resourceResolver(this)
+			let responseData = await resourceResolver(this) as any
+
+			try {
+				// Identify where the list of data is
+				const firstDataKey = Object.keys(responseData['_embedded'])[0]
+
+				// Try to identify a dictionary of IDs
+				// Particularly useful for pulling out the Action Network ID of an item for a further operation on it
+				// e.g. find an event, get its ID and then sign someone up to it via its ID
+				for (const i in responseData['_embedded'][firstDataKey] as any[]) {
+					responseData['_embedded'][firstDataKey][i].identifierDictionary = responseData['_embedded'][firstDataKey][i].identifiers?.reduce(
+						(dict: any, id: string) => {
+							try {
+								const [prefix, suffix] = id.split(':');
+								dict[prefix] = suffix;
+							} catch (e) {}
+							return dict;
+						}, {}
+					)
+				}
+
+				// And optionally generate data items from the request, if possible
+				const include_metadata = this.getNodeParameter('include_metadata', 0) as boolean
+				if (!include_metadata) {
+					// @ts-ignore
+					responseData = responseData['_embedded'][firstDataKey]
+				}
+			} catch (e) {}
 
 			// Add the responses onto the return chain
 			// TODO: correctly extract response items from the metadata wrapper
-			if (Array.isArray(next)) {
-				returnData.push.apply(returnData, next);
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData);
 			} else {
-				returnData.push(next);
+				returnData.push(responseData);
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
