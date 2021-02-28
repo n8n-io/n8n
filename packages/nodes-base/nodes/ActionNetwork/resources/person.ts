@@ -352,7 +352,8 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'person' ],
-				method: [ 'GET' ]
+				method: [ 'GET' ],
+				person_id: [null, '', undefined]
 			}
 		}
 	}),
@@ -362,7 +363,8 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'person' ],
-				method: [ 'GET' ]
+				method: [ 'GET' ],
+				person_id: [null, '', undefined]
 			}
 		}
 	}),

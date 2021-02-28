@@ -114,7 +114,7 @@ export const fields: INodeProperties[] = [
 		default: null,
 		name: "instructions",
 		type: "string",
-		description: "The letter to the event's target.",
+		description: "The event's instructions for activists, visible after they RSVP. May contain HTML.",
 		required: false,
 		displayOptions: {
 			show: {
@@ -222,7 +222,8 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'event' ],
-				method: [ 'GET' ]
+				method: [ 'GET' ],
+				event_id: [null, '', undefined]
 			}
 		}
 	}),
@@ -232,7 +233,8 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'event' ],
-				method: [ 'GET' ]
+				method: [ 'GET' ],
+				event_id: [null, '', undefined]
 			}
 		}
 	}),

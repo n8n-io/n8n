@@ -141,7 +141,8 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'petition' ],
-				method: [ 'GET' ]
+				method: [ 'GET' ],
+				petition_id: [null, '', undefined]
 			}
 		}
 	}),
@@ -151,7 +152,8 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'petition' ],
-				method: [ 'GET' ]
+				method: [ 'GET' ],
+				petition_id: [null, '', undefined]
 			}
 		}
 	}),

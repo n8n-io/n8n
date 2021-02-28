@@ -143,7 +143,8 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'attendance' ],
-				method: [ 'GET' ]
+				method: [ 'GET' ],
+				attendance_id: [null, '', undefined]
 			}
 		}
 	}),
@@ -153,7 +154,8 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'attendance' ],
-				method: [ 'GET' ]
+				method: [ 'GET' ],
+				attendance_id: [null, '', undefined]
 			}
 		}
 	}),

@@ -155,7 +155,8 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'signature' ],
-				method: [ 'GET' ]
+				method: [ 'GET' ],
+				signature_id: [null, '', undefined]
 			}
 		}
 	}),
@@ -165,7 +166,8 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'signature' ],
-				method: [ 'GET' ]
+				method: [ 'GET' ],
+				signature_id: [null, '', undefined]
 			}
 		}
 	}),

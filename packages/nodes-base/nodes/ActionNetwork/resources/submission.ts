@@ -143,7 +143,8 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'submission' ],
-				method: [ 'GET' ]
+				method: [ 'GET' ],
+				submission_id: [null, '', undefined]
 			}
 		}
 	}),
@@ -153,7 +154,8 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'submission' ],
-				method: [ 'GET' ]
+				method: [ 'GET' ],
+				submission_id: [null, '', undefined]
 			}
 		}
 	}),
