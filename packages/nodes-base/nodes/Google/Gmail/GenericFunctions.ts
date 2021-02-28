@@ -216,7 +216,12 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [
-		'https://www.googleapis.com/auth/books',
+		'https://www.googleapis.com/auth/gmail.labels',
+		'https://www.googleapis.com/auth/gmail.addons.current.action.compose',
+		'https://www.googleapis.com/auth/gmail.addons.current.message.action',
+		'https://mail.google.com/',
+		'https://www.googleapis.com/auth/gmail.modify',
+		'https://www.googleapis.com/auth/gmail.compose',
 	];
 
 	const now = moment().unix();
