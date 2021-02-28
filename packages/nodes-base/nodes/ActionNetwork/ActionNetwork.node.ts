@@ -20,6 +20,8 @@ import * as form from './resources/form'
 import * as submission from './resources/submission'
 import * as fundraising_page from './resources/fundraising_page'
 import * as donation from './resources/donation'
+import * as advocacy_campaign from './resources/advocacy_campaign'
+import * as outreach from './resources/outreach'
 import * as wrapper from './resources/wrapper'
 import * as embed from './resources/embed'
 
@@ -36,13 +38,13 @@ const resources = [
 	{ name: 'Attendance', value: 'attendance', resolver: attendance.logic },
 	{ name: 'Form', value: 'form', resolver: form.logic },
 	{ name: 'Campaign', value: 'campaign', resolver: campaign.logic },
-	// TODO: { name: "Message", value: 'message' },
-	// https://actionnetwork.org/docs/v2/messages
-	// TODO: Advocacy Campaigns
-	// TODO: { name: 'Outreach' , value: 'outreach' },
+	{ name: "Advocacy Campaign", value: "advocacy_campaign", resolver: advocacy_campaign.logic },
+	{ name: 'Outreach' , value: 'outreach', resolver: outreach.logic },
 	// https://actionnetwork.org/docs/v2/schedule_helper
+	// https://actionnetwork.org/docs/v2/messages
 	// - Scenario: Schedule a message (POST)
 	// - Scenario: Cancel a message's scheduling (DELETE)
+	// TODO: { name: "Message", value: 'message' },
 	// https://actionnetwork.org/docs/v2/tags
 	// - Scenario: Retrieving a collection of tags (GET)
 	// - Scenario: Creating a new tag (POST)
@@ -102,6 +104,8 @@ const description = {
 		...submission.fields,
 		...fundraising_page.fields,
 		...donation.fields,
+		...advocacy_campaign.fields,
+		...outreach.fields,
 		...embed.fields,
 		...wrapper.fields
 	]
