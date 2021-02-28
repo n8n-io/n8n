@@ -207,7 +207,7 @@ export const logic = async (node: IExecuteFunctions) => {
 
 	if (message_id && operation === 'list') {
     const qs = createPaginationProperties(node)
-    return actionNetworkApiRequest.call(node, 'GET', url, undefined, qs) as Promise<IDataObject[]>
+    return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
 	}
 
 	if (operation === 'create') {

@@ -39,5 +39,5 @@ export const logic = async (node: IExecuteFunctions) => {
 	}
 
 	const qs = createPaginationProperties(node)
-	return actionNetworkApiRequest.call(node, 'GET', url, undefined, qs) as Promise<IDataObject[]>
+	return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
 }
