@@ -34,7 +34,12 @@ export async function actionNetworkApiRequest(
 	};
 
 	try {
-		return await this.helpers.request!(options);
+		const data = await this.helpers.request!(options);
+		try {
+			return JSON.parse(data);
+		} catch (e) {
+			return data;
+		}
 	} catch (error) {
 		const errorMessage = (error.response && error.response.body.message) || (error.response && error.response.body.Message) || error.message;
 
