@@ -103,6 +103,18 @@ export const fields = [
 		]
 	},
 	{
+		name: 'is_autoresponse_enabled',
+		displayName: 'Enable Autoresponse Email',
+		type: 'boolean',
+		default: true,
+		displayOptions: {
+			show: {
+				resource: [ 'attendance' ],
+				method: [ 'POST' ]
+			}
+		}
+	},
+	{
 		name: "osdi:person",
 		displayName: "Person URL",
 		description: "Link to a person by their URL",
@@ -176,7 +188,12 @@ export const logic = async (node: IExecuteFunctions) => {
 
 	if (event_id && method === 'POST') {
 		let body: any = {
-			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers
+			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
+			'triggers': {
+				'autoresponse': {
+					'enabled': node.getNodeParameter('is_autoresponse_enabled', 0) as boolean
+				}
+			}
 		}
 
 		const personRefURL = node.getNodeParameter('osdi:people', 0) as string;

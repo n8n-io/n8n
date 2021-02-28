@@ -203,9 +203,6 @@ export const logic = async (node: IExecuteFunctions) => {
 			body = { ...body, ...createPersonSignupHelperObject(node) }
 		}
 
-		const enabled = node.getNodeParameter('is_autoresponse_enabled', 0) as boolean
-		body = { ...body, triggers: { autoresponse: { enabled } } }
-
 		return actionNetworkApiRequest.call(node, method, url, body) as Promise<IDataObject>
 	}
 
