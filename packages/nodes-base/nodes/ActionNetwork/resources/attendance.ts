@@ -5,7 +5,7 @@ import { IExecuteFunctions } from 'n8n-core/dist/src/Interfaces';
 import { actionNetworkApiRequest } from '../helpers/request';
 import { IDataObject } from '../../../../workflow/dist/src/Interfaces';
 
-// DOCS: https://actionnetwork.org/docs/v2/attendance
+// DOCS: https://actionnetwork.org/docs/v2/attendances
 // Scenario: Retrieving a collection of attendance resources (GET)
 // Scenario: Retrieving an individual attendance resource (GET)
 // Scenario: Creating a new attendance (POST)
@@ -43,7 +43,19 @@ export const fields = [
 		name: 'event_id',
 		type: 'string',
 		default: '',
-		required: true,
+		required: false,
+		displayOptions: {
+			show: {
+				resource: [ 'attendance' ],
+			},
+		},
+	},
+	{
+		displayName: 'Person ID',
+		name: 'person_id',
+		type: 'string',
+		default: '',
+		required: false,
 		displayOptions: {
 			show: {
 				resource: [ 'attendance' ],
@@ -71,7 +83,7 @@ export const fields = [
 		name: 'additional_properties',
 		type: 'fixedCollection',
 		default: '',
-		placeholder: 'Add custom ID for attendance',
+		placeholder: 'Add data',
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -137,9 +149,19 @@ export const fields = [
 
 export const logic = async (node: IExecuteFunctions) => {
 	const event_id = node.getNodeParameter('event_id', 0) as string;
+	const person_id = node.getNodeParameter('person_id', 0) as string;
+
+	let url = `/api/v2`
+	if (event_id) {
+		url += `/events/${event_id}/attendances`
+	} else if (person_id) {
+		url += `/people/${person_id}/attendances`
+	} else {
+		throw new Error("You must provide an Event ID or Person ID")
+	}
+
 	const attendance_id = node.getNodeParameter('attendance_id', 0) as string;
 	const method = node.getNodeParameter('method', 0) as 'GET' | 'PUT' | 'POST';
-	let url = `/api/v2/events/${event_id}/attendances`
 
 	if (attendance_id && method === 'GET') {
 		return actionNetworkApiRequest.call(node, method, `${url}/${attendance_id}`) as Promise<IDataObject>
@@ -152,7 +174,7 @@ export const logic = async (node: IExecuteFunctions) => {
 		return actionNetworkApiRequest.call(node, method, `${url}/${attendance_id}`, body) as Promise<IDataObject>
 	}
 
-	if (method === 'POST') {
+	if (event_id && method === 'POST') {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers
 		}
