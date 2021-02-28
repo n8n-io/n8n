@@ -95,7 +95,7 @@ export const fields = [
 		},
 		options: [
 			{
-				name: 'identifier',
+				name: 'identifiers',
 				displayName: 'Custom ID',
 				type: 'string',
 				default: '',

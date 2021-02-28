@@ -208,7 +208,7 @@ export const fields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'identifier',
+				name: 'identifiers',
 				displayName: 'Custom ID',
 				type: 'string',
 				default: '',
@@ -265,6 +265,13 @@ export const logic = async (node: IExecuteFunctions) => {
 		return actionNetworkApiRequest.call(node, method, `${url}/${event_id}`, body) as Promise<IDataObject>
 	}
 
+	// If the event campaign is specified
+	// then create and filter events inside it
+	const event_campaign_id = node.getNodeParameter('event_campaign_id', 0)
+	if (event_campaign_id) {
+		url = `/api/v2/event_campaigns/${event_campaign_id}/events`
+	}
+
 	if (method === 'POST') {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
@@ -282,12 +289,6 @@ export const logic = async (node: IExecuteFunctions) => {
 	}
 
 	// Otherwise list events
-
-	// If the event campaign is specified, filter on that
-	const event_campaign_id = node.getNodeParameter('event_campaign_id', 0)
-	if (event_campaign_id) {
-		url = `/api/v2/event_campaigns/${event_campaign_id}/events`
-	}
 
 	const qs = {
 		...createPaginationProperties(node),

@@ -121,7 +121,7 @@ export const fields = [
 		},
 		options: [
 			{
-				name: 'identifier',
+				name: 'identifiers',
 				displayName: 'Custom ID',
 				type: 'string',
 				default: '',
@@ -172,7 +172,7 @@ export const logic = async (node: IExecuteFunctions) => {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
-			'target': (node.getNodeParameter('additional_properties', 0, { targets: [] }) as any)?.targets?.map(name => ({ name })),
+			'target': (node.getNodeParameter('additional_properties', 0, { targets: [] }) as any)?.target?.map(name => ({ name })),
 			description: node.getNodeParameter('description', 0) || undefined,
 			petition_text: node.getNodeParameter('petition_text', 0) || undefined,
 			origin_system: node.getNodeParameter('origin_system', 0) || undefined,
@@ -186,7 +186,7 @@ export const logic = async (node: IExecuteFunctions) => {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
-			'target': (node.getNodeParameter('additional_properties', 0, { targets: [] }) as any)?.targets?.map(name => ({ name })),
+			'target': (node.getNodeParameter('additional_properties', 0, { targets: [] }) as any)?.target?.map(name => ({ name })),
 			description: node.getNodeParameter('description', 0) || undefined,
 			petition_text: node.getNodeParameter('petition_text', 0) || undefined,
 			origin_system: node.getNodeParameter('origin_system', 0) || undefined,

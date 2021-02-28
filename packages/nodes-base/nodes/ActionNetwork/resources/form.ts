@@ -127,7 +127,7 @@ export const fields: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'identifier',
+				name: 'identifiers',
 				displayName: 'Custom ID',
 				type: 'string',
 				default: '',
