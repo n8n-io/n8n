@@ -43,11 +43,10 @@ export const createListOperations = createFields([
 	},
 ])
 
-export const applyPaginationToURL = (node: IExecuteFunctions, url: string) => {
+export const createPaginationProperties = (node: IExecuteFunctions) => {
 	const page = node.getNodeParameter('page', 0) as string;
 	const per_page = Math.max(1, Math.min(25, node.getNodeParameter('per_page', 0) as number));
-	url += `?page=${page || 1}&per_page=${per_page}`
-	return url
+	return { page, per_page }
 }
 
 /**
@@ -121,13 +120,16 @@ export const createFilterFields = ({ properties, ...options }: { properties: str
 
 type FilterObj = { property: string, operation: string, search_term: string }
 
-export function applyFiltersToURL(node: IExecuteFunctions, url: string) {
+export function createFilterProperties(node: IExecuteFunctions) {
+	let obj = {}
 	const { filters } = node.getNodeParameter('filters', 0, []) as any;
 	if (filters) {
 		const filter_logic = node.getNodeParameter('filter_logic', 0, 'and') as string;
-		url += `&filter=${encodeURIComponent(constructODIFilterString(filters, filter_logic))}`
+		obj = {
+			filter: constructODIFilterString(filters, filter_logic)
+		}
 	}
-	return url
+	return obj
 }
 
 export function constructODIFilterString (filters: FilterObj[], filter_logic: string) {

@@ -12,7 +12,8 @@ export async function actionNetworkApiRequest(
 	method: string,
 	path: string,
 	body?: any,
-	headers?: object
+	headers?: object,
+	qs?: any
 ): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('ActionNetworkGroupApiToken');
 
@@ -28,7 +29,8 @@ export async function actionNetworkApiRequest(
 		},
 		method,
 		uri: `https://actionnetwork.org${path}`,
-		body: JSON.stringify(body)
+		body: JSON.stringify(body),
+		qs
 	};
 
 	try {

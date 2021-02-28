@@ -1,6 +1,6 @@
 import { createPersonSignupHelperFields, createPersonSignupHelperObject } from './person';
 import { INodeProperties } from 'n8n-workflow';
-import { createListOperations, createFilterFields, applyFiltersToURL, applyPaginationToURL, createResourceLink } from '../helpers/fields';
+import { createListOperations, createFilterFields, createPaginationProperties, createFilterProperties } from '../helpers/fields';
 import { IExecuteFunctions } from 'n8n-core/dist/src/Interfaces';
 import { actionNetworkApiRequest } from '../helpers/request';
 import { IDataObject } from '../../../../workflow/dist/src/Interfaces';
@@ -195,7 +195,9 @@ export const logic = async (node: IExecuteFunctions) => {
 	}
 
 	// Otherwise list all
-	url = applyPaginationToURL(node, url)
-	url = applyFiltersToURL(node, url)
-	return actionNetworkApiRequest.call(node, 'GET', url) as Promise<IDataObject[]>
+	const qs = {
+		...createPaginationProperties(node),
+		...createFilterProperties(node)
+	}
+	return actionNetworkApiRequest.call(node, 'GET', url, undefined, qs) as Promise<IDataObject[]>
 }
