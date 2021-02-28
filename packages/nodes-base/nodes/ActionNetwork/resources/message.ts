@@ -16,18 +16,18 @@ export const fields: INodeProperties[] = [
 			// DOCS: https://actionnetwork.org/docs/v2/messages
 			// https://actionnetwork.org/api/v2/messages/
 			// https://actionnetwork.org/api/v2/messages/[message_id]
-			{ name: "Scenario: Retrieving a collection of message resources (GET)", value: "list" },
-			{ name: "Scenario: Retrieving an individual message resource (GET)", value: "get" },
-			{ name: "Scenario: Creating a new message (POST)", value: "create" },
-			{ name: "Scenario: Modifying a message (PUT)", value: "update" },
+			{ name: "List all messages", value: "list" },
+			{ name: "Get a message", value: "get" },
+			{ name: "Create new message", value: "create" },
+			{ name: "Modify a message", value: "update" },
 			// DOCS: https://actionnetwork.org/docs/v2/send_helper
 			// https://actionnetwork.org/api/v2/messages/[message_id]/send
-			{ name: "Scenario: Send a message (POST)", value: "send" },
-			{ name: "Scenario: Stop a message mid-send (DELETE)", value: "stop" },
+			{ name: "Send a message", value: "send" },
+			{ name: "Stop a message mid-send", value: "stop" },
 			// DOCS: https://actionnetwork.org/docs/v2/schedule_helper
 			// https://actionnetwork.org/api/v2/messages/[message_id]/schedule
-			{ name: "Scenario: Schedule a message (POST)", value: "schedule" },
-			{ name: "Scenario: Cancel a message's scheduling (DELETE)", value: "cancel" },
+			{ name: "Schedule message", value: "schedule" },
+			{ name: "Cancel message's scheduling", value: "cancel" },
 		],
 		displayOptions: {
 			show: {
@@ -40,7 +40,6 @@ export const fields: INodeProperties[] = [
 		name: 'message_id',
 		type: 'string',
 		default: '',
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [ 'message' ],
