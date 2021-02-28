@@ -9,13 +9,16 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import * as attendance from './resources/attendance'
 import * as person from './resources/person'
 import * as petition from './resources/petition'
-import * as event from './resources/event'
 import * as signature from './resources/signature'
-import * as submission from './resources/submission'
+import * as event_campaign from './resources/event_campaign'
+import * as event from './resources/event'
+import * as attendance from './resources/attendance'
 import * as form from './resources/form'
+import * as submission from './resources/submission'
+import * as fundraising_page from './resources/fundraising_page'
+import * as donation from './resources/donation'
 import * as wrapper from './resources/wrapper'
 import * as embed from './resources/embed'
 
@@ -23,11 +26,11 @@ const resources = [
 	{ name: 'Person', value: 'person', resolver: person.logic },
 	{ name: 'Petition', value: 'petition', resolver: petition.logic },
 	{ name: 'Signature', value: 'signature', resolver: signature.logic },
-	// TODO: { name: 'Event Campaign', value: 'event_campaign' },
+	{ name: 'Event Campaign', value: 'event_campaign', resolver: event_campaign.logic },
 	{ name: 'Event', value: 'events', resolver: event.logic },
 	{ name: 'Submission', value: 'submissionn', resolver: submission.logic },
-	// TODO: { name: 'Fundraising Page', value: 'fundraising_page' },
-	// TODO: { name: 'Donation', value: 'donation' },
+	{ name: 'Fundraising Page', value: 'fundraising_page', resolver: fundraising_page.logic },
+	{ name: 'Donation', value: 'donation', resolver: donation.logic },
 	{ name: 'Attendance', value: 'attendance', resolver: attendance.logic },
 	{ name: 'Form', value: 'form', resolver: form.logic },
 	// TODO: { name: 'Campaign', value: 'campaign' },
@@ -87,12 +90,15 @@ const description = {
 			description: 'The resource to operate on.',
 		},
 		...person.fields,
+		...event_campaign.fields,
 		...event.fields,
 		...attendance.fields,
 		...petition.fields,
 		...signature.fields,
 		...form.fields,
 		...submission.fields,
+		...fundraising_page.fields,
+		...donation.fields,
 		...embed.fields,
 		...wrapper.fields
 	]
