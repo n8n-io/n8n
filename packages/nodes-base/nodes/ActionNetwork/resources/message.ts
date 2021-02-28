@@ -199,12 +199,11 @@ export const fields: INodeProperties[] = [
 ];
 
 export const logic = async (node: IExecuteFunctions) => {
-	const message_id = node.getNodeParameter('message_id', 0) as string;
 	const operation = node.getNodeParameter('operation', 0) as 'list'| 'get'| 'create'| 'update'| 'send'| 'stop'| 'schedule'| 'cancel';
 
 	let url = `/api/v2/messages`
 
-	if (message_id && operation === 'list') {
+	if (operation === 'list') {
     const qs = createPaginationProperties(node)
     return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
 	}
@@ -234,7 +233,10 @@ export const logic = async (node: IExecuteFunctions) => {
     return actionNetworkApiRequest.call(node, 'POST', url, body) as Promise<IDataObject[]>
 	}
 
+	const message_id = node.getNodeParameter('message_id', 0) as string;
+
 	if (message_id && operation === 'get') {
+    url += `/${message_id}`
 		return actionNetworkApiRequest.call(node, 'GET', url) as Promise<IDataObject>
 	}
 
@@ -265,19 +267,19 @@ export const logic = async (node: IExecuteFunctions) => {
     return actionNetworkApiRequest.call(node, 'PUT', url, body) as Promise<IDataObject[]>
 	}
 
-	if (operation === 'send') {
+	if (message_id && operation === 'send') {
     url += `/${message_id}/send/`
     const body = {}
     return actionNetworkApiRequest.call(node, 'POST', url, body) as Promise<IDataObject[]>
 	}
 
-	if (operation === 'stop') {
+	if (message_id && operation === 'stop') {
     url += `/${message_id}/send/`
     const body = {}
     return actionNetworkApiRequest.call(node, 'DELETE', url, body) as Promise<IDataObject[]>
 	}
 
-	if (operation === 'schedule') {
+	if (message_id && operation === 'schedule') {
     url += `/${message_id}/schedule/`
     const body = {
       "scheduled_start_date": node.getNodeParameter('scheduled_start_date', 0) as string
@@ -285,7 +287,7 @@ export const logic = async (node: IExecuteFunctions) => {
     return actionNetworkApiRequest.call(node, 'POST', url, body ) as Promise<IDataObject[]>
 	}
 
-	if (operation === 'cancel') {
+	if (message_id && operation === 'cancel') {
     url += `/${message_id}/schedule/`
     const body = {}
     return actionNetworkApiRequest.call(node, 'DELETE', url, body) as Promise<IDataObject[]>
