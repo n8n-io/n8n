@@ -18,7 +18,6 @@ export async function instagramBasicDisplayApiRequest(
 	qs: IDataObject = {},
 	body: IDataObject = {},
 ) {
-
 	const options: OptionsWithUri = {
 		method,
 		headers: {
@@ -42,7 +41,7 @@ export async function instagramBasicDisplayApiRequest(
 
 	try {
 		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'instagramBasicDisplayOAuth2Api', options, 'Bearer');
+		return await this.helpers.requestOAuth2.call(this, 'instagramBasicDisplayOAuth2Api', options, { tokenType: 'Bearer' });
 	} catch (error) {
 
 		if (error.statusCode === 401) {

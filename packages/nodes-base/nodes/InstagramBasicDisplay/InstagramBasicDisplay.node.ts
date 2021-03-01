@@ -156,13 +156,13 @@ export class InstagramBasicDisplay implements INodeType {
 				}
 			}
 
-			if (responseData.media && responseData.media.paging) {
-				delete responseData.media.paging;
-			}
+			// if (responseData.media && responseData.media.paging) {
+			// 	delete responseData.media.paging;
+			// }
 
-			if (responseData.paging) {
-				delete responseData.paging;
-			}
+			// if (responseData.paging) {
+			// 	delete responseData.paging;
+			// }
 
 			Array.isArray(responseData)
 				? returnData.push(...responseData)

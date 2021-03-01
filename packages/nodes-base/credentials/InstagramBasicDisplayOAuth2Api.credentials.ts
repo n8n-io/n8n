@@ -3,7 +3,6 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-
 export class InstagramBasicDisplayOAuth2Api implements ICredentialType {
 	name = 'instagramBasicDisplayOAuth2Api';
 	extends = [
@@ -33,13 +32,7 @@ export class InstagramBasicDisplayOAuth2Api implements ICredentialType {
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'response_type=code',
-		},
-		{
-			displayName: 'Auth URI Query Parameters',
-			name: 'authQueryParameters',
-			type: 'hidden' as NodePropertyTypes,
-			default: 'grant_type=authorization_code',
+			default: '',
 		},
 		{
 			displayName: 'Authentication',
