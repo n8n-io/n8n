@@ -118,24 +118,12 @@ export class ActionNetwork implements INodeType {
 			try {
 				// Identify where the list of data is
 				const firstDataKey = Object.keys(responseData['_embedded'])[0]
-
-				// Try to identify a dictionary of IDs
-				// Particularly useful for pulling out the Action Network ID of an item for a further operation on it
-				// e.g. find an event, get its ID and then sign someone up to it via its ID
-				for (const i in responseData['_embedded'][firstDataKey] as any[]) {
-					responseData['_embedded'][firstDataKey][i].identifierDictionary = createIdentifierDictionary(responseData['_embedded'][firstDataKey][i].identifiers)
-				}
-
 				// And optionally generate data items from the request, if possible
-				const include_metadata = this.getNodeParameter('include_metadata', 0) as boolean
-				if (!include_metadata) {
+				if (!this.getNodeParameter('include_metadata', 0) as boolean) {
 					// @ts-ignore
 					responseData = responseData['_embedded'][firstDataKey]
 				}
-			} catch (e) {
-				// Try and identify IDs from a single object
-				responseData.identifierDictionary = createIdentifierDictionary(responseData.identifiers)
-			}
+			} catch (e) {}
 
 			// Add the responses onto the return chain
 			// TODO: correctly extract response items from the metadata wrapper
@@ -144,6 +132,16 @@ export class ActionNetwork implements INodeType {
 			} else {
 				returnData.push(responseData);
 			}
+
+			// Try to identify a dictionary of IDs
+			// Particularly useful for pulling out the Action Network ID of an item for a further operation on it
+			// e.g. find an event, get its ID and then sign someone up to it via its ID
+			returnData.map(item => {
+				try {
+					item.identifierDictionary = createIdentifierDictionary(item?.identifiers as string[]);
+				} catch (e) {}
+				return item;
+			})
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
