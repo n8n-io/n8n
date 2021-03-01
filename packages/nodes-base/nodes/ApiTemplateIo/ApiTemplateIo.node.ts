@@ -21,7 +21,7 @@ import {
 export class ApiTemplateIo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'APITemplate.io',
-		name: 'apiTemplateIo',
+		name: 'ApiTemplateIo',
 		icon: 'file:apiTemplateIo.svg',
 		group: ['transform'],
 		version: 1,
@@ -87,7 +87,7 @@ export class ApiTemplateIo implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				default: 'create',
+				default: 'get',
 				required: true,
 				description: 'Operation to perform',
 				options: [
@@ -364,6 +364,9 @@ export class ApiTemplateIo implements INodeType {
 							'pdf',
 							'image',
 						],
+						'download': [
+							true,
+						],
 					},
 				},
 				default: {},
@@ -372,13 +375,6 @@ export class ApiTemplateIo implements INodeType {
 						displayName: 'File Name',
 						name: 'fileName',
 						type: 'string',
-						displayOptions: {
-							show: {
-								'/download': [
-									true,
-								],
-							},
-						},
 						default: '',
 						description: 'The name of the downloaded image/pdf. It has to include the extension. For example: report.pdf',
 					},
@@ -471,7 +467,7 @@ export class ApiTemplateIo implements INodeType {
 							if (data === undefined) {
 								throw new Error('A valid JSON must be provided.');
 							}
-							body.override = data;
+							body.overrides = data;
 						}
 					}
 

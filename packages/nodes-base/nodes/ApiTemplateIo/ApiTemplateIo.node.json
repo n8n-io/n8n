@@ -8,18 +8,12 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": ""
+				"url": "https://docs.n8n.io/credentials/apiTemplateIo"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": ""
-			}
-		],
-		"generic": [
-			{
-				"label": "Automate Designs with APITemplate.io and n8n",
-				"url": ""
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.apiTemplateIo/"
 			}
 		]
 	}

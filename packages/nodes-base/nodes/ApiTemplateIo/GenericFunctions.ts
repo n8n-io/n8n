@@ -67,8 +67,11 @@ export async function loadResource(
 	}));
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+export function validateJSON(json: string | object | undefined): any { // tslint:disable-line:no-any
 	let result;
+	if (typeof json === 'object') {
+		return json;
+	}
 	try {
 		result = JSON.parse(json!);
 	} catch (exception) {
