@@ -11,6 +11,7 @@ import {
 
 import {
 	instagramBasicDisplayApiRequest,
+	instagramBasicDisplayApiRequestAllItems,
 } from './GenericFunctions';
 
 import {
@@ -92,12 +93,9 @@ export class InstagramBasicDisplay implements INodeType {
 					//           user: get
 					// ----------------------------------
 
-					const fields = this.getNodeParameter('fields', i) as string[];
-					const qs: IDataObject = {};
-
-					if (fields) {
-						qs.fields = fields.join(',');
-					}
+					const qs: IDataObject = {
+						fields: 'account_type,id,media,media_count,username',
+					};
 
 					const endpoint = this.getNodeParameter('returnSelf', i)
 						? '/me'
@@ -124,45 +122,34 @@ export class InstagramBasicDisplay implements INodeType {
 					if (type === 'userMedia') {
 
 						const userId = this.getNodeParameter('userId', i);
-						const fields = this.getNodeParameter('fields', i) as string[];
-						const qs: IDataObject = {};
-
-						if (fields) {
-							qs.fields = fields.join(',');
-						}
-
-						responseData = await instagramBasicDisplayApiRequest.call(this, 'GET', `/${userId}/media`, qs);
-						responseData = responseData.data;
+						const qs: IDataObject = {
+							fields: 'caption,children,id,media_type,media_url,permalink,thumbnail_url,timestamp,username',
+						};
+						responseData = await instagramBasicDisplayApiRequestAllItems.call(this, 'GET', `/${userId}/media`, qs);
 
 					} else if (type === 'albumMedia') {
 
-						const mediaId = this.getNodeParameter('mediaId', i);
+						const albumId = this.getNodeParameter('albumId', i);
+						responseData = await instagramBasicDisplayApiRequestAllItems.call(this, 'GET', `/${albumId}/children`);
 
-						responseData = await instagramBasicDisplayApiRequest.call(this, 'GET', `/${mediaId}/children`);
-						responseData = responseData.data;
-
-					} else if (type === 'mediaFieldsAndEdges') {
+					} else if (type === 'fieldsAndEdges') {
 
 						const mediaId = this.getNodeParameter('mediaId', i);
-						const fields = this.getNodeParameter('fields', i) as string[];
-						const qs: IDataObject = {};
-
-						if (fields) {
-							qs.fields = fields.join(',');
-						}
-
-						responseData = await instagramBasicDisplayApiRequest.call(this, 'GET', `/${mediaId}`, qs);
+						const qs: IDataObject = {
+							fields: 'caption,id,media_type,media_url,permalink,thumbnail_url,timestamp,username',
+						};
+						responseData = await instagramBasicDisplayApiRequestAllItems.call(this, 'GET', `/${mediaId}`, qs);
 					}
 				}
 			}
 
-			// if (responseData.media && responseData.media.paging) {
-			// 	delete responseData.media.paging;
-			// }
+			if (responseData.media && responseData.media.paging) {
+				delete responseData.media.paging;
+			}
 
-			// if (responseData.paging) {
-			// 	delete responseData.paging;
-			// }
+			if (responseData.paging) {
+				delete responseData.paging;
+			}
 
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
