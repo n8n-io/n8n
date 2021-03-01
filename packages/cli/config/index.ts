@@ -483,10 +483,10 @@ const config = convict({
 			 * WARNING: Trigger nodes (like Cron) will cause duplication
 			 * of work, so be aware when using.
 			 */
-			doc: 'Deregister webhooks on external services only when workflows are deactivated. Useful for blue/green deployments.',
+			doc: 'Deregister webhooks on external services only when workflows are deactivated.',
 			format: Boolean,
 			default: false,
-			env: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_STARTUP_SHUTDOWN',
+			env: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN',
 		},
 	},
 
