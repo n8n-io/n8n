@@ -241,6 +241,7 @@ export class ApiTemplateIo implements INodeType {
 						],
 					},
 				},
+				placeholder: `{ "name": "text_1" }`,
 			},
 			{
 				displayName: 'Overrides',
