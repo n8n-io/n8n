@@ -1437,7 +1437,7 @@ class App {
 				limit = parseInt(req.query.limit as string, 10);
 			}
 
-			let executingWorkflowIds: string[] = [];
+			const executingWorkflowIds: string[] = [];
 
 			if (config.get('executions.mode') === 'queue') {
 				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
