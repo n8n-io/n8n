@@ -484,8 +484,10 @@ export class WorkflowExecute {
 				try {
 					await this.executeHook('workflowExecuteBefore', [workflow]);
 				} catch (error) {
+
 					// Set the error that it can be saved correctly
 					executionError = {
+						...error,
 						message: error.message,
 						stack: error.stack,
 					};
@@ -650,9 +652,11 @@ export class WorkflowExecute {
 
 							break;
 						} catch (error) {
+
 							this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
 
 							executionError = {
+								...error,
 								message: error.message,
 								stack: error.stack,
 							};
@@ -750,6 +754,7 @@ export class WorkflowExecute {
 				const fullRunData = this.getFullRunData(startedAt);
 
 				fullRunData.data.resultData.error = {
+					...error,
 					message: error.message,
 					stack: error.stack,
 				};

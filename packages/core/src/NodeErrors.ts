@@ -59,6 +59,10 @@ abstract class NodeError extends Error {
 		this.cause = error;
 		this.node = node;
 		this.timestamp = Date.now();
+
+		if (error.message) {
+			this.message = error.message as string;
+		}
 	}
 
 	/**
@@ -146,7 +150,6 @@ export class NodeOperationError extends NodeError {
 			error = new Error(error);
 		}
 		super('NodeOperationError', node, error);
-		this.message = `${this.node.name}: ${error.message}`;
 	}
 }
 
@@ -179,20 +182,13 @@ export class NodeApiError extends NodeError {
 	constructor(
 		node: INode,
 		error: IErrorObject,
-		{message, description, httpCode}: {message?: string, description?: string, httpCode?: string} = {},
+		{message, description, httpCode}: {message: string, description?: string, httpCode?: string} = {message: ''},
 	){
 		super('NodeApiError', node, error);
-		this.message = `${this.node.name}: `;
 		if (message) {
-			this.message += message;
+			this.message = message;
 			this.description = description;
 			this.httpCode = httpCode ?? null;
-			if (this.httpCode && this.description) {
-				this.description = `${this.httpCode} - ${this.description}`;
-			}
-			else if (this.httpCode) {
-				this.description = `Status Code: ${this.httpCode}`;
-			}
 			return;
 		}
 
@@ -211,24 +207,24 @@ export class NodeApiError extends NodeError {
 
 		if (!this.httpCode) {
 			this.httpCode = null;
-			this.message += UNKNOWN_ERROR_MESSAGE;
+			this.message = UNKNOWN_ERROR_MESSAGE;
 			return;
 		}
 
 		if (STATUS_CODE_MESSAGES[this.httpCode]) {
-			this.message += STATUS_CODE_MESSAGES[this.httpCode];
+			this.message = STATUS_CODE_MESSAGES[this.httpCode];
 			return;
 		}
 
 		switch (this.httpCode.charAt(0)) {
 			case '4':
-				this.message += STATUS_CODE_MESSAGES['4XX'];
+				this.message = STATUS_CODE_MESSAGES['4XX'];
 				break;
 			case '5':
-				this.message += STATUS_CODE_MESSAGES['5XX'];
+				this.message = STATUS_CODE_MESSAGES['5XX'];
 				break;
 			default:
-				this.message += UNKNOWN_ERROR_MESSAGE;
+				this.message = UNKNOWN_ERROR_MESSAGE;
 		}
 	}
 }
