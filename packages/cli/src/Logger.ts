@@ -3,7 +3,7 @@ import config = require('../config');
 
 import {
 	ILogger,
-	ILogTypes,
+	LogTypes,
 } from 'n8n-workflow';
 
 export class Logger implements ILogger {
@@ -38,7 +38,7 @@ export class Logger implements ILogger {
 			
 	}
 	
-	log(type: ILogTypes, message: string, meta: object = {}) {
+	log(type: LogTypes, message: string, meta: object = {}) {
 		this.logger.log(type, message, meta);
 	}
 	
