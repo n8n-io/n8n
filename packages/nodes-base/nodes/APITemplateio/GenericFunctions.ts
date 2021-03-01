@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -13,7 +13,7 @@ export async function apiTemplateIoApiRequest(
 	endpoint: string,
 	qs = {},
 	body = {},
-	) {
+) {
 	const { apiKey } = this.getCredentials('apiTemplateIoApi') as { apiKey: string };
 
 	const options: OptionsWithUri = {
@@ -40,8 +40,11 @@ export async function apiTemplateIoApiRequest(
 	}
 
 	try {
-		console.log(JSON.stringify(options, null, 2));
-		return await this.helpers.request!(options);
+		const response = await this.helpers.request!(options);
+		if (response.status === 'error') {
+			throw new Error(response.message);
+		}
+		return response;
 	} catch (error) {
 		if (error?.response?.body?.message) {
 			throw new Error(`APITemplate.io error response [${error.statusCode}]: ${error.response.body.message}`);
@@ -64,16 +67,22 @@ export async function loadResource(
 	}));
 }
 
-export type GroupsOfKeyValuePairs = {
-	data: [
-		{
-			json: {
-				data: Array<{ key: string, value: string }>
-			}
-		}
-	]
-};
+export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+	let result;
+	try {
+		result = JSON.parse(json!);
+	} catch (exception) {
+		result = undefined;
+	}
+	return result;
+}
 
-export type Overrides = {
-	overrides: Array<{ [key: string]: string }>
-};
+
+export function downloadImage(this: IExecuteFunctions, url: string) {
+	return this.helpers.request({
+		uri: url,
+		method: 'GET',
+		json: false,
+		encoding: null,
+	});
+}
