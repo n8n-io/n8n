@@ -528,11 +528,7 @@ export class Dropbox implements INodeType {
 						],
 					},
 				},
-				typeOptions: {
-					minValue: 1,
-					maxValue: 10,
-				},
-				default: 5,
+				default: 100,
 				description: 'How many results to return.',
 			},
 			{
@@ -699,11 +695,7 @@ export class Dropbox implements INodeType {
 						],
 					},
 				},
-				typeOptions: {
-					minValue: 1,
-					maxValue: 1000,
-				},
-				default: 1000,
+				default: 100,
 				description: 'How many results to return.',
 			},
 			{
