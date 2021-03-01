@@ -103,7 +103,7 @@ export class InstagramBasicDisplay implements INodeType {
 						? '/me'
 						: `/${this.getNodeParameter('userId', i)}`;
 
-					responseData = await instagramBasicDisplayApiRequest.call(this, 'GET', endpoint, {}, qs);
+					responseData = await instagramBasicDisplayApiRequest.call(this, 'GET', endpoint, qs);
 
 				}
 
@@ -123,6 +123,7 @@ export class InstagramBasicDisplay implements INodeType {
 
 					if (type === 'userMedia') {
 
+						const userId = this.getNodeParameter('userId', i);
 						const fields = this.getNodeParameter('fields', i) as string[];
 						const qs: IDataObject = {};
 
@@ -130,22 +131,19 @@ export class InstagramBasicDisplay implements INodeType {
 							qs.fields = fields.join(',');
 						}
 
-						const userId = this.getNodeParameter('userId', i);
-						const endpoint = `/${userId}/media`;
-
-						responseData = await instagramBasicDisplayApiRequest.call(this, 'GET', endpoint, {}, qs);
+						responseData = await instagramBasicDisplayApiRequest.call(this, 'GET', `/${userId}/media`, qs);
 						responseData = responseData.data;
 
 					} else if (type === 'albumMedia') {
 
 						const mediaId = this.getNodeParameter('mediaId', i);
-						const endpoint = `/${mediaId}/children`;
 
-						responseData = await instagramBasicDisplayApiRequest.call(this, 'GET', endpoint, {}, {});
+						responseData = await instagramBasicDisplayApiRequest.call(this, 'GET', `/${mediaId}/children`);
 						responseData = responseData.data;
 
 					} else if (type === 'mediaFieldsAndEdges') {
 
+						const mediaId = this.getNodeParameter('mediaId', i);
 						const fields = this.getNodeParameter('fields', i) as string[];
 						const qs: IDataObject = {};
 
@@ -153,8 +151,7 @@ export class InstagramBasicDisplay implements INodeType {
 							qs.fields = fields.join(',');
 						}
 
-						const mediaId = this.getNodeParameter('mediaId', i);
-						responseData = await instagramBasicDisplayApiRequest.call(this, 'GET', `/${mediaId}`, {}, qs);
+						responseData = await instagramBasicDisplayApiRequest.call(this, 'GET', `/${mediaId}`, qs);
 					}
 				}
 			}

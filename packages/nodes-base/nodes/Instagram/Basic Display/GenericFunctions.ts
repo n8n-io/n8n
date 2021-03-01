@@ -15,8 +15,8 @@ export async function instagramBasicDisplayApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: string,
 	endpoint: string,
-	body: IDataObject = {},
 	qs: IDataObject = {},
+	body: IDataObject = {},
 ) {
 
 	const options: OptionsWithUri = {
