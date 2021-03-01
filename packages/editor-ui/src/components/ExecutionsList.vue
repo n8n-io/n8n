@@ -434,8 +434,18 @@ export default mixins(
 				const currentItem = results[0].results[i];
 				// Check new results from end to start
 				// Add new items accordingly.
-				if (alreadyPresentExecutionIds.indexOf(currentItem.id) !== -1) {
+				const executionIndex = alreadyPresentExecutionIds.indexOf(currentItem.id);
+				if (executionIndex !== -1) {
 					// Execution that we received is already present.
+
+					if (this.finishedExecutions[executionIndex].finished === false && currentItem.finished === true) {
+						// Concurrency stuff. This might happen if the execution finishes
+						// prior to saving all information to database. Somewhat rare but
+						// With auto refresh and several executions, it happens sometimes.
+						// So we replace the execution data so it displays correctly.
+						this.finishedExecutions[executionIndex] = currentItem;
+					}
+
 					continue;
 				}
 
