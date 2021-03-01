@@ -36,8 +36,9 @@ export class ExecuteAll extends Command {
 	
 	static examples = [
 		`$ n8n executeAll`,
-		`$ n8n executeAll --debug`,
+		`$ n8n executeAll --debug --json --output=/data/output.json`,
 		`$ n8n executeAll --snapshot=/data/snapshots`,
+		`$ n8n executeAll --compare=/data/previousExecutionData`,
 	];
 	
 	static flags = {
@@ -102,7 +103,7 @@ export class ExecuteAll extends Command {
 		}
 		
 		if (flags.output !== undefined && json!==true) {
-			GenericHelpers.logOutput(`You must inform an json format --json when using --output`);
+			GenericHelpers.logOutput(`You must use --json when using --output`);
 		}
 		// Start directly with the init of the database to improve startup time
 		const startDbInitPromise = Db.init();
