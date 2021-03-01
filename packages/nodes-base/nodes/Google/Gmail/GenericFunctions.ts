@@ -42,7 +42,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		qs,
 		uri: uri || `https://www.googleapis.com${endpoint}`,
 		qsStringifyOptions:{
-			arrayFormat:'repeat'
+			arrayFormat: 'repeat',
 		},
 		json: true,
 	};
