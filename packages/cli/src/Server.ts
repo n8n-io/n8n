@@ -1713,6 +1713,20 @@ class App {
 		// Forces the execution to stop
 		this.app.post(`/${this.restEndpoint}/executions-current/:id/stop`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionsStopData> => {
 			if (config.get('executions.mode') === 'queue') {
+				// Manual executions should still be stoppable, so
+				// try notifying the `activeExecutions` to stop it.
+				const result = await this.activeExecutionsInstance.stopExecution(req.params.id);
+				if (result !== undefined) {
+					const returnData: IExecutionsStopData = {
+						mode: result.mode,
+						startedAt: new Date(result.startedAt),
+						stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
+						finished: result.finished,
+					};
+	
+					return returnData;
+				}
+
 				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
 
 				const job = currentJobs.find(job => job.data.executionId.toString() === req.params.id);
