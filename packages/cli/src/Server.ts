@@ -1647,6 +1647,10 @@ class App {
 
 				const currentlyRunningExecutionIds = currentJobs.map(job => job.data.executionId);
 
+				if (currentlyRunningExecutionIds.length === 0) {
+					return [];
+				}
+
 				const resultsQuery = await Db.collections.Execution!
 					.createQueryBuilder("execution")
 					.select([
