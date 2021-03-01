@@ -59,6 +59,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'signature' ],
+				operation: [ 'GET' ]
 			},
 		},
 	},
@@ -104,7 +105,7 @@ export const fields = [
 	},
 	{
 		name: 'comments',
-		displayName: 'Comment for this signature',
+		displayName: 'Comment',
 		type: 'string',
 		default: undefined,
 		displayOptions: {

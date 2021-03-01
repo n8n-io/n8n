@@ -59,7 +59,7 @@ export const fields = [
 		description: "A human readable string identifying where this petition originated. May be used in the user interface for this purpose.",
 		name: "origin_system",
 		type: "string",
-		required: true,
+		required: false,
 		displayOptions: {
 			show: {
 				resource: [ 'petition' ],
@@ -81,6 +81,7 @@ export const fields = [
 		},
 	},
 	{
+		displayName: "Description",
 		name: "description",
 		type: "string",
 		description: "The petition's description. May contain HTML.",
@@ -93,6 +94,7 @@ export const fields = [
 		},
 	},
 	{
+		displayName: "Petition text",
 		name: "petition_text",
 		type: "string",
 		description: "The letter to the petition's target.",
@@ -107,7 +109,7 @@ export const fields = [
 	{
 		displayName: 'Additional properties',
 		name: 'additional_properties',
-		type: 'fixedCollection',
+		type: 'collection',
 		default: '',
 		placeholder: 'Add data',
 		typeOptions: {
@@ -201,5 +203,6 @@ export const logic = async (node: IExecuteFunctions) => {
 		...createPaginationProperties(node),
 		...createFilterProperties(node)
 	}
+
 	return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
 }

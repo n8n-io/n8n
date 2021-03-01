@@ -43,7 +43,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'message' ],
-				operation: ['get', 'send', 'stop', 'schedule', 'cancel']
+				operation: ['get', 'update', 'send', 'stop', 'schedule', 'cancel']
 			},
 		},
 	},
@@ -62,7 +62,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'message' ],
-				operation: [ 'POST', 'PUT' ]
+				operation: [ 'create', 'update' ]
 			}
 		},
 		options: [
@@ -101,7 +101,7 @@ export const fields: INodeProperties[] = [
 		name: "origin_system",
 		type: "string",
 		default: undefined,
-		required: true,
+		required: false,
 		displayOptions: {
 			show: {
 				resource: [ 'message' ],
@@ -177,7 +177,7 @@ export const fields: INodeProperties[] = [
 		name: "osdi:wrapper",
 		displayName: "URL for HTML wrapper",
 		type: "string",
-		default: undefined,
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [ 'message' ],
@@ -221,7 +221,7 @@ export const logic = async (node: IExecuteFunctions) => {
 			body: node.getNodeParameter('body', 0, undefined) as string,
 		}
 
-		const wrapper = node.getNodeParameter('osdi:wrapper', 0, undefined) as string
+		const wrapper = node.getNodeParameter('osdi:wrapper', 0, '') as string
 		if (wrapper) {
 			body['_links'] = {
 				'osdi:wrapper': {
@@ -255,7 +255,7 @@ export const logic = async (node: IExecuteFunctions) => {
 			body: node.getNodeParameter('body', 0, undefined) as string,
 		}
 
-		const wrapper = node.getNodeParameter('osdi:wrapper', 0, undefined) as string
+		const wrapper = node.getNodeParameter('osdi:wrapper', 0, '') as string
 		if (wrapper) {
 			body['_links'] = {
 				'osdi:wrapper': {

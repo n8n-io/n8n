@@ -59,7 +59,7 @@ export const fields: INodeProperties[] = [
 		description: "A human readable string identifying where this form originated. May be used in the user interface for this purpose.",
 		name: "origin_system",
 		type: "string",
-		required: true,
+		required: false,
 		default: null,
 		displayOptions: {
 			show: {

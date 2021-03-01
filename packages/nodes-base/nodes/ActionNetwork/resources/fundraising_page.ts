@@ -59,7 +59,7 @@ export const fields = [
 		description: "A human readable string identifying where this fundraising_page originated. May be used in the user interface for this purpose.",
 		name: "origin_system",
 		type: "string",
-		required: true,
+		required: false,
 		displayOptions: {
 			show: {
 				resource: [ 'fundraising_page' ],
