@@ -73,8 +73,8 @@ export class InstagramBasicDisplay implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 
@@ -92,7 +92,6 @@ export class InstagramBasicDisplay implements INodeType {
 					//           user: get
 					// ----------------------------------
 
-					const returnSelf = this.getNodeParameter('returnSelf', i);
 					const fields = this.getNodeParameter('fields', i) as string[];
 					const qs: IDataObject = {};
 
@@ -100,16 +99,11 @@ export class InstagramBasicDisplay implements INodeType {
 						qs.fields = fields.join(',');
 					}
 
-					if (returnSelf) {
+					const endpoint = this.getNodeParameter('returnSelf', i)
+						? '/me'
+						: `/${this.getNodeParameter('userId', i)}`;
 
-						responseData = await instagramBasicDisplayApiRequest.call(this, 'GET', '/me', {}, qs);
-
-					} else {
-
-						const userId = this.getNodeParameter('userId', i);
-						responseData = await instagramBasicDisplayApiRequest.call(this, 'GET', `/${userId}`, {}, qs);
-
-					}
+					responseData = await instagramBasicDisplayApiRequest.call(this, 'GET', endpoint, {}, qs);
 
 				}
 
