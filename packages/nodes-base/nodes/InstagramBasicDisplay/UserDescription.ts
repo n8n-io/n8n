@@ -67,43 +67,4 @@ export const userFields = [
 			},
 		},
 	},
-	{
-		displayName: 'Fields',
-		name: 'fields',
-		type: 'multiOptions',
-		options: [
-			{
-				name: 'Account type',
-				value: 'account_type',
-			},
-			{
-				name: 'ID',
-				value: 'id',
-			},
-			{
-				name: 'Media',
-				value: 'media',
-			},
-			{
-				name: 'Media Count',
-				value: 'media_count',
-			},
-			{
-				name: 'Username',
-				value: 'username',
-			},
-		],
-		default: '',
-		description: 'Fields of the user to retrieve.',
-		displayOptions: {
-			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
-			},
-		},
-	},
 ] as INodeProperties[];

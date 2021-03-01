@@ -35,7 +35,7 @@ export const mediaFields = [
 		type: 'options',
 		required: true,
 		default: 'userMedia',
-		description: 'The type of media to be returned',
+		description: 'Type of media to return.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -48,19 +48,19 @@ export const mediaFields = [
 		},
 		options: [
 			{
-				name: 'User media',
+				name: 'User Media',
 				value: 'userMedia',
-				description: 'A list of images, videos, or albums on a user.',
+				description: 'All images, videos or albums of a user.',
 			},
 			{
-				name: 'Album media',
+				name: 'Album Media',
 				value: 'albumMedia',
-				description: 'A list of images and videos on an album.',
+				description: 'All images and videos in an album.',
 			},
 			{
-				name: 'Media fields and edges',
-				value: 'mediaFieldsAndEdges',
-				description: 'Fields and edges on an image, video, or album.',
+				name: 'Fields & Edges',
+				value: 'fieldsAndEdges',
+				description: 'All fields and edges of an image, video or album.',
 			},
 		],
 	},
@@ -86,12 +86,12 @@ export const mediaFields = [
 		},
 	},
 	{
-		displayName: 'Media ID',
-		name: 'mediaId',
+		displayName: 'Album ID',
+		name: 'albumId',
 		type: 'string',
 		default: '',
 		placeholder: '17998581729291220',
-		description: 'ID of media to return.',
+		description: 'ID of album whose media to return.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -102,55 +102,17 @@ export const mediaFields = [
 				],
 				type: [
 					'albumMedia',
-					'mediaFieldsAndEdges',
 				],
 			},
 		},
 	},
 	{
-		displayName: 'Fields',
-		name: 'fields',
-		type: 'multiOptions',
-		options: [
-			{
-				name: 'Caption',
-				value: 'caption',
-			},
-			{
-				name: 'Children',
-				value: 'children',
-			},
-			{
-				name: 'ID',
-				value: 'id',
-			},
-			{
-				name: 'Media type',
-				value: 'media_type',
-			},
-			{
-				name: 'Media URL',
-				value: 'media_url',
-			},
-			{
-				name: 'Permalink',
-				value: 'permalink',
-			},
-			{
-				name: 'Thumbnail URL',
-				value: 'thumbnail_url',
-			},
-			{
-				name: 'Timestamp',
-				value: 'timestamp',
-			},
-			{
-				name: 'Username',
-				value: 'username',
-			},
-		],
+		displayName: 'Media ID',
+		name: 'mediaId',
+		type: 'string',
 		default: '',
-		description: 'Fields of the media to retrieve.',
+		placeholder: '17998581729291220',
+		description: 'ID of media whose fields and edges to return.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -160,8 +122,49 @@ export const mediaFields = [
 					'getAll',
 				],
 				type: [
-					'mediaFieldsAndEdges',
-					'userMedia',
+					'fieldsAndEdges',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Return all results.',
+		displayOptions: {
+			show: {
+				resource: [
+					'media',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 100,
+		description: 'The number of results to return.',
+		typeOptions: {
+			minValue: 1,
+			maxValue: 50,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'media',
+					'fieldsAndEdges',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
 				],
 			},
 		},
