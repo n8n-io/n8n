@@ -31,7 +31,7 @@ export class InstagramBasicDisplay implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consumes Instagram Basic Display API',
+		description: 'Consume the Instagram Basic Display API',
 		defaults: {
 			name: 'Instagram Basic Display',
 			color: '#833ab4',
