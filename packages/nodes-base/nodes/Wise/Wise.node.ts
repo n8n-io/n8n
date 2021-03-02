@@ -140,13 +140,20 @@ export class Wise implements INodeType {
 						// https://api-docs.transferwise.com/#borderless-accounts-get-available-currencies
 						// https://api-docs.transferwise.com/#borderless-accounts-get-account-statement
 
-						const details = this.getNodeParameter('details', i) as 'balance' | 'currencies' | 'statement' ;
+						const details = this.getNodeParameter('details', i) as 'balances' | 'borderlessAccounts' | 'currencies' | 'statement';
 
-						if (details === 'balance') {
+						if (details === 'balances') {
 
 							const profileId = this.getNodeParameter('profile', i);
 							const endpoint = `v1/borderless-accounts?profileId=${profileId}`;
 							responseData = await wiseApiRequest.call(this, 'GET', endpoint, {}, {});
+
+						} else if (details === 'borderlessAccounts') {
+
+							const qs = {
+								profileId: this.getNodeParameter('profile', i),
+							};
+							responseData = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts', qs, {});
 
 						} else if (details === 'currencies') {
 

@@ -33,13 +33,18 @@ export const accountFields = [
 		displayName: 'Details',
 		name: 'details',
 		type: 'options',
-		default: 'balance',
+		default: 'balances',
 		description: 'Details to retrieve for the account.',
 		options: [
 			{
-				name: 'Balance',
-				value: 'balance',
+				name: 'Balances',
+				value: 'balances',
 				description: 'Balances for all account currencies of this user.',
+			},
+			{
+				name: 'Borderless Accounts',
+				value: 'borderlessAccounts',
+				description: 'Borderless accounts held by this user.',
 			},
 			{
 				name: 'Currencies',
@@ -67,6 +72,7 @@ export const accountFields = [
 		displayName: 'Profile',
 		name: 'profile',
 		type: 'options',
+		required: true,
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
@@ -82,6 +88,7 @@ export const accountFields = [
 				],
 				details: [
 					'balance',
+					'borderlessAccounts',
 				],
 			},
 		},
