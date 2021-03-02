@@ -1,20 +1,30 @@
-import {
-	OptionsWithUri
- } from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IWebhookFunctions,
+	IWebhookFunctions
 } from 'n8n-core';
 
-import {
-	IDataObject,
-} from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
-export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function sentryIoApiRequest(
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
+	method: string,
+	resource: string,
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {}
+): Promise<any> {
+	// tslint:disable-line:no-any
 	const authentication = this.getNodeParameter('authentication', 0);
 
 	const version = this.getNodeParameter('sentryVersion', 0);
@@ -24,8 +34,8 @@ export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunction
 		method,
 		qs,
 		body,
-		uri: uri ||`https://sentry.io${resource}`,
-		json: true,
+		uri: uri || `https://sentry.io${resource}`,
+		json: true
 	};
 	if (!Object.keys(body).length) {
 		delete options.body;
@@ -43,7 +53,6 @@ export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunction
 
 	try {
 		if (authentication === 'accessToken') {
-
 			if (version === 'cloud') {
 				credentialName = 'sentryIoApi';
 			} else {
@@ -57,23 +66,31 @@ export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunction
 			}
 
 			options.headers = {
-				Authorization: `Bearer ${credentials?.token}`,
+				Authorization: `Bearer ${credentials?.token}`
 			};
 
 			//@ts-ignore
 			return this.helpers.request(options);
-
 		} else {
-
-			return await this.helpers.requestOAuth2!.call(this, 'sentryIoOAuth2Api', options);
+			return await this.helpers.requestOAuth2!.call(
+				this,
+				'sentryIoOAuth2Api',
+				options
+			);
 		}
-
 	} catch (error) {
 		throw new Error(`Sentry.io Error: ${error}`);
 	}
 }
 
-export async function sentryApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function sentryApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	body: any = {},
+	query: IDataObject = {}
+): Promise<any> {
+	// tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -84,36 +101,46 @@ export async function sentryApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	let uri: string | undefined;
 
 	do {
-		responseData = await sentryIoApiRequest.call(this, method, resource, body, query, uri, { resolveWithFullResponse: true });
+		responseData = await sentryIoApiRequest.call(
+			this,
+			method,
+			resource,
+			body,
+			query,
+			uri,
+			{ resolveWithFullResponse: true }
+		);
 		link = responseData.headers.link;
 		uri = getNext(link);
 		returnData.push.apply(returnData, responseData.body);
-		if (query.limit && (query.limit >= returnData.length)) {
+		if (query.limit && query.limit >= returnData.length) {
 			return;
 		}
-	} while (
-		hasMore(link)
-	);
+	} while (hasMore(link));
 
 	return returnData;
 }
 
 function getNext(link: string) {
-	if (link  === undefined) {
+	if (link === undefined) {
 		return;
 	}
 	const next = link.split(',')[1];
-	if (next.includes('rel="next"')) {
-		return next.split(';')[0].replace('<', '').replace('>','').trim();
+	if (next.includes('rel=next')) {
+		return next
+			.split(';')[0]
+			.replace('<', '')
+			.replace('>', '')
+			.trim();
 	}
 }
 
 function hasMore(link: string) {
-	if (link  === undefined) {
+	if (link === undefined) {
 		return;
 	}
 	const next = link.split(',')[1];
-	if (next.includes('rel="next"')) {
-		return next.includes('results="true"');
+	if (next.includes('rel=next')) {
+		return next.includes('results=true');
 	}
 }
