@@ -64,15 +64,15 @@ export const accountFields = [
 		},
 	},
 	{
-		displayName: 'Profile',
-		name: 'profile',
+		displayName: 'Profile ID',
+		name: 'profileId',
 		type: 'options',
 		required: true,
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'User profile to retrieve the balance of.',
+		description: 'ID of the user profile to retrieve the balance of.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -82,21 +82,20 @@ export const accountFields = [
 					'get',
 				],
 				details: [
-					'balance',
-					'borderlessAccounts',
+					'balances',
 				],
 			},
 		},
 	},
 	{
-		displayName: 'Profile',
-		name: 'profile',
+		displayName: 'Profile ID',
+		name: 'profileId',
 		type: 'options',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'User profile to retrieve the statement of.',
+		description: 'ID of the user profile whose account to retrieve the statement of.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -114,8 +113,17 @@ export const accountFields = [
 	{
 		displayName: 'Borderless Account ID',
 		name: 'borderlessAccountId',
-		type: 'string',
-		default: '',
+		// type: 'string',
+		// default: '',
+		type: 'options',
+		default: [],
+		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getBorderlessAccounts',
+			loadOptionsDependsOn: [
+				'profileId',
+			],
+		},
 		description: 'ID of the borderless account to retrieve the statement of.',
 		displayOptions: {
 			show: {
@@ -137,47 +145,7 @@ export const accountFields = [
 		type: 'string',
 		default: '',
 		// TODO: preload
-		description: 'Code of the currency to retrieve the statement in.',
-		displayOptions: {
-			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'get',
-				],
-				details: [
-					'statement',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Interval Start',
-		name: 'intervalStart',
-		type: 'datetime',
-		default: '',
-		description: 'Start time of the interval of the statement to retrieve.',
-		displayOptions: {
-			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'get',
-				],
-				details: [
-					'statement',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Interval End',
-		name: 'intervalEnd',
-		type: 'datetime',
-		default: '',
-		description: 'End time of the interval of the statement to retrieve.',
+		description: 'Code of the currency of the borderless account to retrieve the statement of.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -212,11 +180,11 @@ export const accountFields = [
 		},
 		options: [
 			{
-				displayName: 'Format',
-				name: 'type',
+				displayName: 'Line Style',
+				name: 'lineStyle',
 				type: 'options',
 				default: 'COMPACT',
-				description: 'Format to retrieve the statement in.',
+				description: 'Line style to retrieve the statement in.',
 				options: [
 					{
 						name: 'Compact',
@@ -226,7 +194,34 @@ export const accountFields = [
 					{
 						name: 'Flat',
 						value: 'FLAT',
-						description: 'Transaction fees on separate lines.',
+						description: 'Separate lines for transaction fees.',
+					},
+				],
+			},
+			{
+				displayName: 'Interval',
+				name: 'interval',
+				type: 'fixedCollection',
+				placeholder: 'Add Interval',
+				default: {},
+				options: [
+					{
+						displayName: 'Interval Properties',
+						name: 'intervalProperties',
+						values: [
+							{
+								displayName: 'Interval Start',
+								name: 'intervalStart',
+								type: 'dateTime',
+								default: '',
+							},
+							{
+								displayName: 'Interval End',
+								name: 'intervalEnd',
+								type: 'dateTime',
+								default: '',
+							},
+						],
 					},
 				],
 			},

@@ -28,6 +28,8 @@ import {
 	wiseApiRequest,
 } from './GenericFunctions';
 
+import * as moment from 'moment';
+
 export class Wise implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wise',
@@ -108,6 +110,19 @@ export class Wise implements INodeType {
 					value: id,
 				}));
 			},
+
+			async getBorderlessAccounts(this: ILoadOptionsFunctions) {
+				const qs = {
+					profileId: this.getNodeParameter('profileId', 0),
+				};
+
+				const accounts = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts', qs);
+
+				return accounts.map(({ id, balances }: { id: number, balances: Array<{ currency: string }> }) => ({
+					name: balances.map(({ currency }) => currency).join(' - '),
+					value: id,
+				}));
+			},
 		},
 	};
 
@@ -145,33 +160,42 @@ export class Wise implements INodeType {
 						if (details === 'balances') {
 
 							const qs = {
-								profileId: this.getNodeParameter('profile', i),
+								profileId: this.getNodeParameter('profileId', i),
 							};
 							responseData = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts', qs);
 
 						} else if (details === 'currencies') {
 
-							const endpoint = 'v1/borderless-accounts/balance-currencies';
-							responseData = await wiseApiRequest.call(this, 'GET', endpoint);
+							responseData = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts/balance-currencies');
 
 						} else if (details === 'statement') {
 
-							const profileId = this.getNodeParameter('profile', i);
+							const profileId = this.getNodeParameter('profileId', i);
 							const borderlessAccountId = this.getNodeParameter('borderlessAccountId', i);
 							const endpoint = `v3/profiles/${profileId}/borderless-accounts/${borderlessAccountId}/statement.json`;
 
-							// TODO CSV and JSON available for endpoint
-
 							const qs = {
 								currency: this.getNodeParameter('currency', i),
-								intervalStart: this.getNodeParameter('intervalStart', i),
-								intervalEnd: this.getNodeParameter('intervalEnd', i),
 							} as IDataObject;
 
-							const { format } = this.getNodeParameter('additionalOptions', i) as IDataObject;
+							const { lineStyle } = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-							if (format !== undefined) {
-								qs.type = format;
+							if (lineStyle !== undefined) {
+								qs.type = lineStyle;
+							}
+
+							const { interval } = this.getNodeParameter('additionalFields', i) as {
+								interval: {
+									intervalProperties: { [key: string]: string }
+								}
+							};
+
+							if (interval !== undefined) {
+								qs.intervalStart = moment(interval.intervalProperties.intervalStart).format();
+								qs.intervalEnd = moment(interval.intervalProperties.intervalEnd).format();
+							} else {
+								qs.intervalStart = moment().subtract(1, 'months').format();
+								qs.intervalEnd = moment().format();
 							}
 
 							responseData = await wiseApiRequest.call(this, 'GET', endpoint, qs);
