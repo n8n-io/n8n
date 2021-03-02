@@ -55,11 +55,41 @@ export const quoteFields = [
 		},
 	},
 	{
-		displayName: 'Source Amount',
-		name: 'sourceAmount',
+		displayName: 'Amount Type',
+		name: 'amountType',
+		type: 'options',
+		default: 'source',
+		options: [
+			{
+				name: 'Source',
+				value: 'source',
+			},
+			{
+				name: 'Target',
+				value: 'target',
+			},
+		],
+		description: 'Whether the amount of funds is to be sent or to be received.',
+		displayOptions: {
+			show: {
+				resource: [
+					'quote',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Amount',
+		name: 'amount',
 		type: 'number',
-		default: 0,
-		description: 'Code of the source (sending) currency for the quote to create.',
+		default: 1,
+		typeOptions: {
+			minValue: 1,
+		},
+		description: 'Amount of funds for the quote to create.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -76,24 +106,7 @@ export const quoteFields = [
 		name: 'sourceCurrency',
 		type: 'string',
 		default: '',
-		description: 'Code of the source (sending) currency for the quote to create.',
-		displayOptions: {
-			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Target Amount',
-		name: 'targetAmount',
-		type: 'number',
-		default: 0,
-		description: 'Code of the target (receiving) currency for the quote to create.',
+		description: 'Code of the currency to send for the quote to create.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -110,7 +123,7 @@ export const quoteFields = [
 		name: 'targetCurrency',
 		type: 'string',
 		default: '',
-		description: 'Code of the target (receiving) currency for the quote to create.',
+		description: 'Code of the currency to receive for the quote to create.',
 		displayOptions: {
 			show: {
 				resource: [

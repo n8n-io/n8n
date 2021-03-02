@@ -25,6 +25,7 @@ import {
 } from './descriptions';
 
 import {
+	findRequiredFields,
 	wiseApiRequest,
 } from './GenericFunctions';
 
@@ -306,17 +307,13 @@ export class Wise implements INodeType {
 							targetCurrency: this.getNodeParameter('targetCurrency', i),
 						} as IDataObject;
 
-						const sourceAmount = this.getNodeParameter('sourceAmount', i) as number;
-						const targetAmount = this.getNodeParameter('targetAmount', i) as number;
+						const amountType = this.getNodeParameter('amountType', i) as 'source' | 'target';
+						const amount = this.getNodeParameter('amount', i) as number;
 
-						if (sourceAmount) {
-							body.sourceAmount = sourceAmount;
-						} else {
-							body.targetAmount = targetAmount;
-						}
-
-						if (sourceAmount > 0 && targetAmount > 0) {
-							throw new Error('Enter either a source amount or a target amount, not both.');
+						if (amountType === 'source') {
+							body.sourceAmount = amount;
+						} else if (amountType === 'target') {
+							body.targetAmount = amount;
 						}
 
 						responseData = await wiseApiRequest.call(this, 'POST', 'v2/quotes', {}, body);
@@ -348,7 +345,25 @@ export class Wise implements INodeType {
 
 						// https://api-docs.transferwise.com/#recipient-accounts-create
 
-						// ...
+						const requiredFields = await findRequiredFields.call(this, i);
+
+						console.log(JSON.stringify(requiredFields, null, 2));
+
+						responseData = [];
+
+						// const body = {
+						// 	accountHolderName: this.getNodeParameter('accountHolderName', i),
+						// 	currency: this.getNodeParameter('currency', i),
+						// 	ownedByCustomer: this.getNodeParameter('ownedByCustomer', i),
+						// 	// type: this.getNodeParameter('type', i),
+						// 	// profile: this.getNodeParameter('profileId', i),
+						// 	details: {
+						// 		// legalType: this.getNodeParameter('legalType', i),
+						// 		// accountNumber: this.getNodeParameter('accountNumber', i),
+						// 	},
+						// } as IDataObject;
+
+						// responseData = await wiseApiRequest.call(this, 'POST', 'v2/accounts', {}, body);
 
 					} else if (operation === 'delete') {
 
@@ -426,6 +441,7 @@ export class Wise implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
+					// TODO
 					returnData.push({ error: error.error.error.message });
 					continue;
 				}

@@ -39,7 +39,101 @@ export const recipientOperations = [
 
 export const recipientFields = [
 	// ----------------------------------
-	//         recipient: get
+	//         recipient: create
 	// ----------------------------------
-
+	{
+		displayName: 'Profile ID',
+		name: 'profileId',
+		type: 'options',
+		required: true,
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getProfiles',
+		},
+		description: 'ID of the user profile to create this recipient under.',
+		displayOptions: {
+			show: {
+				resource: [
+					'recipient',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Source Currency',
+		name: 'sourceCurrency',
+		type: 'options',
+		required: true,
+		default: '',
+		options: [
+			{
+				name: 'EUR',
+				value: 'EUR',
+			},
+			{
+				name: 'USD',
+				value: 'USD',
+			},
+		],
+		description: 'Code of the source currency for transfers to this recipient.',
+		displayOptions: {
+			show: {
+				resource: [
+					'recipient',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Target Currency',
+		name: 'targetCurrency',
+		type: 'options',
+		required: true,
+		default: '',
+		options: [
+			{
+				name: 'EUR',
+				value: 'EUR',
+			},
+			{
+				name: 'USD',
+				value: 'USD',
+			},
+		],
+		description: 'Code of the target currency for transfers to this recipient.',
+		displayOptions: {
+			show: {
+				resource: [
+					'recipient',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Inside Europe',
+		name: 'insideEurope',
+		type: 'boolean',
+		required: true,
+		default: false,
+		description: 'Whether both accounts in the transfers to this recipient are inside Europe.',
+		displayOptions: {
+			show: {
+				resource: [
+					'recipient',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
 ] as INodeProperties[];
