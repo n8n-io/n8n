@@ -4,7 +4,6 @@ import {
 	ExecutionError,
 	IConnection,
 	IDataObject,
-	IErrorObject,
 	IExecuteData,
 	INode,
 	INodeConnections,
@@ -18,6 +17,7 @@ import {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 	WorkflowExecuteMode,
+	WorkflowOperationError,
 } from 'n8n-workflow';
 import {
 	NodeExecuteFunctions,
@@ -658,7 +658,6 @@ export class WorkflowExecute {
 
 							executionError = {
 								...error,
-								message: error.message,
 								stack: error.stack,
 							};
 						}
@@ -747,7 +746,7 @@ export class WorkflowExecute {
 			})()
 			.then(async () => {
 				if (gotCancel && executionError === undefined) {
-					return this.processSuccessExecution(startedAt, workflow, { message: 'Workflow has been canceled!' } as IErrorObject);
+					return this.processSuccessExecution(startedAt, workflow, new WorkflowOperationError('Workflow has been canceled!'));
 				}
 				return this.processSuccessExecution(startedAt, workflow, executionError);
 			})

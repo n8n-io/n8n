@@ -1,5 +1,6 @@
 import { Workflow } from './Workflow';
 import { WorkflowHooks } from './WorkflowHooks';
+import { WorkflowOperationError } from './WorkflowErrors';
 import { NodeApiError, NodeOperationError } from './NodeErrors';
 import * as express from 'express';
 
@@ -31,13 +32,7 @@ export interface IConnection {
 	index: number;
 }
 
-export interface IErrorObject {
-	message: string;
-	node?: string;
-	stack?: string;
-}
-
-export type ExecutionError = IErrorObject | NodeOperationError | NodeApiError;
+export type ExecutionError = WorkflowOperationError | NodeOperationError | NodeApiError;
 
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {

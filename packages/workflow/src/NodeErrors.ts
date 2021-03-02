@@ -49,9 +49,9 @@ abstract class NodeError extends Error {
 	node: INode;
 	timestamp: number;
 
-	constructor(name: string, node: INode, error: Error | IRawErrorObject) {
+	constructor(node: INode, error: Error | IRawErrorObject) {
 		super();
-		this.name = name;
+		this.name = this.constructor.name;
 		this.cause = error;
 		this.node = node;
 		this.timestamp = Date.now();
@@ -145,7 +145,7 @@ export class NodeOperationError extends NodeError {
 		if (typeof error === 'string') {
 			error = new Error(error);
 		}
-		super('NodeOperationError', node, error);
+		super(node, error);
 	}
 }
 
@@ -180,7 +180,7 @@ export class NodeApiError extends NodeError {
 		error: IRawErrorObject,
 		{message, description, httpCode}: {message: string, description?: string, httpCode?: string} = {message: ''},
 	){
-		super('NodeApiError', node, error);
+		super(node, error);
 		if (message) {
 			this.message = message;
 			this.description = description;
