@@ -39,7 +39,7 @@ export async function instagramBasicDisplayApiRequest(
 
 	try {
 		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'instagramBasicDisplayOAuth2Api', options, { tokenType: 'Bearer' });
+		return await this.helpers.requestOAuth2.call(this, 'instagramOAuth2Api', options, { tokenType: 'Bearer' });
 	} catch (error) {
 		if (error?.error?.error?.message) {
 				throw new Error(`Instagram error response [${error.statusCode}]: ${error?.error?.error?.message}`);
@@ -64,7 +64,7 @@ export async function instagramBasicDisplayApiRequestAllItems(
 
 	const type = this.getNodeParameter('type', 0) as 'userMedia' | 'albumMedia' | 'fieldsAndEdges';
 	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
-	const limit = this.getNodeParameter('limit', 0) as number;
+	const limit = this.getNodeParameter('limit', 0, 0) as number;
 
 	do {
 		responseData = await instagramBasicDisplayApiRequest.call(this, method, endpoint, qs, body);

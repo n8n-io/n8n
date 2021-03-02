@@ -3,12 +3,12 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class InstagramBasicDisplayOAuth2Api implements ICredentialType {
-	name = 'instagramBasicDisplayOAuth2Api';
+export class InstagramOAuth2Api implements ICredentialType {
+	name = 'instagramOAuth2Api';
 	extends = [
 		'oAuth2Api',
 	];
-	displayName = 'Instagram Basic Display OAuth2 API';
+	displayName = 'Instagram OAuth2 API';
 	properties = [
 		{
 			displayName: 'Authorization URL',

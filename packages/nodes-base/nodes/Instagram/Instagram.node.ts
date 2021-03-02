@@ -24,24 +24,24 @@ import {
 	mediaOperations,
 } from './MediaDescription';
 
-export class InstagramBasicDisplay implements INodeType {
+export class Instagram implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Instagram Basic Display',
-		name: 'instagramBasicDisplay',
+		displayName: 'Instagram',
+		name: 'instagram',
 		icon: 'file:instagram.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the Instagram Basic Display API',
 		defaults: {
-			name: 'Instagram Basic Display',
+			name: 'Instagram',
 			color: '#833ab4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'instagramBasicDisplayOAuth2Api',
+				name: 'instagramOAuth2Api',
 				required: true,
 			},
 		],
@@ -63,10 +63,10 @@ export class InstagramBasicDisplay implements INodeType {
 				default: 'user',
 				description: 'Resource to consume',
 			},
-			 ...userOperations,
-			 ...userFields,
-			 ...mediaOperations,
-			 ...mediaFields,
+			...userOperations,
+			...userFields,
+			...mediaOperations,
+			...mediaFields,
 		],
 	};
 
@@ -83,9 +83,9 @@ export class InstagramBasicDisplay implements INodeType {
 
 			if (resource === 'user') {
 
-			// *********************************************************************
-			//                               user
-			// *********************************************************************
+				// *********************************************************************
+				//                               user
+				// *********************************************************************
 
 				if (operation === 'get') {
 
@@ -107,9 +107,22 @@ export class InstagramBasicDisplay implements INodeType {
 
 			} else if (resource === 'media') {
 
-			// *********************************************************************
-			//                               media
-			// *********************************************************************
+				// *********************************************************************
+				//                               media
+				// *********************************************************************
+
+				if (operation === 'get') {
+
+					// ----------------------------------
+					//         media: get
+					// ----------------------------------
+
+					const mediaId = this.getNodeParameter('mediaId', i);
+					const qs: IDataObject = {
+						fields: 'caption,id,media_type,media_url,permalink,thumbnail_url,timestamp,username',
+					};
+					responseData = await instagramBasicDisplayApiRequestAllItems.call(this, 'GET', `/${mediaId}`, qs);
+				}
 
 				if (operation === 'getAll') {
 
@@ -129,16 +142,9 @@ export class InstagramBasicDisplay implements INodeType {
 
 					} else if (type === 'albumMedia') {
 
-						const albumId = this.getNodeParameter('albumId', i);
-						responseData = await instagramBasicDisplayApiRequestAllItems.call(this, 'GET', `/${albumId}/children`);
-
-					} else if (type === 'fieldsAndEdges') {
-
 						const mediaId = this.getNodeParameter('mediaId', i);
-						const qs: IDataObject = {
-							fields: 'caption,id,media_type,media_url,permalink,thumbnail_url,timestamp,username',
-						};
-						responseData = await instagramBasicDisplayApiRequestAllItems.call(this, 'GET', `/${mediaId}`, qs);
+						responseData = await instagramBasicDisplayApiRequestAllItems.call(this, 'GET', `/${mediaId}/children`);
+
 					}
 				}
 			}
@@ -154,7 +160,6 @@ export class InstagramBasicDisplay implements INodeType {
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
 				: returnData.push(responseData);
-
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

@@ -27,6 +27,26 @@ export const mediaOperations = [
 
 export const mediaFields = [
 	// ----------------------------------
+	//         media:get
+	// ----------------------------------
+	{
+		displayName: 'Media ID',
+		name: 'mediaId',
+		type: 'string',
+		default: '',
+		placeholder: '17998581729291220',
+		displayOptions: {
+			show: {
+				resource: [
+					'media',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+	// ----------------------------------
 	//         media: getAll
 	// ----------------------------------
 	{
@@ -57,11 +77,6 @@ export const mediaFields = [
 				value: 'albumMedia',
 				description: 'All images and videos in an album.',
 			},
-			{
-				name: 'Fields & Edges',
-				value: 'fieldsAndEdges',
-				description: 'All fields and edges of an image, video or album.',
-			},
 		],
 	},
 	{
@@ -86,12 +101,11 @@ export const mediaFields = [
 		},
 	},
 	{
-		displayName: 'Album ID',
-		name: 'albumId',
+		displayName: 'Media ID',
+		name: 'mediaId',
 		type: 'string',
 		default: '',
 		placeholder: '17998581729291220',
-		description: 'ID of album whose media to return.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -102,27 +116,6 @@ export const mediaFields = [
 				],
 				type: [
 					'albumMedia',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Media ID',
-		name: 'mediaId',
-		type: 'string',
-		default: '',
-		placeholder: '17998581729291220',
-		description: 'ID of media whose fields and edges to return.',
-		displayOptions: {
-			show: {
-				resource: [
-					'media',
-				],
-				operation: [
-					'getAll',
-				],
-				type: [
-					'fieldsAndEdges',
 				],
 			},
 		},
