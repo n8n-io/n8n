@@ -92,7 +92,6 @@ export default mixins(
 	methods: {
 		revealError() {
 			this.showFullError = true;
-			console.log(this.error.stack);
 		},
 		copyCause() {
 			this.copyToClipboard(JSON.stringify(this.error.cause));

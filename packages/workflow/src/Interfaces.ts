@@ -37,7 +37,7 @@ export interface IErrorObject {
 	stack?: string;
 }
 
-export type IExecutionError = IErrorObject | NodeOperationError | NodeApiError;
+export type ExecutionError = IErrorObject | NodeOperationError | NodeApiError;
 
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
@@ -658,7 +658,7 @@ export interface IRunExecutionData {
 		runNodeFilter?: string[];
 	};
 	resultData: {
-		error?: IExecutionError;
+		error?: ExecutionError;
 		runData: IRunData;
 		lastNodeExecuted?: string;
 	};
@@ -681,7 +681,7 @@ export interface ITaskData {
 	startTime: number;
 	executionTime: number;
 	data?: ITaskDataConnections;
-	error?: IExecutionError;
+	error?: ExecutionError;
 }
 
 
@@ -762,7 +762,7 @@ export interface IWorkflowSettings {
 	[key: string]: IDataObject | string | number | boolean | undefined;
 }
 
-export interface IErrorObject {
+export interface IRawErrorObject {
 	[key: string]: string | object | number | boolean | undefined | null | string[] | object[] | number[] | boolean[];
 }
 

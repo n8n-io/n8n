@@ -1,4 +1,4 @@
-import { IErrorObject, INode, IStatusCodeMessages} from '.';
+import { INode, IRawErrorObject, IStatusCodeMessages} from '.';
 
 /**
  * Top-level properties where an error message can be found in an API response.
@@ -45,11 +45,11 @@ const ERROR_NESTING_PROPERTIES = ['error', 'err', 'response', 'body', 'data'];
  */
 abstract class NodeError extends Error {
 	description: string | null | undefined;
-	cause: Error | IErrorObject;
+	cause: Error | IRawErrorObject;
 	node: INode;
 	timestamp: number;
 
-	constructor(name: string, node: INode, error: Error | IErrorObject) {
+	constructor(name: string, node: INode, error: Error | IRawErrorObject) {
 		super();
 		this.name = name;
 		this.cause = error;
@@ -82,13 +82,13 @@ abstract class NodeError extends Error {
 	 * Otherwise, if all the paths have been exhausted and no value is eligible, `null` is
 	 * returned.
 	 *
-	 * @param {IErrorObject} error
+	 * @param {IRawErrorObject} error
 	 * @param {string[]} potentialKeys
 	 * @param {string[]} traversalKeys
 	 * @returns {string | null}
 	 */
 	protected findProperty(
-		error: IErrorObject,
+		error: IRawErrorObject,
 		potentialKeys: string[],
 		traversalKeys: string[],
 	): string | null {
@@ -118,7 +118,7 @@ abstract class NodeError extends Error {
 
 		for (const key of traversalKeys) {
 			if (this.isTraversableObject(error[key])) {
-				const property = this.findProperty(error[key] as IErrorObject, potentialKeys, traversalKeys);
+				const property = this.findProperty(error[key] as IRawErrorObject, potentialKeys, traversalKeys);
 				if (property) {
 					return property;
 				}
@@ -131,7 +131,7 @@ abstract class NodeError extends Error {
 	/**
 	 * Check if a value is an object with at least one key, i.e. it can be traversed.
 	 */
-	private isTraversableObject(value: any): value is IErrorObject { // tslint:disable-line:no-any
+	private isTraversableObject(value: any): value is IRawErrorObject { // tslint:disable-line:no-any
 		return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
 	}
 }
@@ -177,7 +177,7 @@ export class NodeApiError extends NodeError {
 
 	constructor(
 		node: INode,
-		error: IErrorObject,
+		error: IRawErrorObject,
 		{message, description, httpCode}: {message: string, description?: string, httpCode?: string} = {message: ''},
 	){
 		super('NodeApiError', node, error);

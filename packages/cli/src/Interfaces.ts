@@ -1,10 +1,10 @@
 import {
+	ExecutionError,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
-	IExecutionError,
 	IRun,
 	IRunData,
 	IRunExecutionData,
@@ -17,7 +17,6 @@ import {
 import {
 	IDeferredPromise,
 } from 'n8n-core';
-
 
 import * as PCancelable from 'p-cancelable';
 import { ObjectID, Repository } from 'typeorm';
@@ -367,10 +366,10 @@ export interface ITransferNodeTypes {
 
 
 export interface IWorkflowErrorData {
-	[key: string]: IDataObject | string | number | IExecutionError;
+	[key: string]: IDataObject | string | number | ExecutionError;
 	execution: {
 		id?: string;
-		error: IExecutionError;
+		error: ExecutionError;
 		lastNodeExecuted: string;
 		mode: WorkflowExecuteMode;
 	};
