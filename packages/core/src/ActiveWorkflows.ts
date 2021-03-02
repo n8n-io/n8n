@@ -3,11 +3,11 @@ import { CronJob } from 'cron';
 import {
 	IGetExecutePollFunctions,
 	IGetExecuteTriggerFunctions,
-	ILogger,
 	INode,
 	IPollResponse,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
+	LoggerProxy,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -16,7 +16,6 @@ import {
 	IWorkflowData,
 } from './';
 
-declare var logger: ILogger;
 
 export class ActiveWorkflows {
 	private workflowData: {
@@ -166,7 +165,7 @@ export class ActiveWorkflows {
 
 		// The trigger function to execute when the cron-time got reached
 		const executeTrigger = async () => {
-			logger.info(`Polling trigger initiated for workflow ${workflow.name}`, {workflowName: workflow.name, workflowId: workflow.id});
+			LoggerProxy.info(`Polling trigger initiated for workflow ${workflow.name}`, {workflowName: workflow.name, workflowId: workflow.id});
 			const pollResponse = await workflow.runPoll(node, pollFunctions);
 
 			if (pollResponse !== null) {

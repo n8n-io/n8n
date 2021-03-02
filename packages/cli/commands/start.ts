@@ -26,8 +26,9 @@ import {
 	getInstance,
 } from '../src/Logger';
 
-const logger = getInstance();
-(global as any).logger = logger; // tslint:disable-line:no-any
+import {
+	LoggerProxy,
+} from 'n8n-workflow';
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExistCode = 0;
@@ -73,7 +74,7 @@ export class Start extends Command {
 	 * get removed.
 	 */
 	static async stopProcess() {
-		logger.info('\nStopping n8n...');
+		getInstance().info('\nStopping n8n...');
 
 		try {
 			const externalHooks = ExternalHooks();
@@ -129,6 +130,8 @@ export class Start extends Command {
 		// Wrap that the process does not close but we can still use async
 		await (async () => {
 			try {
+				const logger = getInstance();
+				LoggerProxy.init(logger);
 				logger.info('Initializing n8n process');
 
 				// Start directly with the init of the database to improve startup time
