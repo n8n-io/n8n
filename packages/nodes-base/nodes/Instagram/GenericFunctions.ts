@@ -11,7 +11,7 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-export async function instagramBasicDisplayApiRequest(
+export async function instagramApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: string,
 	endpoint: string,
@@ -52,7 +52,7 @@ export async function instagramBasicDisplayApiRequest(
 /**
  * Make an authenticated API request to Instagram Basic Display API and return all results.
  */
-export async function instagramBasicDisplayApiRequestAllItems(
+export async function instagramApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	method: string,
 	endpoint: string,
@@ -66,7 +66,7 @@ export async function instagramBasicDisplayApiRequestAllItems(
 	const limit = this.getNodeParameter('limit', 0, 0) as number;
 
 	do {
-		responseData = await instagramBasicDisplayApiRequest.call(this, method, endpoint, qs, body);
+		responseData = await instagramApiRequest.call(this, method, endpoint, qs, body);
 		returnData.push(...responseData.data);
 
 		if (!returnAll && returnData.length > limit) {

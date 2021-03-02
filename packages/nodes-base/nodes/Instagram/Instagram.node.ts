@@ -10,8 +10,8 @@ import {
 } from 'n8n-workflow';
 
 import {
-	instagramBasicDisplayApiRequest,
-	instagramBasicDisplayApiRequestAllItems,
+	instagramApiRequest,
+	instagramApiRequestAllItems,
 } from './GenericFunctions';
 
 import {
@@ -101,7 +101,7 @@ export class Instagram implements INodeType {
 						? '/me'
 						: `/${this.getNodeParameter('userId', i)}`;
 
-					responseData = await instagramBasicDisplayApiRequest.call(this, 'GET', endpoint, qs);
+					responseData = await instagramApiRequest.call(this, 'GET', endpoint, qs);
 
 				}
 
@@ -121,7 +121,7 @@ export class Instagram implements INodeType {
 					const qs: IDataObject = {
 						fields: 'caption,id,media_type,media_url,permalink,thumbnail_url,timestamp,username',
 					};
-					responseData = await instagramBasicDisplayApiRequestAllItems.call(this, 'GET', `/${mediaId}`, qs);
+					responseData = await instagramApiRequestAllItems.call(this, 'GET', `/${mediaId}`, qs);
 				}
 
 				if (operation === 'getAll') {
@@ -138,12 +138,12 @@ export class Instagram implements INodeType {
 						const qs: IDataObject = {
 							fields: 'caption,children,id,media_type,media_url,permalink,thumbnail_url,timestamp,username',
 						};
-						responseData = await instagramBasicDisplayApiRequestAllItems.call(this, 'GET', `/${userId}/media`, qs);
+						responseData = await instagramApiRequestAllItems.call(this, 'GET', `/${userId}/media`, qs);
 
 					} else if (type === 'albumMedia') {
 
 						const mediaId = this.getNodeParameter('mediaId', i);
-						responseData = await instagramBasicDisplayApiRequestAllItems.call(this, 'GET', `/${mediaId}/children`);
+						responseData = await instagramApiRequestAllItems.call(this, 'GET', `/${mediaId}/children`);
 
 					}
 				}
