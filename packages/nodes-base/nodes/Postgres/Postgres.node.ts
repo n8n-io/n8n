@@ -264,15 +264,12 @@ export class Postgres implements INodeType {
 			//         insert
 			// ----------------------------------
 
-			const [insertData, insertItems] = await pgInsert(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
+			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
 
 			// Add the id to the data
 			for (let i = 0; i < insertData.length; i++) {
 				returnItems.push({
-					json: {
-						...insertData[i],
-						...insertItems[i],
-					},
+					json: insertData[i],
 				});
 			}
 		} else if (operation === 'update') {

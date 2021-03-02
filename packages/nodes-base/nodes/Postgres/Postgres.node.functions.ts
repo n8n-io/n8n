@@ -48,14 +48,16 @@ export async function pgQuery(
 		return db.tx(t => return t.multi(pgp.helpers.concat(queries)));
 	} else if(mode == 'independently') {
 		return db.task(t => {
-      const result = [];
+			const result = [];
 			for (let i = 0; i < input.length; i++) {
 				try {
 					result.push(await t.any(getNodeParam('query', i) as string));
 				} catch(err) {
-					if(continueOnFail === false) result.push([{code: err.code, message: err.message}]);
+					if(continueOnFail === false) throw err;
+					result.push([{code: err.code, message: err.message}]);
 				}
 			}
+			return result;
 		});
 	} else throw new Error('normal, independently or transaction are valid options');
 }
@@ -76,30 +78,42 @@ export async function pgInsert(
 	items: INodeExecutionData[],
 	mode: string,
 	continueOnFail: boolean,
-): Promise<IDataObject[][]> {
+): Promise<IDataObject[]> {
 	const table = getNodeParam('table', 0) as string;
 	const schema = getNodeParam('schema', 0) as string;
 	let returnFields = (getNodeParam('returnFields', 0) as string).split(',') as string[];
 	const columnString = getNodeParam('columns', 0) as string;
 	const columns = columnString.split(',').map(column => column.trim());
-
 	const cs = new pgp.helpers.ColumnSet(columns);
-
 	const te = new pgp.helpers.TableName({ table, schema });
+	
+	if(mode == 'normal' || mode == 'transaction') {
+		// Prepare the data to insert and copy it to be returned
+		const insertItems = getItemCopy(items, columns);
 
-	// Prepare the data to insert and copy it to be returned
-	const insertItems = getItemCopy(items, columns);
-
-	// Generate the multi-row insert query and return the id of new row
-	returnFields = returnFields.map(value => value.trim()).filter(value => !!value);
-	const query =
-		pgp.helpers.insert(insertItems, cs, te) +
-		(returnFields.length ? ` RETURNING ${returnFields.join(',')}` : '');
-
-	// Executing the query to insert the data
-	const insertData = await db.manyOrNone(query);
-
-	return [insertData, insertItems];
+		// Generate the multi-row insert query and return the id of new row
+		returnFields = returnFields.map(value => value.trim()).filter(value => !!value);
+		const query =
+			pgp.helpers.insert(insertItems, cs, te) +
+			(returnFields.length ? ` RETURNING ${returnFields.join(',')}` : '');
+		
+		if(mode == 'normal') return await db.manyOrNone(query);
+		return return db.tx(t => return t.manyOrNone(query));
+	} else if(mode == 'independently') {
+		return db.task(t => {
+			const result = [];
+			for (let i = 0; i < input.length; i++) {
+				try {
+					// TODO
+					//result.push(await t.one(getNodeParam('query', i) as string));
+				} catch(err) {
+					if(continueOnFail === false) throw err;
+					result.push({code: err.code, message: err.message});
+				}
+			}
+			return result;
+		});
+	}
 }
 
 /**
