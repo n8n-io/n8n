@@ -162,6 +162,7 @@ export class Wise implements INodeType {
 							const qs = {
 								profileId: this.getNodeParameter('profileId', i),
 							};
+
 							responseData = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts', qs);
 
 						} else if (details === 'currencies') {
@@ -178,21 +179,20 @@ export class Wise implements INodeType {
 								currency: this.getNodeParameter('currency', i),
 							} as IDataObject;
 
-							const { lineStyle } = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const { lineStyle, range } = this.getNodeParameter('additionalFields', i) as {
+								lineStyle: 'COMPACT' | 'FLAT',
+								range: {
+									rangeProperties: { intervalStart: string, intervalEnd: string }
+								},
+							};
 
 							if (lineStyle !== undefined) {
 								qs.type = lineStyle;
 							}
 
-							const { interval } = this.getNodeParameter('additionalFields', i) as {
-								interval: {
-									intervalProperties: { [key: string]: string }
-								}
-							};
-
-							if (interval !== undefined) {
-								qs.intervalStart = moment(interval.intervalProperties.intervalStart).format();
-								qs.intervalEnd = moment(interval.intervalProperties.intervalEnd).format();
+							if (range !== undefined) {
+								qs.intervalStart = moment(range.rangeProperties.intervalStart).format();
+								qs.intervalEnd = moment(range.rangeProperties.intervalEnd).format();
 							} else {
 								qs.intervalStart = moment().subtract(1, 'months').format();
 								qs.intervalEnd = moment().format();
@@ -216,7 +216,44 @@ export class Wise implements INodeType {
 						//       exchangeRate: get
 						// ----------------------------------
 
-						// ...
+						// https://api-docs.transferwise.com/#exchange-rates-list
+
+						const qs = {
+							source: this.getNodeParameter('source', i),
+							target: this.getNodeParameter('target', i),
+						} as IDataObject;
+
+						const { interval, range, time } = this.getNodeParameter('additionalFields', i) as {
+							interval: 'day' | 'hour' | 'minute',
+							range: {
+								rangeProperties: { from: string, to: string }
+							},
+							time: string,
+						};
+
+						if (interval !== undefined) {
+							if (range === undefined) {
+								throw new Error('Please enter a range for the interval.');
+							}
+
+							qs.group = interval;
+						}
+
+						if (range !== undefined) {
+							qs.from = moment(range.rangeProperties.from).format();
+							qs.to = moment(range.rangeProperties.to).format();
+						} else {
+							qs.from = moment().subtract(1, 'months').format();
+							qs.to = moment().format();
+						}
+
+						if (time !== undefined) {
+							delete qs.from;
+							delete qs.to;
+							qs.group = time;
+						}
+
+						responseData = await wiseApiRequest.call(this, 'GET', 'v1/rates', qs);
 
 					}
 

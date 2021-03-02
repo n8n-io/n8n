@@ -113,8 +113,6 @@ export const accountFields = [
 	{
 		displayName: 'Borderless Account ID',
 		name: 'borderlessAccountId',
-		// type: 'string',
-		// default: '',
 		type: 'options',
 		default: [],
 		required: true,
@@ -199,24 +197,24 @@ export const accountFields = [
 				],
 			},
 			{
-				displayName: 'Interval',
-				name: 'interval',
+				displayName: 'Range',
+				name: 'range',
 				type: 'fixedCollection',
-				placeholder: 'Add Interval',
+				placeholder: 'Add Range',
 				default: {},
 				options: [
 					{
-						displayName: 'Interval Properties',
-						name: 'intervalProperties',
+						displayName: 'Range Properties',
+						name: 'rangeProperties',
 						values: [
 							{
-								displayName: 'Interval Start',
+								displayName: 'Range Start',
 								name: 'intervalStart',
 								type: 'dateTime',
 								default: '',
 							},
 							{
-								displayName: 'Interval End',
+								displayName: 'Range End',
 								name: 'intervalEnd',
 								type: 'dateTime',
 								default: '',
