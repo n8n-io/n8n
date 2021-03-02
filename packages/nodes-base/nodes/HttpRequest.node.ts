@@ -813,11 +813,14 @@ export class HttpRequest implements INodeType {
 
 			if (responseFormat === 'file') {
 				requestOptions.encoding = null;
-				requestOptions.body = JSON.stringify(requestOptions.body);
-				if (requestOptions.headers === undefined) {
-					requestOptions.headers = {};
+
+				if (options.bodyContentType !== 'raw') {
+					requestOptions.body = JSON.stringify(requestOptions.body);
+					if (requestOptions.headers === undefined) {
+						requestOptions.headers = {};
+					}
+					requestOptions.headers['Content-Type'] = 'application/json';
 				}
-				requestOptions.headers['Content-Type'] = 'application/json';
 			} else if (options.bodyContentType === 'raw') {
 				requestOptions.json = false;
 			} else {
