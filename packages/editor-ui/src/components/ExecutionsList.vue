@@ -88,14 +88,17 @@
 							<span class="status-badge success" v-else-if="scope.row.finished">
 								Success
 							</span>
-							<span class="status-badge error" v-else>
+							<span class="status-badge error" v-else-if="scope.row.stoppedAt !== null">
 								Error
+							</span>
+							<span class="status-badge warning" v-else>
+								Unknown
 							</span>
 						</el-tooltip>
 
 						<el-dropdown trigger="click" @command="handleRetryClick">
 							<span class="el-dropdown-link">
-								<el-button class="retry-button" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" type="text" size="small" title="Retry execution">
+								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" type="text" size="small" title="Retry execution">
 									<font-awesome-icon icon="redo" />
 								</el-button>
 							</span>
@@ -586,6 +589,8 @@ export default mixins(
 				return `The workflow execution was a retry of "${entry.retryOf}" and failed.<br />New retries have to be started from the original execution.`;
 			} else if (entry.retrySuccessId !== undefined) {
 				return `The workflow execution failed but the retry "${entry.retrySuccessId}" was successful.`;
+			} else if (entry.stoppedAt === null) {
+				return 'The workflow execution is probably still running but it may have crashed and n8n cannot safely tell. ';
 			} else {
 				return 'The workflow execution failed.';
 			}
@@ -642,6 +647,10 @@ export default mixins(
 	color: $--custom-error-text;
 	background-color: $--custom-error-background;
 	margin-left: 5px;
+	&.warning {
+		background-color: $--custom-warning-background;
+		color: $--custom-warning-text;
+	}
 }
 
 .selection-options {
@@ -671,6 +680,11 @@ export default mixins(
 	&.success {
 		background-color: $--custom-success-background;
 		color: $--custom-success-text;
+	}
+
+	&.warning {
+		background-color: $--custom-warning-background;
+		color: $--custom-warning-text;
 	}
 }
 
