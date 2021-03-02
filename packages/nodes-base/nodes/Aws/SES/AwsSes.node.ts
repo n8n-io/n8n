@@ -18,7 +18,7 @@ import {
 
 function setParameter(params: string[], base: string, values: string[]) {
 	for (let i = 0; i < values.length; i++) {
-		params.push(`${base}.${i+1}=${values[i]}`);
+		params.push(`${base}.${i + 1}=${values[i]}`);
 	}
 }
 
@@ -26,7 +26,7 @@ export class AwsSes implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS SES',
 		name: 'awsSes',
-		icon: 'file:ses.png',
+		icon: 'file:ses.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -50,6 +50,10 @@ export class AwsSes implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Custom Verification Email',
+						value: 'customVerificationEmail',
+					},
+					{
 						name: 'Email',
 						value: 'email',
 					},
@@ -60,6 +64,338 @@ export class AwsSes implements INodeType {
 				],
 				default: 'email',
 				description: 'The operation to perform.',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'customVerificationEmail',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new custom verification email template',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete an existing custom verification email template',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get the custom email verification template',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all the existing custom verification email templates for your account',
+					},
+					{
+						name: 'Send',
+						value: 'send',
+						description: 'Add an email address to the list of identities',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update an existing custom verification email template.',
+					},
+				],
+				default: 'create',
+				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'From Email',
+				name: 'fromEmailAddress',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'customVerificationEmail',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				required: true,
+				description: 'The email address that the custom verification email is sent from.',
+				default: '',
+			},
+			{
+				displayName: 'Template Name',
+				name: 'templateName',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'customVerificationEmail',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				default: '',
+				description: 'The name of the custom verification email template.',
+			},
+			{
+				displayName: 'Template Content',
+				name: 'templateContent',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'customVerificationEmail',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				description: `The content of the custom verification email. The total size of the email must be less than 10 MB. The message body may contain HTML`,
+				default: '',
+			},
+			{
+				displayName: 'Template Subject',
+				name: 'templateSubject',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'customVerificationEmail',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'The subject line of the custom verification email.',
+			},
+			{
+				displayName: 'Success Redirection URL',
+				name: 'successRedirectionURL',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'customVerificationEmail',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				required: true,
+				description: 'The URL that the recipient of the verification email is sent to if his or her address is successfully verified.',
+				default: '',
+			},
+			{
+				displayName: 'Failure Redirection URL',
+				name: 'failureRedirectionURL',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'customVerificationEmail',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				required: true,
+				description: 'The URL that the recipient of the verification email is sent to if his or her address is not successfully verified.',
+				default: '',
+			},
+
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'customVerificationEmail',
+						],
+						operation: [
+							'send',
+						],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'The email address to verify.',
+			},
+			{
+				displayName: 'Template Name',
+				name: 'templateName',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'customVerificationEmail',
+						],
+						operation: [
+							'send',
+						],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'The name of the custom verification email template to use when sending the verification email.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'customVerificationEmail',
+						],
+						operation: [
+							'send',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Configuration Set Name',
+						name: 'configurationSetName',
+						type: 'string',
+						description: 'Name of a configuration set to use when sending the verification email.',
+						default: '',
+					},
+				],
+			},
+
+			{
+				displayName: 'Template Name',
+				name: 'templateName',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'customVerificationEmail',
+						],
+						operation: [
+							'update',
+							'delete',
+							'get',
+						],
+					},
+				},
+				default: '',
+				description: 'The name of the custom verification email template.',
+			},
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'customVerificationEmail',
+						],
+						operation: [
+							'update',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Failure Redirection URL',
+						name: 'failureRedirectionURL',
+						type: 'string',
+						description: 'The URL that the recipient of the verification email is sent to if his or her address is not successfully verified.',
+						default: '',
+					},
+					{
+						displayName: 'From Email',
+						name: 'fromEmailAddress',
+						type: 'string',
+						description: 'The email address that the custom verification email is sent from.',
+						default: '',
+					},
+					{
+						displayName: 'Success Redirection URL',
+						name: 'successRedirectionURL',
+						type: 'string',
+						description: 'The URL that the recipient of the verification email is sent to if his or her address is successfully verified.',
+						default: '',
+					},
+					{
+						displayName: 'Template Content',
+						name: 'templateContent',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						description: `The content of the custom verification email. The total size of the email must be less than 10 MB. The message body may contain HTML`,
+						default: '',
+					},
+					{
+						displayName: 'Template Subject',
+						name: 'templateSubject',
+						type: 'string',
+						default: '',
+						description: 'The subject line of the custom verification email.',
+					},
+				],
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'customVerificationEmail',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				default: 20,
+				displayOptions: {
+					show: {
+						resource: [
+							'customVerificationEmail',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
 			},
 			{
 				displayName: 'Operation',
@@ -598,6 +934,140 @@ export class AwsSes implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 
+			if (resource === 'customVerificationEmail') {
+
+				if (operation === 'create') {
+
+					const failureRedirectionURL = this.getNodeParameter('failureRedirectionURL', i) as string;
+
+					const email = this.getNodeParameter('fromEmailAddress', i) as string;
+
+					const successRedirectionURL = this.getNodeParameter('successRedirectionURL', i) as string;
+
+					const templateContent = this.getNodeParameter('templateContent', i) as string;
+
+					const templateName = this.getNodeParameter('templateName', i) as string;
+
+					const templateSubject = this.getNodeParameter('templateSubject', i) as string;
+
+					const params = [
+						`Action=CreateCustomVerificationEmailTemplate`,
+						`FailureRedirectionURL=${failureRedirectionURL}`,
+						`FromEmailAddress=${email}`,
+						`SuccessRedirectionURL=${successRedirectionURL}`,
+						`TemplateContent=${templateContent}`,
+						`TemplateName=${templateName}`,
+						`TemplateSubject=${templateSubject}`,
+					];
+
+					responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '', params.join('&'));
+
+					responseData = responseData.CreateCustomVerificationEmailTemplateResponse;
+				}
+
+				if (operation === 'delete') {
+
+					const templateName = this.getNodeParameter('templateName', i) as string;
+
+					const params = [
+						`Action=DeleteCustomVerificationEmailTemplate`,
+						`TemplateName=${templateName}`,
+					];
+
+					responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '', params.join('&'));
+
+					responseData = responseData.DeleteCustomVerificationEmailTemplateResponse;
+				}
+
+				if (operation === 'get') {
+
+					const templateName = this.getNodeParameter('templateName', i) as string;
+
+					const params = [
+						`TemplateName=${templateName}`,
+					];
+
+					responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '/?Action=GetCustomVerificationEmailTemplate&' + params.join('&'));
+
+					responseData = responseData.GetCustomVerificationEmailTemplateResponse;
+				}
+
+				if (operation === 'getAll') {
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					if (returnAll === true) {
+						responseData = await awsApiRequestSOAPAllItems.call(this, 'ListCustomVerificationEmailTemplatesResponse.ListCustomVerificationEmailTemplatesResult.CustomVerificationEmailTemplates.member', 'email', 'POST', '/?Action=ListCustomVerificationEmailTemplates');
+
+					} else {
+						const limit = this.getNodeParameter('limit', i) as number;
+
+						responseData = await awsApiRequestSOAP.call(this, 'email', 'GET', `/?Action=ListCustomVerificationEmailTemplates&MaxResults=${limit}`);
+
+						responseData = responseData.ListCustomVerificationEmailTemplatesResponse.ListCustomVerificationEmailTemplatesResult.CustomVerificationEmailTemplates.member;
+					}
+				}
+
+				if (operation === 'send') {
+
+					const email = this.getNodeParameter('email', i) as string[];
+
+					const templateName = this.getNodeParameter('templateName', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const params = [
+						`Action=SendCustomVerificationEmail`,
+						`TemplateName=${templateName}`,
+						`EmailAddress=${email}`,
+					];
+
+					if (additionalFields.configurationSetName) {
+						params.push(`ConfigurationSetName=${additionalFields.configurationSetName}`);
+					}
+
+					responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '', params.join('&'));
+
+					responseData = responseData.SendCustomVerificationEmailResponse;
+				}
+
+				if (operation === 'update') {
+
+					const templateName = this.getNodeParameter('templateName', i) as string;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					const params = [
+						`Action=UpdateCustomVerificationEmailTemplate`,
+						`TemplateName=${templateName}`,
+					];
+
+					if (updateFields.FailureRedirectionURL) {
+						params.push(`FailureRedirectionURL=${updateFields.FailureRedirectionURL}`);
+					}
+
+					if (updateFields.email) {
+						params.push(`FromEmailAddress=${updateFields.email}`);
+					}
+
+					if (updateFields.successRedirectionURL) {
+						params.push(`SuccessRedirectionURL=${updateFields.successRedirectionURL}`);
+					}
+
+					if (updateFields.templateContent) {
+						params.push(`TemplateContent=${updateFields.templateContent}`);
+					}
+
+					if (updateFields.templateSubject) {
+						params.push(`TemplateSubject=${updateFields.templateSubject}`);
+					}
+
+					responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '', params.join('&'));
+
+					responseData = responseData.UpdateCustomVerificationEmailTemplateResponse;
+				}
+			}
+
 			if (resource === 'email') {
 
 				if (operation === 'send') {
@@ -837,11 +1307,13 @@ export class AwsSes implements INodeType {
 					responseData = responseData.UpdateTemplateResponse;
 				}
 			}
+
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
-
 			} else {
-				returnData.push(responseData as IDataObject);
+				if (responseData !== undefined) {
+					returnData.push(responseData as IDataObject);
+				}
 			}
 		}
 

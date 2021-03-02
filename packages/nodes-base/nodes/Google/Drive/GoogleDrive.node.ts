@@ -10,12 +10,12 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import uuid = require('uuid');
-
 import {
 	googleApiRequest,
 	googleApiRequestAllItems,
 } from './GenericFunctions';
+
+import uuid = require('uuid');
 
 export class GoogleDrive implements INodeType {
 	description: INodeTypeDescription = {
@@ -522,7 +522,7 @@ export class GoogleDrive implements INodeType {
 				name: 'permissionsUi',
 				placeholder: 'Add Permission',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: false,
 				},
@@ -530,10 +530,10 @@ export class GoogleDrive implements INodeType {
 					show: {
 						resource: [
 							'file',
+							'folder',
 						],
 						operation: [
 							'share',
-							'folder',
 						],
 					},
 				},
@@ -733,6 +733,24 @@ export class GoogleDrive implements INodeType {
 				placeholder: 'invoice_1.pdf',
 				description: 'The name the file should be saved as.',
 			},
+			// ----------------------------------
+			{
+				displayName: 'Resolve Data',
+				name: 'resolveData',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'upload',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				description: 'By default the response only contain the ID of the file.<br />If this option gets activated it will resolve the data automatically.',
+			},
 			{
 				displayName: 'Parents',
 				name: 'parents',
@@ -787,9 +805,16 @@ export class GoogleDrive implements INodeType {
 				placeholder: 'Add Option',
 				default: {},
 				displayOptions: {
-					hide: {
-						resource: [
-							'drive',
+					show: {
+						'/operation': [
+							'copy',
+							'list',
+							'share',
+							'create',
+						],
+						'/resource': [
+							'file',
+							'folder',
 						],
 					},
 				},
@@ -838,48 +863,8 @@ export class GoogleDrive implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'share',
-								],
-								'/resource': [
-									'file',
-									'folder',
-								],
-							},
-						},
-						options: [
-							{
-								name: '*',
-								value: '*',
-								description: 'All fields.',
-							},
-							{
-								name: 'Email Address',
-								value: 'emailAddress',
-							},
-							{
-								name: 'Display Name',
-								value: 'displayName',
-							},
-							{
-								name: 'Deleted',
-								value: 'deleted',
-							},
-						],
-						default: [],
-						description: 'The fields to return.',
-					},
-					{
-						displayName: 'Fields',
-						name: 'fields',
-						type: 'multiOptions',
-						displayOptions: {
-							hide: {
-								'/operation': [
-									'share',
-								],
-								'/resource': [
-									'file',
-									'folder',
+									'list',
+									'copy',
 								],
 							},
 						},
@@ -1976,7 +1961,7 @@ export class GoogleDrive implements INodeType {
 					// ----------------------------------
 					//         upload
 					// ----------------------------------
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const resolveData = this.getNodeParameter('resolveData', 0) as boolean;
 
 					let mimeType = 'text/plain';
 					let body;
@@ -2042,6 +2027,10 @@ export class GoogleDrive implements INodeType {
 
 					response = await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${JSON.parse(response).id}`, body, qs);
 
+					if (resolveData === true) {
+						response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${response.id}`, {}, { fields: '*' });
+					}
+
 					returnData.push(response as IDataObject);
 				}
 
@@ -2067,7 +2056,8 @@ export class GoogleDrive implements INodeType {
 
 					returnData.push(response as IDataObject);
 				}
-			} else if (['file', 'folder'].includes(resource)) {
+			}
+			if (['file', 'folder'].includes(resource)) {
 				if (operation === 'delete') {
 					// ----------------------------------
 					//         delete
@@ -2100,10 +2090,6 @@ export class GoogleDrive implements INodeType {
 					}
 
 					Object.assign(qs, options);
-
-					if (qs.fields) {
-						qs.fields = (qs.fields as string[]).join(',');
-					}
 
 					const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/permissions`, body, qs);
 

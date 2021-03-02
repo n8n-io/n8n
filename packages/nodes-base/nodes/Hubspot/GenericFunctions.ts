@@ -42,11 +42,10 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 			const credentials = this.getCredentials('hubspotDeveloperApi');
 
 			options.qs.hapikey = credentials!.apiKey as string;
-
 			return await this.helpers.request!(options);
 		} else {
 			// @ts-ignore
-			return await this.helpers.requestOAuth2!.call(this, 'hubspotOAuth2Api', options, { tokenType: 'Bearer' });
+			return await this.helpers.requestOAuth2!.call(this, 'hubspotOAuth2Api', options, { tokenType: 'Bearer', includeCredentialsOnRefreshOnBody: true });
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

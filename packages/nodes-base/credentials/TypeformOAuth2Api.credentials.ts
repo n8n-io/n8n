@@ -9,7 +9,6 @@ const scopes = [
 	'forms:read',
 ];
 
-
 export class TypeformOAuth2Api implements ICredentialType {
 	name = 'typeformOAuth2Api';
 	extends = [
@@ -36,7 +35,7 @@ export class TypeformOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
-			default: scopes.join(','),
+			default: scopes.join(' '),
 		},
 		{
 			displayName: 'Auth URI Query Parameters',

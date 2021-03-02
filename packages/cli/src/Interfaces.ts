@@ -32,6 +32,15 @@ export interface IActivationError {
 	};
 }
 
+export interface IBullJobData {
+	executionId: string;
+	loadStaticData: boolean;
+}
+
+export interface IBullJobResponse {
+	success: boolean;
+}
+
 export interface ICustomRequest extends Request {
 	parsedUrl: Url | undefined;
 }
@@ -111,7 +120,7 @@ export interface IExecutionBase {
 	id?: number | string | ObjectID;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
-	stoppedAt: Date;
+	stoppedAt?: Date; // empty value means execution is still running
 	workflowId?: string; // To be able to filter executions easily //
 	finished: boolean;
 	retryOf?: number | string | ObjectID; // If it is a retry, the id of the execution it is a retry of.
@@ -165,12 +174,11 @@ export interface IExecutionsStopData {
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
-	stoppedAt: Date;
+	stoppedAt?: Date;
 }
 
 export interface IExecutionsSummary {
-	id?: string; // executionIdDb
-	idActive?: string; // executionIdActive
+	id: string;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	retryOf?: string;
@@ -317,8 +325,7 @@ export type IPushDataType = 'executionFinished' | 'executionStarted' | 'nodeExec
 
 export interface IPushDataExecutionFinished {
 	data: IRun;
-	executionIdActive: string;
-	executionIdDb?: string;
+	executionId: string;
 	retryOf?: string;
 }
 
