@@ -42,7 +42,28 @@ export const quoteFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'ID of the user profile to retrieve.',
+		description: 'ID of the user profile to create the quote under.',
+		displayOptions: {
+			show: {
+				resource: [
+					'quote',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Target Account ID',
+		name: 'targetAccountId',
+		type: 'options',
+		required: true,
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getRecipients',
+		},
+		description: 'ID of the account that will receive the funds.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -69,7 +90,7 @@ export const quoteFields = [
 				value: 'target',
 			},
 		],
-		description: 'Whether the amount of funds is to be sent or to be received.',
+		description: 'Whether the amount is to be sent or received.',
 		displayOptions: {
 			show: {
 				resource: [

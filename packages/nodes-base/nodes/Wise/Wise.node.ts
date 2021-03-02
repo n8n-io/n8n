@@ -18,6 +18,7 @@ import {
 	profileOperations,
 	quoteFields,
 	quoteOperations,
+	recipientOperations,
 	transferFields,
 	transferOperations,
 } from './descriptions';
@@ -27,6 +28,8 @@ import {
 } from './GenericFunctions';
 
 import * as moment from 'moment';
+
+import * as uuid from 'uuid/v4';
 
 export class Wise implements INodeType {
 	description: INodeTypeDescription = {
@@ -68,6 +71,10 @@ export class Wise implements INodeType {
 						value: 'profile',
 					},
 					{
+						name: 'Recipient',
+						value: 'recipient',
+					},
+					{
 						name: 'Quote',
 						value: 'quote',
 					},
@@ -87,6 +94,7 @@ export class Wise implements INodeType {
 			...profileFields,
 			...quoteOperations,
 			...quoteFields,
+			...recipientOperations,
 			...transferOperations,
 			...transferFields,
 		],
@@ -108,10 +116,23 @@ export class Wise implements INodeType {
 			},
 
 			async getProfiles(this: ILoadOptionsFunctions) {
-				const profiles = await wiseApiRequest.call(this, 'GET', '/v1/profiles', {}, {});
+				const profiles = await wiseApiRequest.call(this, 'GET', 'v1/profiles', {}, {});
 
 				return profiles.map(({ id, type }: { id: number, type: 'business' | 'personal' }) => ({
 					name: type.charAt(0).toUpperCase() + type.slice(1),
+					value: id,
+				}));
+			},
+
+			async getRecipients(this: ILoadOptionsFunctions) {
+				const qs = {
+					profileId: this.getNodeParameter('profileId', 0),
+				};
+
+				const recipients = await wiseApiRequest.call(this, 'GET', 'v1/accounts', qs, {});
+
+				return recipients.map(({ id, accountHolderName }: { id: number, accountHolderName: string }) => ({
+					name: accountHolderName,
 					value: id,
 				}));
 			},
@@ -278,6 +299,18 @@ export class Wise implements INodeType {
 
 					}
 
+				} else if (resource === 'recipient') {
+
+					// *********************************************************************
+					//                             recipient
+					// *********************************************************************
+
+					if (operation === 'getAll') {
+
+						responseData = await wiseApiRequest.call(this, 'GET', 'v1/accounts', {}, {});
+
+					}
+
 				} else if (resource === 'quote') {
 
 					// *********************************************************************
@@ -334,7 +367,21 @@ export class Wise implements INodeType {
 						//         transfer: create
 						// ----------------------------------
 
-						// ...
+						// https://api-docs.transferwise.com/#transfers-create
+
+						const body = {
+							quoteUuid: this.getNodeParameter('quoteId', i),
+							targetAccount: this.getNodeParameter('targetAccountId', i),
+							customerTransactionId: uuid(),
+						} as IDataObject;
+
+						const { reference } = this.getNodeParameter('additionalFields', i) as { reference: string };
+
+						if (reference !== undefined) {
+							body.details = { reference };
+						}
+
+						responseData = await wiseApiRequest.call(this, 'POST', 'v1/transfers', {}, body);
 
 					} else if (operation === 'delete') {
 
