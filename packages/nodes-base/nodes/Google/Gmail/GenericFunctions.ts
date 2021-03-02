@@ -41,6 +41,9 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		body,
 		qs,
 		uri: uri || `https://www.googleapis.com${endpoint}`,
+		qsStringifyOptions:{
+			arrayFormat: 'repeat',
+		},
 		json: true,
 	};
 
