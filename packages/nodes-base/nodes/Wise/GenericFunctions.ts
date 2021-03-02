@@ -90,30 +90,3 @@ export async function handleListing(
 ) {
 	// ...
 }
-
-/**
- * Find which fields are required in order to create a recipient.
- * https://api-docs.transferwise.com/#recipient-accounts-requirements-version-1-1
- */
-export async function findRequiredFields(this: IExecuteFunctions, i: number) {
-	const sourceCurrency = this.getNodeParameter('sourceCurrency', i);
-	const targetCurrency = this.getNodeParameter('targetCurrency', i);
-	const insideEurope = this.getNodeParameter('insideEurope', i) as boolean;
-
-	const body = {
-		profile: this.getNodeParameter('profileId', i),
-		sourceCurrency,
-		targetCurrency,
-		sourceAmount: 1000, // token amount
-	};
-
-	const { id: quoteId } = await wiseApiRequest.call(this, 'POST', 'v2/quotes', {}, body);
-
-	const endpoint = `v1/quotes/${quoteId}/account-requirements`;
-	const header = { 'Accept-Minor-Version': 1 };
-
-	const responseData = await wiseApiRequest.call(this, 'GET', endpoint, {}, {}, header) as IDataObject[];
-	const filter = insideEurope ? 'Inside Europe' : 'Outside Europe';
-
-	return responseData.find((fieldsBundle) => fieldsBundle.title === filter);
-}

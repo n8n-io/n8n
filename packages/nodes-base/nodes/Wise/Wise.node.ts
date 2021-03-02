@@ -18,14 +18,11 @@ import {
 	profileOperations,
 	quoteFields,
 	quoteOperations,
-	recipientFields,
-	recipientOperations,
 	transferFields,
 	transferOperations,
 } from './descriptions';
 
 import {
-	findRequiredFields,
 	wiseApiRequest,
 } from './GenericFunctions';
 
@@ -75,10 +72,6 @@ export class Wise implements INodeType {
 						value: 'quote',
 					},
 					{
-						name: 'Recipient',
-						value: 'recipient',
-					},
-					{
 						name: 'Transfer',
 						value: 'transfer',
 					},
@@ -94,8 +87,6 @@ export class Wise implements INodeType {
 			...profileFields,
 			...quoteOperations,
 			...quoteFields,
-			...recipientOperations,
-			...recipientFields,
 			...transferOperations,
 			...transferFields,
 		],
@@ -328,72 +319,6 @@ export class Wise implements INodeType {
 
 						const quoteId = this.getNodeParameter('quoteId', i);
 						responseData = await wiseApiRequest.call(this, 'GET', `v2/quotes/${quoteId}`);
-
-					}
-
-				} else if (resource === 'recipient') {
-
-					// *********************************************************************
-					//                             recipient
-					// *********************************************************************
-
-					if (operation === 'create') {
-
-						// ----------------------------------
-						//       recipient: create
-						// ----------------------------------
-
-						// https://api-docs.transferwise.com/#recipient-accounts-create
-
-						const requiredFields = await findRequiredFields.call(this, i);
-
-						console.log(JSON.stringify(requiredFields, null, 2));
-
-						responseData = [];
-
-						// const body = {
-						// 	accountHolderName: this.getNodeParameter('accountHolderName', i),
-						// 	currency: this.getNodeParameter('currency', i),
-						// 	ownedByCustomer: this.getNodeParameter('ownedByCustomer', i),
-						// 	// type: this.getNodeParameter('type', i),
-						// 	// profile: this.getNodeParameter('profileId', i),
-						// 	details: {
-						// 		// legalType: this.getNodeParameter('legalType', i),
-						// 		// accountNumber: this.getNodeParameter('accountNumber', i),
-						// 	},
-						// } as IDataObject;
-
-						// responseData = await wiseApiRequest.call(this, 'POST', 'v2/accounts', {}, body);
-
-					} else if (operation === 'delete') {
-
-						// ----------------------------------
-						//        recipient: delete
-						// ----------------------------------
-
-						// https://api-docs.transferwise.com/#recipient-accounts-delete
-
-						// ...
-
-					} else if (operation === 'get') {
-
-						// ----------------------------------
-						//        recipient: get
-						// ----------------------------------
-
-						// https://api-docs.transferwise.com/#recipient-accounts-get-by-id
-
-						// ...
-
-					} else if (operation === 'getAll') {
-
-						// ----------------------------------
-						//        recipient: getAll
-						// ----------------------------------
-
-						// https://api-docs.transferwise.com/#recipient-accounts-list
-
-						// ...
 
 					}
 
