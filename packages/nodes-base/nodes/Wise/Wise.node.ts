@@ -102,15 +102,6 @@ export class Wise implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getProfiles(this: ILoadOptionsFunctions) {
-				const profiles = await wiseApiRequest.call(this, 'GET', '/v1/profiles', {}, {});
-
-				return profiles.map(({ id, type }: { id: number, type: 'business' | 'personal' }) => ({
-					name: type.charAt(0).toUpperCase() + type.slice(1),
-					value: id,
-				}));
-			},
-
 			async getBorderlessAccounts(this: ILoadOptionsFunctions) {
 				const qs = {
 					profileId: this.getNodeParameter('profileId', 0),
@@ -120,6 +111,15 @@ export class Wise implements INodeType {
 
 				return accounts.map(({ id, balances }: { id: number, balances: Array<{ currency: string }> }) => ({
 					name: balances.map(({ currency }) => currency).join(' - '),
+					value: id,
+				}));
+			},
+
+			async getProfiles(this: ILoadOptionsFunctions) {
+				const profiles = await wiseApiRequest.call(this, 'GET', '/v1/profiles', {}, {});
+
+				return profiles.map(({ id, type }: { id: number, type: 'business' | 'personal' }) => ({
+					name: type.charAt(0).toUpperCase() + type.slice(1),
 					value: id,
 				}));
 			},
@@ -300,9 +300,28 @@ export class Wise implements INodeType {
 
 						// https://api-docs.transferwise.com/#quotes-create
 
-						// ...
+						const body = {
+							profile: this.getNodeParameter('profileId', i),
+							sourceCurrency: this.getNodeParameter('sourceCurrency', i),
+							targetCurrency: this.getNodeParameter('targetCurrency', i),
+						} as IDataObject;
 
-					} else if (operation === 'getAll') {
+						const sourceAmount = this.getNodeParameter('sourceAmount', i) as number;
+						const targetAmount = this.getNodeParameter('targetAmount', i) as number;
+
+						if (sourceAmount) {
+							body.sourceAmount = sourceAmount;
+						} else {
+							body.targetAmount = targetAmount;
+						}
+
+						if (sourceAmount > 0 && targetAmount > 0) {
+							throw new Error('Enter either a source amount or a target amount, not both.');
+						}
+
+						responseData = await wiseApiRequest.call(this, 'POST', 'v2/quotes', {}, body);
+
+					} else if (operation === 'get') {
 
 						// ----------------------------------
 						//          quote: get
@@ -310,7 +329,8 @@ export class Wise implements INodeType {
 
 						// https://api-docs.transferwise.com/#quotes-get-by-id
 
-						// ...
+						const quoteId = this.getNodeParameter('quoteId', i);
+						responseData = await wiseApiRequest.call(this, 'GET', `v2/quotes/${quoteId}`);
 
 					}
 
