@@ -17,6 +17,7 @@ export async function instagramApiRequest(
 	endpoint: string,
 	qs: IDataObject = {},
 	body: IDataObject = {},
+	uri = '',
 ) {
 	const options: OptionsWithUri = {
 		method,
@@ -25,7 +26,7 @@ export async function instagramApiRequest(
 		},
 		qs,
 		body,
-		uri: `https://graph.instagram.com${endpoint}`,
+		uri: uri || `https://graph.instagram.com${endpoint}`,
 		json: true,
 	};
 
@@ -65,15 +66,20 @@ export async function instagramApiRequestAllItems(
 	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
 	const limit = this.getNodeParameter('limit', 0, 0) as number;
 
+	let uri = '';
+
 	do {
-		responseData = await instagramApiRequest.call(this, method, endpoint, qs, body);
+		responseData = await instagramApiRequest.call(this, method, endpoint, qs, body, uri);
+
 		returnData.push(...responseData.data);
 
 		if (!returnAll && returnData.length > limit) {
 			return responseData.data.slice(0, limit);
 		}
 
-	} while (responseData.next);
+		uri = responseData.paging.next;
+
+	} while (responseData.paging.next);
 
 	return returnData;
 }
