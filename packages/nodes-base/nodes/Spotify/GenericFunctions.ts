@@ -3,12 +3,12 @@ import { OptionsWithUri } from 'request';
 import {
 	IExecuteFunctions,
 	IHookFunctions,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-core';
 
 import {
 	IDataObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 /**

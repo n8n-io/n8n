@@ -1,8 +1,4 @@
-import {
-	IErrorObject,
-	INode,
-	IStatusCodeMessages,
-} from 'n8n-workflow';
+import { IErrorObject, INode, IStatusCodeMessages} from '.';
 
 /**
  * Top-level properties where an error message can be found in an API response.

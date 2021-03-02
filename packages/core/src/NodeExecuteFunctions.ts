@@ -4,7 +4,6 @@ import {
 	ILoadOptionsFunctions,
 	IResponseError,
 	IWorkflowSettings,
-	NodeOperationError,
 } from './';
 
 import {
@@ -33,6 +32,7 @@ import {
 	IWorkflowExecuteAdditionalData,
 	IWorkflowMetadata,
 	NodeHelpers,
+	NodeOperationError,
 	NodeParameterValue,
 	Workflow,
 	WorkflowDataProxy,

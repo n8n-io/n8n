@@ -1,11 +1,11 @@
 import {
 	IExecuteFunctions,
 	IHookFunctions,
-	NodeApiError,
 } from 'n8n-core';
 
 import {
 	IDataObject,
+	NodeApiError,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 

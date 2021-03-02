@@ -11,7 +11,6 @@ export * from './Credentials';
 export * from './DeferredPromise';
 export * from './Interfaces';
 export * from './LoadNodeParameterOptions';
-export * from './NodeErrors';
 export * from './NodeExecuteFunctions';
 export * from './WorkflowExecute';
 
