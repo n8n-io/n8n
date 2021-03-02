@@ -324,6 +324,11 @@ export class Spotify implements INodeType {
 						value: 'delete',
 						description: 'Remove tracks from a playlist by track and playlist URI or ID.',
 					},
+					{
+						name: 'Create a Playlist',
+						value: 'create',
+						description: 'Create a new playlist.',
+					},
 				],
 				default: 'add',
 				description: 'The operation to perform.',
@@ -349,6 +354,62 @@ export class Spotify implements INodeType {
 				},
 				placeholder: 'spotify:playlist:37i9dQZF1DWUhI3iC1khPH',
 				description: `The playlist's Spotify URI or its ID.`,
+			},
+			{
+				displayName: 'Playlist name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'playlist',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				placeholder: 'My Playlist',
+				description: `The playlist's name.`,
+			},
+			{
+				displayName: 'Playlist description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				required: false,
+				displayOptions: {
+					show: {
+						resource: [
+							'playlist',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				placeholder: 'This is a playlist.',
+				description: `The playlist's text description`,
+			},
+			{
+				displayName: 'Public',
+				name: 'public',
+				type: 'boolean',
+				default: true,
+				required: false,
+				displayOptions: {
+					show: {
+						resource: [
+							'playlist',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				description: `Whether the playlist is public (or private).`,
 			},
 			{
 				displayName: 'Track ID',
@@ -760,27 +821,37 @@ export class Spotify implements INodeType {
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 					}
-					} else if(operation === 'getUserPlaylists') {
-						requestMethod = 'GET';
+				} else if(operation === 'getUserPlaylists') {
+					requestMethod = 'GET';
 
-						endpoint = '/me/playlists';
+					endpoint = '/me/playlists';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-						propertyName = 'items';
+					propertyName = 'items';
 
-						if(!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+					if(!returnAll) {
+						const limit = this.getNodeParameter('limit', i) as number;
 
-							qs = {
-								limit,
-							};
+						qs = {
+							limit,
+						};
 
-							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
-							responseData = responseData.items;
-						}
+						responseData = responseData.items;
 					}
+				} else if (operation == 'create') {
+					requestMethod = 'POST';
+
+					endpoint = '/me/playlists';
+
+					body.name = this.getNodeParameter('name', i) as string;
+					body.description = this.getNodeParameter('description', i) as string;
+					body.public = this.getNodeParameter('public', i) as boolean;
+					
+					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+				}
 			// -----------------------------
 			//      Track Operations
 			// -----------------------------
