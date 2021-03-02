@@ -84,6 +84,10 @@ export class ActiveWorkflowRunner {
 		}
 	}
 
+	async initWebhooks() {
+		this.activeWorkflows = new ActiveWorkflows();
+	}
+
 	/**
 	 * Removes all the currently active workflows
 	 *
@@ -127,6 +131,14 @@ export class ActiveWorkflowRunner {
 			throw new ResponseHelper.ResponseError('The "activeWorkflows" instance did not get initialized yet.', 404, 404);
 		}
 
+		// Reset request parameters
+		req.params = {};
+
+		// Remove trailing slash
+		if (path.endsWith('/')) {
+			path = path.slice(0, -1);
+		}
+
 		let webhook = await Db.collections.Webhook?.findOne({ webhookPath: path, method: httpMethod }) as IWebhookDb;
 		let webhookId: string | undefined;
 
@@ -136,35 +148,35 @@ export class ActiveWorkflowRunner {
 			const pathElements = path.split('/');
 			webhookId = pathElements.shift();
 			const dynamicWebhooks = await Db.collections.Webhook?.find({ webhookId, method: httpMethod, pathLength: pathElements.length });
-			if (dynamicWebhooks === undefined) {
+			if (dynamicWebhooks === undefined || dynamicWebhooks.length === 0) {
 				// The requested webhook is not registered
 				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 			}
-			// set webhook to the first webhook result
-			// if more results have been returned choose the one with the most route-matches
-			webhook = dynamicWebhooks[0];
-			if (dynamicWebhooks.length > 1) {
-				let maxMatches = 0;
-				const pathElementsSet = new Set(pathElements);
-				dynamicWebhooks.forEach(dynamicWebhook => {
-					const intersection =
-						dynamicWebhook.webhookPath
-						.split('/')
-						.reduce((acc, element) => pathElementsSet.has(element) ? acc += 1 : acc, 0);
 
-					if (intersection > maxMatches) {
-						maxMatches = intersection;
-						webhook = dynamicWebhook;
-					}
-				});
-				if (maxMatches === 0) {
-					throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+			let maxMatches = 0;
+			const pathElementsSet = new Set(pathElements);
+			// check if static elements match in path
+			// if more results have been returned choose the one with the most static-route matches
+			dynamicWebhooks.forEach(dynamicWebhook => {
+				const staticElements = dynamicWebhook.webhookPath.split('/').filter(ele => !ele.startsWith(':'));
+				const allStaticExist = staticElements.every(staticEle => pathElementsSet.has(staticEle));
+
+				if (allStaticExist && staticElements.length > maxMatches) {
+					maxMatches = staticElements.length;
+					webhook = dynamicWebhook;
 				}
+				// handle routes with no static elements
+				else if (staticElements.length === 0 && !webhook) {
+					webhook = dynamicWebhook;
+				}
+			});
+			if (webhook === undefined) {
+				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 			}
 
-			path = webhook.webhookPath;
+			path = webhook!.webhookPath;
 			// extracting params from path
-			webhook.webhookPath.split('/').forEach((ele, index) => {
+			webhook!.webhookPath.split('/').forEach((ele, index) => {
 				if (ele.startsWith(':')) {
 					// write params to req.params
 					req.params[ele.slice(1)] = pathElements[index];
@@ -283,7 +295,7 @@ export class ActiveWorkflowRunner {
 			path = node.parameters.path as string;
 
 			if (node.parameters.path === undefined) {
-				path = workflow.expression.getSimpleParameterValue(node, webhookData.webhookDescription['path']) as string | undefined;
+				path = workflow.expression.getSimpleParameterValue(node, webhookData.webhookDescription['path'], mode) as string | undefined;
 
 				if (path === undefined) {
 					// TODO: Use a proper logger
@@ -292,7 +304,7 @@ export class ActiveWorkflowRunner {
 				}
 			}
 
-			const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookData.webhookDescription['isFullPath'], false) as boolean;
+			const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookData.webhookDescription['isFullPath'], mode, false) as boolean;
 
 			const webhook = {
 				workflowId: webhookData.workflowId,
@@ -303,6 +315,9 @@ export class ActiveWorkflowRunner {
 
 			if (webhook.webhookPath.startsWith('/')) {
 				webhook.webhookPath = webhook.webhookPath.slice(1);
+			}
+			if (webhook.webhookPath.endsWith('/')) {
+				webhook.webhookPath = webhook.webhookPath.slice(0, -1);
 			}
 
 			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
@@ -333,10 +348,7 @@ export class ActiveWorkflowRunner {
 				// TODO check if there is standard error code for duplicate key violation that works
 				// with all databases
 				if (error.name === 'QueryFailedError') {
-					errorMessage = error.parameters.length === 5
-					? `Node [${webhook.node}] can't be saved, please duplicate [${webhook.node}] and delete the currently existing one.`
-					: `The webhook path [${webhook.webhookPath}] and method [${webhook.method}] already exist.`;
-
+					errorMessage = `The webhook path [${webhook.webhookPath}] and method [${webhook.method}] already exist.`;
 				} else if (error.detail) {
 					// it's a error runnig the webhook methods (checkExists, create)
 					errorMessage = error.detail;

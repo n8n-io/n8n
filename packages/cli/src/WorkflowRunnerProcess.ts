@@ -2,10 +2,12 @@
 import {
 	CredentialsOverwrites,
 	CredentialTypes,
+	Db,
 	ExternalHooks,
 	IWorkflowExecutionDataProcessWithExecution,
 	NodeTypes,
 	WorkflowExecuteAdditionalData,
+	WorkflowHelpers,
 } from './';
 
 import {
@@ -15,21 +17,29 @@ import {
 
 import {
 	IDataObject,
+	IExecuteData,
+	IExecuteWorkflowInfo,
 	IExecutionError,
+	INodeExecutionData,
 	INodeType,
 	INodeTypeData,
 	IRun,
+	IRunExecutionData,
 	ITaskData,
+	IWorkflowExecuteAdditionalData,
 	IWorkflowExecuteHooks,
 	Workflow,
 	WorkflowHooks,
 } from 'n8n-workflow';
+
+import * as config from '../config';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
 	startedAt = new Date();
 	workflow: Workflow | undefined;
 	workflowExecute: WorkflowExecute | undefined;
+	executionIdCallback: (executionId: string) => void | undefined;
 
 
 	async runWorkflow(inputData: IWorkflowExecutionDataProcessWithExecution): Promise<IRun> {
@@ -74,9 +84,39 @@ export class WorkflowRunnerProcess {
 		const externalHooks = ExternalHooks();
 		await externalHooks.init();
 
-		this.workflow = new Workflow({ id: this.data.workflowData.id as string | undefined, name: this.data.workflowData.name, nodes: this.data.workflowData!.nodes, connections: this.data.workflowData!.connections, active: this.data.workflowData!.active, nodeTypes, staticData: this.data.workflowData!.staticData, settings: this.data.workflowData!.settings});
+		// This code has been split into 3 ifs just to make it easier to understand
+		// Can be made smaller but in the end it will make it impossible to read.
+		if (inputData.workflowData.settings !== undefined && inputData.workflowData.settings.saveExecutionProgress === true) {
+			// Workflow settings specifying it should save
+			await Db.init();
+		} else if (inputData.workflowData.settings !== undefined && inputData.workflowData.settings.saveExecutionProgress !== false && config.get('executions.saveExecutionProgress') as boolean) {
+			// Workflow settings not saying anything about saving but default settings says so
+			await Db.init();
+		} else if (inputData.workflowData.settings === undefined && config.get('executions.saveExecutionProgress') as boolean) {
+			// Workflow settings not saying anything about saving but default settings says so
+			await Db.init();
+		}
+
+		this.workflow = new Workflow({ id: this.data.workflowData.id as string | undefined, name: this.data.workflowData.name, nodes: this.data.workflowData!.nodes, connections: this.data.workflowData!.connections, active: this.data.workflowData!.active, nodeTypes, staticData: this.data.workflowData!.staticData, settings: this.data.workflowData!.settings });
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(this.data.credentials);
 		additionalData.hooks = this.getProcessForwardHooks();
+
+		const executeWorkflowFunction = additionalData.executeWorkflow;
+		additionalData.executeWorkflow = async (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[] | undefined): Promise<Array<INodeExecutionData[] | null> | IRun> => {
+			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(workflowInfo);
+			const runData = await WorkflowExecuteAdditionalData.getRunData(workflowData, inputData);
+			await sendToParentProcess('startExecution', { runData });
+			const executionId: string = await new Promise((resolve) => {
+				this.executionIdCallback = (executionId: string) => {
+					resolve(executionId);
+				};
+			});
+			const result: IRun = await executeWorkflowFunction(workflowInfo, additionalData, inputData, executionId, workflowData, runData);
+			await sendToParentProcess('finishExecution', { executionId, result });
+
+			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(result);
+			return returnData!.data!.main;
+		};
 
 		if (this.data.executionData !== undefined) {
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode, this.data.executionData);
@@ -134,8 +174,8 @@ export class WorkflowRunnerProcess {
 				},
 			],
 			nodeExecuteAfter: [
-				async (nodeName: string, data: ITaskData): Promise<void> => {
-					this.sendHookToParentProcess('nodeExecuteAfter', [nodeName, data]);
+				async (nodeName: string, data: ITaskData, executionData: IRunExecutionData): Promise<void> => {
+					this.sendHookToParentProcess('nodeExecuteAfter', [nodeName, data, executionData]);
 				},
 			],
 			workflowExecuteBefore: [
@@ -152,6 +192,9 @@ export class WorkflowRunnerProcess {
 
 		const preExecuteFunctions = WorkflowExecuteAdditionalData.hookFunctionsPreExecute();
 		for (const key of Object.keys(preExecuteFunctions)) {
+			if (hookFunctions[key] === undefined) {
+				hookFunctions[key] = [];
+			}
 			hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 		}
 
@@ -236,6 +279,8 @@ process.on('message', async (message: IProcessMessage) => {
 
 			// Stop process
 			process.exit();
+		} else if (message.type === 'executionId') {
+			workflowRunner.executionIdCallback(message.data.executionId);
 		}
 	} catch (error) {
 		// Catch all uncaught errors and forward them to parent process

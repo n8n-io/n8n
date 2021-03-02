@@ -19,7 +19,7 @@ export class Telegram implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Telegram',
 		name: 'telegram',
-		icon: 'file:telegram.png',
+		icon: 'file:telegram.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -201,6 +201,16 @@ export class Telegram implements INodeType {
 						description: 'Edit a text message',
 					},
 					{
+						name: 'Pin Chat Message',
+						value: 'pinChatMessage',
+						description: 'Pin a chat message',
+					},
+					{
+						name: 'Unpin Chat Message',
+						value: 'unpinChatMessage',
+						description: 'Unpin a chat message',
+					},
+					{
 						name: 'Send Animation',
 						value: 'sendAnimation',
 						description: 'Send an animated file',
@@ -219,6 +229,11 @@ export class Telegram implements INodeType {
 						name: 'Send Document',
 						value: 'sendDocument',
 						description: 'Send a document',
+					},
+					{
+						name: 'Send Location',
+						value: 'sendLocation',
+						description: 'Send a location',
 					},
 					{
 						name: 'Send Message',
@@ -266,12 +281,15 @@ export class Telegram implements INodeType {
 							'get',
 							'leave',
 							'member',
+							'pinChatMessage',
+							'unpinChatMessage',
 							'setDescription',
 							'setTitle',
 							'sendAnimation',
 							'sendAudio',
 							'sendChatAction',
 							'sendDocument',
+							'sendLocation',
 							'sendMessage',
 							'sendMediaGroup',
 							'sendPhoto',
@@ -288,6 +306,54 @@ export class Telegram implements INodeType {
 				description: 'Unique identifier for the target chat or username of the target<br />channel (in the format @channelusername).',
 			},
 
+			// ----------------------------------
+			//       message:pinChatMessage
+			// ----------------------------------
+			{
+				displayName: 'Message ID',
+				name: 'messageId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'pinChatMessage',
+							'unpinChatMessage',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				required: true,
+				description: 'Unique identifier of the message to pin or unpin.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'pinChatMessage',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Disable Notification',
+						name: 'disable_notification',
+						type: 'boolean',
+						default: false,
+						description: 'Do not send a notification to all chat members about the new pinned message.',
+					},
+				],
+			},
 
 			// ----------------------------------
 			//         chat
@@ -752,6 +818,55 @@ export class Telegram implements INodeType {
 
 
 			// ----------------------------------
+			//         message:sendLocation
+			// ----------------------------------
+			{
+				displayName: 'Latitude',
+				name: 'latitude',
+				type: 'number',
+				default: 0.0,
+				typeOptions: {
+					numberPrecision: 10,
+					minValue: -90,
+					maxValue: 90,
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'sendLocation',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				description: 'Location latitude',
+			},
+
+			{
+				displayName: 'Longitude',
+				name: 'longitude',
+				type: 'number',
+				typeOptions: {
+					numberPrecision: 10,
+					minValue: -180,
+					maxValue: 180,
+				},
+				default: 0.0,
+				displayOptions: {
+					show: {
+						operation: [
+							'sendLocation',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				description: 'Location longitude',
+			},
+
+			// ----------------------------------
 			//         message:sendMediaGroup
 			// ----------------------------------
 			{
@@ -939,7 +1054,7 @@ export class Telegram implements INodeType {
 
 
 			// ----------------------------------
-			//         message:editMessageText/sendAnimation/sendAudio/sendMessage/sendPhoto/sendSticker/sendVideo
+			//         message:editMessageText/sendAnimation/sendAudio/sendLocation/sendMessage/sendPhoto/sendSticker/sendVideo
 			// ----------------------------------
 
 			{
@@ -955,6 +1070,7 @@ export class Telegram implements INodeType {
 							'sendSticker',
 							'sendVideo',
 							'sendAudio',
+							'sendLocation',
 						],
 						resource: [
 							'message',
@@ -1280,6 +1396,7 @@ export class Telegram implements INodeType {
 							'sendAnimation',
 							'sendAudio',
 							'sendDocument',
+							'sendLocation',
 							'sendMessage',
 							'sendMediaGroup',
 							'sendPhoto',
@@ -1583,10 +1700,10 @@ export class Telegram implements INodeType {
 					body.title = this.getNodeParameter('title', i) as string;
 
 				}
-			// } else if (resource === 'bot') {
-			// 	if (operation === 'info') {
-			// 		endpoint = 'getUpdates';
-			// 	}
+				// } else if (resource === 'bot') {
+				// 	if (operation === 'info') {
+				// 		endpoint = 'getUpdates';
+				// 	}
 			} else if (resource === 'file') {
 
 				if (operation === 'get') {
@@ -1622,6 +1739,30 @@ export class Telegram implements INodeType {
 					// Add additional fields and replyMarkup
 					addAdditionalFields.call(this, body, i);
 
+				} else if (operation === 'pinChatMessage') {
+					// ----------------------------------
+					//        message:pinChatMessage
+					// ----------------------------------
+
+					endpoint = 'pinChatMessage';
+
+					body.chat_id = this.getNodeParameter('chatId', i) as string;
+					body.message_id = this.getNodeParameter('messageId', i) as string;
+
+					const { disable_notification } = this.getNodeParameter('additionalFields', i) as IDataObject;
+					if (disable_notification) {
+						body.disable_notification = true;
+					}
+
+				} else if (operation === 'unpinChatMessage') {
+					// ----------------------------------
+					//        message:unpinChatMessage
+					// ----------------------------------
+
+					endpoint = 'unpinChatMessage';
+
+					body.chat_id = this.getNodeParameter('chatId', i) as string;
+					body.message_id = this.getNodeParameter('messageId', i) as string;
 
 				} else if (operation === 'sendAnimation') {
 					// ----------------------------------
@@ -1669,6 +1810,20 @@ export class Telegram implements INodeType {
 
 					body.chat_id = this.getNodeParameter('chatId', i) as string;
 					body.document = this.getNodeParameter('file', i) as string;
+
+					// Add additional fields and replyMarkup
+					addAdditionalFields.call(this, body, i);
+
+				} else if (operation === 'sendLocation') {
+					// ----------------------------------
+					//         message:sendLocation
+					// ----------------------------------
+
+					endpoint = 'sendLocation';
+
+					body.chat_id = this.getNodeParameter('chatId', i) as string;
+					body.latitude = this.getNodeParameter('latitude', i) as string;
+					body.longitude = this.getNodeParameter('longitude', i) as string;
 
 					// Add additional fields and replyMarkup
 					addAdditionalFields.call(this, body, i);

@@ -45,8 +45,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
-			//@ts-ignore
-			return await this.helpers.request(options);
+			return await this.helpers.request!(options);
 		} else {
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'googleDriveOAuth2Api', options);
@@ -140,6 +139,5 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 		json: true,
 	};
 
-	//@ts-ignore
-	return this.helpers.request(options);
+	return this.helpers.request!(options);
 }

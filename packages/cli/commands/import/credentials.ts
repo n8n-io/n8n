@@ -4,6 +4,11 @@ import {
 } from '@oclif/command';
 
 import {
+	Credentials,
+	UserSettings,
+} from 'n8n-core';
+
+import {
 	Db,
 	GenericHelpers,
 } from '../../src';
@@ -64,7 +69,15 @@ export class ImportCredentialsCommand extends Command {
 					throw new Error(`File does not seem to contain credentials.`);
 				}
 
+				const encryptionKey = await UserSettings.getEncryptionKey();
+				if (encryptionKey === undefined) {
+					throw new Error('No encryption key got found to encrypt the credentials!');
+				}
 				for (i = 0; i < fileContents.length; i++) {
+					if (typeof fileContents[i].data === 'object') {
+						// plain data / decrypted input. Should be encrypted first.
+						Credentials.prototype.setData.call(fileContents[i], fileContents[i].data, encryptionKey);
+					}
 					await Db.collections.Credentials!.save(fileContents[i]);
 				}
 			}

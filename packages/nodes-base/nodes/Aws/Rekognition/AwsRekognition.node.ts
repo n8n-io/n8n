@@ -12,6 +12,7 @@ import {
 
 import {
 	awsApiRequestREST,
+	keysTPascalCase,
 } from './GenericFunctions';
 
 export class AwsRekognition implements INodeType {
@@ -66,6 +67,16 @@ export class AwsRekognition implements INodeType {
 				displayName: 'Type',
 				name: 'type',
 				type: 'options',
+				displayOptions: {
+					show: {
+						operation: [
+							'analyze',
+						],
+						resource: [
+							'image',
+						],
+					},
+				},
 				options: [
 					{
 						name: 'Detect Faces',
@@ -78,6 +89,10 @@ export class AwsRekognition implements INodeType {
 					{
 						name: 'Detect Moderation Labels',
 						value: 'detectModerationLabels',
+					},
+					{
+						name: 'Detect Text',
+						value: 'detectText',
 					},
 					{
 						name: 'Recognize Celebrity',
@@ -186,6 +201,59 @@ export class AwsRekognition implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Regions of Interest',
+						name: 'regionsOfInterestUi',
+						type: 'fixedCollection',
+						default: '',
+						placeholder: 'Add Region of Interest',
+						displayOptions: {
+							show: {
+								'/type': [
+									'detectText',
+								],
+							},
+						},
+						typeOptions: {
+							multipleValues: true,
+						},
+						options: [
+							{
+								name: 'regionsOfInterestValues',
+								displayName: 'Region of Interest',
+								values: [
+									{
+										displayName: 'Height',
+										name: 'height',
+										type: 'number',
+										description: 'Height of the bounding box as a ratio of the overall image height.',
+										default: 0,
+									},
+									{
+										displayName: 'Left',
+										name: 'left',
+										type: 'number',
+										description: 'Left coordinate of the bounding box as a ratio of overall image width.',
+										default: 0,
+									},
+									{
+										displayName: 'Top',
+										name: 'top',
+										type: 'number',
+										description: 'Top coordinate of the bounding box as a ratio of overall image height.',
+										default: 0,
+									},
+									{
+										displayName: 'Width',
+										name: 'Width',
+										type: 'number',
+										description: 'Width of the bounding box as a ratio of the overall image width.',
+										default: 0,
+									},
+								],
+							},
+						],
+					},
+					{
 						displayName: 'Version',
 						name: 'version',
 						displayOptions: {
@@ -198,6 +266,46 @@ export class AwsRekognition implements INodeType {
 						type: 'string',
 						default: '',
 						description: 'If the bucket is versioning enabled, you can specify the object version',
+					},
+					{
+						displayName: 'Word Filter',
+						name: 'wordFilterUi',
+						type: 'collection',
+						default: '',
+						placeholder: 'Add Word Filter',
+						displayOptions: {
+							show: {
+								'/type': [
+									'detectText',
+								],
+							},
+						},
+						typeOptions: {
+							multipleValues: false,
+						},
+						options: [
+							{
+								displayName: 'Min Bounding Box Height',
+								name: 'MinBoundingBoxHeight',
+								type: 'number',
+								description: 'Sets the minimum height of the word bounding box. Words with bounding box heights lesser than this value will be excluded from the result. Value is relative to the video frame height.',
+								default: 0,
+							},
+							{
+								displayName: 'Min Bounding Box Width',
+								name: 'MinBoundingBoxWidth',
+								type: 'number',
+								description: 'Sets the minimum width of the word bounding box. Words with bounding boxes widths lesser than this value will be excluded from the result. Value is relative to the video frame width.',
+								default: 0,
+							},
+							{
+								displayName: 'Min Confidence',
+								name: 'MinConfidence',
+								type: 'number',
+								description: 'Sets the confidence of word detection. Words with detection confidence below this will be excluded from the result. Values should be between 50 and 100 as Text in Video will not return any result below 50.',
+								default: 0,
+							},
+						],
 					},
 					{
 						displayName: 'Max Labels',
@@ -280,7 +388,7 @@ export class AwsRekognition implements INodeType {
 
 					let action = undefined;
 
-					let body: IDataObject = {};
+					const body: IDataObject = {};
 
 					const type = this.getNodeParameter('type', 0) as string;
 
@@ -324,57 +432,72 @@ export class AwsRekognition implements INodeType {
 						action = 'RekognitionService.RecognizeCelebrities';
 					}
 
-					const binaryData = this.getNodeParameter('binaryData', 0) as boolean;
+					if (type === 'detectText') {
+						action = 'RekognitionService.DetectText';
 
-					if (binaryData) {
+						body.Filters = {};
 
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+						const box = (additionalFields.regionsOfInterestUi as IDataObject || {}).regionsOfInterestValues as IDataObject[] || [];
 
-						if (items[i].binary === undefined) {
-							throw new Error('No binary data exists on item!');
-						}
-
-						if ((items[i].binary as IBinaryKeyData)[binaryPropertyName] === undefined) {
-							throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
-						}
-
-						const binaryPropertyData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
-
-						body = {
-							Image: {
-								Bytes: binaryPropertyData.data,
-							},
-						};
-
-					} else {
-
-						const bucket = this.getNodeParameter('bucket', i) as string;
-
-						const name = this.getNodeParameter('name', i) as string;
-
-						body = {
-							Image: {
-								S3Object: {
-									Bucket: bucket,
-									Name: name,
-								},
-							},
-						};
-
-						if (additionalFields.version) {
+						if (box.length !== 0) {
 							//@ts-ignore
-							body.Image.S3Object.Version = additionalFields.version as string;
+							body.Filters.RegionsOfInterest = box.map((box: IDataObject) => {
+								return { BoundingBox: keysTPascalCase(box) };
+							});
 						}
+
+						const wordFilter = additionalFields.wordFilterUi as IDataObject || {};
+						if (Object.keys(wordFilter).length !== 0) {
+							//@ts-ignore
+							body.Filters.WordFilter = keysTPascalCase(wordFilter);
+						}
+
+						const binaryData = this.getNodeParameter('binaryData', 0) as boolean;
+
+						if (binaryData) {
+
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+
+							if (items[i].binary === undefined) {
+								throw new Error('No binary data exists on item!');
+							}
+
+							if ((items[i].binary as IBinaryKeyData)[binaryPropertyName] === undefined) {
+								throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+							}
+
+							const binaryPropertyData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+
+							Object.assign(body, {
+								Image: {
+									Bytes: binaryPropertyData.data,
+								},
+							});
+
+						} else {
+
+							const bucket = this.getNodeParameter('bucket', i) as string;
+
+							const name = this.getNodeParameter('name', i) as string;
+
+							Object.assign(body, {
+								Image: {
+									S3Object: {
+										Bucket: bucket,
+										Name: name,
+									},
+								},
+							});
+
+							if (additionalFields.version) {
+								//@ts-ignore
+								body.Image.S3Object.Version = additionalFields.version as string;
+							}
+						}
+						responseData = await awsApiRequestREST.call(this, 'rekognition', 'POST', '', JSON.stringify(body), {}, { 'X-Amz-Target': action, 'Content-Type': 'application/x-amz-json-1.1' });
 					}
-
-					responseData = await awsApiRequestREST.call(this, 'rekognition', 'POST', '', JSON.stringify(body), {}, { 'X-Amz-Target': action, 'Content-Type': 'application/x-amz-json-1.1' });
-
-					// if (property !== undefined) {
-					// 	responseData = responseData[property as string];
-					// }
 				}
 			}
-
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
