@@ -62,18 +62,12 @@ export async function instagramBasicDisplayApiRequestAllItems(
 	let responseData;
 	const returnData: IDataObject[] = [];
 
-	const type = this.getNodeParameter('type', 0) as 'userMedia' | 'albumMedia' | 'fieldsAndEdges';
 	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
 	const limit = this.getNodeParameter('limit', 0, 0) as number;
 
 	do {
 		responseData = await instagramBasicDisplayApiRequest.call(this, method, endpoint, qs, body);
-
-		if (type === 'fieldsAndEdges') {
-			returnData.push(responseData);
-		} else if (type === 'userMedia' || type === 'albumMedia') {
-			returnData.push(...responseData.data);
-		}
+		returnData.push(...responseData.data);
 
 		if (!returnAll && returnData.length > limit) {
 			return responseData.data.slice(0, limit);

@@ -151,7 +151,6 @@ export const mediaFields = [
 			show: {
 				resource: [
 					'media',
-					'fieldsAndEdges',
 				],
 				operation: [
 					'getAll',
