@@ -389,7 +389,8 @@ export class Wise implements INodeType {
 						//        transfer: delete
 						// ----------------------------------
 
-						// ...
+						const transferId = this.getNodeParameter('transferId', i);
+						responseData = await wiseApiRequest.call(this, 'PUT', `v1/transfers/${transferId}/cancel`, {}, {});
 
 					} else if (operation === 'get') {
 
@@ -397,7 +398,8 @@ export class Wise implements INodeType {
 						//        transfer: get
 						// ----------------------------------
 
-						// ...
+						const transferId = this.getNodeParameter('transferId', i);
+						responseData = await wiseApiRequest.call(this, 'GET', `v1/transfers/${transferId}`, {}, {});
 
 					} else if (operation === 'getAll') {
 

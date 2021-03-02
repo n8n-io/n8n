@@ -15,6 +15,10 @@ export const transferOperations = [
 				value: 'create',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 			},
@@ -124,5 +128,49 @@ export const transferFields = [
 				description: 'Reference text to show in the recipient\'s bank statement',
 			},
 		],
+	},
+
+	// ----------------------------------
+	//         transfer: delete
+	// ----------------------------------
+	{
+		displayName: 'Transfer ID',
+		name: 'transferId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'ID of the transfer to delete.',
+		displayOptions: {
+			show: {
+				resource: [
+					'transfer',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------
+	//         transfer: get
+	// ----------------------------------
+	{
+		displayName: 'Transfer ID',
+		name: 'transferId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'ID of the transfer to retrieve.',
+		displayOptions: {
+			show: {
+				resource: [
+					'transfer',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
 	},
 ] as INodeProperties[];
