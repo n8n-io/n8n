@@ -522,9 +522,9 @@ export class Dropbox implements INodeType {
 
 					endpoint = 'https://content.dropboxapi.com/2/files/upload';
 
-					if (this.getNodeParameter('binaryData', i) === true) {
+					options = { json: false };
 
-						options = { json: false };
+					if (this.getNodeParameter('binaryData', i) === true) {
 
 						// Is binary file to upload
 						const item = items[i];
