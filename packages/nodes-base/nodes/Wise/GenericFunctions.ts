@@ -21,8 +21,8 @@ export async function wiseApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	qs: IDataObject,
-	body: IDataObject,
+	qs = {},
+	body = {},
 ) {
 
 	const { apiToken, environment } = this.getCredentials('wiseApi') as {

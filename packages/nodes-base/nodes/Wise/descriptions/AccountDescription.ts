@@ -42,11 +42,6 @@ export const accountFields = [
 				description: 'Balances for all account currencies of this user.',
 			},
 			{
-				name: 'Borderless Accounts',
-				value: 'borderlessAccounts',
-				description: 'Borderless accounts held by this user.',
-			},
-			{
 				name: 'Currencies',
 				value: 'currencies',
 				description: 'Currencies in the borderless account of this user.',
