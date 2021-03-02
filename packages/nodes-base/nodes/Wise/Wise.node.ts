@@ -271,17 +271,18 @@ export class Wise implements INodeType {
 
 						// https://api-docs.transferwise.com/#user-profiles-get-by-id
 
-						// ...
+						const profileId = this.getNodeParameter('profileId', i);
+						responseData = await wiseApiRequest.call(this, 'GET', `v1/profiles/${profileId}`);
 
 					} else if (operation === 'getAll') {
 
 						// ----------------------------------
-						//          profile: get
+						//         profile: getAll
 						// ----------------------------------
 
 						// https://api-docs.transferwise.com/#user-profiles-list
 
-						// ...
+						responseData = await wiseApiRequest.call(this, 'GET', 'v1/profiles');
 
 					}
 

@@ -14,6 +14,10 @@ export const profileOperations = [
 				name: 'Get',
 				value: 'get',
 			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+			},
 		],
 		displayOptions: {
 			show: {
@@ -29,5 +33,25 @@ export const profileFields = [
 	// ----------------------------------
 	//         profile: get
 	// ----------------------------------
-
+	{
+		displayName: 'Profile ID',
+		name: 'profileId',
+		type: 'options',
+		required: true,
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getProfiles',
+		},
+		description: 'ID of the user profile to retrieve.',
+		displayOptions: {
+			show: {
+				resource: [
+					'profile',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
 ] as INodeProperties[];
