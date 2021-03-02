@@ -1840,7 +1840,11 @@ export class GoogleDrive implements INodeType {
 						}
 					}
 
-					const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/copy`, body);
+					const qs = {
+						supportsAllDrives: true
+					}
+					
+					const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/copy`, body, qs);
 
 					returnData.push(response as IDataObject);
 
