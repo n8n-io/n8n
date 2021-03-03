@@ -63,7 +63,7 @@ export const leadFields = [
 		name: 'email',
 		type: 'string',
 		default: '',
-		description: 'Email of the lead to retrieve.',
+		description: 'Email of the lead to create.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -120,5 +120,102 @@ export const leadFields = [
 				description: 'Last name of the lead to create.',
 			},
 		],
+	},
+
+	// ----------------------------------
+	//        lead: delete
+	// ----------------------------------
+	{
+		displayName: 'Campaign ID',
+		name: 'campaignId',
+		type: 'string',
+		default: '',
+		description: 'ID of the campaign to remove the lead from.',
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		default: '',
+		description: 'Email of the lead to delete.',
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------
+	//           lead: get
+	// ----------------------------------
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		default: '',
+		description: 'Email of the lead to retrieve.',
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------
+	//        lead: unsubscribe
+	// ----------------------------------
+	{
+		displayName: 'Campaign ID',
+		name: 'campaignId',
+		type: 'string',
+		default: '',
+		description: 'ID of the campaign to unsubscribe the lead from.',
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'unsubscribe',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		default: '',
+		description: 'Email of the lead to unsubscribe.',
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'unsubscribe',
+				],
+			},
+		},
 	},
 ] as INodeProperties[];
