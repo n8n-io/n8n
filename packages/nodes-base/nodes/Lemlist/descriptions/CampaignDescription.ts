@@ -11,10 +11,6 @@ export const campaignOperations = [
 		description: 'Operation to perform',
 		options: [
 			{
-				name: 'Get',
-				value: 'get',
-			},
-			{
 				name: 'Get All',
 				value: 'getAll',
 			},
@@ -30,31 +26,6 @@ export const campaignOperations = [
 ] as INodeProperties[];
 
 export const campaignFields = [
-	// ----------------------------------
-	//        campaign: get
-	// ----------------------------------
-	{
-		displayName: 'Campaign ID',
-		name: 'campaignId',
-		type: 'options',
-		required: true,
-		default: [],
-		typeOptions: {
-			loadOptionsMethod: 'getCampaigns',
-		},
-		description: 'ID of the campaign to retrieve.',
-		displayOptions: {
-			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'get',
-				],
-			},
-		},
-	},
-
 	// ----------------------------------
 	//        campaign: getAll
 	// ----------------------------------

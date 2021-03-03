@@ -151,12 +151,7 @@ export class Lemlist implements INodeType {
 					//                             campaign
 					// *********************************************************************
 
-					if (operation === 'get') {
-
-						const campaignId = this.getNodeParameter('campaignId', i);
-						responseData = await lemlistApiRequest.call(this, 'GET', `campaigns/${campaignId}/export`);
-
-					} else if (operation === 'getAll') {
+					if (operation === 'getAll') {
 
 						// ----------------------------------
 						//        campaign: getAll
