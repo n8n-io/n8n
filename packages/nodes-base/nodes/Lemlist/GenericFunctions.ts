@@ -66,3 +66,28 @@ export async function lemlistApiRequest(
 		throw error;
 	}
 }
+
+/**
+ * Make an authenticated API request to Lemlist and return all results.
+ */
+export async function lemlistApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	method: string,
+	endpoint: string,
+) {
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	const limit = 1000;
+	let offset = 0;
+
+	do {
+		responseData = await lemlistApiRequest.call(this, method, endpoint);
+		returnData.push(...responseData);
+		offset += limit;
+	} while (
+		responseData.length !== 0
+	);
+	return returnData;
+}

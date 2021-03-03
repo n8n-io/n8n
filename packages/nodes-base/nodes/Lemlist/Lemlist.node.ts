@@ -24,6 +24,7 @@ import {
 
 import {
 	lemlistApiRequest,
+	lemlistApiRequestAllItems,
 } from './GenericFunctions';
 
 import {
@@ -298,9 +299,17 @@ export class Lemlist implements INodeType {
 
 						// https://developer.lemlist.com/#list-all-unsubscribes
 
-						responseData = await lemlistApiRequest.call(this, 'GET', 'unsubscribes');
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						// TODO returnall / limit
+						if (returnAll) {
+							responseData = await lemlistApiRequestAllItems.call(this, 'GET', 'unsubscribes');
+						} else {
+							const qs = {
+								limit: this.getNodeParameter('limit', i) as number,
+							};
+							responseData = await lemlistApiRequest.call(this, 'GET', 'unsubscribes', qs);
+						}
+
 
 					}
 
@@ -308,8 +317,7 @@ export class Lemlist implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					// TODO
-					returnData.push({ error: 'TODO' });
+					returnData.push({ error: error.error });
 					continue;
 				}
 
