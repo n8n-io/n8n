@@ -95,44 +95,18 @@ export class Lemlist implements INodeType {
 		],
 	};
 
-	// methods = {
-	// 	loadOptions: {
-	// 		async getBorderlessAccounts(this: ILoadOptionsFunctions) {
-	// 			const qs = {
-	// 				profileId: this.getNodeParameter('profileId', 0),
-	// 			};
-
-	// 			const accounts = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts', qs);
-
-	// 			return accounts.map(({ id, balances }: BorderlessAccount ) => ({
-	// 				name: balances.map(({ currency }) => currency).join(' - '),
-	// 				value: id,
-	// 			}));
-	// 		},
-
-	// 		async getProfiles(this: ILoadOptionsFunctions) {
-	// 			const profiles = await wiseApiRequest.call(this, 'GET', 'v1/profiles');
-
-	// 			return profiles.map(({ id, type }: Profile) => ({
-	// 				name: type.charAt(0).toUpperCase() + type.slice(1),
-	// 				value: id,
-	// 			}));
-	// 		},
-
-	// 		async getRecipients(this: ILoadOptionsFunctions) {
-	// 			const qs = {
-	// 				profileId: this.getNodeParameter('profileId', 0),
-	// 			};
-
-	// 			const recipients = await wiseApiRequest.call(this, 'GET', 'v1/accounts', qs);
-
-	// 			return recipients.map(({ id, accountHolderName }: Recipient) => ({
-	// 				name: accountHolderName,
-	// 				value: id,
-	// 			}));
-	// 		},
-	// 	},
-	// };
+	methods = {
+		loadOptions: {
+			async getCampaigns(this: ILoadOptionsFunctions) {
+				const campaigns = await lemlistApiRequest.call(this, 'GET', 'campaigns');
+				console.log(campaigns);
+				return campaigns.map(({ _id, name }: { _id: string, name: string } ) => ({
+					name,
+					value: _id,
+				}));
+			},
+		},
+	};
 
 	async execute(this: IExecuteFunctions) {
 		const items = this.getInputData();

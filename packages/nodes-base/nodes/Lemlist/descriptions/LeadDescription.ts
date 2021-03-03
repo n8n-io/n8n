@@ -44,8 +44,12 @@ export const leadFields = [
 	{
 		displayName: 'Campaign ID',
 		name: 'campaignId',
-		type: 'string',
-		default: '',
+		type: 'options',
+		required: true,
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getCampaigns',
+		},
 		description: 'ID of the campaign to create the lead under.',
 		displayOptions: {
 			show: {
@@ -128,8 +132,12 @@ export const leadFields = [
 	{
 		displayName: 'Campaign ID',
 		name: 'campaignId',
-		type: 'string',
-		default: '',
+		type: 'options',
+		required: true,
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getCampaigns',
+		},
 		description: 'ID of the campaign to remove the lead from.',
 		displayOptions: {
 			show: {
@@ -187,8 +195,12 @@ export const leadFields = [
 	{
 		displayName: 'Campaign ID',
 		name: 'campaignId',
-		type: 'string',
-		default: '',
+		type: 'options',
+		required: true,
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getCampaigns',
+		},
 		description: 'ID of the campaign to unsubscribe the lead from.',
 		displayOptions: {
 			show: {

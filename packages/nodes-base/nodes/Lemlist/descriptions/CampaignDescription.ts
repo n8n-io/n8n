@@ -36,8 +36,12 @@ export const campaignFields = [
 	{
 		displayName: 'Campaign ID',
 		name: 'campaignId',
-		type: 'string',
-		default: '',
+		type: 'options',
+		required: true,
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getCampaigns',
+		},
 		description: 'ID of the campaign to retrieve.',
 		displayOptions: {
 			show: {
