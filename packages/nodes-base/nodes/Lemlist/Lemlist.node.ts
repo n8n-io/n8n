@@ -28,6 +28,7 @@ import {
 
 import {
 	isEmpty,
+	omit,
 } from 'lodash';
 
 export class Lemlist implements INodeType {
@@ -152,7 +153,7 @@ export class Lemlist implements INodeType {
 					//                             activity
 					// *********************************************************************
 
-					if (operation === 'get') {
+					if (operation === 'getAll') {
 
 						// ----------------------------------
 						//        activity: getAll
@@ -161,10 +162,10 @@ export class Lemlist implements INodeType {
 						// https://developer.lemlist.com/#activities
 
 						const qs = {} as IDataObject;
-						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const filters = this.getNodeParameter('filters', i);
 
-						if (!isEmpty(additionalFields)) {
-							Object.assign(qs, additionalFields);
+						if (!isEmpty(filters)) {
+							Object.assign(qs, filters);
 						}
 
 						responseData = await lemlistApiRequest.call(this, 'GET', 'activities', qs);
@@ -207,7 +208,7 @@ export class Lemlist implements INodeType {
 					//                             lead
 					// *********************************************************************
 
-					if (operation === 'get') {
+					if (operation === 'create') {
 
 						// ----------------------------------
 						//          lead: create
@@ -216,22 +217,24 @@ export class Lemlist implements INodeType {
 						// https://developer.lemlist.com/#add-a-lead-in-a-campaign
 
 						const qs = {} as IDataObject;
-						const { deduplicate } = this.getNodeParameter('additionalFields', i) as { deduplicate: boolean };
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						if (deduplicate !== undefined) {
-							qs.deduplicate = deduplicate;
+						if (additionalFields.deduplicate !== undefined) {
+							qs.deduplicate = additionalFields.deduplicate;
 						}
 
 						const body = {} as IDataObject;
-						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						if (!isEmpty(additionalFields)) {
-							Object.assign(body, additionalFields);
+						const remainingAdditionalFields = omit(additionalFields, 'deduplicate');
+
+						if (!isEmpty(remainingAdditionalFields)) {
+							Object.assign(body, remainingAdditionalFields);
 						}
 
 						const campaignId = this.getNodeParameter('campaignId', i);
 						const email = this.getNodeParameter('email', i);
 						const endpoint = `campaigns/${campaignId}/leads/${email}`;
+
 						responseData = await lemlistApiRequest.call(this, 'POST', endpoint, qs, body);
 
 					} else if (operation === 'delete') {

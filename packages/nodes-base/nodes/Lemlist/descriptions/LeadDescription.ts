@@ -39,7 +39,86 @@ export const leadOperations = [
 
 export const leadFields = [
 	// ----------------------------------
-	//        lead: get
+	//        lead: create
 	// ----------------------------------
-
+	{
+		displayName: 'Campaign ID',
+		name: 'campaignId',
+		type: 'string',
+		default: '',
+		description: 'ID of the campaign to create the lead under.',
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		default: '',
+		description: 'Email of the lead to retrieve.',
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Company Name',
+				name: 'companyName',
+				type: 'string',
+				default: '',
+				description: 'Company name of the lead to create.',
+			},
+			{
+				displayName: 'Deduplicate',
+				name: 'deduplicate',
+				type: 'boolean',
+				default: false,
+				description: 'Do not insert if this email is already present in another campaign.',
+			},
+			{
+				displayName: 'First Name',
+				name: 'firstName',
+				type: 'string',
+				default: '',
+				description: 'First name of the lead to create.',
+			},
+			{
+				displayName: 'Last Name',
+				name: 'lastName',
+				type: 'string',
+				default: '',
+				description: 'Last name of the lead to create.',
+			},
+		],
+	},
 ] as INodeProperties[];
