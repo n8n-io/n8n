@@ -35,7 +35,44 @@ export const unsubscribeOperations = [
 
 export const unsubscribeFields = [
 	// ----------------------------------
-	//        unsubscribe: get
+	//        unsubscribe: create
 	// ----------------------------------
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		default: '',
+		description: 'Email to add to the unsubscribes.',
+		displayOptions: {
+			show: {
+				resource: [
+					'unsubscribe',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
 
+	// ----------------------------------
+	//        unsubscribe: delete
+	// ----------------------------------
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		default: '',
+		description: 'Email to delete from the unsubscribes.',
+		displayOptions: {
+			show: {
+				resource: [
+					'unsubscribe',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
 ] as INodeProperties[];
