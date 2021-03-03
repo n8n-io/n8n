@@ -11,7 +11,6 @@ import pg = require('pg-promise/typescript/pg-subset');
  * @returns
  */
 export function getItemsCopy(items: INodeExecutionData[], properties: string[]): IDataObject[] {
-	// Prepare the data to insert
 	let newItem: IDataObject;
 	return items.map(item => {
 		newItem = {};
@@ -99,8 +98,7 @@ export async function pgInsert(
 	const schema = getNodeParam('schema', 0) as string;
 	const returnFields = ((getNodeParam('returnFields', 0) as string).split(',') as string[])
 		.map(value => value.trim()).filter(value => !!value);
-	const columnString = getNodeParam('columns', 0) as string;
-	const columns = columnString.split(',').map(column => column.trim());
+	const columns = (getNodeParam('columns', 0) as string).split(',').map(column => column.trim());
 	const cs = new pgp.helpers.ColumnSet(columns);
 	const te = new pgp.helpers.TableName({ table, schema });
 	
@@ -146,27 +144,42 @@ export async function pgUpdate(
 ): Promise<IDataObject[]> {
 	const table = getNodeParam('table', 0) as string;
 	const schema = getNodeParam('schema', 0) as string;
-	const updateKey = getNodeParam('updateKey', 0) as string;
-	const columnString = getNodeParam('columns', 0) as string;
-
-	const columns = columnString.split(',').map(column => column.trim());
+	const returnFields = ((getNodeParam('returnFields', 0) as string).split(',') as string[])
+		.map(value => value.trim()).filter(value => !!value);
+	const updateKeys = (getNodeParam('updateKey', 0) as string).split(',').map(column => column.trim());
+	const columns = (getNodeParam('columns', 0) as string).split(',').map(column => column.trim());
 
 	const te = new pgp.helpers.TableName({ table, schema });
-
-	// Make sure that the updateKey does also get queried
-	if (!columns.includes(updateKey)) {
-		columns.unshift(updateKey);
+	
+	updateKeys.forEach(updateKey => {
+		// Make sure that the updateKey does also get queried
+		if (!columns.includes(updateKey)) {
+			columns.unshift(updateKey);
+		}
+	});
+	
+	if(mode == 'normal' || mode == 'transaction') {
+		const query =
+			pgp.helpers.update(getItemsCopy(items, columns), columns, te)
+			+ ' WHERE ' + updateKeys.map(updateKey => 'v.' + updateKey + ' = t.' + updateKey).join(' AND ')
+			+ (returnFields.length ? ` RETURNING ${returnFields.join(',')}` : '');
+		if(mode == 'normal') return await db.manyOrNone(query);
+		return return db.tx(t => return t.manyOrNone(query));
+	} else if(mode == 'independently') {
+		const returning = (returnFields.length ? ` RETURNING ${returnFields.join(',')}` : '');
+		const where = ' WHERE ' + updateKeys.map(updateKey => 'v.' + updateKey + ' = t.' + updateKey).join(' AND ');
+		
+		return db.task(t => {
+			const result = [];
+			for (let i = 0; i < items.length; i++) {
+				try {
+					result.push(await t.manyOrNone(pgp.helpers.update(getItemCopy(items, columns), columns, te) + where + returning));
+				} catch(err) {
+					if(continueOnFail === false) throw err;
+					result.push({code: err.code, message: err.message});
+				}
+			}
+			return result;
+		});
 	}
-
-	// Prepare the data to update and copy it to be returned
-	const updateItems = getItemsCopy(items, columns);
-
-	// Generate the multi-row update query
-	const query =
-		pgp.helpers.update(updateItems, columns, te) + ' WHERE v.' + updateKey + ' = t.' + updateKey;
-
-	// Executing the query to update the data
-	await db.none(query);
-
-	return updateItems;
 }

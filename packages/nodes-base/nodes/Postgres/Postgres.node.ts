@@ -144,18 +144,6 @@ export class Postgres implements INodeType {
 				description:
 					'Comma separated list of the properties which should used as columns for the new rows.',
 			},
-			{
-				displayName: 'Return Fields',
-				name: 'returnFields',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: ['insert'],
-					},
-				},
-				default: '*',
-				description: 'Comma separated list of the fields that the operation will return',
-			},
 
 			// ----------------------------------
 			//         update
@@ -197,8 +185,7 @@ export class Postgres implements INodeType {
 				},
 				default: 'id',
 				required: true,
-				description:
-					'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+				description: 'Comma separated list of the properties which decides which rows in the database should be updated. Normally that would be "id".',
 			},
 			{
 				displayName: 'Columns',
@@ -213,6 +200,22 @@ export class Postgres implements INodeType {
 				placeholder: 'name,description',
 				description:
 					'Comma separated list of the properties which should used as columns for rows to update.',
+			},
+
+			// ----------------------------------
+			//         insert,update
+			// ----------------------------------
+			{
+				displayName: 'Return Fields',
+				name: 'returnFields',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['insert', 'update'],
+					},
+				},
+				default: '*',
+				description: 'Comma separated list of the fields that the operation will return',
 			},
 		],
 	};
