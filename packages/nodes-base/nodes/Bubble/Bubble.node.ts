@@ -11,6 +11,8 @@ import {
 
 import {
 	bubbleApiRequest,
+	bubbleApiRequestAllItems,
+	validateJSON,
 } from './GenericFunctions';
 
 import {
@@ -65,6 +67,7 @@ export class Bubble implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let responseData;
+		const qs: IDataObject = {};
 		const returnData: IDataObject[] = [];
 
 		for (let i = 0; i < items.length; i++) {
@@ -86,17 +89,17 @@ export class Bubble implements INodeType {
 					const typeNameInput = this.getNodeParameter('typeName', i) as string;
 					const typeName = typeNameInput.replace(/\s/g, '').toLowerCase();
 
-					const { pairs } = this.getNodeParameter('keysAndValues', i) as {
-						pairs: [
+					const { property } = this.getNodeParameter('properties', i) as {
+						property: [
 							{ key: string; value: string; },
 						],
 					};
 
 					const body = {} as IDataObject;
 
-					pairs.forEach(pair => body[pair.key] = pair.value);
+					property.forEach(data => body[data.key] = data.value);
 
-					responseData = await bubbleApiRequest.call(this, 'POST', `/obj/${typeName}`, {}, body);
+					responseData = await bubbleApiRequest.call(this, 'POST', `/obj/${typeName}`, body, {});
 
 				} else if (operation === 'delete') {
 
@@ -110,6 +113,7 @@ export class Bubble implements INodeType {
 
 					const endpoint = `/obj/${typeName}/${objectId}`;
 					responseData = await bubbleApiRequest.call(this, 'DELETE', endpoint, {}, {});
+					responseData = { success: true };
 
 				} else if (operation === 'get') {
 
@@ -123,6 +127,7 @@ export class Bubble implements INodeType {
 
 					const endpoint = `/obj/${typeName}/${objectId}`;
 					responseData = await bubbleApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = responseData.response;
 
 				} else if (operation === 'getAll') {
 
@@ -130,7 +135,41 @@ export class Bubble implements INodeType {
 					//         object: getAll
 					// ----------------------------------
 
-					// ...
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const typeNameInput = this.getNodeParameter('typeName', i) as string;
+					const typeName = typeNameInput.replace(/\s/g, '').toLowerCase();
+
+					const endpoint = `/obj/${typeName}`;
+
+					const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					if (jsonParameters === false) {
+						if (options.filters) {
+							const { filter } = options.filters as IDataObject;
+							qs.constraints = JSON.stringify(filter);
+						}
+					} else {
+						const filter = options.filtersJson as string;
+						const data = validateJSON(filter);
+						if (data === undefined) {
+							throw new Error('Filters must be a valid JSON');
+						}
+						qs.constraints = JSON.stringify(data);
+					}
+
+					if (options.sort) {
+						const { sortValue } = options.sort as IDataObject;
+						Object.assign(qs, sortValue);
+					}
+
+					if (returnAll === true) {
+						responseData = await bubbleApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+					} else {
+						qs.limit = this.getNodeParameter('limit', 0) as number;
+						responseData = await bubbleApiRequest.call(this, 'GET', endpoint, {}, qs);
+						responseData = responseData.response.results;
+					}
 
 				} else if (operation === 'update') {
 
@@ -141,17 +180,19 @@ export class Bubble implements INodeType {
 					const typeNameInput = this.getNodeParameter('typeName', i) as string;
 					const typeName = typeNameInput.replace(/\s/g, '').toLowerCase();
 					const objectId = this.getNodeParameter('objectId', i) as string;
-
-					const body = {
-						// ...
-					} as IDataObject;
-
 					const endpoint = `/obj/${typeName}/${objectId}`;
-					responseData = await bubbleApiRequest.call(this, 'PATCH', endpoint, {}, body);
+					const { property } = this.getNodeParameter('properties', i) as {
+						property: [
+							{ key: string; value: string; },
+						],
+					};
 
+					const body = {} as IDataObject;
+
+					property.forEach(data => body[data.key] = data.value);
+					responseData = await bubbleApiRequest.call(this, 'PATCH', endpoint, body, {});
+					responseData = { sucess: true };
 				}
-
-
 			}
 
 			Array.isArray(responseData)

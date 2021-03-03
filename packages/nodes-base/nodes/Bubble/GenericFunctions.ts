@@ -21,8 +21,8 @@ export async function bubbleApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	qs: IDataObject,
 	body: IDataObject,
+	qs: IDataObject,
 ) {
 
 	const { apiToken, appName, domain, environment, hosting } = this.getCredentials('bubbleApi') as {
@@ -57,12 +57,12 @@ export async function bubbleApiRequest(
 	}
 
 	try {
-		console.log(options);
 		return await this.helpers.request!(options);
 	} catch (error) {
-
-		// TODO
-
+		if (error?.response?.body?.body?.message) {
+			const errorMessage = error.response.body.body.message;
+			throw new Error(`Bubble.io error response [${error.statusCode}]: ${errorMessage}`);
+		}
 		throw error;
 	}
 }
@@ -74,21 +74,31 @@ export async function bubbleApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	qs: IDataObject,
 	body: IDataObject,
-	resource: string,
+	qs: IDataObject,
 ) {
+	const returnData: IDataObject[] = [];
 
+	let responseData;
+	qs.limit = 100;
+	do {
+		responseData = await bubbleApiRequest.call(this, method, endpoint, body, qs);
+		qs.cursor = responseData.cursor;
+		returnData.push.apply(returnData, responseData['response']['results']);
+	} while (
+		responseData.response.remaining !== 0
+	);
+
+	return returnData;
 }
 
-/**
- * Handles a Bubble listing by returning all items or up to a limit.
- */
-export async function handleListing(
-	this: IExecuteFunctions,
-	i: number,
-	endpoint: string,
-	resource: string,
-) {
-
+export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+	let result;
+	try {
+		result = JSON.parse(json!);
+	} catch (exception) {
+		result = undefined;
+	}
+	return result;
 }
+
