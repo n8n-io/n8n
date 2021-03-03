@@ -177,7 +177,12 @@ export class Lemlist implements INodeType {
 					//                             campaign
 					// *********************************************************************
 
-					if (operation === 'getAll') {
+					if (operation === 'get') {
+
+						const campaignId = this.getNodeParameter('campaignId', i);
+						responseData = await lemlistApiRequest.call(this, 'GET', `campaigns/${campaignId}/export`);
+
+					} else if (operation === 'getAll') {
 
 						// ----------------------------------
 						//        campaign: getAll
@@ -185,23 +190,13 @@ export class Lemlist implements INodeType {
 
 						// https://developer.lemlist.com/#list-all-campaigns
 
-						const { csvExport } = this.getNodeParameter('additionalFields', i) as { csvExport: boolean };
+						responseData = await lemlistApiRequest.call(this, 'GET', 'campaigns');
 
-						if (csvExport) {
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-							const campaignId = this.getNodeParameter('campaignId', i);
-							responseData = await lemlistApiRequest.call(this, 'GET', `campaigns/${campaignId}/export`);
-
-						} else {
-
-							responseData = await lemlistApiRequest.call(this, 'GET', 'campaigns');
-							console.log(responseData);
-							const returnAll = this.getNodeParameter('returnAll', i);
-							if (!returnAll) {
-								const limit = this.getNodeParameter('limit', i);
-								responseData = responseData.slice(0, limit);
-							}
-
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
+							responseData = responseData.slice(0, limit);
 						}
 
 					}

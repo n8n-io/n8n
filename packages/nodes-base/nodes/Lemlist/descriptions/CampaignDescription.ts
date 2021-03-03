@@ -11,6 +11,10 @@ export const campaignOperations = [
 		description: 'Operation to perform',
 		options: [
 			{
+				name: 'Get',
+				value: 'get',
+			},
+			{
 				name: 'Get All',
 				value: 'getAll',
 			},
@@ -26,6 +30,27 @@ export const campaignOperations = [
 ] as INodeProperties[];
 
 export const campaignFields = [
+	// ----------------------------------
+	//        campaign: get
+	// ----------------------------------
+	{
+		displayName: 'Campaign ID',
+		name: 'campaignId',
+		type: 'string',
+		default: '',
+		description: 'ID of the campaign to retrieve.',
+		displayOptions: {
+			show: {
+				resource: [
+					'campaign',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+
 	// ----------------------------------
 	//        campaign: getAll
 	// ----------------------------------
@@ -69,30 +94,5 @@ export const campaignFields = [
 				],
 			},
 		},
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'CSV Export',
-				name: 'csvExport',
-				type: 'boolean',
-				default: false,
-				description: 'Export the campaign data as a CSV.',
-			},
-		],
 	},
 ] as INodeProperties[];
