@@ -58,7 +58,6 @@ export async function wiseApiRequest(
 	}
 
 	try {
-		console.log(options);
 		return await this.helpers.request!(options);
 	} catch (error) {
 
