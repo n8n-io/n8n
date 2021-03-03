@@ -24,6 +24,12 @@ import {
 } from './descriptions';
 
 import {
+	Account,
+	ExchangeRateAdditionalFields,
+	Profile,
+	Recipient,
+	StatementAdditionalFields,
+	TransferFilters,
 	wiseApiRequest,
 } from './GenericFunctions';
 
@@ -109,7 +115,7 @@ export class Wise implements INodeType {
 
 				const accounts = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts', qs);
 
-				return accounts.map(({ id, balances }: { id: number, balances: Array<{ currency: string }> }) => ({
+				return accounts.map(({ id, balances }: Account ) => ({
 					name: balances.map(({ currency }) => currency).join(' - '),
 					value: id,
 				}));
@@ -118,7 +124,7 @@ export class Wise implements INodeType {
 			async getProfiles(this: ILoadOptionsFunctions) {
 				const profiles = await wiseApiRequest.call(this, 'GET', 'v1/profiles', {}, {});
 
-				return profiles.map(({ id, type }: { id: number, type: 'business' | 'personal' }) => ({
+				return profiles.map(({ id, type }: Profile) => ({
 					name: type.charAt(0).toUpperCase() + type.slice(1),
 					value: id,
 				}));
@@ -131,7 +137,7 @@ export class Wise implements INodeType {
 
 				const recipients = await wiseApiRequest.call(this, 'GET', 'v1/accounts', qs, {});
 
-				return recipients.map(({ id, accountHolderName }: { id: number, accountHolderName: string }) => ({
+				return recipients.map(({ id, accountHolderName }: Recipient) => ({
 					name: accountHolderName,
 					value: id,
 				}));
@@ -164,13 +170,11 @@ export class Wise implements INodeType {
 						//         account: get
 						// ----------------------------------
 
-						// https://api-docs.transferwise.com/#borderless-accounts-get-account-balance
-						// https://api-docs.transferwise.com/#borderless-accounts-get-available-currencies
-						// https://api-docs.transferwise.com/#borderless-accounts-get-account-statement
-
 						const details = this.getNodeParameter('details', i) as 'balances' | 'currencies' | 'statement';
 
 						if (details === 'balances') {
+
+							// https://api-docs.transferwise.com/#borderless-accounts-get-account-balance
 
 							const qs = {
 								profileId: this.getNodeParameter('profileId', i),
@@ -180,9 +184,13 @@ export class Wise implements INodeType {
 
 						} else if (details === 'currencies') {
 
+							// https://api-docs.transferwise.com/#borderless-accounts-get-available-currencies
+
 							responseData = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts/balance-currencies');
 
 						} else if (details === 'statement') {
+
+							// https://api-docs.transferwise.com/#borderless-accounts-get-account-statement
 
 							const profileId = this.getNodeParameter('profileId', i);
 							const borderlessAccountId = this.getNodeParameter('borderlessAccountId', i);
@@ -192,12 +200,7 @@ export class Wise implements INodeType {
 								currency: this.getNodeParameter('currency', i),
 							} as IDataObject;
 
-							const { lineStyle, range } = this.getNodeParameter('additionalFields', i) as {
-								lineStyle: 'COMPACT' | 'FLAT',
-								range: {
-									rangeProperties: { intervalStart: string, intervalEnd: string }
-								},
-							};
+							const { lineStyle, range } = this.getNodeParameter('additionalFields', i) as StatementAdditionalFields;
 
 							if (lineStyle !== undefined) {
 								qs.type = lineStyle;
@@ -236,34 +239,26 @@ export class Wise implements INodeType {
 							target: this.getNodeParameter('target', i),
 						} as IDataObject;
 
-						const { interval, range, time } = this.getNodeParameter('additionalFields', i) as {
-							interval: 'day' | 'hour' | 'minute',
-							range: {
-								rangeProperties: { from: string, to: string }
-							},
-							time: string,
-						};
+						const {
+							interval,
+							range,
+							time,
+						} = this.getNodeParameter('additionalFields', i) as ExchangeRateAdditionalFields;
 
 						if (interval !== undefined) {
-							if (range === undefined) {
-								throw new Error('Please enter a range for the interval.');
-							}
-
 							qs.group = interval;
 						}
 
-						if (range !== undefined) {
+						if (time !== undefined) {
+							qs.group = time;
+						}
+
+						if (range !== undefined && time === undefined) {
 							qs.from = moment(range.rangeProperties.from).format();
 							qs.to = moment(range.rangeProperties.to).format();
 						} else {
 							qs.from = moment().subtract(1, 'months').format();
 							qs.to = moment().format();
-						}
-
-						if (time !== undefined) {
-							delete qs.from;
-							delete qs.to;
-							qs.group = time;
 						}
 
 						responseData = await wiseApiRequest.call(this, 'GET', 'v1/rates', qs);
@@ -332,12 +327,11 @@ export class Wise implements INodeType {
 						} as IDataObject;
 
 						const amountType = this.getNodeParameter('amountType', i) as 'source' | 'target';
-						const amount = this.getNodeParameter('amount', i) as number;
 
 						if (amountType === 'source') {
-							body.sourceAmount = amount;
+							body.sourceAmount = this.getNodeParameter('amount', i);
 						} else if (amountType === 'target') {
-							body.targetAmount = amount;
+							body.targetAmount = this.getNodeParameter('amount', i);
 						}
 
 						responseData = await wiseApiRequest.call(this, 'POST', 'v2/quotes', {}, body);
@@ -411,7 +405,41 @@ export class Wise implements INodeType {
 						//        transfer: getAll
 						// ----------------------------------
 
-						// ...
+						// https://api-docs.transferwise.com/#transfers-list
+
+						const qs = {
+							profile: this.getNodeParameter('profileId', i),
+						} as IDataObject;
+
+						const {
+							range,
+							sourceCurrency,
+							status,
+							targetCurrency,
+						} = this.getNodeParameter('filters', i) as TransferFilters;
+
+						[sourceCurrency, status, targetCurrency].forEach(filter => {
+							if (filter !== undefined) {
+								qs[filter] = filter;
+							}
+						});
+
+						if (range !== undefined) {
+							qs.createdDateStart = moment(range.rangeProperties.createdDateStart).format();
+							qs.createdDateEnd = moment(range.rangeProperties.createdDateEnd).format();
+						} else {
+							qs.createdDateStart = moment().subtract(1, 'months').format();
+							qs.createdDateEnd = moment().format();
+						}
+
+						const returnAll = this.getNodeParameter('returnAll', i);
+
+						if (returnAll) {
+							responseData = await wiseApiRequest.call(this, 'GET', 'v1/transfers', qs);
+						} else {
+							qs.limit = this.getNodeParameter('limit', i);
+							responseData = await wiseApiRequest.call(this, 'GET', 'v1/transfers', qs);
+						}
 
 					}
 

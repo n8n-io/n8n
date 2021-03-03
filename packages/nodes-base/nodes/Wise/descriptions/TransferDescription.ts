@@ -173,4 +173,178 @@ export const transferFields = [
 			},
 		},
 	},
+
+	// ----------------------------------
+	//        transfer: getAll
+	// ----------------------------------
+	{
+		displayName: 'Profile ID',
+		name: 'profileId',
+		type: 'options',
+		required: true,
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getProfiles',
+		},
+		description: 'ID of the user profile to retrieve.',
+		displayOptions: {
+			show: {
+				resource: [
+					'transfer',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Return all results.',
+		displayOptions: {
+			show: {
+				resource: [
+					'transfer',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 5,
+		description: 'The number of results to return.',
+		typeOptions: {
+			minValue: 1,
+			maxValue: 1000,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'transfer',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'transfer',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Range',
+				name: 'range',
+				type: 'fixedCollection',
+				placeholder: 'Add Range',
+				description: 'Range of time for filtering the transfers.',
+				default: {},
+				options: [
+					{
+						displayName: 'Range Properties',
+						name: 'rangeProperties',
+						values: [
+							{
+								displayName: 'Created Date Start',
+								name: 'createdDateStart',
+								type: 'dateTime',
+								default: '',
+							},
+							{
+								displayName: 'Created Date End',
+								name: 'createdDateEnd',
+								type: 'dateTime',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Source Currency',
+				name: 'sourceCurrency',
+				type: 'string',
+				default: '',
+				description: 'Code of the source currency for filtering the transfers.',
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				default: 'processing',
+				options: [
+					{
+						name: 'Bounced Back',
+						value: 'bounced_back',
+					},
+					{
+						name: 'Cancelled',
+						value: 'cancelled',
+					},
+					{
+						name: 'Charged Back',
+						value: 'charged_back',
+					},
+					{
+						name: 'Outgoing Payment Sent',
+						value: 'outgoing_payment_sent',
+					},
+					{
+						name: 'Funds Converted',
+						value: 'funds_converted',
+					},
+					{
+						name: 'Funds Refunded',
+						value: 'funds_refunded',
+					},
+					{
+						name: 'Incoming Payment Waiting',
+						value: 'incoming_payment_waiting',
+					},
+					{
+						name: 'Processing',
+						value: 'processing',
+					},
+					{
+						name: 'Unknown',
+						value: 'unknown',
+					},
+					{
+						name: 'Waiting for Recipient Input to Proceed',
+						value: 'waiting_recipient_input_to_proceed',
+					},
+				],
+			},
+			{
+				displayName: 'Target Currency',
+				name: 'targetCurrency',
+				type: 'string',
+				default: '',
+				description: 'Code of the target currency for filtering the transfers.',
+			},
+		],
+	},
 ] as INodeProperties[];

@@ -12,6 +12,8 @@ import {
 	OptionsWithUri,
 } from 'request';
 
+import * as moment from 'moment';
+
 /**
  * Make an authenticated API request to Wise.
  */
@@ -65,28 +67,41 @@ export async function wiseApiRequest(
 	}
 }
 
-/**
- * Make an authenticated API request to Wise and return all results.
- */
-export async function wiseApiRequestAllItems(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
-	endpoint: string,
-	qs: IDataObject,
-	body: IDataObject,
-	resource: string,
-) {
-	// ...
-}
+export type TransferFilters = {
+	range: {
+		rangeProperties: { createdDateStart: string, createdDateEnd: string }
+	},
+	sourceCurrency: string,
+	status: string,
+	targetCurrency: string,
+};
 
-/**
- * Handle a Wise listing by returning all items or up to a limit.
- */
-export async function handleListing(
-	this: IExecuteFunctions,
-	i: number,
-	endpoint: string,
-	resource: string,
-) {
-	// ...
-}
+export type StatementAdditionalFields = {
+	lineStyle: 'COMPACT' | 'FLAT',
+	range: {
+		rangeProperties: { intervalStart: string, intervalEnd: string }
+	},
+};
+
+export type ExchangeRateAdditionalFields = {
+	interval: 'day' | 'hour' | 'minute',
+	range: {
+		rangeProperties: { from: string, to: string }
+	},
+	time: string,
+};
+
+export type Account = {
+	id: number,
+	balances: Array<{ currency: string }>
+};
+
+export type Profile = {
+	id: number,
+	type: 'business' | 'personal',
+};
+
+export type Recipient = {
+	id: number,
+	accountHolderName: string
+};
