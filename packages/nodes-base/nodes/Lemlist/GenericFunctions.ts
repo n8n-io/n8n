@@ -58,7 +58,11 @@ export async function lemlistApiRequest(
 		console.log(options);
 		return await this.helpers.request!(options);
 	} catch (error) {
-		// TODO
+
+		if (error.error) {
+			throw new Error(`Lemlist error response [${error.statusCode}]: ${error.error}`);
+		}
+
 		throw error;
 	}
 }
