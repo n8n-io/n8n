@@ -62,25 +62,21 @@ export async function wiseApiRequest(
 		console.log(options);
 		return await this.helpers.request!(options);
 	} catch (error) {
-		// TODO
+
+		const errors = error.error.errors;
+
+		if (errors && Array.isArray(errors)) {
+			const errorMessage = errors.map((e) => e.message).join(' | ');
+			throw new Error(`Wise error response [${error.statusCode}]: ${errorMessage}`);
+		}
+
 		throw error;
 	}
 }
 
-export type TransferFilters = {
-	range: {
-		rangeProperties: { createdDateStart: string, createdDateEnd: string }
-	},
-	sourceCurrency: string,
-	status: string,
-	targetCurrency: string,
-};
-
-export type StatementAdditionalFields = {
-	lineStyle: 'COMPACT' | 'FLAT',
-	range: {
-		rangeProperties: { intervalStart: string, intervalEnd: string }
-	},
+export type Account = {
+	id: number,
+	balances: Array<{ currency: string }>
 };
 
 export type ExchangeRateAdditionalFields = {
@@ -91,11 +87,6 @@ export type ExchangeRateAdditionalFields = {
 	time: string,
 };
 
-export type Account = {
-	id: number,
-	balances: Array<{ currency: string }>
-};
-
 export type Profile = {
 	id: number,
 	type: 'business' | 'personal',
@@ -104,4 +95,21 @@ export type Profile = {
 export type Recipient = {
 	id: number,
 	accountHolderName: string
+};
+
+export type StatementAdditionalFields = {
+	lineStyle: 'COMPACT' | 'FLAT',
+	range: {
+		rangeProperties: { intervalStart: string, intervalEnd: string }
+	},
+};
+
+export type TransferFilters = {
+	[key: string]: string | IDataObject;
+	range: {
+		rangeProperties: { createdDateStart: string, createdDateEnd: string }
+	},
+	sourceCurrency: string,
+	status: string,
+	targetCurrency: string,
 };

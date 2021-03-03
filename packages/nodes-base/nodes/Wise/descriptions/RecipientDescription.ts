@@ -7,7 +7,7 @@ export const recipientOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		default: 'get',
+		default: 'getAll',
 		description: 'Operation to perform',
 		options: [
 			{
@@ -19,6 +19,53 @@ export const recipientOperations = [
 			show: {
 				resource: [
 					'recipient',
+				],
+			},
+		},
+	},
+] as INodeProperties[];
+
+export const recipientFields = [
+	// ----------------------------------
+	//        recipient: getAll
+	// ----------------------------------
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Return all results.',
+		displayOptions: {
+			show: {
+				resource: [
+					'recipient',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 5,
+		description: 'The number of results to return.',
+		typeOptions: {
+			minValue: 1,
+			maxValue: 1000,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'recipient',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
 				],
 			},
 		},

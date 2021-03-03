@@ -15,6 +15,10 @@ export const transferOperations = [
 				value: 'create',
 			},
 			{
+				name: 'Execute',
+				value: 'execute',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 			},
@@ -153,6 +157,49 @@ export const transferFields = [
 	},
 
 	// ----------------------------------
+	//        transfer: execute
+	// ----------------------------------
+	{
+		displayName: 'Profile ID',
+		name: 'profileId',
+		type: 'options',
+		required: true,
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getProfiles',
+		},
+		description: 'ID of the user profile to execute the transfer under.',
+		displayOptions: {
+			show: {
+				resource: [
+					'transfer',
+				],
+				operation: [
+					'execute',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Transfer ID',
+		name: 'transferId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'ID of the transfer to execute.',
+		displayOptions: {
+			show: {
+				resource: [
+					'transfer',
+				],
+				operation: [
+					'execute',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------
 	//         transfer: get
 	// ----------------------------------
 	{
@@ -162,6 +209,24 @@ export const transferFields = [
 		required: true,
 		default: '',
 		description: 'ID of the transfer to retrieve.',
+		displayOptions: {
+			show: {
+				resource: [
+					'transfer',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Download Receipt',
+		name: 'downloadReceipt',
+		type: 'boolean',
+		required: true,
+		default: false,
+		description: 'Download the transfer receipt as a PDF file.<br>Only for executed transfers, having status \'Outgoing Payment Sent\'.',
 		displayOptions: {
 			show: {
 				resource: [
