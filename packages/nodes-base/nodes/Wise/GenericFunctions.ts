@@ -6,13 +6,12 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 } from 'n8n-workflow';
 
 import {
 	OptionsWithUri,
 } from 'request';
-
-import * as moment from 'moment';
 
 /**
  * Make an authenticated API request to Wise.
@@ -21,9 +20,9 @@ export async function wiseApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	qs = {},
-	body = {},
-	header = {},
+	qs: IDataObject = {},
+	body: IDataObject = {},
+	option: IDataObject = {},
 ) {
 	const { apiToken, environment } = this.getCredentials('wiseApi') as {
 		apiToken: string,
@@ -46,16 +45,16 @@ export async function wiseApiRequest(
 		json: true,
 	};
 
-	if (Object.keys(header)) {
-		Object.assign(options.headers, header);
-	}
-
 	if (!Object.keys(body).length) {
 		delete options.body;
 	}
 
 	if (!Object.keys(qs).length) {
 		delete options.qs;
+	}
+
+	if (Object.keys(option)) {
+		Object.assign(options, option);
 	}
 
 	try {
@@ -74,7 +73,27 @@ export async function wiseApiRequest(
 	}
 }
 
-export type Account = {
+/**
+ * Populate the binary property of node items with binary data for a PDF file.
+ */
+export async function handleBinaryData(
+	this: IExecuteFunctions,
+	items: INodeExecutionData[],
+	i: number,
+	endpoint: string,
+) {
+	const data = await wiseApiRequest.call(this, 'GET', endpoint, {}, {}, { encoding: null });
+	const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+
+	items[i].binary = items[i].binary ?? {};
+	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
+	items[i].binary![binaryProperty].fileName = this.getNodeParameter('fileName', i) as string;
+	items[i].binary![binaryProperty].fileExtension = 'pdf';
+
+	return items;
+}
+
+export type BorderlessAccount = {
 	id: number,
 	balances: Array<{ currency: string }>
 };

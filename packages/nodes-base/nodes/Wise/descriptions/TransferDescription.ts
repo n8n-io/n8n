@@ -238,6 +238,49 @@ export const transferFields = [
 			},
 		},
 	},
+	{
+		displayName: 'Binary Property',
+		name: 'binaryProperty',
+		type: 'string',
+		required: true,
+		default: 'data',
+		description: 'Name of the binary property to which to write to.',
+		displayOptions: {
+			show: {
+				resource: [
+					'transfer',
+				],
+				operation: [
+					'get',
+				],
+				downloadReceipt: [
+					true,
+				],
+			},
+		},
+	},
+	{
+		displayName: 'File Name',
+		name: 'fileName',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'data.pdf',
+		description: 'Name of the file that will be downloaded.',
+		displayOptions: {
+			show: {
+				resource: [
+					'transfer',
+				],
+				operation: [
+					'get',
+				],
+				downloadReceipt: [
+					true,
+				],
+			},
+		},
+	},
 
 	// ----------------------------------
 	//        transfer: getAll

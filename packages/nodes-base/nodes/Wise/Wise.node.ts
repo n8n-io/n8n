@@ -25,8 +25,9 @@ import {
 } from './descriptions';
 
 import {
-	Account,
+	BorderlessAccount,
 	ExchangeRateAdditionalFields,
+	handleBinaryData,
 	Profile,
 	Recipient,
 	StatementAdditionalFields,
@@ -121,14 +122,14 @@ export class Wise implements INodeType {
 
 				const accounts = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts', qs);
 
-				return accounts.map(({ id, balances }: Account ) => ({
+				return accounts.map(({ id, balances }: BorderlessAccount ) => ({
 					name: balances.map(({ currency }) => currency).join(' - '),
 					value: id,
 				}));
 			},
 
 			async getProfiles(this: ILoadOptionsFunctions) {
-				const profiles = await wiseApiRequest.call(this, 'GET', 'v1/profiles', {}, {});
+				const profiles = await wiseApiRequest.call(this, 'GET', 'v1/profiles');
 
 				return profiles.map(({ id, type }: Profile) => ({
 					name: type.charAt(0).toUpperCase() + type.slice(1),
@@ -141,7 +142,7 @@ export class Wise implements INodeType {
 					profileId: this.getNodeParameter('profileId', 0),
 				};
 
-				const recipients = await wiseApiRequest.call(this, 'GET', 'v1/accounts', qs, {});
+				const recipients = await wiseApiRequest.call(this, 'GET', 'v1/accounts', qs);
 
 				return recipients.map(({ id, accountHolderName }: Recipient) => ({
 					name: accountHolderName,
@@ -411,9 +412,20 @@ export class Wise implements INodeType {
 						// https://api-docs.transferwise.com/#transfers-fund
 
 						const profileId = this.getNodeParameter('profileId', i);
-						const transferId = this.getNodeParameter('transferId', i);
+						const transferId = this.getNodeParameter('transferId', i) as string;
+
 						const endpoint = `v3/profiles/${profileId}/transfers/${transferId}/payments`;
 						responseData = await wiseApiRequest.call(this, 'POST', endpoint, {}, { type: 'BALANCE' });
+
+						// in sandbox, simulate transfer completion so that PDF receipt can be downloaded
+
+						const { environment } = this.getCredentials('wiseApi') as IDataObject;
+
+						if (environment === 'test') {
+							for (const endpoint of ['processing', 'funds_converted', 'outgoing_payment_sent']) {
+								await wiseApiRequest.call(this, 'GET', `v1/simulation/transfers/${transferId}/${endpoint}`);
+							}
+						}
 
 					} else if (operation === 'get') {
 
@@ -428,7 +440,7 @@ export class Wise implements INodeType {
 
 							// https://api-docs.transferwise.com/#transfers-get-receipt-pdf
 
-							responseData = await wiseApiRequest.call(this, 'GET', `v1/transfers/${transferId}/receipt.pdf`);
+							responseData = await handleBinaryData.call(this, items, i, `v1/transfers/${transferId}/receipt.pdf`);
 
 						} else {
 
