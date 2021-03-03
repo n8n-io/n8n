@@ -1437,14 +1437,14 @@ class App {
 				limit = parseInt(req.query.limit as string, 10);
 			}
 
-			let executingWorkflowIds;
+			const executingWorkflowIds: string[] = [];
 
 			if (config.get('executions.mode') === 'queue') {
 				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
-				executingWorkflowIds = currentJobs.map(job => job.data.executionId) as string[];
-			} else {
-				executingWorkflowIds = this.activeExecutionsInstance.getActiveExecutions().map(execution => execution.id.toString()) as string[];
+				executingWorkflowIds.push(...currentJobs.map(job => job.data.executionId) as string[]);
 			}
+			// We may have manual executions even with queue so we must account for these.
+			executingWorkflowIds.push(...this.activeExecutionsInstance.getActiveExecutions().map(execution => execution.id.toString()) as string[]);
 
 			const countFilter = JSON.parse(JSON.stringify(filter));
 			countFilter.select = ['id'];
@@ -1645,7 +1645,12 @@ class App {
 			if (config.get('executions.mode') === 'queue') {
 				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
 
-				const currentlyRunningExecutionIds = currentJobs.map(job => job.data.executionId);
+				const currentlyRunningQueueIds = currentJobs.map(job => job.data.executionId);
+
+				const currentlyRunningManualExecutions = this.activeExecutionsInstance.getActiveExecutions();
+				const manualExecutionIds = currentlyRunningManualExecutions.map(execution => execution.id);
+
+				const currentlyRunningExecutionIds = currentlyRunningQueueIds.concat(manualExecutionIds);
 
 				if (currentlyRunningExecutionIds.length === 0) {
 					return [];
