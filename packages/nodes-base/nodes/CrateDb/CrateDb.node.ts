@@ -7,9 +7,9 @@ import {
 } from 'n8n-workflow';
 
 import {
-	getItemCopy,
 	pgInsert,
 	pgQuery,
+	pgUpdate,
 } from '../Postgres/Postgres.node.functions';
 
 import * as pgPromise from 'pg-promise';
@@ -58,6 +58,30 @@ export class CrateDb implements INodeType {
 				],
 				default: 'insert',
 				description: 'The operation to perform.',
+			},
+      {
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				options: [
+					{
+						name: 'Normal',
+						value: 'normal',
+						description: 'Execute all querys together',
+					},
+					{
+						name: 'Independently',
+						value: 'independently',
+						description: 'Execute each query independently',
+					},
+					//{
+					//	name: 'Transaction',
+					//	value: 'transaction',
+					//	description: 'Execute all querys as a transaction',
+					//},
+				],
+				default: 'normal',
+				description: 'The mode how the querys should execute.',
 			},
 
 			// ----------------------------------
@@ -124,22 +148,23 @@ export class CrateDb implements INodeType {
 				description:
 					'Comma separated list of the properties which should used as columns for the new rows.',
 			},
-			{
-				displayName: 'Return Fields',
-				name: 'returnFields',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: ['insert'],
-					},
-				},
-				default: '*',
-				description: 'Comma separated list of the fields that the operation will return',
-			},
 
 			// ----------------------------------
 			//         update
 			// ----------------------------------
+      {
+				displayName: 'Schema',
+				name: 'schema',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['update'],
+					},
+				},
+				default: 'public',
+				required: true,
+				description: 'Name of the schema the table belongs to',
+			},
 			{
 				displayName: 'Table',
 				name: 'table',
@@ -165,7 +190,7 @@ export class CrateDb implements INodeType {
 				default: 'id',
 				required: true,
 				description:
-					'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+					'Comma separated list of the properties which decides which rows in the database should be updated. Normally that would be "id".',
 			},
 			{
 				displayName: 'Columns',
@@ -180,6 +205,22 @@ export class CrateDb implements INodeType {
 				placeholder: 'name,description',
 				description:
 					'Comma separated list of the properties which should used as columns for rows to update.',
+			},
+      
+      // ----------------------------------
+			//         insert,update
+			// ----------------------------------
+			{
+				displayName: 'Return Fields',
+				name: 'returnFields',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['insert', 'update'],
+					},
+				},
+				default: '*',
+				description: 'Comma separated list of the fields that the operation will return',
 			},
 		],
 	};
@@ -209,72 +250,37 @@ export class CrateDb implements INodeType {
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
+    const mode = this.getNodeParameter('mode', 0) as string;
+    if(mode == 'transaction') throw new Error('transaction mode not supported');
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items);
+			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
 
-			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+			returnItems = this.helpers.returnJsonArray(queryResult.flat(1) as IDataObject[]);
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
 			// ----------------------------------
 
-			const [insertData, insertItems] = await pgInsert(this.getNodeParameter, pgp, db, items);
+			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
 
 			// Add the id to the data
 			for (let i = 0; i < insertData.length; i++) {
 				returnItems.push({
-					json: {
-						...insertData[i],
-						...insertItems[i],
-					},
+					json: insertData[i],
 				});
 			}
 		} else if (operation === 'update') {
 			// ----------------------------------
 			//         update
 			// ----------------------------------
-			const tableName = this.getNodeParameter('table', 0) as string;
-			const updateKey = this.getNodeParameter('updateKey', 0) as string;
+			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
 
-			const queries : string[] = [];
-			const updatedKeys : string[] = [];
-			let updateKeyValue : string | number;
-			let columns : string[] = [];
-
-			items.map(item => {
-				const setOperations : string[] = [];
-				columns = Object.keys(item.json);
-				columns.map((col : string) => {
-					if (col !== updateKey) {
-						if (typeof item.json[col] === 'string') {
-							setOperations.push(`${col} = \'${item.json[col]}\'`);
-						} else {
-							setOperations.push(`${col} = ${item.json[col]}`);
-						}
-					}
-				});
-
-				updateKeyValue = item.json[updateKey] as string | number;
-
-				if (updateKeyValue === undefined) {
-					throw new Error('No value found for update key!');
-				}
-
-				updatedKeys.push(updateKeyValue as string);
-
-				const query = `UPDATE "${tableName}" SET ${setOperations.join(',')} WHERE ${updateKey} = ${updateKeyValue};`;
-				queries.push(query);
-			});
-
-
-			await db.any(pgp.helpers.concat(queries));
-
-			returnItems = this.helpers.returnJsonArray(getItemCopy(items, columns) as IDataObject[]);
+			returnItems = this.helpers.returnJsonArray(updateItems);
 		} else {
 			await pgp.end();
 			throw new Error(`The operation "${operation}" is not supported!`);

@@ -8,7 +8,11 @@ import {
 
 import * as pgPromise from 'pg-promise';
 
-import { pgQuery } from '../Postgres/Postgres.node.functions';
+import {
+  pgInsert,
+	pgQuery,
+	pgUpdate,
+} from '../Postgres/Postgres.node.functions';
 
 export class QuestDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -49,6 +53,30 @@ export class QuestDb implements INodeType {
 				],
 				default: 'insert',
 				description: 'The operation to perform.',
+			},
+      {
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				options: [
+					{
+						name: 'Normal',
+						value: 'normal',
+						description: 'Execute all querys together',
+					},
+					{
+						name: 'Independently',
+						value: 'independently',
+						description: 'Execute each query independently',
+					},
+					//{
+					//	name: 'Transaction',
+					//	value: 'transaction',
+					//	description: 'Execute all querys as a transaction',
+					//},
+				],
+				default: 'normal',
+				description: 'The mode how the querys should execute.',
 			},
 
 			// ----------------------------------
@@ -129,9 +157,7 @@ export class QuestDb implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'insert',
-						],
+						operation: ['insert'],
 					},
 				},
 				default: '*',
@@ -165,43 +191,29 @@ export class QuestDb implements INodeType {
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
+    const mode = this.getNodeParameter('mode', 0) as string;
+    if(mode == 'transaction') throw new Error('transaction mode not supported');
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items);
+			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
 
-			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+			returnItems = this.helpers.returnJsonArray(queryResult.flat(1) as IDataObject[]);
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
 			// ----------------------------------
-			const tableName = this.getNodeParameter('table', 0) as string;
-			const returnFields = this.getNodeParameter('returnFields', 0) as string;
+			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
 
-			const queries : string[] = [];
-			items.map(item => {
-				const columns = Object.keys(item.json);
-
-				const values : string = columns.map((col : string) => {
-					if (typeof item.json[col] === 'string') {
-						return `\'${item.json[col]}\'`;
-					} else {
-						return item.json[col];
-					}
-				}).join(',');
-
-				const query = `INSERT INTO ${tableName} (${columns.join(',')}) VALUES (${values});`;
-				queries.push(query);
-			});
-
-			await db.any(pgp.helpers.concat(queries));
-
-			const returnedItems = await db.any(`SELECT ${returnFields} from ${tableName}`);
-
-			returnItems = this.helpers.returnJsonArray(returnedItems as IDataObject[]);
+			// Add the id to the data
+			for (let i = 0; i < insertData.length; i++) {
+				returnItems.push({
+					json: insertData[i],
+				});
+			}
 		} else {
 			await pgp.end();
 			throw new Error(`The operation "${operation}" is not supported!`);
