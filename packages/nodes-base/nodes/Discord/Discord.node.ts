@@ -1,5 +1,7 @@
-import { get } from 'lodash';
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -7,97 +9,131 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import {
+	discordApiRequest,
+} from './GenericFunctions';
+
+import {
+	messageFields,
+	messageOperations,
+	userFields,
+	userOperations,
+} from './descriptions';
+
 export class Discord implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Discord',
 		name: 'discord',
-		icon: 'file:discord.png',
+		icon: 'file:discord.svg',
 		group: ['output'],
 		version: 1,
-		description: 'Sends data to Discord',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		description: 'Consume the Discord API',
 		defaults: {
 			name: 'Discord',
 			color: '#7289da',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		credentials: [
+			{
+				name: 'discordOAuth2Api',
+				required: true,
+			},
+		],
 		properties: [
 			{
-				displayName: 'Webhook URL',
-				name: 'webhookUri',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: 'The webhook url.',
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
+					{
+						name: 'Message',
+						value: 'message',
+					},
+					{
+						name: 'User',
+						value: 'user',
+					},
+				],
+				default: 'message',
+				description: 'Resource to consume',
 			},
-			{
-				displayName: 'Text',
-				name: 'text',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: 'The text to send.',
-			},
+			...messageOperations,
+			...messageFields,
+			...userOperations,
+			...userFields,
 		],
 	};
 
-
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+
+		let responseData;
 		const returnData: IDataObject[] = [];
 
-		const requestMethod = 'POST';
-
-		// For Post
-		let body: IDataObject;
-
 		for (let i = 0; i < items.length; i++) {
-			const webhookUri = this.getNodeParameter('webhookUri', i) as string;
-			body = {};
 
-			body.content = this.getNodeParameter('text', i) as string;
+			if (resource === 'message') {
 
-			const options = {
-				method: requestMethod,
-				body,
-				uri: `${webhookUri}`,
-				headers: {
-					'content-type': 'application/json; charset=utf-8',
-				},
-				json: true,
-			};
+				// *********************************************************************
+				//                             message
+				// *********************************************************************
 
-			let maxTries = 5;
-			do {
-				try {
-					await this.helpers.request(options);
-					break;
-				} catch (error) {
-					if (error.statusCode === 429) {
-						// Waiting rating limit
-						await new Promise((resolve) => {
-							setTimeout(async () => {
-								resolve();
-							}, get(error, 'response.body.retry_after', 150));
-						});
-					} else {
-						// If it's another error code then return the JSON response
-						throw error;
-					}
+				if (operation === 'create') {
+
+					// ----------------------------------
+					//         message: create
+					// ----------------------------------
+
+					const credentials = this.getCredentials('discordOAuth2Api') as {
+						oauthTokenData: { webhook: { url: string } }
+					};
+
+					const webhookUrl = credentials.oauthTokenData.webhook.url;
+
+					const body: IDataObject = {
+						content: this.getNodeParameter('content', i),
+					};
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(body, additionalFields);
+
+					await discordApiRequest.call(this, 'POST', '', body, {}, webhookUrl);
+					responseData = { success: true };
 				}
-
-			} while (--maxTries);
-
-			if (maxTries <= 0) {
-				throw new Error('Could not send message. Max. amount of rate-limit retries got reached.');
 			}
 
-			returnData.push({success: true});
+			if (resource === 'user') {
+
+				// *********************************************************************
+				//                              user
+				// *********************************************************************
+
+				if (operation === 'get') {
+
+					// ----------------------------------
+					//         user: get
+					// ----------------------------------
+
+					const details = this.getNodeParameter('details', i) as 'currentUser' | 'currentUserGuilds' | 'currentserConnections';
+
+					const endpoints: { [key: string]: string } = {
+						currentUser: '@/me',
+						currentUserGuilds: '@/me/guilds',
+						currentUserConnections: '@/me/connections',
+					};
+
+					responseData = await discordApiRequest.call(this, 'GET', `/users/${endpoints[details]}`);
+				}
+			}
+
+		Array.isArray(responseData)
+			? returnData.push(...responseData)
+			: returnData.push(responseData);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
