@@ -6,8 +6,6 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
@@ -101,4 +99,3 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 	}
 	return result;
 }
-
