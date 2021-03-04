@@ -19,8 +19,8 @@ export async function lemlistApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	qs: IDataObject = {},
 	body: IDataObject = {},
+	qs: IDataObject = {},
 	option: IDataObject = {},
 ) {
 
@@ -36,7 +36,7 @@ export async function lemlistApiRequest(
 			'Authorization': `Basic ${encodedApiKey}`,
 		},
 		method,
-		uri: `https://api.lemlist.com/api/${endpoint}`,
+		uri: `https://api.lemlist.com/api${endpoint}`,
 		qs,
 		body,
 		json: true,
@@ -55,12 +55,11 @@ export async function lemlistApiRequest(
 	}
 
 	try {
-		console.log(options);
 		return await this.helpers.request!(options);
 	} catch (error) {
 
-		if (error.error) {
-			throw new Error(`Lemlist error response [${error.statusCode}]: ${error.error}`);
+		if (error?.response?.body) {
+			throw new Error(`Lemlist error response [${error.statusCode}]: ${error?.response?.body}`);
 		}
 
 		throw error;
@@ -78,14 +77,15 @@ export async function lemlistApiRequestAllItems(
 	const returnData: IDataObject[] = [];
 
 	let responseData;
+	const qs: IDataObject = {};
 
-	const limit = 1000;
-	let offset = 0;
+	qs.limit = 100;
+	qs.offset = 0;
 
 	do {
-		responseData = await lemlistApiRequest.call(this, method, endpoint);
+		responseData = await lemlistApiRequest.call(this, method, endpoint, {}, qs);
 		returnData.push(...responseData);
-		offset += limit;
+		qs.offset += qs.limit;
 	} while (
 		responseData.length !== 0
 	);

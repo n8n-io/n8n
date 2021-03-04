@@ -11,8 +11,8 @@ export const unsubscribeOperations = [
 		description: 'Operation to perform',
 		options: [
 			{
-				name: 'Create',
-				value: 'create',
+				name: 'Add',
+				value: 'add',
 			},
 			{
 				name: 'Delete',
@@ -35,7 +35,7 @@ export const unsubscribeOperations = [
 
 export const unsubscribeFields = [
 	// ----------------------------------
-	//        unsubscribe: create
+	//        unsubscribe: add
 	// ----------------------------------
 	{
 		displayName: 'Email',
@@ -49,7 +49,7 @@ export const unsubscribeFields = [
 					'unsubscribe',
 				],
 				operation: [
-					'create',
+					'add',
 				],
 			},
 		},
