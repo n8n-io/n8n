@@ -29,7 +29,7 @@ export function getItemsCopy(items: INodeExecutionData[], properties: string[]):
  * @param {string[]} properties The properties it should include
  * @returns
  */
-export function getItemCopy(item: INodeExecutionData, properties: string[]): IDataObject[] {
+export function getItemCopy(item: INodeExecutionData, properties: string[]): IDataObject {
 	const newItem: IDataObject = {};
 	for (const property of properties) {
 		newItem[property] = item.json[property];
@@ -60,9 +60,9 @@ export async function pgQuery(
 			queries.push(getNodeParam('query', i) as string);
 		}
 		if(mode == 'normal') return db.multi(pgp.helpers.concat(queries));
-		return db.tx(t => return t.multi(pgp.helpers.concat(queries)));
+		return db.tx(t => t.multi(pgp.helpers.concat(queries)));
 	} else if(mode == 'independently') {
-		return db.task(t => {
+		return db.task(async t => {
 			const result = [];
 			for (let i = 0; i < input.length; i++) {
 				try {
@@ -74,7 +74,8 @@ export async function pgQuery(
 			}
 			return result;
 		});
-	} else throw new Error('normal, independently or transaction are valid options');
+	}
+	throw new Error('normal, independently or transaction are valid options');
 }
 
 /**
@@ -106,15 +107,15 @@ export async function pgInsert(
 		const query = pgp.helpers.insert(getItemsCopy(items, columns), cs, te) +
 			(returnFields.length ? ` RETURNING ${returnFields.join(',')}` : '');
 		
-		if(mode == 'normal') return await db.manyOrNone(query);
-		return return db.tx(t => return t.manyOrNone(query));
+		if(mode == 'normal') return db.any(query);
+		return db.tx(t => t.any(query));
 	} else if(mode == 'independently') {
 		const returning = (returnFields.length ? ` RETURNING ${returnFields.join(',')}` : '');
-		return db.task(t => {
+		return db.task(async t => {
 			const result = [];
 			for (let i = 0; i < items.length; i++) {
 				try {
-					result.push(await t.oneOrNone(pgp.helpers.insert(getItemCopy(items[i]), cs, te) + returning));
+					result.push(await t.oneOrNone(pgp.helpers.insert(getItemCopy(items[i], columns), cs, te) + returning));
 				} catch(err) {
 					if(continueOnFail === false) throw err;
 					result.push({code: err.code, message: err.message});
@@ -123,6 +124,7 @@ export async function pgInsert(
 			return result;
 		});
 	}
+	throw new Error('normal, independently or transaction are valid options');
 }
 
 /**
@@ -163,17 +165,17 @@ export async function pgUpdate(
 			pgp.helpers.update(getItemsCopy(items, columns), columns, te)
 			+ ' WHERE ' + updateKeys.map(updateKey => 'v.' + updateKey + ' = t.' + updateKey).join(' AND ')
 			+ (returnFields.length ? ` RETURNING ${returnFields.join(',')}` : '');
-		if(mode == 'normal') return await db.manyOrNone(query);
-		return return db.tx(t => return t.manyOrNone(query));
+		if(mode == 'normal') return await db.any(query);
+		return db.tx(t => t.any(query));
 	} else if(mode == 'independently') {
 		const returning = (returnFields.length ? ` RETURNING ${returnFields.join(',')}` : '');
 		const where = ' WHERE ' + updateKeys.map(updateKey => 'v.' + updateKey + ' = t.' + updateKey).join(' AND ');
 		
-		return db.task(t => {
+		return db.task(async t => {
 			const result = [];
 			for (let i = 0; i < items.length; i++) {
 				try {
-					result.push(await t.manyOrNone(pgp.helpers.update(getItemCopy(items, columns), columns, te) + where + returning));
+					result.concat(await t.any(pgp.helpers.update(getItemCopy(items[i], columns), columns, te) + where + returning));
 				} catch(err) {
 					if(continueOnFail === false) throw err;
 					result.push({code: err.code, message: err.message});
@@ -182,4 +184,5 @@ export async function pgUpdate(
 			return result;
 		});
 	}
+	throw new Error('normal, independently or transaction are valid options');
 }

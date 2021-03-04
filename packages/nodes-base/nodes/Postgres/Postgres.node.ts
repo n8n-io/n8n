@@ -252,7 +252,7 @@ export class Postgres implements INodeType {
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
-		const mode = this.getNodeParameter('mode', 0) as boolean;
+		const mode = this.getNodeParameter('mode', 0) as string;
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
