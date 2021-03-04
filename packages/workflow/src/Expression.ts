@@ -1,3 +1,4 @@
+//@ts-ignore
 import * as tmpl from 'riot-tmpl';
 import {
 	INode,
@@ -9,8 +10,6 @@ import {
 	WorkflowDataProxy,
 	WorkflowExecuteMode,
 } from './';
-
-// @ts-ignore
 
 // Set it to use double curly brackets instead of single ones
 tmpl.brackets.set('{{ }}');
