@@ -1,14 +1,15 @@
-
-import {
-	IDataObject,
-	IObservableObject,
-} from './';
+import { IDataObject, IObservableObject } from './';
 
 export interface IObservableOptions {
 	ignoreEmptyOnFirstChild?: boolean;
 }
 
-export function create(target: IDataObject, parent?: IObservableObject, option?: IObservableOptions, depth?: number): IDataObject {
+export function create(
+	target: IDataObject,
+	parent?: IObservableObject,
+	option?: IObservableOptions,
+	depth?: number,
+): IDataObject {
 	depth = depth || 0;
 
 	// Make all the children of target also observeable
@@ -26,10 +27,10 @@ export function create(target: IDataObject, parent?: IObservableObject, option?:
 		deleteProperty(target, name) {
 			if (parent === undefined) {
 				// If no parent is given mark current data as changed
-				(target as IObservableObject).__dataChanged = true;
+				(target as IObservableObject).__dataChanged = true; // eslint-disable-line no-underscore-dangle
 			} else {
 				// If parent is given mark the parent data as changed
-				parent.__dataChanged = true;
+				parent.__dataChanged = true; // eslint-disable-line no-underscore-dangle
 			}
 			return Reflect.deleteProperty(target, name);
 		},
@@ -39,14 +40,20 @@ export function create(target: IDataObject, parent?: IObservableObject, option?:
 		set(target, name, value) {
 			if (parent === undefined) {
 				// If no parent is given mark current data as changed
-				if (option !== undefined && option.ignoreEmptyOnFirstChild === true && depth === 0
-					&& target[name.toString()] === undefined && typeof value === 'object' && Object.keys(value).length === 0) {
+				if (
+					option !== undefined &&
+					option.ignoreEmptyOnFirstChild === true &&
+					depth === 0 &&
+					target[name.toString()] === undefined &&
+					typeof value === 'object' &&
+					Object.keys(value).length === 0
+				) {
 				} else {
-					(target as IObservableObject).__dataChanged = true;
+					(target as IObservableObject).__dataChanged = true; // eslint-disable-line no-underscore-dangle
 				}
 			} else {
 				// If parent is given mark the parent data as changed
-				parent.__dataChanged = true;
+				parent.__dataChanged = true; // eslint-disable-line no-underscore-dangle
 			}
 			return Reflect.set(target, name, value);
 		},

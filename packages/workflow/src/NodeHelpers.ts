@@ -1,3 +1,5 @@
+import { get } from 'lodash';
+
 import {
 	IContextObject,
 	INode,
@@ -17,13 +19,7 @@ import {
 	WebhookHttpMethod,
 } from './Interfaces';
 
-import {
-	Workflow
-} from './Workflow';
-
-import { get } from 'lodash';
-
-
+import { Workflow } from './Workflow';
 
 /**
  * Gets special parameters which should be added to nodeTypes depending
@@ -99,12 +95,7 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 								},
 								displayOptions: {
 									hide: {
-										mode: [
-											'custom',
-											'everyHour',
-											'everyMinute',
-											'everyX',
-										],
+										mode: ['custom', 'everyHour', 'everyMinute', 'everyX'],
 									},
 								},
 								default: 14,
@@ -120,11 +111,7 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 								},
 								displayOptions: {
 									hide: {
-										mode: [
-											'custom',
-											'everyMinute',
-											'everyX',
-										],
+										mode: ['custom', 'everyMinute', 'everyX'],
 									},
 								},
 								default: 0,
@@ -136,9 +123,7 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 								type: 'number',
 								displayOptions: {
 									show: {
-										mode: [
-											'everyMonth',
-										],
+										mode: ['everyMonth'],
 									},
 								},
 								typeOptions: {
@@ -154,9 +139,7 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 								type: 'options',
 								displayOptions: {
 									show: {
-										mode: [
-											'everyWeek',
-										],
+										mode: ['everyWeek'],
 									},
 								},
 								options: [
@@ -198,13 +181,12 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 								type: 'string',
 								displayOptions: {
 									show: {
-										mode: [
-											'custom',
-										],
+										mode: ['custom'],
 									},
 								},
 								default: '* * * * * *',
-								description: 'Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>',
+								description:
+									'Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>',
 							},
 							{
 								displayName: 'Value',
@@ -216,9 +198,7 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 								},
 								displayOptions: {
 									show: {
-										mode: [
-											'everyX',
-										],
+										mode: ['everyX'],
 									},
 								},
 								default: 2,
@@ -230,9 +210,7 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 								type: 'options',
 								displayOptions: {
 									show: {
-										mode: [
-											'everyX',
-										],
+										mode: ['everyX'],
 									},
 								},
 								options: [
@@ -258,18 +236,20 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 	return [];
 }
 
-
 /**
  * Returns if the parameter should be displayed or not
  *
  * @export
- * @param {INodeParameters} nodeValues The data on the node which decides if the parameter
- *                                    should be displayed
+ * @param {INodeParameters} nodeValues The data on the node which decides if the parameter should be displayed
  * @param {(INodeProperties | INodeCredentialDescription)} parameter The parameter to check if it should be displayed
  * @param {INodeParameters} [nodeValuesRoot] The root node-parameter-data
  * @returns
  */
-export function displayParameter(nodeValues: INodeParameters, parameter: INodeProperties | INodeCredentialDescription, nodeValuesRoot?: INodeParameters) {
+export function displayParameter(
+	nodeValues: INodeParameters,
+	parameter: INodeProperties | INodeCredentialDescription,
+	nodeValuesRoot?: INodeParameters,
+) {
 	if (!parameter.displayOptions) {
 		return true;
 	}
@@ -277,7 +257,7 @@ export function displayParameter(nodeValues: INodeParameters, parameter: INodePr
 	nodeValuesRoot = nodeValuesRoot || nodeValues;
 
 	let value;
-	const values: any[] = []; // tslint:disable-line:no-any
+	const values: any[] = []; // eslint-disable-line @typescript-eslint/no-explicit-any
 	if (parameter.displayOptions.show) {
 		// All the defined rules have to match to display parameter
 		for (const propertyName of Object.keys(parameter.displayOptions.show)) {
@@ -293,10 +273,10 @@ export function displayParameter(nodeValues: INodeParameters, parameter: INodePr
 			if (!Array.isArray(value)) {
 				values.push(value);
 			} else {
-				values.push.apply(values, value);
+				values.push(...value);
 			}
 
-			if (values.length === 0 || !parameter.displayOptions.show[propertyName].some(v => values.includes(v))) {
+			if (values.length === 0 || !parameter.displayOptions.show[propertyName].some((v) => values.includes(v))) {
 				return false;
 			}
 		}
@@ -317,10 +297,10 @@ export function displayParameter(nodeValues: INodeParameters, parameter: INodePr
 			if (!Array.isArray(value)) {
 				values.push(value);
 			} else {
-				values.push.apply(values, value);
+				values.push(...value);
 			}
 
-			if (values.length !== 0 && parameter.displayOptions.hide[propertyName].some(v => values.includes(v))) {
+			if (values.length !== 0 && parameter.displayOptions.hide[propertyName].some((v) => values.includes(v))) {
 				return false;
 			}
 		}
@@ -329,39 +309,34 @@ export function displayParameter(nodeValues: INodeParameters, parameter: INodePr
 	return true;
 }
 
-
 /**
  * Returns if the given parameter should be displayed or not considering the path
  * to the properties
  *
  * @export
- * @param {INodeParameters} nodeValues The data on the node which decides if the parameter
- *                                    should be displayed
+ * @param {INodeParameters} nodeValues The data on the node which decides if the parameter should be displayed
  * @param {(INodeProperties | INodeCredentialDescription)} parameter The parameter to check if it should be displayed
  * @param {string} path The path to the property
  * @returns
  */
-export function displayParameterPath(nodeValues: INodeParameters, parameter: INodeProperties | INodeCredentialDescription, path: string) {
+export function displayParameterPath(
+	nodeValues: INodeParameters,
+	parameter: INodeProperties | INodeCredentialDescription,
+	path: string,
+) {
 	let resolvedNodeValues = nodeValues;
 	if (path !== '') {
-		resolvedNodeValues = get(
-			nodeValues,
-			path,
-		) as INodeParameters;
+		resolvedNodeValues = get(nodeValues, path) as INodeParameters;
 	}
 
 	// Get the root parameter data
 	let nodeValuesRoot = nodeValues;
 	if (path && path.split('.').indexOf('parameters') === 0) {
-		nodeValuesRoot = get(
-			nodeValues,
-			'parameters',
-		) as INodeParameters;
+		nodeValuesRoot = get(nodeValues, 'parameters') as INodeParameters;
 	}
 
 	return displayParameter(resolvedNodeValues, parameter, nodeValuesRoot);
 }
-
 
 /**
  * Returns the context data
@@ -397,7 +372,6 @@ export function getContext(runExecutionData: IRunExecutionData, type: string, no
 	return runExecutionData.executionData.contextData[key];
 }
 
-
 /**
  * Returns which parameters are dependent on which
  *
@@ -432,7 +406,6 @@ export function getParamterDependencies(nodePropertiesArray: INodeProperties[]):
 	return dependencies;
 }
 
-
 /**
  * Returns in which order the parameters should be resolved
  * to have the paramters available they are depent on
@@ -442,7 +415,10 @@ export function getParamterDependencies(nodePropertiesArray: INodeProperties[]):
  * @param {IParameterDependencies} parameterDependencies
  * @returns {number[]}
  */
-export function getParamterResolveOrder(nodePropertiesArray: INodeProperties[], parameterDependencies: IParameterDependencies): number[] {
+export function getParamterResolveOrder(
+	nodePropertiesArray: INodeProperties[],
+	parameterDependencies: IParameterDependencies,
+): number[] {
 	const executionOrder: number[] = [];
 	const indexToResolve = Array.from({ length: nodePropertiesArray.length }, (v, k) => k);
 	const resolvedParamters: string[] = [];
@@ -453,7 +429,7 @@ export function getParamterResolveOrder(nodePropertiesArray: INodeProperties[], 
 	let lastIndexLength = indexToResolve.length;
 	let lastIndexReduction = -1;
 
-	let itterations = 0 ;
+	let itterations = 0;
 
 	while (indexToResolve.length !== 0) {
 		itterations += 1;
@@ -499,7 +475,6 @@ export function getParamterResolveOrder(nodePropertiesArray: INodeProperties[], 
 	return executionOrder;
 }
 
-
 /**
  * Returns the node parameter values. Depending on the settings it either just returns the none
  * default values or it applies all the default values.
@@ -514,7 +489,17 @@ export function getParamterResolveOrder(nodePropertiesArray: INodeProperties[], 
  * @param {INodeParameters} [nodeValuesRoot] The root node-parameter-data
  * @returns {(INodeParameters | null)}
  */
-export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeValues: INodeParameters, returnDefaults: boolean, returnNoneDisplayed: boolean, onlySimpleTypes = false, dataIsResolved = false, nodeValuesRoot?: INodeParameters, parentType?: string, parameterDependencies?: IParameterDependencies): INodeParameters | null {
+export function getNodeParameters(
+	nodePropertiesArray: INodeProperties[],
+	nodeValues: INodeParameters,
+	returnDefaults: boolean,
+	returnNoneDisplayed: boolean,
+	onlySimpleTypes = false,
+	dataIsResolved = false,
+	nodeValuesRoot?: INodeParameters,
+	parentType?: string,
+	parameterDependencies?: IParameterDependencies,
+): INodeParameters | null {
 	if (parameterDependencies === undefined) {
 		parameterDependencies = getParamterDependencies(nodePropertiesArray);
 	}
@@ -538,7 +523,17 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 
 	let nodeValuesDisplayCheck = nodeParametersFull;
 	if (dataIsResolved !== true && returnNoneDisplayed === false) {
-		nodeValuesDisplayCheck = getNodeParameters(nodePropertiesArray, nodeValues, true, true, true, true, nodeValuesRoot, parentType, parameterDependencies) as INodeParameters;
+		nodeValuesDisplayCheck = getNodeParameters(
+			nodePropertiesArray,
+			nodeValues,
+			true,
+			true,
+			true,
+			true,
+			nodeValuesRoot,
+			parentType,
+			parameterDependencies,
+		) as INodeParameters;
 	}
 
 	nodeValuesRoot = nodeValuesRoot || nodeValuesDisplayCheck;
@@ -576,12 +571,16 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 				if (['boolean', 'number', 'options'].includes(nodeProperties.type)) {
 					// Boolean, numbers and options are special as false and 0 are valid values
 					// and should not be replaced with default value
-					nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name] !== undefined ? nodeValues[nodeProperties.name] : nodeProperties.default;
+					nodeParameters[nodeProperties.name] =
+						nodeValues[nodeProperties.name] !== undefined ? nodeValues[nodeProperties.name] : nodeProperties.default;
 				} else {
 					nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name] || nodeProperties.default;
 				}
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
-			} else if (nodeValues[nodeProperties.name] !== nodeProperties.default || (nodeValues[nodeProperties.name] !== undefined && parentType === 'collection')) {
+			} else if (
+				nodeValues[nodeProperties.name] !== nodeProperties.default ||
+				(nodeValues[nodeProperties.name] !== undefined && parentType === 'collection')
+			) {
 				// Set only if it is different to the default value
 				nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name];
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
@@ -614,7 +613,16 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 			} else {
 				if (nodeValues[nodeProperties.name] !== undefined) {
 					// Has values defined so get them
-					const tempNodeParameters = getNodeParameters(nodeProperties.options as INodeProperties[], nodeValues[nodeProperties.name] as INodeParameters, returnDefaults, returnNoneDisplayed, false, false, nodeValuesRoot, nodeProperties.type);
+					const tempNodeParameters = getNodeParameters(
+						nodeProperties.options as INodeProperties[],
+						nodeValues[nodeProperties.name] as INodeParameters,
+						returnDefaults,
+						returnNoneDisplayed,
+						false,
+						false,
+						nodeValuesRoot,
+						nodeProperties.type,
+					);
 
 					if (tempNodeParameters !== null) {
 						nodeParameters[nodeProperties.name] = tempNodeParameters;
@@ -649,14 +657,25 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 					const tempArrayValue: INodeParameters[] = [];
 					// Iterate over all items as it contains multiple ones
 					for (const nodeValue of (propertyValues as INodeParameters)[itemName] as INodeParameters[]) {
-						nodePropertyOptions = nodeProperties!.options!.find((nodePropertyOptions) => nodePropertyOptions.name === itemName) as INodePropertyCollection;
+						nodePropertyOptions = nodeProperties!.options!.find(
+							(nodePropertyOptions) => nodePropertyOptions.name === itemName,
+						) as INodePropertyCollection;
 
 						if (nodePropertyOptions === undefined) {
 							throw new Error(`Could not find property option "${itemName}" for "${nodeProperties.name}"`);
 						}
 
 						tempNodePropertiesArray = (nodePropertyOptions as INodePropertyCollection).values!;
-						tempValue = getNodeParameters(tempNodePropertiesArray, nodeValue as INodeParameters, returnDefaults, returnNoneDisplayed, false, false, nodeValuesRoot, nodeProperties.type);
+						tempValue = getNodeParameters(
+							tempNodePropertiesArray,
+							nodeValue as INodeParameters,
+							returnDefaults,
+							returnNoneDisplayed,
+							false,
+							false,
+							nodeValuesRoot,
+							nodeProperties.type,
+						);
 						if (tempValue !== null) {
 							tempArrayValue.push(tempValue);
 						}
@@ -671,7 +690,16 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 
 					if (nodePropertyOptions !== undefined) {
 						tempNodePropertiesArray = (nodePropertyOptions as INodePropertyCollection).values!;
-						tempValue = getNodeParameters(tempNodePropertiesArray, (nodeValues[nodeProperties.name] as INodeParameters)[itemName] as INodeParameters, returnDefaults, returnNoneDisplayed, false, false, nodeValuesRoot, nodeProperties.type);
+						tempValue = getNodeParameters(
+							tempNodePropertiesArray,
+							(nodeValues[nodeProperties.name] as INodeParameters)[itemName] as INodeParameters,
+							returnDefaults,
+							returnNoneDisplayed,
+							false,
+							false,
+							nodeValuesRoot,
+							nodeProperties.type,
+						);
 						if (tempValue !== null) {
 							Object.assign(tempNodeParameters, tempValue);
 						}
@@ -706,7 +734,6 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 	return nodeParameters;
 }
 
-
 /**
  * Brings the output data in a format that can be returned from a node
  *
@@ -715,7 +742,10 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
  * @param {number} [outputIndex=0]
  * @returns {Promise<INodeExecutionData[][]>}
  */
-export async function prepareOutputData(outputData: INodeExecutionData[], outputIndex = 0): Promise<INodeExecutionData[][]> {
+export async function prepareOutputData(
+	outputData: INodeExecutionData[],
+	outputIndex = 0,
+): Promise<INodeExecutionData[][]> {
 	// TODO: Check if node has output with that index
 	const returnData = [];
 
@@ -728,8 +758,6 @@ export async function prepareOutputData(outputData: INodeExecutionData[], output
 	return returnData;
 }
 
-
-
 /**
  * Returns all the webhooks which should be created for the give node
  *
@@ -738,7 +766,11 @@ export async function prepareOutputData(outputData: INodeExecutionData[], output
  * @param {INode} node
  * @returns {IWebhookData[]}
  */
-export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData): IWebhookData[] {
+export function getNodeWebhooks(
+	workflow: Workflow,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+): IWebhookData[] {
 	if (node.disabled === true) {
 		// Node is disabled so webhooks will also not be enabled
 		return [];
@@ -772,14 +804,21 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 			nodeWebhookPath = nodeWebhookPath.slice(0, -1);
 		}
 
-		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['isFullPath'], 'internal', false) as boolean;
+		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
+			node,
+			webhookDescription['isFullPath'],
+			'internal',
+			false,
+		) as boolean;
 		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath);
 
 		const httpMethod = workflow.expression.getSimpleParameterValue(node, webhookDescription['httpMethod'], mode, 'GET');
 
 		if (httpMethod === undefined) {
 			// TODO: Use a proper logger
-			console.error(`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`);
+			console.error(
+				`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`,
+			);
 			continue;
 		}
 
@@ -837,7 +876,12 @@ export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookD
 			nodeWebhookPath = nodeWebhookPath.slice(0, -1);
 		}
 
-		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['isFullPath'], mode, false) as boolean;
+		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
+			node,
+			webhookDescription['isFullPath'],
+			mode,
+			false,
+		) as boolean;
 
 		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath);
 
@@ -845,7 +889,9 @@ export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookD
 
 		if (httpMethod === undefined) {
 			// TODO: Use a proper logger
-			console.error(`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`);
+			console.error(
+				`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`,
+			);
 			continue;
 		}
 
@@ -861,7 +907,6 @@ export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookD
 
 	return returnData;
 }
-
 
 /**
  * Returns the webhook path
@@ -885,7 +930,6 @@ export function getNodeWebhookPath(workflowId: string, node: INode, path: string
 	return webhookPath;
 }
 
-
 /**
  * Returns the webhook URL
  *
@@ -897,7 +941,13 @@ export function getNodeWebhookPath(workflowId: string, node: INode, path: string
  * @param {boolean} isFullPath
  * @returns {string}
  */
-export function getNodeWebhookUrl(baseUrl: string, workflowId: string, node: INode, path: string, isFullPath?: boolean): string {
+export function getNodeWebhookUrl(
+	baseUrl: string,
+	workflowId: string,
+	node: INode,
+	path: string,
+	isFullPath?: boolean,
+): string {
 	if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
 		// setting this to false to prefix the webhookId
 		isFullPath = false;
@@ -907,7 +957,6 @@ export function getNodeWebhookUrl(baseUrl: string, workflowId: string, node: INo
 	}
 	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
 }
-
 
 /**
  * Returns all the parameter-issues of the node
@@ -938,7 +987,6 @@ export function getNodeParametersIssues(nodePropertiesArray: INodeProperties[], 
 	return foundIssues;
 }
 
-
 /**
  * Returns the issues of the node as string
  *
@@ -954,10 +1002,7 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 		nodeIssues.push(`Execution Error.`);
 	}
 
-	const objectProperties = [
-		'parameters',
-		'credentials',
-	];
+	const objectProperties = ['parameters', 'credentials'];
 
 	let issueText: string, parameterName: string;
 	for (const propertyName of objectProperties) {
@@ -981,7 +1026,6 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 	return nodeIssues;
 }
 
-
 /**
  * Adds an issue if the parameter is not defined
  *
@@ -990,11 +1034,17 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
  * @param {INodeProperties} nodeProperties The properties of the node
  * @param {NodeParameterValue} value The value of the parameter
  */
-export function addToIssuesIfMissing(foundIssues: INodeIssues, nodeProperties: INodeProperties, value: NodeParameterValue) {
+export function addToIssuesIfMissing(
+	foundIssues: INodeIssues,
+	nodeProperties: INodeProperties,
+	value: NodeParameterValue,
+) {
 	// TODO: Check what it really has when undefined
-	if ((nodeProperties.type === 'string' && (value === '' || value === undefined)) ||
+	if (
+		(nodeProperties.type === 'string' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
-		(nodeProperties.type === 'dateTime' && value === undefined)) {
+		(nodeProperties.type === 'dateTime' && value === undefined)
+	) {
 		// Parameter is requried but empty
 		if (foundIssues.parameters === undefined) {
 			foundIssues.parameters = {};
@@ -1007,7 +1057,6 @@ export function addToIssuesIfMissing(foundIssues: INodeIssues, nodeProperties: I
 	}
 }
 
-
 /**
  * Returns the parameter value
  *
@@ -1018,13 +1067,8 @@ export function addToIssuesIfMissing(foundIssues: INodeIssues, nodeProperties: I
  * @returns
  */
 export function getParameterValueByPath(nodeValues: INodeParameters, parameterName: string, path: string) {
-	return get(
-		nodeValues,
-		path ? path + '.' + parameterName : parameterName,
-	);
+	return get(nodeValues, path ? path + '.' + parameterName : parameterName);
 }
-
-
 
 /**
  * Returns all the issues with the given node-values
@@ -1035,7 +1079,11 @@ export function getParameterValueByPath(nodeValues: INodeParameters, parameterNa
  * @param {string} path The path to the properties
  * @returns {INodeIssues}
  */
-export function getParameterIssues(nodeProperties: INodeProperties, nodeValues: INodeParameters, path: string): INodeIssues {
+export function getParameterIssues(
+	nodeProperties: INodeProperties,
+	nodeValues: INodeParameters,
+	path: string,
+): INodeIssues {
 	const foundIssues: INodeIssues = {};
 	let value;
 
@@ -1134,7 +1182,6 @@ export function getParameterIssues(nodeProperties: INodeProperties, nodeValues: 
 	return foundIssues;
 }
 
-
 /**
  * Merges multiple NodeIssues together
  *
@@ -1153,10 +1200,7 @@ export function mergeIssues(destination: INodeIssues, source: INodeIssues | null
 		destination.execution = true;
 	}
 
-	const objectProperties = [
-		'parameters',
-		'credentials',
-	];
+	const objectProperties = ['parameters', 'credentials'];
 
 	let destinationProperty: INodeIssueObjectProperty;
 	for (const propertyName of objectProperties) {
@@ -1171,7 +1215,11 @@ export function mergeIssues(destination: INodeIssues, source: INodeIssues | null
 				if (destinationProperty[parameterName] === undefined) {
 					destinationProperty[parameterName] = [];
 				}
-				destinationProperty[parameterName].push.apply(destinationProperty[parameterName], (source[propertyName] as INodeIssueObjectProperty)[parameterName]);
+				// eslint-disable-next-line
+				destinationProperty[parameterName].push.apply(
+					destinationProperty[parameterName],
+					(source[propertyName] as INodeIssueObjectProperty)[parameterName],
+				);
 			}
 		}
 	}
@@ -1180,8 +1228,6 @@ export function mergeIssues(destination: INodeIssues, source: INodeIssues | null
 		destination.typeUnknown = true;
 	}
 }
-
-
 
 /**
  * Merges the given node properties
@@ -1193,7 +1239,7 @@ export function mergeIssues(destination: INodeIssues, source: INodeIssues | null
 export function mergeNodeProperties(mainProperties: INodeProperties[], addProperties: INodeProperties[]): void {
 	let existingIndex: number;
 	for (const property of addProperties) {
-		existingIndex = mainProperties.findIndex(element => element.name === property.name);
+		existingIndex = mainProperties.findIndex((element) => element.name === property.name);
 
 		if (existingIndex === -1) {
 			// Property does not exist yet, so add

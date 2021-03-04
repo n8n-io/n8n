@@ -8,8 +8,6 @@ import {
 	WorkflowExecuteMode,
 } from './';
 
-
-
 export class WorkflowDataProxy {
 	private workflow: Workflow;
 	private runExecutionData: IRunExecutionData | null;
@@ -21,9 +19,17 @@ export class WorkflowDataProxy {
 	private mode: WorkflowExecuteMode;
 	private selfData: IDataObject;
 
-
-
-	constructor(workflow: Workflow, runExecutionData: IRunExecutionData | null, runIndex: number, itemIndex: number, activeNodeName: string, connectionInputData: INodeExecutionData[], mode: WorkflowExecuteMode, defaultReturnRunIndex = -1, selfData = {}) {
+	constructor(
+		workflow: Workflow,
+		runExecutionData: IRunExecutionData | null,
+		runIndex: number,
+		itemIndex: number,
+		activeNodeName: string,
+		connectionInputData: INodeExecutionData[],
+		mode: WorkflowExecuteMode,
+		defaultReturnRunIndex = -1,
+		selfData = {},
+	) {
 		this.workflow = workflow;
 		this.runExecutionData = runExecutionData;
 		this.defaultReturnRunIndex = defaultReturnRunIndex;
@@ -34,8 +40,6 @@ export class WorkflowDataProxy {
 		this.mode = mode;
 		this.selfData = selfData;
 	}
-
-
 
 	/**
 	 * Returns a proxy which allows to query context data of a given node
@@ -49,45 +53,48 @@ export class WorkflowDataProxy {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
-		return new Proxy({}, {
-			ownKeys(target) {
-				if (Reflect.ownKeys(target).length === 0) {
-					// Target object did not get set yet
-					Object.assign(target, NodeHelpers.getContext(that.runExecutionData!, 'node', node));
-				}
+		return new Proxy(
+			{},
+			{
+				ownKeys(target) {
+					if (Reflect.ownKeys(target).length === 0) {
+						// Target object did not get set yet
+						Object.assign(target, NodeHelpers.getContext(that.runExecutionData!, 'node', node));
+					}
 
-				return Reflect.ownKeys(target);
+					return Reflect.ownKeys(target);
+				},
+				get(target, name, receiver) {
+					name = name.toString();
+					const contextData = NodeHelpers.getContext(that.runExecutionData!, 'node', node);
+
+					if (!contextData.hasOwnProperty(name)) {
+						// Parameter does not exist on node
+						throw new Error(`Could not find parameter "${name}" on context of node "${nodeName}"`);
+					}
+
+					return contextData[name];
+				},
 			},
-			get(target, name, receiver) {
-				name = name.toString();
-				const contextData = NodeHelpers.getContext(that.runExecutionData!, 'node', node);
-
-				if (!contextData.hasOwnProperty(name)) {
-					// Parameter does not exist on node
-					throw new Error(`Could not find parameter "${name}" on context of node "${nodeName}"`);
-				}
-
-				return contextData[name];
-			},
-		});
+		);
 	}
-
-
 
 	private selfGetter() {
 		const that = this;
 
-		return new Proxy({}, {
-			ownKeys(target) {
-				return Reflect.ownKeys(target);
+		return new Proxy(
+			{},
+			{
+				ownKeys(target) {
+					return Reflect.ownKeys(target);
+				},
+				get(target, name, receiver) {
+					name = name.toString();
+					return that.selfData[name];
+				},
 			},
-			get(target, name, receiver) {
-				name = name.toString();
-				return that.selfData[name];
-			},
-		});
+		);
 	}
-
 
 	/**
 	 * Returns a proxy which allows to query parameter data of a given node
@@ -117,14 +124,21 @@ export class WorkflowDataProxy {
 
 				if (typeof returnValue === 'string' && returnValue.charAt(0) === '=') {
 					// The found value is an expression so resolve it
-					return that.workflow.expression.getParameterValue(returnValue, that.runExecutionData, that.runIndex, that.itemIndex, that.activeNodeName, that.connectionInputData, that.mode);
+					return that.workflow.expression.getParameterValue(
+						returnValue,
+						that.runExecutionData,
+						that.runIndex,
+						that.itemIndex,
+						that.activeNodeName,
+						that.connectionInputData,
+						that.mode,
+					);
 				}
 
 				return returnValue;
 			},
 		});
 	}
-
 
 	/**
 	 * Returns the node ExecutionData
@@ -137,7 +151,12 @@ export class WorkflowDataProxy {
 	 * @returns {INodeExecutionData[]}
 	 * @memberof WorkflowDataProxy
 	 */
-	private getNodeExecutionData(nodeName: string, shortSyntax = false, outputIndex?: number, runIndex?: number): INodeExecutionData[] {
+	private getNodeExecutionData(
+		nodeName: string,
+		shortSyntax = false,
+		outputIndex?: number,
+		runIndex?: number,
+	): INodeExecutionData[] {
 		const that = this;
 
 		let executionData: INodeExecutionData[];
@@ -153,7 +172,7 @@ export class WorkflowDataProxy {
 			}
 
 			runIndex = runIndex === undefined ? that.defaultReturnRunIndex : runIndex;
-			runIndex = runIndex === -1 ? (that.runExecutionData.resultData.runData[nodeName].length -1) : runIndex;
+			runIndex = runIndex === -1 ? that.runExecutionData.resultData.runData[nodeName].length - 1 : runIndex;
 
 			if (that.runExecutionData.resultData.runData[nodeName].length < runIndex) {
 				throw new Error(`No execution data found for run "${runIndex}" of node "${nodeName}"`);
@@ -173,7 +192,9 @@ export class WorkflowDataProxy {
 				const outputIndex = that.workflow.getNodeConnectionOutputIndex(that.activeNodeName, nodeName, 'main');
 
 				if (outputIndex === undefined) {
-					throw new Error(`The node "${that.activeNodeName}" is not connected with node "${nodeName}" so no data can get returned from it.`);
+					throw new Error(
+						`The node "${that.activeNodeName}" is not connected with node "${nodeName}" so no data can get returned from it.`,
+					);
 				}
 			}
 
@@ -182,7 +203,9 @@ export class WorkflowDataProxy {
 			}
 
 			if (taskData.main.length < outputIndex) {
-				throw new Error(`No data found from "main" input with index "${outputIndex}" via which node is connected with.`);
+				throw new Error(
+					`No data found from "main" input with index "${outputIndex}" via which node is connected with.`,
+				);
 			}
 
 			executionData = taskData.main[outputIndex] as INodeExecutionData[];
@@ -200,7 +223,6 @@ export class WorkflowDataProxy {
 		return executionData;
 	}
 
-
 	/**
 	 * Returns a proxy which allows to query data of a given node
 	 *
@@ -211,7 +233,6 @@ export class WorkflowDataProxy {
 	 * @memberof WorkflowDataGetter
 	 */
 	private nodeDataGetter(nodeName: string, shortSyntax = false) {
-
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
@@ -219,64 +240,63 @@ export class WorkflowDataProxy {
 			throw new Error(`The node "${nodeName}" does not exist!`);
 		}
 
-		return new Proxy({}, {
-			get(target, name, receiver) {
-				name = name.toString();
+		return new Proxy(
+			{},
+			{
+				get(target, name, receiver) {
+					name = name.toString();
 
-				if (['binary', 'data', 'json'].includes(name)) {
-					const executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);
+					if (['binary', 'data', 'json'].includes(name)) {
+						const executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);
 
-					if (executionData.length <= that.itemIndex) {
-						throw new Error(`No data found for item-index: "${that.itemIndex}"`);
-					}
+						if (executionData.length <= that.itemIndex) {
+							throw new Error(`No data found for item-index: "${that.itemIndex}"`);
+						}
 
-					if (['data', 'json'].includes(name as string)) {
-						// JSON-Data
-						return executionData[that.itemIndex].json;
-					} else if (name === 'binary') {
-						// Binary-Data
-						const returnData: IDataObject = {};
+						if (['data', 'json'].includes(name as string)) {
+							// JSON-Data
+							return executionData[that.itemIndex].json;
+						} else if (name === 'binary') {
+							// Binary-Data
+							const returnData: IDataObject = {};
 
-						if (!executionData[that.itemIndex].binary) {
+							if (!executionData[that.itemIndex].binary) {
+								return returnData;
+							}
+
+							const binaryKeyData = executionData[that.itemIndex].binary!;
+							for (const keyName of Object.keys(binaryKeyData)) {
+								returnData[keyName] = {};
+
+								const binaryData = binaryKeyData[keyName];
+								for (const propertyName in binaryData) {
+									if (propertyName === 'data') {
+										// Skip the data property
+										continue;
+									}
+									(returnData[keyName] as IDataObject)[propertyName] = binaryData[propertyName];
+								}
+							}
+
 							return returnData;
 						}
-
-						const binaryKeyData = executionData[that.itemIndex].binary!;
-						for (const keyName of Object.keys(binaryKeyData)) {
-
-							returnData[keyName] = {};
-
-							const binaryData = binaryKeyData[keyName];
-							for (const propertyName in binaryData) {
-								if (propertyName === 'data') {
-									// Skip the data property
-									continue;
-								}
-								(returnData[keyName] as IDataObject)[propertyName] = binaryData[propertyName];
-							}
+					} else if (name === 'context') {
+						return that.nodeContextGetter(nodeName);
+					} else if (name === 'parameter') {
+						// Get node parameter data
+						return that.nodeParameterGetter(nodeName);
+					} else if (name === 'runIndex') {
+						if (that.runExecutionData === null || !that.runExecutionData.resultData.runData[nodeName]) {
+							return -1;
 						}
-
-						return returnData;
+						return that.runExecutionData.resultData.runData[nodeName].length - 1;
 					}
 
-				} else if (name === 'context') {
-					return that.nodeContextGetter(nodeName);
-				} else if (name === 'parameter') {
-					// Get node parameter data
-					return that.nodeParameterGetter(nodeName);
-				} else if (name === 'runIndex') {
-					if (that.runExecutionData === null || !that.runExecutionData.resultData.runData[nodeName]) {
-						return -1;
-					}
-					return that.runExecutionData.resultData.runData[nodeName].length - 1;
-				}
-
-				return Reflect.get(target, name, receiver);
+					return Reflect.get(target, name, receiver);
+				},
 			},
-		});
+		);
 	}
-
-
 
 	/**
 	 * Returns a proxy to query data from the environment
@@ -286,14 +306,15 @@ export class WorkflowDataProxy {
 	 * @memberof WorkflowDataGetter
 	 */
 	private envGetter() {
-		return new Proxy({}, {
-			get(target, name, receiver) {
-				return process.env[name.toString()];
+		return new Proxy(
+			{},
+			{
+				get(target, name, receiver) {
+					return process.env[name.toString()];
+				},
 			},
-		});
+		);
 	}
-
-
 
 	/**
 	 * Returns a proxt to query data from the workflow
@@ -303,26 +324,23 @@ export class WorkflowDataProxy {
 	 * @memberof WorkflowDataProxy
 	 */
 	private workflowGetter() {
-		const allowedValues = [
-			'active',
-			'id',
-			'name',
-		];
+		const allowedValues = ['active', 'id', 'name'];
 		const that = this;
 
-		return new Proxy({}, {
-			get(target, name, receiver) {
-				if (!allowedValues.includes(name.toString())) {
-					throw new Error(`The key "${name.toString()}" is not supported!`);
-				}
+		return new Proxy(
+			{},
+			{
+				get(target, name, receiver) {
+					if (!allowedValues.includes(name.toString())) {
+						throw new Error(`The key "${name.toString()}" is not supported!`);
+					}
 
-				// @ts-ignore
-				return that.workflow[name.toString()];
+					// @ts-ignore
+					return that.workflow[name.toString()];
+				},
 			},
-		});
+		);
 	}
-
-
 
 	/**
 	 * Returns a proxy to query data of all nodes
@@ -333,14 +351,15 @@ export class WorkflowDataProxy {
 	 */
 	private nodeGetter() {
 		const that = this;
-		return new Proxy({}, {
-			get(target, name, receiver) {
-				return that.nodeDataGetter(name.toString());
+		return new Proxy(
+			{},
+			{
+				get(target, name, receiver) {
+					return that.nodeDataGetter(name.toString());
+				},
 			},
-		});
+		);
 	}
-
-
 
 	/**
 	 * Returns the data proxy object which allows to query data from current run
@@ -357,11 +376,28 @@ export class WorkflowDataProxy {
 			$env: this.envGetter(),
 			$evaluateExpression: (expression: string, itemIndex?: number) => {
 				itemIndex = itemIndex || that.itemIndex;
-				return that.workflow.expression.getParameterValue('=' + expression, that.runExecutionData, that.runIndex, itemIndex, that.activeNodeName, that.connectionInputData, that.mode);
+				return that.workflow.expression.getParameterValue(
+					'=' + expression,
+					that.runExecutionData,
+					that.runIndex,
+					itemIndex,
+					that.activeNodeName,
+					that.connectionInputData,
+					that.mode,
+				);
 			},
 			$item: (itemIndex: number, runIndex?: number) => {
 				const defaultReturnRunIndex = runIndex === undefined ? -1 : runIndex;
-				const dataProxy = new WorkflowDataProxy(this.workflow, this.runExecutionData, this.runIndex, itemIndex, this.activeNodeName, this.connectionInputData, that.mode, defaultReturnRunIndex);
+				const dataProxy = new WorkflowDataProxy(
+					this.workflow,
+					this.runExecutionData,
+					this.runIndex,
+					itemIndex,
+					this.activeNodeName,
+					this.connectionInputData,
+					that.mode,
+					defaultReturnRunIndex,
+				);
 				return dataProxy.getDataProxy();
 			},
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {
