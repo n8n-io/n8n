@@ -7,7 +7,7 @@ export const campaignOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		default: 'get',
+		default: 'getAll',
 		description: 'Operation to perform',
 		options: [
 			{

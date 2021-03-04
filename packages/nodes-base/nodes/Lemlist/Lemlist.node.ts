@@ -76,7 +76,7 @@ export class Lemlist implements INodeType {
 						value: 'team',
 					},
 					{
-						name: 'Unsubscribe',
+						name: 'Unsubscribes',
 						value: 'unsubscribe',
 					},
 				],

@@ -7,7 +7,7 @@ export const unsubscribeOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		default: 'create',
+		default: 'add',
 		description: 'Operation to perform',
 		options: [
 			{
