@@ -522,7 +522,7 @@ export class GoogleDrive implements INodeType {
 				name: 'permissionsUi',
 				placeholder: 'Add Permission',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: false,
 				},
@@ -810,6 +810,7 @@ export class GoogleDrive implements INodeType {
 							'copy',
 							'list',
 							'share',
+							'create',
 						],
 						'/resource': [
 							'file',

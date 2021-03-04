@@ -88,14 +88,17 @@
 							<span class="status-badge success" v-else-if="scope.row.finished">
 								Success
 							</span>
-							<span class="status-badge error" v-else>
+							<span class="status-badge error" v-else-if="scope.row.stoppedAt !== null">
 								Error
+							</span>
+							<span class="status-badge warning" v-else>
+								Unknown
 							</span>
 						</el-tooltip>
 
 						<el-dropdown trigger="click" @command="handleRetryClick">
 							<span class="el-dropdown-link">
-								<el-button class="retry-button" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" type="text" size="small" title="Retry execution">
+								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" type="text" size="small" title="Retry execution">
 									<font-awesome-icon icon="redo" />
 								</el-button>
 							</span>
@@ -410,12 +413,13 @@ export default mixins(
 			this.$store.commit('setActiveExecutions', activeExecutions);
 		},
 		async loadAutoRefresh () : Promise<void> {
-			let firstId: string | number | undefined = 0;
-			if (this.finishedExecutions.length !== 0) {
-				firstId = this.finishedExecutions[0].id;
-			}
 			const filter = this.workflowFilterPast;
-			const pastExecutionsPromise: Promise<IExecutionsListResponse> = this.restApi().getPastExecutions(filter, this.requestItemsPerRequest, undefined, firstId);
+			// We cannot use firstId here as some executions finish out of order. Let's say
+			// You have execution ids 500 to 505 running.
+			// Suppose 504 finishes before 500, 501, 502 and 503.
+			// iF you use firstId, filtering id >= 504 you won't
+			// ever get ids 500, 501, 502 and 503 when they finish
+			const pastExecutionsPromise: Promise<IExecutionsListResponse> = this.restApi().getPastExecutions(filter, 30);
 			const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> = this.restApi().getCurrentExecutions({});
 
 			const results = await Promise.all([pastExecutionsPromise, currentExecutionsPromise]);
@@ -428,7 +432,38 @@ export default mixins(
 
 			this.$store.commit('setActiveExecutions', results[1]);
 
-			this.finishedExecutions.unshift.apply(this.finishedExecutions, results[0].results);
+			const alreadyPresentExecutionIds = this.finishedExecutions.map(exec => exec.id);
+			for(let i = results[0].results.length - 1; i >= 0; i--) {
+				const currentItem = results[0].results[i];
+				// Check new results from end to start
+				// Add new items accordingly.
+				const executionIndex = alreadyPresentExecutionIds.indexOf(currentItem.id);
+				if (executionIndex !== -1) {
+					// Execution that we received is already present.
+
+					if (this.finishedExecutions[executionIndex].finished === false && currentItem.finished === true) {
+						// Concurrency stuff. This might happen if the execution finishes
+						// prior to saving all information to database. Somewhat rare but
+						// With auto refresh and several executions, it happens sometimes.
+						// So we replace the execution data so it displays correctly.
+						this.finishedExecutions[executionIndex] = currentItem;
+					}
+
+					continue;
+				}
+
+				// Find the correct position to place this newcomer
+				let j;
+				for (j = this.finishedExecutions.length - 1; j >= 0; j--) {
+					if (currentItem.id < this.finishedExecutions[j].id) {
+						this.finishedExecutions.splice(j + 1, 0, currentItem);
+						break;
+					}
+				}
+				if (j === -1) {
+					this.finishedExecutions.unshift(currentItem);
+				}
+			}
 			this.finishedExecutionsCount = results[0].count;
 		},
 		async loadFinishedExecutions (): Promise<void> {
@@ -554,6 +589,8 @@ export default mixins(
 				return `The workflow execution was a retry of "${entry.retryOf}" and failed.<br />New retries have to be started from the original execution.`;
 			} else if (entry.retrySuccessId !== undefined) {
 				return `The workflow execution failed but the retry "${entry.retrySuccessId}" was successful.`;
+			} else if (entry.stoppedAt === null) {
+				return 'The workflow execution is probably still running but it may have crashed and n8n cannot safely tell. ';
 			} else {
 				return 'The workflow execution failed.';
 			}
@@ -610,6 +647,10 @@ export default mixins(
 	color: $--custom-error-text;
 	background-color: $--custom-error-background;
 	margin-left: 5px;
+	&.warning {
+		background-color: $--custom-warning-background;
+		color: $--custom-warning-text;
+	}
 }
 
 .selection-options {
@@ -639,6 +680,11 @@ export default mixins(
 	&.success {
 		background-color: $--custom-success-background;
 		color: $--custom-success-text;
+	}
+
+	&.warning {
+		background-color: $--custom-warning-background;
+		color: $--custom-warning-text;
 	}
 }
 
