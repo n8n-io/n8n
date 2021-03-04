@@ -310,6 +310,12 @@ export class Wise implements INodeType {
 
 					if (operation === 'getAll') {
 
+						// ----------------------------------
+						//       recipient: getAll
+						// ----------------------------------
+
+						// https://api-docs.transferwise.com/#recipient-accounts-list
+
 						responseData = await wiseApiRequest.call(this, 'GET', 'v1/accounts');
 
 						const returnAll = this.getNodeParameter('returnAll', i);
