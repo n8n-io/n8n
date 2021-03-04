@@ -4,12 +4,7 @@ module.exports = {
 		es6: true,
 		node: true,
 	},
-	extends: [
-		// 'eslint:recommended',
-		// 'plugin:@typescript-eslint/recommended',
-		// 'prettier',
-		// 'prettier/@typescript-eslint',
-	],
+	extends: ['prettier'],
 	parser: '@typescript-eslint/parser',
 	parserOptions: {
 		project: __dirname + '/tsconfig.json',
@@ -19,8 +14,9 @@ module.exports = {
 	plugins: [
 		'eslint-plugin-jsdoc',
 		'eslint-plugin-import',
-		'@typescript-eslint', //
+		'@typescript-eslint',
 		'@typescript-eslint/tslint',
+		'prettier',
 	],
 	rules: {
 		'@typescript-eslint/array-type': [
@@ -134,7 +130,7 @@ module.exports = {
 				ArrayPattern: { multiline: true },
 			},
 		],
-		'arrow-body-style': 'error',
+		'arrow-body-style': 'off',
 		'comma-dangle': [
 			'error',
 			{
@@ -179,8 +175,10 @@ module.exports = {
 		'no-useless-escape': 'error',
 		'no-var': 'error',
 		'object-shorthand': 'error',
+		'prefer-arrow-callback': 'off',
 		'prefer-const': 'error',
 		'prefer-spread': 'error',
+		'prettier/prettier': 'error',
 		radix: 'error',
 		'use-isnan': 'error',
 		'@typescript-eslint/tslint/config': [
