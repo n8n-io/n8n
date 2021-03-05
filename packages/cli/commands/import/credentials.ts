@@ -10,8 +10,15 @@ import {
 
 import {
 	Db,
-	GenericHelpers,
 } from '../../src';
+
+import { 
+	getInstance,
+} from '../../src/Logger';
+
+import {
+	LoggerProxy,
+} from 'n8n-workflow';
 
 import * as fs from 'fs';
 import * as glob from 'glob-promise';
@@ -37,17 +44,20 @@ export class ImportCredentialsCommand extends Command {
 	};
 
 	async run() {
+		const logger = getInstance();
+		LoggerProxy.init(logger);
+
 		const { flags } = this.parse(ImportCredentialsCommand);
 
 		if (!flags.input) {
-			GenericHelpers.logOutput(`An input file or directory with --input must be provided`);
+			logger.info(`An input file or directory with --input must be provided`);
 			return;
 		}
 
 		if (flags.separate) {
 			if (fs.existsSync(flags.input)) {
 				if (!fs.lstatSync(flags.input).isDirectory()) {
-					GenericHelpers.logOutput(`The paramenter --input must be a directory`);
+					logger.info(`The paramenter --input must be a directory`);
 					return;
 				}
 			}
@@ -81,9 +91,9 @@ export class ImportCredentialsCommand extends Command {
 					await Db.collections.Credentials!.save(fileContents[i]);
 				}
 			}
-			console.log('Successfully imported', i, 'credentials.');
+			logger.info(`Successfully imported ${i} credentials.`);
 		} catch (error) {
-			this.error(error.message);
+			logger.error(error.message);
 			this.exit(1);
 		}
 	}
