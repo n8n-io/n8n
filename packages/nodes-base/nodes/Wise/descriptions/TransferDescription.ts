@@ -112,6 +112,7 @@ export const transferFields = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -351,6 +352,7 @@ export const transferFields = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
+		placeholder: 'Add Filter',
 		default: {},
 		displayOptions: {
 			show: {

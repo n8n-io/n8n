@@ -517,6 +517,7 @@
       "dist/nodes/WriteBinaryFile.node.js",
       "dist/nodes/Wufoo/WufooTrigger.node.js",
       "dist/nodes/Wise/Wise.node.js",
+      "dist/nodes/Wise/WiseTrigger.node.js",
       "dist/nodes/Xero/Xero.node.js",
       "dist/nodes/Xml.node.js",
       "dist/nodes/Yourls/Yourls.node.js",
