@@ -258,7 +258,7 @@ export class WorkflowDataProxy {
               throw new Error(`No data found for item-index: "${that.itemIndex}"`);
             }
 
-            if (['data', 'json'].includes(name as string)) {
+            if (['data', 'json'].includes(name)) {
               // JSON-Data
               return executionData[that.itemIndex].json;
             } else if (name === 'binary') {
@@ -383,7 +383,7 @@ export class WorkflowDataProxy {
       $data: {}, // Placeholder
       $env: this.envGetter(),
       $evaluateExpression: (expression: string, itemIndex?: number) => {
-        itemIndex = itemIndex || that.itemIndex;
+        itemIndex = itemIndex ?? that.itemIndex;
         return that.workflow.expression.getParameterValue(
           '=' + expression,
           that.runExecutionData,
@@ -414,7 +414,7 @@ export class WorkflowDataProxy {
         if (nodeName === undefined) {
           executionData = that.connectionInputData;
         } else {
-          outputIndex = outputIndex || 0;
+          outputIndex = outputIndex ?? 0;
           runIndex = runIndex === undefined ? -1 : runIndex;
           executionData = that.getNodeExecutionData(nodeName, false, outputIndex, runIndex);
         }

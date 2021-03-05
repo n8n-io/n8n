@@ -91,11 +91,11 @@ export class Workflow {
 
     this.active = parameters.active || false;
 
-    this.staticData = ObservableObject.create(parameters.staticData || {}, undefined, {
+    this.staticData = ObservableObject.create(parameters.staticData ?? {}, undefined, {
       ignoreEmptyOnFirstChild: true,
     });
 
-    this.settings = parameters.settings || {};
+    this.settings = parameters.settings ?? {};
 
     this.expression = new Expression(this);
   }
@@ -171,7 +171,7 @@ export class Workflow {
         continue;
       }
 
-      if (ignoreNodeTypes !== undefined && ignoreNodeTypes.includes(node.type)) {
+      if (ignoreNodeTypes?.includes(node.type)) {
         continue;
       }
 
@@ -227,7 +227,7 @@ export class Workflow {
           typeUnknown: true,
         };
       } else {
-        nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.description.properties!, node);
+        nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.description.properties, node);
       }
 
       if (nodeIssues !== null) {
@@ -394,7 +394,7 @@ export class Workflow {
 
     const returnData: any = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-    for (const parameterName of Object.keys(parameterValue || {})) {
+    for (const parameterName of Object.keys(parameterValue ?? {})) {
       returnData[parameterName] = this.renameNodeInExpressions(
         parameterValue![parameterName],
         currentName,
@@ -412,7 +412,7 @@ export class Workflow {
    * @param {string} newName The new name
    * @memberof Workflow
    */
-  renameNode(currentName: string, newName: string) {
+  renameNode(currentName: string, newName: string): void {
     // Rename the node itself
     if (this.nodes[currentName] !== undefined) {
       this.nodes[newName] = this.nodes[currentName];
@@ -496,14 +496,14 @@ export class Workflow {
       return currentHighest;
     }
 
-    checkedNodes = checkedNodes || [];
+    checkedNodes = checkedNodes ?? [];
 
-    if (checkedNodes!.includes(nodeName)) {
+    if (checkedNodes.includes(nodeName)) {
       // Node got checked already before
       return currentHighest;
     }
 
-    checkedNodes!.push(nodeName);
+    checkedNodes.push(nodeName);
 
     const returnNodes: string[] = [];
     let addNodes: string[];
@@ -609,14 +609,14 @@ export class Workflow {
       return [];
     }
 
-    checkedNodes = checkedNodes || [];
+    checkedNodes = checkedNodes ?? [];
 
-    if (checkedNodes!.includes(nodeName)) {
+    if (checkedNodes.includes(nodeName)) {
       // Node got checked already before
       return [];
     }
 
-    checkedNodes!.push(nodeName);
+    checkedNodes.push(nodeName);
 
     const returnNodes: string[] = [];
     let addNodes: string[];
@@ -697,14 +697,14 @@ export class Workflow {
       return undefined;
     }
 
-    checkedNodes = checkedNodes || [];
+    checkedNodes = checkedNodes ?? [];
 
-    if (checkedNodes!.includes(nodeName)) {
+    if (checkedNodes.includes(nodeName)) {
       // Node got checked already before
       return undefined;
     }
 
-    checkedNodes!.push(nodeName);
+    checkedNodes.push(nodeName);
 
     let outputIndex: number | undefined;
     for (const connectionsByIndex of this.connectionsByDestinationNode[nodeName][type]) {
@@ -713,7 +713,7 @@ export class Workflow {
           return connection.index;
         }
 
-        if (checkedNodes!.includes(connection.node)) {
+        if (checkedNodes.includes(connection.node)) {
           // Node got checked already before
           return;
         }
@@ -879,7 +879,7 @@ export class Workflow {
     if (mode === 'manual') {
       // In manual mode we do not just start the trigger function we also
       // want to be able to get informed as soon as the first data got emitted
-      const triggerResponse = await nodeType.trigger!.call(triggerFunctions);
+      const triggerResponse = await nodeType.trigger.call(triggerFunctions);
 
       // Add the manual trigger response which resolves when the first time data got emitted
       triggerResponse!.manualTriggerResponse = new Promise((resolve) => {
@@ -891,7 +891,7 @@ export class Workflow {
       return triggerResponse;
     } else {
       // In all other modes simply start the trigger
-      return nodeType.trigger!.call(triggerFunctions);
+      return nodeType.trigger.call(triggerFunctions);
     }
   }
 
@@ -920,7 +920,7 @@ export class Workflow {
       );
     }
 
-    return nodeType.poll!.call(pollFunctions);
+    return nodeType.poll.call(pollFunctions);
   }
 
   /**
@@ -988,7 +988,7 @@ export class Workflow {
         if (inputData.main[0] === null) {
           return undefined;
         }
-        return [inputData.main[0] as INodeExecutionData[]];
+        return [inputData.main[0]];
       }
       return undefined;
     }
@@ -1032,6 +1032,7 @@ export class Workflow {
       connectionInputData = connectionInputData.slice(0, 1);
       const newInputData: ITaskDataConnections = {};
       for (const inputName of Object.keys(inputData)) {
+        // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
         newInputData[inputName] = inputData[inputName].map((input) => input && input.slice(0, 1));
       }
       inputData = newInputData;
@@ -1053,7 +1054,7 @@ export class Workflow {
           mode,
         );
 
-        returnPromises.push(nodeType.executeSingle!.call(thisArgs));
+        returnPromises.push(nodeType.executeSingle.call(thisArgs));
       }
 
       if (returnPromises.length === 0) {

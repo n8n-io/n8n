@@ -20,7 +20,7 @@ export class WorkflowHooks {
     workflowData: IWorkflowBase,
     optionalParameters?: IWorkflowHooksOptionalParameters,
   ) {
-    optionalParameters = optionalParameters || {};
+    optionalParameters = optionalParameters ?? {};
 
     this.hookFunctions = hookFunctions;
     this.mode = mode;
@@ -31,7 +31,7 @@ export class WorkflowHooks {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async executeHookFunctions(hookName: string, parameters: any[]) {
+  async executeHookFunctions(hookName: string, parameters: any[]): Promise<void> {
     if (this.hookFunctions[hookName] !== undefined && Array.isArray(this.hookFunctions[hookName])) {
       for (const hookFunction of this.hookFunctions[hookName]!) {
         await hookFunction.apply(this, parameters);

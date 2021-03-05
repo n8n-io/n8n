@@ -95,7 +95,7 @@ export class Expression {
       if (typeof returnValue === 'function') {
         throw new Error('Expression resolved to a function. Please add "()"');
       } else if (returnValue !== null && typeof returnValue === 'object') {
-        if (returnObjectAsString === true) {
+        if (returnObjectAsString) {
           return this.convertObjectValueToString(returnValue);
         }
       }
@@ -297,7 +297,7 @@ export class Expression {
         returnData.push(resolveParameterValue(item));
       }
 
-      if (returnObjectAsString === true && typeof returnData === 'object') {
+      if (returnObjectAsString && typeof returnData === 'object') {
         return this.convertObjectValueToString(returnData);
       }
 
@@ -311,7 +311,7 @@ export class Expression {
         returnData[key] = resolveParameterValue((parameterValue as INodeParameters)[key]);
       }
 
-      if (returnObjectAsString === true && typeof returnData === 'object') {
+      if (returnObjectAsString && typeof returnData === 'object') {
         return this.convertObjectValueToString(returnData);
       }
       return returnData;

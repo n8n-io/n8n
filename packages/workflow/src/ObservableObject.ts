@@ -10,14 +10,14 @@ export function create(
   option?: IObservableOptions,
   depth?: number,
 ): IDataObject {
-  depth = depth || 0;
+  depth = depth ?? 0;
 
   // Make all the children of target also observeable
   for (const key in target) {
     if (typeof target[key] === 'object' && target[key] !== null) {
       target[key] = create(
         target[key] as IDataObject,
-        (parent || target) as IObservableObject,
+        (parent ?? target) as IObservableObject,
         option,
         depth + 1,
       );
