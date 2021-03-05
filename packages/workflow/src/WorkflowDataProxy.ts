@@ -64,7 +64,7 @@ export class WorkflowDataProxy {
 
           return Reflect.ownKeys(target);
         },
-        get(target, name, receiver) {
+        get(target, name) {
           name = name.toString();
           const contextData = NodeHelpers.getContext(that.runExecutionData!, 'node', node);
 
@@ -88,7 +88,7 @@ export class WorkflowDataProxy {
         ownKeys(target) {
           return Reflect.ownKeys(target);
         },
-        get(target, name, receiver) {
+        get(target, name) {
           name = name.toString();
           return that.selfData[name];
         },
@@ -112,7 +112,7 @@ export class WorkflowDataProxy {
       ownKeys(target) {
         return Reflect.ownKeys(target);
       },
-      get(target, name, receiver) {
+      get(target, name) {
         name = name.toString();
 
         if (!node.parameters.hasOwnProperty(name)) {
@@ -317,7 +317,7 @@ export class WorkflowDataProxy {
     return new Proxy(
       {},
       {
-        get(target, name, receiver) {
+        get(target, name) {
           return process.env[name.toString()];
         },
       },
@@ -338,7 +338,7 @@ export class WorkflowDataProxy {
     return new Proxy(
       {},
       {
-        get(target, name, receiver) {
+        get(target, name) {
           if (!allowedValues.includes(name.toString())) {
             throw new Error(`The key "${name.toString()}" is not supported!`);
           }
@@ -362,7 +362,7 @@ export class WorkflowDataProxy {
     return new Proxy(
       {},
       {
-        get(target, name, receiver) {
+        get(target, name) {
           return that.nodeDataGetter(name.toString());
         },
       },

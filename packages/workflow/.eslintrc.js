@@ -121,6 +121,7 @@ module.exports = {
     '@typescript-eslint/no-inferrable-types': 'error',
     '@typescript-eslint/no-namespace': 'error',
     '@typescript-eslint/no-unused-expressions': 'error',
+    '@typescript-eslint/no-unused-vars': 'error',
     '@typescript-eslint/semi': ['error', 'always'],
     '@typescript-eslint/triple-slash-reference': 'error',
     'array-element-newline': [
