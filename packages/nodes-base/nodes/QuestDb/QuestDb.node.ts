@@ -201,7 +201,7 @@ export class QuestDb implements INodeType {
 
 			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
 
-			returnItems = this.helpers.returnJsonArray(queryResult.flat(1) as IDataObject[]);
+			returnItems = this.helpers.returnJsonArray(queryResult);
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
