@@ -20,6 +20,10 @@ export const messageOperations = [
 				value: 'create',
 				description: 'Create a message',
 			},
+			{
+				name: 'WS',
+				value: 'ws',
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',

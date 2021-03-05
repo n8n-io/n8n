@@ -12,6 +12,8 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
+import WebSocket = require('ws');
+
 export async function discordApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: string,
@@ -21,9 +23,15 @@ export async function discordApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ) {
+
+	const { oauthTokenData } = this.getCredentials('discordOAuth2Api') as {
+		oauthTokenData: { access_token: string }
+	};
+
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
+			Authorization: `Bearer ${oauthTokenData.access_token}`,
 		},
 		method,
 		body,
@@ -49,20 +57,24 @@ export async function discordApiRequest(
 	};
 
 	try {
-		console.log(options);
+		// console.log(options);
 		return await this.helpers.requestOAuth2!.call(this, 'discordOAuth2Api', options, oAuth2Options);
+		// return await this.helpers.request!.call(this, options);
 	} catch (error) {
 
-		const errors = error.response.body.context_info.errors;
-		const message = error.response.body.message;
-
-		if (errors) {
-			const errorMessage = errors.map((e: IDataObject) => e.message).join('|');
-			throw new Error(`Discord error response [${error.statusCode}]: ${errorMessage}`);
-		} else if (message) {
-			throw new Error(`Discord error response [${error.statusCode}]: ${message}`);
-		}
+		// TODO
 
 		throw error;
 	}
+}
+
+export function setHeartbeatInterval(ws: WebSocket, data: string) {
+	const interval = JSON.parse(data).d.heartbeat_interval;
+
+	const payload = JSON.stringify({
+		op: 1, // opcode
+		d: 251, // last sequence number `s` received by client
+	});
+
+	return setInterval(() => ws.send(payload), interval);
 }
