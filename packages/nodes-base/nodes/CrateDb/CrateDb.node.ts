@@ -59,7 +59,7 @@ export class CrateDb implements INodeType {
 				default: 'insert',
 				description: 'The operation to perform.',
 			},
-      {
+			{
 				displayName: 'Mode',
 				name: 'mode',
 				type: 'options',
@@ -74,11 +74,6 @@ export class CrateDb implements INodeType {
 						value: 'independently',
 						description: 'Execute each query independently',
 					},
-					//{
-					//	name: 'Transaction',
-					//	value: 'transaction',
-					//	description: 'Execute all querys as a transaction',
-					//},
 				],
 				default: 'normal',
 				description: 'The mode how the querys should execute.',
@@ -152,7 +147,7 @@ export class CrateDb implements INodeType {
 			// ----------------------------------
 			//         update
 			// ----------------------------------
-      {
+			{
 				displayName: 'Schema',
 				name: 'schema',
 				type: 'string',
@@ -206,10 +201,22 @@ export class CrateDb implements INodeType {
 				description:
 					'Comma separated list of the properties which should used as columns for rows to update.',
 			},
-      
-      // ----------------------------------
+
+			// ----------------------------------
 			//         insert,update
 			// ----------------------------------
+			{
+				displayName: 'Enable Returning',
+				name: 'enableReturning',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: ['insert', 'update'],
+					},
+				},
+				default: true,
+				description: 'Should the operation return the data',
+			},
 			{
 				displayName: 'Return Fields',
 				name: 'returnFields',
@@ -217,6 +224,7 @@ export class CrateDb implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['insert', 'update'],
+						enableReturning: [true],
 					},
 				},
 				default: '*',
@@ -250,8 +258,8 @@ export class CrateDb implements INodeType {
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
-    const mode = this.getNodeParameter('mode', 0) as string;
-    if(mode == 'transaction') throw new Error('transaction mode not supported');
+		const mode = this.getNodeParameter('mode', 0) as string;
+		if(mode == 'transaction') throw new Error('transaction mode not supported');
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
@@ -266,9 +274,8 @@ export class CrateDb implements INodeType {
 			//         insert
 			// ----------------------------------
 
-			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
+			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, mode, this.getNodeParameter('enableReturning', 0) as boolean, this.continueOnFail());
 
-			// Add the id to the data
 			for (let i = 0; i < insertData.length; i++) {
 				returnItems.push({
 					json: insertData[i],
@@ -278,7 +285,7 @@ export class CrateDb implements INodeType {
 			// ----------------------------------
 			//         update
 			// ----------------------------------
-			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
+			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, mode, this.getNodeParameter('enableReturning', 0) as boolean, this.continueOnFail());
 
 			returnItems = this.helpers.returnJsonArray(updateItems);
 		} else {

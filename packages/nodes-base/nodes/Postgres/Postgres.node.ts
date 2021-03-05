@@ -158,7 +158,7 @@ export class Postgres implements INodeType {
 					},
 				},
 				default: 'public',
-				required: true,
+				required: false,
 				description: 'Name of the schema the table belongs to',
 			},
 			{
@@ -206,12 +206,25 @@ export class Postgres implements INodeType {
 			//         insert,update
 			// ----------------------------------
 			{
+				displayName: 'Enable Returning',
+				name: 'enableReturning',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: ['insert', 'update'],
+					},
+				},
+				default: true,
+				description: 'Should the operation return the data',
+			},
+			{
 				displayName: 'Return Fields',
 				name: 'returnFields',
 				type: 'string',
 				displayOptions: {
 					show: {
 						operation: ['insert', 'update'],
+						enableReturning: [true],
 					},
 				},
 				default: '*',
@@ -267,9 +280,8 @@ export class Postgres implements INodeType {
 			//         insert
 			// ----------------------------------
 
-			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
+			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, mode, this.getNodeParameter('enableReturning', 0) as boolean, this.continueOnFail());
 
-			// Add the id to the data
 			for (let i = 0; i < insertData.length; i++) {
 				returnItems.push({
 					json: insertData[i],
@@ -280,7 +292,7 @@ export class Postgres implements INodeType {
 			//         update
 			// ----------------------------------
 
-			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
+			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, mode, this.getNodeParameter('enableReturning', 0) as boolean, this.continueOnFail());
 
 			returnItems = this.helpers.returnJsonArray(updateItems);
 		} else {

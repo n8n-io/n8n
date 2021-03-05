@@ -69,11 +69,6 @@ export class QuestDb implements INodeType {
 						value: 'independently',
 						description: 'Execute each query independently',
 					},
-					//{
-					//	name: 'Transaction',
-					//	value: 'transaction',
-					//	description: 'Execute all querys as a transaction',
-					//},
 				],
 				default: 'normal',
 				description: 'The mode how the querys should execute.',
@@ -106,21 +101,6 @@ export class QuestDb implements INodeType {
 			//         insert
 			// ----------------------------------
 			{
-				displayName: 'Schema',
-				name: 'schema',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: [
-							'insert',
-						],
-					},
-				},
-				default: 'public',
-				required: true,
-				description: 'Name of the schema the table belongs to',
-			},
-			{
 				displayName: 'Table',
 				name: 'table',
 				type: 'string',
@@ -151,6 +131,18 @@ export class QuestDb implements INodeType {
 				description:
 					'Comma separated list of the properties which should used as columns for the new rows.',
 			},
+      {
+				displayName: 'Enable Returning',
+				name: 'enableReturning',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: ['insert'],
+					},
+				},
+				default: true,
+				description: 'Should the operation return the data',
+			},
 			{
 				displayName: 'Return Fields',
 				name: 'returnFields',
@@ -158,6 +150,7 @@ export class QuestDb implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['insert'],
+            enableReturning: [true],
 					},
 				},
 				default: '*',
@@ -191,8 +184,9 @@ export class QuestDb implements INodeType {
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
-    const mode = this.getNodeParameter('mode', 0) as string;
-    if(mode == 'transaction') throw new Error('transaction mode not supported');
+		const mode = this.getNodeParameter('mode', 0) as string;
+		if(mode == 'transaction') throw new Error('transaction mode not supported');
+    const enableReturning = this.getNodeParameter('enableReturning', 0) as boolean;
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
@@ -206,14 +200,14 @@ export class QuestDb implements INodeType {
 			// ----------------------------------
 			//         insert
 			// ----------------------------------
-			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
+			await pgInsert(this.getNodeParameter, pgp, db, items, mode, false, this.continueOnFail());
+      
+      const insertData = enableReturning ? await db.any('SELECT ${columns:name} from ${table:name}', {
+        columns: returnFields.split(',').map(value => value.trim()).filter(value => !!value),
+        table: tableName
+      }) : [];
 
-			// Add the id to the data
-			for (let i = 0; i < insertData.length; i++) {
-				returnItems.push({
-					json: insertData[i],
-				});
-			}
+			returnItems = this.helpers.returnJsonArray(insertData);
 		} else {
 			await pgp.end();
 			throw new Error(`The operation "${operation}" is not supported!`);
