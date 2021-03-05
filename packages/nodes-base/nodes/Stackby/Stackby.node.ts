@@ -57,6 +57,10 @@ export class Stackby implements INodeType {
 						name: 'Read',
 						value: 'read',
 					},
+					{
+						name: 'Update',
+						value: 'update',
+					},
 				],
 				default: 'append',
 				placeholder: 'Action to perform',

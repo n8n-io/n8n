@@ -12,6 +12,7 @@ import {
 	IDataObject,
 	IPollFunctions,
 } from 'n8n-workflow';
+import { queryResult } from 'pg-promise';
 
 /**
  * Make an API request to Airtable
@@ -80,22 +81,10 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
  */
 export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IPollFunctions, method: string, endpoint: string, body: IDataObject = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	query.maxrecord = 100;
-
-	query.offset = 0;
-
 	const returnData: IDataObject[] = [];
 
-	let responseData;
-
-	do {
-		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData);
-		query.offset += query.maxrecord;
-
-	} while (
-		responseData.length !== 0
-	);
+	let responseData=await apiRequest.call(this, method, endpoint, body, query);
+	returnData.push.apply(returnData, responseData);
 
 	return returnData;
 }
