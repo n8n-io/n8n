@@ -219,7 +219,7 @@ export class Webhook extends Command {
 				await activeWorkflowRunner.initWebhooks();
 
 				const editorUrl = GenericHelpers.getBaseUrl();
-				this.log('Webhook listener waiting for requests.');
+				logger.info('Webhook listener waiting for requests.');
 
 			} catch (error) {
 				logger.error(`There was an error: ${error.message}`);
