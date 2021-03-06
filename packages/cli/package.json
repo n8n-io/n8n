@@ -111,6 +111,7 @@
         "oauth-1.0a": "^2.2.6",
         "open": "^7.0.0",
         "pg": "^8.3.0",
+        "prom-client": "^13.1.0",
         "request-promise-native": "^1.0.7",
         "sqlite3": "^5.0.1",
         "sse-channel": "^3.1.1",
