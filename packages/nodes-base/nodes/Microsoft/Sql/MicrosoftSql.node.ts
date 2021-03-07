@@ -1,4 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -6,11 +9,16 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { chunk, flatten } from '../../utils/utilities';
+import {
+	chunk,
+	flatten,
+} from '../../utils/utilities';
 
 import * as mssql from 'mssql';
 
-import { ITables } from './TableInterface';
+import {
+	ITables,
+} from './TableInterface';
 
 import {
 	copyInputItem,
@@ -26,13 +34,13 @@ export class MicrosoftSql implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft SQL',
 		name: 'microsoftSql',
-		icon: 'file:mssql.png',
+		icon: 'file:mssql.svg',
 		group: ['input'],
 		version: 1,
 		description: 'Gets, add and update data in Microsoft SQL.',
 		defaults: {
 			name: 'Microsoft SQL',
-			color: '#1d4bab',
+			color: '#bcbcbd',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -217,6 +225,7 @@ export class MicrosoftSql implements INodeType {
 			user: credentials.user as string,
 			password: credentials.password as string,
 			domain: credentials.domain ? (credentials.domain as string) : undefined,
+			connectTimeout: credentials.connectTimeout as number,
 			options: {
 				encrypt: credentials.tls as boolean,
 			},
