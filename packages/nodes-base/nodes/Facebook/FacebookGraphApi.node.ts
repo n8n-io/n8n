@@ -85,6 +85,18 @@ export class FacebookGraphApi implements INodeType {
 						value: '',
 					},
 					{
+						name: 'v10.0',
+						value: 'v10.0',
+					},
+					{
+						name: 'v9.0',
+						value: 'v9.0',
+					},
+					{
+						name: 'v8.0',
+						value: 'v8.0',
+					},
+					{
 						name: 'v7.0',
 						value: 'v7.0',
 					},
