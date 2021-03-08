@@ -14,6 +14,10 @@ import {
 	spotifyApiRequestAllItems,
 } from './GenericFunctions';
 
+import {
+	isoCountryCodes
+} from './IsoCountryCodes';
+
 export class Spotify implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Spotify',
@@ -184,6 +188,11 @@ export class Spotify implements INodeType {
 						description: 'Get an album by URI or ID.',
 					},
 					{
+						name: 'Get New Releases',
+						value: 'getNewReleases',
+						description: 'Get a list of new album releases.',
+					},
+					{
 						name: `Get Tracks`,
 						value: 'getTracks',
 						description: `Get an album's tracks by URI or ID.`,
@@ -202,6 +211,10 @@ export class Spotify implements INodeType {
 					show: {
 						resource: [
 							'album',
+						],
+						operation: [
+							'get',
+							'getTracks',
 						],
 					},
 				},
@@ -491,6 +504,7 @@ export class Spotify implements INodeType {
 							'getTracks',
 							'getAlbums',
 							'getUserPlaylists',
+							'getNewReleases',
 						],
 					},
 				},
@@ -513,6 +527,7 @@ export class Spotify implements INodeType {
 							'getTracks',
 							'getAlbums',
 							'getUserPlaylists',
+							'getNewReleases',
 						],
 						returnAll: [
 							false,
@@ -546,6 +561,33 @@ export class Spotify implements INodeType {
 					maxValue: 50,
 				},
 				description: `The number of items to return.`,
+			},
+			{
+				displayName: 'Filters',
+				name: 'filters',
+				type: 'collection',
+				placeholder: 'Add Filter',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'album',
+						],
+						operation: [
+							'getNewReleases',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Country',
+						name: 'country',
+						type: 'options',
+						default: 'US',
+						options: isoCountryCodes.map(({ name, alpha2 }) => ({ name, value: alpha2 })),
+						description: 'Country to filter new releases by.',
+					},
+				],
 			},
 		],
 	};
@@ -663,18 +705,44 @@ export class Spotify implements INodeType {
 			//      Album Operations
 			// -----------------------------
 			} else if( resource === 'album') {
-				const uri = this.getNodeParameter('id', i) as string;
-
-				const id = uri.replace('spotify:album:', '');
-
-				requestMethod = 'GET';
 
 				if(operation === 'get') {
+					const uri = this.getNodeParameter('id', i) as string;
+
+					const id = uri.replace('spotify:album:', '');
+
+					requestMethod = 'GET';
+
 					endpoint = `/albums/${id}`;
 
 					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
+				} else if (operation === 'getNewReleases') {
+
+					endpoint =  '/browse/new-releases';
+					requestMethod = 'GET';
+
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					if (Object.keys(filters).length) {
+						Object.assign(qs, filters);
+					}
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					if (!returnAll) {
+						qs.limit = this.getNodeParameter('limit', i);
+						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+						responseData = responseData.albums.items;
+					}
+
 				} else if(operation === 'getTracks') {
+					const uri = this.getNodeParameter('id', i) as string;
+
+					const id = uri.replace('spotify:album:', '');
+
+					requestMethod = 'GET';
+
 					endpoint = `/albums/${id}/tracks`;
 
 					propertyName = 'tracks';
