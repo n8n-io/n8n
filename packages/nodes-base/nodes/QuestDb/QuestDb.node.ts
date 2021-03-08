@@ -9,7 +9,7 @@ import {
 import * as pgPromise from 'pg-promise';
 
 import {
-  pgInsert,
+	pgInsert,
 	pgQuery,
 	pgUpdate,
 } from '../Postgres/Postgres.node.functions';
@@ -54,7 +54,7 @@ export class QuestDb implements INodeType {
 				default: 'insert',
 				description: 'The operation to perform.',
 			},
-      {
+			{
 				displayName: 'Mode',
 				name: 'mode',
 				type: 'options',
@@ -131,7 +131,7 @@ export class QuestDb implements INodeType {
 				description:
 					'Comma separated list of the properties which should used as columns for the new rows.',
 			},
-      {
+			{
 				displayName: 'Enable Returning',
 				name: 'enableReturning',
 				type: 'boolean',
@@ -150,7 +150,7 @@ export class QuestDb implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['insert'],
-            enableReturning: [true],
+						enableReturning: [true],
 					},
 				},
 				default: '*',
@@ -186,7 +186,7 @@ export class QuestDb implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const mode = this.getNodeParameter('mode', 0) as string;
 		if(mode == 'transaction') throw new Error('transaction mode not supported');
-    const enableReturning = this.getNodeParameter('enableReturning', 0) as boolean;
+		const enableReturning = this.getNodeParameter('enableReturning', 0) as boolean;
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
@@ -201,11 +201,14 @@ export class QuestDb implements INodeType {
 			//         insert
 			// ----------------------------------
 			await pgInsert(this.getNodeParameter, pgp, db, items, mode, false, this.continueOnFail());
-      
-      const insertData = enableReturning ? await db.any('SELECT ${columns:name} from ${table:name}', {
-        columns: returnFields.split(',').map(value => value.trim()).filter(value => !!value),
-        table: tableName
-      }) : [];
+			
+			const returnFields = this.getNodeParameter('returnFields', 0) as string;
+			const table = this.getNodeParameter('table', 0) as string;
+			
+			const insertData = enableReturning ? await db.any('SELECT ${columns:name} from ${table:name}', {
+				columns: returnFields.split(',').map(value => value.trim()).filter(value => !!value),
+				table: table
+			}) : [];
 
 			returnItems = this.helpers.returnJsonArray(insertData);
 		} else {

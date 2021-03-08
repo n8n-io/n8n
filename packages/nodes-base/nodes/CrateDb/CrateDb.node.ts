@@ -10,6 +10,8 @@ import {
 	pgInsert,
 	pgQuery,
 	pgUpdate,
+	getItemCopy,
+	generateReturning,
 } from '../Postgres/Postgres.node.functions';
 
 import * as pgPromise from 'pg-promise';
@@ -254,11 +256,12 @@ export class CrateDb implements INodeType {
 
 		const db = pgp(config);
 
-		let returnItems = [];
+		let returnItems: INodeExecutionData[] = [];
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const mode = this.getNodeParameter('mode', 0) as string;
+		const enableReturning = this.getNodeParameter('enableReturning', 0) as boolean;
 		if(mode == 'transaction') throw new Error('transaction mode not supported');
 
 		if (operation === 'executeQuery') {
@@ -274,7 +277,7 @@ export class CrateDb implements INodeType {
 			//         insert
 			// ----------------------------------
 
-			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, mode, this.getNodeParameter('enableReturning', 0) as boolean, this.continueOnFail());
+			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, mode, enableReturning, this.continueOnFail());
 
 			for (let i = 0; i < insertData.length; i++) {
 				returnItems.push({
@@ -285,9 +288,47 @@ export class CrateDb implements INodeType {
 			// ----------------------------------
 			//         update
 			// ----------------------------------
-			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, mode, this.getNodeParameter('enableReturning', 0) as boolean, this.continueOnFail());
+			
+			if(mode === 'independently') {
+				const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, mode, enableReturning, this.continueOnFail());
 
-			returnItems = this.helpers.returnJsonArray(updateItems);
+				returnItems = this.helpers.returnJsonArray(updateItems);
+			} else if(mode === 'normal') {
+				const table = this.getNodeParameter('table', 0) as string;
+				const schema = this.getNodeParameter('schema', 0) as string;
+				const updateKeys = (this.getNodeParameter('updateKey', 0) as string).split(',').map(column => column.trim());
+				const columns = (this.getNodeParameter('columns', 0) as string).split(',').map(column => column.trim());
+				const queryColumns = columns.slice();
+
+				updateKeys.forEach(updateKey => {
+					if (!queryColumns.includes(updateKey)) {
+						columns.unshift(updateKey);
+						queryColumns.unshift('?' + updateKey);
+					}
+				});
+
+				const cs = new pgp.helpers.ColumnSet(queryColumns, { table: { table, schema } });
+
+				const where = ' WHERE ' + updateKeys.map(updateKey => pgp.as.name(updateKey) + ' = ${' + updateKey + '}').join(' AND ');
+				
+				if(enableReturning) {
+					const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
+					const queries:string[] = [];
+					for (let i = 0; i < items.length; i++) {
+						const itemCopy = getItemCopy(items[i], columns);
+						queries.push(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning);
+					}
+					const updateItems = (await db.multi(pgp.helpers.concat(queries))).flat(1);
+					returnItems = this.helpers.returnJsonArray(updateItems);
+				} else {
+					const queries:string[] = [];
+					for (let i = 0; i < items.length; i++) {
+						const itemCopy = getItemCopy(items[i], columns);
+						queries.push(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy));
+					}
+					await db.none(pgp.helpers.concat(queries));
+				}
+			}
 		} else {
 			await pgp.end();
 			throw new Error(`The operation "${operation}" is not supported!`);

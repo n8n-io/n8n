@@ -63,7 +63,7 @@ export class TimescaleDb implements INodeType {
 				default: 'insert',
 				description: 'The operation to perform.',
 			},
-      {
+			{
 				displayName: 'Mode',
 				name: 'mode',
 				type: 'options',
@@ -226,7 +226,7 @@ export class TimescaleDb implements INodeType {
 				description:
 					'Comma separated list of the properties which should used as columns for rows to update.',
 			},
-      // ----------------------------------
+			// ----------------------------------
 			//         insert,update
 			// ----------------------------------
 			{
@@ -269,7 +269,7 @@ export class TimescaleDb implements INodeType {
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
-    const mode = this.getNodeParameter('mode', 0) as string;
+		const mode = this.getNodeParameter('mode', 0) as string;
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
@@ -284,7 +284,7 @@ export class TimescaleDb implements INodeType {
 			//         insert
 			// ----------------------------------
 
-			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
+			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, mode, this.getNodeParameter('enableReturning', 0) as boolean, this.continueOnFail());
 
 			// Add the id to the data
 			for (let i = 0; i < insertData.length; i++) {
@@ -297,7 +297,7 @@ export class TimescaleDb implements INodeType {
 			//         update
 			// ----------------------------------
 
-			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
+			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, mode, this.getNodeParameter('enableReturning', 0) as boolean, this.continueOnFail());
 
 			returnItems = this.helpers.returnJsonArray(updateItems);
 
