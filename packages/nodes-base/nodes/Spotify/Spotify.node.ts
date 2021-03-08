@@ -305,6 +305,11 @@ export class Spotify implements INodeType {
 						description: 'Add tracks from a playlist by track and playlist URI or ID.',
 					},
 					{
+						name: 'Create a Playlist',
+						value: 'create',
+						description: 'Create a new playlist.',
+					},
+					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a playlist by URI or ID.',
@@ -349,6 +354,59 @@ export class Spotify implements INodeType {
 				},
 				placeholder: 'spotify:playlist:37i9dQZF1DWUhI3iC1khPH',
 				description: `The playlist's Spotify URI or its ID.`,
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'playlist',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				placeholder: 'Favorite Songs',
+				description: 'Name of the playlist to create.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'playlist',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+						default: '',
+						placeholder: 'These are all my favorite songs.',
+						description: 'Description for the playlist to create.',
+					},
+					{
+						displayName: 'Public',
+						name: 'public',
+						type: 'boolean',
+						default: true,
+						description: 'Whether the playlist is publicly accessible.',
+					},
+				],
 			},
 			{
 				displayName: 'Track ID',
@@ -780,7 +838,22 @@ export class Spotify implements INodeType {
 
 							responseData = responseData.items;
 						}
+
+					} else if (operation === 'create') {
+
+						// https://developer.spotify.com/console/post-playlists/
+
+						body.name = this.getNodeParameter('name', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (Object.keys(additionalFields).length) {
+							Object.assign(body, additionalFields);
+						}
+
+						responseData = await spotifyApiRequest.call(this, 'POST', '/me/playlists', body, qs);
 					}
+
 			// -----------------------------
 			//      Track Operations
 			// -----------------------------
