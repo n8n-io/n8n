@@ -22,7 +22,7 @@ export class Spotify implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Spotify',
 		name: 'spotify',
-		icon: 'file:spotify.png',
+		icon: 'file:spotify.svg',
 		group: ['input'],
 		version: 1,
 		description: 'Access public song data via the Spotify API.',
