@@ -50,7 +50,7 @@ export function createDataFromParameters(this: IExecuteFunctions | IExecuteSingl
 
 	if (dataFieldsAreJson) {
 		// Parameters are defined as JSON
-		return JSON.parse(this.getNodeParameter('dataFieldsJson', itemIndex, '') as string);
+		return JSON.parse(this.getNodeParameter('dataFieldsJson', itemIndex, '{}') as string);
 	}
 
 	// Parameters are defined in UI
