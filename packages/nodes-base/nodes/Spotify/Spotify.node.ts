@@ -15,7 +15,7 @@ import {
 } from './GenericFunctions';
 
 import {
-	IsoCountryCodes
+	isoCountryCodes
 } from './IsoCountryCodes';
 
 export class Spotify implements INodeType {
@@ -584,7 +584,7 @@ export class Spotify implements INodeType {
 						name: 'country',
 						type: 'options',
 						default: 'US',
-						options: IsoCountryCodes.map(({ name, alpha2 }) => ({ name, value: alpha2 })),
+						options: isoCountryCodes.map(({ name, alpha2 }) => ({ name, value: alpha2 })),
 						description: 'Country to filter new releases by.',
 					},
 				],

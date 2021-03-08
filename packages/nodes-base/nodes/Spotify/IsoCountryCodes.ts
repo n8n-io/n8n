@@ -1,6 +1,6 @@
 // `getNewReleases` requires an ISO 3166-1 alpha-2 country code
 
-export const IsoCountryCodes = [
+export const isoCountryCodes = [
 	{
 		name: 'Afghanistan',
 		alpha2: 'AF',
