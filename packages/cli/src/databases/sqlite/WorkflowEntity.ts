@@ -12,8 +12,14 @@ import {
 import {
 	Column,
 	Entity,
+	JoinTable,
+	ManyToMany,
 	PrimaryGeneratedColumn,
 } from 'typeorm';
+
+import {
+	TagEntity,
+} from './TagEntity';
 
 @Entity()
 export class WorkflowEntity implements IWorkflowDb {
@@ -52,4 +58,8 @@ export class WorkflowEntity implements IWorkflowDb {
 		nullable: true,
 	})
 	staticData?: IDataObject;
+
+	@ManyToMany(() => TagEntity, tagEntity => tagEntity.workflows)
+	@JoinTable({ name: "workflows_tags" })
+	tags: TagEntity[];
 }

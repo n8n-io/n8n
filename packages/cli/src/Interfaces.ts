@@ -72,12 +72,13 @@ export interface IWebhookDb {
 
 export interface IWorkflowBase extends IWorkflowBaseWorkflow {
 	id?: number | string;
-
 }
 
 export interface ITagDb {
 	id: number | string;
-
+	name: string;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
 
