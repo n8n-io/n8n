@@ -22,6 +22,12 @@ import {
 } from './ContactDescription';
 
 import {
+	mailFields,
+	mailOperations,
+	SendMailBody,
+} from './MailDescription';
+
+import {
 	sendGridApiRequest,
 	sendGridApiRequestAllItems,
 } from './GenericFunctions';
@@ -63,6 +69,10 @@ export class SendGrid implements INodeType {
 						name: 'List',
 						value: 'list',
 					},
+					{
+						name: 'Mail',
+						value: 'mail',
+					},
 				],
 				default: 'list',
 				required: true,
@@ -72,10 +82,12 @@ export class SendGrid implements INodeType {
 			...listFields,
 			...contactOperations,
 			...contactFields,
+			...mailOperations,
+			...mailFields,
 		],
 	};
 
-	methods ={
+	methods = {
 		loadOptions: {
 			// Get custom fields to display to user so that they can select them easily
 			async getCustomFields(this: ILoadOptionsFunctions,):Promise<INodePropertyOptions[]>{
@@ -102,6 +114,10 @@ export class SendGrid implements INodeType {
 					});
 				}
 				return returnData;
+			},
+			async getTemplateIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const responseData = await sendGridApiRequest.call(this, '/templates', 'GET', {}, { generations: 'dynamic' });
+				return responseData.templates.map(({ id, name }: { id: string, name: string }) => ({ name, value: id }));
 			},
 		},
 	};
@@ -285,6 +301,73 @@ export class SendGrid implements INodeType {
 				}
 			}
 		}
+		if (resource === 'mail') {
+			if (operation === 'send') {
+				for (let i = 0; i < length; i++) {
+
+					const toEmail = this.getNodeParameter('toEmail', i) as string;
+
+					const parsedToEmail = toEmail.includes(',')
+						? toEmail.split(',').map((i) => ({ email: i.trim() }))
+						: [{ email: toEmail.trim() }];
+
+					const body: SendMailBody = {
+						personalizations: [{
+							to: parsedToEmail,
+							subject: this.getNodeParameter('subject', i) as string,
+						}],
+						from: {
+							email: (this.getNodeParameter('fromEmail', i) as string).trim(),
+							name: this.getNodeParameter('fromName', i) as string,
+						},
+						mail_settings: { sandbox_mode: { enable: true, }, }, // TEMP: sandbox
+					};
+
+					const dynamicTemplateEnabled = this.getNodeParameter('dynamicTemplate', i);
+
+					// dynamic template
+					if (dynamicTemplateEnabled) {
+						body.template_id = this.getNodeParameter('templateId', i) as string;
+
+						const { fields } = this.getNodeParameter('dynamicTemplateFields', i) as {
+							fields: Array<{ [key: string]: string }>
+						};
+
+						if (fields) {
+							fields.forEach(field => {
+								body.personalizations[0].dynamic_template_data = {
+									[field.key]: field.value,
+								};
+							});
+						}
+
+					// message body
+					} else {
+						body.content = [{
+							type: this.getNodeParameter('contentType', i) as string,
+							value: this.getNodeParameter('contentValue', i) as string,
+						}];
+					}
+
+					const { bccEmail, ccEmail } = this.getNodeParameter('additionalFields', i) as {
+						bccEmail: string;
+						ccEmail: string;
+					};
+
+					if (bccEmail) {
+						body.personalizations[0].bcc = bccEmail.split(',').map(i => ({ email: i.trim() }));
+					}
+
+					if (ccEmail) {
+						body.personalizations[0].cc = ccEmail.split(',').map(i => ({ email: i.trim() }));
+					}
+
+					await sendGridApiRequest.call(this, '/mail/send', 'POST', body, qs);
+					returnData.push({ success: true });
+				}
+			}
+		}
+
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
