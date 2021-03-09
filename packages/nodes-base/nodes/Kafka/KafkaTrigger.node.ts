@@ -127,6 +127,7 @@ export class KafkaTrigger implements INodeType {
 			config.sasl = {
 				username: credentials.username as string,
 				password: credentials.password as string,
+				mechanism: credentials.saslMechanism as string,
 			} as SASLOptions;
 		}
 
