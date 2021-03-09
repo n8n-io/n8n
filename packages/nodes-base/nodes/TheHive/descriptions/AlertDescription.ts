@@ -504,6 +504,47 @@ export const alertFields = [
 				default: '',
 				description: `Case template to use when a case is created from this alert.`,
 			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Custom Field',
+				options: [
+					{
+						name: 'customFields',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadCustomFields',
+								},
+								default: 'Custom Field',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Custom Field value. Use an expression if the type is not a string.',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Custom Fields (JSON)',
+				name: 'customFieldsJson',
+				type: 'string',
+				default: '',
+				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
+			},
 		],
 	},
 	// optional attributs (Update operation)
@@ -599,6 +640,47 @@ export const alertFields = [
 						],
 					},
 				],
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Custom Field',
+				options: [
+					{
+						name: 'customFields',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadCustomFields',
+								},
+								default: 'Custom Field',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Custom Field value. Use an expression if the type is not a string.',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Custom Fields (JSON)',
+				name: 'customFieldsJson',
+				type: 'string',
+				default: '',
+				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
 			},
 			{
 				displayName: 'Case Template',
@@ -756,6 +838,40 @@ export const alertFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Custom Field',
+				options: [
+					{
+						name: 'customFields',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'loadCustomFields',
+								},
+								default: 'Custom Field',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Custom Field value. Use an expression if the type is not a string.',
+							},
+						],
+					},
+				],
+			},
 			{
 				displayName: 'Description',
 				name: 'description',
