@@ -20,7 +20,7 @@ import {
 
 
 import * as PCancelable from 'p-cancelable';
-import { ObjectID, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 
 import { ChildProcess } from 'child_process';
 import { Url } from 'url';
@@ -62,7 +62,7 @@ export interface IDatabaseCollections {
 }
 
 export interface IWebhookDb {
-	workflowId: number | string | ObjectID;
+	workflowId: number | string;
 	webhookPath: string;
 	method: string;
 	node: string;
@@ -71,14 +71,19 @@ export interface IWebhookDb {
 }
 
 export interface IWorkflowBase extends IWorkflowBaseWorkflow {
-	id?: number | string | ObjectID;
+	id?: number | string;
+
+}
+
+export interface ITagDb {
+	id: number | string;
 
 }
 
 
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
-	id: number | string | ObjectID;
+	id: number | string;
 }
 
 export interface IWorkflowResponse extends IWorkflowBase {
@@ -99,7 +104,7 @@ export interface ICredentialsBase {
 }
 
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
-	id: number | string | ObjectID;
+	id: number | string;
 }
 
 export interface ICredentialsResponse extends ICredentialsDb {
@@ -107,7 +112,7 @@ export interface ICredentialsResponse extends ICredentialsDb {
 }
 
 export interface ICredentialsDecryptedDb extends ICredentialsBase, ICredentialsDecrypted {
-	id: number | string | ObjectID;
+	id: number | string;
 }
 
 export interface ICredentialsDecryptedResponse extends ICredentialsDecryptedDb {
@@ -118,14 +123,14 @@ export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';
 export type SaveExecutionDataType = 'all' | 'none';
 
 export interface IExecutionBase {
-	id?: number | string | ObjectID;
+	id?: number | string;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt?: Date; // empty value means execution is still running
 	workflowId?: string; // To be able to filter executions easily //
 	finished: boolean;
-	retryOf?: number | string | ObjectID; // If it is a retry, the id of the execution it is a retry of.
-	retrySuccessId?: number | string | ObjectID; // If it failed and a retry did succeed. The id of the successful retry.
+	retryOf?: number | string; // If it is a retry, the id of the execution it is a retry of.
+	retrySuccessId?: number | string; // If it failed and a retry did succeed. The id of the successful retry.
 }
 
 // Data in regular format with references
@@ -155,7 +160,7 @@ export interface IExecutionFlatted extends IExecutionBase {
 }
 
 export interface IExecutionFlattedDb extends IExecutionBase {
-	id: number | string | ObjectID;
+	id: number | string;
 	data: string;
 	workflowData: IWorkflowBase;
 }
@@ -398,7 +403,7 @@ export interface IWorkflowExecutionDataProcess {
 	executionMode: WorkflowExecuteMode;
 	executionData?: IRunExecutionData;
 	runData?: IRunData;
-	retryOf?: number | string | ObjectID;
+	retryOf?: number | string;
 	sessionId?: string;
 	startNodes?: string[];
 	workflowData: IWorkflowBase;

@@ -19,7 +19,6 @@ import {
 
 import { ChildProcess } from 'child_process';
 import * as PCancelable from 'p-cancelable';
-import { ObjectID } from 'typeorm';
 
 
 export class ActiveExecutions {
@@ -53,7 +52,7 @@ export class ActiveExecutions {
 		if (executionData.workflowData.id !== undefined && WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString()) === true) {
 			fullExecutionData.workflowId = executionData.workflowData.id.toString();
 		}
-		
+
 		const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
 
 		// Save the Execution in DB
