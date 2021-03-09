@@ -99,4 +99,17 @@ export function getRootDirectory(this: IHookFunctions | IExecuteFunctions) {
 	return dropboxApiRequest.call(this, 'POST', 'https://api.dropboxapi.com/2/users/get_current_account', {});
 }
 
+export function simplify(data: IDataObject[]) {
+	const results = [];
+	for (const element of data) {
+		const { '.tag': key } = element?.metadata as IDataObject;
+		element.metadata = (element?.metadata as IDataObject)[key as string] as IDataObject;
+		if ((element?.match_type as IDataObject)['.tag']) {
+			element.match_type = (element?.match_type as IDataObject)['.tag'] as string;
+		}
+		results.push(element);
+	}
+	return results;
+}
+
 

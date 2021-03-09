@@ -14,6 +14,7 @@ import {
 	dropboxApiRequest,
 	dropboxpiRequestAllItems,
 	getRootDirectory,
+	simplify,
 } from './GenericFunctions';
 
 export class Dropbox implements INodeType {
@@ -532,6 +533,23 @@ export class Dropbox implements INodeType {
 				description: 'How many results to return.',
 			},
 			{
+				displayName: 'Simple',
+				name: 'simple',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'query',
+						],
+						resource: [
+							'search',
+						],
+					},
+				},
+				default: true,
+				description: 'When set to true a simplify version of the response will be used else the raw data.',
+			},
+			{
 				displayName: 'Filters',
 				name: 'filters',
 				type: 'collection',
@@ -773,6 +791,7 @@ export class Dropbox implements INodeType {
 		const query: IDataObject = {};
 
 		let headers: IDataObject = {};
+		let simple = false;
 
 		// get the root directory to set it as the default search folder
 		const { root_info: { root_namespace_id } } = await getRootDirectory.call(this);
@@ -886,6 +905,8 @@ export class Dropbox implements INodeType {
 					// ----------------------------------
 
 					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					simple = this.getNodeParameter('simple', 0) as boolean;
 
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
@@ -1025,9 +1046,9 @@ export class Dropbox implements INodeType {
 				}
 			} else if (resource === 'search' && operation === 'query') {
 				if (returnAll === true) {
-					returnData.push.apply(returnData, responseData);
+					returnData.push.apply(returnData, (simple === true) ? simplify(responseData) : responseData);
 				} else {
-					returnData.push.apply(returnData, responseData[property]);
+					returnData.push.apply(returnData, (simple === true) ? simplify(responseData[property]) : responseData[property]);
 				}
 			} else {
 				returnData.push(responseData);
