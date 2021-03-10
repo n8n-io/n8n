@@ -24,7 +24,7 @@ import {
 import {
 	contactJourneyFields,
 	contactJourneyOperations,
-} from './ContactJourneyDescription.node';
+} from './ContactJourneyDescription';
 
 import {
 	contactListFields,
