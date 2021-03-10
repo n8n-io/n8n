@@ -47,7 +47,7 @@ export class AwsSqs implements INodeType {
 				description: 'The operation to perform.',
 			},
 			{
-				displayName: 'Queue',
+				displayName: 'Queue URL',
 				name: 'queue',
 				type: 'options',
 				typeOptions: {
@@ -110,11 +110,10 @@ export class AwsSqs implements INodeType {
                     const queueUrl = queue.QueueUrl;
                     const urlParts = queueUrl.split('/');
 					const name = urlParts[urlParts.length - 1];
-                    const value = `${urlParts[urlParts.length - 2]}/${name}`
 
 					returnData.push({
 						name,
-						value,
+						value: queueUrl,
 					});
 				}
 
@@ -131,14 +130,15 @@ export class AwsSqs implements INodeType {
         const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < items.length; i++) {
-            const queueUrl = this.getNodeParameter('queue', i);
+            const queueUrl = this.getNodeParameter('queue', i) as string;
+            const queuePath = queueUrl.split('.com/')[1];
 			const params = [
 				'MessageBody=' + this.getNodeParameter('message', i) as string,
 			];
 
 			let responseData;
 			try {
-				responseData = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `/${queueUrl}/?Action=${operation}&` + params.join('&'));
+				responseData = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `/${queuePath}/?Action=${operation}&` + params.join('&'));
 			} catch (err) {
 				throw new Error(`AWS Error: ${err}`);
 			}
