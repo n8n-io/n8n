@@ -450,7 +450,7 @@ const config = convict({
 			enable: {
 				format: 'Boolean',
 				default: false,
-				env: 'N8N_ENABLE_METRICS',
+				env: 'N8N_METRICS',
 				doc: 'Enable metrics endpoint',
 			},
 			prefix: {
