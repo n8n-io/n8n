@@ -7,7 +7,7 @@ export const accountOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		default: 'get',
+		default: 'getBalances',
 		description: 'Operation to perform',
 		options: [
 			{
@@ -61,6 +61,7 @@ export const accountFields = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//      account: getStatement
 	// ----------------------------------

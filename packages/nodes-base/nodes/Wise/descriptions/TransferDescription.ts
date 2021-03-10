@@ -15,12 +15,12 @@ export const transferOperations = [
 				value: 'create',
 			},
 			{
-				name: 'Execute',
-				value: 'execute',
-			},
-			{
 				name: 'Delete',
 				value: 'delete',
+			},
+			{
+				name: 'Execute',
+				value: 'execute',
 			},
 			{
 				name: 'Get',
