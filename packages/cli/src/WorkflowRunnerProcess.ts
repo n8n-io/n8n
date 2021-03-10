@@ -174,8 +174,8 @@ export class WorkflowRunnerProcess {
 				},
 			],
 			nodeExecuteAfter: [
-				async (nodeName: string, data: ITaskData, executionData: IRunExecutionData): Promise<void> => {
-					this.sendHookToParentProcess('nodeExecuteAfter', [nodeName, data, executionData]);
+				async (nodeName: string, data: ITaskData): Promise<void> => {
+					this.sendHookToParentProcess('nodeExecuteAfter', [nodeName, data]);
 				},
 			],
 			workflowExecuteBefore: [
