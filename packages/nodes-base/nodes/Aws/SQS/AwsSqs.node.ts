@@ -6,6 +6,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	INodeParameters,
 } from 'n8n-workflow';
 
 import { awsApiRequestSOAP } from '../GenericFunctions';
@@ -17,7 +18,7 @@ export class AwsSqs implements INodeType {
 		icon: 'file:sqs.png',
 		group: ['output'],
 		version: 1,
-		subtitle: '={{$parameter["queue"]}}',
+		subtitle: '={{$parameter["queue"].split("/")[4}}',
 		description: 'Sends messages to AWS SQS',
 		defaults: {
 			name: 'AWS SQS',
@@ -83,6 +84,120 @@ export class AwsSqs implements INodeType {
 				default: '',
 				description: 'The message you want to send',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: [
+							'SendMessage',
+						],
+					},
+				},
+				default: {},
+				placeholder: 'Add Option',
+				options: [
+					{
+						displayName: 'Delay Seconds',
+						name: 'delaySeconds',
+						type: 'number',
+						description: 'The length of time, in seconds, for which to delay a specific message.',
+						default: 0,
+						typeOptions: {
+							minValue: 0,
+							maxValue: 900
+						}
+					},
+					{
+						displayName: 'Message Attributes',
+						name: 'messageAttributes',
+						placeholder: 'Add Attribute',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						description: 'The attributes to set.',
+						default: {},
+						options: [
+							{
+								name: 'binary',
+								displayName: 'Binary',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'Name of attribute.',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'The binary value of attribute.',
+									},
+								],
+							},
+							{
+								name: 'number',
+								displayName: 'Number',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'Name of attribute',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'number',
+										default: 0,
+										description: 'The number value of attribute.',
+									},
+								],
+							},
+							{
+								name: 'string',
+								displayName: 'String',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'Name of attribute',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'The string value of attribute.',
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'MessageDeduplicationId',
+						name: 'messageDeduplicationId',
+						type: 'string',
+						default: '',
+						description: 'The token used for deduplication of sent messages. This parameter applies only to FIFO (first-in-first-out) queues.'
+					},
+					{
+						displayName: 'MessageGroupId',
+						name: 'messageGroupId',
+						type: 'string',
+						default: '',
+						description: 'The tag that specifies that a message belongs to a specific message group. . This parameter applies only to FIFO (first-in-first-out) queues.'
+					},
+				],
+			},
 		],
 	};
 
@@ -93,6 +208,7 @@ export class AwsSqs implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				let data;
 				try {
+					// loads first 1000 queues from SQS
 					data = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `?Action=ListQueues`);
 				} catch (err) {
 					throw new Error(`AWS Error: ${err}`);
@@ -136,13 +252,54 @@ export class AwsSqs implements INodeType {
 				'MessageBody=' + this.getNodeParameter('message', i) as string,
 			];
 
+			const options = this.getNodeParameter('options', i, {}) as IDataObject;
+
+			if (options.delaySeconds) {
+				params.push(`DelaySeconds=${options.delaySeconds}`);
+			}
+
+			if (options.messageDeduplicationId) {
+				params.push(`MessageDeduplicationId=${options.messageDeduplicationId}`);
+			}
+
+			if (options.messageGroupId) {
+				params.push(`MessageGroupId=${options.messageGroupId}`);
+			}
+
+			let attributeCount = 0;
+			// Add string values
+			(this.getNodeParameter('options.messageAttributes.string', i, []) as INodeParameters[]).forEach((attribute) => {
+				attributeCount++;
+				params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
+				params.push(`MessageAttribute.${attributeCount}.Value.StringValue=${attribute.value}`);
+				params.push(`MessageAttribute.${attributeCount}.Value.DataType=String`);
+			});
+
+			// Add boolean values
+			(this.getNodeParameter('options.messageAttributes.binary', i, []) as INodeParameters[]).forEach((attribute) => {
+				attributeCount++;
+				params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
+				params.push(`MessageAttribute.${attributeCount}.Value.BinaryValue=${attribute.value}`);
+				params.push(`MessageAttribute.${attributeCount}.Value.DataType=Binary`);
+			});
+
+			// Add number values
+			(this.getNodeParameter('options.messageAttributes.number', i, []) as INodeParameters[]).forEach((attribute) => {
+				attributeCount++;
+				params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
+				params.push(`MessageAttribute.${attributeCount}.Value.StringValue=${attribute.value}`);
+				params.push(`MessageAttribute.${attributeCount}.Value.DataType=Number`);
+			});
+
 			let responseData;
 			try {
 				responseData = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `/${queuePath}/?Action=${operation}&` + params.join('&'));
 			} catch (err) {
 				throw new Error(`AWS Error: ${err}`);
 			}
-			returnData.push({MessageId: responseData.SendMessageResponse.SendMessageResult.MessageId} as IDataObject);
+
+			const result = responseData.SendMessageResponse.SendMessageResult;
+			returnData.push(result as IDataObject);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
