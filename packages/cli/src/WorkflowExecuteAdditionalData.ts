@@ -353,7 +353,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 							executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
 						}
 						// Data is always saved, so we remove from database
-						Db.collections.Execution!.delete(this.executionId);
+						await Db.collections.Execution!.delete(this.executionId);
 						return;
 					}
 
@@ -398,6 +398,77 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 	};
 }
 
+
+/**
+ * Returns hook functions to save workflow execution and call error workflow
+ * for running with queues. Manual executions should never run on queues as
+ * they are always executed in the main process.
+ *
+ * @returns {IWorkflowExecuteHooks}
+ */
+function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
+	return {
+		nodeExecuteBefore: [],
+		nodeExecuteAfter: [],
+		workflowExecuteBefore: [],
+		workflowExecuteAfter: [
+			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
+				try {
+					if (WorkflowHelpers.isWorkflowIdValid(this.workflowData.id as string) === true && newStaticData) {
+						// Workflow is saved so update in database
+						try {
+							await WorkflowHelpers.saveStaticDataById(this.workflowData.id as string, newStaticData);
+						} catch (e) {
+							// TODO: Add proper logging!
+							console.error(`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: ${e.message}`);
+						}
+					}
+
+					// Check config to know if execution should be saved or not
+					let saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
+					if (this.workflowData.settings !== undefined) {
+						saveDataErrorExecution = (this.workflowData.settings.saveDataErrorExecution as string) || saveDataErrorExecution;
+					}
+
+					const workflowDidSucceed = !fullRunData.data.resultData.error;
+					if (workflowDidSucceed === false && saveDataErrorExecution === 'none') {
+						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
+					}
+
+					const fullExecutionData: IExecutionDb = {
+						data: fullRunData.data,
+						mode: fullRunData.mode,
+						finished: fullRunData.finished ? fullRunData.finished : false,
+						startedAt: fullRunData.startedAt,
+						stoppedAt: fullRunData.stoppedAt,
+						workflowData: this.workflowData,
+					};
+
+					if (this.retryOf !== undefined) {
+						fullExecutionData.retryOf = this.retryOf.toString();
+					}
+
+					if (this.workflowData.id !== undefined && WorkflowHelpers.isWorkflowIdValid(this.workflowData.id.toString()) === true) {
+						fullExecutionData.workflowId = this.workflowData.id.toString();
+					}
+
+					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
+
+					// Save the Execution in DB
+					await Db.collections.Execution!.update(this.executionId, executionData as IExecutionFlattedDb);
+
+					if (fullRunData.finished === true && this.retryOf !== undefined) {
+						// If the retry was successful save the reference it on the original execution
+						// await Db.collections.Execution!.save(executionData as IExecutionFlattedDb);
+						await Db.collections.Execution!.update(this.retryOf, { retrySuccessId: this.executionId });
+					}
+				} catch (error) {
+					executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
+				}
+			},
+		],
+	};
+}
 
 export async function getRunData(workflowData: IWorkflowBase, inputData?: INodeExecutionData[]): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
@@ -613,6 +684,22 @@ export function getWorkflowHooksIntegrated(mode: WorkflowExecuteMode, executionI
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
 }
 
+/**
+ * Returns WorkflowHooks instance for running integrated workflows
+ * (Workflows which get started inside of another workflow)
+ */
+export function getWorkflowHooksWorkerExecuter(mode: WorkflowExecuteMode, executionId: string, workflowData: IWorkflowBase, optionalParameters?: IWorkflowHooksOptionalParameters): WorkflowHooks {
+	optionalParameters = optionalParameters || {};
+	const hookFunctions = hookFunctionsSaveWorker();
+	const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
+	for (const key of Object.keys(preExecuteFunctions)) {
+		if (hookFunctions[key] === undefined) {
+			hookFunctions[key] = [];
+		}
+		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+	}
+	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
+}
 
 /**
  * Returns WorkflowHooks instance for main process if workflow runs via worker
