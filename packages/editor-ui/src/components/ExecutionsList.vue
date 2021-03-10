@@ -175,7 +175,9 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-import * as lodash from 'lodash';
+import {
+	range as _range,
+} from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 
@@ -447,12 +449,12 @@ export default mixins(
 					// in this list while running.
 					if (currentId - lastId > 1) {
 						// We have some gaps.
-						const range = lodash.range(lastId + 1, currentId);
+						const range = _range(lastId + 1, currentId);
 						gaps.push(...range);
-					}	
+					}
 				}
 				lastId = parseInt(currentItem.id, 10) || 0;
-				
+
 				// Check new results from end to start
 				// Add new items accordingly.
 				const executionIndex = alreadyPresentExecutionIds.indexOf(currentItem.id);
