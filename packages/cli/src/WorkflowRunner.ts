@@ -346,7 +346,27 @@ export class WorkflowRunner {
 			// Normally also static data should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
 			hooks.executeHookFunctions('workflowExecuteAfter', [runData]);
+			try {
+				// Check if this execution data has to be removed from database
+				// based on workflow settings.
+				let saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
+				let saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
+				if (data.workflowData.settings !== undefined) {
+					saveDataErrorExecution = (data.workflowData.settings.saveDataErrorExecution as string) || saveDataErrorExecution;
+					saveDataSuccessExecution = (data.workflowData.settings.saveDataSuccessExecution as string) || saveDataSuccessExecution;
+				}
 
+				const workflowDidSucceed = !runData.data.resultData.error;
+				if (workflowDidSucceed === true && saveDataSuccessExecution === 'none' ||
+					workflowDidSucceed === false && saveDataErrorExecution === 'none'
+				) {
+					await Db.collections.Execution!.delete(executionId);
+				}
+			} catch (err) {
+				// We don't want errors here to crash n8n. Just log and proceed.
+				console.log('Error removing saved execution from database. More details: ', err);
+			}
+			
 			resolve(runData);
 		});
 
