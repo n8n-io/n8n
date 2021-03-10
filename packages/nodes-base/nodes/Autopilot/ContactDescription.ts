@@ -36,7 +36,7 @@ export const contactOperations = [
 				description: 'Get all contacts',
 			},
 		],
-		default: 'create',
+		default: 'upsert',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
