@@ -50,7 +50,7 @@ export const contactJourneyFields = [
 			},
 		},
 		default: '',
-		description: 'The list ID.',
+		description: 'List ID.',
 	},
 	{
 		displayName: 'Contact ID',
@@ -68,6 +68,6 @@ export const contactJourneyFields = [
 			},
 		},
 		default: '',
-		description: 'Can be the Contact ID or email.',
+		description: 'Can be ID or email.',
 	},
 ] as INodeProperties[];
