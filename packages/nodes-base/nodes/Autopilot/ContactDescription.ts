@@ -62,7 +62,7 @@ export const contactFields = [
 			},
 		},
 		default: '',
-		description: 'The email address of the contact.',
+		description: 'Email address of the contact.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -109,14 +109,14 @@ export const contactFields = [
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'The end user specified key of the user defined data.',
+								description: 'User-specified key of user-defined data.',
 								default: '',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
-								description: 'The end user specified value of the user defined data.',
+								description: 'User-specified value of user-defined data.',
 								default: '',
 							},
 						],
@@ -154,7 +154,7 @@ export const contactFields = [
 				default: '',
 			},
 			{
-				displayName: 'LinkedIn',
+				displayName: 'LinkedIn URL',
 				name: 'LinkedIn',
 				type: 'string',
 				default: '',
@@ -167,7 +167,7 @@ export const contactFields = [
 					loadOptionsMethod: 'getLists',
 				},
 				default: '',
-				description: 'Used to add this contact to a list upon creation.',
+				description: 'List to which this contact will be added on creation.',
 			},
 			{
 				displayName: 'Mailing Country',
@@ -210,18 +210,17 @@ export const contactFields = [
 				name: 'newEmail',
 				type: 'string',
 				default: '',
-				description: `If provided, will change the email address of the contact identified by the Email field`,
+				description: 'If provided, will change the email address of the contact identified by the Email field.',
 			},
 			{
 				displayName: 'Notify',
 				name: 'notify',
 				type: 'boolean',
 				default: true,
-				description: `By default Autopilot notifies registered REST hook endpoints for contact_added/contact_updated when</br>
-				 a new contact added or existing contact updated via API. Use this option to skip triggers.`,
+				description: `By default Autopilot notifies registered REST hook endpoints for contact_added/contact_updated events when</br> a new contact is added or an existing contact is updated via API. Disable to skip notifications.`,
 			},
 			{
-				displayName: 'Number Of Employees',
+				displayName: 'Number of Employees',
 				name: 'NumberOfEmployees',
 				type: 'number',
 				default: 0,
@@ -264,14 +263,14 @@ export const contactFields = [
 				default: '',
 			},
 			{
-				displayName: 'Unsubscribed',
+				displayName: 'Subscribe',
 				name: 'unsubscribed',
 				type: 'boolean',
 				default: false,
-				description: 'Use this to unsubscribe or re-subscribe contacts. Send a boolean (true/false) value.',
+				description: 'Whether to subscribe or un-subscribe a contact.',
 			},
 			{
-				displayName: 'Website',
+				displayName: 'Website URL',
 				name: 'Website',
 				type: 'string',
 				default: '',
@@ -320,7 +319,7 @@ export const contactFields = [
 			},
 		},
 		default: '',
-		description: 'Can be ID or email',
+		description: 'Can be ID or email.',
 	},
 
 	/* -------------------------------------------------------------------------- */
