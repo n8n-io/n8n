@@ -11,8 +11,19 @@ export const accountOperations = [
 		description: 'Operation to perform',
 		options: [
 			{
-				name: 'Get',
-				value: 'get',
+				name: 'Get Balances',
+				value: 'getBalances',
+				description: 'Retrieve balances for all account currencies of this user.',
+			},
+			{
+				name: 'Get Currencies',
+				value: 'getCurrencies',
+				description: 'Retrieve currencies in the borderless account of this user.',
+			},
+			{
+				name: 'Get Statement',
+				value: 'getStatement',
+				description: 'Retrieve the statement for the borderless account of this user.',
 			},
 		],
 		displayOptions: {
@@ -27,42 +38,8 @@ export const accountOperations = [
 
 export const accountFields = [
 	// ----------------------------------
-	//         account: get
+	//      account: getBalances
 	// ----------------------------------
-	{
-		displayName: 'Details',
-		name: 'details',
-		type: 'options',
-		default: 'balances',
-		description: 'Details to retrieve for the account.',
-		options: [
-			{
-				name: 'Balances',
-				value: 'balances',
-				description: 'Balances for all account currencies of this user.',
-			},
-			{
-				name: 'Currencies',
-				value: 'currencies',
-				description: 'Currencies in the borderless account of this user.',
-			},
-			{
-				name: 'Statement',
-				value: 'statement',
-				description: 'Statement for the borderless account of this user.',
-			},
-		],
-		displayOptions: {
-			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'get',
-				],
-			},
-		},
-	},
 	{
 		displayName: 'Profile ID',
 		name: 'profileId',
@@ -79,14 +56,14 @@ export const accountFields = [
 					'account',
 				],
 				operation: [
-					'get',
-				],
-				details: [
-					'balances',
+					'getBalances',
 				],
 			},
 		},
 	},
+	// ----------------------------------
+	//      account: getStatement
+	// ----------------------------------
 	{
 		displayName: 'Profile ID',
 		name: 'profileId',
@@ -102,10 +79,7 @@ export const accountFields = [
 					'account',
 				],
 				operation: [
-					'get',
-				],
-				details: [
-					'statement',
+					'getStatement',
 				],
 			},
 		},
@@ -129,10 +103,7 @@ export const accountFields = [
 					'account',
 				],
 				operation: [
-					'get',
-				],
-				details: [
-					'statement',
+					'getStatement',
 				],
 			},
 		},
@@ -150,10 +121,7 @@ export const accountFields = [
 					'account',
 				],
 				operation: [
-					'get',
-				],
-				details: [
-					'statement',
+					'getStatement',
 				],
 			},
 		},
@@ -170,10 +138,7 @@ export const accountFields = [
 					'account',
 				],
 				operation: [
-					'get',
-				],
-				details: [
-					'statement',
+					'getStatement',
 				],
 			},
 		},

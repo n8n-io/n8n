@@ -67,7 +67,7 @@ export async function wiseApiRequest(
 			const errorMessage = errors.map((e) => e.message).join(' | ');
 			throw new Error(`Wise error response [${error.statusCode}]: ${errorMessage}`);
 		}
-		
+
 		throw new Error(`Wise error response [${error.statusCode}]: ${error}`);
 	}
 }

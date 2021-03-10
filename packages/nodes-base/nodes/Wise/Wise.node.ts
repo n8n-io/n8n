@@ -120,7 +120,7 @@ export class Wise implements INodeType {
 					profileId: this.getNodeParameter('profileId', 0),
 				};
 
-				const accounts = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts', qs);
+				const accounts = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts', {}, qs);
 
 				return accounts.map(({ id, balances }: BorderlessAccount) => ({
 					name: balances.map(({ currency }) => currency).join(' - '),
@@ -142,7 +142,7 @@ export class Wise implements INodeType {
 					profileId: this.getNodeParameter('profileId', 0),
 				};
 
-				const recipients = await wiseApiRequest.call(this, 'GET', 'v1/accounts', qs);
+				const recipients = await wiseApiRequest.call(this, 'GET', 'v1/accounts', {}, qs);
 
 				return recipients.map(({ id, accountHolderName }: Recipient) => ({
 					name: accountHolderName,
@@ -174,58 +174,62 @@ export class Wise implements INodeType {
 					//                             account
 					// *********************************************************************
 
-					if (operation === 'get') {
+					if (operation === 'getBalances') {
 
 						// ----------------------------------
-						//         account: get
+						//      account: getBalances
 						// ----------------------------------
 
-						const details = this.getNodeParameter('details', i) as 'balances' | 'currencies' | 'statement';
+						// https://api-docs.transferwise.com/#borderless-accounts-get-account-balance
 
-						if (details === 'balances') {
+						const qs = {
+							profileId: this.getNodeParameter('profileId', i),
+						};
 
-							// https://api-docs.transferwise.com/#borderless-accounts-get-account-balance
+						responseData = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts', {}, qs);
 
-							const qs = {
-								profileId: this.getNodeParameter('profileId', i),
-							};
+					} else if (operation === 'getCurrencies') {
 
-							responseData = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts', {}, qs);
+						// ----------------------------------
+						//      account: getCurrencies
+						// ----------------------------------
 
-						} else if (details === 'currencies') {
+						// https://api-docs.transferwise.com/#borderless-accounts-get-available-currencies
 
-							// https://api-docs.transferwise.com/#borderless-accounts-get-available-currencies
+						responseData = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts/balance-currencies');
 
-							responseData = await wiseApiRequest.call(this, 'GET', 'v1/borderless-accounts/balance-currencies');
+					} else if (operation === 'getStatement') {
 
-						} else if (details === 'statement') {
+						// ----------------------------------
+						//      account: getStatement
+						// ----------------------------------
 
-							// https://api-docs.transferwise.com/#borderless-accounts-get-account-statement
+						// https://api-docs.transferwise.com/#borderless-accounts-get-account-statement
 
-							const profileId = this.getNodeParameter('profileId', i);
-							const borderlessAccountId = this.getNodeParameter('borderlessAccountId', i);
-							const endpoint = `v3/profiles/${profileId}/borderless-accounts/${borderlessAccountId}/statement.json`;
+						const profileId = this.getNodeParameter('profileId', i);
+						const borderlessAccountId = this.getNodeParameter('borderlessAccountId', i);
+						const endpoint = `v3/profiles/${profileId}/borderless-accounts/${borderlessAccountId}/statement.json`;
 
-							const qs = {
-								currency: this.getNodeParameter('currency', i),
-							} as IDataObject;
+						const qs = {
+							currency: this.getNodeParameter('currency', i),
+						} as IDataObject;
 
-							const { lineStyle, range } = this.getNodeParameter('additionalFields', i) as StatementAdditionalFields;
+						const { lineStyle, range } = this.getNodeParameter('additionalFields', i) as StatementAdditionalFields;
 
-							if (lineStyle !== undefined) {
-								qs.type = lineStyle;
-							}
-
-							if (range !== undefined) {
-								qs.intervalStart = moment.tz(range.rangeProperties.intervalStart, timezone).utc().format();
-								qs.intervalEnd = moment.tz(range.rangeProperties.intervalEnd, timezone).utc().format();
-							} else {
-								qs.intervalStart = moment().subtract(1, 'months').utc().format();
-								qs.intervalEnd = moment().utc().format();
-							}
-
-							responseData = await wiseApiRequest.call(this, 'GET', endpoint, {}, qs);
+						if (lineStyle !== undefined) {
+							qs.type = lineStyle;
 						}
+
+						if (range !== undefined) {
+							qs.intervalStart = moment.tz(range.rangeProperties.intervalStart, timezone).utc().format();
+							qs.intervalEnd = moment.tz(range.rangeProperties.intervalEnd, timezone).utc().format();
+						} else {
+							qs.intervalStart = moment().subtract(1, 'months').utc().format();
+							qs.intervalEnd = moment().utc().format();
+						}
+
+						responseData = await wiseApiRequest.call(this, 'GET', endpoint, {}, qs);
+
 					}
 
 				} else if (resource === 'exchangeRate') {
