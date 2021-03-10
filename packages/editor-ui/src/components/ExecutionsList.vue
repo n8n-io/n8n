@@ -175,6 +175,10 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
+import {
+	range as _range,
+} from 'lodash';
+
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
@@ -433,8 +437,24 @@ export default mixins(
 			this.$store.commit('setActiveExecutions', results[1]);
 
 			const alreadyPresentExecutionIds = this.finishedExecutions.map(exec => exec.id);
+			let lastId = 0;
+			const gaps = [] as number[];
 			for(let i = results[0].results.length - 1; i >= 0; i--) {
 				const currentItem = results[0].results[i];
+				const currentId = parseInt(currentItem.id, 10);
+				if (lastId !== 0 && isNaN(currentId) === false) {
+					// We are doing this iteration to detect possible gaps.
+					// The gaps are used to remove executions that finished
+					// and were deleted from database but were displaying
+					// in this list while running.
+					if (currentId - lastId > 1) {
+						// We have some gaps.
+						const range = _range(lastId + 1, currentId);
+						gaps.push(...range);
+					}
+				}
+				lastId = parseInt(currentItem.id, 10) || 0;
+
 				// Check new results from end to start
 				// Add new items accordingly.
 				const executionIndex = alreadyPresentExecutionIds.indexOf(currentItem.id);
@@ -464,6 +484,7 @@ export default mixins(
 					this.finishedExecutions.unshift(currentItem);
 				}
 			}
+			this.finishedExecutions = this.finishedExecutions.filter(execution => !gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10));
 			this.finishedExecutionsCount = results[0].count;
 		},
 		async loadFinishedExecutions (): Promise<void> {
