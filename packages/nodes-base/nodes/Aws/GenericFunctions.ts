@@ -7,8 +7,8 @@ import {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IWebhookFunctions,
-	ITriggerFunctions
+	ITriggerFunctions,
+	IWebhookFunctions
 } from 'n8n-core';
 
 import {

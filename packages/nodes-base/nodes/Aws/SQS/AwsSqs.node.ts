@@ -3,10 +3,10 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	INodeParameters,
 } from 'n8n-workflow';
 
 import { awsApiRequestSOAP } from '../GenericFunctions';
@@ -106,8 +106,8 @@ export class AwsSqs implements INodeType {
 						default: 0,
 						typeOptions: {
 							minValue: 0,
-							maxValue: 900
-						}
+							maxValue: 900,
+						},
 					},
 					{
 						displayName: 'Message Attributes',
@@ -187,14 +187,14 @@ export class AwsSqs implements INodeType {
 						name: 'messageDeduplicationId',
 						type: 'string',
 						default: '',
-						description: 'The token used for deduplication of sent messages. This parameter applies only to FIFO (first-in-first-out) queues.'
+						description: 'The token used for deduplication of sent messages. This parameter applies only to FIFO (first-in-first-out) queues.',
 					},
 					{
 						displayName: 'MessageGroupId',
 						name: 'messageGroupId',
 						type: 'string',
 						default: '',
-						description: 'The tag that specifies that a message belongs to a specific message group. . This parameter applies only to FIFO (first-in-first-out) queues.'
+						description: 'The tag that specifies that a message belongs to a specific message group. . This parameter applies only to FIFO (first-in-first-out) queues.',
 					},
 				],
 			},
@@ -223,8 +223,8 @@ export class AwsSqs implements INodeType {
 				}
 
 				for (const queue of queues) {
-                    const queueUrl = queue.QueueUrl;
-                    const urlParts = queueUrl.split('/');
+										const queueUrl = queue.QueueUrl;
+										const urlParts = queueUrl.split('/');
 					const name = urlParts[urlParts.length - 1];
 
 					returnData.push({
@@ -243,11 +243,11 @@ export class AwsSqs implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-        const operation = this.getNodeParameter('operation', 0) as string;
+				const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < items.length; i++) {
-            const queueUrl = this.getNodeParameter('queue', i) as string;
-            const queuePath = queueUrl.split('.com/')[1];
+						const queueUrl = this.getNodeParameter('queue', i) as string;
+						const queuePath = queueUrl.split('.com/')[1];
 			const params = [
 				'MessageBody=' + this.getNodeParameter('message', i) as string,
 			];
