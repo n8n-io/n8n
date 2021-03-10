@@ -100,7 +100,6 @@ export class AwsSqs implements INodeType {
 
 				let queues = data.ListQueuesResponse.ListQueuesResult;
 
-                console.log('yo', queues);
 				if (!Array.isArray(queues)) {
 					// If user has only a single queue no array get returned so we make
 					// one manually to be able to process everything identically
@@ -112,7 +111,6 @@ export class AwsSqs implements INodeType {
                     const urlParts = queueUrl.split('/');
 					const name = urlParts[urlParts.length - 1];
                     const value = `${urlParts[urlParts.length - 2]}/${name}`
-                    console.log('hmm', name, value);
 
 					returnData.push({
 						name,
