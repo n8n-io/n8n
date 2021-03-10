@@ -230,54 +230,64 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 					return;
 				}
 
-				const execution = await Db.collections.Execution!.findOne(this.executionId);
+				try {
+					const execution = await Db.collections.Execution!.findOne(this.executionId);
 
-				if (execution === undefined) {
-					// Something went badly wrong if this happens.
-					// This check is here mostly to make typescript happy.
-					return undefined;
+					if (execution === undefined) {
+						// Something went badly wrong if this happens.
+						// This check is here mostly to make typescript happy.
+						return undefined;
+					}
+					const fullExecutionData: IExecutionResponse = ResponseHelper.unflattenExecutionData(execution);
+
+					if (fullExecutionData.finished) {
+						// We already received ´workflowExecuteAfter´ webhook, so this is just an async call
+						// that was left behind. We skip saving because the other call should have saved everything
+						// so this one is safe to ignore
+						return;
+					}
+
+
+					if (fullExecutionData.data === undefined) {
+						fullExecutionData.data = {
+							startData: {
+							},
+							resultData: {
+								runData: {},
+							},
+							executionData: {
+								contextData: {},
+								nodeExecutionStack: [],
+								waitingExecution: {},
+							},
+						};
+					}
+
+					if (Array.isArray(fullExecutionData.data.resultData.runData[nodeName])) {
+						// Append data if array exists
+						fullExecutionData.data.resultData.runData[nodeName].push(data);
+					} else {
+						// Initialize array and save data
+						fullExecutionData.data.resultData.runData[nodeName] = [data];
+					}
+
+					fullExecutionData.data.executionData = executionData.executionData;
+
+					// Set last executed node so that it may resume on failure
+					fullExecutionData.data.resultData.lastNodeExecuted = nodeName;
+
+					const flattenedExecutionData = ResponseHelper.flattenExecutionData(fullExecutionData);
+
+					await Db.collections.Execution!.update(this.executionId, flattenedExecutionData as IExecutionFlattedDb);
+				} catch (err) {
+					// TODO: Improve in the future!
+					// Errors here might happen because of database access
+					// For busy machines, we may get "Database is locked" errors.
+
+					// We do this to prevent crashes and executions ending in `unknown` state.
+					console.log(`Failed saving execution progress to database for execution ID ${this.executionId}`, err);
 				}
-				const fullExecutionData: IExecutionResponse = ResponseHelper.unflattenExecutionData(execution);
 
-				if (fullExecutionData.finished) {
-					// We already received ´workflowExecuteAfter´ webhook, so this is just an async call
-					// that was left behind. We skip saving because the other call should have saved everything
-					// so this one is safe to ignore
-					return;
-				}
-
-
-				if (fullExecutionData.data === undefined) {
-					fullExecutionData.data = {
-						startData: {
-						},
-						resultData: {
-							runData: {},
-						},
-						executionData: {
-							contextData: {},
-							nodeExecutionStack: [],
-							waitingExecution: {},
-						},
-					};
-				}
-
-				if (Array.isArray(fullExecutionData.data.resultData.runData[nodeName])) {
-					// Append data if array exists
-					fullExecutionData.data.resultData.runData[nodeName].push(data);
-				} else {
-					// Initialize array and save data
-					fullExecutionData.data.resultData.runData[nodeName] = [data];
-				}
-
-				fullExecutionData.data.executionData = executionData.executionData;
-
-				// Set last executed node so that it may resume on failure
-				fullExecutionData.data.resultData.lastNodeExecuted = nodeName;
-
-				const flattenedExecutionData = ResponseHelper.flattenExecutionData(fullExecutionData);
-
-				await Db.collections.Execution!.update(this.executionId, flattenedExecutionData as IExecutionFlattedDb);
 			},
 		],
 	};
