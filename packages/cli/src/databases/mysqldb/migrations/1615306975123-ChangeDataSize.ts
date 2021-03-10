@@ -1,4 +1,4 @@
-import {MigrationInterface, QueryRunner} from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 import * as config from '../../../../config';
 
 export class ChangeDataSize1615306975123 implements MigrationInterface {
