@@ -40,7 +40,7 @@ export class Autopilot implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Autopilot',
 		name: 'autopilot',
-		icon: 'file:autopilot.png',
+		icon: 'file:autopilot.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

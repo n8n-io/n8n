@@ -14,7 +14,7 @@ import {
 	autopilotApiRequest,
 } from './GenericFunctions';
 
-import { 
+import {
 	snakeCase,
 } from 'change-case';
 
@@ -22,7 +22,7 @@ export class AutopilotTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Autopilot Trigger',
 		name: 'AutopilotTrigger',
-		icon: 'file:autopilot.png',
+		icon: 'file:autopilot.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["event"]}}',
