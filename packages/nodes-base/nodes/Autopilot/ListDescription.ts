@@ -18,12 +18,12 @@ export const listOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a list',
+				description: 'Create a list.',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all lists',
+				description: 'Get all lists.',
 			},
 		],
 		default: 'create',
@@ -52,7 +52,7 @@ export const listFields = [
 			},
 		},
 		default: '',
-		description: 'Name of the list.',
+		description: 'Name of the list to create.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:getAll                                */
