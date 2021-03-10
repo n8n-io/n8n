@@ -20,9 +20,9 @@
 		<div class="header">
 			<div class="title-text">
 				<strong v-if="dataCount < maxDisplayItems">
-					Results: {{ dataCount }}
+					Items: {{ dataCount }}
 				</strong>
-				<strong v-else>Results:
+				<strong v-else>Items:
 					<el-select v-model="maxDisplayItems" @click.stop>
 						<el-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
 					</el-select>&nbsp;/

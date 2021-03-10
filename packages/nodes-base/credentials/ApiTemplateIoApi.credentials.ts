@@ -5,7 +5,7 @@ import {
 
 export class ApiTemplateIoApi implements ICredentialType {
 	name = 'apiTemplateIoApi';
-	displayName = 'APITemplate.Io API';
+	displayName = 'APITemplate.io API';
 	documentationUrl = 'apiTemplateIo';
 	properties = [
 		{
