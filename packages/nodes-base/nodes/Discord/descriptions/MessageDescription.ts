@@ -18,29 +18,37 @@ export const messageOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a message',
 			},
 			{
-				name: 'WS',
-				value: 'ws',
+				name: 'Delete',
+				value: 'delete',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
+		description: 'Operation to perform',
 	},
 ] as INodeProperties[];
 
 export const messageFields = [
-
-	/* -------------------------------------------------------------------------- */
-	/*                                message:create                              */
-	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Content',
-		name: 'content',
+		displayName: 'channelId',
+		name: 'channelId',
+		description: '',
 		type: 'string',
-		default: '',
 		required: true,
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -53,43 +61,219 @@ export const messageFields = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
+		displayName: 'channelId',
+		name: 'channelId',
+		description: '',
+		type: 'string',
+		required: true,
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
 					'message',
 				],
 				operation: [
-					'create',
+					'delete',
 				],
 			},
 		},
-		default: {},
-		options: [
-			{
-				displayName: 'Username',
-				name: 'username',
-				type: 'string',
-				default: '',
-				description: '',
+	},
+	{
+		displayName: 'messageId',
+		name: 'messageId',
+		description: '',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'delete',
+				],
 			},
-			{
-				displayName: 'Avatar URL',
-				name: 'avatar_url',
-				type: 'string',
-				default: '',
-				description: '',
+		},
+	},
+	{
+		displayName: 'channelId',
+		name: 'channelId',
+		description: '',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'update',
+				],
 			},
-			{
-				displayName: 'TTS',
-				name: 'tts',
-				type: 'boolean',
-				default: false,
-				description: '',
+		},
+	},
+	{
+		displayName: 'messageId',
+		name: 'messageId',
+		description: '',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'update',
+				],
 			},
-		],
+		},
+	},
+	{
+		displayName: 'Content',
+		name: 'content',
+		description: 'Content of the message to send.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Embed',
+		name: 'embed',
+		description: 'Rich-content embed for the messsage.',
+		type: 'object',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'channelId',
+		name: 'channelId',
+		description: '',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'messageId',
+		name: 'messageId',
+		description: '',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'channelId',
+		name: 'channelId',
+		description: '',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'After',
+		name: 'after',
+		description: 'ID of message to set as the first for the filter.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Around',
+		name: 'around',
+		description: 'ID of message around which to retrieve messages.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Before',
+		name: 'before',
+		description: 'ID of message to set as the last for the filter.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
 	},
 ] as INodeProperties[];
