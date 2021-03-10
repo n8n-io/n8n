@@ -193,7 +193,10 @@ export class Kafka implements INodeType {
 			ssl,
 		};
 
-		if (credentials.username || credentials.password) {
+		if (credentials.authentication === true) {
+			if(!(credentials.username && credentials.password)) {
+				throw new Error('Username and password are required for authentication');
+			}
 			config.sasl = {
 				username: credentials.username as string,
 				password: credentials.password as string,
