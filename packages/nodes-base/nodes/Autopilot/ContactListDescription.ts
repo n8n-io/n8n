@@ -18,26 +18,26 @@ export const contactListOperations = [
 			{
 				name: 'Add',
 				value: 'add',
-				description: 'Add contact to list',
+				description: 'Add contact to list.',
 			},
 			{
 				name: 'Exist',
 				value: 'exist',
-				description: 'Check if contact is on list',
+				description: 'Check if contact is on list.',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
-				description: 'Remove a contact from a list',
+				description: 'Remove a contact from a list.',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all contacts on list',
+				description: 'Get all contacts on list.',
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
+		description: 'Operation to perform.',
 	},
 ] as INodeProperties[];
 
@@ -68,7 +68,7 @@ export const contactListFields = [
 			},
 		},
 		default: '',
-		description: 'The list ID.',
+		description: 'ID of the list to operate on.',
 	},
 	{
 		displayName: 'Contact ID',
@@ -88,7 +88,7 @@ export const contactListFields = [
 			},
 		},
 		default: '',
-		description: 'Can be the Contact ID or email.',
+		description: 'Can be ID or email.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 contactList:getAll                         */
