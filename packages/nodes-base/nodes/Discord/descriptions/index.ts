@@ -1,6 +1,5 @@
 export * from './AuditLogDescription';
 export * from './ChannelDescription';
-export * from './CustomerDescription';
 export * from './DirectMessageDescription';
 export * from './EmojiDescription';
 export * from './InviteDescription';
