@@ -275,7 +275,7 @@ export class AwsSqs implements INodeType {
 				params.push(`MessageAttribute.${attributeCount}.Value.DataType=String`);
 			});
 
-			// Add boolean values
+			// Add binary values
 			(this.getNodeParameter('options.messageAttributes.binary', i, []) as INodeParameters[]).forEach((attribute) => {
 				attributeCount++;
 				params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
