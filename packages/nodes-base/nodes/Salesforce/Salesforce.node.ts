@@ -114,7 +114,7 @@ export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Salesforce',
 		name: 'salesforce',
-		icon: 'file:salesforce.png',
+		icon: 'file:salesforce.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -930,6 +930,9 @@ export class Salesforce implements INodeType {
 					if (additionalFields.numberOfEmployees !== undefined) {
 						body.NumberOfEmployees = additionalFields.numberOfEmployees as number;
 					}
+					if (additionalFields.mobilePhone !== undefined) {
+						body.MobilePhone = additionalFields.mobilePhone as string;
+					}
 					if (additionalFields.customFieldsUi) {
 						const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
 						if (customFields) {
@@ -1018,6 +1021,9 @@ export class Salesforce implements INodeType {
 					}
 					if (updateFields.numberOfEmployees !== undefined) {
 						body.NumberOfEmployees = updateFields.numberOfEmployees as number;
+					}
+					if (updateFields.mobilePhone !== undefined) {
+						body.MobilePhone = updateFields.mobilePhone as string;
 					}
 					if (updateFields.customFieldsUi) {
 						const customFields = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
