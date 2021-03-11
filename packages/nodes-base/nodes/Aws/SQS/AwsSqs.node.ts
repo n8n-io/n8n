@@ -8,6 +8,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { URL } from 'url';
 
 import { awsApiRequestSOAP } from '../GenericFunctions';
 
@@ -18,7 +19,7 @@ export class AwsSqs implements INodeType {
 		icon: 'file:sqs.png',
 		group: ['output'],
 		version: 1,
-		subtitle: '={{$parameter["queue"].split("/")[4}}',
+		subtitle: '={{$parameter["queue"]}}',
 		description: 'Sends messages to AWS SQS',
 		defaults: {
 			name: 'AWS SQS',
@@ -48,7 +49,7 @@ export class AwsSqs implements INodeType {
 				description: 'The operation to perform.',
 			},
 			{
-				displayName: 'Queue URL',
+				displayName: 'Queue',
 				name: 'queue',
 				type: 'options',
 				typeOptions: {
@@ -223,8 +224,8 @@ export class AwsSqs implements INodeType {
 				}
 
 				for (const queue of queues) {
-										const queueUrl = queue.QueueUrl;
-										const urlParts = queueUrl.split('/');
+					const queueUrl = queue.QueueUrl;
+					const urlParts = queueUrl.split('/');
 					const name = urlParts[urlParts.length - 1];
 
 					returnData.push({
@@ -246,8 +247,8 @@ export class AwsSqs implements INodeType {
 				const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < items.length; i++) {
-						const queueUrl = this.getNodeParameter('queue', i) as string;
-						const queuePath = queueUrl.split('.com/')[1];
+			const queueUrl = this.getNodeParameter('queue', i) as string;
+			const queuePath = new URL(queueUrl).pathname;
 			const params = [
 				'MessageBody=' + this.getNodeParameter('message', i) as string,
 			];
