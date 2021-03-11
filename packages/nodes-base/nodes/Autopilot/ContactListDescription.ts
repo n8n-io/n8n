@@ -26,14 +26,14 @@ export const contactListOperations = [
 				description: 'Check if contact is on list.',
 			},
 			{
-				name: 'Remove',
-				value: 'remove',
-				description: 'Remove a contact from a list.',
-			},
-			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all contacts on list.',
+			},
+			{
+				name: 'Remove',
+				value: 'remove',
+				description: 'Remove a contact from a list.',
 			},
 		],
 		default: 'add',
@@ -90,6 +90,7 @@ export const contactListFields = [
 		default: '',
 		description: 'Can be ID or email.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 contactList:getAll                         */
 	/* -------------------------------------------------------------------------- */

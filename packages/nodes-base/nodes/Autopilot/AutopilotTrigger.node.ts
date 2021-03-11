@@ -21,7 +21,7 @@ import {
 export class AutopilotTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Autopilot Trigger',
-		name: 'AutopilotTrigger',
+		name: 'autopilotTrigger',
 		icon: 'file:autopilot.svg',
 		group: ['trigger'],
 		version: 1,
