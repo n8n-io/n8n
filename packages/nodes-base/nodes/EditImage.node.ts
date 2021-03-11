@@ -11,7 +11,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-const gm = require('gm').subClass({imageMagick: true});
+import * as gm from 'gm';
 import { file } from 'tmp-promise';
 import {
 	parse as pathParse,
@@ -966,7 +966,6 @@ export class EditImage implements INodeType {
 
 			const cleanupFunctions: Array<() => void> = [];
 
-			// @ts-ignore
 			let gmInstance: gm.State;
 
 			const requiredOperationParameters: {
@@ -1135,7 +1134,6 @@ export class EditImage implements INodeType {
 					const resizeOption = operationData.resizeOption as string;
 
 					// By default use "maximumArea"
-					// @ts-ignore
 					let option: gm.ResizeOption = '@';
 					if (resizeOption === 'ignoreAspectRatio') {
 						option = '!';
