@@ -103,7 +103,9 @@ export function simplify(data: IDataObject[]) {
 	const results = [];
 	for (const element of data) {
 		const { '.tag': key } = element?.metadata as IDataObject;
-		element.metadata = (element?.metadata as IDataObject)[key as string] as IDataObject;
+		const metadata = (element?.metadata as IDataObject)[key as string] as IDataObject;
+		delete element.metadata;
+		Object.assign(element, metadata);
 		if ((element?.match_type as IDataObject)['.tag']) {
 			element.match_type = (element?.match_type as IDataObject)['.tag'] as string;
 		}
