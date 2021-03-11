@@ -1,6 +1,6 @@
 export const auditLogEvents = [
 	{
-		name: 'Bot ADd',
+		name: 'Bot Add',
 		value: 28,
 	},
 	{

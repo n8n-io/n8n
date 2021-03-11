@@ -53,6 +53,7 @@ export async function discordApiRequest(
 		console.log(options);
 		return await this.helpers.requestOAuth2!.call(this, 'discordOAuth2Api', options, oAuth2Options);
 	} catch (error) {
+		console.log(error);
 
 		// TODO: Prettify error
 

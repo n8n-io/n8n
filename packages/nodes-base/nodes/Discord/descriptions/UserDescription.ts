@@ -27,10 +27,6 @@ export const userOperations = [
 				name: 'Get',
 				value: 'get',
 			},
-			{
-				name: 'Update Current User',
-				value: 'updateCurrentUser',
-			},
 		],
 		default: 'getCurrentUser',
 		description: 'Operation to perform',
@@ -39,9 +35,9 @@ export const userOperations = [
 
 export const userFields = [
 	{
-		displayName: 'userId',
+		displayName: 'User ID',
 		name: 'userId',
-		description: '',
+		description: 'ID of the user to retrieve',
 		type: 'string',
 		required: true,
 		default: '',

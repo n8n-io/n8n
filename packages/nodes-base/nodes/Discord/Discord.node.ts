@@ -544,7 +544,7 @@ export class Discord implements INodeType {
 
 					// https://discord.com/developers/docs/resources/user#get-current-user-guilds
 
-					const endpoint = '/users/@me@guilds';
+					const endpoint = '/users/@me/guilds';
 					responseData = await discordApiRequest.call(this, 'GET', endpoint);
 
 				} else if (operation === 'get') {
@@ -559,17 +559,6 @@ export class Discord implements INodeType {
 
 					const endpoint = `/users/${userId}`;
 					responseData = await discordApiRequest.call(this, 'GET', endpoint);
-
-				} else if (operation === 'updateCurrentUser') {
-
-					// ----------------------------------------
-					//         user: updateCurrentUser
-					// ----------------------------------------
-
-					// https://discord.com/developers/docs/resources/user#modify-current-user
-
-					const endpoint = '/users/@me';
-					responseData = await discordApiRequest.call(this, 'PATCH', endpoint);
 
 				}
 

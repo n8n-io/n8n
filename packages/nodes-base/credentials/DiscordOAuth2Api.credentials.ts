@@ -6,8 +6,10 @@ import {
 const scopes = [
 	'bot',
 	'connections',
+	'email',
 	'guilds',
 	'identify',
+	'messages.read',
 	'webhook.incoming',
 ];
 
@@ -44,7 +46,7 @@ export class DiscordOAuth2Api implements ICredentialType {
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'permissions=104448',
+			default: 'permissions=104600',
 		},
 		{
 			displayName: 'Authentication',
