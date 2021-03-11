@@ -254,7 +254,7 @@ export class Autopilot implements INodeType {
 						}
 					}
 				}
-				if (resource === 'contactList') {
+				if (resource === 'contactJourney') {
 					if (operation === 'add') {
 
 						const triggerId = this.getNodeParameter('triggerId', i) as string;
