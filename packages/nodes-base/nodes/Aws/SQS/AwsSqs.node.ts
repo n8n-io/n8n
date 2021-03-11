@@ -215,7 +215,10 @@ export class AwsSqs implements INodeType {
 					throw new Error(`AWS Error: ${err}`);
 				}
 
-				let queues = data.ListQueuesResponse.ListQueuesResult;
+				let queues = data.ListQueuesResponse.ListQueuesResult.QueueUrl;
+				if (!queues) {
+					return returnData;
+				}
 
 				if (!Array.isArray(queues)) {
 					// If user has only a single queue no array get returned so we make
@@ -223,8 +226,7 @@ export class AwsSqs implements INodeType {
 					queues = [queues];
 				}
 
-				for (const queue of queues) {
-					const queueUrl = queue.QueueUrl;
+				for (const queueUrl of queues) {
 					const urlParts = queueUrl.split('/');
 					const name = urlParts[urlParts.length - 1];
 
