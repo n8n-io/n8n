@@ -294,7 +294,7 @@ export class AwsSqs implements INodeType {
 
 			let responseData;
 			try {
-				responseData = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `/${queuePath}/?Action=${operation}&` + params.join('&'));
+				responseData = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `${queuePath}/?Action=${operation}&` + params.join('&'));
 			} catch (err) {
 				throw new Error(`AWS Error: ${err}`);
 			}
