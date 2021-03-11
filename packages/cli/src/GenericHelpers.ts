@@ -3,6 +3,7 @@ import * as express from 'express';
 import { join as pathJoin } from 'path';
 import {
 	readFile as fsReadFile,
+	readFileSync as fsReadFileSync,
 } from 'fs';
 import { promisify } from 'util';
 import { IDataObject } from 'n8n-workflow';
@@ -12,7 +13,6 @@ import { IPackageVersions } from './';
 const fsReadFileAsync = promisify(fsReadFile);
 
 let versionCache: IPackageVersions | undefined;
-
 
 /**
  * Displays a message to the user
@@ -82,20 +82,16 @@ export async function getVersions(): Promise<IPackageVersions> {
 	return versionCache;
 }
 
-
 /**
- * Gets value from config with support for "_FILE" environment variables
+ * Retrieves configuration values from env
  *
- * @export
- * @param {string} configKey The key of the config data to get
- * @returns {(Promise<string | boolean | number | undefined>)}
+ * @param {string} configKey
+ * @param {IDataObject} currentSchema
+ * @returns {string | boolean | number | undefined | void}
  */
-export async function getConfigValue(configKey: string): Promise<string | boolean | number | undefined> {
+function getConfigFromEnv(configKey: string, currentSchema: IDataObject): string | boolean | number | undefined | void {
 	const configKeyParts = configKey.split('.');
 
-	// Get the environment variable
-	const configSchema = config.getSchema();
-	let currentSchema = configSchema.properties as IDataObject;
 	for (const key of configKeyParts) {
 		if (currentSchema[key] === undefined) {
 			throw new Error(`Key "${key}" of ConfigKey "${configKey}" does not exist`);
@@ -113,18 +109,64 @@ export async function getConfigValue(configKey: string): Promise<string | boolea
 	}
 
 	// Check if special file enviroment variable exists
-	const fileEnvironmentVariable = process.env[currentSchema.env + '_FILE'];
-	if (fileEnvironmentVariable === undefined) {
+	if (process.env[currentSchema.env + '_FILE'] === undefined) {
 		// Does not exist, so return value from config
 		return config.get(configKey);
+	}
+}
+
+/**
+ * Gets value from config with support for "_FILE" environment variables
+ *
+ * @export
+ * @param {string} configKey The key of the config data to get
+ * @returns {(Promise<string | boolean | number | undefined>)}
+ */
+export async function getConfigValue(configKey: string): Promise<string | boolean | number | undefined> {
+	// Get the environment variable
+	const configSchema = config.getSchema();
+	const currentSchema = configSchema.properties as IDataObject;
+	const envConfig = getConfigFromEnv(configKey, currentSchema);
+	if (envConfig) {
+		return envConfig;
 	}
 
 	let data;
 	try {
-		data = await fsReadFileAsync(fileEnvironmentVariable, 'utf8') as string;
+		data = await fsReadFileAsync(process.env[currentSchema.env + '_FILE']!, 'utf8') as string;
 	} catch (error) {
 		if (error.code === 'ENOENT') {
-			throw new Error(`The file "${fileEnvironmentVariable}" could not be found.`);
+			throw new Error(`The file "${process.env[currentSchema.env + '_FILE']}" could not be found.`);
+		}
+
+		throw error;
+	}
+
+	return data;
+}
+
+/**
+ * Gets value from config with support for "_FILE" environment variables synchronously
+ *
+ * @export
+ * @param {string} configKey The key of the config data to get
+ * @returns {(string | boolean | number | undefined)}
+ */
+export function getConfigValueSync(configKey: string): string | boolean | number | undefined {
+	// Get the environment variable
+	const configSchema = config.getSchema();
+	const currentSchema = configSchema.properties as IDataObject;
+	const envConfig = getConfigFromEnv(configKey, currentSchema);
+	if (envConfig) {
+		return envConfig;
+	}
+
+	let data;
+	try {
+		data = fsReadFileSync(process.env[currentSchema.env + '_FILE']!, 'utf8') as string;
+	} catch (error) {
+		if (error.code === 'ENOENT') {
+			throw new Error(`The file "${process.env[currentSchema.env + '_FILE']}" could not be found.`);
 		}
 
 		throw error;
