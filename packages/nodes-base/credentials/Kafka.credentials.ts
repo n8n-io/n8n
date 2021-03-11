@@ -26,7 +26,7 @@ export class Kafka implements ICredentialType {
 			displayName: 'SSL',
 			name: 'ssl',
 			type: 'boolean' as NodePropertyTypes,
-			default: false,
+			default: true,
 		},
 		{
 			displayName: 'Authentication',
