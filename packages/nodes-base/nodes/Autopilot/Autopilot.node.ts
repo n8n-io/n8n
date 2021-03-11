@@ -277,23 +277,23 @@ export class Autopilot implements INodeType {
 
 						const contactId = this.getNodeParameter('contactId', i) as string;
 
-						const method: IDataObject = {
+						const method: { [key: string]: string } = {
 							'add': 'POST',
 							'remove': 'DELETE',
 							'exist': 'GET',
 						};
 
-						responseData = await autopilotApiRequest.call(
-							this,
-							method[operation] as string,
-							`/list/${listId}/contact/${contactId}`,
-						);
+						const endpoint = `/list/${listId}/contact/${contactId}`;
 
 						if (operation === 'exist') {
-							responseData = { exist: true };
-						}
-
-						if (operation === 'add' || operation === 'remove') {
+							try {
+								await autopilotApiRequest.call(this, method[operation], endpoint);
+								responseData = { exist: true };
+							} catch (error) {
+								responseData = { exist: false };
+							}
+						} else if (operation === 'add' || operation === 'remove') {
+							responseData = await autopilotApiRequest.call(this, method[operation], endpoint);
 							responseData['success'] = true;
 						}
 					}
