@@ -358,18 +358,6 @@ export default mixins(
 			async openWorkflow (data: IWorkflowDb, dirty = false) {
 				this.resetWorkspace();
 
-				// let data: IWorkflowDb | undefined;
-				// try {
-				// 	data = await this.restApi().getWorkflow(workflowId);
-				// } catch (error) {
-				// 	this.$showError(error, 'Problem opening workflow', 'There was a problem opening the workflow:');
-				// 	return;
-				// }
-
-				// if (!data || data === undefined) {
-				// 	throw new Error(`Workflow with id "${data.id}" could not be found!`);
-				// }
-
 				this.$store.commit('setActive', data.active || false);
 				this.$store.commit('setWorkflowId', data.id);
 				this.$store.commit('setWorkflowName', {newName: data.name, setStateDirty: dirty});
@@ -1446,7 +1434,6 @@ export default mixins(
 
 						this.$titleSet(workflow.name, 'IDLE');
 
-						// compare local storage and db wfs
 						const localStorageWorkflow = this.$store.getters.getWorkflowFromLocalStorage(workflowId);
 
 						if(localStorageWorkflow && !result) {
@@ -1477,10 +1464,6 @@ export default mixins(
 
 				document.addEventListener('keydown', this.keyDown);
 				document.addEventListener('keyup', this.keyUp);
-
-				window.addEventListener("unload",  (e) => {
-					this.$store.commit('setStateDirty', false);
-				});
 
 				window.addEventListener("beforeunload",  (e) => {
 					if(this.$store.getters.getStateIsDirty === true) {
