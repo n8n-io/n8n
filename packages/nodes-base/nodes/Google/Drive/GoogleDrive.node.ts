@@ -736,9 +736,11 @@ export class GoogleDrive implements INodeType {
 				description: 'The ID of the file to update.',
 			},
 			{
-				displayName: 'Parent ID',
-				name: 'parentId',
-				type: 'string',
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
 				displayOptions: {
 					show: {
 						operation: [
@@ -749,8 +751,38 @@ export class GoogleDrive implements INodeType {
 						],
 					},
 				},
-				default: '',
-				description: `The ID of the parent`,
+				options: [
+					{
+						displayName: 'Keep Revision Forever',
+						name: 'keepRevisionForever',
+						type: 'boolean',
+						default: false,
+						description: `Whether to set the 'keepForever' field in the new head revision.</br>
+						his is only applicable to files with binary content in Google Drive.</br>
+						Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.`,
+					},
+					{
+						displayName: 'OCR Language',
+						name: 'ocrLanguage',
+						type: 'string',
+						default: '',
+						description: `A language hint for OCR processing during image import (ISO 639-1 code).`,
+					},
+					{
+						displayName: 'Parent ID',
+						name: 'parentId',
+						type: 'string',
+						default: '',
+						description: `The ID of the parent to set.`,
+					},
+					{
+						displayName: 'Use Content As Indexable Text',
+						name: 'useContentAsIndexableText',
+						type: 'boolean',
+						default: false,
+						description: `Whether to use the uploaded content as indexable text.`,
+					},
+				],
 			},
 			{
 				displayName: 'Options',
@@ -847,29 +879,6 @@ export class GoogleDrive implements INodeType {
 						required: true,
 						default: [],
 						description: 'The fields to return.',
-					},
-					{
-						displayName: 'Keep Revision Forever',
-						name: 'keepRevisionForever',
-						type: 'boolean',
-						default: false,
-						description: `Whether to set the 'keepForever' field in the new head revision.</br>
-						his is only applicable to files with binary content in Google Drive.</br>
-						Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions`,
-					},
-					{
-						displayName: 'OCR Language',
-						name: 'ocrLanguage',
-						type: 'string',
-						default: '',
-						description: `A language hint for OCR processing during image import (ISO 639-1 code).`,
-					},
-					{
-						displayName: 'Use Content As Indexable Text',
-						name: 'useContentAsIndexableText',
-						type: 'boolean',
-						default: false,
-						description: `Whether to use the uploaded content as indexable text.`,
 					},
 				],
 			},
@@ -2195,8 +2204,13 @@ export class GoogleDrive implements INodeType {
 
 					returnData.push(response as IDataObject);
 				} else if (operation === 'update') {
+					// ----------------------------------
+					//         file:update
+					// ----------------------------------
+
 					const id = this.getNodeParameter('fileId', i) as string;
-					const parentId = this.getNodeParameter('parentId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
+
 					const qs: IDataObject = {
 						supportsAllDrives: true,
 					};
@@ -2205,11 +2219,8 @@ export class GoogleDrive implements INodeType {
 
 					qs.fields = queryFields;
 
-					if (parentId !== '') {
-						const { parents } = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${id}`, {}, { fields: 'parents' });
-						qs.removeParents = parents[0];
-						qs.addParents = parentId;
-					}
+					if (updateFields.parentId && updateFields.parentId !== '')
+					qs.addParents = updateFields.parentId;
 
 					const responseData = await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${id}`, {}, qs);
 					returnData.push(responseData as IDataObject);
