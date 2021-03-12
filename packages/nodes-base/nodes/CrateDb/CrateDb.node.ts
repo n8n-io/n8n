@@ -217,7 +217,7 @@ export class CrateDb implements INodeType {
 
 			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items);
 
-			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+			returnItems = this.helpers.returnJsonArray(queryResult[0] as IDataObject[]);
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert

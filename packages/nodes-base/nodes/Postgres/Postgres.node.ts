@@ -60,6 +60,25 @@ export class Postgres implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 			{
+				displayName: 'Output format',
+				name: 'outputFormat',
+				type: 'options',
+				options: [
+					{
+						name: 'All of first input',
+						value: 'allOfFirst',
+						description: 'The output array is the results of the first query.',
+					},
+					{
+						name: 'One per input',
+						value: 'onePerInput',
+						description: 'The output array is composed of the first results of each query.',
+					},
+				],
+				default: 'allOfFirst',
+				description: 'How query results are outputted.',
+			},
+			{
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
@@ -230,10 +249,12 @@ export class Postgres implements INodeType {
 			// ----------------------------------
 			//         executeQuery
 			// ----------------------------------
-
-			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items);
-
-			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+			const queryResults = await pgQuery(this.getNodeParameter, pgp, db, items);
+			const outputFormat = this.getNodeParameter('outputFormat', 0) as string;
+			const results = outputFormat === 'allOfFirst' ?
+				queryResults[0] :
+				queryResults.map(queryResult => queryResult[0] ?? {});
+			returnItems = this.helpers.returnJsonArray(results as IDataObject[]);
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
