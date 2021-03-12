@@ -16,7 +16,7 @@ export class AwsSqs implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS SQS',
 		name: 'awsSqs',
-		icon: 'file:sqs.png',
+		icon: 'file:sqs.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["queue"]}}',
@@ -68,6 +68,13 @@ export class AwsSqs implements INodeType {
 				description: 'The queue you want to send message to',
 			},
 			{
+				displayName: 'Send Input Data',
+				name: 'sendInputData',
+				type: 'boolean',
+				default: true,
+				description: 'Send the the data the node receives as JSON to SQS.',
+			},
+			{
 				displayName: 'Message',
 				name: 'message',
 				type: 'string',
@@ -76,6 +83,9 @@ export class AwsSqs implements INodeType {
 						operation: [
 							'SendMessage',
 						],
+						sendInputData: [
+							false,
+						]
 					},
 				},
 				required: true,
@@ -251,11 +261,13 @@ export class AwsSqs implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			const queueUrl = this.getNodeParameter('queue', i) as string;
 			const queuePath = new URL(queueUrl).pathname;
-			const params = [
-				'MessageBody=' + this.getNodeParameter('message', i) as string,
-			];
+			const params = [];
 
 			const options = this.getNodeParameter('options', i, {}) as IDataObject;
+			const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
+
+			const message = sendInputData ? JSON.stringify(items[i].json) : this.getNodeParameter('message', i) as string;
+			params.push(`MessageBody=${message}`);
 
 			if (options.delaySeconds) {
 				params.push(`DelaySeconds=${options.delaySeconds}`);
