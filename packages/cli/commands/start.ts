@@ -103,6 +103,9 @@ export class Start extends Command {
 			while (executingWorkflows.length !== 0) {
 				if (count++ % 4 === 0) {
 					console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
+					executingWorkflows.map(execution => {
+						console.log(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
+					});
 				}
 				await new Promise((resolve) => {
 					setTimeout(resolve, 500);
