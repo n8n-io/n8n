@@ -8,7 +8,7 @@ import {
 export const nodeDescription: INodeTypeDescription = {
 	displayName: 'MongoDB',
 	name: 'mongoDb',
-	icon: 'file:mongoDb.svg',
+	icon: 'file:mongodb.svg',
 	group: ['input'],
 	version: 1,
 	description: 'Find, insert and update documents in MongoDB.',
