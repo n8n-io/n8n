@@ -19,7 +19,7 @@ export class CopperTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Copper Trigger',
 		name: 'copperTrigger',
-		icon: 'file:copper.png',
+		icon: 'file:copper.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Copper events via webhooks',
