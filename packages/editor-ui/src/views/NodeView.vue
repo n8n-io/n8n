@@ -1450,7 +1450,6 @@ export default mixins(
 						const localStorageWorkflow = this.$store.getters.getWorkflowFromLocalStorage(workflowId);
 
 						if(localStorageWorkflow && !result) {
-							// await this.importWorkflowData(localStorageWorkflow as IWorkflowDataUpdate);
 							await this.openWorkflow(localStorageWorkflow, true);
 						} else {
 							// Open existing workflow
@@ -1458,7 +1457,6 @@ export default mixins(
 						}
 
 					} else {
-						// Check for WIP workflow in local storage
 						const localStorageWorkflow = this.$store.getters.getWorkflowFromLocalStorage(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 
 						let continueEditing = false;
@@ -1470,8 +1468,6 @@ export default mixins(
 							await this.importWorkflowData(localStorageWorkflow as IWorkflowDataUpdate);
 						} else {
 							// Create new workflow
-							// ahsan
-							console.log('RESET WORKSPACE');
 							await this.newWorkflow();
 						}
 					}
@@ -1481,6 +1477,10 @@ export default mixins(
 
 				document.addEventListener('keydown', this.keyDown);
 				document.addEventListener('keyup', this.keyUp);
+
+				window.addEventListener("unload",  (e) => {
+					this.$store.commit('setStateDirty', false);
+				});
 
 				window.addEventListener("beforeunload",  (e) => {
 					if(this.$store.getters.getStateIsDirty === true) {
