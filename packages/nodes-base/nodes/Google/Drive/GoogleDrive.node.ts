@@ -137,6 +137,11 @@ export class GoogleDrive implements INodeType {
 						description: 'Share a file',
 					},
 					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a file',
+					},
+					{
 						name: 'Upload',
 						value: 'upload',
 						description: 'Upload a file',
@@ -204,7 +209,6 @@ export class GoogleDrive implements INodeType {
 				},
 				description: 'The ID of the file to copy.',
 			},
-
 
 			// ----------------------------------
 			//         file/folder:delete
@@ -710,7 +714,174 @@ export class GoogleDrive implements INodeType {
 				placeholder: '',
 				description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
 			},
-
+			// ----------------------------------
+			//         file:update
+			// ----------------------------------
+			{
+				displayName: 'ID',
+				name: 'fileId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				description: 'The ID of the file to update.',
+			},
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Keep Revision Forever',
+						name: 'keepRevisionForever',
+						type: 'boolean',
+						default: false,
+						description: `Whether to set the 'keepForever' field in the new head revision.</br>
+						his is only applicable to files with binary content in Google Drive.</br>
+						Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.`,
+					},
+					{
+						displayName: 'OCR Language',
+						name: 'ocrLanguage',
+						type: 'string',
+						default: '',
+						description: `A language hint for OCR processing during image import (ISO 639-1 code).`,
+					},
+					{
+						displayName: 'Parent ID',
+						name: 'parentId',
+						type: 'string',
+						default: '',
+						description: `The ID of the parent to set.`,
+					},
+					{
+						displayName: 'Use Content As Indexable Text',
+						name: 'useContentAsIndexableText',
+						type: 'boolean',
+						default: false,
+						description: `Whether to use the uploaded content as indexable text.`,
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'multiOptions',
+						options: [
+							{
+								name: '*',
+								value: '*',
+								description: 'All fields.',
+							},
+							{
+								name: 'explicitlyTrashed',
+								value: 'explicitlyTrashed',
+							},
+							{
+								name: 'exportLinks',
+								value: 'exportLinks',
+							},
+							{
+								name: 'iconLink',
+								value: 'iconLink',
+							},
+							{
+								name: 'hasThumbnail',
+								value: 'hasThumbnail',
+							},
+							{
+								name: 'id',
+								value: 'id',
+							},
+							{
+								name: 'kind',
+								value: 'kind',
+							},
+							{
+								name: 'name',
+								value: 'name',
+							},
+							{
+								name: 'mimeType',
+								value: 'mimeType',
+							},
+							{
+								name: 'permissions',
+								value: 'permissions',
+							},
+							{
+								name: 'shared',
+								value: 'shared',
+							},
+							{
+								name: 'spaces',
+								value: 'spaces',
+							},
+							{
+								name: 'starred',
+								value: 'starred',
+							},
+							{
+								name: 'thumbnailLink',
+								value: 'thumbnailLink',
+							},
+							{
+								name: 'trashed',
+								value: 'trashed',
+							},
+							{
+								name: 'version',
+								value: 'version',
+							},
+							{
+								name: 'webViewLink',
+								value: 'webViewLink',
+							},
+						],
+						required: true,
+						default: [],
+						description: 'The fields to return.',
+					},
+				],
+			},
 			// ----------------------------------
 			//         file:upload
 			// ----------------------------------
@@ -2032,6 +2203,27 @@ export class GoogleDrive implements INodeType {
 					}
 
 					returnData.push(response as IDataObject);
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         file:update
+					// ----------------------------------
+
+					const id = this.getNodeParameter('fileId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
+
+					const qs: IDataObject = {
+						supportsAllDrives: true,
+					};
+
+					Object.assign(qs, options);
+
+					qs.fields = queryFields;
+
+					if (updateFields.parentId && updateFields.parentId !== '')
+					qs.addParents = updateFields.parentId;
+
+					const responseData = await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${id}`, {}, qs);
+					returnData.push(responseData as IDataObject);
 				}
 
 			} else if (resource === 'folder') {
