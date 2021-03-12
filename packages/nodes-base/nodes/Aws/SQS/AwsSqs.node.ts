@@ -264,7 +264,7 @@ export class AwsSqs implements INodeType {
 			const params = [];
 
 			const options = this.getNodeParameter('options', i, {}) as IDataObject;
-			const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
+			const sendInputData = this.getNodeParameter('sendInputData', i) as boolean;
 
 			const message = sendInputData ? JSON.stringify(items[i].json) : this.getNodeParameter('message', i) as string;
 			params.push(`MessageBody=${message}`);
