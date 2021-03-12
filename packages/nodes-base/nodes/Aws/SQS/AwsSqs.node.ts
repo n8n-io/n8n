@@ -1,4 +1,4 @@
-import { IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -85,7 +85,7 @@ export class AwsSqs implements INodeType {
 						],
 						sendInputData: [
 							false,
-						]
+						],
 					},
 				},
 				required: true,
@@ -143,11 +143,11 @@ export class AwsSqs implements INodeType {
 										description: 'Name of attribute.',
 									},
 									{
-										displayName: 'Value',
-										name: 'value',
+										displayName: 'Property Name',
+										name: 'dataPropertyName',
 										type: 'string',
-										default: '',
-										description: 'The binary value of attribute.',
+										default: 'data',
+										description: 'Name of the binary property which contains the data for message attribute.',
 									},
 								],
 							},
@@ -293,8 +293,21 @@ export class AwsSqs implements INodeType {
 			// Add binary values
 			(this.getNodeParameter('options.messageAttributes.binary', i, []) as INodeParameters[]).forEach((attribute) => {
 				attributeCount++;
+				const dataPropertyName = attribute.dataPropertyName as string;
+				const item = items[i];
+
+				if (item.binary === undefined) {
+					throw new Error('No binary data set. So message attribute cannot be added!');
+				}
+		
+				if (item.binary[dataPropertyName] === undefined) {
+					throw new Error(`The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`);
+				}
+
+				const binaryData = Buffer.from(item.binary[dataPropertyName].data, BINARY_ENCODING);
+
 				params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
-				params.push(`MessageAttribute.${attributeCount}.Value.BinaryValue=${attribute.value}`);
+				params.push(`MessageAttribute.${attributeCount}.Value.BinaryValue=${binaryData}`);
 				params.push(`MessageAttribute.${attributeCount}.Value.DataType=Binary`);
 			});
 
