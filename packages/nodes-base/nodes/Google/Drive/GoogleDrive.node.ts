@@ -2219,8 +2219,9 @@ export class GoogleDrive implements INodeType {
 
 					qs.fields = queryFields;
 
-					if (updateFields.parentId && updateFields.parentId !== '')
-					qs.addParents = updateFields.parentId;
+					if (updateFields.parentId && updateFields.parentId !== '') {
+						qs.addParents = updateFields.parentId;
+					}
 
 					const responseData = await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${id}`, {}, qs);
 					returnData.push(responseData as IDataObject);
