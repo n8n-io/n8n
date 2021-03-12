@@ -736,6 +736,23 @@ export class GoogleDrive implements INodeType {
 				description: 'The ID of the file to update.',
 			},
 			{
+				displayName: 'Parent ID',
+				name: 'parentId',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				default: '',
+				description: `The ID of the parent`,
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -752,13 +769,6 @@ export class GoogleDrive implements INodeType {
 					},
 				},
 				options: [
-					{
-						displayName: 'Parent ID',
-						name: 'parentId',
-						type: 'string',
-						default: '',
-						description: `The ID of the parent`,
-					},
 					{
 						displayName: 'Fields',
 						name: 'fields',
@@ -2186,6 +2196,7 @@ export class GoogleDrive implements INodeType {
 					returnData.push(response as IDataObject);
 				} else if (operation === 'update') {
 					const id = this.getNodeParameter('fileId', i) as string;
+					const parentId = this.getNodeParameter('parentId', i) as string;
 					const qs: IDataObject = {
 						supportsAllDrives: true,
 					};
@@ -2194,11 +2205,10 @@ export class GoogleDrive implements INodeType {
 
 					qs.fields = queryFields;
 
-					if (qs.parentId) {
+					if (parentId !== '') {
 						const { parents } = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${id}`, {}, { fields: 'parents' });
 						qs.removeParents = parents[0];
-						qs.addParents = qs.parentId;
-						delete qs.parentId;
+						qs.addParents = parentId;
 					}
 
 					const responseData = await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${id}`, {}, qs);
