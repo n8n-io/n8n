@@ -170,7 +170,7 @@ export class Worker extends Command {
 		const logger = getInstance();
 		LoggerProxy.init(logger);
 
-		logger.info('Starting n8n worker...');
+		console.info('Starting n8n worker...');
 
 		// Make sure that n8n shuts down gracefully if possible
 		process.on('SIGTERM', Worker.stopProcess);
@@ -188,6 +188,7 @@ export class Worker extends Command {
 					Worker.processExistCode = 1;
 					// @ts-ignore
 					process.emit('SIGINT');
+					process.exit(1);
 				});
 
 				// Make sure the settings exist
@@ -221,10 +222,10 @@ export class Worker extends Command {
 
 				const versions = await GenericHelpers.getVersions();
 
-				logger.info('\nn8n worker is now ready');
-				logger.info(` * Version: ${versions.cli}`);
-				logger.info(` * Concurrency: ${flags.concurrency}`);
-				logger.info('');
+				console.info('\nn8n worker is now ready');
+				console.info(` * Version: ${versions.cli}`);
+				console.info(` * Concurrency: ${flags.concurrency}`);
+				console.info('');
 
 				Worker.jobQueue.on('global:progress', (jobId, progress) => {
 					// Progress of a job got updated which does get used
@@ -253,7 +254,7 @@ export class Worker extends Command {
 							lastTimer = now;
 							if (cumulativeTimeout > redisConnectionTimeoutLimit) {
 								logger.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + ". Exiting process.");
-								process.exit(1);
+								process.exit(3);
 							}
 						}
 						logger.warn('Redis unavailable - trying to reconnect...');
@@ -268,11 +269,12 @@ export class Worker extends Command {
 					}
 				});
 			} catch (error) {
-				logger.error(`There was an error: ${error.message}`);
+				logger.error(`Worker process cannot continue. ${error.message}`);
 
 				Worker.processExistCode = 1;
 				// @ts-ignore
 				process.emit('SIGINT');
+				process.exit(1);
 			}
 		})();
 

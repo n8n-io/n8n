@@ -63,12 +63,12 @@ export class Execute extends Command {
 		const loadNodesAndCredentialsPromise = loadNodesAndCredentials.init();
 
 		if (!flags.id && !flags.file) {
-			logger.info(`Either option "--id" or "--file" have to be set!`);
+			console.info(`Either option "--id" or "--file" have to be set!`);
 			return;
 		}
 
 		if (flags.id && flags.file) {
-			logger.info(`Either "id" or "file" can be set never both!`);
+			console.info(`Either "id" or "file" can be set never both!`);
 			return;
 		}
 
@@ -80,7 +80,7 @@ export class Execute extends Command {
 				workflowData = JSON.parse(await fs.readFile(flags.file, 'utf8'));
 			} catch (error) {
 				if (error.code === 'ENOENT') {
-					logger.info(`The file "${flags.file}" could not be found.`);
+					console.info(`The file "${flags.file}" could not be found.`);
 					return;
 				}
 
@@ -90,7 +90,7 @@ export class Execute extends Command {
 			// Do a basic check if the data in the file looks right
 			// TODO: Later check with the help of TypeScript data if it is valid or not
 			if (workflowData === undefined || workflowData.nodes === undefined || workflowData.connections === undefined) {
-				logger.info(`The file "${flags.file}" does not contain valid workflow data.`);
+				console.info(`The file "${flags.file}" does not contain valid workflow data.`);
 				return;
 			}
 			workflowId = workflowData.id!.toString();
@@ -104,8 +104,8 @@ export class Execute extends Command {
 			workflowId = flags.id;
 			workflowData = await Db.collections!.Workflow!.findOne(workflowId);
 			if (workflowData === undefined) {
-				logger.info(`The workflow with the id "${workflowId}" does not exist.`);
-				return;
+				console.info(`The workflow with the id "${workflowId}" does not exist.`);
+				process.exit(1);
 			}
 		}
 
@@ -147,7 +147,7 @@ export class Execute extends Command {
 		if (startNode === undefined) {
 			// If the workflow does not contain a start-node we can not know what
 			// should be executed and with which data to start.
-			logger.info(`The workflow does not contain a "Start" node. So it can not be executed.`);
+			console.info(`The workflow does not contain a "Start" node. So it can not be executed.`);
 			return Promise.resolve();
 		}
 
@@ -172,7 +172,8 @@ export class Execute extends Command {
 			}
 
 			if (data.data.resultData.error) {
-				logger.info('Execution was NOT successfull:');
+				console.info('Execution was NOT successfull. See log message for details.');
+				logger.info('Execution error:');
 				logger.info('====================================');
 				logger.info(JSON.stringify(data, null, 2));
 
@@ -182,11 +183,12 @@ export class Execute extends Command {
 				throw error;
 			}
 
-			logger.info('Execution was successfull:');
-			logger.info('====================================');
-			logger.info(JSON.stringify(data, null, 2));
+			console.info('Execution was successfull:');
+			console.info('====================================');
+			console.info(JSON.stringify(data, null, 2));
 		} catch (e) {
-			logger.error('\nGOT ERROR');
+			console.error('Error executing workflow. See log messages for details.');
+			logger.error('\nExecution error:');
 			logger.info('====================================');
 			logger.error(e.message);
 			logger.error(e.stack);

@@ -145,6 +145,7 @@ export class Start extends Command {
 					processExistCode = 1;
 					// @ts-ignore
 					process.emit('SIGINT');
+					process.exit(1);
 				});
 
 				// Make sure the settings exist
@@ -190,7 +191,7 @@ export class Start extends Command {
 								cumulativeTimeout += now - lastTimer;
 								lastTimer = now;
 								if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-									console.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + ". Exiting process.");
+									logger.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + ". Exiting process.");
 									process.exit(1);
 								}
 							}
@@ -219,9 +220,9 @@ export class Start extends Command {
 
 					redis.on('error', (error) => {
 						if (error.toString().includes('ECONNREFUSED') === true) {
-							console.warn('Redis unavailable - trying to reconnect...');
+							logger.warn('Redis unavailable - trying to reconnect...');
 						} else {
-							console.warn('Error with Redis: ', error);
+							logger.warn('Error with Redis: ', error);
 						}
 					});
 				}

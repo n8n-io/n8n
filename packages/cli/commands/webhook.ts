@@ -120,7 +120,7 @@ export class Webhook extends Command {
 				 * the wehbook processes to communicate workflow execution interruption.
 				 */
 
-				logger.error('Webhook processes can only run with execution mode as queue.');
+				this.error('Webhook processes can only run with execution mode as queue.');
 			}
 
 			try {
@@ -131,6 +131,7 @@ export class Webhook extends Command {
 					processExistCode = 1;
 					// @ts-ignore
 					process.emit('SIGINT');
+					process.exit(1);
 				});
 
 				// Make sure the settings exist
@@ -219,14 +220,16 @@ export class Webhook extends Command {
 				await activeWorkflowRunner.initWebhooks();
 
 				const editorUrl = GenericHelpers.getBaseUrl();
-				logger.info('Webhook listener waiting for requests.');
+				console.info('Webhook listener waiting for requests.');
 
 			} catch (error) {
-				logger.error(`There was an error: ${error.message}`);
+				console.error('Exiting due to error. See log message for details.');
+				logger.error(`Webhook process cannot continue. ${error.message}`);
 
 				processExistCode = 1;
 				// @ts-ignore
 				process.emit('SIGINT');
+				process.exit(1);
 			}
 		})();
 	}

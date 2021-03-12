@@ -45,14 +45,14 @@ export class ImportWorkflowsCommand extends Command {
 		const { flags } = this.parse(ImportWorkflowsCommand);
 
 		if (!flags.input) {
-			logger.info(`An input file or directory with --input must be provided`);
+			console.info(`An input file or directory with --input must be provided`);
 			return;
 		}
 
 		if (flags.separate) {
 			if (fs.existsSync(flags.input)) {
 				if (!fs.lstatSync(flags.input).isDirectory()) {
-					logger.info(`The paramenter --input must be a directory`);
+					console.info(`The paramenter --input must be a directory`);
 					return;
 				}
 			}
@@ -79,8 +79,10 @@ export class ImportWorkflowsCommand extends Command {
 				}
 			}
 
-			logger.info(`Successfully imported ${i} ${i === 1 ? 'workflow.' : 'workflows.'}`);
+			console.info(`Successfully imported ${i} ${i === 1 ? 'workflow.' : 'workflows.'}`);
+			process.exit(0);
 		} catch (error) {
+			console.error('An error occurred while exporting workflows. See log messages for details.');
 			logger.error(error.message);
 			this.exit(1);
 		}

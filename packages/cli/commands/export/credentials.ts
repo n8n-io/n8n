@@ -78,31 +78,32 @@ export class ExportCredentialsCommand extends Command {
 		}
 
 		if (!flags.all && !flags.id) {
-			logger.info(`Either option "--all" or "--id" have to be set!`);
+			console.info(`Either option "--all" or "--id" have to be set!`);
 			return;
 		}
 
 		if (flags.all && flags.id) {
-			logger.info(`You should either use "--all" or "--id" but never both!`);
+			console.info(`You should either use "--all" or "--id" but never both!`);
 			return;
 		}
 
 		if (flags.separate) {
 			try {
 				if (!flags.output) {
-					logger.info(`You must inform an output directory via --output when using --separate`);
+					console.info(`You must inform an output directory via --output when using --separate`);
 					return;
 				}
 
 				if (fs.existsSync(flags.output)) {
 					if (!fs.lstatSync(flags.output).isDirectory()) {
-						logger.info(`The paramenter --output must be a directory`);
+						console.info(`The paramenter --output must be a directory`);
 						return;
 					}
 				} else {
 					fs.mkdirSync(flags.output, { recursive: true });
 				}
 			} catch (e) {
+				console.error('Aborting execution as a filesystem error has been encountered while creating the output directory. See log messages for details.');
 				logger.error('\nFILESYSTEM ERROR');
 				logger.info('====================================');
 				logger.error(e.message);
@@ -112,7 +113,7 @@ export class ExportCredentialsCommand extends Command {
 		} else if (flags.output) {
 			if (fs.existsSync(flags.output)) {
 				if (fs.lstatSync(flags.output).isDirectory()) {
-					logger.info(`The paramenter --output must be a writeble file`);
+					console.info(`The paramenter --output must be a writeble file`);
 					return;
 				}
 			}
@@ -153,17 +154,20 @@ export class ExportCredentialsCommand extends Command {
 					const filename = (flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) + credentials[i].id + ".json";
 					fs.writeFileSync(filename, fileContents);
 				}
-				logger.info(`Successfully exported ${i} credentials.`);
+				console.info(`Successfully exported ${i} credentials.`);
 			} else {
 				const fileContents = JSON.stringify(credentials, null, flags.pretty ? 2 : undefined);
 				if (flags.output) {
 					fs.writeFileSync(flags.output!, fileContents);
-					logger.info(`Successfully exported ${credentials.length} credentials.`);
+					console.info(`Successfully exported ${credentials.length} credentials.`);
 				} else {
-					logger.info(fileContents);
+					console.info(fileContents);
 				}
 			}
+			// Force exit as process won't exit using MySQL or Postgres.
+			process.exit(0);
 		} catch (error) {
+			console.error('Error exporting credentials. See log messages for details.');
 			logger.error(error.message);
 			this.exit(1);
 		}

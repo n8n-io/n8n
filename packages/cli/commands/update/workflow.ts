@@ -46,22 +46,22 @@ export class UpdateWorkflowCommand extends Command {
 		const { flags } = this.parse(UpdateWorkflowCommand);
 
 		if (!flags.all && !flags.id) {
-			logger.info(`Either option "--all" or "--id" have to be set!`);
+			console.info(`Either option "--all" or "--id" have to be set!`);
 			return;
 		}
 
 		if (flags.all && flags.id) {
-			logger.info(`Either something else on top should be "--all" or "--id" can be set never both!`);
+			console.info(`Either something else on top should be "--all" or "--id" can be set never both!`);
 			return;
 		}
 
 		const updateQuery: IDataObject = {};
 		if (flags.active === undefined) {
-			logger.info(`No update flag like "--active=true" has been set!`);
+			console.info(`No update flag like "--active=true" has been set!`);
 			return;
 		} else {
 			if (!['false', 'true'].includes(flags.active)) {
-				logger.info(`Valid values for flag "--active" are only "false" or "true"!`);
+				console.info(`Valid values for flag "--active" are only "false" or "true"!`);
 				return;
 			}
 			updateQuery.active = flags.active === 'true';
@@ -72,16 +72,17 @@ export class UpdateWorkflowCommand extends Command {
 
 			const findQuery: IDataObject = {};
 			if (flags.id) {
-				logger.info(`Deactivating workflow with ID: ${flags.id}`);
+				console.info(`Deactivating workflow with ID: ${flags.id}`);
 				findQuery.id = flags.id;
 			} else {
-				logger.info('Deactivating all workflows');
+				console.info('Deactivating all workflows');
 				findQuery.active = true;
 			}
 
 			await Db.collections.Workflow!.update(findQuery, updateQuery);
-			logger.info('Done');
+			console.info('Done');
 		} catch (e) {
+			console.error('Error updating database. See log messages for details.');
 			logger.error('\nGOT ERROR');
 			logger.info('====================================');
 			logger.error(e.message);
