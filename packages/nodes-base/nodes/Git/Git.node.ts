@@ -118,7 +118,7 @@ export class Git implements INodeType {
 			};
 
 			// TODO: Allow to set credentials
-			let git: SimpleGit = simpleGit(gitOptions)
+			const git: SimpleGit = simpleGit(gitOptions);
 
 			// TODO: Allow to set users
 			// git = git.addConfig('user.name', 'Some One')
@@ -159,7 +159,7 @@ export class Git implements INodeType {
 				//         log
 				// ----------------------------------
 
-				let logOptions: LogOptions = {};
+				const logOptions: LogOptions = {};
 
 				const returnAll = this.getNodeParameter('returnAll', itemIndex, false) as boolean;
 				if (returnAll === false) {
