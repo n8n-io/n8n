@@ -58,6 +58,11 @@ import {
 } from './TaskDescription';
 
 import {
+	taskListFields,
+	taskListOperations,
+} from './TaskListDescription';
+
+import {
 	taskTagFields,
 	taskTagOperations,
 } from './TaskTagDescription';
@@ -199,6 +204,10 @@ export class ClickUp implements INodeType {
 						value: 'task',
 					},
 					{
+						name: 'Task List',
+						value: 'taskList',
+					},
+					{
 						name: 'Task Tag',
 						value: 'taskTag',
 					},
@@ -242,6 +251,9 @@ export class ClickUp implements INodeType {
 			// TASK TAG
 			...taskTagOperations,
 			...taskTagFields,
+			// TASK LIST
+			...taskListOperations,
+			...taskListFields,
 			// SPACE TAG
 			...spaceTagOperations,
 			...spaceTagFields,
@@ -1063,6 +1075,20 @@ export class ClickUp implements INodeType {
 					const qs: IDataObject = {};
 					Object.assign(qs, additionalFields);
 					responseData = await clickupApiRequest.call(this, 'DELETE', `/task/${taskId}/tag/${name}`, {}, qs);
+					responseData = { success: true };
+				}
+			}
+			if (resource === 'taskList') {
+				if (operation === 'add') {
+					const taskId = this.getNodeParameter('taskId', i) as string;
+					const listId = this.getNodeParameter('listId', i) as string;
+					responseData = await clickupApiRequest.call(this, 'POST', `/list/${listId}/task/${taskId}`);
+					responseData = { success: true };
+				}
+				if (operation === 'remove') {
+					const taskId = this.getNodeParameter('taskId', i) as string;
+					const listId = this.getNodeParameter('listId', i) as string;
+					responseData = await clickupApiRequest.call(this, 'DELETE', `/list/${listId}/task/${taskId}`);
 					responseData = { success: true };
 				}
 			}
