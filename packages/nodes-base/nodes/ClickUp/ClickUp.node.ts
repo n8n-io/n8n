@@ -58,6 +58,16 @@ import {
 } from './TaskDescription';
 
 import {
+	taskTagFields,
+	taskTagOperations,
+} from './TaskTagDescription';
+
+import {
+	spaceTagFields,
+	spaceTagOperations,
+} from './SpaceTagDescription';
+
+import {
 	taskDependencyFields,
 	taskDependencyOperations,
 } from './TaskDependencyDescription';
@@ -181,8 +191,16 @@ export class ClickUp implements INodeType {
 						value: 'list',
 					},
 					{
+						name: 'Space Tag',
+						value: 'spaceTag',
+					},
+					{
 						name: 'Task',
 						value: 'task',
+					},
+					{
+						name: 'Task Tag',
+						value: 'taskTag',
 					},
 					{
 						name: 'Task Dependency',
@@ -221,6 +239,12 @@ export class ClickUp implements INodeType {
 			// GUEST
 			// ...guestOperations,
 			// ...guestFields,
+			// TASK TAG
+			...taskTagOperations,
+			...taskTagFields,
+			// SPACE TAG
+			...spaceTagOperations,
+			...spaceTagFields,
 			// TASK
 			...taskOperations,
 			...taskFields,
@@ -1022,6 +1046,26 @@ export class ClickUp implements INodeType {
 					responseData = { success: true };
 				}
 			}
+			if (resource === 'taskTag') {
+				if (operation === 'add') {
+					const taskId = this.getNodeParameter('taskId', i) as string;
+					const name = this.getNodeParameter('tagName', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const qs: IDataObject = {};
+					Object.assign(qs, additionalFields);
+					responseData = await clickupApiRequest.call(this, 'POST', `/task/${taskId}/tag/${name}`, {}, qs);
+					responseData = { success: true };
+				}
+				if (operation === 'remove') {
+					const taskId = this.getNodeParameter('taskId', i) as string;
+					const name = this.getNodeParameter('tagName', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const qs: IDataObject = {};
+					Object.assign(qs, additionalFields);
+					responseData = await clickupApiRequest.call(this, 'DELETE', `/task/${taskId}/tag/${name}`, {}, qs);
+					responseData = { success: true };
+				}
+			}
 			if (resource === 'taskDependency') {
 				if (operation === 'create') {
 					const taskId = this.getNodeParameter('task', i) as string;
@@ -1194,6 +1238,53 @@ export class ClickUp implements INodeType {
 					responseData = { success: true };
 				}
 
+			}
+			if (resource === 'spaceTag') {
+				if (operation === 'create') {
+					const spaceId = this.getNodeParameter('spaceId', i) as string;
+					const name = this.getNodeParameter('name', i) as string;
+					const foregroundColor = this.getNodeParameter('foregroundColor', i) as string;
+					const backgroundColor = this.getNodeParameter('backgroundColor', i) as string;
+					const body: IDataObject = {
+						tag: {
+							name,
+							tag_bg: backgroundColor,
+							tag_fg: foregroundColor,
+						},
+					};
+					responseData = await clickupApiRequest.call(this, 'POST', `/space/${spaceId}/tag`, body);
+					responseData = { success: true };
+				}
+				if (operation === 'delete') {
+					const spaceId = this.getNodeParameter('spaceId', i) as string;
+					const name = this.getNodeParameter('name', i) as string;
+					responseData = await clickupApiRequest.call(this, 'DELETE', `/space/${spaceId}/tag/${name}`);
+					responseData = { success: true };
+				}
+				if (operation === 'getAll') {
+					const spaceId = this.getNodeParameter('spaceId', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					responseData = await clickupApiRequest.call(this, 'GET', `/space/${spaceId}/tag`);
+					responseData = responseData.tags;
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
+				}
+				if (operation === 'update') {
+					const spaceId = this.getNodeParameter('spaceId', i) as string;
+					const name = this.getNodeParameter('name', i) as string;
+					const foregroundColor = this.getNodeParameter('foregroundColor', i) as string;
+					const backgroundColor = this.getNodeParameter('backgroundColor', i) as string;
+					const body: IDataObject = {
+						tag: {
+							tag_bg: backgroundColor,
+							tag_fg: foregroundColor,
+						},
+					};
+					responseData = await clickupApiRequest.call(this, 'PUT', `/space/${spaceId}/tag/${name}`, body);
+					responseData = { success: true };
+				}
 			}
 			if (resource === 'list') {
 				if (operation === 'create') {
