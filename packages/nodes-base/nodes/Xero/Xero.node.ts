@@ -27,6 +27,16 @@ import {
 } from './ContactDescription';
 
 import {
+	creditNotesFields,
+	creditNotesOperations
+} from './CreditNotesDescription';
+
+import {
+	historyAndNotesFields,
+	historyAndNotesOperations
+} from './HistoryNotesDescription';
+
+import {
 	IInvoice,
 	ILineItem,
 } from './InvoiceInterface';
@@ -36,6 +46,14 @@ import {
 	// IPhone,
 	// IAddress,
 } from './IContactInterface';
+
+import {
+	ICreditNotes,
+} from './ICreditNotesInterface';
+
+import {
+	IHistory,
+} from './IHistoryInterface';
 
 export class Xero implements INodeType {
 	description: INodeTypeDescription = {
@@ -72,6 +90,14 @@ export class Xero implements INodeType {
 						name: 'Invoice',
 						value: 'invoice',
 					},
+					{
+						name: 'Credit Notes',
+						value: 'credit_notes',
+					},
+					{
+						name: 'History and Notes',
+						value: 'history_and_notes',
+					},
 				],
 				default: 'invoice',
 				description: 'Resource to consume.',
@@ -82,6 +108,12 @@ export class Xero implements INodeType {
 			// INVOICE
 			...invoiceOperations,
 			...invoiceFields,
+			// CREDIT NOTES
+			...creditNotesOperations,
+			...creditNotesFields,
+			// HISTORY AND NOTES
+			...historyAndNotesOperations,
+			...historyAndNotesFields,
 		],
 	};
 
@@ -434,7 +466,6 @@ export class Xero implements INodeType {
 				}
 			}
 			if (resource === 'contact') {
-			}
 				if (operation === 'create') {
 					const organizationId = this.getNodeParameter('organizationId', i) as string;
 					const name = this.getNodeParameter('name', i) as string;
@@ -670,6 +701,128 @@ export class Xero implements INodeType {
 					responseData = await xeroApiRequest.call(this, 'POST', `/Contacts/${contactId}`, { organizationId, Contacts: [body] });
 					responseData = responseData.Contacts;
 				}
+			}
+			if (resource === 'credit_notes') {
+				if (operation === 'update') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const organizationId = this.getNodeParameter('organizationId', i) as string;
+					const amount = this.getNodeParameter('amount', i) as number;
+
+					const body: ICreditNotes = {
+						organizationId,
+					};
+
+
+					if (updateFields.lineItemsUi) {
+						const lineItemsValues = (updateFields.lineItemsUi as IDataObject).lineItemsValues as IDataObject[];
+						if (lineItemsValues) {
+							const lineItems: ILineItem[] = [];
+							for (const lineItemValue of lineItemsValues) {
+								const lineItem: ILineItem = {
+									Tracking: [],
+								};
+								lineItem.AccountCode = lineItemValue.accountCode as string;
+								lineItem.Description = lineItemValue.description as string;
+								lineItem.DiscountRate = lineItemValue.discountRate as string;
+								lineItem.ItemCode = lineItemValue.itemCode as string;
+								lineItem.LineAmount = lineItemValue.lineAmount as string;
+								lineItem.Quantity = (lineItemValue.quantity as number).toString();
+								lineItem.TaxAmount = lineItemValue.taxAmount as string;
+								lineItem.TaxType = lineItemValue.taxType as string;
+								lineItem.UnitAmount = lineItemValue.unitAmount as string;
+								// if (lineItemValue.trackingUi) {
+								// 	//@ts-ignore
+								// 	const { trackingValues } = lineItemValue.trackingUi as IDataObject[];
+								// 	if (trackingValues) {
+								// 		for (const trackingValue of trackingValues) {
+								// 			const tracking: IDataObject = {};
+								// 			tracking.Name = trackingValue.name as string;
+								// 			tracking.Option = trackingValue.option as string;
+								// 			lineItem.Tracking!.push(tracking);
+								// 		}
+								// 	}
+								// }
+								lineItems.push(lineItem);
+							}
+							body.LineItems = lineItems;
+						}
+					}
+
+					if (updateFields.type) {
+						body.Type = updateFields.type as string;
+					}
+					if (updateFields.Contact) {
+						body.Contact =  { ContactId: updateFields.contactId as string };
+					}
+					if (updateFields.currency) {
+						body.CurrencyCode = updateFields.currency as string;
+					}
+					if (updateFields.currencyRate) {
+						body.CurrencyRate = updateFields.currencyRate as string;
+					}
+					if (updateFields.date) {
+						body.Date = updateFields.date as string;
+					}
+					if (updateFields.InvoiceID) {
+						body.InvoiceID = updateFields.InvoiceID as string;
+					}
+					if (updateFields.lineAmountTypes) {
+						body.LineAmountTypes = updateFields.lineAmountTypes as string;
+					}
+					if (updateFields.reference) {
+						body.Reference = updateFields.reference as string;
+					}
+					if (updateFields.sendToContact) {
+						body.SentToContact = updateFields.sendToContact as boolean;
+					}
+					if (updateFields.status) {
+						body.Status = updateFields.status as string;
+					}
+					if (amount) {
+						body.Amount = amount as number;
+					}
+
+					responseData = await xeroApiRequest.call(this, 'PUT', `/CreditNotes/${contactId}/Allocations`, body);
+					responseData = responseData.Invoices;
+				}
+				if (operation === 'get') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					// Query String reference Get CreditNotes api documentation
+					const customProperties = this.getNodeParameter('customProperties', i, {}) as IDataObject;
+
+					for (const property of customProperties['properties']) {
+						qs[property.name] = property.value;
+					}
+
+					responseData = await xeroApiRequest.call(this, 'GET', `/CreditNotes/${contactId}`, {}, qs);
+					responseData = responseData.Invoices;
+				}
+			}
+			if (resource === 'history_and_notes') {
+				if (operation === 'update') {
+					const endpoint = this.getNodeParameter('endpoint', i) as string;
+					const guid = this.getNodeParameter('guid', i) as string;
+					const details = this.getNodeParameter('details', i) as string;
+
+					const body: IHistory = {};
+
+					if (details) {
+						body.Details = details as string;
+					}
+
+					responseData = await xeroApiRequest.call(this, 'GET', `/${endpoint}/${guid}/history`, body);
+					responseData = responseData.Invoices;
+
+				}
+				if (operation === 'get') {
+					const endpoint = this.getNodeParameter('endpoint', i) as string;
+					const guid = this.getNodeParameter('guid', i) as string;
+
+					responseData = await xeroApiRequest.call(this, 'GET', `/${endpoint}/${guid}/history`);
+					responseData = responseData.Invoices;
+				}
+			}
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
