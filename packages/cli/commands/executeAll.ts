@@ -13,7 +13,6 @@ import {
 	CredentialTypes,
 	Db,
 	ExternalHooks,
-	GenericHelpers,
 	IWorkflowExecutionDataProcess,
 	LoadNodesAndCredentials,
 	NodeTypes,
@@ -36,7 +35,7 @@ export class ExecuteAll extends Command {
 	
 	static examples = [
 		`$ n8n executeAll`,
-		`$ n8n executeAll --debug --json --output=/data/output.json`,
+		`$ n8n executeAll --debug --output=/data/output.json`,
 		`$ n8n executeAll --snapshot=/data/snapshots`,
 		`$ n8n executeAll --compare=/data/previousExecutionData`,
 	];
@@ -45,9 +44,6 @@ export class ExecuteAll extends Command {
 		help: flags.help({ char: 'h' }),
 		debug: flags.boolean({
 			description: 'Toggles on displaying all errors and debug messages.',
-		}),
-		json: flags.boolean({
-			description: 'Toggles on displaying results in JSON format.',
 		}),
 		output: flags.string({
 			description: 'Enable execution saving, You must inform an existing folder to save execution via this param',
@@ -65,46 +61,39 @@ export class ExecuteAll extends Command {
 		const { flags } = this.parse(ExecuteAll);
 		
 		const debug = flags.debug !== undefined;
-		const json = flags.json !== undefined;
 
 		if (flags.snapshot !== undefined) {
 			if (fs.existsSync(flags.snapshot)) {
 				if (!fs.lstatSync(flags.snapshot).isDirectory()) {
-					GenericHelpers.logOutput(`The paramenter --snapshot must be an existing directory`);
+					console.log(`The paramenter --snapshot must be an existing directory`);
 					return;
 				}
 			} else {
-				GenericHelpers.logOutput(`The paramenter --snapshot must be an existing directory`);
+				console.log(`The paramenter --snapshot must be an existing directory`);
 				return;
 			}
 		}
 		if (flags.compare !== undefined) {
 			if (fs.existsSync(flags.compare)) {
 				if (!fs.lstatSync(flags.compare).isDirectory()) {
-					GenericHelpers.logOutput(`The paramenter --compare must be an existing directory`);
+					console.log(`The paramenter --compare must be an existing directory`);
 					return;
 				}
 			} else {
-				GenericHelpers.logOutput(`The paramenter --compare must be an existing directory`);
+				console.log(`The paramenter --compare must be an existing directory`);
 				return;
 			}
 		}
 
 		if (flags.output !== undefined) {
 			if (fs.existsSync(flags.output)) {
-				if (!fs.lstatSync(flags.output).isDirectory()) {
-					GenericHelpers.logOutput(`The paramenter --output must be an existing directory`);
+				if (fs.lstatSync(flags.output).isDirectory()) {
+					console.log(`The paramenter --output must be a writable file`);
 					return;
 				}
-			} else {
-				GenericHelpers.logOutput(`The paramenter --output must be an existing directory`);
-				return;
 			}
 		}
 		
-		if (flags.output !== undefined && json!==true) {
-			GenericHelpers.logOutput(`You must use --json when using --output`);
-		}
 		// Start directly with the init of the database to improve startup time
 		const startDbInitPromise = Db.init();
 		
@@ -185,13 +174,9 @@ export class ExecuteAll extends Command {
 			if (startNode === undefined) {
 				// If the workflow does not contain a start-node we can not know what
 				// should be executed and with which data to start.
-				if (json === true) {
-					executionResult.error = 'Workflow cannot be started as it does not contain a "Start" node.';
-					result.summary.failedExecutions++;
-					result.executions.push(executionResult);
-				}else{
-					GenericHelpers.logOutput(`Workflow ID ${workflowData.id} cannot be started as it does not contain a "Start" node.`);
-				}
+				executionResult.error = 'Workflow cannot be started as it does not contain a "Start" node.';
+				result.summary.failedExecutions++;
+				result.executions.push(executionResult);
 				continue;
 			}
 			
@@ -212,13 +197,9 @@ export class ExecuteAll extends Command {
 				const data = await activeExecutions.getPostExecutePromise(executionId);
 				
 				if (data === undefined) {
-					if (json === true) {
-						executionResult.error = 'Workflow did not return any data.';
-						result.summary.failedExecutions++;
-						result.executions.push(executionResult);
-					}else{
-						GenericHelpers.logOutput(`Workflow ${workflowData.id} did not return any data.`);
-					}
+					executionResult.error = 'Workflow did not return any data.';
+					result.summary.failedExecutions++;
+					result.executions.push(executionResult);
 					continue;
 				}
 				workflowData.nodes.forEach(node => {
@@ -228,13 +209,9 @@ export class ExecuteAll extends Command {
 				executionResult.finished = (data?.finished !== undefined) as boolean; 
 
 				if (data.data.resultData.error) {
-					if (json === true) {
-						executionResult.error = data.data.resultData.error.message;
-						result.summary.failedExecutions++;
-						result.executions.push(executionResult);
-					}else{
-						GenericHelpers.logOutput(`Workflow ${workflowData.id} failed.`);
-					}
+					executionResult.error = data.data.resultData.error.message;
+					result.summary.failedExecutions++;
+					result.executions.push(executionResult);
 					if (debug === true) {
 						this.log(JSON.stringify(data, null, 2));
 						console.log(data.data.resultData.error);
@@ -243,15 +220,10 @@ export class ExecuteAll extends Command {
 				}
 
 				const serializedData = JSON.stringify(data, null, 2);
-				if (json === true) {
-					if (flags.compare === undefined){
-						result.summary.succeededExecution++;
-						result.executions.push(executionResult);
-					}
-				}else{
-					GenericHelpers.logOutput(`Workflow ${workflowData.id} succeeded.`);
-				}			
-				if (flags.compare !== undefined) {
+				if (flags.compare === undefined){
+					result.summary.succeededExecution++;
+					result.executions.push(executionResult);
+				} else {
 					const fileName = (flags.compare.endsWith(sep) ? flags.compare : flags.compare + sep) + `${workflowData.id}-snapshot.json`;
 					if (fs.existsSync(fileName) === true) {
 
@@ -262,32 +234,22 @@ export class ExecuteAll extends Command {
 						
 						if (changes !== undefined) {
 							// we have structural changes. Report them.
-							if (json === true) {
-								executionResult.error = `Workflow may contain breaking changes`;
-								executionResult.changes = changes;
-								result.summary.failedExecutions++;
-								result.executions.push(executionResult);
-							}else{
-								console.log(`Workflow ID ${workflowData.id} may contain breaking changes: `, changes);
-							}
+							executionResult.error = `Workflow may contain breaking changes`;
+							executionResult.changes = changes;
+							result.summary.failedExecutions++;
+							result.executions.push(executionResult);
 							if (debug === true) {
 								// @ts-ignore
 								console.log('Detailed changes: ', diffString(JSON.parse(contents), data, undefined, {keysOnly: true}));
 							}
 						}else{
-							if (json === true) {
-								result.summary.succeededExecution++;
-								result.executions.push(executionResult);
-							}
+							result.summary.succeededExecution++;
+							result.executions.push(executionResult);
 						}
 					} else {
-						if (json === true) {
-							executionResult.error = 'Snapshot for not found.';
-							result.summary.failedExecutions++;
-							result.executions.push(executionResult);
-						}else{
-							GenericHelpers.logOutput(`Snapshot for ${workflowData.id} not found.`);
-						}
+						executionResult.error = 'Snapshot for not found.';
+						result.summary.failedExecutions++;
+						result.executions.push(executionResult);
 					}
 				}
 				// Save snapshots only after comparing - this is to make sure we're updating
@@ -298,13 +260,9 @@ export class ExecuteAll extends Command {
 				}
 
 			} catch (e) {
-				if (json === true) {
-					executionResult.error = 'Workflow failed to execute.';
-					result.summary.exceptions++;
-					result.executions.push(executionResult);
-				}else{
-					GenericHelpers.logOutput(`Workflow ${workflowData.id} failed to execute.`);
-				}
+				executionResult.error = 'Workflow failed to execute.';
+				result.summary.exceptions++;
+				result.executions.push(executionResult);
 				if (debug === true) {
 					console.error(e.message);
 					console.error(e.stack);
@@ -312,13 +270,20 @@ export class ExecuteAll extends Command {
 			}
 			
 		}
-		if (json === true){
-			if(flags.output !== undefined){
-				const fileName = (flags.output.endsWith(sep) ? flags.output : flags.output + sep) + `workflows-executions-${Date.now()}.json`;
-				fs.writeFileSync(fileName,JSON.stringify(result, null, 2));
-			}else{
-				GenericHelpers.logOutput(JSON.stringify(result, null, 2));
-			}
+		if(flags.output !== undefined){
+			fs.writeFileSync(flags.output,JSON.stringify(result, null, 2));
+			console.log('Execution finished.');
+			console.log('Summary:');
+			console.log(`\tSuccess: ${result.summary.succeededExecution}`);
+			console.log(`\tFailures: ${result.summary.failedExecutions}`);
+			console.log(`\tExceptions: ${result.summary.exceptions}`);
+			console.log('\nNodes covered:');
+			Object.entries(result.coveredNodes).map(entry => {
+				console.log(`\t${entry[0]}: ${entry[1]}`);
+			});
+			console.log('\nCheck the JSON file for more details.');
+		}else{
+			console.log(JSON.stringify(result, null, 2));
 		}
 		if(result.summary.succeededExecution !== result.workflowsNumber){
 			this.exit(1);
