@@ -67,7 +67,7 @@ export class TheHive implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TheHive',
 		name: 'theHive',
-		icon: 'file:thehive.png',
+		icon: 'file:thehive.svg',
 		group: ['transform'],
 		subtitle: '={{$parameter["operation"]}} : {{$parameter["resource"]}}',
 		version: 1,
