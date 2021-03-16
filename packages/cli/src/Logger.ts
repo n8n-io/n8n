@@ -33,7 +33,7 @@ export class Logger implements ILogger {
 					filename: config.get('logs.file.location'),
 					format: fileLogFormat,
 					maxsize: 16 * 1024 * 1024, // 16MB
-					maxFiles: 100, // 100 files of 16MB = 160MB
+					maxFiles: 100, // 100 files of 16MB = 1.6GB
 				})
 			);
 		}
