@@ -2,6 +2,18 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.111.0
+
+### What changed?
+In the Dropbox node, now all operations are performed relative to the user's root directory.
+
+### When is action necessary?
+If you are using the `folder:list` operation with the parameter `Folder Path` empty (root path) and have a Team Space in your Dropbox account.
+
+### How to upgrade:
+Open the Dropbox node, go to the `folder:list` operation, and make sure your logic is taking into account the team folders in the response.
+
+
 ## 0.105.0
 
 ### What changed?
