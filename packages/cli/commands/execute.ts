@@ -172,7 +172,7 @@ export class Execute extends Command {
 			}
 
 			if (data.data.resultData.error) {
-				console.info('Execution was NOT successfull. See log message for details.');
+				console.info('Execution was NOT successful. See log message for details.');
 				logger.info('Execution error:');
 				logger.info('====================================');
 				logger.info(JSON.stringify(data, null, 2));
@@ -183,7 +183,7 @@ export class Execute extends Command {
 				throw error;
 			}
 
-			console.info('Execution was successfull:');
+			console.info('Execution was successful:');
 			console.info('====================================');
 			console.info(JSON.stringify(data, null, 2));
 		} catch (e) {
