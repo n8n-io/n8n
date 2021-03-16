@@ -543,17 +543,17 @@ export class TheHive implements INodeType {
 					responseData = await theHiveApiRequest.call(
 						this,
 						'POST',
-						`/alert/${alertId}/markAsRead`
+						`/alert/${alertId}/markAsRead`,
 					);
 				}
-				
+
 				if (operation === 'markAsUnread') {
 					const alertId = this.getNodeParameter('id', i) as string;
 
 					responseData = await theHiveApiRequest.call(
 						this,
 						'POST',
-						`/alert/${alertId}/markAsUnread`
+						`/alert/${alertId}/markAsUnread`,
 					);
 				}
 
