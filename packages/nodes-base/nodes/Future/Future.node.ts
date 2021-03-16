@@ -27,15 +27,15 @@ export class Future implements INodeType {
 		description: 'Consume Future API',
 		defaults: {
 			name: 'Future',
-			color: '#72084e'
+			color: '#72084e',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'futureApi',
-				required: true
-			}
+				name: 'futureApiCredentials',
+				required: true,
+			},
 		],
 		properties: [
 			{
@@ -45,8 +45,8 @@ export class Future implements INodeType {
 				options: [
 					{
 						name: 'Broadcast',
-						value: 'broadcast'
-					}
+						value: 'broadcast',
+					},
 					// {
 					// 	name: 'Message',
 					// 	value: 'message'
@@ -54,13 +54,13 @@ export class Future implements INodeType {
 				],
 				default: 'broadcast',
 				required: true,
-				description: 'Resource to consume'
+				description: 'Resource to consume',
 			},
 
 			// Broadcast
 			...broadcastOperations,
-			...broadcastFields
-		]
+			...broadcastFields,
+		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -68,7 +68,7 @@ export class Future implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		//Get credentials the user provided for this node
-		const credentials = this.getCredentials('futureApi') as IDataObject;
+		const credentials = this.getCredentials('futureApiCredentials') as IDataObject;
 
 		if (resource === 'broadcast') {
 			if (operation === 'get') {
