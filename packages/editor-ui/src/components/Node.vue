@@ -12,7 +12,7 @@
 			<div class="node-executing-info" title="Node is executing">
 				<font-awesome-icon icon="sync-alt" spin />
 			</div>
-			<div class="node-options" v-if="!isReadOnly">
+			<div class="node-options no-select-on-click" v-if="!isReadOnly">
 				<div v-touch:tap="deleteNode" class="option" title="Delete Node" >
 					<font-awesome-icon icon="trash" />
 				</div>
@@ -138,7 +138,7 @@ export default mixins(nodeBase, workflowHelpers).extend({
 			}
 
 			if (this.nodeType !== null && this.nodeType.subtitle !== undefined) {
-				return this.workflow.expression.getSimpleParameterValue(this.data as INode, this.nodeType.subtitle) as string | undefined;
+				return this.workflow.expression.getSimpleParameterValue(this.data as INode, this.nodeType.subtitle, 'internal') as string | undefined;
 			}
 
 			if (this.data.parameters.operation !== undefined) {

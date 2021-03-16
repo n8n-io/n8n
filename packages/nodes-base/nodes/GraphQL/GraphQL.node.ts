@@ -236,7 +236,7 @@ export class GraphQL implements INodeType {
 					requestOptions.body = {
 						query: gqlQuery,
 						variables: this.getNodeParameter('variables', itemIndex, {}) as object,
-						operationName: this.getNodeParameter('operationName', itemIndex, null) as string,
+						operationName: this.getNodeParameter('operationName', itemIndex) as string,
 					};
 					if (typeof requestOptions.body.variables === 'string') {
 						try {

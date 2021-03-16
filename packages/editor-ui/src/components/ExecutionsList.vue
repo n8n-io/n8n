@@ -28,7 +28,10 @@
 							</el-option>
 						</el-select>
 					</el-col>
-					<el-col :span="8">&nbsp;
+					<el-col :span="4">&nbsp;
+					</el-col>
+					<el-col :span="4" class="autorefresh">
+						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">Auto refresh</el-checkbox>
 					</el-col>
 				</el-row>
 			</div>
@@ -54,7 +57,6 @@
 					<template slot-scope="scope">
 						{{convertToDisplayDate(scope.row.startedAt)}}<br />
 						<small v-if="scope.row.id">ID: {{scope.row.id}}</small>
-						<small v-if="scope.row.idActive && scope.row.id === undefined && scope.row.stoppedAt === undefined">Active-ID: {{scope.row.idActive}}</small>
 					</template>
 				</el-table-column>
 				<el-table-column property="workflowName" label="Name">
@@ -86,14 +88,17 @@
 							<span class="status-badge success" v-else-if="scope.row.finished">
 								Success
 							</span>
-							<span class="status-badge error" v-else>
+							<span class="status-badge error" v-else-if="scope.row.stoppedAt !== null">
 								Error
+							</span>
+							<span class="status-badge warning" v-else>
+								Unknown
 							</span>
 						</el-tooltip>
 
 						<el-dropdown trigger="click" @command="handleRetryClick">
 							<span class="el-dropdown-link">
-								<el-button class="retry-button" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" type="text" size="small" title="Retry execution">
+								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" type="text" size="small" title="Retry execution">
 									<font-awesome-icon icon="redo" />
 								</el-button>
 							</span>
@@ -112,6 +117,10 @@
 							<font-awesome-icon icon="spinner" spin />
 							<execution-time :start-time="scope.row.startedAt"/>
 						</span>
+						<!-- stoppedAt will be null if process crashed -->
+						<span v-else-if="scope.row.stoppedAt === null">
+							--
+						</span>
 						<span v-else>
 							{{ displayTimer(new Date(scope.row.stoppedAt).getTime() - new Date(scope.row.startedAt).getTime(), true) }}
 						</span>
@@ -119,8 +128,8 @@
 				</el-table-column>
 				<el-table-column label="" width="100" align="center">
 					<template slot-scope="scope">
-						<span v-if="scope.row.stoppedAt === undefined && scope.row.idActive">
-							<el-button circle title="Stop Execution" @click.stop="stopExecution(scope.row.idActive)" :loading="stoppingExecutions.includes(scope.row.idActive)" size="mini">
+						<span v-if="scope.row.stoppedAt === undefined">
+							<el-button circle title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" size="mini">
 								<font-awesome-icon icon="stop" />
 							</el-button>
 						</span>
@@ -166,6 +175,10 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
+import {
+	range as _range,
+} from 'lodash';
+
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
@@ -187,6 +200,8 @@ export default mixins(
 			finishedExecutionsCount: 0,
 
 			checkAll: false,
+			autoRefresh: true,
+			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
 
 			filter: {
 				status: 'ALL',
@@ -288,6 +303,10 @@ export default mixins(
 			// Handle the close externally as the visible parameter is an external prop
 			// and is so not allowed to be changed here.
 			this.$emit('closeDialog');
+			if (this.autoRefreshInterval) {
+				clearInterval(this.autoRefreshInterval);
+				this.autoRefreshInterval = undefined;
+			}
 			return false;
 		},
 		displayExecution (execution: IExecutionShortResponse) {
@@ -296,6 +315,18 @@ export default mixins(
 				params: { id: execution.id },
 			});
 			this.closeDialog();
+		},
+		handleAutoRefreshToggle () {
+			if (this.autoRefreshInterval) {
+				// Clear any previously existing intervals (if any - there shouldn't)
+				clearInterval(this.autoRefreshInterval);
+				this.autoRefreshInterval = undefined;
+			}
+
+
+			if (this.autoRefresh) {
+				this.autoRefreshInterval = setInterval(this.loadAutoRefresh, 4 * 1000); // refresh data every 4 secs
+			}
 		},
 		handleCheckAllChange () {
 			if (this.checkAll === false) {
@@ -385,6 +416,77 @@ export default mixins(
 
 			this.$store.commit('setActiveExecutions', activeExecutions);
 		},
+		async loadAutoRefresh () : Promise<void> {
+			const filter = this.workflowFilterPast;
+			// We cannot use firstId here as some executions finish out of order. Let's say
+			// You have execution ids 500 to 505 running.
+			// Suppose 504 finishes before 500, 501, 502 and 503.
+			// iF you use firstId, filtering id >= 504 you won't
+			// ever get ids 500, 501, 502 and 503 when they finish
+			const pastExecutionsPromise: Promise<IExecutionsListResponse> = this.restApi().getPastExecutions(filter, 30);
+			const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> = this.restApi().getCurrentExecutions({});
+
+			const results = await Promise.all([pastExecutionsPromise, currentExecutionsPromise]);
+
+			for (const activeExecution of results[1]) {
+				if (activeExecution.workflowId !== undefined && activeExecution.workflowName === undefined) {
+					activeExecution.workflowName = this.getWorkflowName(activeExecution.workflowId);
+				}
+			}
+
+			this.$store.commit('setActiveExecutions', results[1]);
+
+			const alreadyPresentExecutionIds = this.finishedExecutions.map(exec => exec.id);
+			let lastId = 0;
+			const gaps = [] as number[];
+			for(let i = results[0].results.length - 1; i >= 0; i--) {
+				const currentItem = results[0].results[i];
+				const currentId = parseInt(currentItem.id, 10);
+				if (lastId !== 0 && isNaN(currentId) === false) {
+					// We are doing this iteration to detect possible gaps.
+					// The gaps are used to remove executions that finished
+					// and were deleted from database but were displaying
+					// in this list while running.
+					if (currentId - lastId > 1) {
+						// We have some gaps.
+						const range = _range(lastId + 1, currentId);
+						gaps.push(...range);
+					}
+				}
+				lastId = parseInt(currentItem.id, 10) || 0;
+
+				// Check new results from end to start
+				// Add new items accordingly.
+				const executionIndex = alreadyPresentExecutionIds.indexOf(currentItem.id);
+				if (executionIndex !== -1) {
+					// Execution that we received is already present.
+
+					if (this.finishedExecutions[executionIndex].finished === false && currentItem.finished === true) {
+						// Concurrency stuff. This might happen if the execution finishes
+						// prior to saving all information to database. Somewhat rare but
+						// With auto refresh and several executions, it happens sometimes.
+						// So we replace the execution data so it displays correctly.
+						this.finishedExecutions[executionIndex] = currentItem;
+					}
+
+					continue;
+				}
+
+				// Find the correct position to place this newcomer
+				let j;
+				for (j = this.finishedExecutions.length - 1; j >= 0; j--) {
+					if (currentItem.id < this.finishedExecutions[j].id) {
+						this.finishedExecutions.splice(j + 1, 0, currentItem);
+						break;
+					}
+				}
+				if (j === -1) {
+					this.finishedExecutions.unshift(currentItem);
+				}
+			}
+			this.finishedExecutions = this.finishedExecutions.filter(execution => !gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10));
+			this.finishedExecutionsCount = results[0].count;
+		},
 		async loadFinishedExecutions (): Promise<void> {
 			if (this.filter.status === 'running') {
 				this.finishedExecutions = [];
@@ -455,6 +557,7 @@ export default mixins(
 
 			await this.loadWorkflows();
 			await this.refreshData();
+			this.handleAutoRefreshToggle();
 		},
 		async retryExecution (execution: IExecutionShortResponse, loadWorkflow?: boolean) {
 			this.isDataLoading = true;
@@ -507,6 +610,8 @@ export default mixins(
 				return `The workflow execution was a retry of "${entry.retryOf}" and failed.<br />New retries have to be started from the original execution.`;
 			} else if (entry.retrySuccessId !== undefined) {
 				return `The workflow execution failed but the retry "${entry.retrySuccessId}" was successful.`;
+			} else if (entry.stoppedAt === null) {
+				return 'The workflow execution is probably still running but it may have crashed and n8n cannot safely tell. ';
 			} else {
 				return 'The workflow execution failed.';
 			}
@@ -540,6 +645,11 @@ export default mixins(
 
 <style scoped lang="scss">
 
+.autorefresh {
+	padding-right: 0.5em;
+	text-align: right;
+}
+
 .filters {
 	line-height: 2em;
 	.refresh-button {
@@ -558,6 +668,10 @@ export default mixins(
 	color: $--custom-error-text;
 	background-color: $--custom-error-background;
 	margin-left: 5px;
+	&.warning {
+		background-color: $--custom-warning-background;
+		color: $--custom-warning-text;
+	}
 }
 
 .selection-options {
@@ -587,6 +701,11 @@ export default mixins(
 	&.success {
 		background-color: $--custom-success-background;
 		color: $--custom-success-text;
+	}
+
+	&.warning {
+		background-color: $--custom-warning-background;
+		color: $--custom-warning-text;
 	}
 }
 

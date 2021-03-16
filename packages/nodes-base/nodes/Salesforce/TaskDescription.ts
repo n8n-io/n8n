@@ -38,7 +38,7 @@ export const taskOperations = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: `Returns an overview of task's metadata.`,
+				description: `Returns an overview of task's metadata`,
 			},
 			{
 				name: 'Update',
@@ -53,9 +53,9 @@ export const taskOperations = [
 
 export const taskFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                task:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                task:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Status',
 		name: 'status',
@@ -407,9 +407,10 @@ export const taskFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 task:update                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:update                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
@@ -426,7 +427,7 @@ export const taskFields = [
 				],
 			},
 		},
-		description: 'Id of task that needs to be fetched',
+		description: 'ID of task that needs to be fetched.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -769,9 +770,9 @@ export const taskFields = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                  task:get                                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  task:get                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
@@ -788,11 +789,12 @@ export const taskFields = [
 				],
 			},
 		},
-		description: 'Id of task that needs to be fetched',
+		description: 'ID of task that needs to be fetched.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  task:delete                               */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  task:delete                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
@@ -809,11 +811,12 @@ export const taskFields = [
 				],
 			},
 		},
-		description: 'Id of task that needs to be fetched',
+		description: 'ID of task that needs to be fetched.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 task:getAll                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -872,6 +875,69 @@ export const taskFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Conditions',
+				name: 'conditionsUi',
+				placeholder: 'Add Condition',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'The condition to set.',
+				default: {},
+				options: [
+					{
+						name: 'conditionValues',
+						displayName: 'Condition',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getTaskFields',
+								},
+								default: '',
+								description: 'For date, number, or boolean, please use expressions.',
+							},
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								options: [
+									{
+										name: '=',
+										value: 'equal',
+									},
+									{
+										name: '>',
+										value: '>',
+									},
+									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '>=',
+										value: '>=',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
+								],
+								default: 'equal',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
 			{
 				displayName: 'Fields',
 				name: 'fields',

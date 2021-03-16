@@ -21,6 +21,11 @@ export const tweetOperations = [
 				description: 'Create or reply a tweet',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a tweet',
+			},
+			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search tweets',
@@ -144,6 +149,28 @@ export const tweetFields = [
 				description: 'If you upload Tweet media that might be considered sensitive content such as nudity, or medical procedures, you must set this value to true.',
 			},
 		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                tweet:delete                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Tweet ID',
+		name: 'tweetId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'delete',
+				],
+				resource: [
+					'tweet',
+				],
+			},
+		},
+		description: 'The ID of the tweet to delete.',
 	},
 
 	/* -------------------------------------------------------------------------- */

@@ -114,6 +114,7 @@ import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
 import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { mouseSelect } from '@/components/mixins/mouseSelect';
 import { moveNodeWorkflow } from '@/components/mixins/moveNodeWorkflow';
@@ -146,6 +147,7 @@ import {
 	NodeInputConnections,
 	NodeHelpers,
 	Workflow,
+	IRun,
 } from 'n8n-workflow';
 import {
 	IConnectionsUi,
@@ -160,10 +162,12 @@ import {
 	IUpdateInformation,
 	IWorkflowDataUpdate,
 	XYPositon,
+	IPushDataExecutionFinished,
 } from '../Interface';
 
 export default mixins(
 	copyPaste,
+	externalHooks,
 	genericHelpers,
 	mouseSelect,
 	moveNodeWorkflow,
@@ -375,6 +379,8 @@ export default mixins(
 
 				this.$store.commit('setStateDirty', false);
 
+				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
+
 				return data;
 			},
 			touchTap (e: MouseEvent | TouchEvent) {
@@ -400,6 +406,17 @@ export default mixins(
 				this.mouseUpMoveWorkflow(e);
 			},
 			wheelScroll (e: WheelEvent) {
+				//* Control + scroll zoom
+				if (e.ctrlKey) {
+					if (e.deltaY > 0) {
+						this.setZoom('out');
+					} else {
+						this.setZoom('in');
+					}
+
+					e.preventDefault();
+					return;
+				}
 				this.wheelMoveWorkflow(e);
 			},
 			keyUp (e: KeyboardEvent) {
@@ -713,7 +730,34 @@ export default mixins(
 						type: 'success',
 					});
 				} catch (error) {
-					this.$showError(error, 'Problem stopping execution', 'There was a problem stopping the execuction:');
+					// Execution stop might fail when the execution has already finished. Let's treat this here.
+					const execution = await this.restApi().getExecution(executionId) as IExecutionResponse;
+					if (execution.finished) {
+						const executedData = {
+							data: execution.data,
+							finished: execution.finished,
+							mode: execution.mode,
+							startedAt: execution.startedAt,
+							stoppedAt: execution.stoppedAt,
+						} as IRun;
+						const pushData = {
+							data: executedData,
+							executionId,
+							retryOf: execution.retryOf,
+						} as IPushDataExecutionFinished;
+						this.$store.commit('finishActiveExecution', pushData);
+						this.$titleSet(execution.workflowData.name, 'IDLE');
+						this.$store.commit('setExecutingNode', null);
+						this.$store.commit('setWorkflowExecutionData', executedData);
+						this.$store.commit('removeActiveAction', 'workflowRunning');
+						this.$showMessage({
+							title: 'Workflow finished executing',
+							message: 'Unable to stop operation in time. Workflow finished executing already.',
+							type: 'success',
+						});
+					} else {
+						this.$showError(error, 'Problem stopping execution', 'There was a problem stopping the execuction:');
+					}
 				}
 				this.stopExecutionInProgress = false;
 			},
@@ -917,7 +961,7 @@ export default mixins(
 					return originalName;
 				}
 
-				const nameMatch = originalName.match(/(.*[a-zA-Z])(\d*)/);
+				const nameMatch = originalName.match(/(.*\D+)(\d*)/);
 				let ignore, baseName, nameIndex, uniqueName;
 				let index = 1;
 
@@ -1969,6 +2013,7 @@ export default mixins(
 				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
 				this.$store.commit('setVersionCli', settings.versionCli);
 				this.$store.commit('setOauthCallbackUrls', settings.oauthCallbackUrls);
+				this.$store.commit('setN8nMetadata', settings.n8nMetadata || {});
 			},
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();
@@ -2033,6 +2078,8 @@ export default mixins(
 				}
 				this.stopLoading();
 			});
+
+			this.$externalHooks().run('nodeView.mount');
 		},
 
 		destroyed () {
@@ -2092,6 +2139,7 @@ export default mixins(
 	position: relative;
 	width: 100%;
 	height: 100%;
+	transform-origin: 0 0;
 }
 
 .node-view-background {

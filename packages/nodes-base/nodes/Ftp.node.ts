@@ -98,6 +98,11 @@ export class Ftp implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a file.',
+					},
+					{
 						name: 'Download',
 						value: 'download',
 						description: 'Download a file.',
@@ -108,6 +113,11 @@ export class Ftp implements INodeType {
 						description: 'List folder content.',
 					},
 					{
+						name: 'Rename',
+						value: 'rename',
+						description: 'Rename/move oldPath to newPath.',
+					},
+					{
 						name: 'Upload',
 						value: 'upload',
 						description: 'Upload a file.',
@@ -115,6 +125,25 @@ export class Ftp implements INodeType {
 				],
 				default: 'download',
 				description: 'Operation to perform.',
+			},
+
+			// ----------------------------------
+			//         delete
+			// ----------------------------------
+			{
+				displayName: 'Path',
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+						],
+					},
+				},
+				name: 'path',
+				type: 'string',
+				default: '',
+				description: 'The file path of the file to delete. Has to contain the full path.',
+				required: true,
 			},
 
 			// ----------------------------------
@@ -149,6 +178,40 @@ export class Ftp implements INodeType {
 				type: 'string',
 				default: 'data',
 				description: 'Object property name which holds binary data.',
+				required: true,
+			},
+
+			// ----------------------------------
+			//         rename
+			// ----------------------------------
+			{
+				displayName: 'Old Path',
+				displayOptions: {
+					show: {
+						operation: [
+							'rename',
+						],
+					},
+				},
+				name: 'oldPath',
+				type: 'string',
+				default: '',
+				description: 'The old path',
+				required: true,
+			},
+			{
+				displayName: 'New Path',
+				displayOptions: {
+					show: {
+						operation: [
+							'rename',
+						],
+					},
+				},
+				name: 'newPath',
+				type: 'string',
+				default: '',
+				description: 'The new path',
 				required: true,
 			},
 
@@ -318,9 +381,10 @@ export class Ftp implements INodeType {
 			items[i] = newItem;
 
 			if (protocol === 'sftp') {
-				const path = this.getNodeParameter('path', i) as string;
 
 				if (operation === 'list') {
+					const path = this.getNodeParameter('path', i) as string;
+
 					const recursive = this.getNodeParameter('recursive', i) as boolean;
 
 					if (recursive) {
@@ -333,7 +397,27 @@ export class Ftp implements INodeType {
 					}
 				}
 
+				if (operation === 'delete') {
+					const path = this.getNodeParameter('path', i) as string;
+
+					responseData = await sftp!.delete(path);
+
+					returnItems.push({ json: { success: true } });
+				}
+
+				if (operation === 'rename') {
+					const oldPath = this.getNodeParameter('oldPath', i) as string;
+
+					const newPath = this.getNodeParameter('newPath', i) as string;
+
+					responseData = await sftp!.rename(oldPath, newPath);
+
+					returnItems.push({ json: { success: true } });
+				}
+
 				if (operation === 'download') {
+					const path = this.getNodeParameter('path', i) as string;
+
 					responseData = await sftp!.get(path);
 
 					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
@@ -385,9 +469,9 @@ export class Ftp implements INodeType {
 
 			if (protocol === 'ftp') {
 
-				const path = this.getNodeParameter('path', i) as string;
-
 				if (operation === 'list') {
+					const path = this.getNodeParameter('path', i) as string;
+
 					const recursive = this.getNodeParameter('recursive', i) as boolean;
 
 					if (recursive) {
@@ -400,7 +484,17 @@ export class Ftp implements INodeType {
 					}
 				}
 
+				if (operation === 'delete') {
+					const path = this.getNodeParameter('path', i) as string;
+
+					responseData = await ftp!.delete(path);
+
+					returnItems.push({ json: { success: true } });
+				}
+
 				if (operation === 'download') {
+					const path = this.getNodeParameter('path', i) as string;
+
 					responseData = await ftp!.get(path);
 
 					// Convert readable stream to buffer so that can be displayed properly
@@ -418,6 +512,17 @@ export class Ftp implements INodeType {
 					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(responseData, filePathDownload);
 
 					returnItems.push(items[i]);
+				}
+
+				if (operation === 'rename') {
+
+					const oldPath = this.getNodeParameter('oldPath', i) as string;
+
+					const newPath = this.getNodeParameter('newPath', i) as string;
+
+					responseData = await ftp!.rename(oldPath, newPath);
+
+					returnItems.push({ json: { success: true } });
 				}
 
 				if (operation === 'upload') {

@@ -58,6 +58,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		body,
 		qs: query,
 		uri: uri || `https://api.airtable.com/v0/${endpoint}`,
+		useQuerystring: false,
 		json: true,
 	};
 
@@ -130,7 +131,7 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 	};
 }
 
-export async function downloadRecordAttachments(this: IExecuteFunctions, records: IRecord[], fieldNames: string[]): Promise<INodeExecutionData[]> {
+export async function downloadRecordAttachments(this: IExecuteFunctions | IPollFunctions, records: IRecord[], fieldNames: string[]): Promise<INodeExecutionData[]> {
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };

@@ -14,8 +14,15 @@ import {
 import {
 	asanaApiRequest,
 	asanaApiRequestAllItems,
+	getTaskFields,
 	getWorkspaces,
 } from './GenericFunctions';
+
+import * as moment from 'moment-timezone';
+
+import {
+	snakeCase,
+} from 'change-case';
 
 export class Asana implements INodeType {
 	description: INodeTypeDescription = {
@@ -84,6 +91,10 @@ export class Asana implements INodeType {
 						value: 'project',
 					},
 					{
+						name: 'Subtask',
+						value: 'subtask',
+					},
+					{
 						name: 'Task',
 						value: 'task',
 					},
@@ -96,6 +107,10 @@ export class Asana implements INodeType {
 						value: 'taskTag',
 					},
 					{
+						name: 'Task Project',
+						value: 'taskProject',
+					},
+					{
 						name: 'User',
 						value: 'user',
 					},
@@ -103,7 +118,273 @@ export class Asana implements INodeType {
 				default: 'task',
 				description: 'The resource to operate on.',
 			},
+			// ----------------------------------
+			//         subtask
+			// ----------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'subtask',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a subtask',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all substasks',
+					},
+				],
+				default: 'create',
+				description: 'The operation to perform.',
+			},
 
+			// ----------------------------------
+			//         subtask:create
+			// ----------------------------------
+			{
+				displayName: 'Parent Task ID',
+				name: 'taskId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'subtask',
+						],
+					},
+				},
+				description: 'The task to operate on.',
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'subtask',
+						],
+					},
+				},
+				description: 'The name of the subtask to create',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'otherProperties',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						resource: [
+							'subtask',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				default: {},
+				placeholder: 'Add Field',
+				options: [
+					{
+						displayName: 'Assignee',
+						name: 'assignee',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUsers',
+						},
+						default: '',
+						description: 'Set Assignee on the subtask',
+					},
+					{
+						displayName: 'Assignee Status',
+						name: 'assignee_status',
+						type: 'options',
+						options: [
+							{
+								name: 'Inbox',
+								value: 'inbox',
+							},
+							{
+								name: 'Today',
+								value: 'today',
+							},
+							{
+								name: 'Upcoming',
+								value: 'upcoming',
+							},
+							{
+								name: 'Later',
+								value: 'later',
+							},
+						],
+						default: 'inbox',
+						description: 'Set Assignee status on the subtask (requires Assignee)',
+					},
+					{
+						displayName: 'Completed',
+						name: 'completed',
+						type: 'boolean',
+						default: false,
+						description: 'If the subtask should be marked completed.',
+					},
+					{
+						displayName: 'Due On',
+						name: 'due_on',
+						type: 'dateTime',
+						default: '',
+						description: 'Date on which the time is due.',
+					},
+					{
+						displayName: 'Liked',
+						name: 'liked',
+						type: 'boolean',
+						default: false,
+						description: 'If the task is liked by the authorized user.',
+					},
+					{
+						displayName: 'Notes',
+						name: 'notes',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+							rows: 5,
+						},
+						default: '',
+						description: 'The task notes',
+					},
+					{
+						displayName: 'Workspace',
+						name: 'workspace',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getWorkspaces',
+						},
+						default: '',
+						description: 'The workspace to create the subtask in',
+					},
+				],
+			},
+			// ----------------------------------
+			//         subtask:getAll
+			// ----------------------------------
+			{
+				displayName: 'Parent Task ID',
+				name: 'taskId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'subtask',
+						],
+					},
+				},
+				description: 'The task to operate on.',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'subtask',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'subtask',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'subtask',
+						],
+					},
+				},
+				default: {},
+				placeholder: 'Add Field',
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'opt_fields',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getTaskFields',
+						},
+						default: [
+							'gid',
+							'name',
+							'resource_type',
+						],
+						description: 'Defines fields to return.',
+					},
+					{
+						displayName: 'Pretty',
+						name: 'opt_pretty',
+						type: 'boolean',
+						default: false,
+						description: 'Provides “pretty” output.',
+					},
+				],
+			},
 			// ----------------------------------
 			//         task
 			// ----------------------------------
@@ -133,6 +414,11 @@ export class Asana implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get a task',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all tasks',
 					},
 					{
 						name: 'Move',
@@ -240,6 +526,145 @@ export class Asana implements INodeType {
 					},
 				},
 				description: 'The ID of the task to get the data of.',
+			},
+			// ----------------------------------
+			//         task:getAll
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'task',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'task',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+			{
+				displayName: 'Filters',
+				name: 'filters',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'task',
+						],
+					},
+				},
+				default: {},
+				description: 'Properties to search for',
+				placeholder: 'Add Filter',
+				options: [
+					{
+						displayName: 'Assignee',
+						name: 'assignee',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUsers',
+						},
+						default: '',
+						description: 'The assignee to filter tasks on.  Note: If you specify assignee, you must also specify the workspace to filter on.',
+					},
+					{
+						displayName: 'Fields',
+						name: 'opt_fields',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getTaskFields',
+						},
+						default: [
+							'gid',
+							'name',
+							'resource_type',
+						],
+						description: 'Defines fields to return.',
+					},
+					{
+						displayName: 'Pretty',
+						name: 'opt_pretty',
+						type: 'boolean',
+						default: false,
+						description: 'Provides “pretty” output.',
+					},
+					{
+						displayName: 'Project',
+						name: 'project',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getProjects',
+						},
+						default: '',
+						description: 'The project to filter tasks on.',
+					},
+					{
+						displayName: 'Section',
+						name: 'section',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getSections',
+						},
+						default: '',
+						description: 'The section to filter tasks on.',
+					},
+					{
+						displayName: 'Workspace',
+						name: 'workspace',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getWorkspaces',
+						},
+						default: '',
+						description: 'The workspace to filter tasks on.  Note: If you specify workspace, you must also specify the assignee to filter on.',
+					},
+					{
+						displayName: 'Completed Since',
+						name: 'completed_since',
+						type: 'dateTime',
+						default: '',
+						description: 'Only return tasks that are either incomplete or that have been completed since this time.',
+					},
+					{
+						displayName: 'Modified Since',
+						name: 'modified_since',
+						type: 'dateTime',
+						default: '',
+						description: 'Only return tasks that have been modified since the given time.',
+					},
+				],
 			},
 
 			// ----------------------------------
@@ -500,6 +925,16 @@ export class Asana implements INodeType {
 						default: '',
 						description: 'The task notes',
 					},
+					{
+						displayName: 'Project IDs',
+						name: 'projects',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getProjects',
+						},
+						default: [],
+						description: 'The project to filter tasks on.',
+					},
 				],
 			},
 
@@ -672,6 +1107,161 @@ export class Asana implements INodeType {
 				description: 'The ID of the comment to be removed',
 			},
 
+			// ----------------------------------
+			//         taskProject
+			// ----------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'taskProject',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Add',
+						value: 'add',
+						description: 'Add a task to a project',
+					},
+					{
+						name: 'Remove',
+						value: 'remove',
+						description: 'Remove a task from a project',
+					},
+				],
+				default: 'add',
+				description: 'The operation to perform.',
+			},
+			// ----------------------------------
+			//         taskProject:add
+			// ----------------------------------
+			{
+				displayName: 'Task ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'taskProject',
+						],
+					},
+				},
+				description: 'The ID of the task to add the project to',
+			},
+			{
+				displayName: 'Project ID',
+				name: 'project',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getProjects',
+				},
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'taskProject',
+						],
+					},
+				},
+				description: 'The project where the task will be added',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						resource: [
+							'taskProject',
+						],
+						operation: [
+							'add',
+						],
+					},
+				},
+				default: {},
+				description: 'Other properties to set',
+				placeholder: 'Add Field',
+				options: [
+					{
+						displayName: 'Insert After',
+						name: 'insert_after',
+						type: 'string',
+						default: '',
+						description: 'A task in the project to insert the task after, or null to insert at the beginning of the list.',
+					},
+					{
+						displayName: 'Insert Before',
+						name: 'insert_before',
+						type: 'string',
+						default: '',
+						description: 'A task in the project to insert the task before, or null to insert at the end of the list.',
+					},
+					{
+						displayName: 'Section',
+						name: 'section',
+						type: 'string',
+						default: '',
+						description: 'A section in the project to insert the task into. The task will be inserted at the bottom of the section.',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         taskProject:remove
+			// ----------------------------------
+			{
+				displayName: 'Task ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'remove',
+						],
+						resource: [
+							'taskProject',
+						],
+					},
+				},
+				description: 'The ID of the task to add the project to',
+			},
+			{
+				displayName: 'Project ID',
+				name: 'project',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getProjects',
+				},
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'remove',
+						],
+						resource: [
+							'taskProject',
+						],
+					},
+				},
+				description: 'The project where the task will be removed from',
+			},
 			// ----------------------------------
 			//         taskTag
 			// ----------------------------------
@@ -1219,12 +1809,25 @@ export class Asana implements INodeType {
 
 				return returnData;
 			},
+			async getTaskFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+
+				const returnData: INodePropertyOptions[] = [];
+				for (const field of getTaskFields()) {
+					const value = snakeCase(field);
+					returnData.push({
+						name: field,
+						value: (value === '') ? '*' : value,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
+		const timezone = this.getTimezone();
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -1240,6 +1843,61 @@ export class Asana implements INodeType {
 			body = {};
 			qs = {};
 
+			if (resource === 'subtask') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         subtask:create
+					// ----------------------------------
+
+					const taskId = this.getNodeParameter('taskId', i) as string;
+
+					requestMethod = 'POST';
+					endpoint = `/tasks/${taskId}/subtasks`;
+
+					body.name = this.getNodeParameter('name', i) as string;
+
+					const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
+					Object.assign(body, otherProperties);
+
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = responseData.data;
+				}
+
+				if (operation === 'getAll') {
+					// ----------------------------------
+					//        subtask:getAll
+					// ----------------------------------
+					const taskId = this.getNodeParameter('taskId', i) as string;
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					requestMethod = 'GET';
+					endpoint = `/tasks/${taskId}/subtasks`;
+
+					Object.assign(qs, options);
+
+					if (qs.opt_fields) {
+						const fields = qs.opt_fields as string[];
+						if (fields.includes('*')) {
+							qs.opt_fields = getTaskFields().map((e) => snakeCase(e)).join(',');
+						} else {
+							qs.opt_fields = (qs.opt_fields as string[]).join(',');
+						}
+					}
+
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = responseData.data;
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as boolean;
+						responseData = responseData.splice(0, limit);
+					}
+				}
+			}
 			if (resource === 'task') {
 				if (operation === 'create') {
 					// ----------------------------------
@@ -1285,6 +1943,47 @@ export class Asana implements INodeType {
 					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 					responseData = responseData.data;
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//        task:getAll
+					// ----------------------------------
+
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					requestMethod = 'GET';
+					endpoint = `/tasks`;
+
+					Object.assign(qs, filters);
+
+					if (qs.opt_fields) {
+						const fields = qs.opt_fields as string[];
+						if (fields.includes('*')) {
+							qs.opt_fields = getTaskFields().map((e) => snakeCase(e)).join(',');
+						} else {
+							qs.opt_fields = (qs.opt_fields as string[]).join(',');
+						}
+					}
+
+					if (qs.modified_since) {
+						qs.modified_since = moment.tz(qs.modified_since as string, timezone).format();
+					}
+
+					if (qs.completed_since) {
+						qs.completed_since = moment.tz(qs.completed_since as string, timezone).format();
+					}
+
+					if (returnAll) {
+						responseData = await asanaApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as boolean;
+
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						responseData = responseData.data;
+					}
 
 				} else if (operation === 'move') {
 					// ----------------------------------
@@ -1422,7 +2121,49 @@ export class Asana implements INodeType {
 					responseData = { success: true };
 				}
 			}
+			if (resource === 'taskProject') {
+				if (operation === 'add') {
 
+					// ----------------------------------
+					//         taskProject:add
+					// ----------------------------------
+
+					const taskId = this.getNodeParameter('id', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					requestMethod = 'POST';
+
+					endpoint = `/tasks/${taskId}/addProject`;
+
+					body.project = this.getNodeParameter('project', i) as string;
+
+					Object.assign(body, additionalFields);
+
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = { success: true };
+				}
+
+				if (operation === 'remove') {
+
+					// ----------------------------------
+					//         taskProject:remove
+					// ----------------------------------
+
+					const taskId = this.getNodeParameter('id', i) as string;
+
+					requestMethod = 'POST';
+
+					endpoint = `/tasks/${taskId}/removeProject`;
+
+					body.project = this.getNodeParameter('project', i) as string;
+
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = { success: true };
+				}
+			}
 			if (resource === 'user') {
 				if (operation === 'get') {
 					// ----------------------------------

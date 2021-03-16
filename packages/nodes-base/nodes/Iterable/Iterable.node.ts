@@ -4,7 +4,9 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -22,6 +24,11 @@ import {
 	userFields,
 	userOperations,
 } from './UserDescription';
+
+import {
+	userListFields,
+	userListOperations,
+} from './UserListDescription';
 
 import * as moment from 'moment-timezone';
 
@@ -60,6 +67,10 @@ export class Iterable implements INodeType {
 						name: 'User',
 						value: 'user',
 					},
+					{
+						name: 'User List',
+						value: 'userList',
+					},
 				],
 				default: 'user',
 				description: 'The resource to operate on.',
@@ -68,7 +79,26 @@ export class Iterable implements INodeType {
 			...eventFields,
 			...userOperations,
 			...userFields,
+			...userListOperations,
+			...userListFields,
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			// Get all the lists available channels
+			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const { lists } = await iterableApiRequest.call(this, 'GET', '/lists');
+				const returnData: INodePropertyOptions[] = [];
+				for (const list of lists) {
+					returnData.push({
+						name: list.name,
+						value: list.id,
+					});
+				}
+				return returnData;
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -181,7 +211,7 @@ export class Iterable implements INodeType {
 
 					if (by === 'email') {
 						const email = this.getNodeParameter('email', i) as string;
-						endpoint =  `/users/${email}`;
+						endpoint = `/users/${email}`;
 					} else {
 						const userId = this.getNodeParameter('userId', i) as string;
 						endpoint = `/users/byUserId/${userId}`;
@@ -212,7 +242,7 @@ export class Iterable implements INodeType {
 
 					if (by === 'email') {
 						const email = this.getNodeParameter('email', i) as string;
-						endpoint =  `/users/getByEmail`;
+						endpoint = `/users/getByEmail`;
 						qs.email = email;
 					} else {
 						const userId = this.getNodeParameter('userId', i) as string;
@@ -232,6 +262,74 @@ export class Iterable implements INodeType {
 					responseData = responseData.user || {};
 					returnData.push(responseData);
 				}
+			}
+		}
+
+		if (resource === 'userList') {
+			if (operation === 'add') {
+				//https://api.iterable.com/api/docs#lists_subscribe
+				const listId = this.getNodeParameter('listId', 0) as string;
+
+				const identifier = this.getNodeParameter('identifier', 0) as string;
+
+				const body: IDataObject = {
+					listId: parseInt(listId, 10),
+					subscribers: [],
+				};
+
+				const subscribers: IDataObject[] = [];
+
+				for (let i = 0; i < length; i++) {
+
+					const value = this.getNodeParameter('value', i) as string;
+
+					if (identifier === 'email') {
+						subscribers.push({ email: value });
+					} else {
+						subscribers.push({ userId: value });
+					}
+				}
+
+				body.subscribers = subscribers;
+
+				responseData = await iterableApiRequest.call(this, 'POST', '/lists/subscribe', body);
+
+				returnData.push(responseData);
+			}
+
+			if (operation === 'remove') {
+				//https://api.iterable.com/api/docs#lists_unsubscribe
+				const listId = this.getNodeParameter('listId', 0) as string;
+
+				const identifier = this.getNodeParameter('identifier', 0) as string;
+
+				const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+
+				const body: IDataObject = {
+					listId: parseInt(listId, 10),
+					subscribers: [],
+					campaignId: additionalFields.campaignId as number,
+					channelUnsubscribe: additionalFields.channelUnsubscribe as boolean,
+				};
+
+				const subscribers: IDataObject[] = [];
+
+				for (let i = 0; i < length; i++) {
+
+					const value = this.getNodeParameter('value', i) as string;
+
+					if (identifier === 'email') {
+						subscribers.push({ email: value });
+					} else {
+						subscribers.push({ userId: value });
+					}
+				}
+
+				body.subscribers = subscribers;
+
+				responseData = await iterableApiRequest.call(this, 'POST', '/lists/unsubscribe', body);
+
+				returnData.push(responseData);
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

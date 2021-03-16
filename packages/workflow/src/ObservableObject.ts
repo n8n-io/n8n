@@ -13,7 +13,7 @@ export function create(target: IDataObject, parent?: IObservableObject, option?:
 
 	// Make all the children of target also observeable
 	for (const key in target) {
-		if (typeof target[key] === 'object') {
+		if (typeof target[key] === 'object' && target[key] !== null) {
 			target[key] = create(target[key] as IDataObject, (parent || target) as IObservableObject, option, depth + 1);
 		}
 	}

@@ -1,4 +1,8 @@
 import {
+	URL,
+} from 'url';
+
+import {
 	sign,
 } from 'aws4';
 
@@ -25,23 +29,27 @@ import {
 	IDataObject,
  } from 'n8n-workflow';
 
+import {
+	pascalCase,
+} from 'change-case';
+
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string | Buffer | IDataObject, query: IDataObject = {}, headers?: object, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('aws');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
 
-	const endpoint = `${service}.${region || credentials.region}.amazonaws.com`;
+	const endpoint = new URL(((credentials.rekognitionEndpoint as string || '').replace('{region}', credentials.region as string) || `https://${service}.${credentials.region}.amazonaws.com`) + path);
 
 	// Sign AWS API request with the user credentials
-	const signOpts = {headers: headers || {}, host: endpoint, method, path, body};
+	const signOpts = {headers: headers || {}, host: endpoint.host, method, path, body};
 
 	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim()});
 
 	const options: OptionsWithUri = {
 		headers: signOpts.headers,
 		method,
-		uri: `https://${endpoint}${signOpts.path}`,
+		uri: endpoint.href,
 		body: signOpts.body,
 	};
 
@@ -51,7 +59,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = error.response.body.message || error.response.body.Message || error.message;
+		const errorMessage = (error.response && error.response.body.message) || (error.response && error.response.body.Message) || error.message;
 
 		if (error.statusCode === 403) {
 			if (errorMessage === 'The security token included in the request is invalid.') {
@@ -123,4 +131,12 @@ export async function awsApiRequestSOAPAllItems(this: IHookFunctions | IExecuteF
 
 function queryToString(params: IDataObject) {
 	return Object.keys(params).map(key => key + '=' + params[key]).join('&');
+}
+
+export function keysTPascalCase(object: IDataObject) {
+	const data: IDataObject = {};
+	for (const key of Object.keys(object)) {
+		data[pascalCase(key as string)] = object[key];
+	}
+	return data;
 }
