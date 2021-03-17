@@ -163,7 +163,7 @@ export function getDefaultFields(sobject: string) {
 export function getQuery(options: IDataObject, sobject: string, returnAll: boolean, limit = 0) {
 	const fields: string[] = [];
 	if (options.fields) {
-		fields.push.apply(fields, (options.fields as string).split(','));
+		fields.push.apply(fields, options.fields.toString().split(','));
 	} else {
 		fields.push.apply(fields, (getDefaultFields(sobject) as string || 'id').split(','));
 	}
