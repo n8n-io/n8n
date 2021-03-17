@@ -23,7 +23,7 @@ export class Git implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Git',
 		name: 'git',
-		// icon: 'fa:git-alt',
+		icon: 'file:git.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Control git.',
