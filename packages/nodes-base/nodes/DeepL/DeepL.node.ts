@@ -131,7 +131,7 @@ export class DeepL implements INodeType {
 
 					const text = this.getNodeParameter('text', i) as string;
 					const translateTo = this.getNodeParameter('translateTo', i) as string;
-					const qs = {target_lang: translateTo, text} as IDataObject;
+					const qs = { target_lang: translateTo, text } as IDataObject;
 
 					if (additionalFields.sourceLang !== undefined) {
 						qs.source_lang = ['EN-GB', 'EN-US'].includes(additionalFields.sourceLang as string)
