@@ -67,7 +67,7 @@ export class TheHive implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TheHive',
 		name: 'theHive',
-		icon: 'file:thehive.png',
+		icon: 'file:thehive.svg',
 		group: ['transform'],
 		subtitle: '={{$parameter["operation"]}} : {{$parameter["resource"]}}',
 		version: 1,
@@ -216,6 +216,8 @@ export class TheHive implements INodeType {
 					{ name: 'Execute Responder', value: 'executeResponder', description: 'Execute a responder on the specified alert' },
 					{ name: 'Get', value: 'get', description: 'Get an alert' },
 					{ name: 'Get All', value: 'getAll', description: 'Get all alerts' },
+					{ name: 'Mark as Read', value: 'markAsRead', description: 'Mark the alert as read' },
+					{ name: 'Mark as Unread', value: 'markAsUnread', description: 'Mark the alert as unread' },
 					{ name: 'Merge', value: 'merge', description: 'Merge alert into an existing case' },
 					{ name: 'Promote', value: 'promote', description: 'Promote an alert into a case' },
 					{ name: 'Update', value: 'update', description: 'Update alert' },
@@ -532,6 +534,26 @@ export class TheHive implements INodeType {
 						endpoint as string,
 						body,
 						qs,
+					);
+				}
+
+				if (operation === 'markAsRead') {
+					const alertId = this.getNodeParameter('id', i) as string;
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'POST',
+						`/alert/${alertId}/markAsRead`,
+					);
+				}
+
+				if (operation === 'markAsUnread') {
+					const alertId = this.getNodeParameter('id', i) as string;
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'POST',
+						`/alert/${alertId}/markAsUnread`,
 					);
 				}
 
