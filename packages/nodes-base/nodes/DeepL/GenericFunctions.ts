@@ -21,7 +21,6 @@ export async function deepLApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 ) {
-	const authenticationMethod = this.getNodeParameter('authentication', 0, 'apiKey') as string;
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -43,19 +42,15 @@ export async function deepLApiRequest(
 			delete options.body;
 		}
 
-		if (authenticationMethod === 'apiKey') {
-			const credentials = this.getCredentials('deepLApi');
+		const credentials = this.getCredentials('deepLApi');
 
-			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
-			}
-
-			options.qs.auth_key = credentials.apiKey;
-
-			return await this.helpers.request!(options);
-		} else {
-			throw new Error('Authentication method not supported.');
+		if (credentials === undefined) {
+			throw new Error('No credentials got returned!');
 		}
+
+		options.qs.auth_key = credentials.apiKey;
+
+		return await this.helpers.request!(options);
 
 	} catch (error) {
 		if (error?.response?.body?.message) {

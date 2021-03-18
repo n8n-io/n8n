@@ -38,28 +38,9 @@ export class DeepL implements INodeType {
 			{
 				name: 'deepLApi',
 				required: true,
-				displayOptions: {
-					show: {
-						authentication: [
-							'apiKey',
-						],
-					},
-				},
 			},
 		],
 		properties: [
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				options: [
-					{
-						name: 'API Key',
-						value: 'apiKey',
-					},
-				],
-				default: 'apiKey',
-			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
