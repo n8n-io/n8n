@@ -121,7 +121,15 @@ export class WorkflowRunnerProcess {
 					resolve(executionId);
 				};
 			});
-			const result: IRun = await executeWorkflowFunction(workflowInfo, additionalData, inputData, executionId, workflowData, runData);
+			let result: IRun;
+			try {
+				result = await executeWorkflowFunction(workflowInfo, additionalData, inputData, executionId, workflowData, runData);
+			} catch (e) {
+				await sendToParentProcess('finishExecution', { executionId });
+				// Throw same error we had 
+				throw e;	
+			}
+			
 			await sendToParentProcess('finishExecution', { executionId, result });
 
 			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(result);
