@@ -9,7 +9,7 @@ export interface IBinaryData {
 	data: string;
 	mimeType: string;
 	fileName?: string;
-	dir?: string;
+	directory?: string;
 	fileExtension?: string;
 }
 
