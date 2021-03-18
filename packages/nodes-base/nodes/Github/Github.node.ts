@@ -1414,6 +1414,50 @@ export class Github implements INodeType {
 				description: 'The body of the review',
 			},
 			// ----------------------------------
+			//       user:getRepositories
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getRepositories',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getRepositories',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'How many results to return.',
+			},
+			// ----------------------------------
 			//         user:invite
 			// ----------------------------------
 			{
@@ -1791,7 +1835,7 @@ export class Github implements INodeType {
 					const reviewId = this.getNodeParameter('reviewId', i) as string;
 
 					body.body = this.getNodeParameter('body', i) as string;
-				
+
 					endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews/${reviewId}`;
 				}
 			} else if (resource === 'user') {
@@ -1803,6 +1847,12 @@ export class Github implements INodeType {
 					requestMethod = 'GET';
 
 					endpoint = `/users/${owner}/repos`;
+
+					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					if (returnAll === false) {
+						qs.per_page = this.getNodeParameter('limit', 0) as number;
+					}
 
 				}	else if (operation === 'invite') {
 					// ----------------------------------
