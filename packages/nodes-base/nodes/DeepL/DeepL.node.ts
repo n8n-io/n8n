@@ -1,4 +1,3 @@
-
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -19,7 +18,6 @@ import {
 import {
 	textOperations
 } from './TextDescription';
-
 
 export class DeepL implements INodeType {
 	description: INodeTypeDescription = {
@@ -73,7 +71,6 @@ export class DeepL implements INodeType {
 					},
 				],
 				default: 'language',
-				description: 'The operation to perform',
 			},
 			{
 				displayName: 'Operation',
@@ -142,7 +139,7 @@ export class DeepL implements INodeType {
 						qs.source_lang = additionalFields.sourceLang;
 					}
 
-					const response = await deepLApiRequest.call(this, 'GET', `/translate`, {}, qs);
+					const response = await deepLApiRequest.call(this, 'GET', '/translate', {}, qs);
 					responseData.push(response.translations[0]);
 				}
 			}

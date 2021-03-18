@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const textOperations = [
 	{
@@ -42,7 +44,7 @@ export const textOperations = [
 		default: {},
 		options: [
 			{
-				displayName: 'Source language',
+				displayName: 'Source Language',
 				name: 'sourceLang',
 				type: 'options',
 				default: '',
@@ -52,7 +54,7 @@ export const textOperations = [
 				},
 			},
 			{
-				displayName: 'Split sentences',
+				displayName: 'Split Sentences',
 				name: 'splitSentences',
 				type: 'options',
 				default: '1',
@@ -76,7 +78,7 @@ export const textOperations = [
 				],
 			},
 			{
-				displayName: 'Preserve formatting',
+				displayName: 'Preserve Formatting',
 				name: 'preserveFormatting',
 				type: 'options',
 				default: '0',

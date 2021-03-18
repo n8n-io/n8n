@@ -12,7 +12,6 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-
 export async function deepLApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'apiKey') as string;
 	const options: OptionsWithUri = {
