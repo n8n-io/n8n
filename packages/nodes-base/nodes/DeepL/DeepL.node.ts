@@ -99,9 +99,7 @@ export class DeepL implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getLanguages(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getLanguages(this: ILoadOptionsFunctions) {
 				const returnData: INodePropertyOptions[] = [];
 				const languages = await deepLApiRequest.call(
 					this,
@@ -123,7 +121,7 @@ export class DeepL implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = items.length as unknown as number;
+		const length = items.length;
 
 		const responseData = [];
 		for (let i = 0; i < length; i++) {
