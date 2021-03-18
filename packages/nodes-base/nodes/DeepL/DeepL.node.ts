@@ -25,7 +25,7 @@ export class DeepL implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'DeepL',
 		name: 'deepL',
-		icon: 'file:deepl.png',
+		icon: 'file:deepl.svg',
 		group: ['input', 'output'],
 		version: 1,
 		description: 'Translate data using DeepL',
