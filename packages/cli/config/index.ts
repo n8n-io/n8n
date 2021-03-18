@@ -591,13 +591,13 @@ const config = convict({
 			maxFileSize: {
 				doc: 'Maximum size for each log file in MB.',
 				format: Number,
-				default: '16',
+				default: 16,
 				env: 'N8N_LOG_FILE_MAXSIZE',
 			},
 			maxFileCount: {
 				doc: 'Maximum number of files to keep.',
 				format: Number,
-				default: '100',
+				default: 100,
 				env: 'N8N_LOG_FILE_MAXCOUNT',
 			},
 		},
