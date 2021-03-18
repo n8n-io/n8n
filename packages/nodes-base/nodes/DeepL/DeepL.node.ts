@@ -101,13 +101,7 @@ export class DeepL implements INodeType {
 		loadOptions: {
 			async getLanguages(this: ILoadOptionsFunctions) {
 				const returnData: INodePropertyOptions[] = [];
-				const languages = await deepLApiRequest.call(
-					this,
-					'GET',
-					'/languages',
-					{},
-					{type: 'target'},
-				);
+				const languages = await deepLApiRequest.call(this, 'GET', '/languages', {}, { type: 'target' });
 				for (const language of languages) {
 					returnData.push({
 						name: language.name,
@@ -124,15 +118,21 @@ export class DeepL implements INodeType {
 		const length = items.length;
 
 		const responseData = [];
+
 		for (let i = 0; i < length; i++) {
+
 			const resource = this.getNodeParameter('resource', i) as string;
 			const operation = this.getNodeParameter('operation', i) as string;
 			const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
 			if (resource === 'language') {
+
 				if (operation === 'translate') {
+
 					const text = this.getNodeParameter('text', i) as string;
 					const translateTo = this.getNodeParameter('translateTo', i) as string;
 					const qs = {target_lang: translateTo, text} as IDataObject;
+
 					if (additionalFields.sourceLang !== undefined) {
 						qs.source_lang = ['EN-GB', 'EN-US'].includes(additionalFields.sourceLang as string)
 							? 'EN'
@@ -144,6 +144,7 @@ export class DeepL implements INodeType {
 				}
 			}
 		}
+
 		return [this.helpers.returnJsonArray(responseData)];
 	}
 }
