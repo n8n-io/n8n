@@ -103,6 +103,9 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 
 		const filePathParts = path.parse(filePath as string);
 
+		if (filePathParts.dir !== '') {
+			returnData.directory = filePathParts.dir;
+		}
 		returnData.fileName = filePathParts.base;
 
 		// Remove the dot
