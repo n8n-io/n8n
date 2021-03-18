@@ -8,7 +8,7 @@ export const textOperations = [
 		name: 'text',
 		type: 'string',
 		default: '',
-		description: 'The input text to translate',
+		description: 'Input text to translate.',
 		required: true,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
@@ -22,14 +22,14 @@ export const textOperations = [
 		},
 	},
 	{
-		displayName: 'Translate To',
+		displayName: 'Target Language',
 		name: 'translateTo',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getLanguages',
 		},
 		default: '',
-		description: 'The language to use for translation of the input text.',
+		description: 'Language to translate to.',
 		required: true,
 		displayOptions: {
 			show: {
@@ -51,7 +51,7 @@ export const textOperations = [
 				name: 'sourceLang',
 				type: 'options',
 				default: '',
-				description: 'Source text language.',
+				description: 'Language to translate from.',
 				typeOptions: {
 					loadOptionsMethod: 'getLanguages',
 				},
@@ -61,22 +61,22 @@ export const textOperations = [
 				name: 'splitSentences',
 				type: 'options',
 				default: '1',
-				description: 'Sets if the translation engine should split into sentences.',
+				description: 'How the translation engine should split sentences.',
 				options: [
 					{
-						name: 'No splitting',
-						value: '0',
-						description: 'Treat all text as a single sentence',
-					},
-					{
-						name: 'Default - on punctuation and newlines',
-						value: '1',
-						description: 'Splits text on interpunction and on newlines',
-					},
-					{
-						name: 'interpunction only',
+						name: 'Interpunction Only',
 						value: 'nonewlines',
-						description: 'Splits on interpunction only, ignoring newlines',
+						description: 'Split text on interpunction only, ignoring newlines.',
+					},
+					{
+						name: 'No Splitting',
+						value: '0',
+						description: 'Treat all text as a single sentence.',
+					},
+					{
+						name: 'On Punctuation and Newlines',
+						value: '1',
+						description: 'Split text on interpunction and newlines.',
 					},
 				],
 			},
@@ -85,17 +85,17 @@ export const textOperations = [
 				name: 'preserveFormatting',
 				type: 'options',
 				default: '0',
-				description: 'Sets whether the translation engine should respect the original formatting, even if it would usually correct some aspects.',
+				description: 'Whether the translation engine should respect the original formatting, even if it would usually correct some aspects.',
 				options: [
 					{
-						name: 'Default - apply corrections',
+						name: 'Apply corrections',
 						value: '0',
-						description: 'Fixes punctuation at the beginning and end of sentences and fixes lower/upper cases at the beginning.',
+						description: 'Fix punctuation at the beginning and end of sentences and fixes lower/upper caseing at the beginning.',
 					},
 					{
 						name: 'Do not correct',
 						value: '1',
-						description: 'Keeps text as similar as possible to original',
+						description: 'Keep text as similar as possible to the original.',
 					},
 				],
 			},
@@ -104,22 +104,19 @@ export const textOperations = [
 				name: 'formality',
 				type: 'options',
 				default: 'default',
-				description: 'Sets how the translated text should lean towards formal or informal language. May not be supported with all languages.',
+				description: 'How formal or informal the target text should be. May not be supported with all languages.',
 				options: [
-					{
-						name: 'Default - lean toward neutral language',
-						value: 'default',
-						description: 'Default machine behavior',
-					},
 					{
 						name: 'Formal',
 						value: 'more',
-						description: 'Lean toward formal language',
 					},
 					{
 						name: 'Informal',
 						value: 'less',
-						description: 'Lean toward informal language',
+					},
+					{
+						name: 'Neutral',
+						value: 'default',
 					},
 				],
 			},
