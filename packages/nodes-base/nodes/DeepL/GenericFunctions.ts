@@ -45,9 +45,9 @@ export async function deepLApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 			throw new Error('Authentication method not supported.');
 		}
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.message) {
+		if (error?.response?.body?.message) {
 			// Try to return the error prettier
-			throw new Error(`Google Translate error response [${error.statusCode}]: ${error.response.body.message}`);
+			throw new Error(`DeepL error response [${error.statusCode}]: ${error.response.body.message}`);
 		}
 		throw error;
 	}
