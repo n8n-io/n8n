@@ -16,6 +16,10 @@ import {
 	deepLApiRequest,
 } from './GenericFunctions';
 
+import {
+	textOperations
+} from './TextDescription';
+
 
 export class DeepL implements INodeType {
 	description: INodeTypeDescription = {
@@ -92,68 +96,7 @@ export class DeepL implements INodeType {
 				default: 'translate',
 				description: 'The operation to perform',
 			},
-			// ----------------------------------
-			//         All
-			// ----------------------------------
-			{
-				displayName: 'Text',
-				name: 'text',
-				type: 'string',
-				default: '',
-				description: 'The input text to translate',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'translate',
-						],
-					},
-				},
-			},
-			{
-				displayName: 'Translate To',
-				name: 'translateTo',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getLanguages',
-				},
-				default: '',
-				description: 'The language to use for translation of the input text.',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'translate',
-						],
-					},
-				},
-			},
-			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
-				type: 'collection',
-				placeholder: 'Add Field',
-				default: {},
-				options: [
-					{
-						displayName: 'Source language',
-						name: 'sourceLang',
-						type: 'options',
-						default: '',
-						description: 'Source text language. For supported languages, visit ',
-						typeOptions: {
-							loadOptionsMethod: 'getLanguages',
-						},
-					},
-					{
-						displayName: 'Split sentences',
-						name: 'splitSentences',
-						type: 'options',
-						default: '1',
-						description: 'Sets if the translation engine should split into sentences.',
-					},
-				],
-			},
+			...textOperations,
 		],
 	};
 

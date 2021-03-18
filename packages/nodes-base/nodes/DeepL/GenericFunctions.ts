@@ -39,7 +39,6 @@ export async function deepLApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 			if (credentials === undefined) {
 				throw new Error('No credentials got returned!');
 			}
-			console.log(options);
 			options.qs!.auth_key = credentials.apiKey;
 			//@ts-ignore
 			return await this.helpers.request(options);
