@@ -10,6 +10,9 @@ export const textOperations = [
 		default: '',
 		description: 'The input text to translate',
 		required: true,
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
 		displayOptions: {
 			show: {
 				operation: [
