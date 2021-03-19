@@ -130,27 +130,27 @@ export class Github implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Create a new issue',
+						description: 'Create a new issue.',
 					},
 					{
 						name: 'Create Comment',
 						value: 'createComment',
-						description: 'Create a new comment on an issue',
+						description: 'Create a new comment on an issue.',
 					},
 					{
 						name: 'Edit',
 						value: 'edit',
-						description: 'Edit an issue',
+						description: 'Edit an issue.',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get the data of a single issues',
+						description: 'Get the data of a single issue.',
 					},
 					{
 						name: 'Lock',
 						value: 'lock',
-						description: 'Lock an issue',
+						description: 'Lock an issue.',
 					},
 				],
 				default: 'create',
@@ -172,22 +172,22 @@ export class Github implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Create a new file in repository',
+						description: 'Create a new file in repository.',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete a file in repository',
+						description: 'Delete a file in repository.',
 					},
 					{
 						name: 'Edit',
 						value: 'edit',
-						description: 'Edit a file in repository',
+						description: 'Edit a file in repository.',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get the data of a single issue',
+						description: 'Get the data of a single issue.',
 					},
 				],
 				default: 'create',
@@ -209,22 +209,22 @@ export class Github implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get the data of a single repository',
+						description: 'Get the data of a single repository.',
 					},
 					{
 						name: 'Get License',
 						value: 'getLicense',
-						description: 'Returns the contents of the repository\'s license file, if one is detected',
+						description: 'Returns the contents of the repository\'s license file, if one is detected.',
 					},
 					{
 						name: 'Get Issues',
 						value: 'getIssues',
-						description: 'Returns issues of a repository',
+						description: 'Returns issues of a repository.',
 					},
 					{
 						name: 'Get Profile',
 						value: 'getProfile',
-						description: 'Get the community profile of a repository with metrics, health score, description, license, ...',
+						description: 'Get the community profile of a repository with metrics, health score, description, license, etc.',
 					},
 					{
 						name: 'List Popular Paths',
@@ -234,7 +234,7 @@ export class Github implements INodeType {
 					{
 						name: 'List Referrers',
 						value: 'listReferrers',
-						description: 'Get the top 10 referrering domains over the last 14 days',
+						description: 'Get the top 10 referrering domains over the last 14 days.',
 					},
 				],
 				default: 'getIssues',
@@ -256,7 +256,7 @@ export class Github implements INodeType {
 					{
 						name: 'Get Repositories',
 						value: 'getRepositories',
-						description: 'Returns the repositories of a user',
+						description: 'Returns the repositories of a user.',
 					},
 					{
 						name: 'Invite',
@@ -283,7 +283,7 @@ export class Github implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Creates a new release',
+						description: 'Creates a new release.',
 					},
 				],
 				default: 'create',
@@ -305,22 +305,22 @@ export class Github implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Creates a new review',
+						description: 'Creates a new review.',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get a review for a pull request',
+						description: 'Get a review for a pull request.',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
-						description: 'Get all reviews for a pull request',
+						description: 'Get all reviews for a pull request.',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Update a review',
+						description: 'Update a review.',
 					},
 				],
 				default: 'create',
@@ -815,12 +815,12 @@ export class Github implements INodeType {
 							{
 								name: 'Closed',
 								value: 'closed',
-								description: 'Set the state to "closed"',
+								description: 'Set the state to "closed".',
 							},
 							{
 								name: 'Open',
 								value: 'open',
-								description: 'Set the state to "open"',
+								description: 'Set the state to "open".',
 							},
 						],
 						default: 'open',
@@ -860,7 +860,7 @@ export class Github implements INodeType {
 								name: 'assignee',
 								type: 'string',
 								default: '',
-								description: 'User to assign issue too.',
+								description: 'User to assign issue to.',
 							},
 						],
 					},
@@ -1149,17 +1149,17 @@ export class Github implements INodeType {
 							{
 								name: 'All',
 								value: 'all',
-								description: 'Returns issues with any state',
+								description: 'Returns issues with any state.',
 							},
 							{
 								name: 'Closed',
 								value: 'closed',
-								description: 'Return issues with "closed" state',
+								description: 'Return issues with "closed" state.',
 							},
 							{
 								name: 'Open',
 								value: 'open',
-								description: 'Return issues with "open" state',
+								description: 'Return issues with "open" state.',
 							},
 						],
 						default: 'open',
@@ -1173,17 +1173,17 @@ export class Github implements INodeType {
 							{
 								name: 'Created',
 								value: 'created',
-								description: 'Sort by created date',
+								description: 'Sort by created date.',
 							},
 							{
 								name: 'Updated',
 								value: 'updated',
-								description: 'Sort by updated date',
+								description: 'Sort by updated date.',
 							},
 							{
 								name: 'Comments',
 								value: 'comments',
-								description: 'Sort by comments',
+								description: 'Sort by comments.',
 							},
 						],
 						default: 'created',
@@ -1197,12 +1197,12 @@ export class Github implements INodeType {
 							{
 								name: 'Ascending',
 								value: 'asc',
-								description: 'Sort in ascending order',
+								description: 'Sort in ascending order.',
 							},
 							{
 								name: 'Descending',
 								value: 'desc',
-								description: 'Sort in descending order',
+								description: 'Sort in descending order.',
 							},
 						],
 						default: 'desc',
@@ -1255,7 +1255,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'ID of the review',
+				description: 'ID of the review.',
 			},
 
 			// ----------------------------------
@@ -1359,17 +1359,17 @@ export class Github implements INodeType {
 					{
 						name: 'Approve',
 						value: 'approve',
-						description: 'Approve the pull request',
+						description: 'Approve the pull request.',
 					},
 					{
 						name: 'Request Change',
 						value: 'requestChanges',
-						description: 'Request code changes',
+						description: 'Request code changes.',
 					},
 					{
 						name: 'Comment',
 						value: 'comment',
-						description: 'Add a comment without approval or change requests',
+						description: 'Add a comment without approval or change requests.',
 					},
 					{
 						name: 'Pending',
@@ -1427,7 +1427,7 @@ export class Github implements INodeType {
 						name: 'commitId',
 						type: 'string',
 						default: '',
-						description: 'The SHA of the commit that needs a review, if different from the latest',
+						description: 'The SHA of the commit that needs a review, if different from the latest.',
 					},
 				],
 			},
