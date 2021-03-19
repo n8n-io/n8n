@@ -93,13 +93,6 @@ export const customerFields = [
 						name: 'details',
 						values: [
 							{
-								displayName: 'City',
-								name: 'city',
-								description: 'City, district, suburb, town, or village.',
-								type: 'string',
-								default: '',
-							},
-							{
 								displayName: 'Country',
 								name: 'country',
 								description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>).',
@@ -121,9 +114,9 @@ export const customerFields = [
 								default: '',
 							},
 							{
-								displayName: 'Postal Code',
-								name: 'postal_code',
-								description: 'ZIP or postal code.',
+								displayName: 'City',
+								name: 'city',
+								description: 'City, district, suburb, town, or village.',
 								type: 'string',
 								default: '',
 							},
@@ -131,6 +124,13 @@ export const customerFields = [
 								displayName: 'State',
 								name: 'state',
 								description: 'State, county, province, or region.',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Postal Code',
+								name: 'postal_code',
+								description: 'ZIP or postal code.',
 								type: 'string',
 								default: '',
 							},
@@ -193,7 +193,7 @@ export const customerFields = [
 				displayName: 'Shipping',
 				name: 'shipping',
 				type: 'fixedCollection',
-				description: 'Shipping information of the customer to create.',
+				description: 'Shipping information for the customer.',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -214,13 +214,6 @@ export const customerFields = [
 										displayName: 'Details',
 										name: 'details',
 										values: [
-											{
-												displayName: 'City',
-												name: 'city',
-												description: 'City, district, suburb, town, or village.',
-												type: 'string',
-												default: '',
-											},
 											{
 												displayName: 'Country',
 												name: 'country',
@@ -243,9 +236,9 @@ export const customerFields = [
 												default: '',
 											},
 											{
-												displayName: 'Postal Code',
-												name: 'postal_code',
-												description: 'ZIP or postal code.',
+												displayName: 'City',
+												name: 'city',
+												description: 'City, district, suburb, town, or village.',
 												type: 'string',
 												default: '',
 											},
@@ -253,6 +246,13 @@ export const customerFields = [
 												displayName: 'State',
 												name: 'state',
 												description: 'State, county, province, or region.',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Postal Code',
+												name: 'postal_code',
+												description: 'ZIP or postal code.',
 												type: 'string',
 												default: '',
 											},
@@ -561,11 +561,11 @@ export const customerFields = [
 				displayName: 'Shipping',
 				name: 'shipping',
 				type: 'fixedCollection',
-				description: 'Shipping information of the customer to update.',
+				description: 'Shipping information for the customer.',
+				placeholder: 'Add Field',
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder: 'Add Field',
 				options: [
 					{
 						displayName: 'Shipping Properties',
@@ -582,13 +582,6 @@ export const customerFields = [
 										displayName: 'Details',
 										name: 'details',
 										values: [
-											{
-												displayName: 'City',
-												name: 'city',
-												description: 'City, district, suburb, town, or village.',
-												type: 'string',
-												default: '',
-											},
 											{
 												displayName: 'Country',
 												name: 'country',
@@ -611,9 +604,9 @@ export const customerFields = [
 												default: '',
 											},
 											{
-												displayName: 'Postal Code',
-												name: 'postal_code',
-												description: 'ZIP or postal code.',
+												displayName: 'City',
+												name: 'city',
+												description: 'City, district, suburb, town, or village.',
 												type: 'string',
 												default: '',
 											},
@@ -621,6 +614,13 @@ export const customerFields = [
 												displayName: 'State',
 												name: 'state',
 												description: 'State, county, province, or region.',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Postal Code',
+												name: 'postal_code',
+												description: 'ZIP or postal code.',
 												type: 'string',
 												default: '',
 											},
@@ -633,12 +633,14 @@ export const customerFields = [
 								name: 'name',
 								type: 'string',
 								default: '',
+								description: 'Name of the person who will receive the shipment.',
 							},
 							{
 								displayName: 'Recipient Phone',
 								name: 'phone',
 								type: 'string',
 								default: '',
+								description: 'Phone number of the person who will receive the shipment.',
 							},
 						],
 					},

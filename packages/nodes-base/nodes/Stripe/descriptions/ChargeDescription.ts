@@ -200,20 +200,12 @@ export const chargeFields = [
 								name: 'address',
 								type: 'fixedCollection',
 								default: {},
-								description: 'Address of the customer being charged.',
 								placeholder: 'Add Field',
 								options: [
 									{
 										displayName: 'Details',
 										name: 'details',
 										values: [
-											{
-												displayName: 'City',
-												name: 'city',
-												description: 'City, district, suburb, town, or village.',
-												type: 'string',
-												default: '',
-											},
 											{
 												displayName: 'Country',
 												name: 'country',
@@ -236,9 +228,9 @@ export const chargeFields = [
 												default: '',
 											},
 											{
-												displayName: 'Postal Code',
-												name: 'postal_code',
-												description: 'ZIP or postal code.',
+												displayName: 'City',
+												name: 'city',
+												description: 'City, district, suburb, town, or village.',
 												type: 'string',
 												default: '',
 											},
@@ -246,6 +238,13 @@ export const chargeFields = [
 												displayName: 'State',
 												name: 'state',
 												description: 'State, county, province, or region.',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Postal Code',
+												name: 'postal_code',
+												description: 'ZIP or postal code.',
 												type: 'string',
 												default: '',
 											},
