@@ -311,10 +311,16 @@ export class SendGrid implements INodeType {
 						? toEmail.split(',').map((i) => ({ email: i.trim() }))
 						: [{ email: toEmail.trim() }];
 
-					const { bccEmail, ccEmail, enableSandbox } = this.getNodeParameter('additionalFields', i) as {
+					const {
+						bccEmail,
+						ccEmail,
+						enableSandbox,
+						sendAt,
+					} = this.getNodeParameter('additionalFields', i) as {
 						bccEmail: string;
 						ccEmail: string;
 						enableSandbox: boolean,
+						sendAt: string;
 					};
 
 					const body: SendMailBody = {
@@ -365,6 +371,12 @@ export class SendGrid implements INodeType {
 
 					if (ccEmail) {
 						body.personalizations[0].cc = ccEmail.split(',').map(i => ({ email: i.trim() }));
+					}
+
+					const toUnixTimeStamp = (date: Date) => Math.floor(date.getTime() / 1000);
+
+					if (sendAt) {
+						body.personalizations[0].send_at = toUnixTimeStamp(new Date(sendAt));
 					}
 
 					await sendGridApiRequest.call(this, '/mail/send', 'POST', body, qs);

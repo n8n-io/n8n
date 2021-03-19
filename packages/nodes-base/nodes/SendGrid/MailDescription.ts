@@ -275,6 +275,13 @@ export const mailFields = [
 				default: false,
 				description: 'Whether to use to the sandbox for testing out email-sending functionality.',
 			},
+			{
+				displayName: 'Send At',
+				name: 'sendAt',
+				type: 'dateTime',
+				default: '',
+				description: 'When to deliver the email. Scheduling more than 72 hours in advance is forbidden.',
+			},
 		],
 	},
 ] as INodeProperties[];
@@ -286,6 +293,7 @@ export type SendMailBody = {
 		cc?: EmailName[],
 		bcc?: EmailName[],
 		dynamic_template_data?: { [key: string]: string },
+		send_at?: number,
 	}>,
 	from: EmailName,
 	template_id?: string,
