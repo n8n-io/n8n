@@ -421,6 +421,9 @@ export const chargeFields = [
 				type: 'fixedCollection',
 				description: 'Shipping information for the charge.',
 				placeholder: 'Add Field',
+				typeOptions: {
+					multipleValues: true,
+				},
 				options: [
 					{
 						displayName: 'Shipping Properties',
