@@ -259,6 +259,13 @@ export const mailFields = [
 				default: '',
 				description: 'Comma-separated list of emails of the recipients<br>of a carbon copy of the email.',
 			},
+			{
+				displayName: 'Enable Sandbox',
+				name: 'enableSandbox',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to use to the sandbox for testing out email-sending functionality.',
+			},
 		],
 	},
 ] as INodeProperties[];

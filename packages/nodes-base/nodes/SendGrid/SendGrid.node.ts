@@ -311,6 +311,12 @@ export class SendGrid implements INodeType {
 						? toEmail.split(',').map((i) => ({ email: i.trim() }))
 						: [{ email: toEmail.trim() }];
 
+					const { bccEmail, ccEmail, enableSandbox } = this.getNodeParameter('additionalFields', i) as {
+						bccEmail: string;
+						ccEmail: string;
+						enableSandbox: boolean,
+					};
+
 					const body: SendMailBody = {
 						personalizations: [{
 							to: parsedToEmail,
@@ -320,7 +326,11 @@ export class SendGrid implements INodeType {
 							email: (this.getNodeParameter('fromEmail', i) as string).trim(),
 							name: this.getNodeParameter('fromName', i) as string,
 						},
-						mail_settings: { sandbox_mode: { enable: true, }, }, // TEMP: sandbox
+						mail_settings: {
+							sandbox_mode: {
+								enable: enableSandbox,
+							},
+						},
 					};
 
 					const dynamicTemplateEnabled = this.getNodeParameter('dynamicTemplate', i);
@@ -348,11 +358,6 @@ export class SendGrid implements INodeType {
 							value: this.getNodeParameter('contentValue', i) as string,
 						}];
 					}
-
-					const { bccEmail, ccEmail } = this.getNodeParameter('additionalFields', i) as {
-						bccEmail: string;
-						ccEmail: string;
-					};
 
 					if (bccEmail) {
 						body.personalizations[0].bcc = bccEmail.split(',').map(i => ({ email: i.trim() }));
