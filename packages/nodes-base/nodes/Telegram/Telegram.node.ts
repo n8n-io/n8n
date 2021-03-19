@@ -156,13 +156,11 @@ export class Telegram implements INodeType {
 						value: 'answerQuery',
 						description: 'Send answer to callback query sent from inline keyboard.',
 					},
-					// custom shit
 					{
 						name: 'Answer Inline Query',
 						value: 'answerInlineQuery',
 						description: 'Send answer to callback query sent from inline bot.',
 					},
-					// end of custom shit			
 				],
 				default: 'answerQuery',
 				description: 'The operation to perform.',
