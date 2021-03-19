@@ -1047,6 +1047,47 @@ export class Github implements INodeType {
 			//         repository:getIssues
 			// ----------------------------------
 			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'repository',
+						],
+						operation: [
+							'getIssues',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'repository',
+						],
+						operation: [
+							'getIssues',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'How many results to return.',
+			},
+			{
 				displayName: 'Filters',
 				name: 'getRepositoryIssuesFilters',
 				type: 'collection',
@@ -1780,6 +1821,12 @@ export class Github implements INodeType {
 					qs = this.getNodeParameter('getRepositoryIssuesFilters', i) as IDataObject;
 
 					endpoint = `/repos/${owner}/${repository}/issues`;
+
+					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					if (returnAll === false) {
+						qs.per_page = this.getNodeParameter('limit', 0) as number;
+					}
 				}
 			} else if (resource === 'review') {
 				if (operation === 'get') {
