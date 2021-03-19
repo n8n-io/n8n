@@ -329,8 +329,6 @@ export class Stripe implements INodeType {
 						Object.assign(body, adjustCustomerFields(additionalFields));
 					}
 
-					console.log(body);
-
 					responseData = await stripeApiRequest.call(this, 'POST', '/customers', body, {});
 
 				} else if (operation === 'delete') {
