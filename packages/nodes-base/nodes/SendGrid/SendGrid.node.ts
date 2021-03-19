@@ -1,4 +1,5 @@
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -317,12 +318,14 @@ export class SendGrid implements INodeType {
 						enableSandbox,
 						sendAt,
 						headers,
+						attachments,
 					} = this.getNodeParameter('additionalFields', i) as {
 						bccEmail: string;
 						ccEmail: string;
 						enableSandbox: boolean,
 						sendAt: string;
 						headers: { details: Array<{ key: string; value: string }> };
+						attachments: { details: Array<{ binaryProperties: string }> };
 					};
 
 					const body: SendMailBody = {
@@ -367,6 +370,28 @@ export class SendGrid implements INodeType {
 						}];
 					}
 
+					if (attachments?.details[0].binaryProperties) {
+						const attachmentsToSend = [];
+						const binaryProperties = attachments?.details[0].binaryProperties.split(',').map((p) => p.trim());
+
+						for (const property of binaryProperties) {
+							if (!items[i].binary?.hasOwnProperty(property)) {
+								continue;
+							}
+
+							const binaryProperty = items[i].binary![property];
+
+							attachmentsToSend.push({
+								content: Buffer.from(binaryProperty.data, BINARY_ENCODING).toString('base64'),
+								filename: binaryProperty.fileName || 'unknown',
+							});
+						}
+
+						if (attachmentsToSend.length) {
+							body.attachments = attachmentsToSend;
+						}
+					}
+
 					if (bccEmail) {
 						body.personalizations[0].bcc = bccEmail.split(',').map(i => ({ email: i.trim() }));
 					}
@@ -375,7 +400,7 @@ export class SendGrid implements INodeType {
 						body.personalizations[0].cc = ccEmail.split(',').map(i => ({ email: i.trim() }));
 					}
 
-					if (headers) {
+					if (headers?.details.length) {
 						const parsedHeaders: { [key: string]: string } = {};
 						headers.details.forEach(obj => parsedHeaders[obj['key']] = obj['value']);
 						body.headers = parsedHeaders;

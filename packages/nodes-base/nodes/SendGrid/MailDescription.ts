@@ -255,6 +255,32 @@ export const mailFields = [
 		},
 		options: [
 			{
+				displayName: 'Attachments',
+				name: 'attachments',
+				placeholder: 'Add Attachments',
+				default: '',
+				description: 'Attachments to send with the email.',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						displayName: 'Details',
+						name: 'details',
+						values: [
+							{
+								displayName: 'Binary Properties',
+								name: 'binaryProperties',
+								type: 'string',
+								default: '',
+								description: 'Comma-separated names of the binary properties containing the data to add to the email as attachments.',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'BCC Email',
 				name: 'bccEmail',
 				type: 'string',
@@ -334,6 +360,10 @@ export type SendMailBody = {
 		value: string,
 	}>,
 	headers?: { [key: string]: string },
+	attachments?: Array<{
+		content: string,
+		filename: string
+	}>,
 	mail_settings: {
 		sandbox_mode: {
 			enable: boolean,
@@ -345,4 +375,3 @@ type EmailName = {
 	email: string,
 	name?: string,
 };
-
