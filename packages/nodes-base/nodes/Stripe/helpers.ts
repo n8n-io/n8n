@@ -24,7 +24,13 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
+export async function stripeApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	body: object,
+	query?: object,
+) {
 	const credentials = this.getCredentials('stripeApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
