@@ -34,7 +34,6 @@ export async function sendGridApiRequest(this: IHookFunctions | IExecuteFunction
 	}
 
 	try {
-		console.log(JSON.stringify(options, null, 2));
 		//@ts-ignore
 		return await this.helpers.request!(options);
 	} catch (error) {
