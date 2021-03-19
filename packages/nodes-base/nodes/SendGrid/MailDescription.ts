@@ -276,6 +276,38 @@ export const mailFields = [
 				description: 'Whether to use to the sandbox for testing out email-sending functionality.',
 			},
 			{
+				displayName: 'Headers',
+				name: 'headers',
+				placeholder: 'Add Header',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Details',
+						name: 'details',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								type: 'string',
+								default: '',
+								description: 'Key to set in the header object.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value to set in the header object.',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Send At',
 				name: 'sendAt',
 				type: 'dateTime',
@@ -301,6 +333,7 @@ export type SendMailBody = {
 		type: string,
 		value: string,
 	}>,
+	headers?: { [key: string]: string },
 	mail_settings: {
 		sandbox_mode: {
 			enable: boolean,

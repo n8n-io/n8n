@@ -316,11 +316,13 @@ export class SendGrid implements INodeType {
 						ccEmail,
 						enableSandbox,
 						sendAt,
+						headers,
 					} = this.getNodeParameter('additionalFields', i) as {
 						bccEmail: string;
 						ccEmail: string;
 						enableSandbox: boolean,
 						sendAt: string;
+						headers: { details: Array<{ key: string; value: string }> };
 					};
 
 					const body: SendMailBody = {
@@ -373,9 +375,14 @@ export class SendGrid implements INodeType {
 						body.personalizations[0].cc = ccEmail.split(',').map(i => ({ email: i.trim() }));
 					}
 
-					const toUnixTimeStamp = (date: Date) => Math.floor(date.getTime() / 1000);
+					if (headers) {
+						const parsedHeaders: { [key: string]: string } = {};
+						headers.details.forEach(obj => parsedHeaders[obj['key']] = obj['value']);
+						body.headers = parsedHeaders;
+					}
 
 					if (sendAt) {
+						const toUnixTimeStamp = (date: Date) => Math.floor(date.getTime() / 1000);
 						body.personalizations[0].send_at = toUnixTimeStamp(new Date(sendAt));
 					}
 
