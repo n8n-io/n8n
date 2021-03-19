@@ -146,10 +146,19 @@ export const mailFields = [
 	{
 		displayName: 'MIME type',
 		name: 'contentType',
-		type: 'string',
-		default: '',
-		placeholder: 'text/plain',
+		type: 'options',
+		default: 'text/plain',
 		description: 'MIME type of the email to send.',
+		options: [
+			{
+				name: 'Plain Text',
+				value: 'text/plain',
+			},
+			{
+				name: 'HTML',
+				value: 'html',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: [
