@@ -120,30 +120,6 @@ export const mailFields = [
 		},
 	},
 	{
-		displayName: 'Message Body',
-		name: 'contentValue',
-		type: 'string',
-		default: '',
-		required: true,
-		description: 'Message body of the email to send.',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'mail',
-				],
-				operation: [
-					'send',
-				],
-				dynamicTemplate: [
-					false,
-				],
-			},
-		},
-	},
-	{
 		displayName: 'MIME type',
 		name: 'contentType',
 		type: 'options',
@@ -166,6 +142,33 @@ export const mailFields = [
 				],
 				operation: [
 					'send',
+				],
+				dynamicTemplate: [
+					false,
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Message Body',
+		name: 'contentValue',
+		type: 'string',
+		default: '',
+		required: true,
+		description: 'Message body of the email to send.',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'mail',
+				],
+				operation: [
+					'send',
+				],
+				dynamicTemplate: [
+					false,
 				],
 			},
 		},
@@ -257,28 +260,9 @@ export const mailFields = [
 			{
 				displayName: 'Attachments',
 				name: 'attachments',
-				placeholder: 'Add Attachments',
+				type: 'string',
 				default: '',
-				description: 'Attachments to send with the email.',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						displayName: 'Details',
-						name: 'details',
-						values: [
-							{
-								displayName: 'Binary Properties',
-								name: 'binaryProperties',
-								type: 'string',
-								default: '',
-								description: 'Comma-separated names of the binary properties containing the data to add to the email as attachments.',
-							},
-						],
-					},
-				],
+				description: 'Comma-separated list of binary properties',
 			},
 			{
 				displayName: 'BCC Email',
@@ -286,6 +270,13 @@ export const mailFields = [
 				type: 'string',
 				default: '',
 				description: 'Comma-separated list of emails of the recipients<br>of a blind carbon copy of the email.',
+			},
+			{
+				displayName: 'Categories',
+				name: 'categories',
+				type: 'string',
+				default: '',
+				description: 'Comma-separated list of categories. Each category name may not exceed 255 characters.',
 			},
 			{
 				displayName: 'CC Email',
@@ -300,6 +291,13 @@ export const mailFields = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether to use to the sandbox for testing out email-sending functionality.',
+			},
+			{
+				displayName: 'IP Pool Name',
+				name: 'ipPoolName',
+				type: 'string',
+				default: '',
+				description: 'The IP Pool that you would like to send this email from.',
 			},
 			{
 				displayName: 'Headers',
@@ -353,16 +351,19 @@ export type SendMailBody = {
 		dynamic_template_data?: { [key: string]: string },
 		send_at?: number,
 	}>,
+	ip_pool_name?: string;
 	from: EmailName,
 	template_id?: string,
 	content?: Array<{
 		type: string,
 		value: string,
 	}>,
+	categories?: string[],
 	headers?: { [key: string]: string },
 	attachments?: Array<{
 		content: string,
-		filename: string
+		filename: string,
+		type: string,
 	}>,
 	mail_settings: {
 		sandbox_mode: {
