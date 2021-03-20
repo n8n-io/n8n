@@ -1901,13 +1901,13 @@ export class Github implements INodeType {
 						qs.per_page = this.getNodeParameter('limit', 0) as number;
 					}
 
-				}	else if (operation === 'invite') {
+				} else if (operation === 'invite') {
 					// ----------------------------------
 					//            invite
 					// ----------------------------------
 
 					requestMethod = 'POST';
-					const org  = this.getNodeParameter('organization', i) as string;
+					const org = this.getNodeParameter('organization', i) as string;
 					endpoint = `/orgs/${org}/invitations`;
 					body.email = this.getNodeParameter('email', i) as string;
 
