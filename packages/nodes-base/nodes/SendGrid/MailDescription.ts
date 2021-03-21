@@ -21,7 +21,7 @@ export const mailOperations = [
 				description: 'Send an email.',
 			},
 		],
-		default: 'upsert',
+		default: 'send',
 		description: 'Operation to perform.',
 	},
 ] as INodeProperties[];
