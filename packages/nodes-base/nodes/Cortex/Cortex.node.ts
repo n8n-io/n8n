@@ -53,7 +53,7 @@ export class Cortex implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cortex',
 		name: 'cortex',
-		icon: 'file:cortex.png',
+		icon: 'file:cortex.svg',
 		group: ['transform'],
 		subtitle: '={{$parameter["resource"]+ ": " + $parameter["operation"]}}',
 		version: 1,
