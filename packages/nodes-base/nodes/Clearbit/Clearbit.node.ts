@@ -1,19 +1,23 @@
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+
 import {
 	clearbitApiRequest,
 } from './GenericFunctions';
+
 import {
 	companyFields,
 	companyOperations,
 } from './CompanyDescription';
+
 import {
 	personFields,
 	personOperations,
@@ -23,7 +27,7 @@ export class Clearbit implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Clearbit',
 		name: 'clearbit',
-		icon: 'file:clearbit.png',
+		icon: 'file:clearbit.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
