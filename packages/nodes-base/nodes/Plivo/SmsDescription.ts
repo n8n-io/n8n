@@ -16,74 +16,74 @@ export const smsOperations = [
 		},
 		options: [
 			{
-				name: 'Send SMS',
-				value: 'send sms',
-				description: 'Send SMS message',
+				name: 'Send',
+				value: 'send',
+				description: 'Send an SMS message.',
 			},
 		],
-		default: 'send sms',
-		description: 'The operation to perform.',
+		default: 'send',
+		description: 'Operation to perform.',
 	},
 ] as INodeProperties[];
 
 export const smsFields = [
-	/* -------------------------------------------------------------------------- */
-	/*                                 sms: Send SMS                          */
-	/* -------------------------------------------------------------------------- */
+	// ----------------------------------
+	//           sms: send
+	// ----------------------------------
 	{
 		displayName: 'From',
 		name: 'from',
 		type: 'string',
 		default: '',
+		description: 'Plivo Number to send the SMS from.',
 		placeholder: '+14156667777',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'send sms',
-				],
 				resource: [
 					'sms',
 				],
+				operation: [
+					'send',
+				],
 			},
 		},
-		description: 'The Plivo Number from which you wish to send the message',
 	},
 	{
 		displayName: 'To',
 		name: 'to',
 		type: 'string',
 		default: '',
+		description: 'Phone number to send the message to.',
 		placeholder: '+14156667778',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'send sms',
-				],
 				resource: [
 					'sms',
 				],
+				operation: [
+					'send',
+				],
 			},
 		},
-		description: 'The phone number to which you wish to send the message',
 	},
 	{
 		displayName: 'Message',
 		name: 'message',
 		type: 'string',
 		default: '',
+		description: 'Message to send.',
 		required: true,
 		displayOptions: {
 			show: {
 				operation: [
-					'send sms',
+					'send',
 				],
 				resource: [
 					'sms',
 				],
 			},
 		},
-		description: 'The message to send',
 	},
 ] as INodeProperties[];

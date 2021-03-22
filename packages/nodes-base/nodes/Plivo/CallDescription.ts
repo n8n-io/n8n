@@ -16,38 +16,38 @@ export const callOperations = [
 		},
 		options: [
 			{
-				name: 'Make a call',
-				value: 'make a call',
-				description: 'Voice call',
+				name: 'Make',
+				value: 'make',
+				description: 'Make a voice call',
 			},
 		],
-		default: 'make a call',
-		description: 'The operation to perform.',
+		default: 'make',
+		description: 'Operation to perform.',
 	},
 ] as INodeProperties[];
 
 export const callFields = [
-	/* -------------------------------------------------------------------------- */
-	/*                                 call: Make a call
-	/* -------------------------------------------------------------------------- */
+	// ----------------------------------
+	//           call: make
+	// ----------------------------------
 	{
 		displayName: 'From',
 		name: 'from',
 		type: 'string',
 		default: '',
 		placeholder: '+14156667777',
+		description: 'Caller ID for the call to make.',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'make a call',
-				],
 				resource: [
 					'call',
 				],
+				operation: [
+					'make',
+				],
 			},
 		},
-		description: 'The caller ID for the outbound call',
 	},
 	{
 		displayName: 'To',
@@ -56,62 +56,62 @@ export const callFields = [
 		default: '',
 		placeholder: '+14156667778',
 		required: true,
+		description: 'Phone number to make the call to.',
 		displayOptions: {
 			show: {
-				operation: [
-					'make a call',
-				],
 				resource: [
 					'call',
 				],
+				operation: [
+					'make',
+				],
 			},
 		},
-		description: 'The phone number to which you wish to make the call to',
+	},
+	{
+		displayName: 'Answer Method',
+		name: 'answer_method',
+		type: 'options',
+		required: true,
+		description: 'HTTP verb to be used when invoking the Answer URL.',
+		default: 'POST',
+		options: [
+			{
+				name: 'GET',
+				value: 'GET',
+			},
+			{
+				name: 'POST',
+				value: 'POST',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'call',
+				],
+				operation: [
+					'make',
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Answer URL',
 		name: 'answer_url',
 		type: 'string',
 		default: '',
+		description: 'URL to be invoked by Plivo once the call is answered.<br>It should return the XML to handle the call once answered.',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'make a call',
-				],
 				resource: [
 					'call',
 				],
-			},
-		},
-		description: 'The answer_url should return the XML to handle the call once its answered',
-    },
-    {
-		displayName: 'Answer Method',
-		name: 'answer_method',
-		type: 'options',
-		required: true,
-		options: [
-            {
-                name: 'GET',
-                value: 'GET',
-            },
-            {
-                name: 'POST',
-                value: 'POST',
-            },
-        ],
-        displayOptions: {
-			show: {
 				operation: [
-					'make a call',
-				],
-				resource: [
-					'call',
+					'make',
 				],
 			},
 		},
-        default: 'GET',
-		description: 'The answer_url_method, can be either GET or POST',
 	},
 ] as INodeProperties[];

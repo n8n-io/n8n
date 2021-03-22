@@ -1,6 +1,7 @@
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -26,7 +27,6 @@ import {
 import {
 	plivoApiRequest,
 } from './GenericFunctions';
-import { stringify } from 'lossless-json';
 
 export class Plivo implements INodeType {
 	description: INodeTypeDescription = {
@@ -81,78 +81,96 @@ export class Plivo implements INodeType {
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		let operation: string;
-		let resource: string;
-
-		// For Post
-		let body: IDataObject;
-		// For Query string
-		let queryString: IDataObject;
-
-		let requestMethod: string;
-		let endpoint: string;
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < items.length; i++) {
-			requestMethod = 'GET';
-			endpoint = '';
-			body = {};
-			queryString = {};
 
-			resource = this.getNodeParameter('resource', i) as string;
-			operation = this.getNodeParameter('operation', i) as string;
+			let responseData;
 
 			if (resource === 'sms') {
-				if (operation === 'send sms') {
-					requestMethod = 'POST';
-					endpoint = '/Message/';
 
-					body.src = this.getNodeParameter('from', i) as string;
-					body.dst = this.getNodeParameter('to', i) as string;
-                    body.text = this.getNodeParameter('message', i) as string;
+				// *********************************************************************
+				//                                sms
+				// *********************************************************************
 
-				} else {
-					throw new Error(`The operation "${operation}" is not known!`);
+				if (operation === 'send') {
+
+					// ----------------------------------
+					//          sms: send
+					// ----------------------------------
+
+					const body = {
+						src: this.getNodeParameter('from', i) as string,
+						dst: this.getNodeParameter('to', i) as string,
+						text: this.getNodeParameter('message', i) as string,
+					} as IDataObject;
+
+					responseData = await plivoApiRequest.call(this, 'POST', '/Message', body);
+
 				}
+
 			} else if (resource === 'call') {
-				if (operation === 'make a call') {
-					requestMethod = 'POST';
-					endpoint = '/Call/';
 
-					body.from = this.getNodeParameter('from', i) as string;
-					body.to = this.getNodeParameter('to', i) as string;
-					body.answer_url = this.getNodeParameter('answer_url', i) as string;
-					body.answer_method = this.getNodeParameter('answer_method', i) as string;
+				// *********************************************************************
+				//                                call
+				// *********************************************************************
 
-				} else {
-					throw new Error(`The operation "${operation}" is not known!`);
+				if (operation === 'make') {
+
+					// ----------------------------------
+					//            call: make
+					// ----------------------------------
+
+					// https://www.plivo.com/docs/voice/api/call#make-a-call
+
+					const body = {
+						from: this.getNodeParameter('from', i) as string,
+						to: this.getNodeParameter('to', i) as string,
+						answer_url: this.getNodeParameter('answer_url', i) as string,
+						answer_method: this.getNodeParameter('answer_method', i) as string,
+					} as IDataObject;
+
+					responseData = await plivoApiRequest.call(this, 'POST', '/Call', body);
+
 				}
+
 			} else if (resource === 'mms') {
+
+				// *********************************************************************
+				//                                mms
+				// *********************************************************************
+
 				if (operation === 'send mms') {
-					requestMethod = 'POST';
-					endpoint = '/Message/';
 
-					body.src = this.getNodeParameter('from', i) as string;
-					body.dst = this.getNodeParameter('to', i) as string;
-					body.text = this.getNodeParameter('message', i) as string;
-					body.type = 'mms';
-					body.media_urls = [this.getNodeParameter('media_urls', i) as string].toString();
-					console.log(body);
+					// ----------------------------------
+					//            mss: send
+					// ----------------------------------
 
-				} else {
-					throw new Error(`The operation "${operation}" is not known!`);
+					// https://www.plivo.com/docs/sms/api/message#send-a-message
+
+					const body = {
+						src: this.getNodeParameter('from', i) as string,
+						dst: this.getNodeParameter('to', i) as string,
+						text: this.getNodeParameter('message', i) as string,
+						type: 'mms',
+						media_urls: this.getNodeParameter('media_urls', i) as string,
+					} as IDataObject;
+
+					responseData = await plivoApiRequest.call(this, 'POST', '/Message', body);
+
 				}
-			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
+
 			}
 
-			const responseData = await plivoApiRequest.call(this, requestMethod, endpoint, body, queryString);
-			console.log(responseData);
-			returnData.push(responseData as IDataObject);
+			Array.isArray(responseData)
+			? returnData.push(...responseData)
+			: returnData.push(responseData);
+
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

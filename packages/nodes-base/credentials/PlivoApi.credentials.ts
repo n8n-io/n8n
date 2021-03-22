@@ -3,15 +3,11 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-
 export class PlivoApi implements ICredentialType {
 	name = 'plivoApi';
-	displayName = 'Plivo Api';
+	displayName = 'Plivo API';
 	documentationUrl = 'plivo';
 	properties = [
-		// The credentials to get from user and save encrypted.
-		// Properties can be defined exactly in the same way
-		// as node properties.
 		{
 			displayName: 'Auth ID',
 			name: 'authId',

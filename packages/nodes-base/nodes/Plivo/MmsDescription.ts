@@ -16,77 +16,77 @@ export const mmsOperations = [
 		},
 		options: [
 			{
-				name: 'Send MMS',
-				value: 'send mms',
-				description: 'Send MMS message',
+				name: 'Send',
+				value: 'send',
+				description: 'Send an MMS message',
 			},
 		],
-		default: 'send mms',
-		description: 'The operation to perform.',
+		default: 'send',
+		description: 'Operation to perform.',
 	},
 ] as INodeProperties[];
 
 export const mmsFields = [
-	/* -------------------------------------------------------------------------- */
-	/*                                 mms: Send MMS                          */
-	/* -------------------------------------------------------------------------- */
+	// ----------------------------------
+	//           mms: send
+	// ----------------------------------
 	{
 		displayName: 'From',
 		name: 'from',
 		type: 'string',
 		default: '',
+		description: 'Plivo Number to send the MMS from.',
 		placeholder: '+14156667777',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'send mms',
-				],
 				resource: [
 					'mms',
 				],
+				operation: [
+					'send',
+				],
 			},
 		},
-		description: 'The Plivo Number from which you wish to send the message',
 	},
 	{
 		displayName: 'To',
 		name: 'to',
 		type: 'string',
 		default: '',
+		description: 'Phone number to send the MMS to.',
 		placeholder: '+14156667778',
 		required: true,
 		displayOptions: {
 			show: {
 				operation: [
-					'send mms',
+					'send',
 				],
 				resource: [
 					'mms',
 				],
 			},
 		},
-		description: 'The phone number to which you wish to send the message',
 	},
 	{
 		displayName: 'Message',
 		name: 'message',
 		type: 'string',
 		default: '',
+		description: 'Message to send.',
 		required: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'send mms',
-				],
 				resource: [
 					'mms',
 				],
+				operation: [
+					'send',
+				],
 			},
 		},
-		description: 'The message to send',
-    },
-    {
+	},
+	{
 		displayName: 'Media URLs',
 		name: 'media_urls',
 		type: 'string',
@@ -94,14 +94,14 @@ export const mmsFields = [
 		required: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'send mms',
-				],
 				resource: [
 					'mms',
 				],
+				operation: [
+					'send',
+				],
 			},
 		},
-		description: 'The media URL(s) of the files from your file server',
+		description: 'Comma-separated list of media URLs of the files from your file server.',
 	},
 ] as INodeProperties[];
