@@ -1184,6 +1184,47 @@ export class Mattermost implements INodeType {
 				},
 				description: 'One or more (comma-separated) posts to retrieve reactions from.',
 			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'reaction',
+						],
+					},
+				},
+				default: true,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'reaction',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
 
 			// ----------------------------------
 			//              user
@@ -2144,12 +2185,11 @@ export class Mattermost implements INodeType {
 					// https://api.mattermost.com/#tag/reactions/paths/~1posts~1ids~1reactions/post
 
 					const postId = this.getNodeParameter('postId', i) as string;
-					// @ts-ignore
-					body = postId.includes(',') ? postId.split(',') : [postId];
 
-					requestMethod = 'POST';
-					endpoint = 'posts/ids/reactions';
+					requestMethod = 'GET';
+					endpoint = `posts/${postId}/reactions`;
 
+					qs.limit = this.getNodeParameter('limit', 0, 0) as number;
 				}
 
 			} else if (resource === 'user') {
@@ -2327,6 +2367,9 @@ export class Mattermost implements INodeType {
 				responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 			} else {
 				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+				if (qs.limit) {
+					responseData = responseData.slice(0, qs.limit);
+				}
 				if (resource === 'channel' && operation === 'members') {
 					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
 					if (resolveData) {
