@@ -442,7 +442,7 @@ export function getParamterResolveOrder(
 	let lastIndexLength = indexToResolve.length;
 	let lastIndexReduction = -1;
 
-	let itterations = 0;
+	let iterations = 0;
 
 	while (indexToResolve.length !== 0) {
 		itterations += 1;
