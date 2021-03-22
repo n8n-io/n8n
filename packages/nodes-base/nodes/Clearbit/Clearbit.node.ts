@@ -109,7 +109,7 @@ export class Clearbit implements INodeType {
 					if (additionalFields.facebook) {
 						qs.facebook = additionalFields.facebook as string;
 					}
-					responseData = await clearbitApiRequest.call(this, 'GET', resource, '/v2/people/find', {}, qs);
+					responseData = await clearbitApiRequest.call(this, 'GET', `${resource}-stream`, '/v2/people/find', {}, qs);
 				}
 			}
 			if (resource === 'company') {
@@ -129,7 +129,7 @@ export class Clearbit implements INodeType {
 					if (additionalFields.facebook) {
 						qs.facebook = additionalFields.facebook as string;
 					}
-					responseData = await clearbitApiRequest.call(this, 'GET', resource, '/v2/companies/find', {}, qs);
+					responseData = await clearbitApiRequest.call(this, 'GET', `${resource}-stream`, '/v2/companies/find', {}, qs);
 				}
 				if (operation === 'autocomplete') {
 					const name = this.getNodeParameter('name', i) as string;
