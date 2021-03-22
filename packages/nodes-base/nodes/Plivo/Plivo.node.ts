@@ -32,7 +32,7 @@ export class Plivo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Plivo',
 		name: 'plivo',
-		icon: 'file:plivo.png',
+		icon: 'file:plivo.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -67,7 +67,7 @@ export class Plivo implements INodeType {
 						name: 'Call',
 						value: 'call',
 					},
-				],	
+				],
 				default: 'sms',
 				required: true,
 				description: 'The resource to operate on.',
@@ -114,7 +114,7 @@ export class Plivo implements INodeType {
 					body.src = this.getNodeParameter('from', i) as string;
 					body.dst = this.getNodeParameter('to', i) as string;
                     body.text = this.getNodeParameter('message', i) as string;
-                    
+
 				} else {
 					throw new Error(`The operation "${operation}" is not known!`);
 				}
@@ -127,7 +127,7 @@ export class Plivo implements INodeType {
 					body.to = this.getNodeParameter('to', i) as string;
 					body.answer_url = this.getNodeParameter('answer_url', i) as string;
 					body.answer_method = this.getNodeParameter('answer_method', i) as string;
-                    
+
 				} else {
 					throw new Error(`The operation "${operation}" is not known!`);
 				}
@@ -142,7 +142,7 @@ export class Plivo implements INodeType {
 					body.type = 'mms';
 					body.media_urls = [this.getNodeParameter('media_urls', i) as string].toString();
 					console.log(body);
-                    
+
 				} else {
 					throw new Error(`The operation "${operation}" is not known!`);
 				}
