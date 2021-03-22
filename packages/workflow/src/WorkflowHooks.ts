@@ -1,10 +1,11 @@
+/** @format */
+
 import {
 	IWorkflowBase,
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
 	WorkflowExecuteMode,
 } from './Interfaces';
-
 
 export class WorkflowHooks {
 	mode: WorkflowExecuteMode;
@@ -14,8 +15,14 @@ export class WorkflowHooks {
 	retryOf?: string;
 	hookFunctions: IWorkflowExecuteHooks;
 
-	constructor(hookFunctions: IWorkflowExecuteHooks, mode: WorkflowExecuteMode, executionId: string, workflowData: IWorkflowBase, optionalParameters?: IWorkflowHooksOptionalParameters) {
-		optionalParameters = optionalParameters || {};
+	constructor(
+		hookFunctions: IWorkflowExecuteHooks,
+		mode: WorkflowExecuteMode,
+		executionId: string,
+		workflowData: IWorkflowBase,
+		optionalParameters?: IWorkflowHooksOptionalParameters,
+	) {
+		optionalParameters = optionalParameters ?? {};
 
 		this.hookFunctions = hookFunctions;
 		this.mode = mode;
@@ -25,12 +32,12 @@ export class WorkflowHooks {
 		this.retryOf = optionalParameters.retryOf;
 	}
 
-	async executeHookFunctions(hookName: string, parameters: any[]) { // tslint:disable-line:no-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	async executeHookFunctions(hookName: string, parameters: any[]): Promise<void> {
 		if (this.hookFunctions[hookName] !== undefined && Array.isArray(this.hookFunctions[hookName])) {
 			for (const hookFunction of this.hookFunctions[hookName]!) {
 				await hookFunction.apply(this, parameters);
 			}
 		}
 	}
-
 }

@@ -17,8 +17,8 @@
     "scripts": {
         "dev": "npm run watch",
         "build": "tsc",
-        "tslint": "tslint -p tsconfig.json -c tslint.json",
-        "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json",
+        "eslint": "eslint '*/**/*.{js,ts}' -c .eslintrc.js",
+        "eslintfix": "eslint '*/**/*.{js,ts}' -c .eslintrc.js --fix",
         "watch": "tsc --watch",
         "test": "jest"
     },
@@ -30,9 +30,16 @@
         "@types/jest": "^26.0.13",
         "@types/lodash.get": "^4.4.6",
         "@types/node": "14.0.27",
+        "@typescript-eslint/eslint-plugin": "^4.16.1",
+        "@typescript-eslint/eslint-plugin-tslint": "^4.16.1",
+        "@typescript-eslint/parser": "^4.16.1",
+        "eslint": "^7.21.0",
+        "eslint-config-prettier": "^8.1.0",
+        "eslint-plugin-import": "^2.22.1",
+        "eslint-plugin-jsdoc": "^32.2.0",
+        "eslint-plugin-prettier": "^3.3.1",
         "jest": "^26.4.2",
         "ts-jest": "^26.3.0",
-        "tslint": "^6.1.2",
         "typescript": "~3.9.7"
     },
     "dependencies": {

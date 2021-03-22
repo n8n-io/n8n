@@ -1,15 +1,12 @@
-import {
-	INodeType,
-	INodeTypeData,
-	INodeTypes,
-} from '../src';
+/** @format */
+
+import { INodeType, INodeTypeData, INodeTypes } from '../src';
 
 export interface INodeTypesObject {
 	[key: string]: INodeType;
 }
 
 class NodeTypesClass implements INodeTypes {
-
 	nodeTypes: INodeTypeData = {
 		'test.set': {
 			sourcePath: '',
@@ -96,7 +93,8 @@ class NodeTypesClass implements INodeTypes {
 		},
 	};
 
-	async init(nodeTypes: INodeTypeData): Promise<void> { }
+	// eslint-disable-next-line
+	async init(nodeTypes: INodeTypeData): Promise<void> {}
 
 	getAll(): INodeType[] {
 		return Object.values(this.nodeTypes).map((data) => data.type);
@@ -109,6 +107,7 @@ class NodeTypesClass implements INodeTypes {
 
 let nodeTypesInstance: NodeTypesClass | undefined;
 
+// eslint-disable-next-line
 export function NodeTypes(): NodeTypesClass {
 	if (nodeTypesInstance === undefined) {
 		nodeTypesInstance = new NodeTypesClass();

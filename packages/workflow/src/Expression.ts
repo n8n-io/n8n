@@ -1,4 +1,7 @@
+/** @format */
 
+//@ts-ignore
+import * as tmpl from 'riot-tmpl';
 import {
 	INode,
 	INodeExecutionData,
@@ -10,25 +13,20 @@ import {
 	WorkflowExecuteMode,
 } from './';
 
-// @ts-ignore
-import * as tmpl from 'riot-tmpl';
-
 // Set it to use double curly brackets instead of single ones
 tmpl.brackets.set('{{ }}');
 
 // Make sure that it does not always print an error when it could not resolve
 // a variable
-tmpl.tmpl.errorHandler = () => { };
-
+// eslint-disable-next-line
+tmpl.tmpl.errorHandler = () => {};
 
 export class Expression {
-
 	workflow: Workflow;
 
 	constructor(workflow: Workflow) {
 		this.workflow = workflow;
 	}
-
 
 	/**
 	 * Converts an object to a string in a way to make it clear that
@@ -42,8 +40,6 @@ export class Expression {
 		const typeName = Array.isArray(value) ? 'Array' : 'Object';
 		return `[${typeName}: ${JSON.stringify(value)}]`;
 	}
-
-
 
 	/**
 	 * Resolves the paramter value.  If it is an expression it will execute it and
@@ -59,7 +55,17 @@ export class Expression {
 	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])}
 	 * @memberof Workflow
 	 */
-	resolveSimpleParameterValue(parameterValue: NodeParameterValue, runExecutionData: IRunExecutionData | null, runIndex: number, itemIndex: number, activeNodeName: string, connectionInputData: INodeExecutionData[], mode: WorkflowExecuteMode, returnObjectAsString = false, selfData = {}): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+	resolveSimpleParameterValue(
+		parameterValue: NodeParameterValue,
+		runExecutionData: IRunExecutionData | null,
+		runIndex: number,
+		itemIndex: number,
+		activeNodeName: string,
+		connectionInputData: INodeExecutionData[],
+		mode: WorkflowExecuteMode,
+		returnObjectAsString = false,
+		selfData = {},
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		// Check if it is an expression
 		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
 			// Is no expression so return value
@@ -72,7 +78,17 @@ export class Expression {
 		parameterValue = parameterValue.substr(1);
 
 		// Generate a data proxy which allows to query workflow data
-		const dataProxy = new WorkflowDataProxy(this.workflow, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, mode, -1, selfData);
+		const dataProxy = new WorkflowDataProxy(
+			this.workflow,
+			runExecutionData,
+			runIndex,
+			itemIndex,
+			activeNodeName,
+			connectionInputData,
+			mode,
+			-1,
+			selfData,
+		);
 		const data = dataProxy.getDataProxy();
 
 		// Execute the expression
@@ -81,7 +97,7 @@ export class Expression {
 			if (typeof returnValue === 'function') {
 				throw new Error('Expression resolved to a function. Please add "()"');
 			} else if (returnValue !== null && typeof returnValue === 'object') {
-				if (returnObjectAsString === true) {
+				if (returnObjectAsString) {
 					return this.convertObjectValueToString(returnValue);
 				}
 			}
@@ -90,8 +106,6 @@ export class Expression {
 			throw new Error(`Expression is not valid: ${e.message}`);
 		}
 	}
-
-
 
 	/**
 	 * Resolves value of parameter. But does not work for workflow-data.
@@ -102,7 +116,12 @@ export class Expression {
 	 * @returns {(string | undefined)}
 	 * @memberof Workflow
 	 */
-	getSimpleParameterValue(node: INode, parameterValue: string | boolean | undefined, mode: WorkflowExecuteMode, defaultValue?: boolean | number | string): boolean | number | string | undefined {
+	getSimpleParameterValue(
+		node: INode,
+		parameterValue: string | boolean | undefined,
+		mode: WorkflowExecuteMode,
+		defaultValue?: boolean | number | string,
+	): boolean | number | string | undefined {
 		if (parameterValue === undefined) {
 			// Value is not set so return the default
 			return defaultValue;
@@ -118,10 +137,16 @@ export class Expression {
 			},
 		};
 
-		return this.getParameterValue(parameterValue, runData, runIndex, itemIndex, node.name, connectionInputData, mode) as boolean | number | string | undefined;
+		return this.getParameterValue(
+			parameterValue,
+			runData,
+			runIndex,
+			itemIndex,
+			node.name,
+			connectionInputData,
+			mode,
+		) as boolean | number | string | undefined;
 	}
-
-
 
 	/**
 	 * Resolves value of complex parameter. But does not work for workflow-data.
@@ -132,7 +157,20 @@ export class Expression {
 	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined)}
 	 * @memberof Workflow
 	 */
-	getComplexParameterValue(node: INode, parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[], mode: WorkflowExecuteMode, defaultValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined = undefined, selfData = {}): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined {
+	getComplexParameterValue(
+		node: INode,
+		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		mode: WorkflowExecuteMode,
+		/* eslint-disable @typescript-eslint/indent */
+		defaultValue:
+			| NodeParameterValue
+			| INodeParameters
+			| NodeParameterValue[]
+			| INodeParameters[]
+			| undefined = undefined,
+		/* eslint-enable @typescript-eslint/indent */
+		selfData = {},
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined {
 		if (parameterValue === undefined) {
 			// Value is not set so return the default
 			return defaultValue;
@@ -149,13 +187,31 @@ export class Expression {
 		};
 
 		// Resolve the "outer" main values
-		const returnData = this.getParameterValue(parameterValue, runData, runIndex, itemIndex, node.name, connectionInputData, mode, false, selfData);
+		const returnData = this.getParameterValue(
+			parameterValue,
+			runData,
+			runIndex,
+			itemIndex,
+			node.name,
+			connectionInputData,
+			mode,
+			false,
+			selfData,
+		);
 
 		// Resolve the "inner" values
-		return this.getParameterValue(returnData, runData, runIndex, itemIndex, node.name, connectionInputData, mode, false, selfData);
+		return this.getParameterValue(
+			returnData,
+			runData,
+			runIndex,
+			itemIndex,
+			node.name,
+			connectionInputData,
+			mode,
+			false,
+			selfData,
+		);
 	}
-
-
 
 	/**
 	 * Returns the resolved node parameter value. If it is an expression it will execute it and
@@ -172,24 +228,66 @@ export class Expression {
 	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])}
 	 * @memberof Workflow
 	 */
-	getParameterValue(parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[], runExecutionData: IRunExecutionData | null, runIndex: number, itemIndex: number, activeNodeName: string, connectionInputData: INodeExecutionData[], mode: WorkflowExecuteMode, returnObjectAsString = false, selfData = {}): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+	getParameterValue(
+		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		runExecutionData: IRunExecutionData | null,
+		runIndex: number,
+		itemIndex: number,
+		activeNodeName: string,
+		connectionInputData: INodeExecutionData[],
+		mode: WorkflowExecuteMode,
+		returnObjectAsString = false,
+		selfData = {},
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		// Helper function which returns true when the parameter is a complex one or array
-		const isComplexParameter = (value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[]) => {
-			return typeof value === 'object';
-		};
+		const isComplexParameter = (
+			value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		) => typeof value === 'object';
 
 		// Helper function which resolves a parameter value depending on if it is simply or not
-		const resolveParameterValue = (value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[]) => {
+		const resolveParameterValue = (
+			value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		) => {
 			if (isComplexParameter(value)) {
-				return this.getParameterValue(value, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, mode, returnObjectAsString, selfData);
+				return this.getParameterValue(
+					value,
+					runExecutionData,
+					runIndex,
+					itemIndex,
+					activeNodeName,
+					connectionInputData,
+					mode,
+					returnObjectAsString,
+					selfData,
+				);
 			} else {
-				return this.resolveSimpleParameterValue(value as NodeParameterValue, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, mode, returnObjectAsString, selfData);
+				return this.resolveSimpleParameterValue(
+					value as NodeParameterValue,
+					runExecutionData,
+					runIndex,
+					itemIndex,
+					activeNodeName,
+					connectionInputData,
+					mode,
+					returnObjectAsString,
+					selfData,
+				);
 			}
 		};
 
 		// Check if it value is a simple one that we can get it resolved directly
 		if (!isComplexParameter(parameterValue)) {
-			return this.resolveSimpleParameterValue(parameterValue as NodeParameterValue, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, mode, returnObjectAsString, selfData);
+			return this.resolveSimpleParameterValue(
+				parameterValue as NodeParameterValue,
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				activeNodeName,
+				connectionInputData,
+				mode,
+				returnObjectAsString,
+				selfData,
+			);
 		}
 
 		// The parameter value is complex so resolve depending on type
@@ -201,7 +299,7 @@ export class Expression {
 				returnData.push(resolveParameterValue(item));
 			}
 
-			if (returnObjectAsString === true && typeof returnData === 'object') {
+			if (returnObjectAsString && typeof returnData === 'object') {
 				return this.convertObjectValueToString(returnData);
 			}
 
@@ -215,7 +313,7 @@ export class Expression {
 				returnData[key] = resolveParameterValue((parameterValue as INodeParameters)[key]);
 			}
 
-			if (returnObjectAsString === true && typeof returnData === 'object') {
+			if (returnObjectAsString && typeof returnData === 'object') {
 				return this.convertObjectValueToString(returnData);
 			}
 			return returnData;

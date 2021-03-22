@@ -1,3 +1,5 @@
+/** @format */
+
 export * from './Interfaces';
 export * from './Expression';
 export * from './Workflow';
@@ -6,7 +8,4 @@ export * from './WorkflowHooks';
 
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
-export {
-	NodeHelpers,
-	ObservableObject,
-};
+export { NodeHelpers, ObservableObject };
