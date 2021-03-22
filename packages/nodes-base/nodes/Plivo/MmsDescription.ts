@@ -18,7 +18,7 @@ export const mmsOperations = [
 			{
 				name: 'Send',
 				value: 'send',
-				description: 'Send an MMS message',
+				description: 'Send an MMS message (US/Canada only)',
 			},
 		],
 		default: 'send',
