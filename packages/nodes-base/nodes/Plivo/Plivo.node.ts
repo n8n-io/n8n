@@ -145,7 +145,7 @@ export class Plivo implements INodeType {
 				//                                mms
 				// *********************************************************************
 
-				if (operation === 'send mms') {
+				if (operation === 'send') {
 
 					// ----------------------------------
 					//            mss: send
