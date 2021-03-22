@@ -48,9 +48,8 @@ export async function plivoApiRequest(
 		if (error.statusCode === 401) {
 			throw new Error('Invalid Plivo credentials');
 		}
-
-		if (error?.response?.body?.message) {
-			let errorMessage = `Plivo error response [${error.statusCode}]: ${error.response.body.message}`;
+		if (error?.response?.body?.error) {
+			let errorMessage = `Plivo error response [${error.statusCode}]: ${error.response.body.error}`;
 			if (error.response.body.more_info) {
 				errorMessage = `errorMessage (${error.response.body.more_info})`;
 			}

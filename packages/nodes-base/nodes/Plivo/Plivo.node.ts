@@ -168,8 +168,8 @@ export class Plivo implements INodeType {
 			}
 
 			Array.isArray(responseData)
-			? returnData.push(...responseData)
-			: returnData.push(responseData);
+				? returnData.push(...responseData)
+				: returnData.push(responseData);
 
 		}
 
