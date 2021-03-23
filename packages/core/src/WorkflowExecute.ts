@@ -560,7 +560,7 @@ export class WorkflowExecute {
 					executionData = this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
 					executionNode = executionData.node;
 
-					this.executeHook('nodeExecuteBefore', [executionNode.name]);
+					await this.executeHook('nodeExecuteBefore', [executionNode.name]);
 
 					// Get the index of the current run
 					runIndex = 0;
@@ -727,7 +727,7 @@ export class WorkflowExecute {
 							// Add the execution data again so that it can get restarted
 							this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
 
-							this.executeHook('nodeExecuteAfter', [executionNode.name, taskData, this.runExecutionData]);
+							await this.executeHook('nodeExecuteAfter', [executionNode.name, taskData, this.runExecutionData]);
 
 							break;
 						}

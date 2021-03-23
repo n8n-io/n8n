@@ -741,7 +741,7 @@ export class Slack implements INodeType {
 						}
 
 					} else {
-						const attachmentsJson = this.getNodeParameter('attachmentsJson', i, []) as string;
+						const attachmentsJson = this.getNodeParameter('attachmentsJson', i, '') as string;
 						const blocksJson = this.getNodeParameter('blocksJson', i, []) as string;
 						if (attachmentsJson !== '' && validateJSON(attachmentsJson) === undefined) {
 							throw new Error('Attachments it is not a valid json');

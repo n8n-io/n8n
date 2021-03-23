@@ -38,7 +38,7 @@ import {
 
 import {
 	snakeCase,
- } from 'change-case';
+} from 'change-case';
 
 interface IGraphqlBody {
 	query: string;
@@ -322,7 +322,7 @@ export class MondayCom implements INodeType {
 					if (returnAll === true) {
 						responseData = await mondayComApiRequestAllItems.call(this, 'data.boards', body);
 					} else {
-						body.variables.limit =  this.getNodeParameter('limit', i) as number;
+						body.variables.limit = this.getNodeParameter('limit', i) as number;
 						responseData = await mondayComApiRequest.call(this, body);
 						responseData = responseData.data.boards;
 					}
@@ -694,6 +694,26 @@ export class MondayCom implements INodeType {
 						responseData = await mondayComApiRequest.call(this, body);
 						responseData = responseData.data.items_by_column_values;
 					}
+				}
+				if (operation === 'move') {
+					const groupId = this.getNodeParameter('groupId', i) as string;
+					const itemId = parseInt(this.getNodeParameter('itemId', i) as string, 10);
+
+					const body: IGraphqlBody = {
+						query:
+							`mutation ($groupId: String!, $itemId: Int!) {
+								move_item_to_group (group_id: $groupId, item_id: $itemId) {
+									id
+								}
+							}`,
+						variables: {
+							groupId,
+							itemId,
+						},
+					};
+
+					responseData = await mondayComApiRequest.call(this, body);
+					responseData = responseData.data.move_item_to_group;
 				}
 			}
 			if (Array.isArray(responseData)) {
