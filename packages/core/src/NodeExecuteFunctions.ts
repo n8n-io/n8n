@@ -34,6 +34,7 @@ import {
 	NodeHelpers,
 	NodeParameterValue,
 	Workflow,
+	WorkflowActivateMode,
 	WorkflowDataProxy,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -535,7 +536,7 @@ export function getWorkflowMetadata(workflow: Workflow): IWorkflowMetadata {
  * @returns {ITriggerFunctions}
  */
 // TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
-export function getExecutePollFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IPollFunctions {
+export function getExecutePollFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): IPollFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		return {
 			__emit: (data: INodeExecutionData[][]): void => {
@@ -546,6 +547,9 @@ export function getExecutePollFunctions(workflow: Workflow, node: INode, additio
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
+			},
+			getActivationMode: (): WorkflowActivateMode => {
+				return activation;
 			},
 			getNode: () => {
 				return getNode(node);
@@ -598,7 +602,7 @@ export function getExecutePollFunctions(workflow: Workflow, node: INode, additio
  * @returns {ITriggerFunctions}
  */
 // TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
-export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): ITriggerFunctions {
+export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): ITriggerFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		return {
 			emit: (data: INodeExecutionData[][]): void => {
@@ -612,6 +616,9 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
+			},
+			getActivationMode: (): WorkflowActivateMode => {
+				return activation;
 			},
 			getNodeParameter: (parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object => { //tslint:disable-line:no-any
 				const runExecutionData: IRunExecutionData | null = null;
@@ -910,7 +917,7 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, additio
  * @param {WorkflowExecuteMode} mode
  * @returns {IHookFunctions}
  */
-export function getExecuteHookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions {
+export function getExecuteHookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		const that = {
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
@@ -918,6 +925,9 @@ export function getExecuteHookFunctions(workflow: Workflow, node: INode, additio
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
+			},
+			getActivationMode: (): WorkflowActivateMode => {
+				return activation;
 			},
 			getNode: () => {
 				return getNode(node);
