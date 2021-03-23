@@ -624,7 +624,7 @@ class App {
 				try {
 					await this.externalHooks.run('workflow.activate', [responseData]);
 
-					await this.activeWorkflowRunner.add(id);
+					await this.activeWorkflowRunner.add(id, isActive ? 'update' : 'activate');
 				} catch (error) {
 					// If workflow could not be activated set it again to inactive
 					newWorkflowData.active = false;
@@ -670,6 +670,7 @@ class App {
 			const startNodes: string[] | undefined = req.body.startNodes;
 			const destinationNode: string | undefined = req.body.destinationNode;
 			const executionMode = 'manual';
+			const activationMode = 'manual';
 
 			const sessionId = GenericHelpers.getSessionId(req);
 
@@ -679,7 +680,7 @@ class App {
 				const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
 				const nodeTypes = NodeTypes();
 				const workflowInstance = new Workflow({ id: workflowData.id, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: false, nodeTypes, staticData: undefined, settings: workflowData.settings });
-				const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, sessionId, destinationNode);
+				const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, activationMode, sessionId, destinationNode);
 				if (needsWebhook === true) {
 					return {
 						waitingForWebhook: true,
