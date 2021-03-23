@@ -13,6 +13,7 @@ import {
 import {
 	IDataObject,
 	IOAuth2Options,
+	NodeApiError,
  } from 'n8n-workflow';
 
 export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -34,11 +35,7 @@ export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions
 
 			const credentials = this.getCredentials('clickUpApi');
 
-			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
-			}
-
-			options.headers!['Authorization'] = credentials.accessToken;
+			options.headers!['Authorization'] = credentials?.accessToken;
 			return await this.helpers.request!(options);
 
 		} else {
@@ -52,11 +49,7 @@ export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions
 		}
 
 	} catch(error) {
-		let errorMessage = error;
-		if (error.err) {
-			errorMessage = error.err;
-		}
-		throw new Error('ClickUp Error: ' + errorMessage);
+		throw new NodeApiError(this.getNode(), error);
 	}
 
 }

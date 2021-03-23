@@ -32,7 +32,7 @@ const ERROR_MESSAGE_PROPERTIES = [
 /**
  * Top-level properties where an HTTP error code can be found in an API response.
  */
-const ERROR_CODE_PROPERTIES = ['statusCode', 'status', 'code', 'status_code', 'errorCode', 'error_code'];
+const ERROR_STATUS_PROPERTIES = ['statusCode', 'status', 'code', 'status_code', 'errorCode', 'error_code'];
 
 /**
  * Properties where a nested object can be found in an API response.
@@ -188,7 +188,7 @@ export class NodeApiError extends NodeError {
 			return;
 		}
 
-		this.httpCode = this.findProperty(error, ERROR_CODE_PROPERTIES, ERROR_NESTING_PROPERTIES);
+		this.httpCode = this.findProperty(error, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES);
 		this.setMessage();
 
 		this.description = this.findProperty(error, ERROR_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES);

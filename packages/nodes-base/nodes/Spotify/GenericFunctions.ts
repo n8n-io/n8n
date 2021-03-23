@@ -30,26 +30,18 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 			'Content-Type': 'text/plain',
 			'Accept': ' application/json',
 		},
-		body,
 		qs: query,
 		uri: uri || `https://api.spotify.com/v1${endpoint}`,
 		json: true,
 	};
 
+	if (Object.keys(body).length > 0) {
+		options.body = body;
+	};
+
 	try {
-		const credentials = this.getCredentials('spotifyOAuth2Api');
-
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
-
-		if (Object.keys(body).length === 0) {
-			delete options.body;
-		}
-
 		return await this.helpers.requestOAuth2.call(this, 'spotifyOAuth2Api', options);
 	} catch (error) {
-
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
