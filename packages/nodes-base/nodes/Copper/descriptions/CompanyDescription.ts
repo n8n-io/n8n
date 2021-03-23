@@ -1,8 +1,15 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
-import { isoCountryCodes } from './IsoCountryCodes';
-import { addressFixedCollection, phoneNumbersFixedCollection } from './sharedFields';
+
+import {
+	isoCountryCodes,
+} from './IsoCountryCodes';
+
+import {
+	addressFixedCollection,
+	phoneNumbersFixedCollection,
+} from './sharedFields';
 
 export const companyOperations = [
 	{
@@ -18,27 +25,11 @@ export const companyOperations = [
 		},
 		options: [
 			{
-				name: 'Create',
-				value: 'create',
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-			},
-			{
-				name: 'Get',
-				value: 'get',
-			},
-			{
 				name: 'Get All',
 				value: 'getAll',
 			},
-			{
-				name: 'Update',
-				value: 'update',
-			},
 		],
-		default: 'create',
+		default: 'getAll',
 		description: 'Operation to perform',
 	},
 ] as INodeProperties[];

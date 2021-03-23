@@ -20,6 +20,7 @@ import {
 import {
 	companyFields,
 	companyOperations,
+	customerSourcesOperations,
 	leadFields,
 	leadOperations,
 	opportunityFields,
@@ -30,6 +31,7 @@ import {
 	projectOperations,
 	taskFields,
 	taskOperations,
+	userOperations,
 } from './descriptions';
 
 export class Copper implements INodeType {
@@ -64,6 +66,10 @@ export class Copper implements INodeType {
 						value: 'company',
 					},
 					{
+						name: 'Customer Sources',
+						value: 'customerSources',
+					},
+					{
 						name: 'Lead',
 						value: 'lead',
 					},
@@ -83,12 +89,17 @@ export class Copper implements INodeType {
 						name: 'Task',
 						value: 'task',
 					},
+					{
+						name: 'User',
+						value: 'user',
+					},
 				],
 				default: 'company',
 				description: 'Resource to consume',
 			},
 			...companyOperations,
 			...companyFields,
+			...customerSourcesOperations,
 			...leadOperations,
 			...leadFields,
 			...opportunityOperations,
@@ -99,6 +110,7 @@ export class Copper implements INodeType {
 			...projectFields,
 			...taskOperations,
 			...taskFields,
+			...userOperations,
 		],
 	};
 
@@ -198,6 +210,22 @@ export class Copper implements INodeType {
 					}
 
 					responseData = await copperApiRequest.call(this, 'PUT', `/companies/${companyId}`, body);
+
+				}
+
+			} else if (resource === 'customerSources') {
+
+			// **********************************************************************
+			//                            customerSources
+			// **********************************************************************
+
+				if (operation === 'getAll') {
+
+					// ----------------------------------------
+					//        customerSources: getAll
+					// ----------------------------------------
+
+					responseData = await copperApiRequest.call(this, 'GET', '/customer_sources');
 
 				}
 
@@ -630,6 +658,21 @@ export class Copper implements INodeType {
 					}
 
 					responseData = await copperApiRequest.call(this, 'PUT', `/tasks/${taskId}`, body);
+				}
+
+			} else if (resource === 'user') {
+
+				// **********************************************************************
+				//                            user
+				// **********************************************************************
+
+				if (operation === 'getAll') {
+
+					// ----------------------------------------
+					//              user: getAll
+					// ----------------------------------------
+
+					responseData = await copperApiRequest.call(this, 'POST', '/users/search');
 
 				}
 
