@@ -101,7 +101,7 @@ export const personFields = [
 			},
 			emailsFixedCollection,
 			phoneNumbersFixedCollection,
-		]
+		],
 	},
 
 	// ----------------------------------------
@@ -174,7 +174,7 @@ export const personFields = [
 				default: '',
 				description: 'Name of the person to filter by.',
 			},
-		]
+		],
 	},
 
 	// ----------------------------------------
@@ -243,6 +243,6 @@ export const personFields = [
 				description: 'Name to set for the person.',
 			},
 			phoneNumbersFixedCollection,
-		]
+		],
 	},
 ] as INodeProperties[];

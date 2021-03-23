@@ -87,7 +87,7 @@ export const companyFields = [
 				default: '',
 			},
 			phoneNumbersFixedCollection,
-		]
+		],
 	},
 
 	// ----------------------------------------
@@ -168,7 +168,7 @@ export const companyFields = [
 				default: '',
 				description: 'Name of the company to filter by.',
 			},
-		]
+		],
 	},
 
 	// ----------------------------------------
@@ -224,6 +224,6 @@ export const companyFields = [
 				description: 'Name to set for the company.',
 			},
 			phoneNumbersFixedCollection,
-		]
+		],
 	},
 ] as INodeProperties[];

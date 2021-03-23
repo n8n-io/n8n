@@ -107,9 +107,9 @@ export const projectFields = [
 						name: 'Open',
 						value: 'Open',
 					},
-				]
+				],
 			},
-		]
+		],
 	},
 
 	// ----------------------------------------
@@ -182,7 +182,7 @@ export const projectFields = [
 				default: '',
 				description: 'Name of the project to filter by.',
 			},
-		]
+		],
 	},
 
 	// ----------------------------------------
@@ -257,8 +257,8 @@ export const projectFields = [
 						name: 'Open',
 						value: 'Open',
 					},
-				]
+				],
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

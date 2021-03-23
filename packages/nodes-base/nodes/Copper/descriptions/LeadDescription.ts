@@ -88,7 +88,7 @@ export const leadFields = [
 			addressFixedCollection,
 			emailFixedCollection,
 			phoneNumbersFixedCollection,
-		]
+		],
 	},
 
 	// ----------------------------------------
@@ -168,7 +168,7 @@ export const leadFields = [
 				default: '',
 				description: 'Name of the lead to filter by.',
 			},
-		]
+		],
 	},
 
 	// ----------------------------------------
@@ -230,6 +230,6 @@ export const leadFields = [
 				description: 'Name to set for the lead.',
 			},
 			phoneNumbersFixedCollection,
-		]
+		],
 	},
 ] as INodeProperties[];

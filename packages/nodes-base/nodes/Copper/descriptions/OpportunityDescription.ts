@@ -175,7 +175,7 @@ export const opportunityFields = [
 				default: '',
 				description: 'Comma-separated IDs of the customer sources to filter by.',
 			},
-		]
+		],
 	},
 
 	// ----------------------------------------
@@ -236,6 +236,6 @@ export const opportunityFields = [
 				default: '',
 				description: 'ID of the customer source that generated this opportunity.',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

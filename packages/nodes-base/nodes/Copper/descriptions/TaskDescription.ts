@@ -106,7 +106,7 @@ export const taskFields = [
 						name: 'None',
 						value: 'None',
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Status',
@@ -122,9 +122,9 @@ export const taskFields = [
 						name: 'Open',
 						value: 'Open',
 					},
-				]
+				],
 			},
-		]
+		],
 	},
 
 	// ----------------------------------------
@@ -204,7 +204,7 @@ export const taskFields = [
 				default: '',
 				description: 'Comma-separated IDs of project IDs to filter by.',
 			},
-		]
+		],
 	},
 
 	// ----------------------------------------
@@ -279,7 +279,7 @@ export const taskFields = [
 						name: 'None',
 						value: 'None',
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Status',
@@ -295,8 +295,8 @@ export const taskFields = [
 						name: 'Open',
 						value: 'Open',
 					},
-				]
+				],
 			},
-		]
+		],
 	},
 ] as INodeProperties[];
