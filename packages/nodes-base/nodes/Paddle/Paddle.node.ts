@@ -139,7 +139,7 @@ export class Paddle implements INodeType {
 
 				// Alert user if there's no payments present to be loaded into payments property
 				if (paymentResponse.response === undefined || paymentResponse.response.length === 0) {
-					throw Error('No payments on account.');
+					throw new Error('No payments on account.');
 				}
 
 				for (const payment of paymentResponse.response) {
@@ -164,7 +164,7 @@ export class Paddle implements INodeType {
 
 				// Alert user if there's no products present to be loaded into payments property
 				if (products.length === 0) {
-					throw Error('No products on account.');
+					throw new Error('No products on account.');
 				}
 
 				for (const product of products) {

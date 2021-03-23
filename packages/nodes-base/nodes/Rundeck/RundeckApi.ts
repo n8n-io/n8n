@@ -48,7 +48,7 @@ export class RundeckApi {
 				errorMessage = error.response.body.message.replace('\n', '');
 			}
 
-			throw Error(`Rundeck Error [${error.statusCode}]: ${errorMessage}`);
+			throw new Error(`Rundeck Error [${error.statusCode}]: ${errorMessage}`);
 		}
 	}
 

@@ -1711,7 +1711,7 @@ export class Asana implements INodeType {
 				// to retrieve the teams from an organization just work with workspaces that are an organization
 
 				if (workspace.is_organization === false) {
-					throw Error('To filter by team, the workspace selected has to be an organization');
+					throw new Error('To filter by team, the workspace selected has to be an organization');
 				}
 
 				const endpoint = `/organizations/${workspaceId}/teams`;
