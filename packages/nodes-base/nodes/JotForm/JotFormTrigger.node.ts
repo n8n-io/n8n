@@ -167,7 +167,7 @@ export class JotFormTrigger implements INodeType {
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
 		const onlyAnswers = this.getNodeParameter('onlyAnswers', false) as boolean;
 
-		const form = new formidable.IncomingForm();
+		const form = new formidable.IncomingForm({});
 
 		return new Promise((resolve, reject) => {
 

@@ -114,6 +114,9 @@ export default mixins(
 						// Has still options left so return
 						inputData.options = this.sortOptions(newOptions);
 						return inputData;
+					} else if (Array.isArray(newOptions) && newOptions.length === 0) {
+						delete inputData.options;
+						return inputData;
 					}
 					// Has no options left so remove
 					return null;
