@@ -38,7 +38,7 @@ export class Plivo implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Send SMS/MMS messages or make phone calls',
 		defaults: {
-			name: 'plivo',
+			name: 'Plivo',
 			color: '#43A046',
 		},
 		inputs: ['main'],
