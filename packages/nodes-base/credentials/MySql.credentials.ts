@@ -42,5 +42,12 @@ export class MySql implements ICredentialType {
 			type: 'number' as NodePropertyTypes,
 			default: 3306,
 		},
+		{
+			displayName: 'Connect Timeout',
+			name: 'connectTimeout',
+			type: 'number' as NodePropertyTypes,
+			default: 10000,
+			description: 'The milliseconds before a timeout occurs during the initial connection to the MySQL server.',
+		},	
 	];
 }

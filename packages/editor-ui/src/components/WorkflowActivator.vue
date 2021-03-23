@@ -22,6 +22,7 @@
 
 <script lang="ts">
 
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -33,6 +34,7 @@ import {
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
+	externalHooks,
 	genericHelpers,
 	restApi,
 	showMessage,
@@ -121,10 +123,12 @@ export default mixins(
 					}
 
 					const currentWorkflowId = this.$store.getters.workflowId;
+					let activationEventName = 'workflow.activeChange';
 					if (currentWorkflowId === this.workflowId) {
 						// If the status of the current workflow got changed
 						// commit it specifically
 						this.$store.commit('setActive', newActiveState);
+						activationEventName = 'workflow.activeChangeCurrent';
 					}
 
 					if (newActiveState === true) {
@@ -132,6 +136,8 @@ export default mixins(
 					} else {
 						this.$store.commit('setWorkflowInactive', this.workflowId);
 					}
+
+					this.$externalHooks().run(activationEventName, { workflowId: this.workflowId, active: newActiveState });
 
 					this.$emit('workflowActiveChanged', { id: this.workflowId, active: newActiveState });
 					this.loading = false;

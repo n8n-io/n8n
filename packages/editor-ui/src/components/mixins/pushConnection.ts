@@ -191,7 +191,7 @@ export const pushConnection = mixins(
 						return false;
 					}
 
-					if (this.$store.getters.activeExecutionId !== pushData.executionIdActive) {
+					if (this.$store.getters.activeExecutionId !== pushData.executionId) {
 						// The workflow which did finish execution did either not get started
 						// by this session or we do not have the execution id yet.
 						if (isRetry !== true) {
@@ -242,7 +242,7 @@ export const pushConnection = mixins(
 					const pushData = receivedData.data as IPushDataExecutionStarted;
 
 					const executionData: IExecutionsCurrentSummaryExtended = {
-						idActive: pushData.executionId,
+						id: pushData.executionId,
 						finished: false,
 						mode: pushData.mode,
 						startedAt: pushData.startedAt,

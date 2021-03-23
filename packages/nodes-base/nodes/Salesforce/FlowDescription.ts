@@ -33,9 +33,9 @@ export const flowOperations = [
 
 export const flowFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                flow:getAll                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                flow:getAll                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -77,9 +77,10 @@ export const flowFields = [
 		default: 100,
 		description: 'How many results to return.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                flow:invoke                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                flow:invoke                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'API Name',
 		name: 'apiName',
@@ -133,7 +134,7 @@ export const flowFields = [
 			},
 		},
 		default: '',
-		description: 'Input variables as JSON object',
+		description: 'Input variables as JSON object.',
 	},
 	{
 		displayName: 'Variables',

@@ -13,7 +13,7 @@ import {
 } from './DefaultOptions';
 
 import {
-	rabbitmqConnect,
+	rabbitmqConnectQueue,
 } from './GenericFunctions';
 
 export class RabbitMQTrigger implements INodeType {
@@ -103,7 +103,7 @@ export class RabbitMQTrigger implements INodeType {
 		const queue = this.getNodeParameter('queue') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
-		const channel = await rabbitmqConnect.call(this, queue, options);
+		const channel = await rabbitmqConnectQueue.call(this, queue, options);
 
 		const self = this;
 

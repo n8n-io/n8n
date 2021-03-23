@@ -50,5 +50,12 @@ export class MicrosoftSql implements ICredentialType {
 			type: 'boolean' as NodePropertyTypes,
 			default: true,
 		},
+		{
+			displayName: 'Connect Timeout',
+			name: 'connectTimeout',
+			type: 'number' as NodePropertyTypes,
+			default: 15000,
+			description: 'Connection timeout in ms.',
+		},
 	];
 }

@@ -2,6 +2,90 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.111.0
+
+### What changed?
+In the Dropbox node, now all operations are performed relative to the user's root directory.
+
+### When is action necessary?
+
+If you are using any resource/operation with OAuth2 authentication.
+
+If you are using the `folder:list` operation with the parameter `Folder Path` empty (root path) and have a Team Space in your Dropbox account.
+
+### How to upgrade:
+
+Open the Dropbox node, go to the OAuth2 credential you are using and reconnect it again.
+
+Also, if you are using the `folder:list` operation, make sure your logic is taking into account the team folders in the response.
+
+## 0.105.0
+
+### What changed?
+In the Hubspot Trigger, now multiple events can be provided and the field `App ID` was so moved to the credentials.
+
+### When is action necessary?
+If you are using the Hubspot Trigger node.
+
+### How to upgrade:
+Open the Hubspot Trigger and set the events again. Also open the credentials `Hubspot Developer API` and set your APP ID.
+
+
+## 0.104.0
+
+### What changed?
+Support for MongoDB as a database for n8n has been dropped as MongoDB had problems saving large amounts of data in a document, among other issues.
+
+### When is action necessary?
+If you have been using MongoDB as a database for n8n. Please note that this is not related to the MongoDB node.
+
+### How to upgrade:
+Before upgrading, you can [export](https://docs.n8n.io/reference/start-workflows-via-cli.html#export-workflows-and-credentials) all your credentials and workflows using the CLI.
+
+```
+n8n export:workflow --backup --output=backups/latest/
+n8n export:credentials --backup --output=backups/latest/
+```
+
+You can then change the database to one of the supported databases mentioned [here](https://docs.n8n.io/reference/data/database.html). Finally, you can upgrade n8n and [import](https://docs.n8n.io/reference/start-workflows-via-cli.html#import-workflows-and-credentials) all your credentials and workflows back into n8n.
+
+```
+n8n import:workflow --separate --input=backups/latest/
+n8n import:credentials --separate --input=backups/latest/
+```
+
+## 0.102.0
+
+### What changed?
+- The `As User` property  and the `User Name` field got combined and renamed to `Send as User`. It also got moved under “Add Options”.
+- The `Ephemeral` property got removed. To send an ephemeral message, you have to select the "Post (Ephemeral)" operation.
+
+### When is action necessary?
+If you are using the following fields or properties in the Slack node:
+- As User
+- Ephemeral
+- User Name
+
+### How to upgrade:
+Open the Slack node and set them again to the appropriate values.
+
+----------------------------
+
+### What changed?
+If you have a question in Typeform that uses a previously answered question as part of its text, the question text would look like this in the Typeform Trigger node:
+
+`You have chosen {{field:23234242}} as your answer. Is this correct?`
+
+Those curly braces broke the expression editor. The change makes it now display like this:
+
+`You have chosen [field:23234242] as your answer. Is this correct?`
+
+### When is action necessary?
+If you are using the Typeform Trigger node with questions using the [Recall information](https://help.typeform.com/hc/en-us/articles/360050447072-What-is-Recall-information-) feature.
+
+### How to upgrade:
+In workflows using the Typeform Trigger node, nodes that reference such key names (questions that use a previously answered question as part of its text) will need to be updated.
+
 ## 0.95.0
 
 ### What changed?

@@ -59,5 +59,5 @@ export async function copperApiRequest(this: IHookFunctions | IExecuteFunctions 
  */
 export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) {
 	const data = `${credentials.email},${credentials.apiKey}`;
-	return createHash('md5').update(data).digest("hex");
+	return createHash('md5').update(data).digest('hex');
 }

@@ -38,7 +38,7 @@ export class GoogleCalendar implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Calendar',
 		name: 'googleCalendar',
-		icon: 'file:googleCalendar.png',
+		icon: 'file:googleCalendar.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -321,33 +321,37 @@ export class GoogleCalendar implements INodeType {
 					//exampel: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z
 					//https://icalendar.org/iCalendar-RFC-5545/3-8-5-3-recurrence-rule.html
 					body.recurrence = [];
-					if (
-						additionalFields.repeatHowManyTimes &&
-						additionalFields.repeatUntil
-					) {
-						throw new Error(
-							`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
-						);
-					}
-					if (additionalFields.repeatFrecuency) {
-						body.recurrence?.push(
-							`FREQ=${(additionalFields.repeatFrecuency as string).toUpperCase()};`,
-						);
-					}
-					if (additionalFields.repeatHowManyTimes) {
-						body.recurrence?.push(
-							`COUNT=${additionalFields.repeatHowManyTimes};`,
-						);
-					}
-					if (additionalFields.repeatUntil) {
-						body.recurrence?.push(
-							`UNTIL=${moment(additionalFields.repeatUntil as string)
-								.utc()
-								.format('YYYYMMDDTHHmmss')}Z`,
-						);
-					}
-					if (body.recurrence.length !== 0) {
-						body.recurrence = [`RRULE:${body.recurrence.join('')}`];
+					if (additionalFields.rrule) {
+						body.recurrence = [`RRULE:${additionalFields.rrule}`];
+					} else {
+						if (
+							additionalFields.repeatHowManyTimes &&
+							additionalFields.repeatUntil
+						) {
+							throw new Error(
+								`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
+							);
+						}
+						if (additionalFields.repeatFrecuency) {
+							body.recurrence?.push(
+								`FREQ=${(additionalFields.repeatFrecuency as string).toUpperCase()};`,
+							);
+						}
+						if (additionalFields.repeatHowManyTimes) {
+							body.recurrence?.push(
+								`COUNT=${additionalFields.repeatHowManyTimes};`,
+							);
+						}
+						if (additionalFields.repeatUntil) {
+							body.recurrence?.push(
+								`UNTIL=${moment(additionalFields.repeatUntil as string)
+									.utc()
+									.format('YYYYMMDDTHHmmss')}Z`,
+							);
+						}
+						if (body.recurrence.length !== 0) {
+							body.recurrence = [`RRULE:${body.recurrence.join('')}`];
+						}
 					}
 
 					if (additionalFields.conferenceDataUi) {
@@ -565,30 +569,34 @@ export class GoogleCalendar implements INodeType {
 					//exampel: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z
 					//https://icalendar.org/iCalendar-RFC-5545/3-8-5-3-recurrence-rule.html
 					body.recurrence = [];
-					if (updateFields.repeatHowManyTimes && updateFields.repeatUntil) {
-						throw new Error(
-							`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
-						);
-					}
-					if (updateFields.repeatFrecuency) {
-						body.recurrence?.push(
-							`FREQ=${(updateFields.repeatFrecuency as string).toUpperCase()};`,
-						);
-					}
-					if (updateFields.repeatHowManyTimes) {
-						body.recurrence?.push(`COUNT=${updateFields.repeatHowManyTimes};`);
-					}
-					if (updateFields.repeatUntil) {
-						body.recurrence?.push(
-							`UNTIL=${moment(updateFields.repeatUntil as string)
-								.utc()
-								.format('YYYYMMDDTHHmmss')}Z`,
-						);
-					}
-					if (body.recurrence.length !== 0) {
-						body.recurrence = [`RRULE:${body.recurrence.join('')}`];
+					if (updateFields.rrule) {
+						body.recurrence = [`RRULE:${updateFields.rrule}`];
 					} else {
-						delete body.recurrence;
+						if (updateFields.repeatHowManyTimes && updateFields.repeatUntil) {
+							throw new Error(
+								`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
+							);
+						}
+						if (updateFields.repeatFrecuency) {
+							body.recurrence?.push(
+								`FREQ=${(updateFields.repeatFrecuency as string).toUpperCase()};`,
+							);
+						}
+						if (updateFields.repeatHowManyTimes) {
+							body.recurrence?.push(`COUNT=${updateFields.repeatHowManyTimes};`);
+						}
+						if (updateFields.repeatUntil) {
+							body.recurrence?.push(
+								`UNTIL=${moment(updateFields.repeatUntil as string)
+									.utc()
+									.format('YYYYMMDDTHHmmss')}Z`,
+							);
+						}
+						if (body.recurrence.length !== 0) {
+							body.recurrence = [`RRULE:${body.recurrence.join('')}`];
+						} else {
+							delete body.recurrence;
+						}
 					}
 					responseData = await googleApiRequest.call(
 						this,

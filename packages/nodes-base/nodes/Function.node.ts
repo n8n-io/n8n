@@ -99,9 +99,6 @@ export class Function implements INodeType {
 		}
 		for (const item of items) {
 			if (item.json === undefined) {
-				throw new Error('All returned items have to contain property named "json"!');
-			}
-			if (item.json === undefined) {
 				throw new Error('All returned items have to contain a property named "json"!');
 			}
 			if (typeof item.json !== 'object') {
