@@ -264,6 +264,7 @@
       "dist/credentials/ZulipApi.credentials.js"
     ],
     "nodes": [
+      "dist/nodes/ActivationTrigger.node.js",
       "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
       "dist/nodes/ActiveCampaign/ActiveCampaignTrigger.node.js",
       "dist/nodes/AgileCrm/AgileCrm.node.js",
@@ -524,7 +525,6 @@
       "dist/nodes/Wordpress/Wordpress.node.js",
       "dist/nodes/WooCommerce/WooCommerce.node.js",
       "dist/nodes/WooCommerce/WooCommerceTrigger.node.js",
-      "dist/nodes/WorkflowActivationTrigger.node.js",
       "dist/nodes/WriteBinaryFile.node.js",
       "dist/nodes/Wufoo/WufooTrigger.node.js",
       "dist/nodes/Wise/Wise.node.js",

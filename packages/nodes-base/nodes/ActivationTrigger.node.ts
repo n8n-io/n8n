@@ -5,65 +5,54 @@ import {
 	ITriggerResponse,
 } from 'n8n-workflow';
 
-export class WorkflowActivationTrigger implements INodeType {
+export class ActivationTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Workflow Activation Trigger',
-		name: 'WorkflowActivationTrigger',
+		displayName: 'Activation Trigger',
+		name: 'ActivationTrigger',
 		icon: 'fa:play-circle',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when the workflow gets activated',
+		description: 'Executes whenever the workflow becomes active.',
 		defaults: {
-			name: 'Workflow Activation Trigger',
+			name: 'Activation Trigger',
 			color: '#00e000',
 		},
 		inputs: [],
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Trigger On Init',
+				displayName: 'Boot and restart',
 				name: 'init',
 				type: 'boolean',
 				default: true,
-				description: 'Gets triggered when the workflow gets activated on n8n server start.',
+				description: 'Execute workflow starting from this node when n8n starts or restarts',
 			},
 			{
-				displayName: 'Trigger On Create',
-				name: 'create',
-				type: 'boolean',
-				default: false,
-				description: 'Gets triggered when the workflow created active.',
-			},
-			{
-				displayName: 'Trigger On Update',
+				displayName: 'Workflow updates',
 				name: 'update',
 				type: 'boolean',
 				default: false,
-				description: 'Gets triggered when the workflow gets updated and keeps activated.',
+				description: 'Execute workflow starting from this node every time you save this workflow.',
 			},
 			{
-				displayName: 'Trigger On Activate',
+				displayName: 'Workflow activation',
 				name: 'activate',
 				type: 'boolean',
 				default: false,
-				description: 'Gets triggered when the workflow gets activated.',
-			}
+				description: 'Execute workflow starting from this node when you activate this workflow.',
+			},
 		]
 	};
 
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const init = this.getNodeParameter('init') as boolean;
-		const create = this.getNodeParameter('create') as boolean;
 		const update = this.getNodeParameter('update') as boolean;
 		const activate = this.getNodeParameter('activate') as boolean;
 
 		switch(this.getActivationMode()) {
 			case 'init':
 				if(init) this.emit([this.helpers.returnJsonArray([{activation: 'init'}])]);
-				break;
-			case 'create':
-				if(create) this.emit([this.helpers.returnJsonArray([{activation: 'create'}])]);
 				break;
 			case 'update':
 				if(update) this.emit([this.helpers.returnJsonArray([{activation: 'update'}])]);
