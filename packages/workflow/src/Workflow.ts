@@ -24,8 +24,8 @@ import {
 	NodeParameterValue,
 	ObservableObject,
 	WebhookSetupMethodNames,
-	WorkflowExecuteMode,
 	WorkflowActivateMode,
+	WorkflowExecuteMode,
 } from './';
 
 import { IConnection, IDataObject, IObservableObject } from './Interfaces';

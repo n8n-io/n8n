@@ -8,8 +8,8 @@ import {
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
-	WorkflowExecuteMode,
 	WorkflowActivateMode,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import {

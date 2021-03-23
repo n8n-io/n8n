@@ -31,8 +31,8 @@ import {
 	NodeHelpers,
 	WebhookHttpMethod,
 	Workflow,
-	WorkflowExecuteMode,
 	WorkflowActivateMode,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import * as express from 'express';

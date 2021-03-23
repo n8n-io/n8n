@@ -2,8 +2,8 @@ import {
 	IWebhookData,
 	WebhookHttpMethod,
 	Workflow,
-	WorkflowExecuteMode,
 	WorkflowActivateMode,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import {

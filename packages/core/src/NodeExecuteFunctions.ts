@@ -34,9 +34,9 @@ import {
 	NodeHelpers,
 	NodeParameterValue,
 	Workflow,
+	WorkflowActivateMode,
 	WorkflowDataProxy,
 	WorkflowExecuteMode,
-	WorkflowActivateMode,
 } from 'n8n-workflow';
 
 import * as clientOAuth1 from 'oauth-1.0a';
