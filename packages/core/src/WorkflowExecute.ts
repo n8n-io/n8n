@@ -691,6 +691,7 @@ export class WorkflowExecute {
 
 							executionError = {
 								...error,
+								message: error.message,
 								stack: error.stack,
 							};
 						}
