@@ -1,4 +1,4 @@
-import { 
+import {
 	OptionsWithUri,
 } from 'request';
 
@@ -9,7 +9,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { 
+import {
 	IDataObject,
 } from 'n8n-workflow';
 
