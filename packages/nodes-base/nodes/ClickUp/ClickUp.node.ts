@@ -1267,7 +1267,7 @@ export class ClickUp implements INodeType {
 			}
 			if (resource === 'spaceTag') {
 				if (operation === 'create') {
-					const spaceId = this.getNodeParameter('spaceId', i) as string;
+					const spaceId = this.getNodeParameter('space', i) as string;
 					const name = this.getNodeParameter('name', i) as string;
 					const foregroundColor = this.getNodeParameter('foregroundColor', i) as string;
 					const backgroundColor = this.getNodeParameter('backgroundColor', i) as string;
@@ -1282,13 +1282,13 @@ export class ClickUp implements INodeType {
 					responseData = { success: true };
 				}
 				if (operation === 'delete') {
-					const spaceId = this.getNodeParameter('spaceId', i) as string;
+					const spaceId = this.getNodeParameter('space', i) as string;
 					const name = this.getNodeParameter('name', i) as string;
 					responseData = await clickupApiRequest.call(this, 'DELETE', `/space/${spaceId}/tag/${name}`);
 					responseData = { success: true };
 				}
 				if (operation === 'getAll') {
-					const spaceId = this.getNodeParameter('spaceId', i) as string;
+					const spaceId = this.getNodeParameter('space', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					responseData = await clickupApiRequest.call(this, 'GET', `/space/${spaceId}/tag`);
 					responseData = responseData.tags;
@@ -1298,17 +1298,19 @@ export class ClickUp implements INodeType {
 					}
 				}
 				if (operation === 'update') {
-					const spaceId = this.getNodeParameter('spaceId', i) as string;
-					const name = this.getNodeParameter('name', i) as string;
+					const spaceId = this.getNodeParameter('space', i) as string;
+					const tagName = this.getNodeParameter('name', i) as string;
+					const newTagName = this.getNodeParameter('newName', i) as string;
 					const foregroundColor = this.getNodeParameter('foregroundColor', i) as string;
 					const backgroundColor = this.getNodeParameter('backgroundColor', i) as string;
 					const body: IDataObject = {
 						tag: {
+							name: newTagName,
 							tag_bg: backgroundColor,
 							tag_fg: foregroundColor,
 						},
 					};
-					responseData = await clickupApiRequest.call(this, 'PUT', `/space/${spaceId}/tag/${name}`, body);
+					await clickupApiRequest.call(this, 'PUT', `/space/${spaceId}/tag/${tagName}`, body);
 					responseData = { success: true };
 				}
 			}

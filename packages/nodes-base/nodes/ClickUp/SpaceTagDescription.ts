@@ -47,7 +47,7 @@ export const spaceTagFields = [
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Space ID',
-		name: 'spaceId',
+		name: 'space',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -77,7 +77,47 @@ export const spaceTagFields = [
 				],
 				operation: [
 					'create',
+				],
+			},
+		},
+		required: true,
+	},
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'options',
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'space',
+			],
+			loadOptionsMethod: 'getTags',
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'spaceTag',
+				],
+				operation: [
 					'delete',
+					'update',
+				],
+			},
+		},
+		required: true,
+	},
+	{
+		displayName: 'New Name',
+		name: 'newName',
+		type: 'string',
+		description: 'New name to set for the tag.',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'spaceTag',
+				],
+				operation: [
 					'update',
 				],
 			},
