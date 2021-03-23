@@ -8,7 +8,7 @@ import {
 export class ActivationTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Activation Trigger',
-		name: 'ActivationTrigger',
+		name: 'activationTrigger',
 		icon: 'fa:play-circle',
 		group: ['trigger'],
 		version: 1,
@@ -21,29 +21,30 @@ export class ActivationTrigger implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'When to execute',
-				name: 'whenToExecute',
+				displayName: 'Events',
+				name: 'events',
 				type: 'multiOptions',
+				required: true,
 				default: [],
-				description: 'Specifies under which conditions an execution should happen. <br>' +
-				'- <b>n8n start</b>: happens when n8n starts or restarts.<br>' +
-				'- <b>Save changes</b>: When you save the workflow while it is active<br>' +
-				'- <b>Activation</b>: When you  active the workflow.',
+				description: 'Specifies under which conditions an execution should happen:<br />' +
+					'- <b>Activation</b>: Workflow gets activated<br />' +
+					'- <b>Update</b>: Workflow gets saved while active<br>' +
+					'- <b>Start</b>: n8n starts or restarts',
 				options: [
-					{
-						name: 'n8n start',
-						value: 'init',
-						description: 'Whenever n8n starts or restarts.',
-					},
-					{
-						name: 'Save changes',
-						value: 'update',
-						description: 'Whenever you save this workflow while it is active.',
-					},
 					{
 						name: 'Activation',
 						value: 'activate',
-						description: 'Whenever you activate this workflow.',
+						description: 'Run when workflow gets activated',
+					},
+					{
+						name: 'Start',
+						value: 'init',
+						description: 'Run when n8n starts or restarts',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Run when workflow gets saved while it is active',
 					},
 				],
 			},
@@ -52,17 +53,17 @@ export class ActivationTrigger implements INodeType {
 
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const init = this.getNodeParameter('whenToExecute', []) as string[];
+		const events = this.getNodeParameter('events', []) as string[];
 
 		const activationMode = this.getActivationMode();
 
-		if (init.includes(activationMode)) {
-			this.emit([this.helpers.returnJsonArray([{activation: activationMode}])]);
+		if (events.includes(activationMode)) {
+			this.emit([this.helpers.returnJsonArray([{ activation: activationMode }])]);
 		}
 
 		const self = this;
 		async function manualTriggerFunction() {
-			self.emit([self.helpers.returnJsonArray([{activation: 'manual'}])]);
+			self.emit([self.helpers.returnJsonArray([{ activation: 'manual' }])]);
 		}
 
 		return {
