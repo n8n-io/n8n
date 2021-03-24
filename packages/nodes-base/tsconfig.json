@@ -13,6 +13,7 @@
 		"strictNullChecks": true,
 		"strict": true,
 		"preserveConstEnums": true,
+		"resolveJsonModule": true,
 		"declaration": true,
 		"outDir": "./dist/",
 		"target": "es2017",
@@ -22,6 +23,7 @@
 		"credentials/**/*",
 		"src/**/*",
 		"nodes/**/*",
+		"nodes/**/*.json",
 		"test/**/*"
 	],
 	"exclude": [

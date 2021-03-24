@@ -129,6 +129,32 @@ export const channelMessageFields = [
 		default: '',
 		description: 'The content of the item.',
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'channelMessage',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Make Reply',
+				name: 'makeReply',
+				type: 'string',
+				default: '',
+				description: 'An optional ID of the message you want to reply to.',
+			},
+		],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 channelMessage:getAll                      */
 	/* -------------------------------------------------------------------------- */

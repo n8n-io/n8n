@@ -1,12 +1,14 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
+
 import {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-export async function rocketchatApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resource: string, method: string, operation: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function rocketchatApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, resource: string, method: string, operation: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('rocketchatApi');
 
 	if (credentials === undefined) {
@@ -14,7 +16,11 @@ export async function rocketchatApiRequest(this: IHookFunctions | IExecuteFuncti
 	}
 
 	const headerWithAuthentication = Object.assign({}, headers,
-		{ 'X-Auth-Token': credentials.authKey, 'X-User-Id': credentials.userId   });
+		{
+			'X-Auth-Token': credentials.authKey,
+			'X-User-Id': credentials.userId,
+		},
+	);
 
 	const options: OptionsWithUri = {
 		headers: headerWithAuthentication,
@@ -29,13 +35,15 @@ export async function rocketchatApiRequest(this: IHookFunctions | IExecuteFuncti
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		let errorMessage = error.message;
+		if (error.response && error.response.body && error.response.body.error) {
 
-		if (error.response.body.error) {
-			errorMessage = error.response.body.error;
+			const errorMessage = error.response.body.error;
+			// Try to return the error prettier
+			throw new Error(
+				`Rocketchat error response [${error.statusCode}]: ${errorMessage}`,
+			);
 		}
-
-		throw new Error(`Rocket.chat error response [${error.statusCode}]: ${errorMessage}`);
+		throw error;
 	}
 }
 

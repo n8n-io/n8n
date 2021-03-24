@@ -50,32 +50,32 @@ import {
 import {
 	accountFields,
 	accountOperations
-} from "./AccountDescription";
+} from './AccountDescription';
 
 import {
 	tagFields,
 	tagOperations
-} from "./TagDescription";
+} from './TagDescription';
 
 import {
 	accountContactFields,
 	accountContactOperations
-} from "./AccountContactDescription";
+} from './AccountContactDescription';
 
 import {
 	contactListFields,
 	contactListOperations,
-} from "./ContactListDescription";
+} from './ContactListDescription';
 
 import {
 	contactTagFields,
 	contactTagOperations,
-} from "./ContactTagDescription";
+} from './ContactTagDescription';
 
 import {
 	listFields,
 	listOperations,
-} from "./ListDescription";
+} from './ListDescription';
 
 interface CustomProperty {
 	name: string;
@@ -272,7 +272,7 @@ export class ActiveCampaign implements INodeType {
 			// select them easily
 			async getContactCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { fields } = await activeCampaignApiRequest.call(this, 'GET', '/api/3/fields', {});
+				const { fields } = await activeCampaignApiRequest.call(this, 'GET', '/api/3/fields', {}, { limit: 100 });
 				for (const field of fields) {
 					const fieldName = field.title;
 					const fieldId = field.id;
@@ -287,13 +287,26 @@ export class ActiveCampaign implements INodeType {
 			// select them easily
 			async getAccountCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { accountCustomFieldMeta: fields } = await activeCampaignApiRequest.call(this, 'GET', '/api/3/accountCustomFieldMeta', {});
+				const { accountCustomFieldMeta: fields } = await activeCampaignApiRequest.call(this, 'GET', '/api/3/accountCustomFieldMeta', {}, { limit: 100 });
 				for (const field of fields) {
 					const fieldName = field.fieldLabel;
 					const fieldId = field.id;
 					returnData.push({
 						name: fieldName,
 						value: fieldId,
+					});
+				}
+				return returnData;
+			},
+			// Get all the available tags to display them to user so that he can
+			// select them easily
+			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { tags } = await activeCampaignApiRequest.call(this, 'GET', '/api/3/tags', {}, { limit: 100 });
+				for (const tag of tags) {
+					returnData.push({
+						name: tag.tag,
+						value: tag.id,
 					});
 				}
 				return returnData;

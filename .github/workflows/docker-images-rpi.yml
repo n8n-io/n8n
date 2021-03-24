@@ -26,8 +26,9 @@ jobs:
       - name: Run Buildx (push image)
         if: success()
         run: |
-          docker buildx build --platform linux/arm/v7 --build-arg N8N_VERSION=${{steps.vars.outputs.tag}} -t n8nio/n8n:${{steps.vars.outputs.tag}}-rpi --output type=image,push=true docker/images/n8n-rpi
-      - name: Tag Docker image with latest
-        run: docker tag n8nio/n8n:${{steps.vars.outputs.tag}}-rpi n8nio/n8n:latest-rpi
-      - name: Push docker images of latest
-        run: docker push n8nio/n8n:latest-rpi
+          docker buildx build \
+          --platform linux/arm/v7 \
+          --build-arg N8N_VERSION=${{steps.vars.outputs.tag}} \
+          -t ${{ secrets.DOCKER_USERNAME }}/n8n:${{steps.vars.outputs.tag}}-rpi \
+          -t ${{ secrets.DOCKER_USERNAME }}/n8n:latest-rpi \
+          --output type=image,push=true docker/images/n8n-rpi

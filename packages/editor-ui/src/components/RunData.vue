@@ -20,9 +20,9 @@
 		<div class="header">
 			<div class="title-text">
 				<strong v-if="dataCount < maxDisplayItems">
-					Results: {{ dataCount }}
+					Items: {{ dataCount }}
 				</strong>
-				<strong v-else>Results:
+				<strong v-else>Items:
 					<el-select v-model="maxDisplayItems" @click.stop>
 						<el-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
 					</el-select>&nbsp;/
@@ -130,7 +130,6 @@
 							path=""
 							:highlightSelectedNode="true"
 							:selectOnClickNode="true"
-							:custom-value-formatter="customLinkFormatter"
 							@click="dataItemClicked"
 							class="json-data"
 						/>
@@ -157,6 +156,10 @@
 											<div v-if="binaryData.fileName">
 												<div class="label">File Name: </div>
 												<div class="value">{{binaryData.fileName}}</div>
+											</div>
+											<div v-if="binaryData.directory">
+												<div class="label">Directory: </div>
+												<div class="value">{{binaryData.directory}}</div>
 											</div>
 											<div v-if="binaryData.fileExtension">
 												<div class="label">File Extension:</div>
@@ -418,13 +421,6 @@ export default mixins(
 				this.binaryDataDisplayVisible = false;
 				this.binaryDataDisplayData = null;
 			},
-			customLinkFormatter (data: object | number | string, key: string, parent: object, defaultFormatted: () => string) {
-				if (typeof data === 'string' && data.startsWith('http://')) {
-					return `<a style="color:red;" href="${data}" target="_blank">"${data}"</a>`;
-				} else {
-					return defaultFormatted;
-				}
-			},
 			convertToJson (inputData: INodeExecutionData[]): IDataObject[] {
 				const returnData: IDataObject[] = [];
 				inputData.forEach((data) => {
@@ -602,10 +598,6 @@ export default mixins(
 					// Data is reasonable small (< 200kb) so display it directly
 					this.showData = true;
 				}
-
-				if (this.displayMode === 'Binary' && this.binaryData.length === 0) {
-					this.displayMode = 'Table';
-				}
 			},
 		},
 		watch: {
@@ -614,6 +606,12 @@ export default mixins(
 				this.outputIndex = 0;
 				this.maxDisplayItems = 25;
 				this.refreshDataSize();
+				if (this.displayMode === 'Binary') {
+					this.closeBinaryDataDisplay();
+					if (this.binaryData.length === 0) {
+						this.displayMode = 'Table';
+					}
+				}
 			},
 			jsonData () {
 				this.refreshDataSize();

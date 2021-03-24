@@ -1,0 +1,26 @@
+{
+	"node": "n8n-nodes-base.bannerbear",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Marketing & Content"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/bannerbear"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.bannerbear/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Automate Designs with Bannerbear and n8n",
+				"url": "https://medium.com/n8n-io/automate-designs-with-bannerbear-and-n8n-2b64c94b54db"
+			}
+		]
+	}
+}

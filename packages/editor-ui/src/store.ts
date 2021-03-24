@@ -58,6 +58,7 @@ export const store = new Vuex.Store({
 		maxExecutionTimeout: Number.MAX_SAFE_INTEGER,
 		versionCli: '0.0.0',
 		oauthCallbackUrls: {},
+		n8nMetadata: {},
 		workflowExecutionData: null as IExecutionResponse | null,
 		lastSelectedNode: null as string | null,
 		lastSelectedNodeOutputIndex: null as number | null,
@@ -98,7 +99,7 @@ export const store = new Vuex.Store({
 		addActiveExecution (state, newActiveExecution: IExecutionsCurrentSummaryExtended) {
 			// Check if the execution exists already
 			const activeExecution = state.activeExecutions.find(execution => {
-				return execution.idActive === newActiveExecution.idActive;
+				return execution.id === newActiveExecution.id;
 			});
 
 			if (activeExecution !== undefined) {
@@ -114,7 +115,7 @@ export const store = new Vuex.Store({
 		finishActiveExecution (state, finishedActiveExecution: IPushDataExecutionFinished) {
 			// Find the execution to set to finished
 			const activeExecution = state.activeExecutions.find(execution => {
-				return execution.idActive === finishedActiveExecution.executionIdActive;
+				return execution.id === finishedActiveExecution.executionId;
 			});
 
 			if (activeExecution === undefined) {
@@ -122,8 +123,8 @@ export const store = new Vuex.Store({
 				return;
 			}
 
-			if (finishedActiveExecution.executionIdDb !== undefined) {
-				Vue.set(activeExecution, 'id', finishedActiveExecution.executionIdDb);
+			if (finishedActiveExecution.executionId !== undefined) {
+				Vue.set(activeExecution, 'id', finishedActiveExecution.executionId);
 			}
 
 			Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
@@ -530,7 +531,9 @@ export const store = new Vuex.Store({
 		setOauthCallbackUrls(state, urls: IDataObject) {
 			Vue.set(state, 'oauthCallbackUrls', urls);
 		},
-
+		setN8nMetadata(state, metadata: IDataObject) {
+			Vue.set(state, 'n8nMetadata', metadata);
+		},
 		setActiveNode (state, nodeName: string) {
 			state.activeNode = nodeName;
 		},
@@ -652,6 +655,9 @@ export const store = new Vuex.Store({
 		},
 		oauthCallbackUrls: (state): object => {
 			return state.oauthCallbackUrls;
+		},
+		n8nMetadata: (state): object => {
+			return state.n8nMetadata;
 		},
 
 		// Push Connection

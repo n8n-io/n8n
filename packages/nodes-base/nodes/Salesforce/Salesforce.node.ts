@@ -63,6 +63,7 @@ import {
 } from './FlowDescription';
 
 import {
+	getQuery,
 	salesforceApiRequest,
 	salesforceApiRequestAllItems,
 	sortOptions,
@@ -91,6 +92,11 @@ import {
 } from './OpportunityInterface';
 
 import {
+	searchFields,
+	searchOperations,
+} from './SearchDescription';
+
+import {
 	taskFields,
 	taskOperations,
 } from './TaskDescription';
@@ -104,15 +110,11 @@ import {
 	userOperations,
 } from './UserDescription';
 
-import {
-	IUser,
-} from './UserInterface';
-
 export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Salesforce',
 		name: 'salesforce',
-		icon: 'file:salesforce.png',
+		icon: 'file:salesforce.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -211,6 +213,11 @@ export class Salesforce implements INodeType {
 						description: 'Represents an opportunity, which is a sale or pending deal.',
 					},
 					{
+						name: 'Search',
+						value: 'search',
+						description: 'Search records',
+					},
+					{
 						name: 'Task',
 						value: 'task',
 						description: 'Represents a business activity such as making a phone call or other to-do items. In the user interface, and records are collectively referred to as activities.',
@@ -234,6 +241,8 @@ export class Salesforce implements INodeType {
 			...opportunityFields,
 			...accountOperations,
 			...accountFields,
+			...searchOperations,
+			...searchFields,
 			...caseOperations,
 			...caseFields,
 			...taskOperations,
@@ -700,6 +709,142 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
+			// Get all the account fields recurrence instances to display them to user so that he can
+			// select them easily
+			async getAccountFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/account/describe`);
+				for (const field of fields) {
+					const fieldName = field.label;
+					const fieldId = field.name;
+					returnData.push({
+						name: fieldName,
+						value: fieldId,
+					});
+				}
+				sortOptions(returnData);
+				return returnData;
+			},
+			// Get all the attachment fields recurrence instances to display them to user so that he can
+			// select them easily
+			async getAtachmentFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/attachment/describe`);
+				for (const field of fields) {
+					const fieldName = field.label;
+					const fieldId = field.name;
+					returnData.push({
+						name: fieldName,
+						value: fieldId,
+					});
+				}
+				sortOptions(returnData);
+				return returnData;
+			},
+			// Get all the case fields recurrence instances to display them to user so that he can
+			// select them easily
+			async getCaseFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/case/describe`);
+				for (const field of fields) {
+					const fieldName = field.label;
+					const fieldId = field.name;
+					returnData.push({
+						name: fieldName,
+						value: fieldId,
+					});
+				}
+				sortOptions(returnData);
+				return returnData;
+			},
+			// Get all the lead fields recurrence instances to display them to user so that he can
+			// select them easily
+			async getLeadFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/lead/describe`);
+				for (const field of fields) {
+					const fieldName = field.label;
+					const fieldId = field.name;
+					returnData.push({
+						name: fieldName,
+						value: fieldId,
+					});
+				}
+				sortOptions(returnData);
+				return returnData;
+			},
+			// Get all the opportunity fields recurrence instances to display them to user so that he can
+			// select them easily
+			async getOpportunityFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/opportunity/describe`);
+				for (const field of fields) {
+					const fieldName = field.label;
+					const fieldId = field.name;
+					returnData.push({
+						name: fieldName,
+						value: fieldId,
+					});
+				}
+				sortOptions(returnData);
+				return returnData;
+			},
+			// Get all the opportunity fields recurrence instances to display them to user so that he can
+			// select them easily
+			async getTaskFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/task/describe`);
+				for (const field of fields) {
+					const fieldName = field.label;
+					const fieldId = field.name;
+					returnData.push({
+						name: fieldName,
+						value: fieldId,
+					});
+				}
+				sortOptions(returnData);
+				return returnData;
+			},
+			// Get all the users fields recurrence instances to display them to user so that he can
+			// select them easily
+			async getUserFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/user/describe`);
+				for (const field of fields) {
+					const fieldName = field.label;
+					const fieldId = field.name;
+					returnData.push({
+						name: fieldName,
+						value: fieldId,
+					});
+				}
+				sortOptions(returnData);
+				return returnData;
+			},
+			// Get all the contact fields recurrence instances to display them to user so that he can
+			// select them easily
+			async getContactFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/contact/describe`);
+				for (const field of fields) {
+					const fieldName = field.label;
+					const fieldId = field.name;
+					returnData.push({
+						name: fieldName,
+						value: fieldId,
+					});
+				}
+				sortOptions(returnData);
+				return returnData;
+			},
 		},
 	};
 
@@ -761,8 +906,8 @@ export class Salesforce implements INodeType {
 					if (additionalFields.industry !== undefined) {
 						body.Industry = additionalFields.industry as string;
 					}
-					if (additionalFields.firstName !== undefined) {
-						body.FirstName = additionalFields.firstName as string;
+					if (additionalFields.firstname !== undefined) {
+						body.FirstName = additionalFields.firstname as string;
 					}
 					if (additionalFields.leadSource !== undefined) {
 						body.LeadSource = additionalFields.leadSource as string;
@@ -785,6 +930,9 @@ export class Salesforce implements INodeType {
 					if (additionalFields.numberOfEmployees !== undefined) {
 						body.NumberOfEmployees = additionalFields.numberOfEmployees as number;
 					}
+					if (additionalFields.mobilePhone !== undefined) {
+						body.MobilePhone = additionalFields.mobilePhone as string;
+					}
 					if (additionalFields.customFieldsUi) {
 						const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
 						if (customFields) {
@@ -794,7 +942,6 @@ export class Salesforce implements INodeType {
 							}
 						}
 					}
-
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/lead', body);
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Lead/patch-lead-id
@@ -850,8 +997,8 @@ export class Salesforce implements INodeType {
 					if (updateFields.industry !== undefined) {
 						body.Industry = updateFields.industry as string;
 					}
-					if (updateFields.firstName !== undefined) {
-						body.FirstName = updateFields.firstName as string;
+					if (updateFields.firstname !== undefined) {
+						body.FirstName = updateFields.firstname as string;
 					}
 					if (updateFields.leadSource !== undefined) {
 						body.LeadSource = updateFields.leadSource as string;
@@ -874,6 +1021,9 @@ export class Salesforce implements INodeType {
 					if (updateFields.numberOfEmployees !== undefined) {
 						body.NumberOfEmployees = updateFields.numberOfEmployees as number;
 					}
+					if (updateFields.mobilePhone !== undefined) {
+						body.MobilePhone = updateFields.mobilePhone as string;
+					}
 					if (updateFields.customFieldsUi) {
 						const customFields = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
 						if (customFields) {
@@ -894,21 +1044,16 @@ export class Salesforce implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const fields = ['id,company,firstname,lastname,street,postalCode,city,email,status'];
-					if (options.fields) {
-						// @ts-ignore
-						fields.push(...options.fields.split(','));
-					}
 					try {
 						if (returnAll) {
-							qs.q = `SELECT ${fields.join(',')} FROM Lead`;
+							qs.q = getQuery(options, 'Lead', returnAll) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
-							qs.q = `SELECT ${fields.join(',')} FROM Lead Limit ${limit}`;
+							qs.q = getQuery(options, 'Lead', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -917,7 +1062,7 @@ export class Salesforce implements INodeType {
 					const leadId = this.getNodeParameter('leadId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/lead/${leadId}`);
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1187,21 +1332,16 @@ export class Salesforce implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const fields = ['id,firstname,lastname,email'];
-					if (options.fields) {
-						// @ts-ignore
-						fields.push(...options.fields.split(','));
-					}
 					try {
 						if (returnAll) {
-							qs.q = `SELECT ${fields.join(',')} FROM Contact`;
+							qs.q = getQuery(options, 'Contact', returnAll) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
-							qs.q = `SELECT ${fields.join(',')} FROM Contact Limit ${limit}`;
+							qs.q = getQuery(options, 'Contact', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1210,7 +1350,7 @@ export class Salesforce implements INodeType {
 					const contactId = this.getNodeParameter('contactId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/contact/${contactId}`);
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1294,20 +1434,16 @@ export class Salesforce implements INodeType {
 					const customObject = this.getNodeParameter('customObject', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					let fields = ['id'];
-					if (options.fields) {
-						fields = options.fields as string[];
-					}
 					try {
 						if (returnAll) {
-							qs.q = `SELECT ${fields.join(',')} FROM ${customObject}`;
+							qs.q = getQuery(options, customObject, returnAll) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
-							qs.q = `SELECT ${fields.join(',')} FROM ${customObject} Limit ${limit}`;
+							qs.q = getQuery(options, customObject, returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1316,7 +1452,7 @@ export class Salesforce implements INodeType {
 					const recordId = this.getNodeParameter('recordId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/${customObject}/${recordId}`);
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1444,21 +1580,16 @@ export class Salesforce implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const fields = ['id,accountId,amount,probability,type'];
-					if (options.fields) {
-						// @ts-ignore
-						fields.push(...options.fields.split(','));
-					}
 					try {
 						if (returnAll) {
-							qs.q = `SELECT ${fields.join(',')} FROM Opportunity`;
+							qs.q = getQuery(options, 'Opportunity', returnAll) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
-							qs.q = `SELECT ${fields.join(',')} FROM Opportunity Limit ${limit}`;
+							qs.q = getQuery(options, 'Opportunity', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1467,7 +1598,7 @@ export class Salesforce implements INodeType {
 					const opportunityId = this.getNodeParameter('opportunityId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/opportunity/${opportunityId}`);
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1687,21 +1818,16 @@ export class Salesforce implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const fields = ['id,name,type'];
-					if (options.fields) {
-						// @ts-ignore
-						fields.push(...options.fields.split(','));
-					}
 					try {
 						if (returnAll) {
-							qs.q = `SELECT ${fields.join(',')} FROM Account`;
+							qs.q = getQuery(options, 'Account', returnAll) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
-							qs.q = `SELECT ${fields.join(',')} FROM Account Limit ${limit}`;
+							qs.q = getQuery(options, 'Account', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1710,7 +1836,7 @@ export class Salesforce implements INodeType {
 					const accountId = this.getNodeParameter('accountId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/account/${accountId}`);
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1852,21 +1978,16 @@ export class Salesforce implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const fields = ['id,accountId,contactId,priority,status,subject,type'];
-					if (options.fields) {
-						// @ts-ignore
-						fields.push(...options.fields.split(','));
-					}
 					try {
 						if (returnAll) {
-							qs.q = `SELECT ${fields.join(',')} FROM Case`;
+							qs.q = getQuery(options, 'Case', returnAll) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
-							qs.q = `SELECT ${fields.join(',')} FROM Case Limit ${limit}`;
+							qs.q = getQuery(options, 'Case', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1875,7 +1996,7 @@ export class Salesforce implements INodeType {
 					const caseId = this.getNodeParameter('caseId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/case/${caseId}`);
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -2084,21 +2205,16 @@ export class Salesforce implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const fields = ['id,subject,status,priority'];
-					if (options.fields) {
-						// @ts-ignore
-						fields.push(...options.fields.split(','));
-					}
 					try {
 						if (returnAll) {
-							qs.q = `SELECT ${fields.join(',')} FROM Task`;
+							qs.q = getQuery(options, 'Task', returnAll) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
-							qs.q = `SELECT ${fields.join(',')} FROM Task Limit ${limit}`;
+							qs.q = getQuery(options, 'Task', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -2107,7 +2223,7 @@ export class Salesforce implements INodeType {
 					const taskId = this.getNodeParameter('taskId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/task/${taskId}`);
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -2181,21 +2297,16 @@ export class Salesforce implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const fields = ['id,name'];
-					if (options.fields) {
-						// @ts-ignore
-						fields.push(...options.fields.split(','));
-					}
 					try {
 						if (returnAll) {
-							qs.q = `SELECT ${fields.join(',')} FROM Attachment`;
+							qs.q = getQuery(options, 'Attachment', returnAll) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
-							qs.q = `SELECT ${fields.join(',')} FROM Attachment Limit ${limit}`;
+							qs.q = getQuery(options, 'Attachment', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -2204,7 +2315,7 @@ export class Salesforce implements INodeType {
 					const attachmentId = this.getNodeParameter('attachmentId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/attachment/${attachmentId}`);
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -2223,21 +2334,16 @@ export class Salesforce implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const fields = ['id,name,email'];
-					if (options.fields) {
-						// @ts-ignore
-						fields.push(...options.fields.split(','));
-					}
 					try {
 						if (returnAll) {
-							qs.q = `SELECT ${fields.join(',')} FROM User`;
+							qs.q = getQuery(options, 'User', returnAll) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
-							qs.q = `SELECT ${fields.join(',')} FROM User Limit ${limit}`;
+							qs.q = getQuery(options, 'User', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -2276,6 +2382,13 @@ export class Salesforce implements INodeType {
 						const limit = this.getNodeParameter('limit', i) as number;
 						responseData = responseData.splice(0, limit);
 					}
+				}
+			}
+			if (resource === 'search') {
+				//https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
+				if (operation === 'query') {
+					qs.q = this.getNodeParameter('query', i) as string;
+					responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 				}
 			}
 			if (Array.isArray(responseData)) {

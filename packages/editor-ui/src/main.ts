@@ -17,6 +17,8 @@ import './n8n-theme.scss';
 import App from '@/App.vue';
 import router from './router';
 
+import { runExternalHook } from './components/mixins/externalHooks';
+
 import { library } from '@fortawesome/fontawesome-svg-core';
 import {
 	faAngleDoubleLeft,
@@ -46,6 +48,7 @@ import {
 	faExternalLinkAlt,
 	faExchangeAlt,
 	faFile,
+	faFileArchive,
 	faFileCode,
 	faFileDownload,
 	faFileExport,
@@ -125,6 +128,7 @@ library.add(faExclamationTriangle);
 library.add(faExternalLinkAlt);
 library.add(faExchangeAlt);
 library.add(faFile);
+library.add(faFileArchive);
 library.add(faFileCode);
 library.add(faFileDownload);
 library.add(faFileExport);
@@ -172,6 +176,9 @@ library.add(faUsers);
 Vue.component('font-awesome-icon', FontAwesomeIcon);
 
 Vue.config.productionTip = false;
+router.afterEach((to, from) => {
+	runExternalHook('main.routeChange', store, { from, to });
+});
 
 new Vue({
 	router,

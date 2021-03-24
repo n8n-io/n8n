@@ -580,8 +580,8 @@ export class Chargebee implements INodeType {
 
 					requestMethod = 'POST';
 
-					const subscriptionId = this.getNodeParameter('subscriptionId', i, {}) as string;
-					body.end_of_term = this.getNodeParameter('endOfTerm', i, {}) as boolean;
+					const subscriptionId = this.getNodeParameter('subscriptionId', i, '') as string;
+					body.end_of_term = this.getNodeParameter('endOfTerm', i, false) as boolean;
 
 					endpoint = `subscriptions/${subscriptionId.trim()}/cancel`;
 				} else if (operation === 'delete') {
@@ -591,7 +591,7 @@ export class Chargebee implements INodeType {
 
 					requestMethod = 'POST';
 
-					const subscriptionId = this.getNodeParameter('subscriptionId', i, {}) as string;
+					const subscriptionId = this.getNodeParameter('subscriptionId', i, '') as string;
 
 					endpoint = `subscriptions/${subscriptionId.trim()}/delete`;
 				} else {

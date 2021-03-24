@@ -1,4 +1,3 @@
-
 export interface IOpportunity {
 	Name?: string;
 	StageName?: string;
@@ -12,6 +11,6 @@ export interface IOpportunity {
 	LeadSource?: string;
 	Description?: string;
 	Probability?: number;
-	Pricebook2Id?:string;
+	Pricebook2Id?: string;
 	ForecastCategoryName?: string;
 }

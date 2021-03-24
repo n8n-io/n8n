@@ -23,7 +23,7 @@ export class JiraTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Jira Trigger',
 		name: 'jiraTrigger',
-		icon: 'file:jira.png',
+		icon: 'file:jira.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Starts the workflow when Jira events occurs.',
