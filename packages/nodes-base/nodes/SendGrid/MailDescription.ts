@@ -132,7 +132,7 @@ export const mailFields = [
 			},
 			{
 				name: 'HTML',
-				value: 'html',
+				value: 'text/html',
 			},
 		],
 		displayOptions: {
