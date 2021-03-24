@@ -906,8 +906,8 @@ export class Salesforce implements INodeType {
 					if (additionalFields.industry !== undefined) {
 						body.Industry = additionalFields.industry as string;
 					}
-					if (additionalFields.firstName !== undefined) {
-						body.FirstName = additionalFields.firstName as string;
+					if (additionalFields.firstname !== undefined) {
+						body.FirstName = additionalFields.firstname as string;
 					}
 					if (additionalFields.leadSource !== undefined) {
 						body.LeadSource = additionalFields.leadSource as string;
@@ -942,7 +942,6 @@ export class Salesforce implements INodeType {
 							}
 						}
 					}
-
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/lead', body);
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Lead/patch-lead-id
@@ -998,8 +997,8 @@ export class Salesforce implements INodeType {
 					if (updateFields.industry !== undefined) {
 						body.Industry = updateFields.industry as string;
 					}
-					if (updateFields.firstName !== undefined) {
-						body.FirstName = updateFields.firstName as string;
+					if (updateFields.firstname !== undefined) {
+						body.FirstName = updateFields.firstname as string;
 					}
 					if (updateFields.leadSource !== undefined) {
 						body.LeadSource = updateFields.leadSource as string;
