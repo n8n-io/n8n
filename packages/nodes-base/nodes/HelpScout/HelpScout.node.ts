@@ -59,7 +59,7 @@ export class HelpScout implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HelpScout',
 		name: 'helpScout',
-		icon: 'file:helpScout.png',
+		icon: 'file:helpScout.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -139,7 +139,7 @@ export class HelpScout implements INodeType {
 					const tagId = tag.id;
 					returnData.push({
 						name: tagName,
-						value: tagId,
+						value: tagName,
 					});
 				}
 				return returnData;
@@ -391,23 +391,23 @@ export class HelpScout implements INodeType {
 					}
 					if (attachments) {
 						if (attachments.attachmentsValues
-						&&	(attachments.attachmentsValues as IDataObject[]).length !== 0) {
+							&& (attachments.attachmentsValues as IDataObject[]).length !== 0) {
 							body.attachments?.push.apply(body.attachments, attachments.attachmentsValues as IAttachment[]);
 						}
 						if (attachments.attachmentsBinary
-						&& 	(attachments.attachmentsBinary as IDataObject[]).length !== 0
-						&&	items[i].binary) {
-							 const mapFunction = (value: IDataObject): IAttachment => {
-								 const binaryProperty = (items[i].binary as IBinaryKeyData)[value.property as string];
+							&& (attachments.attachmentsBinary as IDataObject[]).length !== 0
+							&& items[i].binary) {
+							const mapFunction = (value: IDataObject): IAttachment => {
+								const binaryProperty = (items[i].binary as IBinaryKeyData)[value.property as string];
 								if (binaryProperty) {
 									return {
 										fileName: binaryProperty.fileName || 'unknown',
 										data: binaryProperty.data,
 										mimeType: binaryProperty.mimeType,
-									 };
-									} else {
-										throw new Error(`Binary property ${value.property} does not exist on input`);
-									}
+									};
+								} else {
+									throw new Error(`Binary property ${value.property} does not exist on input`);
+								}
 							};
 							body.attachments?.push.apply(body.attachments, (attachments.attachmentsBinary as IDataObject[]).map(mapFunction) as IAttachment[]);
 						}

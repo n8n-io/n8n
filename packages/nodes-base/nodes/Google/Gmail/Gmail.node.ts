@@ -66,14 +66,14 @@ export class Gmail implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gmail',
 		name: 'gmail',
-		icon: 'file:gmail.png',
+		icon: 'file:gmail.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the Gmail API',
 		defaults: {
 			name: 'Gmail',
-			color: '#d93025',
+			color: '#4285F4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -4,12 +4,18 @@ import {
 } from '@oclif/command';
 
 import {
+	Credentials,
+	UserSettings,
+} from 'n8n-core';
+
+import {
 	IDataObject
 } from 'n8n-workflow';
 
 import {
 	Db,
 	GenericHelpers,
+	ICredentialsDecryptedDb,
 } from '../../src';
 
 import * as fs from 'fs';
@@ -21,8 +27,9 @@ export class ExportCredentialsCommand extends Command {
 	static examples = [
 		`$ n8n export:credentials --all`,
 		`$ n8n export:credentials --id=5 --output=file.json`,
-		`$ n8n export:credentials --all --output=backups/latest/`,
+		`$ n8n export:credentials --all --output=backups/latest.json`,
 		`$ n8n export:credentials --backup --output=backups/latest/`,
+		`$ n8n export:credentials --all --decrypted --output=backups/decrypted.json`,
 	];
 
 	static flags = {
@@ -45,6 +52,9 @@ export class ExportCredentialsCommand extends Command {
 		}),
 		separate: flags.boolean({
 			description: 'Exports one file per credential (useful for versioning). Must inform a directory via --output.',
+		}),
+		decrypted: flags.boolean({
+			description: 'Exports data decrypted / in plain text. ALL SENSITIVE INFORMATION WILL BE VISIBLE IN THE FILES. Use to migrate from a installation to another that have a different secret key (in the config file).',
 		}),
 	};
 
@@ -107,6 +117,20 @@ export class ExportCredentialsCommand extends Command {
 			}
 
 			const credentials = await Db.collections.Credentials!.find(findQuery);
+
+			if (flags.decrypted) {
+				const encryptionKey = await UserSettings.getEncryptionKey();
+				if (encryptionKey === undefined) {
+					throw new Error('No encryption key got found to decrypt the credentials!');
+				}
+
+				for (let i = 0; i < credentials.length; i++) {
+					const { name, type, nodesAccess, data } = credentials[i];
+					const credential = new Credentials(name, type, nodesAccess, data);
+					const plainData = credential.getData(encryptionKey);
+					(credentials[i] as ICredentialsDecryptedDb).data = plainData;
+				}
+			}
 
 			if (credentials.length === 0) {
 				throw new Error('No credentials found with specified filters.');
