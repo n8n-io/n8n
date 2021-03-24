@@ -41,10 +41,14 @@ export function pgQuery(
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 	items: INodeExecutionData[],
 ): Promise<object[]> {
-	const propertiesString = getNodeParam('properties', 0) as string;
-	const properties = propertiesString.split(',').map(column => column.trim());
-	const paramsItems = getItemCopy(items, properties);
-	const valuesArray = paramsItems.map((row) => properties.map(col => row[col]));
+	const useQueryParam = getNodeParam('useQueryParams', 0) as boolean;
+	let valuesArray = [] as string[][];
+	if (useQueryParam) {
+		const propertiesString = getNodeParam('properties', 0) as string;
+		const properties = propertiesString.split(',').map(column => column.trim());
+		const paramsItems = getItemCopy(items, properties);
+		valuesArray = paramsItems.map((row) => properties.map(col => row[col])) as string[][];
+	}
 
 	const queries: { query: string | pgPromise.QueryFile,
 		values?: any,

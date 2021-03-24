@@ -77,12 +77,26 @@ export class Postgres implements INodeType {
 				description: 'The SQL query to execute.',
 			},
 			{
+				displayName: 'Use query parameters',
+				name: 'useQueryParams',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: ['executeQuery'],
+					},
+				},
+				default: false,
+				required: true,
+				description: 'Use Parametrized Queries, where variables are replaced using $1, $2, etc.. <br>Do not use this for regular n8n expressions.',
+			},
+			{
 				displayName: 'Properties',
 				name: 'properties',
 				type: 'string',
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],
+						useQueryParams: [true],
 					},
 				},
 				default: '',
