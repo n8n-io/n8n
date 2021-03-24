@@ -550,7 +550,7 @@ export class Telegram implements INodeType {
 				},
 				required: true,
 				description: 'A JSON-serialized array of results for the inline query.',
-			},			
+			},
 			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
@@ -1750,13 +1750,13 @@ export class Telegram implements INodeType {
 					// -----------------------------------------------
 
 					endpoint = 'answerInlineQuery';
-					
+
 					body.inline_query_id = this.getNodeParameter('queryId', i) as string;
 					body.results = this.getNodeParameter('results', i) as string;
-					
+
 					// Add additional fields
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.assign(body, additionalFields);					
+					Object.assign(body, additionalFields);
 				}
 
 			} else if (resource === 'chat') {
