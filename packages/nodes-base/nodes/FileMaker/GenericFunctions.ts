@@ -5,7 +5,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, INodePropertyOptions,
+	IDataObject, INodePropertyOptions, NodeApiError,
 } from 'n8n-workflow';
 
 import {OptionsWithUri} from 'request';
@@ -63,8 +63,7 @@ export async function layoutsApiRequest(this: ILoadOptionsFunctions | IExecuteFu
 		items.sort((a, b) => a.name > b.name ? 0 : 1);
 		return items;
 	} catch (error) {
-		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

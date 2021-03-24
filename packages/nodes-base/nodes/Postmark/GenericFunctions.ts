@@ -10,7 +10,8 @@ import {
 import {
 	IDataObject,
 	IHookFunctions,
-	IWebhookFunctions
+	IWebhookFunctions,
+	NodeApiError
 } from 'n8n-workflow';
 
 
@@ -40,7 +41,7 @@ export async function postmarkApiRequest(this: IExecuteFunctions | IWebhookFunct
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new Error(`Postmark: ${error.statusCode} Message: ${error.message}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

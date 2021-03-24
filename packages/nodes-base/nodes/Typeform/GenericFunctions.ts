@@ -5,7 +5,7 @@ import {
 } from 'n8n-core';
 
 import {
-	INodePropertyOptions,
+	INodePropertyOptions, NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -78,19 +78,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 			return await this.helpers.requestOAuth2!.call(this, 'typeformOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Typeform credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.description) {
-			// Try to return the error prettier
-			const errorBody = error.response.body;
-			throw new Error(`Typeform error response [${error.statusCode} - errorBody.code]: ${errorBody.description}`);
-		}
-
-		// Expected error data did not get returned so throw the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

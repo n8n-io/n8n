@@ -13,6 +13,7 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -45,7 +46,7 @@ export async function getAuthorization(
 
 		return response.auth_token;
 	} catch (error) {
-		throw new Error('Taiga Error: ' + error.err || error);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

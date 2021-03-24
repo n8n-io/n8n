@@ -4,7 +4,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -67,11 +67,7 @@ export async function redditApiRequest(
 		try {
 			return await this.helpers.request.call(this, options);
 		} catch (error) {
-			const errorMessage = error?.response?.body?.message;
-			if (errorMessage) {
-				throw new Error(`Reddit error response [${error.statusCode}]: ${errorMessage}`);
-			}
-			throw error;
+			throw new NodeApiError(this.getNode(), error);
 		}
 	}
 }

@@ -22,7 +22,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -62,7 +62,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 			}
 		}
 
-		throw new Error(`AWS error response [${error.statusCode}]: ${errorMessage}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

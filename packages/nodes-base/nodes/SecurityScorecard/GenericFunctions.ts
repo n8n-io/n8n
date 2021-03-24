@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function scorecardApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -44,10 +44,7 @@ export async function scorecardApiRequest(this: IHookFunctions | IExecuteFunctio
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.error) {
-			const errorMessage = `SecurityScorecard error response [${error.statusCode}]: ${error.error.error ? error.error.error.message : error.error}`;
-			throw new Error(errorMessage);
-		} else throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

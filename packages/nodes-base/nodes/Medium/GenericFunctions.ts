@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function mediumApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
@@ -46,9 +46,6 @@ export async function mediumApiRequest(this: IHookFunctions | IExecuteFunctions 
 			return await this.helpers.requestOAuth2!.call(this, 'mediumOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.statusCode === 401) {
-			throw new Error('The Medium credentials are not valid!');
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

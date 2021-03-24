@@ -11,6 +11,7 @@ import {
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -59,14 +60,10 @@ export async function pagerDutyApiRequest(this: IExecuteFunctions | IWebhookFunc
 			return await this.helpers.requestOAuth2!.call(this, 'pagerDutyOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error && error.response.body.error.errors) {
-			// Try to return the error prettier
-				//@ts-ignore
-				throw new Error(`PagerDuty error response [${error.statusCode}]: ${error.response.body.error.errors.join(' | ')}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
+
 export async function pagerDutyApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];

@@ -9,7 +9,7 @@ import {
 } from 'request';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -51,19 +51,7 @@ export async function customerIoApiRequest(this: IHookFunctions | IExecuteFuncti
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Customer.io credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.error_code) {
-			// Try to return the error prettier
-			const errorBody = error.response.body;
-			throw new Error(`Customer.io error response [${errorBody.error_code}]: ${errorBody.description}`);
-		}
-
-		// Expected error data did not get returned so throw the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

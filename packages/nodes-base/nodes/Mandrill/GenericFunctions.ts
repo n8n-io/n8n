@@ -9,6 +9,7 @@ import {
 } from 'n8n-core';
 
 import * as _ from 'lodash';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function mandrillApiRequest(this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions, resource: string, method: string, action: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('mandrillApi');
@@ -33,19 +34,7 @@ export async function mandrillApiRequest(this: IExecuteFunctions | IHookFunction
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = error.response.body.message || error.response.body.Message;
-		if (error.name === 'Invalid_Key') {
-			throw new Error('The provided API key is not a valid Mandrill API key');
-		} else if (error.name === 'ValidationError') {
-			throw new Error('The parameters passed to the API call are invalid or not provided when required');
-		} else if (error.name === 'GeneralError') {
-			throw new Error('An unexpected error occurred processing the request. Mandrill developers will be notified.');
-		}
-
-		if (errorMessage !== undefined) {
-			throw errorMessage;
-		}
-		throw error.response.body;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

@@ -16,7 +16,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 import * as moment from 'moment';
@@ -53,10 +53,7 @@ export async function cortexApiRequest(this: IHookFunctions | IExecuteFunctions 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.error) {
-			const errorMessage = `Cortex error response [${error.statusCode}]: ${error.error.message}`;
-			throw new Error(errorMessage);
-		} else throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

@@ -9,6 +9,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -71,8 +72,8 @@ export class AwsSnsTrigger implements INodeType {
 				let data;
 				try {
 					data = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ListTopics');
-				} catch (err) {
-					throw new Error(`AWS Error: ${err}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 
 				let topics = data.ListTopicsResponse.ListTopicsResult.Topics.member;

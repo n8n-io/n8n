@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function wufooApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -40,6 +40,6 @@ export async function wufooApiRequest(this: IHookFunctions | IExecuteFunctions |
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new Error(error.message);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

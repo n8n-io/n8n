@@ -4,7 +4,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 /**
@@ -41,22 +41,6 @@ export async function twilioApiRequest(this: IHookFunctions | IExecuteFunctions,
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Twilio credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			let errorMessage = `Twilio error response [${error.statusCode}]: ${error.response.body.message}`;
-			if (error.response.body.more_info) {
-				errorMessage = `errorMessage (${error.response.body.more_info})`;
-			}
-
-			throw new Error(errorMessage);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

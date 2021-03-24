@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 import * as moment from 'moment';
@@ -47,10 +47,7 @@ export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.error) {
-			const errorMessage = `TheHive error response [${error.statusCode}]: ${error.error.message || error.error.type}`;
-			throw new Error(errorMessage);
-		} else throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

@@ -11,7 +11,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -58,13 +58,10 @@ export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctio
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.description) {
-			throw new Error(`Unleashed Error response [${error.statusCode}]: ${error.response.body.description}`);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
+
 export async function unleashedApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];

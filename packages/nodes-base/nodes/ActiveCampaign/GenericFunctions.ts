@@ -4,7 +4,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, ILoadOptionsFunctions, INodeProperties,
+	IDataObject, ILoadOptionsFunctions, INodeProperties, NodeApiError,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
@@ -63,13 +63,7 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 		}
 
 	} catch (error) {
-		if (error.statusCode === 403) {
-			// Return a clear error
-			throw new Error('The ActiveCampaign credentials are not valid!');
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

@@ -11,6 +11,7 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	NodeApiError,
 } from 'n8n-workflow';
 
 export async function copperApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -40,12 +41,7 @@ export async function copperApiRequest(this: IHookFunctions | IExecuteFunctions 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		let errorMessage = error.message;
-		if (error.response.body && error.response.body.message) {
-			errorMessage = error.response.body.message;
-		}
-
-		throw new Error('Copper Error: ' + errorMessage);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

@@ -14,6 +14,7 @@ import {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
+	NodeApiError,
 } from 'n8n-workflow';
 
 export async function twitterApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -37,15 +38,7 @@ export async function twitterApiRequest(this: IExecuteFunctions | IExecuteSingle
 		//@ts-ignore
 		return await this.helpers.requestOAuth1.call(this, 'twitterOAuth1Api', options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.errors) {
-			// Try to return the error prettier
-			const errorMessages = error.response.body.errors.map((error: IDataObject) => {
-				return error.message;
-			});
-			throw new Error(`Twitter error response [${error.statusCode}]: ${errorMessages.join(' | ')}`);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

@@ -5,7 +5,7 @@ import {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
 export async function disqusApiRequest(
 		this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -46,21 +46,9 @@ export async function disqusApiRequest(
 		delete options.body;
 	}
 	try {
-		const result = await this.helpers.request!(options);
-		return result;
+		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Disqus credentials are not valid!');
-		}
-
-		if (error.error && error.error.error_summary) {
-			// Try to return the error prettier
-			throw new Error(`Disqus error response [${error.statusCode}]: ${error.error.error_summary}`);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

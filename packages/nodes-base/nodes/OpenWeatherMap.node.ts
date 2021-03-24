@@ -6,6 +6,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
@@ -271,7 +272,13 @@ export class OpenWeatherMap implements INodeType {
 				json: true,
 			};
 
-			const responseData = await this.helpers.request(options);
+			let responseData;
+			try {
+				responseData = await this.helpers.request(options);
+			} catch (error) {
+				throw new NodeApiError(this.getNode(), error);
+			}
+
 
 			returnData.push(responseData as IDataObject);
 		}

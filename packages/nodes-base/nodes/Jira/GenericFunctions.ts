@@ -12,6 +12,7 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	NodeApiError,
 } from 'n8n-workflow';
 
 export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -67,22 +68,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
-		let errorMessage = error.message;
-
-		if (error.response.body) {
-			if (error.response.body.errorMessages && error.response.body.errorMessages.length) {
-				errorMessage = JSON.stringify(error.response.body.errorMessages);
-			} else {
-				errorMessage = error.response.body.message || error.response.body.error || error.response.body.errors || error.message;
-			}
-		}
-
-		if (typeof errorMessage !== 'string') {
-			errorMessage = JSON.stringify(errorMessage);
-		}
-
-		throw new Error(`Jira error response [${error.statusCode}]: ${errorMessage}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

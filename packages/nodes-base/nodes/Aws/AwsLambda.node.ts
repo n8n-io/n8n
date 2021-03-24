@@ -6,6 +6,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import { awsApiRequestREST } from './GenericFunctions';
@@ -134,8 +135,8 @@ export class AwsLambda implements INodeType {
 				let data;
 				try {
 					data = await awsApiRequestREST.call(this, 'lambda', 'GET', '/2015-03-31/functions/');
-				} catch (err) {
-					throw new Error(`AWS Error: ${err}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 
 				for (const func of data.Functions!) {

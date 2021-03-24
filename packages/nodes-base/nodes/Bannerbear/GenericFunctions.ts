@@ -11,6 +11,7 @@ import {
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -46,12 +47,7 @@ export async function bannerbearApiRequest(this: IExecuteFunctions | IWebhookFun
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-				//@ts-ignore
-				throw new Error(`Bannerbear error response [${error.statusCode}]: ${error.response.body.message}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

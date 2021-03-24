@@ -6,6 +6,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import { awsApiRequestSOAP } from './GenericFunctions';
@@ -110,8 +111,8 @@ export class AwsSns implements INodeType {
 				let data;
 				try {
 					data = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ListTopics');
-				} catch (err) {
-					throw new Error(`AWS Error: ${err}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 
 				let topics = data.ListTopicsResponse.ListTopicsResult.Topics.member;

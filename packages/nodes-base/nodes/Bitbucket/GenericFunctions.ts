@@ -5,7 +5,7 @@ import {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
 export async function bitbucketApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('bitbucketApi');
@@ -30,8 +30,8 @@ export async function bitbucketApiRequest(this: IHookFunctions | IExecuteFunctio
 
 	try {
 		return await this.helpers.request!(options);
-	} catch (err) {
-		throw new Error('Bitbucket Error: ' + err.message);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

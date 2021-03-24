@@ -11,6 +11,7 @@ import {
 import {
 	IDataObject,
 	INodePropertyOptions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import * as moment from 'moment-timezone';
@@ -41,11 +42,7 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 			return await this.helpers.requestOAuth2.call(this, credentialsType, options);
 		}
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body[0] && error.response.body[0].message) {
-			// Try to return the error prettier
-			throw new Error(`Salesforce error response [${error.statusCode}]: ${error.response.body[0].message}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

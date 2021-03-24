@@ -13,6 +13,7 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	IPollFunctions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 
@@ -73,23 +74,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Airtable credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.error) {
-			// Try to return the error prettier
-
-			const airtableError = error.response.body.error;
-
-			if (airtableError.type && airtableError.message) {
-				throw new Error(`Airtable error response [${airtableError.type}]: ${airtableError.message}`);
-			}
-		}
-
-		// Expected error data did not get returned so rhow the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

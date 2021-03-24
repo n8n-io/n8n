@@ -11,7 +11,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -47,20 +47,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.response.body && error.response.body.errors) {
-			let message = '';
-			if (typeof error.response.body.errors === 'object') {
-				for (const key of Object.keys(error.response.body.errors)) {
-					message += error.response.body.errors[key];
-				}
-			} else {
-				message = `${error.response.body.errors} |`;
-			}
-			const errorMessage = `Shopify error response [${error.statusCode}]: ${message}`;
-			throw new Error(errorMessage);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

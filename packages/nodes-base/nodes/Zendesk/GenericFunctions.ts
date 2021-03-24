@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
  } from 'n8n-workflow';
 
 export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -58,17 +58,8 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 
 			return await this.helpers.requestOAuth2!.call(this, 'zendeskOAuth2Api', options);
 		}
-	} catch(err) {
-
-		let errorMessage = err.message;
-		if (err.response && err.response.body && err.response.body.error) {
-			errorMessage = err.response.body.error;
-			if (typeof err.response.body.error !== 'string') {
-				errorMessage = JSON.stringify(errorMessage);
-			}
-		}
-
-		throw new Error(`Zendesk error response [${err.statusCode}]: ${errorMessage}`);
+	} catch(error) {
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

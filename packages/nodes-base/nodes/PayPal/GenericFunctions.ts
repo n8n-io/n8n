@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
@@ -30,16 +30,7 @@ export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
-		if (error.response.body) {
-			let errorMessage = error.response.body.message;
-			if (error.response.body.details) {
-				errorMessage += ` - Details: ${JSON.stringify(error.response.body.details)}`;
-			}
-			throw new Error(errorMessage);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

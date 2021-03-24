@@ -6,6 +6,7 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -97,22 +98,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 			data: responseData.data,
 		};
 	} catch(error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Pipedrive credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.error) {
-			// Try to return the error prettier
-			let errorMessage = `Pipedrive error response [${error.statusCode}]: ${error.response.body.error.message}`;
-			if (error.response.body.error_info) {
-				errorMessage += ` - ${error.response.body.error_info}`;
-			}
-			throw new Error(errorMessage);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

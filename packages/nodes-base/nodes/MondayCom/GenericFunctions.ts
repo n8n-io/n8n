@@ -10,7 +10,8 @@ import {
 import {
 	IDataObject,
 	IHookFunctions,
-	IWebhookFunctions
+	IWebhookFunctions,
+	NodeApiError
 } from 'n8n-workflow';
 
 import {
@@ -41,11 +42,7 @@ export async function mondayComApiRequest(this: IExecuteFunctions | IWebhookFunc
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.response) {
-			const errorMessage = error.response.body.error_message;
-			throw new Error(`Monday error response [${error.statusCode}]: ${errorMessage}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 } from 'n8n-workflow';
 
 
@@ -175,7 +176,13 @@ export class Mailgun implements INodeType {
 			json: true,
 		};
 
-		const responseData = await this.helpers.request(options);
+		let responseData;
+
+		try {
+			responseData = await this.helpers.request(options);
+		} catch (error) {
+			throw new NodeApiError(this.getNode(), error);
+		}
 
 		return {
 			json: responseData,

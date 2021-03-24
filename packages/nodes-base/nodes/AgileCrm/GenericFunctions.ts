@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 import { IContactUpdate } from './ContactInterface';
 
@@ -39,7 +39,7 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new Error(`AgileCRM error response: ${error.message}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 
 }

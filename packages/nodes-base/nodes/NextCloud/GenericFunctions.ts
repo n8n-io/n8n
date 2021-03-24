@@ -2,6 +2,7 @@ import {
 	IExecuteFunctions,
 	IHookFunctions,
 } from 'n8n-core';
+import { NodeApiError } from 'n8n-workflow';
 
 import {
 	OptionsWithUri,
@@ -68,6 +69,6 @@ export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctio
 			return await this.helpers.requestOAuth2!.call(this, 'nextCloudOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new Error(`NextCloud Error. Status Code: ${error.statusCode}. Message: ${error.message}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

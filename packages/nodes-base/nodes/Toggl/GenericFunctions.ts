@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function togglApiRequest(this: ITriggerFunctions | IPollFunctions | IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
@@ -35,15 +35,6 @@ export async function togglApiRequest(this: ITriggerFunctions | IPollFunctions |
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.statusCode === 403) {
-			throw new Error('The Toggle credentials are probably invalid!');
-		}
-
-		const errorMessage = error.response.body && (error.response.body.message || error.response.body.Message);
-		if (errorMessage !== undefined) {
-			throw new Error(errorMessage);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

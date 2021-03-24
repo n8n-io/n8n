@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
  } from 'n8n-workflow';
 
 export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, qs: IDataObject = {} ,headers?: object): Promise<any> { // tslint:disable-line:no-any
@@ -61,10 +61,7 @@ export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctio
 			return await this.helpers.requestOAuth2!.call(this, 'mailchimpOAuth2Api', options, { tokenType: 'Bearer' });
 		}
 	} catch (error) {
-		if (error.respose && error.response.body && error.response.body.detail) {
-			throw new Error(`Mailchimp Error response [${error.statusCode}]: ${error.response.body.detail}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

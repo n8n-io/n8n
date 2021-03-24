@@ -22,7 +22,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 import { URL } from 'url';
@@ -90,7 +90,7 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 			}
 		}
 
-		throw new Error(`S3 error response [${error.statusCode}]: ${errorMessage}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

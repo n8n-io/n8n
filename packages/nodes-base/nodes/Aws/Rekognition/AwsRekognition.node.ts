@@ -8,6 +8,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -494,7 +495,11 @@ export class AwsRekognition implements INodeType {
 								body.Image.S3Object.Version = additionalFields.version as string;
 							}
 						}
-						responseData = await awsApiRequestREST.call(this, 'rekognition', 'POST', '', JSON.stringify(body), {}, { 'X-Amz-Target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+						try {
+							responseData = await awsApiRequestREST.call(this, 'rekognition', 'POST', '', JSON.stringify(body), {}, { 'X-Amz-Target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
+						}
 					}
 				}
 			}

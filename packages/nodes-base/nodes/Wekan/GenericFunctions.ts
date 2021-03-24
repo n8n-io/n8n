@@ -13,6 +13,7 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	NodeApiError,
 } from 'n8n-workflow';
 
 export async function getAuthorization(
@@ -39,7 +40,7 @@ export async function getAuthorization(
 
 		return { token: response.token, userId: response.id };
 	} catch (error) {
-		throw new Error('Wekan Error: ' + error.error.reason);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

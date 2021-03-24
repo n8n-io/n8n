@@ -34,7 +34,6 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'gSuiteAdminOAuth2Api', options);
 	} catch (error) {
-
 		throw new NodeApiError(this.getNode(), error);
 	}
 }

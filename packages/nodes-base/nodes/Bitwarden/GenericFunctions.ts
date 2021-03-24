@@ -6,6 +6,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -93,7 +94,7 @@ export async function getAccessToken(
 		const { access_token } = await this.helpers.request!(options);
 		return access_token;
 	} catch (error) {
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

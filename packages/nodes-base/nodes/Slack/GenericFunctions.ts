@@ -11,6 +11,7 @@ import {
 import {
 	IDataObject,
 	IOAuth2Options,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import * as _ from 'lodash';
@@ -61,18 +62,7 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 
 		return response;
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Slack credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			throw new Error(`Slack error response [${error.statusCode}]: ${error.response.body.message}`);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

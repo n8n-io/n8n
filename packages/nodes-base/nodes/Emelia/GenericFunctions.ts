@@ -6,6 +6,7 @@ import {
 import {
 	IHookFunctions,
 	INodePropertyOptions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 /**
@@ -48,19 +49,9 @@ export async function emeliaApiRequest(
 	};
 
 	try {
-
 		return await this.helpers.request!.call(this, options);
-
 	} catch (error) {
-
-		if (error?.response?.body?.error) {
-			const { error: errorMessage } = error.response.body;
-			throw new Error(
-				`Emelia error response [${error.statusCode}]: ${errorMessage}`,
-			);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

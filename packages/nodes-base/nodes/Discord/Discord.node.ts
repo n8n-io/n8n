@@ -5,6 +5,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 } from 'n8n-workflow';
 
 export class Discord implements INodeType {
@@ -86,8 +87,7 @@ export class Discord implements INodeType {
 							}, get(error, 'response.body.retry_after', 150));
 						});
 					} else {
-						// If it's another error code then return the JSON response
-						throw error;
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 

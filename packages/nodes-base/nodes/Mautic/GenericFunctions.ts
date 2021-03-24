@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 interface OMauticErrorResponse {
@@ -73,10 +73,7 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 		return returnData;
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.errors) {
-			throw new Error('Mautic Error: ' + getErrors(error.response.body));
-		}
-		throw new Error(`Mautic Error: ${error.message}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

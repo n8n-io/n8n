@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -38,15 +38,7 @@ export async function orbitApiRequest(this: IHookFunctions | IExecuteFunctions |
 
 		return await this.helpers.request!(options);
 	} catch (error) {
-
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			const errorBody = error.response.body;
-			throw new Error(`Orbit error response [${error.statusCode}]: ${errorBody.message}`);
-		}
-
-		// Expected error data did not get returned so throw the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

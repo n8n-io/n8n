@@ -22,7 +22,7 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialDataDecryptedObject,
+	ICredentialDataDecryptedObject, NodeApiError,
 } from 'n8n-workflow';
 
 function getEndpointForService(service: string, credentials: ICredentialDataDecryptedObject): string {
@@ -71,7 +71,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 			}
 		}
 
-		throw new Error(`AWS error response [${error.statusCode}]: ${errorMessage}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

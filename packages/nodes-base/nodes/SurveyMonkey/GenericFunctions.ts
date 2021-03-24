@@ -10,7 +10,8 @@ import {
 import {
 	IDataObject,
 	IHookFunctions,
-	IWebhookFunctions
+	IWebhookFunctions,
+	NodeApiError
 } from 'n8n-workflow';
 
 export async function surveyMonkeyApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -53,11 +54,7 @@ export async function surveyMonkeyApiRequest(this: IExecuteFunctions | IWebhookF
 			return await this.helpers.requestOAuth2?.call(this, 'surveyMonkeyOAuth2Api', options);
 		}
 	} catch (error) {
-		const errorMessage =  error.response.body.error.message;
-		if (errorMessage !== undefined) {
-			throw new Error(`SurveyMonkey error response [${error.statusCode}]: ${errorMessage}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

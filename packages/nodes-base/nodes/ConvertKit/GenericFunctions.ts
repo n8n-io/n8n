@@ -10,7 +10,8 @@ import {
 
 import {
 	IDataObject,
-	IHookFunctions
+	IHookFunctions,
+	NodeApiError
 } from 'n8n-workflow';
 
 export async function convertKitApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
@@ -51,17 +52,8 @@ export async function convertKitApiRequest(this: IExecuteFunctions | IExecuteSin
 	}
 
 	try {
-
 		return await this.helpers.request!(options);
-
 	} catch (error) {
-
-		let errorMessage = error;
-
-		if (error.response && error.response.body && error.response.body.message) {
-			errorMessage = error.response.body.message;
-		}
-
-		throw new Error(`ConvertKit error response: ${errorMessage}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

@@ -26,7 +26,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
  } from 'n8n-workflow';
 
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string | Buffer, query: IDataObject = {}, headers?: object, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
@@ -39,7 +39,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 
 	// Sign AWS API request with the user credentials
 	const signOpts = {headers: headers || {}, host: endpoint.host, method, path: `${endpoint.pathname}?${queryToString(query).replace(/\+/g, '%2B')}`, body};
-	
+
 
 	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim()});
 
@@ -67,7 +67,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 			}
 		}
 
-		throw new Error(`AWS error response [${error.statusCode}]: ${errorMessage}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
