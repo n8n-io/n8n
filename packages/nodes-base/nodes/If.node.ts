@@ -75,7 +75,7 @@ export class If implements INodeType {
 					},
 					{
 						name: 'dateTime',
-						displayName: 'DateTime',
+						displayName: 'Date & Time',
 						values: [
 							{
 								displayName: 'Value 1',
@@ -90,11 +90,11 @@ export class If implements INodeType {
 								type: 'options',
 								options: [
 									{
-										name: 'After',
+										name: 'Occurred after',
 										value: 'after',
 									},
 									{
-										name: 'Before',
+										name: 'Occurred before',
 										value: 'before',
 									},
 								],

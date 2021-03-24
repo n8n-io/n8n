@@ -21,7 +21,7 @@ import {
 export class ApiTemplateIo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'APITemplate.io',
-		name: 'ApiTemplateIo',
+		name: 'apiTemplateIo',
 		icon: 'file:apiTemplateIo.svg',
 		group: ['transform'],
 		version: 1,

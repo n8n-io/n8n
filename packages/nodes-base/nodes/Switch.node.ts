@@ -88,7 +88,7 @@ export class Switch implements INodeType {
 						value: 'boolean',
 					},
 					{
-						name: 'DateTime',
+						name: 'Date & Time',
 						value: 'dateTime',
 					},
 					{
@@ -240,11 +240,11 @@ export class Switch implements INodeType {
 								type: 'options',
 								options: [
 									{
-										name: 'After',
+										name: 'Occurred after',
 										value: 'after',
 									},
 									{
-										name: 'Before',
+										name: 'Occurred before',
 										value: 'before',
 									},
 								],
