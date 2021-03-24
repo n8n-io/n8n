@@ -179,7 +179,7 @@ export class Mattermost implements INodeType {
 						description: 'Get all the reactions to one or more posts',
 					},
 				],
-				default: 'post',
+				default: 'create',
 				description: 'The operation to perform',
 			},
 
