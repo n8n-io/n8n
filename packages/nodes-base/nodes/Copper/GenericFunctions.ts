@@ -151,7 +151,7 @@ export function adjustEmail(fixedCollection: EmailFixedCollection) {
 
 export const adjustCompanyFields = flow(adjustAddress, adjustPhoneNumbers);
 export const adjustLeadFields = flow(adjustCompanyFields, adjustEmail);
-export const adjustPersonFields = adjustLeadFields;
+export const adjustPersonFields = flow(adjustCompanyFields, adjustEmails);
 export const adjustTaskFields = flow(adjustLeadFields, adjustProjectIds);
 
 /**
