@@ -159,7 +159,6 @@ export const adjustTaskFields = flow(adjustLeadFields, adjustProjectIds);
  */
 export async function handleListing(
 	this: IExecuteFunctions,
-	i: number,
 	method: string,
 	endpoint: string,
 	qs: IDataObject = {},
@@ -168,7 +167,7 @@ export async function handleListing(
 ) {
 	let responseData;
 
-	const returnAll = this.getNodeParameter('returnAll', i);
+	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	const option = { resolveWithFullResponse: true };
 
@@ -176,10 +175,9 @@ export async function handleListing(
 		return await copperApiRequestAllItems.call(this, method, endpoint, body, qs, uri, option);
 	}
 
-	const limit = this.getNodeParameter('limit', i) as number;
+	const limit = this.getNodeParameter('limit', 0) as number;
 	responseData = await copperApiRequestAllItems.call(this, method, endpoint, body, qs, uri, option);
 	return responseData.slice(0, limit);
-
 }
 
 /**
@@ -201,9 +199,9 @@ export async function copperApiRequestAllItems(
 
 	do {
 		responseData = await copperApiRequest.call(this, method, resource, body, qs, uri, option);
-		totalItems = responseData.headers['X-PW-TOTAL'];
+		totalItems = responseData.headers['x-pw-total'];
 		returnData.push(...responseData.body);
-	} while (responseData.length < totalItems);
+	} while (totalItems > returnData.length);
 
 	return returnData;
 }

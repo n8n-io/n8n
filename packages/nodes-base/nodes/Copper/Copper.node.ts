@@ -193,7 +193,7 @@ export class Copper implements INodeType {
 							Object.assign(body, filterFields);
 						}
 
-						responseData = await handleListing.call(this, i, 'POST', '/companies/search', body);
+						responseData = await handleListing.call(this, 'POST', '/companies/search', body);
 
 					} else if (operation === 'update') {
 
@@ -295,7 +295,7 @@ export class Copper implements INodeType {
 							Object.assign(body, filterFields);
 						}
 
-						responseData = await handleListing.call(this, i, 'POST', '/leads/search', body);
+						responseData = await handleListing.call(this, 'POST', '/leads/search', body);
 
 					} else if (operation === 'update') {
 
@@ -379,7 +379,7 @@ export class Copper implements INodeType {
 							Object.assign(body, filterFields);
 						}
 
-						responseData = await handleListing.call(this, i, 'POST', '/opportunities/search', body);
+						responseData = await handleListing.call(this, 'POST', '/opportunities/search', body);
 
 					} else if (operation === 'update') {
 
@@ -465,7 +465,7 @@ export class Copper implements INodeType {
 							Object.assign(body, filterFields);
 						}
 
-						responseData = await handleListing.call(this, i, 'POST', '/companies/search', body);
+						responseData = await handleListing.call(this, 'POST', '/companies/search', body);
 
 					} else if (operation === 'update') {
 
@@ -553,7 +553,7 @@ export class Copper implements INodeType {
 							Object.assign(body, filterFields);
 						}
 
-						responseData = await handleListing.call(this, i, 'POST', '/projects/search', body);
+						responseData = await handleListing.call(this, 'POST', '/projects/search', body);
 
 					} else if (operation === 'update') {
 
@@ -641,7 +641,7 @@ export class Copper implements INodeType {
 							Object.assign(body, adjustTaskFields(filterFields));
 						}
 
-						responseData = await handleListing.call(this, i, 'POST', '/tasks/search', body);
+						responseData = await handleListing.call(this, 'POST', '/tasks/search', body);
 
 					} else if (operation === 'update') {
 
@@ -675,7 +675,7 @@ export class Copper implements INodeType {
 						//              user: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, i, 'POST', '/users/search');
+						responseData = await handleListing.call(this, 'POST', '/users/search');
 
 					}
 
