@@ -98,6 +98,9 @@ export const mailFields = [
 				operation: [
 					'send',
 				],
+				dynamicTemplate: [
+					false,
+				],
 			},
 		},
 	},
@@ -345,7 +348,7 @@ export const mailFields = [
 export type SendMailBody = {
 	personalizations: Array<{
 		to: EmailName[],
-		subject: string,
+		subject?: string,
 		cc?: EmailName[],
 		bcc?: EmailName[],
 		dynamic_template_data?: { [key: string]: string },

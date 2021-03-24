@@ -338,7 +338,6 @@ export class SendGrid implements INodeType {
 					const body: SendMailBody = {
 						personalizations: [{
 							to: parsedToEmail,
-							subject: this.getNodeParameter('subject', i) as string,
 						}],
 						from: {
 							email: (this.getNodeParameter('fromEmail', i) as string).trim(),
@@ -371,6 +370,7 @@ export class SendGrid implements INodeType {
 
 						// message body
 					} else {
+						body.personalizations[0].subject = this.getNodeParameter('subject', i) as string;
 						body.content = [{
 							type: this.getNodeParameter('contentType', i) as string,
 							value: this.getNodeParameter('contentValue', i) as string,
