@@ -1,5 +1,5 @@
 export * from './CompanyDescription';
-export * from './CustomerSourcesDescription';
+export * from './CustomerSourceDescription';
 export * from './LeadDescription';
 export * from './OpportunityDescription';
 export * from './PersonDescription';

@@ -19,19 +19,26 @@ import {
 	omit,
 } from 'lodash';
 
+import {
+	AddressFixedCollection,
+	EmailFixedCollection,
+	EmailsFixedCollection,
+	PhoneNumbersFixedCollection,
+} from './utils/types';
+
+/**
+ * Make an authenticated API request to Copper.
+ */
 export async function copperApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: string,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri?: string,
+	uri = '',
 	option: IDataObject = {},
 ) {
-	const credentials = this.getCredentials('copperApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	const credentials = this.getCredentials('copperApi') as { apiKey: string, email: string };
 
 	let options: OptionsWithUri = {
 		headers: {
@@ -46,6 +53,7 @@ export async function copperApiRequest(
 		uri: uri ||`https://api.prosperworks.com/developer_api/v1${resource}`,
 		json: true,
 	};
+
 	options = Object.assign({}, options, option);
 
 	if (!Object.keys(qs).length) {
@@ -57,7 +65,6 @@ export async function copperApiRequest(
 	}
 
 	try {
-		console.log(options);
 		return await this.helpers.request!(options);
 	} catch (error) {
 		let errorMessage = error.message;
@@ -65,7 +72,7 @@ export async function copperApiRequest(
 			errorMessage = error.response.body.message;
 		}
 
-		throw new Error('Copper Error: ' + errorMessage);
+		throw new Error(`Copper error response [${error.statusCode}]: ${errorMessage}`);
 	}
 }
 
@@ -82,7 +89,7 @@ export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) 
 	return createHash('md5').update(data).digest('hex');
 }
 
-export function adjustAddress(fixedCollection: { address?: { addressFields: object } }) {
+export function adjustAddress(fixedCollection: AddressFixedCollection) {
 	if (!fixedCollection.address) return fixedCollection;
 
 	const adjusted: { address?: object } = omit(fixedCollection, ['address']);
@@ -94,7 +101,7 @@ export function adjustAddress(fixedCollection: { address?: { addressFields: obje
 	return adjusted;
 }
 
-export function adjustPhoneNumbers(fixedCollection: { phone_numbers?: { phoneFields: object } }) {
+export function adjustPhoneNumbers(fixedCollection: PhoneNumbersFixedCollection) {
 	if (!fixedCollection.phone_numbers) return fixedCollection;
 
 	const adjusted: { phone_numbers?: object } = omit(fixedCollection, ['phone_numbers']);
@@ -106,7 +113,7 @@ export function adjustPhoneNumbers(fixedCollection: { phone_numbers?: { phoneFie
 	return adjusted;
 }
 
-export function adjustEmails(fixedCollection: { emails?: { emailFields: Array<{ email: string, category: string }> } }) {
+export function adjustEmails(fixedCollection: EmailsFixedCollection) {
 	if (!fixedCollection.emails) return fixedCollection;
 
 	const adjusted: { emails?: object } = omit(fixedCollection, ['emails']);
@@ -130,7 +137,7 @@ export function adjustProjectIds(fields: { project_ids?: string }) {
 	return adjusted;
 }
 
-export function adjustEmail(fixedCollection: { email?: { emailFields: Array<{ email: string, category: string }> } }) {
+export function adjustEmail(fixedCollection: EmailFixedCollection) {
 	if (!fixedCollection.email) return fixedCollection;
 
 	const adjusted: { email?: object } = omit(fixedCollection, ['email']);
@@ -143,6 +150,60 @@ export function adjustEmail(fixedCollection: { email?: { emailFields: Array<{ em
 }
 
 export const adjustCompanyFields = flow(adjustAddress, adjustPhoneNumbers);
-export const adjustLeadFields = flow(adjustAddress, adjustPhoneNumbers, adjustEmail);
-export const adjustPersonFields = flow(adjustAddress, adjustPhoneNumbers, adjustEmails);
-export const adjustTaskFields = flow(adjustAddress, adjustPhoneNumbers, adjustEmails, adjustProjectIds);
+export const adjustLeadFields = flow(adjustCompanyFields, adjustEmail);
+export const adjustPersonFields = adjustLeadFields;
+export const adjustTaskFields = flow(adjustLeadFields, adjustProjectIds);
+
+/**
+ * Handle a Copper listing by returning all items or up to a limit.
+ */
+export async function handleListing(
+	this: IExecuteFunctions,
+	i: number,
+	method: string,
+	endpoint: string,
+	qs: IDataObject = {},
+	body: IDataObject = {},
+	uri = '',
+) {
+	let responseData;
+
+	const returnAll = this.getNodeParameter('returnAll', i);
+
+	const option = { resolveWithFullResponse: true };
+
+	if (returnAll) {
+		return await copperApiRequestAllItems.call(this, method, endpoint, body, qs, uri, option);
+	}
+
+	const limit = this.getNodeParameter('limit', i) as number;
+	responseData = await copperApiRequestAllItems.call(this, method, endpoint, body, qs, uri, option);
+	return responseData.slice(0, limit);
+
+}
+
+/**
+ * Make an authenticated API request to Copper and return all items.
+ */
+export async function copperApiRequestAllItems(
+	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
+	method: string,
+	resource: string,
+	body: IDataObject = {},
+	qs: IDataObject = {},
+	uri = '',
+	option: IDataObject = {},
+) {
+	let responseData;
+	qs.page_size = 200;
+	let totalItems = 0;
+	const returnData: IDataObject[] = [];
+
+	do {
+		responseData = await copperApiRequest.call(this, method, resource, body, qs, uri, option);
+		totalItems = responseData.headers['X-PW-TOTAL'];
+		returnData.push(...responseData.body);
+	} while (responseData.length < totalItems);
+
+	return returnData;
+}

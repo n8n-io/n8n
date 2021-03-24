@@ -6,7 +6,7 @@ import {
 	addressFixedCollection,
 	emailsFixedCollection,
 	phoneNumbersFixedCollection,
-} from './sharedFields';
+} from '../utils/sharedFields';
 
 export const personOperations = [
 	{
@@ -151,6 +151,47 @@ export const personFields = [
 	// ----------------------------------------
 	//              person: getAll
 	// ----------------------------------------
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Return all results.',
+		displayOptions: {
+			show: {
+				resource: [
+				'person',
+				],
+				operation: [
+				'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 5,
+		description: 'The number of results to return.',
+		typeOptions: {
+			minValue: 1,
+			maxValue: 1000,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'person',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
 	{
 		displayName: 'Filter Fields',
 		name: 'filterFields',

@@ -15,12 +15,13 @@ import {
 	adjustPersonFields,
 	adjustTaskFields,
 	copperApiRequest,
+	handleListing,
 } from './GenericFunctions';
 
 import {
 	companyFields,
 	companyOperations,
-	customerSourcesOperations,
+	customerSourceOperations,
 	leadFields,
 	leadOperations,
 	opportunityFields,
@@ -66,8 +67,8 @@ export class Copper implements INodeType {
 						value: 'company',
 					},
 					{
-						name: 'Customer Sources',
-						value: 'customerSources',
+						name: 'Customer Source',
+						value: 'customerSource',
 					},
 					{
 						name: 'Lead',
@@ -99,7 +100,7 @@ export class Copper implements INodeType {
 			},
 			...companyOperations,
 			...companyFields,
-			...customerSourcesOperations,
+			...customerSourceOperations,
 			...leadOperations,
 			...leadFields,
 			...opportunityOperations,
@@ -190,7 +191,7 @@ export class Copper implements INodeType {
 						Object.assign(body, filterFields);
 					}
 
-					responseData = await copperApiRequest.call(this, 'POST', '/companies/search', body);
+					responseData = await handleListing.call(this, i, 'POST', '/companies/search', body);
 
 				} else if (operation === 'update') {
 
@@ -213,16 +214,16 @@ export class Copper implements INodeType {
 
 				}
 
-			} else if (resource === 'customerSources') {
+			} else if (resource === 'customerSource') {
 
 			// **********************************************************************
-			//                            customerSources
+			//                            customerSource
 			// **********************************************************************
 
 				if (operation === 'getAll') {
 
 					// ----------------------------------------
-					//        customerSources: getAll
+					//        customerSource: getAll
 					// ----------------------------------------
 
 					responseData = await copperApiRequest.call(this, 'GET', '/customer_sources');
@@ -292,7 +293,7 @@ export class Copper implements INodeType {
 						Object.assign(body, filterFields);
 					}
 
-					responseData = await copperApiRequest.call(this, 'POST', '/leads/search', body);
+					responseData = await handleListing.call(this, i, 'POST', '/leads/search', body);
 
 				} else if (operation === 'update') {
 
@@ -376,7 +377,7 @@ export class Copper implements INodeType {
 						Object.assign(body, filterFields);
 					}
 
-					responseData = await copperApiRequest.call(this, 'POST', '/opportunities/search', body);
+					responseData = await handleListing.call(this, i, 'POST', '/opportunities/search', body);
 
 				} else if (operation === 'update') {
 
@@ -462,7 +463,7 @@ export class Copper implements INodeType {
 						Object.assign(body, filterFields);
 					}
 
-					responseData = await copperApiRequest.call(this, 'POST', '/people/search', body);
+					responseData = await handleListing.call(this, i, 'POST', '/companies/search', body);
 
 				} else if (operation === 'update') {
 
@@ -550,7 +551,7 @@ export class Copper implements INodeType {
 						Object.assign(body, filterFields);
 					}
 
-					responseData = await copperApiRequest.call(this, 'POST', '/projects/search', body);
+					responseData = await handleListing.call(this, i, 'POST', '/projects/search', body);
 
 				} else if (operation === 'update') {
 
@@ -638,7 +639,7 @@ export class Copper implements INodeType {
 						Object.assign(body, adjustTaskFields(filterFields));
 					}
 
-					responseData = await copperApiRequest.call(this, 'POST', '/tasks/search', body);
+					responseData = await handleListing.call(this, i, 'POST', '/tasks/search', body);
 
 				} else if (operation === 'update') {
 
@@ -672,7 +673,7 @@ export class Copper implements INodeType {
 					//              user: getAll
 					// ----------------------------------------
 
-					responseData = await copperApiRequest.call(this, 'POST', '/users/search');
+					responseData = await handleListing.call(this, i, 'POST', '/users/search');
 
 				}
 
