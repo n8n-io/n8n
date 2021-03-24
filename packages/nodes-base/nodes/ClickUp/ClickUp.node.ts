@@ -106,7 +106,7 @@ export class ClickUp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ClickUp',
 		name: 'clickUp',
-		icon: 'file:clickup.png',
+		icon: 'file:clickup.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
