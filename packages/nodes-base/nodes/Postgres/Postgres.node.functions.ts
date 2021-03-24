@@ -50,14 +50,14 @@ export function pgQuery(
 		valuesArray = paramsItems.map((row) => properties.map(col => row[col])) as string[][];
 	}
 
-	const queries: { query: string | pgPromise.QueryFile,
-		values?: any,
-		options?: pgPromise.IFormattingOptions }[] = [];
+	const queries: Array<{ query: string | pgPromise.QueryFile,
+		values?: Array<string|number|null>,
+		options?: pgPromise.IFormattingOptions }> = [];
 
 	for (let i = 0; i < items.length; i++) {
 		const query = getNodeParam('query', i) as string;
 		const values = valuesArray[i];
-		const queryFormat = { query: query, values: values };
+		const queryFormat = { query, values };
 		queries.push(queryFormat);
 	}
 
