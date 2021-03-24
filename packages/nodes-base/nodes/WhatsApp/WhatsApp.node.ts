@@ -61,34 +61,46 @@ export class WhatsApp implements INodeType {
 				},
 				options: [
 					{
-						name: 'Send',
-						value: 'send',
-						description: 'Send WhatsApp message',
+						name: 'Send Message',
+						value: 'sendMessage',
+						description: 'Send WhatsApp text message',
 					},
+					{
+						name: 'Send File',
+						value: 'sendFile',
+						description: 'Send WhatsApp file-in message',
+					},					
 				],
-				default: 'send',
+				default: 'sendMessage',
 				description: 'The operation to perform.',
 			},
-
+			{
+				displayName: 'Channel ID',
+				name: 'channel',
+				type: 'string',
+				default: '',
+				required: true,
+				description: 'This is API`s required field',
+			},
 
 			// ----------------------------------
 			//         whatsapp
 			// ----------------------------------
 
 			// ----------------------------------
-			//         whatsapp:send
+			//         whatsapp:sendMessage
 			// ----------------------------------
 			{
 				displayName: 'MessageTo',
 				name: 'to',
 				type: 'string',
 				default: '',
-				placeholder: '+14155238886',
+				placeholder: '74155238886',
 				required: true,
 				displayOptions: {
 					show: {
 						operation: [
-							'send',
+							'sendMessage',
 						],
 						resource: [
 							'whatsapp',
@@ -106,7 +118,7 @@ export class WhatsApp implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'send',
+							'sendMessage',
 						],
 						resource: [
 							'whatsapp',
@@ -115,27 +127,47 @@ export class WhatsApp implements INodeType {
 				},
 				description: 'The message to send',
 			},
+
 			{
-				displayName: 'File Link',
-				name: 'content',
+				displayName: 'MessageTo',
+				name: 'to',
 				type: 'string',
 				default: '',
-				required: false,
+				placeholder: '74155238886',
+				required: true,
 				displayOptions: {
 					show: {
 						operation: [
-							'send',
+							'sendFile',
 						],
 						resource: [
 							'whatsapp',
 						],
 					},
 				},
-				description: 'The file/image link to send',
-			},			
+				description: 'The number to which to send the message',
+			},
+			{
+				displayName: 'File link',
+				name: 'content',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'sendFile',
+						],
+						resource: [
+							'whatsapp',
+						],
+					},
+				},
+				description: 'The message to send',
+			},
+
 		],
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -157,24 +189,31 @@ export class WhatsApp implements INodeType {
 			endpoint = '';
 			body = {};
 			qs = {};
-
+			endpoint = '/send_message';
+				
 			resource = this.getNodeParameter('resource', i) as string;
 			operation = this.getNodeParameter('operation', i) as string;
+			body.channelId = this.getNodeParameter('channel', i) as string;
+			body.chatId = this.getNodeParameter('to', i) as string;
+			body.chatType = resource;				
 
 			if (resource === 'whatsapp') {
-				if (operation === 'send') {
+				if (operation === 'sendMessage') {
 					// ----------------------------------
-					//         sms:send
+					//         whatsapp:sendMessage
 					// ----------------------------------
 
 					requestMethod = 'POST';
-					endpoint = '/send_message';
 
-					body.chatId = this.getNodeParameter('to', i) as string;
 					body.text = this.getNodeParameter('message', i) as string;
-					// body.content = this.getNodeParameter('content', i) as string;
-					body.chatType = 'whatsapp';
-					body.channelId = '8927c7db-1482-4b06-b40e-7e7840792c1a';
+
+				} else if(operation === 'sendFile') {
+					// ----------------------------------
+					//         whatsapp:sendFile
+					// ----------------------------------
+					requestMethod = 'POST';
+
+					body.content = this.getNodeParameter('content', i) as string;		
 
 				} else {
 					throw new Error(`The operation "${operation}" is not known!`);
