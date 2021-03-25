@@ -24,9 +24,10 @@ iconv.encodingExists('utf8');
 // Create options for bomAware and encoding
 const bomAware: string[] = [];
 const encodeDecodeOptions: INodePropertyOptions[] = [];
-Object.keys((iconv as any).encodings).forEach(encoding => {
-	if (!(encoding.startsWith('_') || typeof (iconv as any).encodings[encoding] == 'string')) { // only encodings without direct alias or internals
-		if ((iconv as any).encodings[encoding].bomAware) {
+const encodings = (iconv as any).encodings; // tslint:disable-line:no-any
+Object.keys(encodings).forEach(encoding => {
+	if (!(encoding.startsWith('_') || typeof encodings[encoding] === 'string')) { // only encodings without direct alias or internals
+		if (encodings[encoding].bomAware) {
 			bomAware.push(encoding);
 		}
 		encodeDecodeOptions.push({ name: encoding, value: encoding });
@@ -235,7 +236,7 @@ export class MoveBinaryData implements INodeType {
 								'/mode': [
 									'binaryToJson',
 								],
-								encoding: bomAware
+								encoding: bomAware,
 							},
 						},
 						type: 'boolean',
@@ -249,7 +250,7 @@ export class MoveBinaryData implements INodeType {
 								'/mode': [
 									'jsonToBinary',
 								],
-								encoding: bomAware
+								encoding: bomAware,
 							},
 						},
 						type: 'boolean',
