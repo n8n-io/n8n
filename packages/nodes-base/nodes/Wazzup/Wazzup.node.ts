@@ -9,21 +9,21 @@ import {
 } from 'n8n-workflow';
 
 import {
-	instagramApiRequest,
+	wazzupApiRequest,
 } from './GenericFunctions';
 
-export class Instagram implements INodeType {
+export class Wazzup implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Instagram',
-		name: 'instagram',
-		icon: 'file:instagram.png',
+		displayName: 'Wazzup',
+		name: 'wazzup',
+		icon: 'file:wazzup.png',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Send Instagram messages as notification alerts',
+		description: 'Send WhatsApp and Instagram messages as notification alerts',
 		defaults: {
-			name: 'Instagram',
-			color: '#E4405F',
+			name: 'Wazzup',
+			color: '#25D366',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -40,11 +40,19 @@ export class Instagram implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'WhatsApp',
+						value: 'whatsapp',
+					},
+					{
 						name: 'Instagram',
 						value: 'instagram',
-					},
+					},						
+					{
+						name: 'Channels',
+						value: 'channels',
+					},									
 				],
-				default: 'instagram',
+				default: 'whatsapp',
 				description: 'The resource to operate on.',
 			},
 
@@ -55,7 +63,7 @@ export class Instagram implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'instagram',
+							'whatsapp', 'instagram'
 						],
 					},
 				},
@@ -63,12 +71,12 @@ export class Instagram implements INodeType {
 					{
 						name: 'Send Message',
 						value: 'sendMessage',
-						description: 'Send Instagram text message',
+						description: 'Send WhatsApp text message',
 					},
 					{
 						name: 'Send File',
 						value: 'sendFile',
-						description: 'Send Instagram file-in message',
+						description: 'Send WhatsApp file-in message',
 					},					
 				],
 				default: 'sendMessage',
@@ -78,18 +86,44 @@ export class Instagram implements INodeType {
 				displayName: 'Channel ID',
 				name: 'channel',
 				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'whatsapp', 'instagram'
+						],
+					},
+				},				
 				default: '',
 				required: true,
 				description: 'This is API`s required field',
 			},
 
 			// ----------------------------------
-			//         instagram
+			//         wazzup
 			// ----------------------------------
 
 			// ----------------------------------
-			//         instagram:sendMessage
+			//         wazzup:sendMessage
 			// ----------------------------------
+			{
+				displayName: 'MessageTo',
+				name: 'to',
+				type: 'string',
+				default: '',
+				placeholder: '74155238886',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'sendMessage',
+						],
+						resource: [
+							'whatsapp'
+						],
+					},
+				},
+				description: 'The number to which to send the message',
+			},
 			{
 				displayName: 'MessageTo',
 				name: 'to',
@@ -103,12 +137,12 @@ export class Instagram implements INodeType {
 							'sendMessage',
 						],
 						resource: [
-							'instagram',
+							'instagram'
 						],
 					},
 				},
 				description: 'The number to which to send the message',
-			},
+			},			
 			{
 				displayName: 'Message',
 				name: 'message',
@@ -121,13 +155,34 @@ export class Instagram implements INodeType {
 							'sendMessage',
 						],
 						resource: [
-							'instagram',
+							'whatsapp', 'instagram'
 						],
 					},
 				},
 				description: 'The message to send',
 			},
-
+			// ----------------------------------
+			//         wazzup:sendFile
+			// ----------------------------------			
+			{
+				displayName: 'MessageTo',
+				name: 'to',
+				type: 'string',
+				default: '',
+				placeholder: '74155238886',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'sendFile',
+						],
+						resource: [
+							'whatsapp',
+						],
+					},
+				},
+				description: 'The number to which to send the message',
+			},
 			{
 				displayName: 'MessageTo',
 				name: 'to',
@@ -146,7 +201,7 @@ export class Instagram implements INodeType {
 					},
 				},
 				description: 'The number to which to send the message',
-			},
+			},			
 			{
 				displayName: 'File link',
 				name: 'content',
@@ -159,12 +214,13 @@ export class Instagram implements INodeType {
 							'sendFile',
 						],
 						resource: [
-							'instagram',
+							'whatsapp', 'instagram'
 						],
 					},
 				},
 				description: 'The message to send',
 			},
+
 		],
 	};
 
@@ -184,39 +240,55 @@ export class Instagram implements INodeType {
 		let endpoint: string;
 
 		for (let i = 0; i < items.length; i++) {
-			requestMethod = 'POST';
+			requestMethod = 'GET';
 			endpoint = '';
 			body = {};
 			qs = {};
-			endpoint = '/send_message';
 				
-			resource = this.getNodeParameter('resource', i) as string;
-			operation = this.getNodeParameter('operation', i) as string;
-			body.channelId = this.getNodeParameter('channel', i) as string;
-			body.chatId = this.getNodeParameter('to', i) as string;
-			body.chatType = resource;				
+			resource = this.getNodeParameter('resource', i) as string;		
 
-			if (resource === 'instagram') {
+			if (resource === 'whatsapp' || resource === 'instagram') {
+
+				operation = this.getNodeParameter('operation', i) as string;
+				body.channelId = this.getNodeParameter('channel', i) as string;
+				body.chatId = this.getNodeParameter('to', i) as string;
+				body.chatType = resource;		
+				endpoint = '/send_message';
+				requestMethod = 'POST';
+
 				if (operation === 'sendMessage') {
+
 					// ----------------------------------
-					//         whatsapp:sendMessage
+					//         wazzup:sendMessage
 					// ----------------------------------
+
 					body.text = this.getNodeParameter('message', i) as string;
 
 				} else if(operation === 'sendFile') {
+
 					// ----------------------------------
-					//         whatsapp:sendFile
+					//         wazzup:sendFile
 					// ----------------------------------
+
 					body.content = this.getNodeParameter('content', i) as string;		
 
 				} else {
 					throw new Error(`The operation "${operation}" is not known!`);
 				}
-			} else {
+			}
+			 else if (resource === 'channels') {
+				 
+					// ----------------------------------
+					//         wazzup:channels
+					// ----------------------------------
+					endpoint = '/channels';
+	
+			}
+			 else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
-			const responseData = await instagramApiRequest.call(this, requestMethod, endpoint, body, qs);
+			const responseData = await wazzupApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 			returnData.push(responseData as IDataObject);
 		}

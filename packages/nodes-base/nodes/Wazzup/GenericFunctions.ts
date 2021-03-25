@@ -16,7 +16,7 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function instagramApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function wazzupApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('wazzupApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
