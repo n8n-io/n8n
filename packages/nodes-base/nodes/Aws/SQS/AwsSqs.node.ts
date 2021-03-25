@@ -1,4 +1,8 @@
-import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
+import {
+	BINARY_ENCODING,
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -8,9 +12,14 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { URL } from 'url';
 
-import { awsApiRequestSOAP } from '../GenericFunctions';
+import {
+	URL,
+} from 'url';
+
+import {
+	awsApiRequestSOAP,
+} from '../GenericFunctions';
 
 export class AwsSqs implements INodeType {
 	description: INodeTypeDescription = {
@@ -194,14 +203,14 @@ export class AwsSqs implements INodeType {
 						],
 					},
 					{
-						displayName: 'MessageDeduplicationId',
+						displayName: 'Message Deduplication ID',
 						name: 'messageDeduplicationId',
 						type: 'string',
 						default: '',
 						description: 'The token used for deduplication of sent messages. This parameter applies only to FIFO (first-in-first-out) queues.',
 					},
 					{
-						displayName: 'MessageGroupId',
+						displayName: 'Message Group ID',
 						name: 'messageGroupId',
 						type: 'string',
 						default: '',
@@ -299,7 +308,7 @@ export class AwsSqs implements INodeType {
 				if (item.binary === undefined) {
 					throw new Error('No binary data set. So message attribute cannot be added!');
 				}
-		
+
 				if (item.binary[dataPropertyName] === undefined) {
 					throw new Error(`The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`);
 				}
