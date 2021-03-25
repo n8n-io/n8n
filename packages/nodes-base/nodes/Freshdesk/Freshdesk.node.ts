@@ -27,6 +27,15 @@ import {
 	contactOperations,
 } from './ContactDescription';
 
+import {
+	ICreateCompanyBody,
+} from './CompanyInterface'
+
+import {
+	companyFields,
+	companyOperations,
+} from './CompanyDescription';
+
 enum Status {
 	Open = 2,
 	Pending = 3,
@@ -1411,6 +1420,54 @@ export class Freshdesk implements INodeType {
 
 					const body: ICreateContactBody = additionalFields;
 					responseData = await freshdeskApiRequest.call(this, 'PUT', `/contacts/${contactId}`, body);
+				}
+			} else if (resource === 'company') {
+				//https://developers.freshdesk.com/api/#create_company
+				if (operation === 'create') {
+					const name = this.getNodeParameter('name', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+					if (additionalFields.customFields) {
+						const metadata = (additionalFields.customFields as IDataObject).customField as IDataObject[];
+						additionalFields.custom_fields = {};
+						for (const data of metadata) {
+							//@ts-ignore
+							additionalFields.custom_fields[data.name as string] = data.value;
+						}
+						delete additionalFields.customFields;
+					}
+
+					const body: ICreateCompanyBody = additionalFields;
+					body.name = name;
+					responseData = await freshdeskApiRequest.call(this, 'POST', '/companies', body);
+				//https://developers.freshdesk.com/api/#delete_company
+				} else if (operation === 'delete') {
+					const companyId = this.getNodeParameter('companyId', i) as string;
+					responseData = await freshdeskApiRequest.call(this, 'DELETE', `/companies/${companyId}`, {});
+				} else if (operation === 'get') {
+					const companyId = this.getNodeParameter('companyId', i) as string;
+					responseData = await freshdeskApiRequest.call(this, 'GET', `/companies/${companyId}`, {});
+				//https://developers.freshdesk.com/api/#list_all_companies
+				} else if (operation === 'getAll') {
+					const qs = this.getNodeParameter('filters', i, {}) as IDataObject;
+					responseData = await freshdeskApiRequest.call(this, 'GET', '/companies', {}, qs);
+				//https://developers.freshdesk.com/api/#update_company
+				} else if (operation === 'update') {
+					const companyId = this.getNodeParameter('companyId', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+					if (additionalFields.customFields) {
+						const metadata = (additionalFields.customFields as IDataObject).customField as IDataObject[];
+						additionalFields.custom_fields = {};
+						for (const data of metadata) {
+							//@ts-ignore
+							additionalFields.custom_fields[data.name as string] = data.value;
+						}
+						delete additionalFields.customFields;
+					}
+
+					const body: ICreateCompanyBody = additionalFields;
+					responseData = await freshdeskApiRequest.call(this, 'PUT', `/companies/${companyId}`, body);
 				}
 			}
 

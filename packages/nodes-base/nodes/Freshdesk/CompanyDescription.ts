@@ -92,7 +92,7 @@ export const companyFields = [
 	},
 	{
 		displayName: 'Company ID',
-		name: 'id',
+		name: 'companyId',
 		type: 'number',
 		default: '',
 		displayOptions: {
@@ -211,7 +211,7 @@ export const companyFields = [
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Company ID',
-		name: 'id',
+		name: 'companyId',
 		type: 'number',
 		default: '',
 		displayOptions: {
@@ -231,7 +231,7 @@ export const companyFields = [
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Company ID',
-		name: 'id',
+		name: 'companyId',
 		type: 'number',
 		default: '',
 		displayOptions: {
