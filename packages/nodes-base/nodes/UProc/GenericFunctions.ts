@@ -22,13 +22,13 @@ export async function uprocApiRequest(this: IHookFunctions | IExecuteFunctions |
 	const options: OptionsWithUri = {
 		headers: {
 			Authorization: `Basic ${token}`,
-			"User-agent": "n8n"
+			'User-agent': 'n8n',
 		},
 		method,
 		qs,
 		body,
 		uri: uri || `https://api.uproc.io/api/v2/process`,
-		json: true
+		json: true,
 	};
 
 	try {
