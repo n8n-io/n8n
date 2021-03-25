@@ -24,6 +24,16 @@ function decodeAttribute(type: string, attribute: any): any {
   }
 }
 
+function decodeItem(item: any): any {
+  const _item: any = {};
+  for (const [attribute, value] of Object.entries(item)) {
+    const [type, content] = Object.entries(value)[0];
+    _item[attribute] = decodeAttribute(type, content);
+  }
+
+  return _item;
+}
+
 export class AwsDynamoDB implements INodeType {
     description: INodeTypeDescription = {
         displayName: 'AWS DynamoDB',
@@ -53,12 +63,12 @@ export class AwsDynamoDB implements INodeType {
               {
                 name: 'Item',
                 value: 'item',
-                description: 'Query Items',
+                description: 'Handle single Items',
               },
               {
                 name: 'Query',
                 value: 'query',
-                description: 'Invoke a function',
+                description: 'Query database',
               },
             ],
             default: 'item',
@@ -109,21 +119,63 @@ export class AwsDynamoDB implements INodeType {
             },
             default: '',
             description: 'Specify the Item you want to operate on',
-          }
+          },
+          {
+            displayName: 'Key Condition Expression',
+            name: 'key-condition-expression',
+            type: 'string',
+            required: true,
+            displayOptions: {
+              show: {
+                resource: ['query']
+              }
+            },
+            placeholder: 'id = :id',
+            default: '',
+            description: 'A string that determines the items to be read from the table or index.'
+          },
+          {
+            displayName: 'Expression Attribute Values',
+            name: 'expression-attribute-values',
+            type: 'json',
+            required: true,
+            displayOptions: {
+              show: {
+                resource: ['query']
+              }
+            },
+            placeholder: '{"id": {"S": "abc"}}',
+            default: '',
+            description: 'Attributes'
+          },
+          {
+            displayName: 'Projection Expression',
+            name: 'projection-expression',
+            type: 'string',
+            displayOptions: {
+              show: {
+                resource: ['query']
+              }
+            },
+            placeholder: 'id, name',
+            default: '',
+            description: 'Attributes to select'
+          },
+
         ],
     };
 
     async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
         const resource = this.getNodeParameter('resource', 0) as string;
-        const operation = this.getNodeParameter('operation', 0) as string;
 
         if (resource === 'item') {
+          const operation = this.getNodeParameter('operation', 0) as string;
           if (operation === 'get') {
-            const table = this.getNodeParameter('table', 0) as string;
+            const TableName = this.getNodeParameter('table', 0) as string;
             const item = this.getNodeParameter('item', 0) as string;
 
             const body = {
-              TableName: table,
+              TableName: TableName,
               Key: {id: {S: item}},
             };
 
@@ -133,15 +185,35 @@ export class AwsDynamoDB implements INodeType {
             };
             const response = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers)
 
-            const _item: any = {};
-            for (const [attribute, value] of Object.entries(response.Item)) {
-              const [type, content] = Object.entries(value)[0];
-              _item[attribute] = decodeAttribute(type, content);
-            }
+            return [this.helpers.returnJsonArray(decodeItem(response.Item))];
+          }
+        }
 
-            return [this.helpers.returnJsonArray(_item)];
+        if (resource === 'query') {
+          const TableName = this.getNodeParameter('table', 0) as string;
+          const KeyConditionExpression = this.getNodeParameter('key-condition-expression', 0) as string;
+          const ExpressionAttributeValues = this.getNodeParameter('expression-attribute-values', 0) as string;
+          const ProjectionExpression = this.getNodeParameter('projection-expression', 0) as string;
+
+          const body: any = {
+            TableName,
+            KeyConditionExpression,
+            ExpressionAttributeValues: JSON.parse(ExpressionAttributeValues),
+            ConsistentRead: true
+          };
+
+          if (ProjectionExpression) {
+            body.ProjectionExpression = ProjectionExpression;
           }
 
+          const headers = {
+            'X-Amz-Target': 'DynamoDB_20120810.Query',
+            'Content-Type': 'application/x-amz-json-1.0'
+          };
+          const response = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers)
+          const items = response.Items.map(decodeItem);
+
+          return [this.helpers.returnJsonArray(items)];
         }
 
         return [[]];
