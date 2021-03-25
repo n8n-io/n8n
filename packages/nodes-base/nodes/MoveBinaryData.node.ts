@@ -13,21 +13,30 @@ import {
 	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import * as iconv from 'iconv-lite';
 iconv.encodingExists('utf8');
+
+// Create options for bomAware and encoding
 const bomAware: string[] = [];
 const encodeDecodeOptions: INodePropertyOptions[] = [];
 Object.keys((iconv as any).encodings).forEach(encoding => {
-	if(!(encoding.startsWith('_') || typeof (iconv as any).encodings[encoding] == 'string')) { // only encodings without direct alias or internals
-		if((iconv as any).encodings[encoding].bomAware) {
+	if (!(encoding.startsWith('_') || typeof (iconv as any).encodings[encoding] == 'string')) { // only encodings without direct alias or internals
+		if ((iconv as any).encodings[encoding].bomAware) {
 			bomAware.push(encoding);
 		}
-		encodeDecodeOptions.push({ name: encoding, value: encoding});
+		encodeDecodeOptions.push({ name: encoding, value: encoding });
 	}
+});
+
+encodeDecodeOptions.sort((a, b) => {
+	if (a.name < b.name) { return -1; }
+	if (a.name > b.name) { return 1; }
+	return 0;
 });
 
 export class MoveBinaryData implements INodeType {
@@ -387,14 +396,14 @@ export class MoveBinaryData implements INodeType {
 
 				if (setAllData === true) {
 					// Set the full data
-					convertedValue = iconv.decode(Buffer.from(convertedValue, BINARY_ENCODING), encoding, {stripBOM: options.stripBOM as boolean});
+					convertedValue = iconv.decode(Buffer.from(convertedValue, BINARY_ENCODING), encoding, { stripBOM: options.stripBOM as boolean });
 					newItem.json = JSON.parse(convertedValue);
 				} else {
 					// Does get added to existing data so copy it first
 					newItem.json = JSON.parse(JSON.stringify(item.json));
 
 					if (options.keepAsBase64 !== true) {
-						convertedValue = iconv.decode(Buffer.from(convertedValue, BINARY_ENCODING), encoding, {stripBOM: options.stripBOM as boolean});
+						convertedValue = iconv.decode(Buffer.from(convertedValue, BINARY_ENCODING), encoding, { stripBOM: options.stripBOM as boolean });
 					}
 
 					if (options.jsonParse) {
@@ -443,7 +452,7 @@ export class MoveBinaryData implements INodeType {
 						value = JSON.stringify(value);
 					}
 
-					value = iconv.encode(value as string, encoding, {addBOM: options.addBOM as boolean}).toString(BINARY_ENCODING);
+					value = iconv.encode(value as string, encoding, { addBOM: options.addBOM as boolean }).toString(BINARY_ENCODING);
 				}
 
 				const convertedValue: IBinaryData = {
