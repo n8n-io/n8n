@@ -99,7 +99,7 @@ export class QuestDb implements INodeType {
 					},
 				},
 				default: '',
-				placeholder: 'qty,price',
+				placeholder: 'quantity,price',
 				description:
 					'Comma separated list of properties which should be used as query parameters.',
 			},
@@ -238,7 +238,7 @@ export class QuestDb implements INodeType {
 					columnNames = Object.keys(item.json);
 				}
 
-				const values : string = columnNames.map((col : string) => {
+				const values: string = columnNames.map((col : string) => {
 					if (typeof item.json[col] === 'number') {
 						// Skip quotes only for numbers. formats like dates should be quoted.
 						return item.json[col];
@@ -251,10 +251,10 @@ export class QuestDb implements INodeType {
 				queries.push(query);
 			});
 
-			for(let i = 0; i < queries.length; i++) {
+			for(const query of queries) {
 				// We have to insert lines one by one and wait
 				// Otherwise we might get `table is busy` errors.
-				await db.any(queries[i]);
+				await db.any(query);
 			}
 
 			const returnedItems = await db.any(`SELECT ${returnFields} from ${tableName}`);
