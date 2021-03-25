@@ -17,11 +17,12 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
+	IExecutionsCurrentSummary,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	Server,
 	TestWebhooks,
-} from "../src";
+} from '../src';
 import { IDataObject } from 'n8n-workflow';
 
 
@@ -97,12 +98,15 @@ export class Start extends Command {
 
 			// Wait for active workflow executions to finish
 			const activeExecutionsInstance = ActiveExecutions.getInstance();
-			let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
+			let executingWorkflows = activeExecutionsInstance.getActiveExecutions() as IExecutionsCurrentSummary[];
 
 			let count = 0;
 			while (executingWorkflows.length !== 0) {
 				if (count++ % 4 === 0) {
 					console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
+					executingWorkflows.map(execution => {
+						console.log(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
+					});
 				}
 				await new Promise((resolve) => {
 					setTimeout(resolve, 500);
@@ -129,7 +133,7 @@ export class Start extends Command {
 		await (async () => {
 			try {
 				// Start directly with the init of the database to improve startup time
-				const startDbInitPromise = Db.init().catch(error => {
+				const startDbInitPromise = Db.init().catch((error: Error) => {
 					console.error(`There was an error initializing DB: ${error.message}`);
 
 					processExistCode = 1;
@@ -168,7 +172,7 @@ export class Start extends Command {
 					const redisDB = config.get('queue.bull.redis.db');
 					const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
 					let lastTimer = 0, cumulativeTimeout = 0;
-					
+
 					const settings = {
 						retryStrategy: (times: number): number | null => {
 							const now = Date.now();
@@ -180,7 +184,7 @@ export class Start extends Command {
 								cumulativeTimeout += now - lastTimer;
 								lastTimer = now;
 								if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-									console.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + ". Exiting process.");
+									console.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + '. Exiting process.');
 									process.exit(1);
 								}
 							}
@@ -200,7 +204,7 @@ export class Start extends Command {
 					if (redisDB) {
 						settings.db = redisDB;
 					}
-					
+
 					// This connection is going to be our heartbeat
 					// IORedis automatically pings redis and tries to reconnect
 					// We will be using the retryStrategy above
@@ -215,13 +219,13 @@ export class Start extends Command {
 						}
 					});
 				}
-				
+
 				const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
 
 				if (dbType === 'sqlite') {
 					const shouldRunVacuum = config.get('database.sqlite.executeVacuumOnStartup') as number;
 					if (shouldRunVacuum) {
-						Db.collections.Execution!.query("VACUUM;");
+						Db.collections.Execution!.query('VACUUM;');
 					}
 				}
 
@@ -280,7 +284,7 @@ export class Start extends Command {
 						Start.openBrowser();
 					}
 					this.log(`\nPress "o" to open in Browser.`);
-					process.stdin.on("data", (key : string) => {
+					process.stdin.on('data', (key: string) => {
 						if (key === 'o') {
 							Start.openBrowser();
 							inputText = '';

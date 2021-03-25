@@ -56,14 +56,14 @@ export class SentryIo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sentry.io',
 		name: 'sentryIo',
-		icon: 'file:sentryio.png',
+		icon: 'file:sentryio.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Sentry.io API',
 		defaults: {
 			name: 'Sentry.io',
-			color: '#000000',
+			color: '#362d59',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -58,6 +58,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		body,
 		qs: query,
 		uri: uri || `https://api.airtable.com/v0/${endpoint}`,
+		useQuerystring: false,
 		json: true,
 	};
 
