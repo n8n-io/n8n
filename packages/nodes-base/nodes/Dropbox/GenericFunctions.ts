@@ -114,4 +114,12 @@ export function simplify(data: IDataObject[]) {
 	return results;
 }
 
+export function getCredentials(this: IExecuteFunctions) {
+	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
+	if (authenticationMethod === 'accessToken') {
+		return this.getCredentials('dropboxApi') as IDataObject;
+	} else {
+		return this.getCredentials('dropboxOAuth2Api') as IDataObject;
+	}
+}
 
