@@ -384,6 +384,7 @@
       "dist/nodes/Hubspot/HubspotTrigger.node.js",
       "dist/nodes/HumanticAI/HumanticAi.node.js",
       "dist/nodes/Hunter/Hunter.node.js",
+      "dist/nodes/Instagram/Instagram.node.js",
       "dist/nodes/If.node.js",
       "dist/nodes/Iterable/Iterable.node.js",
       "dist/nodes/Intercom/Intercom.node.js",

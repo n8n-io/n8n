@@ -9,21 +9,21 @@ import {
 } from 'n8n-workflow';
 
 import {
-	whatsappApiRequest,
+	instagramApiRequest,
 } from './GenericFunctions';
 
-export class WhatsApp implements INodeType {
+export class Instagram implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'WhatsApp',
-		name: 'whatsapp',
-		icon: 'file:whatsapp.png',
+		displayName: 'Instagram',
+		name: 'instagram',
+		icon: 'file:instagram.png',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Send WhatsApp messages as notification alerts',
+		description: 'Send Instagram messages as notification alerts',
 		defaults: {
-			name: 'WhatsApp',
-			color: '#25D366',
+			name: 'Instagram',
+			color: '#E4405F',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -40,11 +40,11 @@ export class WhatsApp implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'WhatsApp',
-						value: 'whatsapp',
+						name: 'Instagram',
+						value: 'instagram',
 					},
 				],
-				default: 'whatsapp',
+				default: 'instagram',
 				description: 'The resource to operate on.',
 			},
 
@@ -55,7 +55,7 @@ export class WhatsApp implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'whatsapp',
+							'instagram',
 						],
 					},
 				},
@@ -63,12 +63,12 @@ export class WhatsApp implements INodeType {
 					{
 						name: 'Send Message',
 						value: 'sendMessage',
-						description: 'Send WhatsApp text message',
+						description: 'Send Instagram text message',
 					},
 					{
 						name: 'Send File',
 						value: 'sendFile',
-						description: 'Send WhatsApp file-in message',
+						description: 'Send Instagram file-in message',
 					},					
 				],
 				default: 'sendMessage',
@@ -84,18 +84,18 @@ export class WhatsApp implements INodeType {
 			},
 
 			// ----------------------------------
-			//         whatsapp
+			//         instagram
 			// ----------------------------------
 
 			// ----------------------------------
-			//         whatsapp:sendMessage
+			//         instagram:sendMessage
 			// ----------------------------------
 			{
 				displayName: 'MessageTo',
 				name: 'to',
 				type: 'string',
 				default: '',
-				placeholder: '74155238886',
+				placeholder: 'justinbieber',
 				required: true,
 				displayOptions: {
 					show: {
@@ -103,7 +103,7 @@ export class WhatsApp implements INodeType {
 							'sendMessage',
 						],
 						resource: [
-							'whatsapp',
+							'instagram',
 						],
 					},
 				},
@@ -121,7 +121,7 @@ export class WhatsApp implements INodeType {
 							'sendMessage',
 						],
 						resource: [
-							'whatsapp',
+							'instagram',
 						],
 					},
 				},
@@ -133,7 +133,7 @@ export class WhatsApp implements INodeType {
 				name: 'to',
 				type: 'string',
 				default: '',
-				placeholder: '74155238886',
+				placeholder: 'justinbieber',
 				required: true,
 				displayOptions: {
 					show: {
@@ -141,7 +141,7 @@ export class WhatsApp implements INodeType {
 							'sendFile',
 						],
 						resource: [
-							'whatsapp',
+							'instagram',
 						],
 					},
 				},
@@ -159,13 +159,12 @@ export class WhatsApp implements INodeType {
 							'sendFile',
 						],
 						resource: [
-							'whatsapp',
+							'instagram',
 						],
 					},
 				},
 				description: 'The message to send',
 			},
-
 		],
 	};
 
@@ -197,7 +196,7 @@ export class WhatsApp implements INodeType {
 			body.chatId = this.getNodeParameter('to', i) as string;
 			body.chatType = resource;				
 
-			if (resource === 'whatsapp') {
+			if (resource === 'instagram') {
 				if (operation === 'sendMessage') {
 					// ----------------------------------
 					//         whatsapp:sendMessage
@@ -217,7 +216,7 @@ export class WhatsApp implements INodeType {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
-			const responseData = await whatsappApiRequest.call(this, requestMethod, endpoint, body, qs);
+			const responseData = await instagramApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 			returnData.push(responseData as IDataObject);
 		}
