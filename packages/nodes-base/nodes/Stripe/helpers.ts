@@ -21,12 +21,12 @@ export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions,
 	const options = {
 		method,
 		auth: {
-      user: credentials.secretKey as string,
+			user: credentials.secretKey as string,
 		},
 		form: body,
 		qs: query,
 		uri: `https://api.stripe.com/v1${endpoint}`,
-		json: true
+		json: true,
 	};
 
 	try {

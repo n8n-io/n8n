@@ -5,7 +5,8 @@ import {
 
 export class HubspotDeveloperApi implements ICredentialType {
 	name = 'hubspotDeveloperApi';
-	displayName = 'Hubspot API';
+	displayName = 'Hubspot Developer API';
+	documentationUrl = 'hubspot';
 	properties = [
 		{
 			displayName: 'Developer API Key',
@@ -18,6 +19,14 @@ export class HubspotDeveloperApi implements ICredentialType {
 			name: 'clientSecret',
 			type: 'string' as NodePropertyTypes,
 			default: '',
+		},
+		{
+			displayName: 'App ID',
+			name: 'appId',
+			type: 'string' as NodePropertyTypes,
+			required: true,
+			default: '',
+			description: 'The App ID',
 		},
 	];
 }

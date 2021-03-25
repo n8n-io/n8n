@@ -6,16 +6,14 @@ import {
 import {
 	IDataObject,
 	INodeExecutionData,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import * as basicAuth from 'basic-auth';
 
 import { Response } from 'express';
-
-import { set } from 'lodash';
 
 import * as fs from 'fs';
 
@@ -79,12 +77,14 @@ export class Webhook implements INodeType {
 			{
 				name: 'default',
 				httpMethod: '={{$parameter["httpMethod"]}}',
+				isFullPath: true,
 				responseCode: '={{$parameter["responseCode"]}}',
 				responseMode: '={{$parameter["responseMode"]}}',
 				responseData: '={{$parameter["responseData"]}}',
 				responseBinaryPropertyName: '={{$parameter["responseBinaryPropertyName"]}}',
 				responseContentType: '={{$parameter["options"]["responseContentType"]}}',
 				responsePropertyName: '={{$parameter["options"]["responsePropertyName"]}}',
+				responseHeaders: '={{$parameter["options"]["responseHeaders"]}}',
 				path: '={{$parameter["path"]}}',
 			},
 		],
@@ -96,15 +96,15 @@ export class Webhook implements INodeType {
 				options: [
 					{
 						name: 'Basic Auth',
-						value: 'basicAuth'
+						value: 'basicAuth',
 					},
 					{
 						name: 'Header Auth',
-						value: 'headerAuth'
+						value: 'headerAuth',
 					},
 					{
 						name: 'None',
-						value: 'none'
+						value: 'none',
 					},
 				],
 				default: 'none',
@@ -118,6 +118,10 @@ export class Webhook implements INodeType {
 					{
 						name: 'GET',
 						value: 'GET',
+					},
+					{
+						name: 'HEAD',
+						value: 'HEAD',
 					},
 					{
 						name: 'POST',
@@ -134,7 +138,7 @@ export class Webhook implements INodeType {
 				default: '',
 				placeholder: 'webhook',
 				required: true,
-				description: 'The path to listen to. Slashes("/") in the path are not allowed.',
+				description: 'The path to listen to.',
 			},
 			{
 				displayName: 'Response Code',
@@ -206,7 +210,7 @@ export class Webhook implements INodeType {
 				displayOptions: {
 					show: {
 						responseData: [
-							'firstEntryBinary'
+							'firstEntryBinary',
 						],
 					},
 				},
@@ -251,6 +255,21 @@ export class Webhook implements INodeType {
 									it will be the prefix and a number starting with 0 will be attached to it.`,
 					},
 					{
+						displayName: 'Response Data',
+						name: 'responseData',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/responseMode': [
+									'onReceived',
+								],
+							},
+						},
+						default: '',
+						placeholder: 'success',
+						description: 'Custom response data to send.',
+					},
+					{
 						displayName: 'Response Content-Type',
 						name: 'responseContentType',
 						type: 'string',
@@ -267,6 +286,39 @@ export class Webhook implements INodeType {
 						default: '',
 						placeholder: 'application/xml',
 						description: 'Set a custom content-type to return if another one as the "application/json" should be returned.',
+					},
+					{
+						displayName: 'Response Headers',
+						name: 'responseHeaders',
+						placeholder: 'Add Response Header',
+						description: 'Add headers to the webhook response.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'entries',
+								displayName: 'Entries',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'Name of the header.',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the header.',
+									},
+								],
+							},
+						],
 					},
 					{
 						displayName: 'Property Name',
@@ -352,7 +404,7 @@ export class Webhook implements INodeType {
 		// @ts-ignore
 		const mimeType = headers['content-type'] || 'application/json';
 		if (mimeType.includes('multipart/form-data')) {
-			const form = new formidable.IncomingForm();
+			const form = new formidable.IncomingForm({});
 
 			return new Promise((resolve, reject) => {
 
@@ -360,9 +412,10 @@ export class Webhook implements INodeType {
 					const returnItem: INodeExecutionData = {
 						binary: {},
 						json: {
-							body: this.getBodyData(),
 							headers,
+							params: this.getParamsData(),
 							query: this.getQueryData(),
+							body: data,
 						},
 					};
 
@@ -374,8 +427,8 @@ export class Webhook implements INodeType {
 							binaryPropertyName = `${options.binaryPropertyName}${count}`;
 						}
 
-						const fileJson = files[file].toJSON() as IDataObject;
-						const fileContent = await fs.promises.readFile(files[file].path);
+						const fileJson = (files[file] as formidable.File).toJSON() as unknown as IDataObject;
+						const fileContent = await fs.promises.readFile((files[file] as formidable.File).path);
 
 						returnItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(Buffer.from(fileContent), fileJson.name as string, fileJson.type as string);
 
@@ -385,7 +438,7 @@ export class Webhook implements INodeType {
 						workflowData: [
 							[
 								returnItem,
-							]
+							],
 						],
 					});
 				});
@@ -406,9 +459,10 @@ export class Webhook implements INodeType {
 					const returnItem: INodeExecutionData = {
 						binary: {},
 						json: {
-							body: this.getBodyData(),
 							headers,
+							params: this.getParamsData(),
 							query: this.getQueryData(),
+							body: this.getBodyData(),
 						},
 					};
 
@@ -417,8 +471,8 @@ export class Webhook implements INodeType {
 					return resolve({
 						workflowData: [
 							[
-								returnItem
-							]
+								returnItem,
+							],
 						],
 					});
 				});
@@ -431,9 +485,10 @@ export class Webhook implements INodeType {
 
 		const response: INodeExecutionData = {
 			json: {
-				body: this.getBodyData(),
 				headers,
+				params: this.getParamsData(),
 				query: this.getQueryData(),
+				body: this.getBodyData(),
 			},
 		};
 
@@ -443,11 +498,17 @@ export class Webhook implements INodeType {
 					// @ts-ignore
 					data: req.rawBody.toString(BINARY_ENCODING),
 					mimeType,
-				}
+				},
 			};
 		}
 
+		let webhookResponse: string | undefined;
+		if (options.responseData) {
+			webhookResponse = options.responseData as string;
+		}
+
 		return {
+			webhookResponse,
 			workflowData: [
 				[
 					response,

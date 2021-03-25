@@ -134,7 +134,7 @@ export const projectFields = [
 				default: '',
 				description: 'Only return projects by updated_since.',
 			},
-		]
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -302,98 +302,98 @@ export const projectFields = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'The budget in hours for the project when budgeting by time.'
+				description: 'The budget in hours for the project when budgeting by time.',
 			},
 			{
 				displayName: 'Budget Is Monthly',
 				name: 'budget_is_monthly',
 				type: 'boolean',
 				default: false,
-				description: 'Option to have the budget reset every month. Defaults to false.'
+				description: 'Option to have the budget reset every month. Defaults to false.',
 			},
 			{
 				displayName: 'Cost Budget',
 				name: 'cost_budget',
 				type: 'string',
 				default: '',
-				description: 'The monetary budget for the project when budgeting by money.'
+				description: 'The monetary budget for the project when budgeting by money.',
 			},
 			{
 				displayName: 'Cost Budget Include Expenses',
 				name: 'cost_budget_include_expenses',
 				type: 'boolean',
 				default: false,
-				description: 'Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false.'
+				description: 'Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false.',
 			},
 			{
 				displayName: 'Ends On',
 				name: 'ends_on',
 				type: 'dateTime',
 				default: '',
-				description: 'Date the project will end.'
+				description: 'Date the project will end.',
 			},
 			{
 				displayName: 'Fee',
 				name: 'fee',
 				type: 'string',
 				default: '',
-				description: 'The amount you plan to invoice for the project. Only used by fixed-fee projects.'
+				description: 'The amount you plan to invoice for the project. Only used by fixed-fee projects.',
 			},
 			{
 				displayName: 'Hourly Rate',
 				name: 'hourly_rate',
 				type: 'string',
 				default: '',
-				description: 'Rate for projects billed by Project Hourly Rate.'
+				description: 'Rate for projects billed by Project Hourly Rate.',
 			},
 			{
 				displayName: 'Is Active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether the project is active or archived. Defaults to true'
+				description: 'Whether the project is active or archived. Defaults to true',
 			},
 			{
 				displayName: 'Is Fixed Fee',
 				name: 'is_fixed_fee',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the project is a fixed-fee project or not.'
+				description: 'Whether the project is a fixed-fee project or not.',
 			},
 			{
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
 				default: '',
-				description: 'Notes about the project.'
+				description: 'Notes about the project.',
 			},
 			{
 				displayName: 'Notify When Over Budget',
 				name: 'notify_when_over_budget',
 				type: 'boolean',
 				default: false,
-				description: 'Whether project managers should be notified when the project goes over budget. Defaults to false.'
+				description: 'Whether project managers should be notified when the project goes over budget. Defaults to false.',
 			},
 			{
 				displayName: 'Over Budget Notification Percentage',
 				name: 'over_budget_notification_percentage',
 				type: 'string',
 				default: '',
-				description: 'Percentage value used to trigger over budget email alerts. Example: use 10.0 for 10.0%.'
+				description: 'Percentage value used to trigger over budget email alerts. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Show Budget To All',
 				name: 'show_budget_to_all',
 				type: 'boolean',
 				default: false,
-				description: 'Option to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.'
+				description: 'Option to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.',
 			},
 			{
 				displayName: 'Starts On',
 				name: 'starts_on',
 				type: 'dateTime',
 				default: '',
-				description: 'Date the project was started.'
+				description: 'Date the project was started.',
 			},
 		],
 	},
@@ -462,7 +462,7 @@ export const projectFields = [
 				name: 'budget',
 				type: 'string',
 				default: '',
-				description: 'The budget in hours for the project when budgeting by time.'
+				description: 'The budget in hours for the project when budgeting by time.',
 			},
 			{
 				displayName: 'Budget By',
@@ -476,7 +476,7 @@ export const projectFields = [
 				name: 'budget_is_monthly',
 				type: 'boolean',
 				default: false,
-				description: 'Option to have the budget reset every month. Defaults to false.'
+				description: 'Option to have the budget reset every month. Defaults to false.',
 			},
 			{
 				displayName: 'Client Id',
@@ -490,42 +490,42 @@ export const projectFields = [
 				name: 'cost_budget',
 				type: 'string',
 				default: '',
-				description: 'The monetary budget for the project when budgeting by money.'
+				description: 'The monetary budget for the project when budgeting by money.',
 			},
 			{
 				displayName: 'Cost Budget Include Expenses',
 				name: 'cost_budget_include_expenses',
 				type: 'boolean',
 				default: false,
-				description: 'Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false.'
+				description: 'Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false.',
 			},
 			{
 				displayName: 'Ends On',
 				name: 'ends_on',
 				type: 'dateTime',
 				default: '',
-				description: 'Date the project will end.'
+				description: 'Date the project will end.',
 			},
 			{
 				displayName: 'Fee',
 				name: 'fee',
 				type: 'string',
 				default: '',
-				description: 'The amount you plan to invoice for the project. Only used by fixed-fee projects.'
+				description: 'The amount you plan to invoice for the project. Only used by fixed-fee projects.',
 			},
 			{
 				displayName: 'Hourly Rate',
 				name: 'hourly_rate',
 				type: 'string',
 				default: '',
-				description: 'Rate for projects billed by Project Hourly Rate.'
+				description: 'Rate for projects billed by Project Hourly Rate.',
 			},
 			{
 				displayName: 'Is Active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether the project is active or archived. Defaults to true'
+				description: 'Whether the project is active or archived. Defaults to true',
 			},
 			{
 				displayName: 'Is Billable',
@@ -539,7 +539,7 @@ export const projectFields = [
 				name: 'is_fixed_fee',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the project is a fixed-fee project or not.'
+				description: 'Whether the project is a fixed-fee project or not.',
 			},
 			{
 				displayName: 'Name',
@@ -553,28 +553,28 @@ export const projectFields = [
 				name: 'notes',
 				type: 'string',
 				default: '',
-				description: 'Notes about the project.'
+				description: 'Notes about the project.',
 			},
 			{
 				displayName: 'Notify When Over Budget',
 				name: 'notify_when_over_budget',
 				type: 'boolean',
 				default: false,
-				description: 'Whether project managers should be notified when the project goes over budget. Defaults to false.'
+				description: 'Whether project managers should be notified when the project goes over budget. Defaults to false.',
 			},
 			{
 				displayName: 'Over Budget Notification Percentage',
 				name: 'over_budget_notification_percentage',
 				type: 'string',
 				default: '',
-				description: 'Percentage value used to trigger over budget email alerts. Example: use 10.0 for 10.0%.'
+				description: 'Percentage value used to trigger over budget email alerts. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Show Budget To All',
 				name: 'show_budget_to_all',
 				type: 'boolean',
 				default: false,
-				description: 'Option to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.'
+				description: 'Option to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.',
 			},
 
 			{
@@ -582,7 +582,7 @@ export const projectFields = [
 				name: 'starts_on',
 				type: 'dateTime',
 				default: '',
-				description: 'Date the project was started.'
+				description: 'Date the project was started.',
 			},
 		],
 	},

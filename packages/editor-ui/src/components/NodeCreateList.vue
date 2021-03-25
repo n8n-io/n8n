@@ -13,7 +13,7 @@
 		<div class="node-create-list-wrapper">
 			<div class="node-create-list">
 				<div v-if="filteredNodeTypes.length === 0" class="no-results">
-					No node found which matches active filter!
+					🙃 no nodes matching your search criteria
 				</div>
 				<node-create-item :active="index === activeNodeTypeIndex" :nodeType="nodeType" v-for="(nodeType, index) in filteredNodeTypes" v-bind:key="nodeType.name" @nodeTypeSelected="nodeTypeSelected"></node-create-item>
 			</div>

@@ -6,6 +6,7 @@ import {
 export class ClearbitApi implements ICredentialType {
 	name = 'clearbitApi';
 	displayName = 'Clearbit API';
+	documentationUrl = 'clearbit';
 	properties = [
 		{
 			displayName: 'API Key',

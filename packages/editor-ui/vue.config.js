@@ -19,6 +19,9 @@ module.exports = {
 				],
 			}),
 		],
+		devServer: {
+			disableHostCheck: true,
+		},
 	},
 	css: {
 		loaderOptions: {
@@ -29,4 +32,5 @@ module.exports = {
 			},
 		},
 	},
+	publicPath: process.env.VUE_APP_PUBLIC_PATH ? process.env.VUE_APP_PUBLIC_PATH : '/',
 };

@@ -1,6 +1,6 @@
 <template>
 	<div v-if="dialogVisible">
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`Edit ${parameter.displayName}`" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" append-to-body :close-on-click-modal="false" width="80%" :title="`Edit ${parameter.displayName}`" :before-close="closeDialog">
 			<div class="text-editor-wrapper ignore-key-press">
 				<div class="editor-description">
 					{{parameter.displayName}}:

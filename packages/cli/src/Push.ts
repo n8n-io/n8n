@@ -24,7 +24,7 @@ export class Push {
 
 		this.channel.on('disconnect', (channel: string, res: express.Response) => {
 			if (res.req !== undefined) {
-				delete this.connections[res.req.query.sessionId];
+				delete this.connections[res.req.query.sessionId as string];
 			}
 		});
 	}

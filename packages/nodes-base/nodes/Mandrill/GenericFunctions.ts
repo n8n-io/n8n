@@ -1,16 +1,16 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+ } from 'request';
 
 import {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions
 } from 'n8n-core';
 
 import * as _ from 'lodash';
-import { IDataObject } from 'n8n-workflow';
 
-export async function mandrillApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resource: string, method: string, action: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function mandrillApiRequest(this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions, resource: string, method: string, action: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('mandrillApi');
 
 	if (credentials === undefined) {
@@ -26,15 +26,13 @@ export async function mandrillApiRequest(this: IHookFunctions | IExecuteFunction
 		method,
 		uri: `https://${endpoint}${resource}${action}.json`,
 		body: data,
-		json: true
+		json: true,
 	};
 
 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		console.error(error);
-
 		const errorMessage = error.response.body.message || error.response.body.Message;
 		if (error.name === 'Invalid_Key') {
 			throw new Error('The provided API key is not a valid Mandrill API key');
@@ -58,13 +56,13 @@ export function getToEmailArray(toEmail: string): any { // tslint:disable-line:n
 		toEmailArray = _.map(array, (email) => {
 			return {
 				email,
-				type: 'to'
+				type: 'to',
 			};
 		});
 	} else {
 		toEmailArray = [{
 			email: toEmail,
-			type: 'to'
+			type: 'to',
 		}];
 	}
 	return toEmailArray;

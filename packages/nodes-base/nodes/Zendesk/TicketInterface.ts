@@ -1,3 +1,11 @@
+import {
+	IDataObject,
+ } from 'n8n-workflow';
+
+ export interface IComment {
+	body?: string;
+}
+
 export interface ITicket {
 	subject?: string;
 	comment?: IComment;
@@ -7,8 +15,5 @@ export interface ITicket {
 	tags?: string[];
 	status?: string;
 	recipient?: string;
-}
-
-export interface IComment {
-	body?: string;
+	custom_fields?: IDataObject[];
 }

@@ -4,16 +4,22 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
-import { IDataObject } from 'n8n-workflow';
+import {
+	OptionsWithUri,
+} from 'request';
 
+import {
+	IDataObject,
+} from 'n8n-workflow';
 
 export interface IAttachment {
 	fields: {
 		item?: object[];
 	};
+	actions: {
+		item?: object[];
+	};
 }
-
 
 /**
  * Make an API request to Telegram
@@ -40,9 +46,9 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		uri: `${credentials.baseUrl}/api/v4/${endpoint}`,
 		headers: {
 			Authorization: `Bearer ${credentials.accessToken}`,
-			'content-type': 'application/json; charset=utf-8'
+			'content-type': 'application/json; charset=utf-8',
 		},
-		json: true
+		json: true,
 	};
 
 	try {
@@ -63,4 +69,23 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		// Expected error data did not get returned so throw the actual error
 		throw error;
 	}
+}
+
+export async function apiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+	query.page = 0;
+	query.per_page = 100;
+
+	do {
+		responseData = await apiRequest.call(this, method, endpoint, body, query);
+		query.page++;
+		returnData.push.apply(returnData, responseData);
+	} while (
+		responseData.length !== 0
+	);
+
+	return returnData;
 }

@@ -1,4 +1,7 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
+
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -6,27 +9,48 @@ import {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+
+import {
+	IDataObject,
+	IOAuth2Options,
+} from 'n8n-workflow';
 
 export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('clickUpApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
 	const options: OptionsWithUri = {
 		headers: {
-			Authorization: credentials.accessToken,
 			'Content-Type': 'application/json',
 		},
 		method,
 		qs,
 		body,
-		uri: uri ||`https://api.clickup.com/api/v2${resource}`,
-		json: true
+		uri: uri || `https://api.clickup.com/api/v2${resource}`,
+		json: true,
 	};
+
 	try {
-		return await this.helpers.request!(options);
+		const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
+
+		if (authenticationMethod === 'accessToken') {
+
+			const credentials = this.getCredentials('clickUpApi');
+
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			options.headers!['Authorization'] = credentials.accessToken;
+			return await this.helpers.request!(options);
+
+		} else {
+
+			const oAuth2Options: IOAuth2Options = {
+				keepBearer: false,
+				tokenType: 'Bearer',
+			};
+			// @ts-ignore
+			return await this.helpers.requestOAuth2!.call(this, 'clickUpOAuth2Api', options, oAuth2Options);
+		}
+
 	} catch (error) {
 		let errorMessage = error;
 		if (error.err) {
@@ -34,20 +58,23 @@ export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions
 		}
 		throw new Error('ClickUp Error: ' + errorMessage);
 	}
+
 }
 
-export async function clickupApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string ,method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function clickupApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 	query.page = 0;
-	query.limit = 100;
 
 	do {
 		responseData = await clickupApiRequest.call(this, method, resource, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
 		query.page++;
+		if (query.limit && query.limit <= returnData.length) {
+			return returnData;
+		}
 	} while (
 		responseData[propertyName] &&
 		responseData[propertyName].length !== 0

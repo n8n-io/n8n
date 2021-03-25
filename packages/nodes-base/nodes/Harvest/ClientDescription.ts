@@ -117,8 +117,8 @@ export const clientFields = [
 				type: 'dateTime',
 				default: '',
 				description: 'Only return clients that have been updated since the given date and time.',
-			}
-		]
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -135,7 +135,7 @@ export const clientFields = [
 				operation: [
 					'get',
 				],
-				resource
+				resource,
 			},
 		},
 		description: 'The ID of the client you are retrieving.',
@@ -155,7 +155,7 @@ export const clientFields = [
 				operation: [
 					'delete',
 				],
-				resource
+				resource,
 			},
 		},
 		description: 'The ID of the client you want to delete.',
@@ -200,21 +200,21 @@ export const clientFields = [
 				name: 'is_active',
 				type: 'string',
 				default: '',
-				description: 'Whether the client is active, or archived. Defaults to true.'
+				description: 'Whether the client is active, or archived. Defaults to true.',
 			},
 			{
 				displayName: 'Address',
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: ' A textual representation of the client’s physical address. May include new line characters.'
+				description: ' A textual representation of the client’s physical address. May include new line characters.',
 			},
 			{
 				displayName: 'Currency',
 				name: 'currency',
 				type: 'string',
 				default: '',
-				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies'
+				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
 		],
 	},
@@ -258,28 +258,28 @@ export const clientFields = [
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: ' A textual representation of the client’s physical address. May include new line characters.'
+				description: ' A textual representation of the client’s physical address. May include new line characters.',
 			},
 			{
 				displayName: 'Currency',
 				name: 'currency',
 				type: 'string',
 				default: '',
-				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies'
+				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
 			{
 				displayName: 'Is Active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether the client is active, or archived. Defaults to true.'
+				description: 'Whether the client is active, or archived. Defaults to true.',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Whether the client is active, or archived. Defaults to true.'
+				description: 'Whether the client is active, or archived. Defaults to true.',
 			},
 		],
 	},

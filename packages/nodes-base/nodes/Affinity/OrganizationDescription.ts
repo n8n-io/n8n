@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const organizationOperations = [
 	{
@@ -46,9 +48,9 @@ export const organizationOperations = [
 
 export const organizationFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                organization:create                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                organization:create                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -62,7 +64,7 @@ export const organizationFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'The name of the organization.',
@@ -80,7 +82,7 @@ export const organizationFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'The domain name of the organization.',
@@ -114,9 +116,9 @@ export const organizationFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 organization:update                        */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 organization:update                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization ID',
 		name: 'organizationId',
@@ -130,7 +132,7 @@ export const organizationFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the organization.',
@@ -176,11 +178,11 @@ export const organizationFields = [
 				default: [],
 				description: 'Persons that the new organization will be associated with.',
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 organization:get                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 organization:get                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization ID',
 		name: 'organizationId',
@@ -194,7 +196,7 @@ export const organizationFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the organization.',
@@ -223,11 +225,11 @@ export const organizationFields = [
 				default: false,
 				description: 'When true, interaction dates will be present on the returned resources.',
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 organization:getAll                        */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 organization:getAll                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -300,11 +302,11 @@ export const organizationFields = [
 				default: false,
 				description: 'When true, interaction dates will be present on the returned resources.',
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 organization:delete                        */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 organization:delete                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization ID',
 		name: 'organizationId',
@@ -318,7 +320,7 @@ export const organizationFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the organization.',

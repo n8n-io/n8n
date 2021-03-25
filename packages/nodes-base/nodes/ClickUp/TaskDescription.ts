@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const taskOperations = [
 	{
@@ -29,12 +31,17 @@ export const taskOperations = [
 				description: 'Get a task',
 			},
 			{
-				name: 'Get all',
+				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all tasks',
 			},
 			{
-				name: 'Set custom field',
+				name: 'Member',
+				value: 'member',
+				description: 'Get task members',
+			},
+			{
+				name: 'Set Custom Field',
 				value: 'setCustomField',
 				description: 'Set a custom field',
 			},
@@ -51,11 +58,11 @@ export const taskOperations = [
 
 export const taskFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                task:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                task:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team',
+		displayName: 'Team ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -75,7 +82,7 @@ export const taskFields = [
 		required: true,
 	},
 	{
-		displayName: 'Space',
+		displayName: 'Space ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -93,7 +100,7 @@ export const taskFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -115,7 +122,7 @@ export const taskFields = [
 		required: true,
 	},
 	{
-		displayName: 'Folder',
+		displayName: 'Folder ID',
 		name: 'folder',
 		type: 'options',
 		default: '',
@@ -141,7 +148,7 @@ export const taskFields = [
 		required: true,
 	},
 	{
-		displayName: 'List',
+		displayName: 'List ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -167,7 +174,7 @@ export const taskFields = [
 		required: true,
 	},
 	{
-		displayName: 'List',
+		displayName: 'List ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -188,7 +195,7 @@ export const taskFields = [
 			loadOptionsMethod: 'getLists',
 			loadOptionsDependsOn: [
 				'folder',
-			]
+			],
 		},
 		required: true,
 	},
@@ -237,7 +244,6 @@ export const taskFields = [
 				typeOptions: {
 					loadOptionsMethod: 'getAssignees',
 				},
-
 				default: [],
 			},
 			{
@@ -301,6 +307,12 @@ export const taskFields = [
 				default: 3,
 			},
 			{
+				displayName: 'Start Date',
+				name: 'startDate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
 				displayName: 'Start Date Time',
 				name: 'startDateTime',
 				type: 'boolean',
@@ -340,9 +352,10 @@ export const taskFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                task:update                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                task:update                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'id',
@@ -378,6 +391,13 @@ export const taskFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Add Assignees',
+				name: 'addAssignees',
+				type: 'string',
+				default: '',
+				description: 'Assignees IDs. Multiple ca be added separated by comma',
+			},
 			{
 				displayName: 'Content',
 				name: 'content',
@@ -435,6 +455,26 @@ export const taskFields = [
 				default: 3,
 			},
 			{
+				displayName: 'Remove Assignees',
+				name: 'removeAssignees',
+				type: 'string',
+				default: '',
+				description: 'Assignees IDs. Multiple ca be added separated by comma',
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'string',
+				default: '',
+				description: 'status',
+			},
+			{
+				displayName: 'Start Date',
+				name: 'startDate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
 				displayName: 'Start Date Time',
 				name: 'startDateTime',
 				type: 'boolean',
@@ -450,9 +490,10 @@ export const taskFields = [
 		],
 
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 task:get                                   */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:get                                   */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'id',
@@ -471,11 +512,12 @@ export const taskFields = [
 		},
 		description: 'Task ID',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 task:getAll                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team',
+		displayName: 'Team ID',
 		name: 'team',
 		type: 'options',
 		default: '',
@@ -495,7 +537,7 @@ export const taskFields = [
 		required: true,
 	},
 	{
-		displayName: 'Space',
+		displayName: 'Space ID',
 		name: 'space',
 		type: 'options',
 		default: '',
@@ -513,7 +555,7 @@ export const taskFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -535,7 +577,7 @@ export const taskFields = [
 		required: true,
 	},
 	{
-		displayName: 'Folder',
+		displayName: 'Folder ID',
 		name: 'folder',
 		type: 'options',
 		default: '',
@@ -561,7 +603,7 @@ export const taskFields = [
 		required: true,
 	},
 	{
-		displayName: 'List',
+		displayName: 'List ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -587,7 +629,7 @@ export const taskFields = [
 		required: true,
 	},
 	{
-		displayName: 'List',
+		displayName: 'List ID',
 		name: 'list',
 		type: 'options',
 		default: '',
@@ -608,51 +650,51 @@ export const taskFields = [
 			loadOptionsMethod: 'getLists',
 			loadOptionsDependsOn: [
 				'folder',
-			]
+			],
 		},
 		required: true,
 	},
-	// {
-	// 	displayName: 'Return All',
-	// 	name: 'returnAll',
-	// 	type: 'boolean',
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'task',
-	// 			],
-	// 			operation: [
-	// 				'getAll',
-	// 			],
-	// 		},
-	// 	},
-	// 	default: true,
-	// 	description: 'If all results should be returned or only up to a given limit.',
-	// },
-	// {
-	// 	displayName: 'Limit',
-	// 	name: 'limit',
-	// 	type: 'number',
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'task',
-	// 			],
-	// 			operation: [
-	// 				'getAll',
-	// 			],
-	// 			returnAll: [
-	// 				false,
-	// 			],
-	// 		},
-	// 	},
-	// 	typeOptions: {
-	// 		minValue: 1,
-	// 		maxValue: 100,
-	// 	},
-	// 	default: 50,
-	// 	description: 'How many results to return.',
-	// },
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: true,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'How many results to return.',
+	},
 	{
 		displayName: 'Filters',
 		name: 'filters',
@@ -688,6 +730,91 @@ export const taskFields = [
 				},
 
 				default: [],
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'Filter by custom fields ',
+				default: {},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getCustomFields',
+								},
+								default: '',
+								description: 'The ID of the field to add custom field to.',
+							},
+							{
+								displayName: 'Operator',
+								name: 'operator',
+								type: 'options',
+								options: [
+									{
+										name: 'Equal',
+										value: 'equal',
+									},
+									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
+									{
+										name: '>',
+										value: '>',
+									},
+									{
+										name: '>=',
+										value: '>=',
+									},
+									{
+										name: '!=',
+										value: '!=',
+									},
+									{
+										name: 'Is Null',
+										value: 'IS NULL',
+									},
+									{
+										name: 'Is Not Null',
+										value: 'IS NOT NULL',
+									},
+								],
+								default: 'equal',
+								description: 'The value to set on custom field.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								displayOptions: {
+									hide: {
+										operator: [
+											'IS NULL',
+											'IS NOT NULL',
+										],
+									},
+								},
+								default: '',
+								description: 'The value to set on custom field.',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Date Created Greater Than',
@@ -796,11 +923,12 @@ export const taskFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                task:delete                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                task:delete                                 */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'ID',
+		displayName: 'Task ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -817,9 +945,73 @@ export const taskFields = [
 		},
 		description: 'task ID',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                task:setCustomField                         */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                task:member                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Task ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'member',
+				],
+			},
+		},
+		description: 'Task ID',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'member',
+				],
+			},
+		},
+		default: true,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'member',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'How many results to return.',
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                task:setCustomField                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'task',
@@ -867,7 +1059,7 @@ export const taskFields = [
 				],
 				operation: [
 					'setCustomField',
-				]
+				],
 			},
 		},
 		default: false,

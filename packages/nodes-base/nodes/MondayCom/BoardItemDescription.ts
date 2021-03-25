@@ -16,6 +16,21 @@ export const boardItemOperations = [
 		},
 		options: [
 			{
+				name: 'Add Update',
+				value: 'addUpdate',
+				description: `Add an update to an item.`,
+			},
+			{
+				name: 'Change Column Value',
+				value: 'changeColumnValue',
+				description: 'Change a column value for a board item',
+			},
+			{
+				name: 'Change Multiple Column Values',
+				value: 'changeMultipleColumnValues',
+				description: 'Change multiple column values for a board item',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: `Create an item in a board's group`,
@@ -33,12 +48,17 @@ export const boardItemOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all item',
+				description: 'Get all items',
 			},
 			{
 				name: 'Get By Column Value',
 				value: 'getByColumnValue',
 				description: 'Get items by column value',
+			},
+			{
+				name: 'Move',
+				value: 'move',
+				description: 'Move item to group',
 			},
 		],
 		default: 'create',
@@ -48,9 +68,195 @@ export const boardItemOperations = [
 
 export const boardItemFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                 boardItem:create                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:addUpdate                         */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Item ID',
+		name: 'itemId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'addUpdate',
+				],
+			},
+		},
+		description: 'The unique identifier of the item to add update to.',
+	},
+	{
+		displayName: 'Update Text',
+		name: 'value',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'addUpdate',
+				],
+			},
+		},
+		description: 'The update text to add.',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:changeColumnValue                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Board ID',
+		name: 'boardId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getBoards',
+		},
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeColumnValue',
+				],
+			},
+		},
+		description: 'The unique identifier of the board.',
+	},
+	{
+		displayName: 'Item ID',
+		name: 'itemId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeColumnValue',
+				],
+			},
+		},
+		description: 'The unique identifier of the item to to change column of.',
+	},
+	{
+		displayName: 'Column ID',
+		name: 'columnId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getColumns',
+			loadOptionsDependsOn: [
+				'boardId',
+			],
+		},
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeColumnValue',
+				],
+			},
+		},
+		description: `The column's unique identifier.`,
+	},
+	{
+		displayName: 'Value',
+		name: 'value',
+		type: 'json',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeColumnValue',
+				],
+			},
+		},
+		description: 'The column value in JSON format. Documentation can be found <a href="https://monday.com/developers/v2#mutations-section-columns-change-column-value" target="_blank">here</a>.',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:changeMultipleColumnValues       */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Board ID',
+		name: 'boardId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getBoards',
+		},
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeMultipleColumnValues',
+				],
+			},
+		},
+		description: 'The unique identifier of the board.',
+	},
+	{
+		displayName: 'Item ID',
+		name: 'itemId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeMultipleColumnValues',
+				],
+			},
+		},
+		description: `Item's ID`,
+	},
+	{
+		displayName: 'Column Values',
+		name: 'columnValues',
+		type: 'json',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeMultipleColumnValues',
+				],
+			},
+		},
+		description: 'The column fields and values in JSON format. Documentation can be found <a href="https://monday.com/developers/v2#mutations-section-columns-change-multiple-column-values" target="_blank">here</a>.',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:create                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Board ID',
 		name: 'boardId',
@@ -79,7 +285,7 @@ export const boardItemFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',
 			loadOptionsDependsOn: [
-				'boardId'
+				'boardId',
 			],
 		},
 		required: true,
@@ -141,9 +347,9 @@ export const boardItemFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 boardItem:delete                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:delete                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Item ID',
 		name: 'itemId',
@@ -160,11 +366,11 @@ export const boardItemFields = [
 				],
 			},
 		},
-		description: `Item's ID`
+		description: `Item's ID`,
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 boardItem:get                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:get                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Item ID',
 		name: 'itemId',
@@ -181,11 +387,11 @@ export const boardItemFields = [
 				],
 			},
 		},
-		description: `Item's ID (Multiple can be added separated by comma)`
+		description: `Item's ID (Multiple can be added separated by comma)`,
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 boardItem:getAll                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:getAll                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Board ID',
 		name: 'boardId',
@@ -270,9 +476,9 @@ export const boardItemFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 boardItem:getByColumnValue                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:getByColumnValue                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Board ID',
 		name: 'boardId',
@@ -301,7 +507,7 @@ export const boardItemFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getColumns',
 			loadOptionsDependsOn: [
-				'boardId'
+				'boardId',
 			],
 		},
 		default: '',
@@ -334,7 +540,7 @@ export const boardItemFields = [
 				],
 			},
 		},
-		description: 'The column value to search items by.'
+		description: 'The column value to search items by.',
 	},
 	{
 		displayName: 'Return All',
@@ -376,5 +582,69 @@ export const boardItemFields = [
 		},
 		default: 50,
 		description: 'How many results to return.',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardItem:move                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Board ID',
+		name: 'boardId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getBoards',
+		},
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'move',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Item ID',
+		name: 'itemId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'move',
+				],
+				resource: [
+					'boardItem',
+				],
+			},
+		},
+		default: '',
+		description: `The item's ID`,
+	},
+	{
+		displayName: 'Group ID',
+		name: 'groupId',
+		type: 'options',
+		default: '',
+		typeOptions: {
+			loadOptionsMethod: 'getGroups',
+			loadOptionsDependsOn: [
+				'boardId',
+			],
+		},
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'move',
+				],
+			},
+		},
 	},
 ] as INodeProperties[];

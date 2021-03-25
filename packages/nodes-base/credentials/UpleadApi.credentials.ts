@@ -6,6 +6,7 @@ import {
 export class UpleadApi implements ICredentialType {
 	name = 'upleadApi';
 	displayName = 'Uplead API';
+	documentationUrl = 'uplead';
 	properties = [
 		{
 			displayName: 'API Key',

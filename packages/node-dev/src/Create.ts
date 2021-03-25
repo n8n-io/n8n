@@ -1,6 +1,6 @@
 
 import * as fs from 'fs';
-import replaceInFile, { ReplaceInFileConfig } from 'replace-in-file';
+import {replaceInFile, ReplaceInFileConfig } from 'replace-in-file';
 
 const { promisify } = require('util');
 const fsCopyFile = promisify(fs.copyFile);
@@ -23,7 +23,7 @@ export async function createTemplate(sourceFilePath: string, destinationFilePath
 	// Replace the variables in the template file
 	const options: ReplaceInFileConfig = {
 		files: [
-			destinationFilePath
+			destinationFilePath,
 		],
 		from: [],
 		to: [],

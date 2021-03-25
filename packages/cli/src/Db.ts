@@ -1,7 +1,7 @@
 import {
+	DatabaseType,
 	GenericHelpers,
 	IDatabaseCollections,
-	DatabaseType,
 } from './';
 
 import {
@@ -14,76 +14,100 @@ import {
 	getRepository,
 } from 'typeorm';
 
+import { TlsOptions } from 'tls';
+
+import * as config from '../config';
+
 import {
-	MongoDb,
+	MySQLDb,
 	PostgresDb,
 	SQLite,
-	MySQLDb,
 } from './databases';
 
 export let collections: IDatabaseCollections = {
 	Credentials: null,
 	Execution: null,
 	Workflow: null,
+	Webhook: null,
 };
+
+import { postgresMigrations } from './databases/postgresdb/migrations';
+import { mysqlMigrations } from './databases/mysqldb/migrations';
+import { sqliteMigrations } from './databases/sqlite/migrations';
 
 import * as path from 'path';
 
-export async function init(synchronize?: boolean): Promise<IDatabaseCollections> {
+export async function init(): Promise<IDatabaseCollections> {
 	const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
 	const n8nFolder = UserSettings.getUserN8nFolderPath();
 
 	let entities;
 	let connectionOptions: ConnectionOptions;
 
-	let dbNotExistError: string | undefined;
-	switch (dbType) {
-		case 'mongodb':
-			entities = MongoDb;
-			connectionOptions = {
-				type: 'mongodb',
-				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
-				url: await GenericHelpers.getConfigValue('database.mongodb.connectionUrl') as string,
-				useNewUrlParser: true,
-			};
-			break;
+	const entityPrefix = config.get('database.tablePrefix');
 
+	switch (dbType) {
 		case 'postgresdb':
-			dbNotExistError = 'does not exist';
 			entities = PostgresDb;
+
+			const sslCa = await GenericHelpers.getConfigValue('database.postgresdb.ssl.ca') as string;
+			const sslCert = await GenericHelpers.getConfigValue('database.postgresdb.ssl.cert') as string;
+			const sslKey = await GenericHelpers.getConfigValue('database.postgresdb.ssl.key') as string;
+			const sslRejectUnauthorized = await GenericHelpers.getConfigValue('database.postgresdb.ssl.rejectUnauthorized') as boolean;
+
+			let ssl: TlsOptions | undefined = undefined;
+			if (sslCa !== '' || sslCert !== '' || sslKey !== '' || sslRejectUnauthorized !== true) {
+				ssl = {
+					ca: sslCa || undefined,
+					cert: sslCert || undefined,
+					key: sslKey || undefined,
+					rejectUnauthorized: sslRejectUnauthorized,
+				};
+			}
+
 			connectionOptions = {
 				type: 'postgres',
-				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
+				entityPrefix,
 				database: await GenericHelpers.getConfigValue('database.postgresdb.database') as string,
 				host: await GenericHelpers.getConfigValue('database.postgresdb.host') as string,
 				password: await GenericHelpers.getConfigValue('database.postgresdb.password') as string,
 				port: await GenericHelpers.getConfigValue('database.postgresdb.port') as number,
 				username: await GenericHelpers.getConfigValue('database.postgresdb.user') as string,
-				schema: await GenericHelpers.getConfigValue('database.postgresdb.schema') as string,
+				schema: config.get('database.postgresdb.schema'),
+				migrations: postgresMigrations,
+				migrationsRun: true,
+				migrationsTableName: `${entityPrefix}migrations`,
+				ssl,
 			};
+
 			break;
 
+		case 'mariadb':
 		case 'mysqldb':
-			dbNotExistError = 'does not exist';
 			entities = MySQLDb;
 			connectionOptions = {
-				type: 'mysql',
+				type: dbType === 'mysqldb' ? 'mysql' : 'mariadb',
 				database: await GenericHelpers.getConfigValue('database.mysqldb.database') as string,
-				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
+				entityPrefix,
 				host: await GenericHelpers.getConfigValue('database.mysqldb.host') as string,
 				password: await GenericHelpers.getConfigValue('database.mysqldb.password') as string,
 				port: await GenericHelpers.getConfigValue('database.mysqldb.port') as number,
 				username: await GenericHelpers.getConfigValue('database.mysqldb.user') as string,
+				migrations: mysqlMigrations,
+				migrationsRun: true,
+				migrationsTableName: `${entityPrefix}migrations`,
 			};
 			break;
 
 		case 'sqlite':
-			dbNotExistError = 'no such table:';
 			entities = SQLite;
 			connectionOptions = {
 				type: 'sqlite',
-				database: path.join(n8nFolder, 'database.sqlite'),
-				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
+				database:  path.join(n8nFolder, 'database.sqlite'),
+				entityPrefix,
+				migrations: sqliteMigrations,
+				migrationsRun: false, // migrations for sqlite will be ran manually for now; see below
+				migrationsTableName: `${entityPrefix}migrations`,
 			};
 			break;
 
@@ -93,38 +117,39 @@ export async function init(synchronize?: boolean): Promise<IDatabaseCollections>
 
 	Object.assign(connectionOptions, {
 		entities: Object.values(entities),
-		synchronize: synchronize === true || process.env['NODE_ENV'] !== 'production',
-		logging: false
+		synchronize: false,
+		logging: false,
 	});
 
-	const connection = await createConnection(connectionOptions);
+	let connection = await createConnection(connectionOptions);
 
-	// TODO: Fix that properly
-	// @ts-ignore
-	collections.Credentials = getRepository(entities.CredentialsEntity);
-	// @ts-ignore
-	collections.Execution = getRepository(entities.ExecutionEntity);
-	// @ts-ignore
-	collections.Workflow = getRepository(entities.WorkflowEntity);
-
-	// Make sure that database did already get initialized
-	try {
-		// Try a simple query, if it fails it is normally a sign that
-		// database did not get initialized
-		await collections.Workflow!.findOne({ id: 1 });
-	} catch (error) {
-		// If query errors and the problem is that the database does not exist
-		// run the init again with "synchronize: true"
-		if (dbNotExistError !== undefined && error.message.includes(dbNotExistError)) {
-			// Disconnect before we try to connect again
-			if (connection.isConnected) {
-				await connection.close();
-			}
-
-			return init(true);
+	if (dbType === 'sqlite') {
+		// This specific migration changes database metadata.
+		// A field is now nullable. We need to reconnect so that
+		// n8n knows it has changed. Happens only on sqlite.
+		let migrations = [];
+		try {
+			migrations = await connection.query(`SELECT id FROM ${entityPrefix}migrations where name = "MakeStoppedAtNullable1607431743769"`);
+		} catch(error) {
+			// Migration table does not exist yet - it will be created after migrations run for the first time.
 		}
-		throw error;
+
+		// If you remove this call, remember to turn back on the
+		// setting to run migrations automatically above.
+		await connection.runMigrations({
+			transaction: 'none',
+		});
+
+		if (migrations.length === 0) {
+			await connection.close();
+			connection = await createConnection(connectionOptions);
+		}
 	}
+
+	collections.Credentials = getRepository(entities.CredentialsEntity);
+	collections.Execution = getRepository(entities.ExecutionEntity);
+	collections.Workflow = getRepository(entities.WorkflowEntity);
+	collections.Webhook = getRepository(entities.WebhookEntity);
 
 	return collections;
 }

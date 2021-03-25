@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+ } from 'n8n-workflow';
 
 export const conditionFields = [
 	{
@@ -20,9 +22,9 @@ export const conditionFields = [
 		displayOptions: {
 			show: {
 				'resource': [
-					'ticket'
-				]
-			}
+					'ticket',
+				],
+			},
 		},
 		options: [
 			{
@@ -98,8 +100,8 @@ export const conditionFields = [
 			hide: {
 				field: [
 					'assignee',
-				]
-			}
+				],
+			},
 		},
 		default: 'is',
 	},
@@ -145,8 +147,8 @@ export const conditionFields = [
 			show: {
 				field: [
 					'assignee',
-				]
-			}
+				],
+			},
 		},
 		default: 'is',
 	},
@@ -157,7 +159,7 @@ export const conditionFields = [
 		displayOptions: {
 			show: {
 				field: [
-					'status'
+					'status',
 				],
 			},
 			hide: {
@@ -171,7 +173,7 @@ export const conditionFields = [
 					'priority',
 					'type',
 				],
-			}
+			},
 		},
 		options: [
 			{
@@ -204,7 +206,7 @@ export const conditionFields = [
 		displayOptions: {
 			show: {
 				field: [
-					'type'
+					'type',
 				],
 			},
 			hide: {
@@ -218,7 +220,7 @@ export const conditionFields = [
 					'priority',
 					'status',
 				],
-			}
+			},
 		},
 		options: [
 			{
@@ -247,7 +249,7 @@ export const conditionFields = [
 		displayOptions: {
 			show: {
 				field: [
-					'priority'
+					'priority',
 				],
 			},
 			hide: {
@@ -261,7 +263,7 @@ export const conditionFields = [
 					'type',
 					'status',
 				],
-			}
+			},
 		},
 		options: [
 			{
@@ -293,7 +295,7 @@ export const conditionFields = [
 		displayOptions: {
 			show: {
 				field: [
-					'group'
+					'group',
 				],
 			},
 			hide: {
@@ -317,7 +319,7 @@ export const conditionFields = [
 		displayOptions: {
 			show: {
 				field: [
-					'assignee'
+					'assignee',
 				],
 			},
 			hide: {

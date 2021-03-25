@@ -14,19 +14,19 @@ export const collectionOperations = [
 		},
 		options: [
 			{
-				name: 'Create an entry',
+				name: 'Create an Entry',
 				value: 'create',
 				description: 'Create a collection entry',
 			},
 			{
-				name: 'Get all entries',
+				name: 'Get all Entries',
 				value: 'getAll',
 				description: 'Get all collection entries',
 			},
 			{
-				name: 'Update an entry',
+				name: 'Update an Entry',
 				value: 'update',
-				description: 'Update a collection entries',
+				description: 'Update a collection entry',
 			},
 		],
 		default: 'getAll',
@@ -51,30 +51,7 @@ export const collectionFields = [
 			},
 		},
 		required: true,
-		description: 'Name of the collection to operate on.'
-	},
-
-	// Collection:entry:create
-	{
-		displayName: 'Data',
-		name: 'data',
-		type: 'json',
-		required: true,
-		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'collection',
-				],
-				operation: [
-					'create',
-				]
-			},
-		},
-		description: 'The data to create.',
+		description: 'Name of the collection to operate on.',
 	},
 
 	// Collection:entry:getAll
@@ -132,29 +109,31 @@ export const collectionFields = [
 				],
 				operation: [
 					'getAll',
-				]
+				],
 			},
 		},
 		options: [
 			{
 				displayName: 'Fields',
 				name: 'fields',
-				type: 'json',
+				type: 'string',
 				default: '',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				description: 'Fields to get.',
+				placeholder: '_id,name',
+				description: 'Comma separated list of fields to get.',
 			},
 			{
-				displayName: 'Filter',
+				displayName: 'Filter Query',
 				name: 'filter',
 				type: 'json',
 				default: '',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				description: 'Filter result by fields.',
+				placeholder: '{"name": "Jim"}',
+				description: 'Filter query in <a href="https://jeroen.github.io/mongolite/query-data.html" target="_blank">Mongolite format</a>.',
 			},
 			{
 				displayName: 'Language',
@@ -186,11 +165,12 @@ export const collectionFields = [
 				description: 'Skip number of entries.',
 			},
 			{
-				displayName: 'Sort',
+				displayName: 'Sort Query',
 				name: 'sort',
 				type: 'json',
 				default: '',
-				description: 'Sort result by fields.',
+				placeholder: '{"price": -1}',
+				description: 'Sort query in <a href="https://jeroen.github.io/mongolite/query-data.html" target="_blank">Mongolite format</a>.',
 			},
 		],
 	},
@@ -209,30 +189,100 @@ export const collectionFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'The entry ID.',
 	},
+
+	// Collection:entry:create
+	// Collection:entry:update
 	{
-		displayName: 'Data',
-		name: 'data',
-		type: 'json',
-		required: true,
-		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
+		displayName: 'JSON Data fields',
+		name: 'jsonDataFields',
+		type: 'boolean',
+		default: false,
 		displayOptions: {
 			show: {
 				resource: [
 					'collection',
 				],
 				operation: [
+					'create',
 					'update',
-				]
+				],
 			},
 		},
-		description: 'The data to update.',
+		description: 'If new entry fields should be set via the value-key pair UI or JSON.',
+	},
+	{
+		displayName: 'Entry Data',
+		name: 'dataFieldsJson',
+		type: 'json',
+		default: '',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				jsonDataFields: [
+					true,
+				],
+				resource: [
+					'collection',
+				],
+				operation: [
+					'create',
+					'update',
+				],
+			},
+		},
+		description: 'Entry data to send as JSON.',
+	},
+	{
+		displayName: 'Entry Data',
+		name: 'dataFieldsUi',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		displayOptions: {
+			show: {
+				jsonDataFields: [
+					false,
+				],
+				resource: [
+					'collection',
+				],
+				operation: [
+					'create',
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Field',
+				name: 'field',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'Name of the field.',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'Value of the field.',
+					},
+				],
+			},
+		],
+		description: 'Entry data to send.',
 	},
 ] as INodeProperties[];

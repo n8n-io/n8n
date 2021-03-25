@@ -5,8 +5,8 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -17,7 +17,7 @@ import {
 export class FlowTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Flow Trigger',
-		name: 'flow',
+		name: 'flowTrigger',
 		icon: 'file:flow.png',
 		group: ['trigger'],
 		version: 1,
@@ -32,7 +32,7 @@ export class FlowTrigger implements INodeType {
 			{
 				name: 'flowApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -52,11 +52,11 @@ export class FlowTrigger implements INodeType {
 					[
 						{
 							name: 'Project',
-							value: 'list'
+							value: 'list',
 						},
 						{
 							name: 'Task',
-							value: 'task'
+							value: 'task',
 						},
 					],
 				description: 'Resource that triggers the webhook',
@@ -70,14 +70,14 @@ export class FlowTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'list'
-						]
+							'list',
+						],
 					},
 					hide: {
 						resource: [
-							'task'
-						]
-					}
+							'task',
+						],
+					},
 				},
 				description: `Lists ids, perhaps known better as "Projects" separated by ,`,
 			},
@@ -90,16 +90,16 @@ export class FlowTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'task'
-						]
+							'task',
+						],
 					},
 					hide: {
 						resource: [
-							'list'
-						]
-					}
+							'list',
+						],
+					},
 				},
-				description: `Taks ids separated by ,`,
+				description: `Task ids separated by ,`,
 			},
 		],
 
@@ -168,7 +168,7 @@ export class FlowTrigger implements INodeType {
 							url: webhookUrl,
 							resource_type: resource,
 							resource_id: parseInt(resourceId, 10),
-						}
+						},
 					};
 					try {
 						 responseData = await flowApiRequest.call(this, 'POST', endpoint, body);
@@ -217,7 +217,7 @@ export class FlowTrigger implements INodeType {
 		const req = this.getRequestObject();
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body)
+				this.helpers.returnJsonArray(req.body),
 			],
 		};
 	}

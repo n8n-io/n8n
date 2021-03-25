@@ -152,6 +152,10 @@ export const restApi = Vue.extend({
 					return self.restApi().makeRestApiRequest('GET', `/node-types`);
 				},
 
+				getNodesInformation: (nodeList: string[]): Promise<INodeTypeDescription[]> => {
+					return self.restApi().makeRestApiRequest('POST', `/node-types`, {nodeNames: nodeList});
+				},
+
 				// Returns all the parameter options from the server
 				getNodeParameterOptions: (nodeType: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]> => {
 					const sendData = {
@@ -252,6 +256,26 @@ export const restApi = Vue.extend({
 					return self.restApi().makeRestApiRequest('GET', `/credential-types`);
 				},
 
+				// Get OAuth1 Authorization URL using the stored credentials
+				oAuth1CredentialAuthorize: (sendData: ICredentialsResponse): Promise<string> => {
+					return self.restApi().makeRestApiRequest('GET', `/oauth1-credential/auth`, sendData);
+				},
+
+				// Get OAuth2 Authorization URL using the stored credentials
+				oAuth2CredentialAuthorize: (sendData: ICredentialsResponse): Promise<string> => {
+					return self.restApi().makeRestApiRequest('GET', `/oauth2-credential/auth`, sendData);
+				},
+
+				// Verify OAuth2 provider callback and kick off token generation
+				oAuth2Callback: (code: string, state: string): Promise<string> => {
+					const sendData = {
+						'code': code,
+						'state': state,
+					};
+
+					return self.restApi().makeRestApiRequest('POST', `/oauth2-credential/callback`, sendData);
+				},
+
 				// Returns the execution with the given name
 				getExecution: async (id: string): Promise<IExecutionResponse> => {
 					const response = await self.restApi().makeRestApiRequest('GET', `/executions/${id}`);
@@ -276,11 +300,12 @@ export const restApi = Vue.extend({
 
 				// Returns all saved executions
 				// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
-				getPastExecutions: (filter: object, limit: number, lastId?: string | number): Promise<IExecutionsListResponse> => {
+				getPastExecutions: (filter: object, limit: number, lastId?: string | number, firstId?: string | number): Promise<IExecutionsListResponse> => {
 					let sendData = {};
 					if (filter) {
 						sendData = {
 							filter,
+							firstId,
 							lastId,
 							limit,
 						};

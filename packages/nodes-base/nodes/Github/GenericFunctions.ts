@@ -1,3 +1,5 @@
+import { OptionsWithUri } from 'request';
+
 import {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -16,27 +18,45 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('githubApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-	const baseUrl = credentials!.server || 'https://api.github.com';
+export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const options = {
+	const options: OptionsWithUri = {
 		method,
 		headers: {
-			'Authorization': `token ${credentials.accessToken}`,
-			'User-Agent': credentials.user,
+			'User-Agent': 'n8n',
 		},
 		body,
 		qs: query,
-		uri: `${baseUrl}${endpoint}`,
-		json: true
+		uri: '',
+		json: true,
 	};
 
+	if (Object.keys(option).length !== 0) {
+		Object.assign(options, option);
+	}
+
 	try {
-		return await this.helpers.request(options);
+		const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
+
+		if (authenticationMethod === 'accessToken') {
+			const credentials = this.getCredentials('githubApi');
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			const baseUrl = credentials!.server || 'https://api.github.com';
+			options.uri = `${baseUrl}${endpoint}`;
+
+			options.headers!.Authorization = `token ${credentials.accessToken}`;
+			return await this.helpers.request(options);
+		} else {
+			const credentials = this.getCredentials('githubOAuth2Api');
+
+			const baseUrl = credentials!.server || 'https://api.github.com';
+			options.uri = `${baseUrl}${endpoint}`;
+			//@ts-ignore
+			return await this.helpers.requestOAuth2.call(this, 'githubOAuth2Api', options);
+		}
 	} catch (error) {
 		if (error.statusCode === 401) {
 			// Return a clear error
@@ -78,4 +98,23 @@ export async function getFileSha(this: IHookFunctions | IExecuteFunctions, owner
 		throw new Error('Could not get the SHA of the file.');
 	}
 	return responseData.sha;
+}
+
+export async function githubApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	query.per_page = 100;
+	query.page = 1;
+
+	do {
+		responseData = await githubApiRequest.call(this, method, endpoint, body, query, { resolveWithFullResponse: true });
+		query.page++;
+		returnData.push.apply(returnData, responseData.body);
+	} while (
+		responseData.headers.link && responseData.headers.link.includes('next')
+	);
+	return returnData;
 }

@@ -39,7 +39,8 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 	@Column()
 	startedAt: Date;
 
-	@Column()
+	@Index()
+	@Column({ nullable: true })
 	stoppedAt: Date;
 
 	@Column('simple-json')

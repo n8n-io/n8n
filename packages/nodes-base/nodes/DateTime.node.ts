@@ -7,9 +7,9 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
@@ -47,7 +47,7 @@ export class DateTime implements INodeType {
 					{
 						name: 'Format a Date',
 						description: 'Convert a date to a different format',
-						value: 'format'
+						value: 'format',
 					},
 				],
 				default: 'format',
@@ -174,7 +174,7 @@ export class DateTime implements INodeType {
 				displayOptions: {
 					show: {
 						action:[
-							'format'
+							'format',
 						],
 					},
 				},
@@ -354,7 +354,7 @@ export class DateTime implements INodeType {
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -379,9 +379,10 @@ export class DateTime implements INodeType {
 				if (currentDate === undefined) {
 					continue;
 				}
-				if (!moment(currentDate as string | number).isValid()) {
+				if (options.fromFormat === undefined && !moment(currentDate as string | number).isValid()) {
 					throw new Error('The date input format could not be recognized. Please set the "From Format" field');
 				}
+
 				if (Number.isInteger(currentDate as unknown as number)) {
 					newDate = moment.unix(currentDate as unknown as number);
 				} else {

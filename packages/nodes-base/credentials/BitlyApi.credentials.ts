@@ -6,6 +6,7 @@ import {
 export class BitlyApi implements ICredentialType {
 	name = 'bitlyApi';
 	displayName = 'Bitly API';
+	documentationUrl = 'bitly';
 	properties = [
 		{
 			displayName: 'Access Token',

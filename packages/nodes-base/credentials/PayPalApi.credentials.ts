@@ -7,6 +7,7 @@ import {
 export class PayPalApi implements ICredentialType {
 	name = 'payPalApi';
 	displayName = 'PayPal API';
+	documentationUrl = 'payPal';
 	properties = [
 		{
 			displayName: 'Client ID',
@@ -21,20 +22,20 @@ export class PayPalApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Enviroment',
+			displayName: 'Environment',
 			name: 'env',
 			type: 'options' as NodePropertyTypes,
 			default: 'live',
 			options: [
 				{
 					name: 'Sanbox',
-					value: 'sanbox'
+					value: 'sanbox',
 				},
 				{
 					name: 'Live',
-					value: 'live'
+					value: 'live',
 				},
-			]
+			],
 		},
 	];
 }

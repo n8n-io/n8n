@@ -1,12 +1,12 @@
 import { OptionsWithUri } from 'request';
 
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
 	IWebhookFunctions,
-	BINARY_ENCODING
 } from 'n8n-core';
 
 import {
@@ -15,7 +15,7 @@ import {
 
 export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('payPalApi');
-	const env = getEnviroment(credentials!.env as string);
+	const env = getEnvironment(credentials!.env as string);
 	const tokenInfo =  await getAccessToken.call(this);
 	const headerWithAuthentication = Object.assign({ },
 		{ Authorization: `Bearer ${tokenInfo.access_token}`, 'Content-Type': 'application/json' });
@@ -25,7 +25,7 @@ export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions 
 		qs: query || {},
 		uri: uri || `${env}/v1${endpoint}`,
 		body,
-		json: true
+		json: true,
 	};
 	try {
 		return await this.helpers.request!(options);
@@ -43,7 +43,7 @@ export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions 
 	}
 }
 
-function getEnviroment(env: string): string {
+function getEnvironment(env: string): string {
 	// @ts-ignore
 	return {
 		'sanbox': 'https://api.sandbox.paypal.com',
@@ -56,7 +56,7 @@ async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecut
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	const env = getEnviroment(credentials!.env as string);
+	const env = getEnvironment(credentials!.env as string);
 	const data = Buffer.from(`${credentials!.clientId}:${credentials!.secret}`).toString(BINARY_ENCODING);
 	const headerWithAuthentication = Object.assign({},
 		{ Authorization: `Basic ${data}`, 'Content-Type': 'application/x-www-form-urlencoded' });
@@ -67,7 +67,7 @@ async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecut
 				grant_type: 'client_credentials',
 			},
 			uri: `${env}/v1/oauth2/token`,
-			json: true
+			json: true,
 		};
 	try {
 		return await this.helpers.request!(options);

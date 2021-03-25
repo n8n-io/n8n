@@ -7,8 +7,8 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -20,7 +20,7 @@ import {
 export class EventbriteTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Eventbrite Trigger',
-		name: 'eventbrite',
+		name: 'eventbriteTrigger',
 		icon: 'file:eventbrite.png',
 		group: ['trigger'],
 		version: 1,
@@ -35,7 +35,25 @@ export class EventbriteTrigger implements INodeType {
 			{
 				name: 'eventbriteApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'privateKey',
+						],
+					},
+				},
+			},
+			{
+				name: 'eventbriteOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		webhooks: [
 			{
@@ -47,12 +65,29 @@ export class EventbriteTrigger implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Private Key',
+						value: 'privateKey',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'privateKey',
+				description: 'The resource to operate on.',
+			},
+			{
 				displayName: 'Organization',
 				name: 'organization',
 				type: 'options',
 				required: true,
 				typeOptions: {
-					loadOptionsMethod: 'getOrganizations'
+					loadOptionsMethod: 'getOrganizations',
 				},
 				default: '',
 				description: '',
@@ -66,7 +101,7 @@ export class EventbriteTrigger implements INodeType {
 					loadOptionsDependsOn: [
 						'organization',
 					],
-					loadOptionsMethod: 'getEvents'
+					loadOptionsMethod: 'getEvents',
 				},
 				default: '',
 				description: '',
@@ -78,63 +113,63 @@ export class EventbriteTrigger implements INodeType {
 				options: [
 					{
 						name: 'attendee.updated',
-						value: 'attendee.updated'
+						value: 'attendee.updated',
 					},
 					{
 						name: 'attendee.checked_in',
-						value: 'attendee.checked_in'
+						value: 'attendee.checked_in',
 					},
 					{
 						name: 'attendee.checked_out',
-						value: 'attendee.checked_out'
+						value: 'attendee.checked_out',
 					},
 					{
 						name: 'event.created',
-						value: 'event.created'
+						value: 'event.created',
 					},
 					{
 						name: 'event.published',
-						value: 'event.published'
+						value: 'event.published',
 					},
 					{
 						name: 'event.unpublished',
-						value: 'event.unpublished'
+						value: 'event.unpublished',
 					},
 					{
 						name: 'event.updated',
-						value: 'event.updated'
+						value: 'event.updated',
 					},
 					{
 						name: 'order.placed',
-						value: 'order.placed'
+						value: 'order.placed',
 					},
 					{
 						name: 'order.refunded',
-						value: 'order.refunded'
+						value: 'order.refunded',
 					},
 					{
 						name: 'order.updated',
-						value: 'order.updated'
+						value: 'order.updated',
 					},
 					{
 						name: 'organizer.updated',
-						value: 'organizer.updated'
+						value: 'organizer.updated',
 					},
 					{
 						name: 'ticket_class.created',
-						value: 'ticket_class.created'
+						value: 'ticket_class.created',
 					},
 					{
 						name: 'ticket_class.deleted',
-						value: 'ticket_class.deleted'
+						value: 'ticket_class.deleted',
 					},
 					{
 						name: 'ticket_class.updated',
-						value: 'ticket_class.updated'
+						value: 'ticket_class.updated',
 					},
 					{
 						name: 'venue.updated',
-						value: 'venue.updated'
+						value: 'venue.updated',
 					},
 				],
 				required: true,
@@ -149,7 +184,6 @@ export class EventbriteTrigger implements INodeType {
 				description: 'By default does the webhook-data only contain the URL to receive<br />the object data manually. If this option gets activated it<br />will resolve the data automatically.',
 			},
 		],
-
 	};
 
 	methods = {
@@ -192,23 +226,39 @@ export class EventbriteTrigger implements INodeType {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				if (webhookData.webhookId === undefined) {
-					return false;
+				const webhookUrl = this.getNodeWebhookUrl('default');
+				const organisation = this.getNodeParameter('organization') as string;
+				const actions = this.getNodeParameter('actions') as string[];
+
+				const endpoint = `/organizations/${organisation}/webhooks/`;
+
+				const { webhooks } = await eventbriteApiRequest.call(this, 'GET', endpoint);
+
+				const check = (currentActions: string[], webhookActions: string[]) => {
+					for (const currentAction of currentActions) {
+						if (!webhookActions.includes(currentAction)) {
+							return false;
+						}
+					}
+					return true;
+				};
+
+				for (const webhook of webhooks) {
+					if (webhook.endpoint_url === webhookUrl && check(actions, webhook.actions)) {
+						webhookData.webhookId = webhook.id;
+						return true;
+					}
 				}
-				const endpoint = `/webhooks/${webhookData.webhookId}/`;
-				try {
-					await eventbriteApiRequest.call(this, 'GET', endpoint);
-				} catch (e) {
-					return false;
-				}
-				return true;
+
+				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
+				const organisation = this.getNodeParameter('organization') as string;
 				const event = this.getNodeParameter('event') as string;
 				const actions = this.getNodeParameter('actions') as string[];
-				const endpoint = `/webhooks/`;
+				const endpoint = `/organizations/${organisation}/webhooks/`;
 				const body: IDataObject = {
 					endpoint_url: webhookUrl,
 					actions: actions.join(','),
@@ -261,7 +311,7 @@ export class EventbriteTrigger implements INodeType {
 				workflowData: [
 					this.helpers.returnJsonArray({
 						placeholder: 'Test received. To display actual data of object get the webhook triggered by performing the action which triggers it.',
-					})
+					}),
 				],
 			};
 		}

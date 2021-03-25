@@ -8,7 +8,8 @@ Vue.use(Router);
 
 export default new Router({
 	mode: 'history',
-	base: process.env.BASE_URL,
+	// @ts-ignore
+	base: window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH,
 	routes: [
 		{
 			path: '/execution/:id',
@@ -17,6 +18,12 @@ export default new Router({
 				default: NodeView,
 				header: MainHeader,
 				sidebar: MainSidebar,
+			},
+		},
+		{
+			path: '/oauth2/callback',
+			name: 'oAuth2Callback',
+			components: {
 			},
 		},
 		{
