@@ -14,5 +14,21 @@ export class DropboxApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
+		{
+			displayName: 'APP Access Type',
+			name: 'accessType',
+			type: 'options' as NodePropertyTypes,
+			options: [
+				{
+					name: 'App Folder',
+					value: 'folder',
+				},
+				{
+					name: 'Full Dropbox',
+					value: 'full',
+				},
+			],
+			default: 'full',
+		},
 	];
 }
