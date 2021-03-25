@@ -16,7 +16,7 @@ export class Redis implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Redis',
 		name: 'redis',
-		icon: 'file:redis.png',
+		icon: 'file:redis.svg',
 		group: ['input'],
 		version: 1,
 		description: 'Get, send and update data in Redis.',
