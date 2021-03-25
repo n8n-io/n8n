@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export const timeEntryTagOperations = [
 	{
@@ -28,7 +28,7 @@ export const timeEntryTagOperations = [
 			{
 				name: 'Remove',
 				value: 'remove',
-				description:'Remove tag from time entry',
+				description: 'Remove tag from time entry',
 			},
 		],
 		default: 'add',
@@ -38,9 +38,9 @@ export const timeEntryTagOperations = [
 
 export const timeEntryTagFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                timeEntryTag:getAll                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                timeEntryTag:getAll                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
 		name: 'team',
@@ -102,9 +102,10 @@ export const timeEntryTagFields = [
 		default: 5,
 		description: 'How many results to return.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                timeEntryTag:add                            */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                timeEntryTag:add                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
 		name: 'team',
@@ -188,9 +189,10 @@ export const timeEntryTagFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                timeEntryTag:remove                         */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                timeEntryTag:remove                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
 		name: 'team',
