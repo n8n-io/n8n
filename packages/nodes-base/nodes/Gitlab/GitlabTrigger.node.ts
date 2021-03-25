@@ -18,7 +18,7 @@ export class GitlabTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitLab Trigger',
 		name: 'gitlabTrigger',
-		icon: 'file:gitlab.png',
+		icon: 'file:gitlab.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
