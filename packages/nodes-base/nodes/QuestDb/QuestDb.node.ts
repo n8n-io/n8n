@@ -191,7 +191,7 @@ export class QuestDb implements INodeType {
 
 		const db = pgp(config);
 
-		let returnItems: Array<IDataObject> = [];
+		let returnItems: IDataObject[] = [];
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -210,12 +210,12 @@ export class QuestDb implements INodeType {
 				valuesArray = paramsItems.map((row) => properties.map(col => row[col])) as string[][];
 			}
 
-			const queryResults: Array<IDataObject> = [];
+			const queryResults: IDataObject[] = [];
 			for (let i = 0; i < items.length; i++) {
 				const query = this.getNodeParameter('query', i) as string;
 				const values = valuesArray[i];
 				const queryFormat = { text: query, values };
-				const result = await db.query(queryFormat) as Array<IDataObject>;
+				const result = await db.query(queryFormat) as IDataObject[];
 
 				queryResults.push(...result);
 			}
