@@ -30,12 +30,12 @@ for (const group of (groups as IDataObject).groups as IDataObject[]) {
 		displayOptions: {
 			show: {
 				group: [
-					group.name
+					group.name,
 				],
 			},
 		},
 		default: '',
-		options: []
+		options: [],
 	};
 
 	const options = [];
@@ -45,7 +45,7 @@ for (const group of (groups as IDataObject).groups as IDataObject[]) {
 			const option = {
 				name: tool.d as string,
 				value: tool.k,
-				description: (tool.ed as string) + ` <a href="${link}" target='_blank'>Info</a>`
+				description: (tool.ed as string) + ` <a href="${link}" target='_blank'>Info</a>`,
 			};
 			options.push(option);
 		}
@@ -82,7 +82,7 @@ for (const tool of (tools as IDataObject).processors as IDataObject[]) {
 						tool.g,
 					],
 					tool: [
-						tool.k
+						tool.k,
 					],
 				},
 			},
