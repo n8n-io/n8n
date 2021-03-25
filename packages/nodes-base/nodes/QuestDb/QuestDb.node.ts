@@ -8,7 +8,9 @@ import {
 
 import * as pgPromise from 'pg-promise';
 
-import { pgQuery } from '../Postgres/Postgres.node.functions';
+import {
+	getItemCopy,
+} from '../Postgres/Postgres.node.functions';
 
 export class QuestDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -72,6 +74,34 @@ export class QuestDb implements INodeType {
 				placeholder: 'SELECT id, name FROM product WHERE id < 40',
 				required: true,
 				description: 'The SQL query to execute.',
+			},
+			{
+				displayName: 'Use query parameters',
+				name: 'useQueryParams',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: ['executeQuery'],
+					},
+				},
+				default: false,
+				required: true,
+				description: 'Use Parametrized Queries, where variables are replaced using $1, $2, etc.. <br>Do not use this for regular n8n expressions.',
+			},
+			{
+				displayName: 'Properties',
+				name: 'properties',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['executeQuery'],
+						useQueryParams: [true],
+					},
+				},
+				default: '',
+				placeholder: 'qty,price',
+				description:
+					'Comma separated list of properties which should be used as query parameters.',
 			},
 
 			// ----------------------------------
@@ -161,7 +191,7 @@ export class QuestDb implements INodeType {
 
 		const db = pgp(config);
 
-		let returnItems = [];
+		let returnItems: Array<IDataObject> = [];
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -171,9 +201,25 @@ export class QuestDb implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items);
+			const useQueryParam = this.getNodeParameter('useQueryParams', 0) as boolean;
+			let valuesArray = [] as string[][];
+			if (useQueryParam) {
+				const propertiesString = this.getNodeParameter('properties', 0) as string;
+				const properties = propertiesString.split(',').map(column => column.trim());
+				const paramsItems = getItemCopy(items, properties);
+				valuesArray = paramsItems.map((row) => properties.map(col => row[col])) as string[][];
+			}
 
-			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+			const queryResults: Array<IDataObject> = [];
+			for (let i = 0; i < items.length; i++) {
+				const query = this.getNodeParameter('query', i) as string;
+				const values = valuesArray[i];
+				const queryFormat = { text: query, values };
+				const result = await db.query(queryFormat) as Array<IDataObject>;
+
+				queryResults.push(...result);
+			}
+			returnItems = this.helpers.returnJsonArray(queryResults as IDataObject[]);
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
@@ -182,22 +228,34 @@ export class QuestDb implements INodeType {
 			const returnFields = this.getNodeParameter('returnFields', 0) as string;
 
 			const queries : string[] = [];
-			items.map(item => {
-				const columns = Object.keys(item.json);
+			items.map((item, index) => {
+				const columns = this.getNodeParameter('columns', index) as string;
+				
+				let columnNames: string[];
+				if (columns !== '') {
+					columnNames = columns.split(',').map(columnName => columnName.trim());
+				} else {
+					columnNames = Object.keys(item.json);
+				}
 
-				const values : string = columns.map((col : string) => {
-					if (typeof item.json[col] === 'string') {
-						return `\'${item.json[col]}\'`;
-					} else {
+				const values : string = columnNames.map((col : string) => {
+					if (typeof item.json[col] === 'number') {
+						// Skip quotes only for numbers. formats like dates should be quoted.
 						return item.json[col];
+					} else {
+						return `\'${item.json[col]}\'`;
 					}
 				}).join(',');
 
-				const query = `INSERT INTO ${tableName} (${columns.join(',')}) VALUES (${values});`;
+				const query = `INSERT INTO ${tableName} (${columnNames.join(',')}) VALUES (${values});`;
 				queries.push(query);
 			});
 
-			await db.any(pgp.helpers.concat(queries));
+			for(let i = 0; i < queries.length; i++) {
+				// We have to insert lines one by one and wait
+				// Otherwise we might get `table is busy` errors.
+				await db.any(queries[i]);
+			}
 
 			const returnedItems = await db.any(`SELECT ${returnFields} from ${tableName}`);
 
