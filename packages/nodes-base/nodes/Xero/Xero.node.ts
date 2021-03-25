@@ -41,7 +41,7 @@ export class Xero implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Xero',
 		name: 'xero',
-		icon: 'file:xero.png',
+		icon: 'file:xero.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
