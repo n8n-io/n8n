@@ -70,6 +70,11 @@ export class AwsDynamoDB implements INodeType {
                 value: 'query',
                 description: 'Query database',
               },
+              {
+                name: 'Scan',
+                value: 'scan',
+                description: 'Scan a table',
+              },
             ],
             default: 'item',
             description: 'The resource to operate on.',
@@ -100,7 +105,7 @@ export class AwsDynamoDB implements INodeType {
             required: true,
             displayOptions: {
               show: {
-                resource: ['item', 'query'],
+                resource: ['item', 'query', 'scan'],
               }
             },
             default: '',
@@ -154,7 +159,7 @@ export class AwsDynamoDB implements INodeType {
             type: 'string',
             displayOptions: {
               show: {
-                resource: ['query']
+                resource: ['query', 'scan']
               }
             },
             placeholder: 'id, name',
@@ -208,6 +213,29 @@ export class AwsDynamoDB implements INodeType {
 
           const headers = {
             'X-Amz-Target': 'DynamoDB_20120810.Query',
+            'Content-Type': 'application/x-amz-json-1.0'
+          };
+          const response = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers)
+          const items = response.Items.map(decodeItem);
+
+          return [this.helpers.returnJsonArray(items)];
+        }
+
+        if (resource === 'scan') {
+          const TableName = this.getNodeParameter('table', 0) as string;
+          const ProjectionExpression = this.getNodeParameter('projection-expression', 0) as string;
+
+          const body: any = {
+            TableName,
+            ConsistentRead: true
+          };
+
+          if (ProjectionExpression) {
+            body.ProjectionExpression = ProjectionExpression;
+          }
+
+          const headers = {
+            'X-Amz-Target': 'DynamoDB_20120810.Scan',
             'Content-Type': 'application/x-amz-json-1.0'
           };
           const response = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers)
