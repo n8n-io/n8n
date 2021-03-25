@@ -95,6 +95,7 @@ export async function getConfigValue(configKey: string): Promise<string | boolea
 
 	// Get the environment variable
 	const configSchema = config.getSchema();
+	// @ts-ignore
 	let currentSchema = configSchema._cvtProperties as IDataObject;
 	for (const key of configKeyParts) {
 		if (currentSchema[key] === undefined) {
