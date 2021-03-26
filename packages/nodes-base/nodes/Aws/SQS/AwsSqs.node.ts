@@ -225,7 +225,6 @@ export class AwsSqs implements INodeType {
 		loadOptions: {
 			// Get all the available queues to display them to user so that it can be selected easily
 			async getQueues(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
 				let data;
 				try {
 					// loads first 1000 queues from SQS
@@ -236,7 +235,7 @@ export class AwsSqs implements INodeType {
 
 				let queues = data.ListQueuesResponse.ListQueuesResult.QueueUrl;
 				if (!queues) {
-					return returnData;
+					return [];
 				}
 
 				if (!Array.isArray(queues)) {
@@ -245,17 +244,15 @@ export class AwsSqs implements INodeType {
 					queues = [queues];
 				}
 
-				for (const queueUrl of queues) {
+				return queues.map((queueUrl: string) => {
 					const urlParts = queueUrl.split('/');
 					const name = urlParts[urlParts.length - 1];
 
-					returnData.push({
+					return {
 						name,
-						value: queueUrl,
-					});
-				}
-
-				return returnData;
+						value: queueUrl
+					}
+				});
 			},
 		},
 	};
