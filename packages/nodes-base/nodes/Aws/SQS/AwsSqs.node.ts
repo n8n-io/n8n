@@ -28,7 +28,7 @@ export class AwsSqs implements INodeType {
 		icon: 'file:sqs.svg',
 		group: ['output'],
 		version: 1,
-		subtitle: '={{$parameter["queue"]}}',
+		subtitle: `={{$parameter["operation"]}}`,
 		description: 'Sends messages to AWS SQS',
 		defaults: {
 			name: 'AWS SQS',
