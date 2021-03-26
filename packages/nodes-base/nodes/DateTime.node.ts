@@ -40,9 +40,9 @@ export class DateTime implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Add/Subtract to date',
-						description: 'Add/Subtract time to a date',
-						value: 'addSubtract'
+						name: 'Calculate a date',
+						description: 'Add time to or subtract time from a date',
+						value: 'calculate',
 					},
 					{
 						name: 'Format a Date',
@@ -217,7 +217,7 @@ export class DateTime implements INodeType {
 				displayOptions: {
 					show: {
 						action: [
-							'addSubtract',
+							'calculate',
 						],
 					},
 				},
@@ -242,7 +242,7 @@ export class DateTime implements INodeType {
 				displayOptions: {
 					show: {
 						action: [
-							'addSubtract',
+							'calculate',
 						],
 					},
 				},
@@ -257,7 +257,7 @@ export class DateTime implements INodeType {
 				displayOptions: {
 					show: {
 						action: [
-							'addSubtract',
+							'calculate',
 						],
 					},
 				},
@@ -309,7 +309,7 @@ export class DateTime implements INodeType {
 				displayOptions: {
 					show: {
 						action: [
-							'addSubtract',
+							'calculate',
 						],
 					},
 				},
@@ -329,11 +329,34 @@ export class DateTime implements INodeType {
 				displayOptions: {
 					show: {
 						action: [
-							'addSubtract',
+							'calculate',
 						],
 					},
 				},
 				description: 'Name of the property to which to write the converted date.',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						action: [
+							'calculate',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'From Format',
+						name: 'fromFormat',
+						type: 'string',
+						default: '',
+						description: 'Format for parsing the value as a date. If unrecognized, specify the <a href="https://docs.n8n.io/nodes/n8n-nodes-base.dateTime/#faqs">format</a> for the value.',
+					},
+				],
 			},
 		],
 	};
@@ -433,32 +456,22 @@ export class DateTime implements INodeType {
 				returnData.push(newItem);
 			}
 
-			if (action === 'addSubtract') {
-				const currentDate = this.getNodeParameter('value', i) as string;
+			if (action === 'calculate') {
+
+				const value = this.getNodeParameter('value', i) as string;
+				const operation = this.getNodeParameter('operation', i) as 'add' | 'subtract';
 				const duration = this.getNodeParameter('duration', i) as number;
-				const operation = this.getNodeParameter('operation', i) as string;
-				const timeUnit = this.getNodeParameter('timeUnit', i) as string;
+				const timeUnit = this.getNodeParameter('timeUnit', i) as moment.DurationInputArg2;
+				const { fromFormat } = this.getNodeParameter('options', i) as { fromFormat?: string };
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
-				let newDate;
 
-				if (!moment(currentDate as string | number).isValid()) {
-					throw new Error('The date input format could not be recognized. Please set the "From Format" field');
-				}
-				if (Number.isInteger(currentDate as unknown as number)) {
-					newDate = moment.unix(currentDate as unknown as number);
-				} else {
-					newDate = moment(currentDate as string);
-				}
+				const newDate = fromFormat
+					? parseDateByFormat(value, fromFormat)
+					: parseDateByDefault(value);
 
-				if (operation === 'add') {
-					//@ts-ignore
-					newDate.add(duration, timeUnit).utc().format();
-				}
-
-				if (operation === 'subtract') {
-					//@ts-ignore
-					newDate.subtract(duration, timeUnit).utc().format();
-				}
+				operation === 'add'
+					? newDate.add(duration, timeUnit).utc().format()
+					: newDate.subtract(duration, timeUnit).utc().format();
 
 				let newItem: INodeExecutionData;
 				if (dataPropertyName.includes('.')) {
@@ -484,5 +497,27 @@ export class DateTime implements INodeType {
 		}
 
 		return this.prepareOutputData(returnData);
+	}
+}
+
+function parseDateByFormat(value: string, fromFormat: string) {
+	const date = moment(value, fromFormat, true);
+	if (moment(date).isValid()) return date;
+
+	throw new Error('Date input cannot be parsed. Please recheck the value and the "From Format" field.');
+}
+
+function parseDateByDefault(value: string) {
+	const isoValue = getIsoValue(value);
+	if (moment(isoValue).isValid()) return moment(isoValue);
+
+	throw new Error('Unrecognized date input. Please specify a format in the "From Format" field.');
+}
+
+function getIsoValue(value: string) {
+	try {
+		return new Date(value).toISOString(); // may throw due to unpredictable input
+	} catch (error) {
+		throw new Error('Unrecognized date input. Please specify a format in the "From Format" field.');
 	}
 }
