@@ -70,6 +70,5 @@
       "json",
       "node"
     ]
-  },
-  "newDependencies": "n8n-workflow@0.55.0"
+  }
 }
