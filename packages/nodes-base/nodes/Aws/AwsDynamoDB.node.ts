@@ -155,19 +155,34 @@ export class AwsDynamoDB implements INodeType {
             description: 'Attributes'
           },
           {
-            displayName: 'Projection Expression',
-            name: 'projection-expression',
-            type: 'string',
-            displayOptions: {
-              show: {
-                resource: ['query', 'scan']
-              }
-            },
-            placeholder: 'id, name',
-            default: '',
-            description: 'Attributes to select'
+          	displayName: 'Additional Fields',
+          	name: 'additional-fields',
+          	type: 'collection',
+          	placeholder: 'Add Field',
+          	default: {},
+          	displayOptions: {
+          		show: {
+          			resource: ['query', 'scan'],
+          		},
+          	},
+          	options: [
+          		{
+          			displayName: 'Projection Expression',
+          			name: 'projection-expression',
+          			type: 'string',
+                placeholder: 'id, name',
+          			default: '',
+                description: 'Attributes to select'
+          		},
+              {
+                displayName: 'IndexName',
+                name: 'index-name',
+                type: 'string',
+                default: '',
+                description: 'Specify any global/local secondary index'
+              },
+          	],
           },
-
         ],
     };
 
@@ -199,7 +214,7 @@ export class AwsDynamoDB implements INodeType {
           const TableName = this.getNodeParameter('table', 0) as string;
           const KeyConditionExpression = this.getNodeParameter('key-condition-expression', 0) as string;
           const ExpressionAttributeValues = this.getNodeParameter('expression-attribute-values', 0) as string;
-          const ProjectionExpression = this.getNodeParameter('projection-expression', 0) as string;
+          const additionalFields = this.getNodeParameter('additional-fields', 0) as any;
 
           const body: any = {
             TableName,
@@ -208,8 +223,12 @@ export class AwsDynamoDB implements INodeType {
             ConsistentRead: true
           };
 
-          if (ProjectionExpression) {
-            body.ProjectionExpression = ProjectionExpression;
+          if (additionalFields['projection-expression']) {
+            body.ProjectionExpression = additionalFields['projection-expression'];
+          }
+
+          if (additionalFields['index-name']) {
+            body.IndexName = additionalFields['index-name'];
           }
 
           const headers = {
@@ -224,15 +243,15 @@ export class AwsDynamoDB implements INodeType {
 
         if (resource === 'scan') {
           const TableName = this.getNodeParameter('table', 0) as string;
-          const ProjectionExpression = this.getNodeParameter('projection-expression', 0) as string;
+          const additionalFields = this.getNodeParameter('additional-fields', 0) as any;
 
           const body: any = {
             TableName,
             ConsistentRead: true
           };
 
-          if (ProjectionExpression) {
-            body.ProjectionExpression = ProjectionExpression;
+					if (additionalFields['projection-expression']) {
+            body.ProjectionExpression = additionalFields['projection-expression'];
           }
 
           const headers = {
