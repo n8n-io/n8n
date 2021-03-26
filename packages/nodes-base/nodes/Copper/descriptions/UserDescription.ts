@@ -38,10 +38,10 @@ export const userFields = [
 		displayOptions: {
 			show: {
 				resource: [
-				'user',
+					'user',
 				],
 				operation: [
-				'getAll',
+					'getAll',
 				],
 			},
 		},

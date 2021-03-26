@@ -66,6 +66,7 @@ export const taskFields = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -204,10 +205,10 @@ export const taskFields = [
 		displayOptions: {
 			show: {
 				resource: [
-				'task',
+					'task',
 				],
 				operation: [
-				'getAll',
+					'getAll',
 				],
 				returnAll: [
 					false,
@@ -216,9 +217,10 @@ export const taskFields = [
 		},
 	},
 	{
-		displayName: 'Filter Fields',
+		displayName: 'Filters',
 		name: 'filterFields',
 		type: 'collection',
+		placeholder: 'Add Filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -273,6 +275,7 @@ export const taskFields = [
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {

@@ -154,10 +154,10 @@ export const opportunityFields = [
 		displayOptions: {
 			show: {
 				resource: [
-				'opportunity',
+					'opportunity',
 				],
 				operation: [
-				'getAll',
+					'getAll',
 				],
 			},
 		},
@@ -187,9 +187,10 @@ export const opportunityFields = [
 		},
 	},
 	{
-		displayName: 'Filter Fields',
+		displayName: 'Filters',
 		name: 'filterFields',
 		type: 'collection',
+		placeholder: 'Add Filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -244,6 +245,7 @@ export const opportunityFields = [
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {

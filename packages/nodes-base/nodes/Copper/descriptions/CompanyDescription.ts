@@ -25,11 +25,27 @@ export const companyOperations = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+			},
+			{
 				name: 'Get All',
 				value: 'getAll',
 			},
+			{
+				name: 'Update',
+				value: 'update',
+			},
 		],
-		default: 'getAll',
+		default: 'create',
 		description: 'Operation to perform',
 	},
 ] as INodeProperties[];
@@ -60,6 +76,7 @@ export const companyFields = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -179,9 +196,10 @@ export const companyFields = [
 		},
 	},
 	{
-		displayName: 'Filter Fields',
+		displayName: 'Filters',
 		name: 'filterFields',
 		type: 'collection',
+		placeholder: 'Add Filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -237,6 +255,7 @@ export const companyFields = [
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {

@@ -74,6 +74,7 @@ export const leadFields = [
 		name: 'additionalFields',
 		type: 'collection',
 		default: {},
+		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
 				resource: [
@@ -147,10 +148,10 @@ export const leadFields = [
 		displayOptions: {
 			show: {
 				resource: [
-				'lead',
+					'lead',
 				],
 				operation: [
-				'getAll',
+					'getAll',
 				],
 			},
 		},
@@ -180,9 +181,10 @@ export const leadFields = [
 		},
 	},
 	{
-		displayName: 'Filter Fields',
+		displayName: 'Filters',
 		name: 'filterFields',
 		type: 'collection',
+		placeholder: 'Add Filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -237,6 +239,7 @@ export const leadFields = [
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {

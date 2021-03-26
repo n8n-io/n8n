@@ -38,10 +38,10 @@ export const customerSourceFields = [
 		displayOptions: {
 			show: {
 				resource: [
-				'customerSource',
+					'customerSource',
 				],
 				operation: [
-				'getAll',
+					'getAll',
 				],
 			},
 		},

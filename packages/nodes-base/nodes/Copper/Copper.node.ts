@@ -21,6 +21,7 @@ import {
 import {
 	companyFields,
 	companyOperations,
+	customerSourceFields,
 	customerSourceOperations,
 	leadFields,
 	leadOperations,
@@ -34,6 +35,7 @@ import {
 	taskOperations,
 	userOperations,
 } from './descriptions';
+import { userFields } from '../Discourse/UserDescription';
 
 export class Copper implements INodeType {
 	description: INodeTypeDescription = {
@@ -101,6 +103,7 @@ export class Copper implements INodeType {
 			...companyOperations,
 			...companyFields,
 			...customerSourceOperations,
+			...customerSourceFields,
 			...leadOperations,
 			...leadFields,
 			...opportunityOperations,
@@ -112,6 +115,7 @@ export class Copper implements INodeType {
 			...taskOperations,
 			...taskFields,
 			...userOperations,
+			...userFields,
 		],
 	};
 
@@ -218,9 +222,9 @@ export class Copper implements INodeType {
 
 				} else if (resource === 'customerSource') {
 
-				// **********************************************************************
-				//                            customerSource
-				// **********************************************************************
+					// **********************************************************************
+					//                            customerSource
+					// **********************************************************************
 
 					if (operation === 'getAll') {
 
@@ -678,7 +682,6 @@ export class Copper implements INodeType {
 						responseData = await handleListing.call(this, 'POST', '/users/search');
 
 					}
-
 				}
 
 			} catch (error) {

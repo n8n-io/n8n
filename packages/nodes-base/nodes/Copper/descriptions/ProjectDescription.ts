@@ -67,6 +67,7 @@ export const projectFields = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -168,10 +169,10 @@ export const projectFields = [
 		displayOptions: {
 			show: {
 				resource: [
-				'project',
+					'project',
 				],
 				operation: [
-				'getAll',
+					'getAll',
 				],
 			},
 		},
@@ -201,10 +202,11 @@ export const projectFields = [
 		},
 	},
 	{
-		displayName: 'Filter Fields',
+		displayName: 'Filters',
 		name: 'filterFields',
 		type: 'collection',
 		default: {},
+		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
 				resource: [
@@ -251,6 +253,7 @@ export const projectFields = [
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {

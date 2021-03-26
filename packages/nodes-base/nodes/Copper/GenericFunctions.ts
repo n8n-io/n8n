@@ -1,5 +1,10 @@
-import { createHash } from 'crypto';
-import { OptionsWithUri } from 'request';
+import {
+	createHash,
+} from 'crypto';
+
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -50,7 +55,7 @@ export async function copperApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ||`https://api.prosperworks.com/developer_api/v1${resource}`,
+		uri: uri || `https://api.prosperworks.com/developer_api/v1${resource}`,
 		json: true,
 	};
 

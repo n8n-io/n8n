@@ -73,6 +73,7 @@ export const personFields = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -160,10 +161,10 @@ export const personFields = [
 		displayOptions: {
 			show: {
 				resource: [
-				'person',
+					'person',
 				],
 				operation: [
-				'getAll',
+					'getAll',
 				],
 			},
 		},
@@ -193,9 +194,10 @@ export const personFields = [
 		},
 	},
 	{
-		displayName: 'Filter Fields',
+		displayName: 'Filters',
 		name: 'filterFields',
 		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -243,6 +245,7 @@ export const personFields = [
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -269,13 +272,7 @@ export const personFields = [
 				type: 'string',
 				default: '',
 			},
-			{
-				displayName: 'Emails',
-				name: 'emails',
-				type: 'string',
-				default: '',
-				description: 'Comma-separated list of emails to set for the person.',
-			},
+			emailsFixedCollection,
 			{
 				displayName: 'Name',
 				name: 'name',
