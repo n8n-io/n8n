@@ -2,6 +2,19 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.113.0
+
+### What changed?
+In the Dropbox node, both credential types (Access Token & OAuth2) have a new parameter called "APP Access Type".
+
+### When is action necessary?
+
+If you are using a Dropbox APP with permission type, "App Folder".
+
+### How to upgrade:
+
+Open your Dropbox node's credentials and set the "APP Access Type" parameter to "App Folder".
+
 ## 0.111.0
 
 ### What changed?
