@@ -1,4 +1,8 @@
-import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
+import {
+	BINARY_ENCODING,
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -8,9 +12,14 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { URL } from 'url';
 
-import { awsApiRequestSOAP } from '../GenericFunctions';
+import {
+	URL,
+} from 'url';
+
+import {
+	awsApiRequestSOAP,
+} from '../GenericFunctions';
 
 export class AwsSqs implements INodeType {
 	description: INodeTypeDescription = {
@@ -42,7 +51,7 @@ export class AwsSqs implements INodeType {
 					{
 						name: 'Send message',
 						value: 'SendMessage',
-						description: 'Send a message to a queue',
+						description: 'Send a message to a queue.',
 					},
 				],
 				default: 'SendMessage',
@@ -65,14 +74,14 @@ export class AwsSqs implements INodeType {
 				options: [],
 				default: '',
 				required: true,
-				description: 'The queue you want to send message to',
+				description: 'Queue to send a message to.',
 			},
 			{
 				displayName: 'Send Input Data',
 				name: 'sendInputData',
 				type: 'boolean',
 				default: true,
-				description: 'Send the the data the node receives as JSON to SQS.',
+				description: 'Send the data the node receives as JSON to SQS.',
 			},
 			{
 				displayName: 'Message',
@@ -93,7 +102,7 @@ export class AwsSqs implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'The message you want to send',
+				description: 'Message to send to the queue.',
 			},
 			{
 				displayName: 'Options',
@@ -113,7 +122,7 @@ export class AwsSqs implements INodeType {
 						displayName: 'Delay Seconds',
 						name: 'delaySeconds',
 						type: 'number',
-						description: 'The length of time, in seconds, for which to delay a specific message.',
+						description: 'How long, in seconds, to delay a message for.',
 						default: 0,
 						typeOptions: {
 							minValue: 0,
@@ -128,7 +137,7 @@ export class AwsSqs implements INodeType {
 						typeOptions: {
 							multipleValues: true,
 						},
-						description: 'The attributes to set.',
+						description: 'Attributes to set.',
 						default: {},
 						options: [
 							{
@@ -140,14 +149,14 @@ export class AwsSqs implements INodeType {
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'Name of attribute.',
+										description: 'Name of the attribute.',
 									},
 									{
 										displayName: 'Property Name',
 										name: 'dataPropertyName',
 										type: 'string',
 										default: 'data',
-										description: 'Name of the binary property which contains the data for message attribute.',
+										description: 'Name of the binary property which contains the data for the message attribute.',
 									},
 								],
 							},
@@ -160,14 +169,14 @@ export class AwsSqs implements INodeType {
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'Name of attribute',
+										description: 'Name of the attribute.',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'number',
 										default: 0,
-										description: 'The number value of attribute.',
+										description: 'Number value of the attribute.',
 									},
 								],
 							},
@@ -180,32 +189,32 @@ export class AwsSqs implements INodeType {
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'Name of attribute',
+										description: 'Name of the attribute.',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'The string value of attribute.',
+										description: 'String value of attribute.',
 									},
 								],
 							},
 						],
 					},
 					{
-						displayName: 'MessageDeduplicationId',
+						displayName: 'Message Deduplication ID',
 						name: 'messageDeduplicationId',
 						type: 'string',
 						default: '',
-						description: 'The token used for deduplication of sent messages. This parameter applies only to FIFO (first-in-first-out) queues.',
+						description: 'Token used for deduplication of sent messages. Applies only to FIFO (first-in-first-out) queues.',
 					},
 					{
-						displayName: 'MessageGroupId',
+						displayName: 'Message Group ID',
 						name: 'messageGroupId',
 						type: 'string',
 						default: '',
-						description: 'The tag that specifies that a message belongs to a specific message group. . This parameter applies only to FIFO (first-in-first-out) queues.',
+						description: 'Tag that specifies that a message belongs to a specific message group. Applies only to FIFO (first-in-first-out) queues.',
 					},
 				],
 			},
@@ -299,7 +308,7 @@ export class AwsSqs implements INodeType {
 				if (item.binary === undefined) {
 					throw new Error('No binary data set. So message attribute cannot be added!');
 				}
-		
+
 				if (item.binary[dataPropertyName] === undefined) {
 					throw new Error(`The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`);
 				}
