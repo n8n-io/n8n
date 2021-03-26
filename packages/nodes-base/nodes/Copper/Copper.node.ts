@@ -33,9 +33,9 @@ import {
 	projectOperations,
 	taskFields,
 	taskOperations,
+	userFields,
 	userOperations,
 } from './descriptions';
-import { userFields } from '../Discourse/UserDescription';
 
 export class Copper implements INodeType {
 	description: INodeTypeDescription = {
@@ -232,7 +232,7 @@ export class Copper implements INodeType {
 						//        customerSource: getAll
 						// ----------------------------------------
 
-						responseData = await copperApiRequest.call(this, 'GET', '/customer_sources');
+						responseData = await handleListing.call(this, 'GET', '/customer_sources');
 
 					}
 
@@ -469,7 +469,7 @@ export class Copper implements INodeType {
 							Object.assign(body, filterFields);
 						}
 
-						responseData = await handleListing.call(this, 'POST', '/companies/search', body);
+						responseData = await handleListing.call(this, 'POST', '/people/search', body);
 
 					} else if (operation === 'update') {
 
