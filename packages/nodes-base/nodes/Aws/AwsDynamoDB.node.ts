@@ -140,20 +140,52 @@ export class AwsDynamoDB implements INodeType {
             default: '',
             description: 'A string that determines the items to be read from the table or index.'
           },
-          {
-            displayName: 'Expression Attribute Values',
-            name: 'expression-attribute-values',
-            type: 'json',
-            required: true,
-            displayOptions: {
+					{
+						displayName: 'Expression Attribute Values',
+						name: 'expression-attribute-values',
+						placeholder: 'Add Metadata',
+						type: 'fixedCollection',
+						default: '',
+						required: true,
+						typeOptions: {
+							multipleValues: true,
+							minValue: 1
+						},
+						displayOptions: {
               show: {
                 resource: ['query']
               }
             },
-            placeholder: '{"id": {"S": "abc"}}',
-            default: '',
-            description: 'Attributes'
-          },
+						description: 'Attributes',
+						options: [
+							{
+								name: 'values',
+								displayName: 'Attribute Values',
+								values: [
+									{
+										displayName: 'Attribute',
+										name: 'attribute',
+										type: 'string',
+										default: '',
+									},
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										options: ['S', 'N'].map((o) => Object({name: o, value: o})),
+										default: 'S',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: '',
+									},
+								],
+							},
+						],
+					},
           {
           	displayName: 'Additional Fields',
           	name: 'additional-fields',
@@ -213,13 +245,19 @@ export class AwsDynamoDB implements INodeType {
         if (resource === 'query') {
           const TableName = this.getNodeParameter('table', 0) as string;
           const KeyConditionExpression = this.getNodeParameter('key-condition-expression', 0) as string;
-          const ExpressionAttributeValues = this.getNodeParameter('expression-attribute-values', 0) as string;
+          const expressionValues = this.getNodeParameter('expression-attribute-values', 0) as any;
           const additionalFields = this.getNodeParameter('additional-fields', 0) as any;
+
+					const ExpressionAttributeValues: any = {};
+					for (const {attribute, type, value} of expressionValues.values) {
+						const prefixedAttribute = attribute.charAt(0) === ':' ? attribute : ':' + attribute; // often forgotten to prepend a ':'
+						ExpressionAttributeValues[prefixedAttribute] = {[type]: value};
+					}
 
           const body: any = {
             TableName,
             KeyConditionExpression,
-            ExpressionAttributeValues: JSON.parse(ExpressionAttributeValues),
+            ExpressionAttributeValues,
             ConsistentRead: true
           };
 
