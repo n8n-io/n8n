@@ -141,6 +141,18 @@ export class AwsDynamoDB implements INodeType {
 						description: 'A string that determines the items to be read from the table or index.'
 					},
 					{
+						displayName: 'FilterExpression',
+						name: 'filter-expression',
+						type: 'string',
+						default: '',
+						placeholder: 'id = :id',
+						displayOptions: {
+							show: {
+								resource: ['scan'],
+							},
+						},
+					},
+					{
 						displayName: 'Expression Attribute Values',
 						name: 'expression-attribute-values',
 						placeholder: 'Add Metadata',
@@ -153,7 +165,7 @@ export class AwsDynamoDB implements INodeType {
 						},
 						displayOptions: {
 							show: {
-								resource: ['query']
+								resource: ['query', 'scan']
 							}
 						},
 						description: 'Attributes',
@@ -281,12 +293,25 @@ export class AwsDynamoDB implements INodeType {
 
 				if (resource === 'scan') {
 					const TableName = this.getNodeParameter('table', 0) as string;
+					const FilterExpression = this.getNodeParameter('filter-expression', 0) as string;
 					const additionalFields = this.getNodeParameter('additional-fields', 0) as any;
+					const expressionValues = this.getNodeParameter('expression-attribute-values', 0) as any;
+
+					const ExpressionAttributeValues: any = {};
+					for (const {attribute, type, value} of expressionValues.values) {
+						const prefixedAttribute = attribute.charAt(0) === ':' ? attribute : ':' + attribute; // often forgotten to prepend a ':'
+						ExpressionAttributeValues[prefixedAttribute] = {[type]: value};
+					}
 
 					const body: any = {
 						TableName,
 						ConsistentRead: true
 					};
+
+					if (FilterExpression) {
+						body.FilterExpression = FilterExpression;
+						body.ExpressionAttributeValues = ExpressionAttributeValues;
+					}
 
 					if (additionalFields['projection-expression']) {
 						body.ProjectionExpression = additionalFields['projection-expression'];
