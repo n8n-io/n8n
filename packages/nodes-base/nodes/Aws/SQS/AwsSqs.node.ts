@@ -250,8 +250,8 @@ export class AwsSqs implements INodeType {
 
 					return {
 						name,
-						value: queueUrl
-					}
+						value: queueUrl,
+					};
 				});
 			},
 		},
