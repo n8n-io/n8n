@@ -16,7 +16,7 @@ function decodeAttribute(type: string, attribute: any): any {
     case 'M':
     case 'L':
     case 'NS':
-      return Array(...attribute);
+      return Array(attribute.map(decodeItem));
     case 'N':
       return Number(attribute);
     case 'BOOL':
