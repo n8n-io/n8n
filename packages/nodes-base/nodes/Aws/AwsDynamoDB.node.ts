@@ -26,8 +26,9 @@ function decodeAttribute(type: string, attribute: any): any {
 
 function decodeItem(item: any): any {
   const _item: any = {};
-  for (const [attribute, value] of Object.entries(item)) {
-    const [type, content] = Object.entries(value)[0];
+  for (const entry of Object.entries(item)) {
+    const [attribute, value]: [string, any] = entry;
+    const [type, content]: [string, any] = Object.entries(value)[0];
     _item[attribute] = decodeAttribute(type, content);
   }
 
