@@ -9,7 +9,7 @@ import {
 import * as pgPromise from 'pg-promise';
 
 import {
-	getItemCopy,
+	pgQuery,
 } from '../Postgres/Postgres.node.functions';
 
 export class QuestDb implements INodeType {
@@ -71,9 +71,9 @@ export class QuestDb implements INodeType {
 					},
 				},
 				default: '',
-				placeholder: 'SELECT id, name FROM product WHERE id < 40',
+				placeholder: 'SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
 				required: true,
-				description: 'The SQL query to execute.',
+				description: 'The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.',
 			},
 			{
 				displayName: 'Use query parameters',
@@ -201,25 +201,9 @@ export class QuestDb implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const useQueryParam = this.getNodeParameter('useQueryParams', 0) as boolean;
-			let valuesArray = [] as string[][];
-			if (useQueryParam) {
-				const propertiesString = this.getNodeParameter('properties', 0) as string;
-				const properties = propertiesString.split(',').map(column => column.trim());
-				const paramsItems = getItemCopy(items, properties);
-				valuesArray = paramsItems.map((row) => properties.map(col => row[col])) as string[][];
-			}
+			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items);
 
-			const queryResults: IDataObject[] = [];
-			for (let i = 0; i < items.length; i++) {
-				const query = this.getNodeParameter('query', i) as string;
-				const values = valuesArray[i];
-				const queryFormat = { text: query, values };
-				const result = await db.query(queryFormat) as IDataObject[];
-
-				queryResults.push(...result);
-			}
-			returnItems = this.helpers.returnJsonArray(queryResults as IDataObject[]);
+			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert

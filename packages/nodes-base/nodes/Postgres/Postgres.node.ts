@@ -74,7 +74,7 @@ export class Postgres implements INodeType {
 				default: '',
 				placeholder: 'SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
 				required: true,
-				description: 'The SQL query to execute.',
+				description: 'The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.',
 			},
 			{
 				displayName: 'Use query parameters',

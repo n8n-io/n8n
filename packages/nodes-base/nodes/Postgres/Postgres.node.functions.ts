@@ -35,7 +35,7 @@ export function getItemCopy(items: INodeExecutionData[], properties: string[]): 
  * @param {input[]} input The Node's input data
  * @returns Promise<Array<object>>
  */
-export function pgQuery(
+export async function pgQuery(
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
@@ -50,20 +50,17 @@ export function pgQuery(
 		valuesArray = paramsItems.map((row) => properties.map(col => row[col])) as string[][];
 	}
 
-	const queries: Array<{
-		query: string | pgPromise.QueryFile,
-		values?: Array<string | number | null>,
-		options?: pgPromise.IFormattingOptions
-	}> = [];
-
+	const queryResults: IDataObject[] = [];
 	for (let i = 0; i < items.length; i++) {
 		const query = getNodeParam('query', i) as string;
 		const values = valuesArray[i];
-		const queryFormat = { query, values };
-		queries.push(queryFormat);
-	}
+		const queryFormat = { text: query, values };
+		const result = await db.query(queryFormat) as IDataObject[];
 
-	return db.any(pgp.helpers.concat(queries));
+		queryResults.push(...result);
+	}
+	
+	return queryResults;
 }
 
 /**

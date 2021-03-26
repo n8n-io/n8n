@@ -76,9 +76,37 @@ export class CrateDb implements INodeType {
 					},
 				},
 				default: '',
-				placeholder: 'SELECT id, name FROM product WHERE id < 40',
+				placeholder: 'SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
 				required: true,
-				description: 'The SQL query to execute.',
+				description: 'The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.',
+			},
+			{
+				displayName: 'Use query parameters',
+				name: 'useQueryParams',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: ['executeQuery'],
+					},
+				},
+				default: false,
+				required: true,
+				description: 'Use Parametrized Queries, where variables are replaced using $1, $2, etc.. <br>Do not use this for regular n8n expressions.',
+			},
+			{
+				displayName: 'Properties',
+				name: 'properties',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['executeQuery'],
+						useQueryParams: [true],
+					},
+				},
+				default: '',
+				placeholder: 'quantity,price',
+				description:
+					'Comma separated list of properties which should be used as query parameters.',
 			},
 
 			// ----------------------------------
