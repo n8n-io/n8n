@@ -91,7 +91,7 @@
         "client-oauth2": "^4.2.5",
         "compression": "^1.7.4",
         "connect-history-api-fallback": "^1.6.0",
-        "convict": "^5.0.0",
+        "convict": "^6.0.1",
         "csrf": "^3.1.0",
         "dotenv": "^8.0.0",
         "express": "^4.16.4",

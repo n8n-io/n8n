@@ -15,6 +15,5 @@ ENV NODE_ENV production
 
 WORKDIR /data
 
-USER node
-
-CMD n8n
+CMD chown -R node:node /home/node/.n8n \
+&& gosu node n8n
