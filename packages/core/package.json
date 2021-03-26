@@ -1,74 +1,74 @@
 {
-    "name": "n8n-core",
-    "version": "0.65.0",
-    "description": "Core functionality of n8n",
-    "license": "SEE LICENSE IN LICENSE.md",
-    "homepage": "https://n8n.io",
-    "author": {
-        "name": "Jan Oberhauser",
-        "email": "jan@n8n.io"
+  "name": "n8n-core",
+  "version": "0.65.0",
+  "description": "Core functionality of n8n",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "homepage": "https://n8n.io",
+  "author": {
+    "name": "Jan Oberhauser",
+    "email": "jan@n8n.io"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/n8n-io/n8n.git"
+  },
+  "main": "dist/src/index",
+  "types": "dist/src/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "npm run watch",
+    "tslint": "tslint -p tsconfig.json -c tslint.json",
+    "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json",
+    "watch": "tsc --watch",
+    "test": "jest"
+  },
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@types/cron": "^1.7.1",
+    "@types/crypto-js": "^4.0.1",
+    "@types/express": "^4.17.6",
+    "@types/jest": "^26.0.13",
+    "@types/lodash.get": "^4.4.6",
+    "@types/mime-types": "^2.1.0",
+    "@types/node": "14.0.27",
+    "@types/request-promise-native": "~1.0.15",
+    "jest": "^26.4.2",
+    "source-map-support": "^0.5.9",
+    "ts-jest": "^26.3.0",
+    "tslint": "^6.1.2",
+    "typescript": "~3.9.7"
+  },
+  "dependencies": {
+    "client-oauth2": "^4.2.5",
+    "cron": "^1.7.2",
+    "crypto-js": "4.0.0",
+    "file-type": "^14.6.2",
+    "lodash.get": "^4.4.2",
+    "mime-types": "^2.1.27",
+    "n8n-workflow": "~0.54.0",
+    "oauth-1.0a": "^2.2.6",
+    "p-cancelable": "^2.0.0",
+    "request": "^2.88.2",
+    "request-promise-native": "^1.0.7"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
     },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/n8n-io/n8n.git"
-    },
-    "main": "dist/src/index",
-    "types": "dist/src/index.d.ts",
-    "scripts": {
-        "build": "tsc",
-        "dev": "npm run watch",
-        "tslint": "tslint -p tsconfig.json -c tslint.json",
-        "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json",
-        "watch": "tsc --watch",
-        "test": "jest"
-    },
-    "files": [
-        "dist"
+    "testURL": "http://localhost/",
+    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+    "testPathIgnorePatterns": [
+      "/dist/",
+      "/node_modules/"
     ],
-    "devDependencies": {
-        "@types/cron": "^1.7.1",
-        "@types/crypto-js": "^4.0.1",
-        "@types/express": "^4.17.6",
-        "@types/jest": "^26.0.13",
-        "@types/lodash.get": "^4.4.6",
-        "@types/mime-types": "^2.1.0",
-        "@types/node": "14.0.27",
-        "@types/request-promise-native": "~1.0.15",
-        "jest": "^26.4.2",
-        "source-map-support": "^0.5.9",
-        "ts-jest": "^26.3.0",
-        "tslint": "^6.1.2",
-        "typescript": "~3.9.7"
-    },
-    "dependencies": {
-        "client-oauth2": "^4.2.5",
-        "cron": "^1.7.2",
-        "crypto-js": "4.0.0",
-        "file-type": "^14.6.2",
-        "lodash.get": "^4.4.2",
-        "mime-types": "^2.1.27",
-        "n8n-workflow": "~0.54.0",
-        "oauth-1.0a": "^2.2.6",
-        "p-cancelable": "^2.0.0",
-        "request": "^2.88.2",
-        "request-promise-native": "^1.0.7"
-    },
-    "jest": {
-        "transform": {
-            "^.+\\.tsx?$": "ts-jest"
-        },
-        "testURL": "http://localhost/",
-        "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
-        "testPathIgnorePatterns": [
-            "/dist/",
-            "/node_modules/"
-        ],
-        "moduleFileExtensions": [
-            "ts",
-            "tsx",
-            "js",
-            "json",
-            "node"
-        ]
-    }
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "json",
+      "node"
+    ]
+  }
 }
