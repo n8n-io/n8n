@@ -46,7 +46,11 @@ export class Wazzup implements INodeType {
 					{
 						name: 'Instagram',
 						value: 'instagram',
-					},						
+					},	
+					{
+						name: 'ВКонтакте',
+						value: 'vk',
+					},											
 					{
 						name: 'Channels',
 						value: 'channels',
@@ -55,7 +59,6 @@ export class Wazzup implements INodeType {
 				default: 'whatsapp',
 				description: 'The resource to operate on.',
 			},
-
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -63,7 +66,7 @@ export class Wazzup implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'whatsapp', 'instagram'
+							'whatsapp', 'instagram', 'vk'
 						],
 					},
 				},
@@ -71,12 +74,12 @@ export class Wazzup implements INodeType {
 					{
 						name: 'Send Message',
 						value: 'sendMessage',
-						description: 'Send WhatsApp text message',
+						description: 'Send Wazzup text message',
 					},
 					{
 						name: 'Send File',
 						value: 'sendFile',
-						description: 'Send WhatsApp file-in message',
+						description: 'Send Wazzup file-in message',
 					},					
 				],
 				default: 'sendMessage',
@@ -97,6 +100,7 @@ export class Wazzup implements INodeType {
 				required: true,
 				description: 'This is API`s required field',
 			},
+
 
 			// ----------------------------------
 			//         wazzup
@@ -141,8 +145,26 @@ export class Wazzup implements INodeType {
 						],
 					},
 				},
-				description: 'The number to which to send the message',
-			},			
+				description: 'The recepient ID to send the message',
+			},
+			{
+				displayName: 'MessageTo',
+				name: 'to',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'sendMessage',
+						],
+						resource: [
+							'vk'
+						],
+					},
+				},
+				description: 'The recepient ID to send the message',
+			},						
 			{
 				displayName: 'Message',
 				name: 'message',
@@ -155,12 +177,14 @@ export class Wazzup implements INodeType {
 							'sendMessage',
 						],
 						resource: [
-							'whatsapp', 'instagram'
+							'whatsapp', 'instagram', 'vk'
 						],
 					},
 				},
 				description: 'The message to send',
 			},
+
+
 			// ----------------------------------
 			//         wazzup:sendFile
 			// ----------------------------------			
@@ -200,8 +224,26 @@ export class Wazzup implements INodeType {
 						],
 					},
 				},
-				description: 'The number to which to send the message',
-			},			
+				description: 'The recepient ID to send the message',
+			},		
+			{
+				displayName: 'MessageTo',
+				name: 'to',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'sendFile',
+						],
+						resource: [
+							'vk'
+						],
+					},
+				},
+				description: 'The recepient ID to send the message',
+			},				
 			{
 				displayName: 'File link',
 				name: 'content',
@@ -214,7 +256,7 @@ export class Wazzup implements INodeType {
 							'sendFile',
 						],
 						resource: [
-							'whatsapp', 'instagram'
+							'whatsapp', 'instagram', 'vk'
 						],
 					},
 				},
@@ -247,7 +289,7 @@ export class Wazzup implements INodeType {
 				
 			resource = this.getNodeParameter('resource', i) as string;		
 
-			if (resource === 'whatsapp' || resource === 'instagram') {
+			if (resource === 'whatsapp' || resource === 'instagram' || resource === 'vk') {
 
 				operation = this.getNodeParameter('operation', i) as string;
 				body.channelId = this.getNodeParameter('channel', i) as string;
@@ -257,7 +299,6 @@ export class Wazzup implements INodeType {
 				requestMethod = 'POST';
 
 				if (operation === 'sendMessage') {
-
 					// ----------------------------------
 					//         wazzup:sendMessage
 					// ----------------------------------
@@ -265,7 +306,6 @@ export class Wazzup implements INodeType {
 					body.text = this.getNodeParameter('message', i) as string;
 
 				} else if(operation === 'sendFile') {
-
 					// ----------------------------------
 					//         wazzup:sendFile
 					// ----------------------------------
@@ -275,14 +315,12 @@ export class Wazzup implements INodeType {
 				} else {
 					throw new Error(`The operation "${operation}" is not known!`);
 				}
-			}
-			 else if (resource === 'channels') {
-				 
+			} else if (resource === 'channels') {
 					// ----------------------------------
 					//         wazzup:channels
 					// ----------------------------------
+
 					endpoint = '/channels';
-	
 			}
 			 else {
 				throw new Error(`The resource "${resource}" is not known!`);
