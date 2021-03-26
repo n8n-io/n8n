@@ -8,28 +8,57 @@ import {
 
 import { awsApiRequestREST } from './GenericFunctions';
 
-function decodeAttribute(type: string, attribute: any): any {
+enum EAttributeValueType {
+	S = 'S', SS = 'SS', M = 'M', L = 'L', NS = 'NS', N = 'N', BOOL = 'BOOL', B = 'B', BS = 'BS', NULL = 'NULL',
+}
+
+interface IAttributeValueValue {
+		[type: string]: string | string[] | IAttributeValue[];
+}
+
+interface IAttributeValue {
+		[attribute: string]: IAttributeValueValue;
+}
+
+interface IExpressionAttributeValue {
+	attribute: string;
+	type: EAttributeValueType;
+	value: string;
+}
+
+interface IRequestBody {
+	TableName: string;
+	Key?: object;
+	IndexName?: string;
+	ProjectionExpression?: string;
+	KeyConditionExpression?: string;
+	ExpressionAttributeValues?: IAttributeValue;
+	ConsistentRead?: boolean;
+	FilterExpression?: string;
+}
+
+function decodeAttribute(type: EAttributeValueType, attribute: IAttributeValue) {
 	switch (type) {
 		case 'S':
 			return String(attribute);
 		case 'SS':
-		case 'M':
-		case 'L':
 		case 'NS':
-			return Array(attribute.map(decodeItem));
+			return attribute;
 		case 'N':
 			return Number(attribute);
 		case 'BOOL':
 			return Boolean(attribute);
+		default:
+			return null;
 	}
 }
 
-function decodeItem(item: any): any {
-	const _item: any = {};
+function decodeItem(item: IAttributeValue): IDataObject {
+	const _item: IDataObject = {};
 	for (const entry of Object.entries(item)) {
-		const [attribute, value]: [string, any] = entry;
-		const [type, content]: [string, any] = Object.entries(value)[0];
-		_item[attribute] = decodeAttribute(type, content);
+		const [attribute, value]: [string, object] = entry;
+		const [type, content]: [string, object] = Object.entries(value)[0];
+		_item[attribute] = decodeAttribute(type as EAttributeValueType, content as IAttributeValue);
 	}
 
 	return _item;
@@ -87,7 +116,7 @@ export class AwsDynamoDB implements INodeType {
 						displayOptions: {
 							show: {
 								resource: ['item'],
-							}
+							},
 						},
 						options: [
 							{
@@ -107,7 +136,7 @@ export class AwsDynamoDB implements INodeType {
 						displayOptions: {
 							show: {
 								resource: ['item', 'query', 'scan'],
-							}
+							},
 						},
 						default: '',
 						description: 'Specify the table you want to operate on',
@@ -121,7 +150,7 @@ export class AwsDynamoDB implements INodeType {
 							show: {
 								resource: ['item'],
 								operation: ['get'],
-							}
+							},
 						},
 						default: '',
 						description: 'Specify the Item you want to operate on',
@@ -133,12 +162,12 @@ export class AwsDynamoDB implements INodeType {
 						required: true,
 						displayOptions: {
 							show: {
-								resource: ['query']
-							}
+								resource: ['query'],
+							},
 						},
 						placeholder: 'id = :id',
 						default: '',
-						description: 'A string that determines the items to be read from the table or index.'
+						description: 'A string that determines the items to be read from the table or index.',
 					},
 					{
 						displayName: 'FilterExpression',
@@ -161,12 +190,12 @@ export class AwsDynamoDB implements INodeType {
 						required: true,
 						typeOptions: {
 							multipleValues: true,
-							minValue: 1
+							minValue: 1,
 						},
 						displayOptions: {
 							show: {
-								resource: ['query', 'scan']
-							}
+								resource: ['query', 'scan'],
+							},
 						},
 						description: 'Attributes',
 						options: [
@@ -216,14 +245,14 @@ export class AwsDynamoDB implements INodeType {
 								type: 'string',
 								placeholder: 'id, name',
 								default: '',
-								description: 'Attributes to select'
+								description: 'Attributes to select',
 							},
 							{
 								displayName: 'IndexName',
 								name: 'index-name',
 								type: 'string',
 								default: '',
-								description: 'Specify any global/local secondary index'
+								description: 'Specify any global/local secondary index',
 							},
 						],
 					},
@@ -236,92 +265,92 @@ export class AwsDynamoDB implements INodeType {
 				if (resource === 'item') {
 					const operation = this.getNodeParameter('operation', 0) as string;
 					if (operation === 'get') {
-						const TableName = this.getNodeParameter('table', 0) as string;
+						const tableName = this.getNodeParameter('table', 0) as string;
 						const item = this.getNodeParameter('item', 0) as string;
 
-						const body = {
-							TableName: TableName,
+						const body: IRequestBody = {
+							TableName: tableName,
 							Key: {id: {S: item}},
 						};
 
 						const headers = {
 							'X-Amz-Target': 'DynamoDB_20120810.GetItem',
-							'Content-Type': 'application/x-amz-json-1.0'
+							'Content-Type': 'application/x-amz-json-1.0',
 						};
-						const response = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers)
+						const response = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers);
 
 						return [this.helpers.returnJsonArray(decodeItem(response.Item))];
 					}
 				}
 
 				if (resource === 'query') {
-					const TableName = this.getNodeParameter('table', 0) as string;
-					const KeyConditionExpression = this.getNodeParameter('key-condition-expression', 0) as string;
-					const expressionValues = this.getNodeParameter('expression-attribute-values', 0) as any;
-					const additionalFields = this.getNodeParameter('additional-fields', 0) as any;
+					const tableName = this.getNodeParameter('table', 0) as string;
+					const keyConditionExpression = this.getNodeParameter('key-condition-expression', 0) as string;
+					const expressionValues = this.getNodeParameter('expression-attribute-values', 0) as {values: IExpressionAttributeValue[]};
+					const additionalFields = this.getNodeParameter('additional-fields', 0) as IDataObject;
 
-					const ExpressionAttributeValues: any = {};
+					const expressionAttributeValues: IAttributeValue = {};
 					for (const {attribute, type, value} of expressionValues.values) {
 						const prefixedAttribute = attribute.charAt(0) === ':' ? attribute : ':' + attribute; // often forgotten to prepend a ':'
-						ExpressionAttributeValues[prefixedAttribute] = {[type]: value};
+						expressionAttributeValues[prefixedAttribute] = {[type]: value};
 					}
 
-					const body: any = {
-						TableName,
-						KeyConditionExpression,
-						ExpressionAttributeValues,
-						ConsistentRead: true
+					const body: IRequestBody = {
+						TableName: tableName,
+						KeyConditionExpression: keyConditionExpression,
+						ExpressionAttributeValues: expressionAttributeValues,
+						ConsistentRead: true,
 					};
 
 					if (additionalFields['projection-expression']) {
-						body.ProjectionExpression = additionalFields['projection-expression'];
+						body.ProjectionExpression = additionalFields['projection-expression'] as string;
 					}
 
 					if (additionalFields['index-name']) {
-						body.IndexName = additionalFields['index-name'];
+						body.IndexName = additionalFields['index-name'] as string;
 					}
 
 					const headers = {
 						'X-Amz-Target': 'DynamoDB_20120810.Query',
-						'Content-Type': 'application/x-amz-json-1.0'
+						'Content-Type': 'application/x-amz-json-1.0',
 					};
-					const response = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers)
+					const response = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers);
 					const items = response.Items.map(decodeItem);
 
 					return [this.helpers.returnJsonArray(items)];
 				}
 
 				if (resource === 'scan') {
-					const TableName = this.getNodeParameter('table', 0) as string;
-					const FilterExpression = this.getNodeParameter('filter-expression', 0) as string;
-					const additionalFields = this.getNodeParameter('additional-fields', 0) as any;
-					const expressionValues = this.getNodeParameter('expression-attribute-values', 0) as any;
+					const tableName = this.getNodeParameter('table', 0) as string;
+					const filterExpression = this.getNodeParameter('filter-expression', 0) as string;
+					const additionalFields = this.getNodeParameter('additional-fields', 0) as IDataObject;
+					const expressionValues = this.getNodeParameter('expression-attribute-values', 0) as {values: IExpressionAttributeValue[]};
 
-					const ExpressionAttributeValues: any = {};
+					const expressionAttributeValues: IAttributeValue = {};
 					for (const {attribute, type, value} of expressionValues.values) {
 						const prefixedAttribute = attribute.charAt(0) === ':' ? attribute : ':' + attribute; // often forgotten to prepend a ':'
-						ExpressionAttributeValues[prefixedAttribute] = {[type]: value};
+						expressionAttributeValues[prefixedAttribute] = {[type]: value};
 					}
 
-					const body: any = {
-						TableName,
-						ConsistentRead: true
+					const body: IRequestBody = {
+						TableName: tableName,
+						ConsistentRead: true,
 					};
 
-					if (FilterExpression) {
-						body.FilterExpression = FilterExpression;
-						body.ExpressionAttributeValues = ExpressionAttributeValues;
+					if (filterExpression) {
+						body.FilterExpression = filterExpression;
+						body.ExpressionAttributeValues = expressionAttributeValues;
 					}
 
 					if (additionalFields['projection-expression']) {
-						body.ProjectionExpression = additionalFields['projection-expression'];
+						body.ProjectionExpression = additionalFields['projection-expression'] as string;
 					}
 
 					const headers = {
 						'X-Amz-Target': 'DynamoDB_20120810.Scan',
-						'Content-Type': 'application/x-amz-json-1.0'
+						'Content-Type': 'application/x-amz-json-1.0',
 					};
-					const response = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers)
+					const response = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers);
 					const items = response.Items.map(decodeItem);
 
 					return [this.helpers.returnJsonArray(items)];
