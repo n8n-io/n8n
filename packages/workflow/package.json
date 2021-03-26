@@ -1,59 +1,59 @@
 {
-    "name": "n8n-workflow",
-    "version": "0.54.0",
-    "description": "Workflow base code of n8n",
-    "license": "SEE LICENSE IN LICENSE.md",
-    "homepage": "https://n8n.io",
-    "author": {
-        "name": "Jan Oberhauser",
-        "email": "jan@n8n.io"
+  "name": "n8n-workflow",
+  "version": "0.54.0",
+  "description": "Workflow base code of n8n",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "homepage": "https://n8n.io",
+  "author": {
+    "name": "Jan Oberhauser",
+    "email": "jan@n8n.io"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/n8n-io/n8n.git"
+  },
+  "main": "dist/src/index",
+  "types": "dist/src/index.d.ts",
+  "scripts": {
+    "dev": "npm run watch",
+    "build": "tsc",
+    "tslint": "tslint -p tsconfig.json -c tslint.json",
+    "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json",
+    "watch": "tsc --watch",
+    "test": "jest"
+  },
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@types/express": "^4.17.6",
+    "@types/jest": "^26.0.13",
+    "@types/lodash.get": "^4.4.6",
+    "@types/node": "14.0.27",
+    "jest": "^26.4.2",
+    "ts-jest": "^26.3.0",
+    "tslint": "^6.1.2",
+    "typescript": "~3.9.7"
+  },
+  "dependencies": {
+    "lodash.get": "^4.4.2",
+    "riot-tmpl": "^3.0.8"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
     },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/n8n-io/n8n.git"
-    },
-    "main": "dist/src/index",
-    "types": "dist/src/index.d.ts",
-    "scripts": {
-        "dev": "npm run watch",
-        "build": "tsc",
-        "tslint": "tslint -p tsconfig.json -c tslint.json",
-        "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json",
-        "watch": "tsc --watch",
-        "test": "jest"
-    },
-    "files": [
-        "dist"
+    "testURL": "http://localhost/",
+    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+    "testPathIgnorePatterns": [
+      "/dist/",
+      "/node_modules/"
     ],
-    "devDependencies": {
-        "@types/express": "^4.17.6",
-        "@types/jest": "^26.0.13",
-        "@types/lodash.get": "^4.4.6",
-        "@types/node": "14.0.27",
-        "jest": "^26.4.2",
-        "ts-jest": "^26.3.0",
-        "tslint": "^6.1.2",
-        "typescript": "~3.9.7"
-    },
-    "dependencies": {
-        "lodash.get": "^4.4.2",
-        "riot-tmpl": "^3.0.8"
-    },
-    "jest": {
-        "transform": {
-            "^.+\\.tsx?$": "ts-jest"
-        },
-        "testURL": "http://localhost/",
-        "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
-        "testPathIgnorePatterns": [
-            "/dist/",
-            "/node_modules/"
-        ],
-        "moduleFileExtensions": [
-            "ts",
-            "tsx",
-            "js",
-            "json"
-        ]
-    }
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "json"
+    ]
+  }
 }
