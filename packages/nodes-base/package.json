@@ -178,6 +178,7 @@
       "dist/credentials/PipedriveApi.credentials.js",
       "dist/credentials/PipedriveOAuth2Api.credentials.js",
       "dist/credentials/PhilipsHueOAuth2Api.credentials.js",
+      "dist/credentials/PlivoApi.credentials.js",
       "dist/credentials/Postgres.credentials.js",
       "dist/credentials/PostHogApi.credentials.js",
       "dist/credentials/PostmarkApi.credentials.js",
@@ -264,6 +265,7 @@
       "dist/credentials/ZulipApi.credentials.js"
     ],
     "nodes": [
+      "dist/nodes/ActivationTrigger.node.js",
       "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
       "dist/nodes/ActiveCampaign/ActiveCampaignTrigger.node.js",
       "dist/nodes/AgileCrm/AgileCrm.node.js",
@@ -444,6 +446,7 @@
       "dist/nodes/Pipedrive/Pipedrive.node.js",
       "dist/nodes/Pipedrive/PipedriveTrigger.node.js",
       "dist/nodes/PhilipsHue/PhilipsHue.node.js",
+      "dist/nodes/Plivo/Plivo.node.js",
       "dist/nodes/Postgres/Postgres.node.js",
       "dist/nodes/PostHog/PostHog.node.js",
       "dist/nodes/Postmark/PostmarkTrigger.node.js",
@@ -587,6 +590,7 @@
     "get-system-fonts": "^2.0.2",
     "glob-promise": "^3.4.0",
     "gm": "^1.23.1",
+    "iconv-lite": "^0.6.2",
     "imap-simple": "^4.3.0",
     "iso-639-1": "^2.1.3",
     "jsonwebtoken": "^8.5.1",

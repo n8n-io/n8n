@@ -75,7 +75,7 @@ export class UProc implements INodeType {
 						displayName: 'Data Webhook',
 						name: 'dataWebhook',
 						type: 'string',
-						description: 'URL to send tool response when tool has resolved your request. You can create your own webhook at <a href="https://beeceptor.com" target="_blank">Beeceptor</a>, <a href="https://www.integromat.com/" target="_blank">Integromat</a>, <a href="https://zapier.com/" target="_blank">Zapier</a> or <a href="https://n8n.io/" target="_blank">n8n</a>',
+						description: 'URL to send tool response when tool has resolved your request. You can create your own webhook at en <a href="https://beeceptor.com" target="_blank">Beeceptor</a>, <a href="https://www.integromat.com/" target="_blank">Integromat</a>, <a href="https://zapier.com/" target="_blank">Zapier</a> or <a href="https://n8n.io/" target="_blank">n8n</a>',
 						default: '',
 					},
 				],
@@ -91,7 +91,6 @@ export class UProc implements INodeType {
 		const group = this.getNodeParameter('group', 0) as string;
 		const tool = this.getNodeParameter('tool', 0) as string;
 		const additionalOptions = this.getNodeParameter('additionalOptions', 0) as IDataObject;
-
 
 		const dataWebhook = additionalOptions.dataWebhook as string;
 
