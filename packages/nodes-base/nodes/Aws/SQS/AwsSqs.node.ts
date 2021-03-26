@@ -77,6 +77,25 @@ export class AwsSqs implements INodeType {
 				description: 'Queue to send a message to.',
 			},
 			{
+				displayName: 'Queue Type',
+				name: 'queueType',
+				type: 'options',
+				options: [
+					{
+						name: 'Standard',
+						value: 'standard',
+						description: 'Standard SQS queue.',
+					},
+					{
+						name: 'FIFO',
+						value: 'fifo',
+						description: 'FIFO SQS queue.',
+					},
+				],
+				default: 'standard',
+				description: 'The operation to perform.',
+			},
+			{
 				displayName: 'Send Input Data',
 				name: 'sendInputData',
 				type: 'boolean',
@@ -103,6 +122,36 @@ export class AwsSqs implements INodeType {
 				},
 				default: '',
 				description: 'Message to send to the queue.',
+			},
+			{
+				displayName: 'Message Deduplication ID',
+				name: 'messageDeduplicationId',
+				type: 'string',
+				default: '',
+				description: 'Token used for deduplication of sent messages. Applies only to FIFO (first-in-first-out) queues.',
+				displayOptions: {
+					show: {
+						queueType: [
+							'fifo',
+						],
+					},
+				},
+				required: true,
+			},
+			{
+				displayName: 'Message Group ID',
+				name: 'messageGroupId',
+				type: 'string',
+				default: '',
+				description: 'Tag that specifies that a message belongs to a specific message group. Applies only to FIFO (first-in-first-out) queues.',
+				displayOptions: {
+					show: {
+						queueType: [
+							'fifo',
+						],
+					},
+				},
+				required: true,
 			},
 			{
 				displayName: 'Options',
@@ -202,20 +251,6 @@ export class AwsSqs implements INodeType {
 							},
 						],
 					},
-					{
-						displayName: 'Message Deduplication ID',
-						name: 'messageDeduplicationId',
-						type: 'string',
-						default: '',
-						description: 'Token used for deduplication of sent messages. Applies only to FIFO (first-in-first-out) queues.',
-					},
-					{
-						displayName: 'Message Group ID',
-						name: 'messageGroupId',
-						type: 'string',
-						default: '',
-						description: 'Tag that specifies that a message belongs to a specific message group. Applies only to FIFO (first-in-first-out) queues.',
-					},
 				],
 			},
 		],
@@ -279,12 +314,17 @@ export class AwsSqs implements INodeType {
 				params.push(`DelaySeconds=${options.delaySeconds}`);
 			}
 
-			if (options.messageDeduplicationId) {
-				params.push(`MessageDeduplicationId=${options.messageDeduplicationId}`);
-			}
+			const queueType = this.getNodeParameter('queueType', i, {}) as string;
+			if (queueType === 'fifo') {
+				const messageDeduplicationId = this.getNodeParameter('messageDeduplicationId', i) as string;
+				if (messageDeduplicationId) {
+					params.push(`MessageDeduplicationId=${messageDeduplicationId}`);
+				}
 
-			if (options.messageGroupId) {
-				params.push(`MessageGroupId=${options.messageGroupId}`);
+				const messageGroupId = this.getNodeParameter('messageGroupId', i) as string;
+				if (messageGroupId) {
+					params.push(`MessageGroupId=${messageGroupId}`);
+				}
 			}
 
 			let attributeCount = 0;
