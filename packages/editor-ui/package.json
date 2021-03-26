@@ -86,6 +86,5 @@
     "vue-typed-mixins": "^0.2.0",
     "vue2-touch-events": "^2.3.2",
     "vuex": "^3.1.1"
-  },
-  "newDependencies": "n8n-workflow@0.55.0"
+  }
 }

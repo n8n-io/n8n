@@ -639,6 +639,5 @@
       "js",
       "json"
     ]
-  },
-  "newDependencies": "n8n-workflow@0.55.0,n8n-core@0.66.0"
+  }
 }
