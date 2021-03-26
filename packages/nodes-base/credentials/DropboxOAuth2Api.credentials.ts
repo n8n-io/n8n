@@ -50,5 +50,21 @@ export class DropboxOAuth2Api implements ICredentialType {
 			type: 'hidden' as NodePropertyTypes,
 			default: 'header',
 		},
+		{
+			displayName: 'APP Access Type',
+			name: 'accessType',
+			type: 'options' as NodePropertyTypes,
+			options: [
+				{
+					name: 'App Folder',
+					value: 'folder',
+				},
+				{
+					name: 'Full Dropbox',
+					value: 'full',
+				},
+			],
+			default: 'full',
+		},
 	];
 }

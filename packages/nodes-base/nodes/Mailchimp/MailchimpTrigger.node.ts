@@ -19,7 +19,7 @@ export class MailchimpTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailchimp Trigger',
 		name: 'mailchimpTrigger',
-		icon: 'file:mailchimp.png',
+		icon: 'file:mailchimp.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Mailchimp events via webhooks',

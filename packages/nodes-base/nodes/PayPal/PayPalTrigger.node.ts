@@ -20,7 +20,7 @@ export class PayPalTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'PayPal Trigger',
 		name: 'payPalTrigger',
-		icon: 'file:paypal.png',
+		icon: 'file:paypal.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle PayPal events via webhooks',
