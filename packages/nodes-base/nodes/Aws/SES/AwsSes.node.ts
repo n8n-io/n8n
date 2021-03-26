@@ -1125,15 +1125,9 @@ export class AwsSes implements INodeType {
 						setParameter(params, 'Destination.BccAddresses.member', additionalFields.bccAddresses as string[]);
 					}
 
-					if (additionalFields.ccAddressesUi) {
-						let ccAddresses = (additionalFields.ccAddressesUi as IDataObject).ccAddressesValues as string[];
-						//@ts-ignore
-						ccAddresses = ccAddresses.map(o => o.address);
-						if (ccAddresses) {
-							setParameter(params, 'Destination.CcAddresses.member', ccAddresses);
-						}
+					if (additionalFields.ccAddresses) {
+						setParameter(params, 'Destination.CcAddresses.member', additionalFields.ccAddresses as string[]);
 					}
-
 					responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '/?Action=SendEmail&' + params.join('&'));
 				}
 
@@ -1184,13 +1178,8 @@ export class AwsSes implements INodeType {
 						setParameter(params, 'Destination.BccAddresses.member', additionalFields.bccAddresses as string[]);
 					}
 
-					if (additionalFields.ccAddressesUi) {
-						let ccAddresses = (additionalFields.ccAddressesUi as IDataObject).ccAddressesValues as string[];
-						//@ts-ignore
-						ccAddresses = ccAddresses.map(o => o.address);
-						if (ccAddresses) {
-							setParameter(params, 'Destination.CcAddresses.member', ccAddresses);
-						}
+					if (additionalFields.ccAddresses) {
+						setParameter(params, 'Destination.CcAddresses.member', additionalFields.ccAddresses as string[]);
 					}
 
 					if (templateDataUi) {

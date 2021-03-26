@@ -41,8 +41,18 @@ export class WorkflowRunnerProcess {
 	workflowExecute: WorkflowExecute | undefined;
 	executionIdCallback: (executionId: string) => void | undefined;
 
+	static async stopProcess() {
+		setTimeout(() => {
+			// Attempt a graceful shutdown, giving executions 30 seconds to finish
+			process.exit(0);
+		}, 30000);
+	}
+
 
 	async runWorkflow(inputData: IWorkflowExecutionDataProcessWithExecution): Promise<IRun> {
+		process.on('SIGTERM', WorkflowRunnerProcess.stopProcess);
+		process.on('SIGINT', WorkflowRunnerProcess.stopProcess);
+
 		this.data = inputData;
 		let className: string;
 		let tempNode: INodeType;
@@ -111,7 +121,15 @@ export class WorkflowRunnerProcess {
 					resolve(executionId);
 				};
 			});
-			const result: IRun = await executeWorkflowFunction(workflowInfo, additionalData, inputData, executionId, workflowData, runData);
+			let result: IRun;
+			try {
+				result = await executeWorkflowFunction(workflowInfo, additionalData, inputData, executionId, workflowData, runData);
+			} catch (e) {
+				await sendToParentProcess('finishExecution', { executionId });
+				// Throw same error we had 
+				throw e;	
+			}
+			
 			await sendToParentProcess('finishExecution', { executionId, result });
 
 			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(result);
@@ -174,8 +192,8 @@ export class WorkflowRunnerProcess {
 				},
 			],
 			nodeExecuteAfter: [
-				async (nodeName: string, data: ITaskData, executionData: IRunExecutionData): Promise<void> => {
-					this.sendHookToParentProcess('nodeExecuteAfter', [nodeName, data, executionData]);
+				async (nodeName: string, data: ITaskData): Promise<void> => {
+					this.sendHookToParentProcess('nodeExecuteAfter', [nodeName, data]);
 				},
 			],
 			workflowExecuteBefore: [
