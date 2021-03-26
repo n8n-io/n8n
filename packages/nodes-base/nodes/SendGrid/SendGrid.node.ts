@@ -1,4 +1,5 @@
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -22,9 +23,17 @@ import {
 } from './ContactDescription';
 
 import {
+	mailFields,
+	mailOperations,
+	SendMailBody,
+} from './MailDescription';
+
+import {
 	sendGridApiRequest,
 	sendGridApiRequestAllItems,
 } from './GenericFunctions';
+
+import * as moment from 'moment-timezone';
 
 export class SendGrid implements INodeType {
 	description: INodeTypeDescription = {
@@ -63,6 +72,10 @@ export class SendGrid implements INodeType {
 						name: 'List',
 						value: 'list',
 					},
+					{
+						name: 'Mail',
+						value: 'mail',
+					},
 				],
 				default: 'list',
 				required: true,
@@ -72,17 +85,19 @@ export class SendGrid implements INodeType {
 			...listFields,
 			...contactOperations,
 			...contactFields,
+			...mailOperations,
+			...mailFields,
 		],
 	};
 
-	methods ={
+	methods = {
 		loadOptions: {
 			// Get custom fields to display to user so that they can select them easily
-			async getCustomFields(this: ILoadOptionsFunctions,):Promise<INodePropertyOptions[]>{
+			async getCustomFields(this: ILoadOptionsFunctions,): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { custom_fields } = await sendGridApiRequest.call(this, '/marketing/field_definitions', 'GET', {}, {});
 				if (custom_fields !== undefined) {
-					for (const customField of custom_fields){
+					for (const customField of custom_fields) {
 						returnData.push({
 							name: customField.name,
 							value: customField.id,
@@ -103,6 +118,10 @@ export class SendGrid implements INodeType {
 				}
 				return returnData;
 			},
+			async getTemplateIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const responseData = await sendGridApiRequest.call(this, '/templates', 'GET', {}, { generations: 'dynamic' });
+				return responseData.templates.map(({ id, name }: { id: string, name: string }) => ({ name, value: id }));
+			},
 		},
 	};
 
@@ -111,6 +130,7 @@ export class SendGrid implements INodeType {
 		const length = (items.length as unknown) as number;
 		const qs: IDataObject = {};
 		let responseData;
+		const timezone = this.getTimezone();
 		const returnData: IDataObject[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -150,7 +170,7 @@ export class SendGrid implements INodeType {
 						const email = this.getNodeParameter('email', i) as string;
 						endpoint = '/marketing/contacts/search';
 						method = 'POST';
-						Object.assign(body, { query: `email LIKE '${email}' `});
+						Object.assign(body, { query: `email LIKE '${email}' ` });
 					}
 					responseData = await sendGridApiRequest.call(this, endpoint, method, body, qs);
 					responseData = responseData.result || responseData;
@@ -163,7 +183,7 @@ export class SendGrid implements INodeType {
 			if (operation === 'upsert') {
 				const contacts = [];
 				for (let i = 0; i < length; i++) {
-					const email = this.getNodeParameter('email',i) as string;
+					const email = this.getNodeParameter('email', i) as string;
 					const additionalFields = this.getNodeParameter(
 						'additionalFields',
 						i,
@@ -175,7 +195,7 @@ export class SendGrid implements INodeType {
 						const addressValues = (additionalFields.addressUi as IDataObject).addressValues as IDataObject;
 						const addressLine1 = addressValues.address1 as string;
 						const addressLine2 = addressValues.address2 as string;
-						if (addressLine2){
+						if (addressLine2) {
 							Object.assign(contact, { address_line_2: addressLine2 });
 						}
 						Object.assign(contact, { address_line_1: addressLine1 });
@@ -194,7 +214,7 @@ export class SendGrid implements INodeType {
 					}
 					if (additionalFields.lastName) {
 						const lastName = additionalFields.lastName as string;
-						Object.assign(contact, { last_name:lastName});
+						Object.assign(contact, { last_name: lastName });
 					}
 					if (additionalFields.postalCode) {
 						const postalCode = additionalFields.postalCode as string;
@@ -231,17 +251,17 @@ export class SendGrid implements INodeType {
 			if (operation === 'delete') {
 				for (let i = 0; i < length; i++) {
 					const deleteAll = this.getNodeParameter('deleteAll', i) as boolean;
-					if(deleteAll === true) {
+					if (deleteAll === true) {
 						qs.delete_all_contacts = 'true';
 					}
-					qs.ids = (this.getNodeParameter('ids',i) as string).replace(/\s/g, '');
+					qs.ids = (this.getNodeParameter('ids', i) as string).replace(/\s/g, '');
 					responseData = await sendGridApiRequest.call(this, `/marketing/contacts`, 'DELETE', {}, qs);
 					returnData.push(responseData);
 				}
 			}
 		}
 		if (resource === 'list') {
-			if (operation === 'getAll'){
+			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					responseData = await sendGridApiRequestAllItems.call(this, `/marketing/lists`, 'GET', 'result', {}, qs);
@@ -254,7 +274,7 @@ export class SendGrid implements INodeType {
 			}
 			if (operation === 'get') {
 				for (let i = 0; i < length; i++) {
-					const listId = this.getNodeParameter('listId',i) as string;
+					const listId = this.getNodeParameter('listId', i) as string;
 					qs.contact_sample = this.getNodeParameter('contactSample', i) as boolean;
 					responseData = await sendGridApiRequest.call(this, `/marketing/lists/${listId}`, 'GET', {}, qs);
 					returnData.push(responseData);
@@ -262,26 +282,153 @@ export class SendGrid implements INodeType {
 			}
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
-					const name = this.getNodeParameter('name',i) as string;
+					const name = this.getNodeParameter('name', i) as string;
 					responseData = await sendGridApiRequest.call(this, '/marketing/lists', 'POST', { name }, qs);
 					returnData.push(responseData);
 				}
 			}
 			if (operation === 'delete') {
 				for (let i = 0; i < length; i++) {
-					const listId = this.getNodeParameter('listId',i) as string;
+					const listId = this.getNodeParameter('listId', i) as string;
 					qs.delete_contacts = this.getNodeParameter('deleteContacts', i) as boolean;
 					responseData = await sendGridApiRequest.call(this, `/marketing/lists/${listId}`, 'DELETE', {}, qs);
 					responseData = { success: true };
 					returnData.push(responseData);
 				}
 			}
-			if (operation=== 'update'){
+			if (operation === 'update') {
 				for (let i = 0; i < length; i++) {
-					const name = this.getNodeParameter('name',i) as string;
-					const listId = this.getNodeParameter('listId',i) as string;
+					const name = this.getNodeParameter('name', i) as string;
+					const listId = this.getNodeParameter('listId', i) as string;
 					responseData = await sendGridApiRequest.call(this, `/marketing/lists/${listId}`, 'PATCH', { name }, qs);
 					returnData.push(responseData);
+				}
+			}
+		}
+		if (resource === 'mail') {
+			if (operation === 'send') {
+				for (let i = 0; i < length; i++) {
+
+					const toEmail = this.getNodeParameter('toEmail', i) as string;
+
+					const parsedToEmail = toEmail.includes(',')
+						? toEmail.split(',').map((i) => ({ email: i.trim() }))
+						: [{ email: toEmail.trim() }];
+
+					const {
+						bccEmail,
+						ccEmail,
+						enableSandbox,
+						sendAt,
+						headers,
+						attachments,
+						categories,
+						ipPoolName,
+					} = this.getNodeParameter('additionalFields', i) as {
+						bccEmail: string;
+						ccEmail: string;
+						enableSandbox: boolean,
+						sendAt: string;
+						headers: { details: Array<{ key: string; value: string }> };
+						attachments: string;
+						categories: string;
+						ipPoolName: string;
+					};
+
+					const body: SendMailBody = {
+						personalizations: [{
+							to: parsedToEmail,
+						}],
+						from: {
+							email: (this.getNodeParameter('fromEmail', i) as string).trim(),
+							name: this.getNodeParameter('fromName', i) as string,
+						},
+						mail_settings: {
+							sandbox_mode: {
+								enable: enableSandbox || false,
+							},
+						},
+					};
+
+					const dynamicTemplateEnabled = this.getNodeParameter('dynamicTemplate', i);
+
+					// dynamic template
+					if (dynamicTemplateEnabled) {
+						body.template_id = this.getNodeParameter('templateId', i) as string;
+
+						const { fields } = this.getNodeParameter('dynamicTemplateFields', i) as {
+							fields: Array<{ [key: string]: string }>
+						};
+
+						if (fields) {
+							fields.forEach(field => {
+								body.personalizations[0].dynamic_template_data = {
+									[field.key]: field.value,
+								};
+							});
+						}
+
+						// message body
+					} else {
+						body.personalizations[0].subject = this.getNodeParameter('subject', i) as string;
+						body.content = [{
+							type: this.getNodeParameter('contentType', i) as string,
+							value: this.getNodeParameter('contentValue', i) as string,
+						}];
+					}
+
+					if (attachments) {
+						const attachmentsToSend = [];
+						const binaryProperties = attachments.split(',').map((p) => p.trim());
+
+						for (const property of binaryProperties) {
+							if (!items[i].binary?.hasOwnProperty(property)) {
+								throw new Error(`The binary property ${property} does not exist`);
+							}
+
+							const binaryProperty = items[i].binary![property];
+
+							attachmentsToSend.push({
+								content: binaryProperty.data,
+								filename: binaryProperty.fileName || 'unknown',
+								type: binaryProperty.mimeType,
+							});
+						}
+
+						if (attachmentsToSend.length) {
+							body.attachments = attachmentsToSend;
+						}
+					}
+
+					if (bccEmail) {
+						body.personalizations[0].bcc = bccEmail.split(',').map(i => ({ email: i.trim() }));
+					}
+
+					if (ccEmail) {
+						body.personalizations[0].cc = ccEmail.split(',').map(i => ({ email: i.trim() }));
+					}
+
+					if (headers?.details.length) {
+						const parsedHeaders: { [key: string]: string } = {};
+						headers.details.forEach(obj => parsedHeaders[obj['key']] = obj['value']);
+						body.headers = parsedHeaders;
+					}
+
+					if (categories) {
+						body.categories = categories.split(',') as string[];
+					}
+
+					if (ipPoolName) {
+						body.ip_pool_name = ipPoolName as string;
+					}
+
+					if (sendAt) {
+						body.personalizations[0].send_at = moment.tz(sendAt, timezone).unix();
+					}
+
+					const data = await sendGridApiRequest.call(this, '/mail/send', 'POST', body, qs, { resolveWithFullResponse: true });
+
+					returnData.push({ messageId: data!.headers['x-message-id'] });
 				}
 			}
 		}
