@@ -7,8 +7,9 @@ import {
 } from 'n8n-workflow';
 
 import {
-	addFields,
 	addConfigFields,
+	addFields,
+	cloneFields,
 	commitFields,
 	logFields,
 	tagFields,
@@ -56,6 +57,11 @@ export class Git implements INodeType {
 						name: 'Commit',
 						value: 'commit',
 						description: 'Commit files or folders to git.',
+					},
+					{
+						name: 'Clone',
+						value: 'clone',
+						description: 'Clone a repository.',
 					},
 					{
 						name: 'Fetch',
@@ -117,6 +123,7 @@ export class Git implements INodeType {
 
 			...addFields,
 			...addConfigFields,
+			...cloneFields,
 			...commitFields,
 			...logFields,
 			...tagFields,
@@ -175,6 +182,19 @@ export class Git implements INodeType {
 				const append = this.getNodeParameter('append', itemIndex, '') as boolean;
 
 				await git.addConfig(key, value, append);
+				returnItems.push({ json: { success: true } });
+
+			} else if (operation === 'clone') {
+				// ----------------------------------
+				//         clone
+				// ----------------------------------
+
+				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
+
+				const a = await git.clone(repositoryPath, '.');
+				console.log('a');
+				console.log(a);
+
 				returnItems.push({ json: { success: true } });
 
 			} else if (operation === 'commit') {
@@ -257,7 +277,7 @@ export class Git implements INodeType {
 					data.push({
 						_file: fileName,
 						...config.values[fileName],
-					})
+					});
 				}
 
 				// @ts-ignore
