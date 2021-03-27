@@ -1,9 +1,28 @@
 {
-	"node": "n8n-nodes-base.whatsapp",
+	"node": "n8n-nodes-base.wazzup",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [
 		"Communication",
 		"Development"
-	]
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/wazzup"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.wazzup/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Use telegram as gRPC client with n8n",
+				"icon": "📡",
+				"url": "https://pshktrck.ru/n8n-telegram-grpc/?utm_source=n8n"
+			}
+		]
+	}
 }
