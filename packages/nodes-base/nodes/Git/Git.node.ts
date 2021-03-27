@@ -76,6 +76,11 @@ export class Git implements INodeType {
 						value: 'push',
 						description: 'Push to remote repository.',
 					},
+					{
+						name: 'Push Tags',
+						value: 'pushTags',
+						description: 'Push Tags to remote repository.',
+					},
 				],
 			},
 
@@ -150,7 +155,7 @@ export class Git implements INodeType {
 					files = (options.files as string).split(',');
 				}
 
-				const commit = await git.commit(message, files);
+				await git.commit(message, files);
 
 				returnItems.push({ json: { success: true } });
 
@@ -179,7 +184,7 @@ export class Git implements INodeType {
 				//         pull
 				// ----------------------------------
 
-				const log = await git.pull();
+				await git.pull();
 				returnItems.push({ json: { success: true } });
 
 			} else if (operation === 'push') {
@@ -187,7 +192,15 @@ export class Git implements INodeType {
 				//         push
 				// ----------------------------------
 
-				const log = await git.push();
+				await git.push();
+				returnItems.push({ json: { success: true } });
+
+			} else if (operation === 'pushTags') {
+				// ----------------------------------
+				//         pushTags
+				// ----------------------------------
+
+				await git.pushTags();
 				returnItems.push({ json: { success: true } });
 
 			} else if (operation === 'tag') {
@@ -197,7 +210,7 @@ export class Git implements INodeType {
 
 				const name = this.getNodeParameter('name', itemIndex, '') as string;
 
-				const log = await git.addTag(name);
+				await git.addTag(name);
 				returnItems.push({ json: { success: true } });
 
 			} else {
