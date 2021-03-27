@@ -8,6 +8,7 @@ import {
 
 import {
 	addFields,
+	addConfigFields,
 	commitFields,
 	logFields,
 	tagFields,
@@ -47,14 +48,34 @@ export class Git implements INodeType {
 						description: 'Add a file or folder to commit.',
 					},
 					{
+						name: 'Add Config',
+						value: 'addConfig',
+						description: 'Add configuration property.',
+					},
+					{
 						name: 'Commit',
 						value: 'commit',
 						description: 'Commit files or folders to git.',
 					},
 					{
+						name: 'Fetch',
+						value: 'fetch',
+						description: 'Fetch from remote repository.',
+					},
+					{
+						name: 'List Config',
+						value: 'listConfig',
+						description: 'Return current configuration.',
+					},
+					{
 						name: 'Log',
 						value: 'log',
-						description: 'Display git commit history.',
+						description: 'Return git commit history.',
+					},
+					{
+						name: 'Status',
+						value: 'status',
+						description: 'Return status of current repository.',
 					},
 					{
 						name: 'User Setup',
@@ -95,6 +116,7 @@ export class Git implements INodeType {
 			},
 
 			...addFields,
+			...addConfigFields,
 			...commitFields,
 			...logFields,
 			...tagFields,
@@ -143,6 +165,18 @@ export class Git implements INodeType {
 
 				returnItems.push({ json: { success: true } });
 
+			} else if (operation === 'addConfig') {
+				// ----------------------------------
+				//         addConfig
+				// ----------------------------------
+
+				const key = this.getNodeParameter('key', itemIndex, '') as string;
+				const value = this.getNodeParameter('value', itemIndex, '') as string;
+				const append = this.getNodeParameter('append', itemIndex, '') as boolean;
+
+				await git.addConfig(key, value, append);
+				returnItems.push({ json: { success: true } });
+
 			} else if (operation === 'commit') {
 				// ----------------------------------
 				//         commit
@@ -157,6 +191,14 @@ export class Git implements INodeType {
 
 				await git.commit(message, files);
 
+				returnItems.push({ json: { success: true } });
+
+			} else if (operation === 'fetch') {
+				// ----------------------------------
+				//         fetch
+				// ----------------------------------
+
+				await git.fetch();
 				returnItems.push({ json: { success: true } });
 
 			} else if (operation === 'log') {
@@ -202,6 +244,34 @@ export class Git implements INodeType {
 
 				await git.pushTags();
 				returnItems.push({ json: { success: true } });
+
+			} else if (operation === 'listConfig') {
+				// ----------------------------------
+				//         listConfig
+				// ----------------------------------
+
+				const config = await git.listConfig();
+
+				const data = [];
+				for (const fileName of Object.keys(config.values)) {
+					data.push({
+						_file: fileName,
+						...config.values[fileName],
+					})
+				}
+
+				// @ts-ignore
+				returnItems.push(...this.helpers.returnJsonArray(data));
+
+			} else if (operation === 'status') {
+				// ----------------------------------
+				//         status
+				// ----------------------------------
+
+				const status = await git.status();
+
+				// @ts-ignore
+				returnItems.push(...this.helpers.returnJsonArray([status]));
 
 			} else if (operation === 'tag') {
 				// ----------------------------------
