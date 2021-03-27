@@ -24,6 +24,7 @@ import {
 	NodeParameterValue,
 	ObservableObject,
 	WebhookSetupMethodNames,
+	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from './';
 
@@ -769,7 +770,7 @@ export class Workflow {
 	 * @returns {(Promise<boolean | undefined>)}
 	 * @memberof Workflow
 	 */
-	async runWebhookMethod(method: WebhookSetupMethodNames, webhookData: IWebhookData, nodeExecuteFunctions: INodeExecuteFunctions, mode: WorkflowExecuteMode, isTest?: boolean): Promise<boolean | undefined> {
+	async runWebhookMethod(method: WebhookSetupMethodNames, webhookData: IWebhookData, nodeExecuteFunctions: INodeExecuteFunctions, mode: WorkflowExecuteMode, activation: WorkflowActivateMode, isTest?: boolean): Promise<boolean | undefined> {
 		const node = this.getNode(webhookData.node) as INode;
 		const nodeType = this.nodeTypes.getByName(node.type) as INodeType;
 
@@ -786,7 +787,7 @@ export class Workflow {
 			return;
 		}
 
-		const thisArgs = nodeExecuteFunctions.getExecuteHookFunctions(this, node, webhookData.workflowExecuteAdditionalData, mode, isTest, webhookData);
+		const thisArgs = nodeExecuteFunctions.getExecuteHookFunctions(this, node, webhookData.workflowExecuteAdditionalData, mode, activation, isTest, webhookData);
 		return nodeType.webhookMethods[webhookData.webhookDescription.name][method]!.call(thisArgs);
 	}
 
@@ -802,8 +803,8 @@ export class Workflow {
 	 * @returns {(Promise<ITriggerResponse | undefined>)}
 	 * @memberof Workflow
 	 */
-	async runTrigger(node: INode, getTriggerFunctions: IGetExecuteTriggerFunctions, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): Promise<ITriggerResponse | undefined> {
-		const triggerFunctions = getTriggerFunctions(this, node, additionalData, mode);
+	async runTrigger(node: INode, getTriggerFunctions: IGetExecuteTriggerFunctions, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): Promise<ITriggerResponse | undefined> {
+		const triggerFunctions = getTriggerFunctions(this, node, additionalData, mode, activation);
 
 		const nodeType = this.nodeTypes.getByName(node.type);
 
@@ -982,7 +983,7 @@ export class Workflow {
 		} else if (nodeType.poll) {
 			if (mode === 'manual') {
 				// In manual mode run the poll function
-				const thisArgs = nodeExecuteFunctions.getExecutePollFunctions(this, node, additionalData, mode);
+				const thisArgs = nodeExecuteFunctions.getExecutePollFunctions(this, node, additionalData, mode, 'manual');
 				return nodeType.poll.call(thisArgs);
 			} else {
 				// In any other mode pass data through as it already contains the result of the poll
@@ -991,7 +992,7 @@ export class Workflow {
 		} else if (nodeType.trigger) {
 			if (mode === 'manual') {
 				// In manual mode start the trigger
-				const triggerResponse = await this.runTrigger(node, nodeExecuteFunctions.getExecuteTriggerFunctions, additionalData, mode);
+				const triggerResponse = await this.runTrigger(node, nodeExecuteFunctions.getExecuteTriggerFunctions, additionalData, mode, 'manual');
 
 				if (triggerResponse === undefined) {
 					return null;

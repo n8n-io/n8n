@@ -116,7 +116,7 @@ export class ExportWorkflowsCommand extends Command {
 				let fileContents: string, i: number;
 				for (i = 0; i < workflows.length; i++) {
 					fileContents = JSON.stringify(workflows[i], null, flags.pretty ? 2 : undefined);
-					const filename = (flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) + workflows[i].id + ".json";
+					const filename = (flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) + workflows[i].id + '.json';
 					fs.writeFileSync(filename, fileContents);
 				}
 				console.log('Successfully exported', i, 'workflows.');
