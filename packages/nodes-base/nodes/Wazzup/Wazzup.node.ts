@@ -20,7 +20,7 @@ export class Wazzup implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Send WhatsApp and Instagram messages as notification alerts',
+		description: 'Send WhatsApp and Instagram messages to performance user communications',
 		defaults: {
 			name: 'Wazzup',
 			color: '#25D366',

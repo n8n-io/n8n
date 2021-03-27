@@ -30,7 +30,7 @@ export async function wazzupApiRequest(this: IHookFunctions | IExecuteFunctions,
 		method,
 		form: body,
 		qs: query,
-		uri: `https://api.wazzup24.com/v2${endpoint}?utm_author=8005bf2f920da359ee5133e371160127`,
+		uri: `https://api.wazzup24.com/v2${endpoint}?utm_p=thxcmc&utm_author=8005bf2f920da359ee5133e371160127`,
 		headers: {
 			'Authorization': `Basic ${credentials.authToken as string}`,
 		},
