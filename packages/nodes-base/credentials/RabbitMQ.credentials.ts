@@ -51,12 +51,9 @@ export class RabbitMQ implements ICredentialType {
 			default: false,
 		},
 		{
-			displayName: 'Client Certificate',
-			name: 'cert',
-			type: 'string' as NodePropertyTypes,
-			typeOptions: {
-				password: true,
-			},
+			displayName: 'Passwordless',
+			name: 'passwordless',
+			type: 'boolean' as NodePropertyTypes,
 			displayOptions: {
 				show: {
 					ssl: [
@@ -64,42 +61,8 @@ export class RabbitMQ implements ICredentialType {
 					],
 				},
 			},
-			default: '',
-			description: 'SSL Client Certificate to use.',
-		},
-		{
-			displayName: 'Client Key',
-			name: 'key',
-			type: 'string' as NodePropertyTypes,
-			typeOptions: {
-				password: true,
-			},
-			displayOptions: {
-				show: {
-					ssl: [
-						true,
-					],
-				},
-			},
-			default: '',
-			description: 'SSL Client Key to use.',
-		},
-		{
-			displayName: 'Passphrase',
-			name: 'passphrase',
-			type: 'string' as NodePropertyTypes,
-			typeOptions: {
-				password: true,
-			},
-			displayOptions: {
-				show: {
-					ssl: [
-						true,
-					],
-				},
-			},
-			default: '',
-			description: 'SSL passphrase to use.',
+			default: false,
+			description: 'Passwordless connection with certificates (SASL mechanism EXTERNAL)',
 		},
 		{
 			displayName: 'CA Certificates',
@@ -121,6 +84,66 @@ export class RabbitMQ implements ICredentialType {
 			},
 			default: '',
 			description: 'SSL CA Certificates to use.',
+		},
+		{
+			displayName: 'Client Certificate',
+			name: 'cert',
+			type: 'string' as NodePropertyTypes,
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+					// passwordless: [
+					// 	true,
+					// ],
+				},
+			},
+			default: '',
+			description: 'SSL Client Certificate to use.',
+		},
+		{
+			displayName: 'Client Key',
+			name: 'key',
+			type: 'string' as NodePropertyTypes,
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+					// passwordless: [
+					// 	true,
+					// ],
+				},
+			},
+			default: '',
+			description: 'SSL Client Key to use.',
+		},
+		{
+			displayName: 'Passphrase',
+			name: 'passphrase',
+			type: 'string' as NodePropertyTypes,
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+					// passwordless: [
+					// 	true,
+					// ],
+				},
+			},
+			default: '',
+			description: 'SSL passphrase to use.',
 		},
 		// {
 		// 	displayName: 'Client ID',
