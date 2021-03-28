@@ -143,6 +143,7 @@ export class MongoDb implements INodeType {
 			throw new Error(`The operation "${operation}" is not supported!`);
 		}
 
+		client.close();
 		return this.prepareOutputData(returnItems);
 	}
 }
