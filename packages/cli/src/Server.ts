@@ -22,7 +22,7 @@ import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
-import { compare } from 'bcryptjs';
+import { compare } from '@node-rs/bcrypt';
 import * as promClient from 'prom-client';
 
 import {
