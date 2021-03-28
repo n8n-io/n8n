@@ -124,21 +124,6 @@ export class AwsSqs implements INodeType {
 				description: 'Message to send to the queue.',
 			},
 			{
-				displayName: 'Message Deduplication ID',
-				name: 'messageDeduplicationId',
-				type: 'string',
-				default: '',
-				description: 'Token used for deduplication of sent messages. Applies only to FIFO (first-in-first-out) queues.',
-				displayOptions: {
-					show: {
-						queueType: [
-							'fifo',
-						],
-					},
-				},
-				required: true,
-			},
-			{
 				displayName: 'Message Group ID',
 				name: 'messageGroupId',
 				type: 'string',
@@ -171,6 +156,13 @@ export class AwsSqs implements INodeType {
 						displayName: 'Delay Seconds',
 						name: 'delaySeconds',
 						type: 'number',
+						displayOptions: {
+							show: {
+								'/queueType': [
+									'standard',
+								],
+							},
+						},
 						description: 'How long, in seconds, to delay a message for.',
 						default: 0,
 						typeOptions: {
@@ -251,6 +243,20 @@ export class AwsSqs implements INodeType {
 							},
 						],
 					},
+					{
+						displayName: 'Message Deduplication ID',
+						name: 'messageDeduplicationId',
+						type: 'string',
+						default: '',
+						description: 'Token used for deduplication of sent messages. Applies only to FIFO (first-in-first-out) queues.',
+						displayOptions: {
+							show: {
+								'/queueType': [
+									'fifo',
+								],
+							},
+						},
+					},
 				],
 			},
 		],
@@ -316,7 +322,7 @@ export class AwsSqs implements INodeType {
 
 			const queueType = this.getNodeParameter('queueType', i, {}) as string;
 			if (queueType === 'fifo') {
-				const messageDeduplicationId = this.getNodeParameter('messageDeduplicationId', i) as string;
+				const messageDeduplicationId = this.getNodeParameter('options.messageDeduplicationId', i, '') as string;
 				if (messageDeduplicationId) {
 					params.push(`MessageDeduplicationId=${messageDeduplicationId}`);
 				}
@@ -350,7 +356,7 @@ export class AwsSqs implements INodeType {
 					throw new Error(`The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`);
 				}
 
-				const binaryData = Buffer.from(item.binary[dataPropertyName].data, BINARY_ENCODING);
+				const binaryData = item.binary[dataPropertyName].data;
 
 				params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
 				params.push(`MessageAttribute.${attributeCount}.Value.BinaryValue=${binaryData}`);
