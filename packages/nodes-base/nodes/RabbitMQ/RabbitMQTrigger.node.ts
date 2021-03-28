@@ -151,6 +151,7 @@ export class RabbitMQTrigger implements INodeType {
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
 			await channel.close();
+			await channel.connection.close();
 		}
 
 		// The "manualTriggerFunction" function gets called by n8n
