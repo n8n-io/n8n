@@ -1,7 +1,7 @@
 
 import {
 	IExecuteFunctions,
- } from 'n8n-core';
+} from 'n8n-core';
 
 import {
 	IDataObject,
@@ -14,7 +14,7 @@ import {
 
 import {
 	set,
- } from 'lodash';
+} from 'lodash';
 
 import * as moment from 'moment-timezone';
 
@@ -40,7 +40,7 @@ export class DateTime implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Calculate a date',
+						name: 'Calculate a Date',
 						description: 'Add time to or subtract time from a date',
 						value: 'calculate',
 					},
@@ -87,7 +87,7 @@ export class DateTime implements INodeType {
 				name: 'custom',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'format',
 						],
 					},
@@ -101,7 +101,7 @@ export class DateTime implements INodeType {
 				name: 'toFormat',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'format',
 						],
 						custom: [
@@ -120,10 +120,10 @@ export class DateTime implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'format',
 						],
-						custom:[
+						custom: [
 							false,
 						],
 					},
@@ -173,7 +173,7 @@ export class DateTime implements INodeType {
 				name: 'options',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'format',
 						],
 					},
