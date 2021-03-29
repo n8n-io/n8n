@@ -1,6 +1,6 @@
 import {
 	BINARY_ENCODING,
-	IExecuteSingleFunctions,
+	IExecuteFunctions,
 } from 'n8n-core';
 import {
 	IDataObject,
@@ -948,291 +948,301 @@ export class EditImage implements INodeType {
 		},
 	};
 
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
 
-	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
-		const item = this.getInputData();
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length as unknown as number;
+		let item: INodeExecutionData;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const dataPropertyName = this.getNodeParameter('dataPropertyName') as string;
+		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
+			item = items[itemIndex];
 
-		const options = this.getNodeParameter('options', {}) as IDataObject;
 
-		const cleanupFunctions: Array<() => void> = [];
+			const operation = this.getNodeParameter('operation', itemIndex) as string;
+			const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
 
-		let gmInstance: gm.State;
+			const options = this.getNodeParameter('options', itemIndex,{}) as IDataObject;
 
-		const requiredOperationParameters: {
-			[key: string]: string[],
-		} = {
-			blur: [
-				'blur',
-				'sigma',
-			],
-			border: [
-				'borderColor',
-				'borderWidth',
-				'borderHeight',
-			],
-			create: [
-				'backgroundColor',
-				'height',
-				'width',
-			],
-			crop: [
-				'height',
-				'positionX',
-				'positionY',
-				'width',
-			],
-			composite: [
-				'dataPropertyNameComposite',
-				'positionX',
-				'positionY',
-			],
-			draw: [
-				'color',
-				'cornerRadius',
-				'endPositionX',
-				'endPositionY',
-				'primitive',
-				'startPositionX',
-				'startPositionY',
-			],
-			information: [],
-			resize: [
-				'height',
-				'resizeOption',
-				'width',
-			],
-			rotate: [
-				'backgroundColor',
-				'rotate',
-			],
-			shear: [
-				'degreesX',
-				'degreesY',
-			],
-			text: [
-				'font',
-				'fontColor',
-				'fontSize',
-				'lineLength',
-				'positionX',
-				'positionY',
-				'text',
-			],
-		};
+			const cleanupFunctions: Array<() => void> = [];
 
-		let operations: IDataObject[] = [];
-		if (operation === 'multiStep') {
-			// Operation parameters are already in the correct format
-			const operationsData = this.getNodeParameter('operations', { operations: [] }) as IDataObject;
-			operations = operationsData.operations as IDataObject[];
-		} else {
-			// Operation parameters have to first get collected
-			const operationParameters: IDataObject = {};
-			requiredOperationParameters[operation].forEach(parameterName => {
-				try {
-					operationParameters[parameterName] = this.getNodeParameter(parameterName);
-				} catch (e) {}
-			});
+			let gmInstance: gm.State;
 
-			operations = [
-				{
-					operation,
-					...operationParameters,
-				},
-			];
-		}
+			const requiredOperationParameters: {
+				[key: string]: string[],
+			} = {
+				blur: [
+					'blur',
+					'sigma',
+				],
+				border: [
+					'borderColor',
+					'borderWidth',
+					'borderHeight',
+				],
+				create: [
+					'backgroundColor',
+					'height',
+					'width',
+				],
+				crop: [
+					'height',
+					'positionX',
+					'positionY',
+					'width',
+				],
+				composite: [
+					'dataPropertyNameComposite',
+					'positionX',
+					'positionY',
+				],
+				draw: [
+					'color',
+					'cornerRadius',
+					'endPositionX',
+					'endPositionY',
+					'primitive',
+					'startPositionX',
+					'startPositionY',
+				],
+				information: [],
+				resize: [
+					'height',
+					'resizeOption',
+					'width',
+				],
+				rotate: [
+					'backgroundColor',
+					'rotate',
+				],
+				shear: [
+					'degreesX',
+					'degreesY',
+				],
+				text: [
+					'font',
+					'fontColor',
+					'fontSize',
+					'lineLength',
+					'positionX',
+					'positionY',
+					'text',
+				],
+			};
 
-		if (operations[0].operation !== 'create') {
-			// "create" generates a new image so does not require any incoming data.
-			if (item.binary === undefined) {
-				throw new Error('Item does not contain any binary data.');
-			}
-
-			if (item.binary[dataPropertyName as string] === undefined) {
-				throw new Error(`Item does not contain any binary data with the name "${dataPropertyName}".`);
-			}
-
-			gmInstance = gm(Buffer.from(item.binary![dataPropertyName as string].data, BINARY_ENCODING));
-			gmInstance = gmInstance.background('transparent');
-		}
-
-		if (operation === 'information') {
-			// Just return the information
-			const imageData = await new Promise<IDataObject>((resolve, reject) => {
-				gmInstance = gmInstance.identify((error, imageData) => {
-					if (error) {
-						reject(error);
-						return;
-					}
-					resolve(imageData as unknown as IDataObject);
+			let operations: IDataObject[] = [];
+			if (operation === 'multiStep') {
+				// Operation parameters are already in the correct format
+				const operationsData = this.getNodeParameter('operations', itemIndex ,{ operations: [] }) as IDataObject;
+				operations = operationsData.operations as IDataObject[];
+			} else {
+				// Operation parameters have to first get collected
+				const operationParameters: IDataObject = {};
+				requiredOperationParameters[operation].forEach(parameterName => {
+					try {
+						operationParameters[parameterName] = this.getNodeParameter(parameterName, itemIndex);
+					} catch (e) {}
 				});
-			});
 
-			item.json = imageData;
-			return item;
-		}
+				operations = [
+					{
+						operation,
+						...operationParameters,
+					},
+				];
+			}
 
-		for (let i = 0; i < operations.length; i++) {
-			const operationData = operations[i];
-			if (operationData.operation === 'blur') {
-				gmInstance = gmInstance!.blur(operationData.blur as number, operationData.sigma as number);
-			} else if (operationData.operation === 'border') {
-				gmInstance = gmInstance!.borderColor(operationData.borderColor as string).border(operationData.borderWidth as number, operationData.borderHeight as number);
-			} else if (operationData.operation === 'composite') {
-				const positionX = operationData.positionX as number;
-				const positionY = operationData.positionY as number;
-
-				const geometryString = (positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
-
-				if (item.binary![operationData.dataPropertyNameComposite as string] === undefined) {
-					throw new Error(`Item does not contain any binary data with the name "${operationData.dataPropertyNameComposite}".`);
+			if (operations[0].operation !== 'create') {
+				// "create" generates a new image so does not require any incoming data.
+				if (item.binary === undefined) {
+					throw new Error('Item does not contain any binary data.');
 				}
 
-				const { fd, path, cleanup } = await file();
-				cleanupFunctions.push(cleanup);
-				await fsWriteFileAsync(fd, Buffer.from(item.binary![operationData.dataPropertyNameComposite as string].data, BINARY_ENCODING));
-
-				if (operations[0].operation === 'create') {
-					// It seems like if the image gets created newly we have to create a new gm instance
-					// else it fails for some reason
-					gmInstance = gm(gmInstance!.stream('png')).geometry(geometryString).composite(path);
-				} else {
-					gmInstance = gmInstance!.geometry(geometryString).composite(path);
+				if (item.binary[dataPropertyName as string] === undefined) {
+					throw new Error(`Item does not contain any binary data with the name "${dataPropertyName}".`);
 				}
 
-				if (operations.length !== i + 1) {
-					// If there are other operations after the current one create a new gm instance
-					// because else things do get messed up
-					gmInstance = gm(gmInstance.stream());
-				}
-			} else if (operationData.operation === 'create') {
-				gmInstance = gm(operationData.width as number, operationData.height as number, operationData.backgroundColor as string);
-					if (!options.format) {
-						options.format = 'png';
-					}
-			} else if (operationData.operation === 'crop') {
-				gmInstance = gmInstance!.crop(operationData.width as number, operationData.height as number, operationData.positionX as number, operationData.positionY as number);
-			} else if (operationData.operation === 'draw') {
-				gmInstance = gmInstance!.fill(operationData.color as string);
+				gmInstance = gm(Buffer.from(item.binary![dataPropertyName as string].data, BINARY_ENCODING));
+				gmInstance = gmInstance.background('transparent');
+			}
 
-				if (operationData.primitive === 'line') {
-					gmInstance = gmInstance.drawLine(operationData.startPositionX as number, operationData.startPositionY as number, operationData.endPositionX as number, operationData.endPositionY as number);
-				} else if (operationData.primitive === 'rectangle') {
-					gmInstance = gmInstance.drawRectangle(operationData.startPositionX as number, operationData.startPositionY as number, operationData.endPositionX as number, operationData.endPositionY as number, operationData.cornerRadius as number || undefined);
-				}
-			} else if (operationData.operation === 'resize') {
-				const resizeOption = operationData.resizeOption as string;
-
-				// By default use "maximumArea"
-				let option: gm.ResizeOption = '@';
-				if (resizeOption === 'ignoreAspectRatio') {
-					option = '!';
-				} else if (resizeOption === 'minimumArea') {
-					option = '^';
-				} else if (resizeOption === 'onlyIfSmaller') {
-					option = '<';
-				} else if (resizeOption === 'onlyIfLarger') {
-					option = '>';
-				} else if (resizeOption === 'percent') {
-					option = '%';
-				}
-
-				gmInstance = gmInstance!.resize(operationData.width as number, operationData.height as number, option);
-			} else if (operationData.operation === 'rotate') {
-				gmInstance = gmInstance!.rotate(operationData.backgroundColor as string, operationData.rotate as number);
-			} else if (operationData.operation === 'shear') {
-				gmInstance = gmInstance!.shear(operationData.degreesX as number, operationData.degreesY as number);
-			} else if (operationData.operation === 'text') {
-				// Split the text in multiple lines
-				const lines: string[] = [];
-				let currentLine = '';
-				(operationData.text as string).split('\n').forEach((textLine: string) => {
-					textLine.split(' ').forEach((textPart: string) => {
-						if ((currentLine.length + textPart.length + 1) > (operationData.lineLength as number)) {
-							lines.push(currentLine.trim());
-							currentLine = `${textPart} `;
+			if (operation === 'information') {
+				// Just return the information
+				const imageData = await new Promise<IDataObject>((resolve, reject) => {
+					gmInstance = gmInstance.identify((error, imageData) => {
+						if (error) {
+							reject(error);
 							return;
 						}
-						currentLine += `${textPart} `;
+						resolve(imageData as unknown as IDataObject);
 					});
-
-					lines.push(currentLine.trim());
-					currentLine = '';
 				});
 
-				// Combine the lines to a single string
-				const renderText = lines.join('\n');
-
-				const font = options.font || operationData.font;
-
-				if (font && font !== 'default') {
-					gmInstance = gmInstance!.font(font as string);
-				}
-
-				gmInstance = gmInstance!
-					.fill(operationData.fontColor as string)
-					.fontSize(operationData.fontSize as number)
-					.drawText(operationData.positionX as number, operationData.positionY as number, renderText);
+				item.json = imageData;
+				returnData.push(item);
 			}
-		}
 
-		const newItem: INodeExecutionData = {
-			json: item.json,
-			binary: {},
-		};
+			for (let i = 0; i < operations.length; i++) {
+				const operationData = operations[i];
+				if (operationData.operation === 'blur') {
+					gmInstance = gmInstance!.blur(operationData.blur as number, operationData.sigma as number);
+				} else if (operationData.operation === 'border') {
+					gmInstance = gmInstance!.borderColor(operationData.borderColor as string).border(operationData.borderWidth as number, operationData.borderHeight as number);
+				} else if (operationData.operation === 'composite') {
+					const positionX = operationData.positionX as number;
+					const positionY = operationData.positionY as number;
 
-		if (item.binary !== undefined) {
-			// Create a shallow copy of the binary data so that the old
-			// data references which do not get changed still stay behind
-			// but the incoming data does not get changed.
-			Object.assign(newItem.binary, item.binary);
-			// Make a deep copy of the binary data we change
-			if (newItem.binary![dataPropertyName as string]) {
-				newItem.binary![dataPropertyName as string] = JSON.parse(JSON.stringify(newItem.binary![dataPropertyName as string]));
-			}
-		}
+					const geometryString = (positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
 
-		if (newItem.binary![dataPropertyName as string] === undefined) {
-			newItem.binary![dataPropertyName as string] = {
-				data: '',
-				mimeType: '',
-			};
-		}
-
-		if (options.quality !== undefined) {
-			gmInstance = gmInstance!.quality(options.quality as number);
-		}
-
-		if (options.format !== undefined) {
-			gmInstance = gmInstance!.setFormat(options.format as string);
-			newItem.binary![dataPropertyName as string].fileExtension = options.format as string;
-			newItem.binary![dataPropertyName as string].mimeType = `image/${options.format}`;
-			const fileName = newItem.binary![dataPropertyName as string].fileName;
-			if (fileName && fileName.includes('.')) {
-				newItem.binary![dataPropertyName as string].fileName = fileName.split('.').slice(0, -1).join('.') + '.' + options.format;
-			}
-		}
-
-		if (options.fileName !== undefined) {
-			newItem.binary![dataPropertyName as string].fileName = options.fileName as string;
-		}
-
-		return new Promise<INodeExecutionData>((resolve, reject) => {
-			gmInstance
-				.toBuffer((error: Error | null, buffer: Buffer) => {
-					cleanupFunctions.forEach(async cleanup => await cleanup());
-
-					if (error) {
-						return reject(error);
+					if (item.binary![operationData.dataPropertyNameComposite as string] === undefined) {
+						throw new Error(`Item does not contain any binary data with the name "${operationData.dataPropertyNameComposite}".`);
 					}
 
-					newItem.binary![dataPropertyName as string].data = buffer.toString(BINARY_ENCODING);
+					const { fd, path, cleanup } = await file();
+					cleanupFunctions.push(cleanup);
+					await fsWriteFileAsync(fd, Buffer.from(item.binary![operationData.dataPropertyNameComposite as string].data, BINARY_ENCODING));
 
-					return resolve(newItem);
-				});
-		});
+					if (operations[0].operation === 'create') {
+						// It seems like if the image gets created newly we have to create a new gm instance
+						// else it fails for some reason
+						gmInstance = gm(gmInstance!.stream('png')).geometry(geometryString).composite(path);
+					} else {
+						gmInstance = gmInstance!.geometry(geometryString).composite(path);
+					}
+
+					if (operations.length !== i + 1) {
+						// If there are other operations after the current one create a new gm instance
+						// because else things do get messed up
+						gmInstance = gm(gmInstance.stream());
+					}
+				} else if (operationData.operation === 'create') {
+					gmInstance = gm(operationData.width as number, operationData.height as number, operationData.backgroundColor as string);
+						if (!options.format) {
+							options.format = 'png';
+						}
+				} else if (operationData.operation === 'crop') {
+					gmInstance = gmInstance!.crop(operationData.width as number, operationData.height as number, operationData.positionX as number, operationData.positionY as number);
+				} else if (operationData.operation === 'draw') {
+					gmInstance = gmInstance!.fill(operationData.color as string);
+
+					if (operationData.primitive === 'line') {
+						gmInstance = gmInstance.drawLine(operationData.startPositionX as number, operationData.startPositionY as number, operationData.endPositionX as number, operationData.endPositionY as number);
+					} else if (operationData.primitive === 'rectangle') {
+						gmInstance = gmInstance.drawRectangle(operationData.startPositionX as number, operationData.startPositionY as number, operationData.endPositionX as number, operationData.endPositionY as number, operationData.cornerRadius as number || undefined);
+					}
+				} else if (operationData.operation === 'resize') {
+					const resizeOption = operationData.resizeOption as string;
+
+					// By default use "maximumArea"
+					let option: gm.ResizeOption = '@';
+					if (resizeOption === 'ignoreAspectRatio') {
+						option = '!';
+					} else if (resizeOption === 'minimumArea') {
+						option = '^';
+					} else if (resizeOption === 'onlyIfSmaller') {
+						option = '<';
+					} else if (resizeOption === 'onlyIfLarger') {
+						option = '>';
+					} else if (resizeOption === 'percent') {
+						option = '%';
+					}
+
+					gmInstance = gmInstance!.resize(operationData.width as number, operationData.height as number, option);
+				} else if (operationData.operation === 'rotate') {
+					gmInstance = gmInstance!.rotate(operationData.backgroundColor as string, operationData.rotate as number);
+				} else if (operationData.operation === 'shear') {
+					gmInstance = gmInstance!.shear(operationData.degreesX as number, operationData.degreesY as number);
+				} else if (operationData.operation === 'text') {
+					// Split the text in multiple lines
+					const lines: string[] = [];
+					let currentLine = '';
+					(operationData.text as string).split('\n').forEach((textLine: string) => {
+						textLine.split(' ').forEach((textPart: string) => {
+							if ((currentLine.length + textPart.length + 1) > (operationData.lineLength as number)) {
+								lines.push(currentLine.trim());
+								currentLine = `${textPart} `;
+								return;
+							}
+							currentLine += `${textPart} `;
+						});
+
+						lines.push(currentLine.trim());
+						currentLine = '';
+					});
+
+					// Combine the lines to a single string
+					const renderText = lines.join('\n');
+
+					const font = options.font || operationData.font;
+
+					if (font && font !== 'default') {
+						gmInstance = gmInstance!.font(font as string);
+					}
+
+					gmInstance = gmInstance!
+						.fill(operationData.fontColor as string)
+						.fontSize(operationData.fontSize as number)
+						.drawText(operationData.positionX as number, operationData.positionY as number, renderText);
+				}
+			}
+
+			const newItem: INodeExecutionData = {
+				json: item.json,
+				binary: {},
+			};
+
+			if (item.binary !== undefined) {
+				// Create a shallow copy of the binary data so that the old
+				// data references which do not get changed still stay behind
+				// but the incoming data does not get changed.
+				Object.assign(newItem.binary, item.binary);
+				// Make a deep copy of the binary data we change
+				if (newItem.binary![dataPropertyName as string]) {
+					newItem.binary![dataPropertyName as string] = JSON.parse(JSON.stringify(newItem.binary![dataPropertyName as string]));
+				}
+			}
+
+			if (newItem.binary![dataPropertyName as string] === undefined) {
+				newItem.binary![dataPropertyName as string] = {
+					data: '',
+					mimeType: '',
+				};
+			}
+
+			if (options.quality !== undefined) {
+				gmInstance = gmInstance!.quality(options.quality as number);
+			}
+
+			if (options.format !== undefined) {
+				gmInstance = gmInstance!.setFormat(options.format as string);
+				newItem.binary![dataPropertyName as string].fileExtension = options.format as string;
+				newItem.binary![dataPropertyName as string].mimeType = `image/${options.format}`;
+				const fileName = newItem.binary![dataPropertyName as string].fileName;
+				if (fileName && fileName.includes('.')) {
+					newItem.binary![dataPropertyName as string].fileName = fileName.split('.').slice(0, -1).join('.') + '.' + options.format;
+				}
+			}
+
+			if (options.fileName !== undefined) {
+				newItem.binary![dataPropertyName as string].fileName = options.fileName as string;
+			}
+
+			returnData.push(await (new Promise<INodeExecutionData>((resolve, reject) => {
+				gmInstance
+					.toBuffer((error: Error | null, buffer: Buffer) => {
+						cleanupFunctions.forEach(async cleanup => await cleanup());
+
+						if (error) {
+							return reject(error);
+						}
+
+						newItem.binary![dataPropertyName as string].data = buffer.toString(BINARY_ENCODING);
+
+						return resolve(newItem);
+					});
+			})));
+
+		}
+		return this.prepareOutputData(returnData);
 	}
 }
