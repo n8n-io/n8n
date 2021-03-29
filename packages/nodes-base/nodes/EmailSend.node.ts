@@ -124,7 +124,7 @@ export class EmailSend implements INodeType {
 	};
 
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {		
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
@@ -132,7 +132,7 @@ export class EmailSend implements INodeType {
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
-			
+
 			item = items[itemIndex];
 
 			const fromEmail = this.getNodeParameter('fromEmail', itemIndex) as string;
@@ -157,7 +157,7 @@ export class EmailSend implements INodeType {
 				secure: credentials.secure as boolean,
 			};
 
-			if(credentials.user || credentials.password) {
+			if (credentials.user || credentials.password) {
 				// @ts-ignore
 				connectionOptions.auth = {
 					user: credentials.user as string,
@@ -208,10 +208,10 @@ export class EmailSend implements INodeType {
 
 			// Send the email
 			const info = await transporter.sendMail(mailOptions);
-			
+
 			returnData.push({ json: info });
 		}
-		
+
 		return this.prepareOutputData(returnData);
 	}
 

@@ -40,7 +40,7 @@ export class FunctionItem implements INodeType {
 		],
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {		
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
@@ -115,9 +115,9 @@ export class FunctionItem implements INodeType {
 			if (item.binary) {
 				returnItem.binary = item.binary;
 			}
-			
+
 			returnData.push(returnItem);
-		}		
+		}
 		return this.prepareOutputData(returnData);
 	}
 }
