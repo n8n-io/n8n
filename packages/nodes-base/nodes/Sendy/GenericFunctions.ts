@@ -40,7 +40,7 @@ export async function sendyApiRequest(this: IExecuteFunctions | ILoadOptionsFunc
 			errors = errors.map((e: IDataObject) => e.message);
 			// Try to return the error prettier
 			throw new Error(
-				`Sendy error response [${error.statusCode}]: ${errors.join('|')}`
+				`Sendy error response [${error.statusCode}]: ${errors.join('|')}`,
 			);
 		}
 		throw error;

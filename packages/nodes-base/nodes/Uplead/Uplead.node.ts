@@ -38,7 +38,7 @@ export class Uplead implements INodeType {
 			{
 				name: 'upleadApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -54,7 +54,7 @@ export class Uplead implements INodeType {
 					{
 						name: 'Person',
 						value: 'person',
-						description: `Person API lets you lookup a person based on an email address OR based on a domain name + first name + last name`
+						description: `Person API lets you lookup a person based on an email address OR based on a domain name + first name + last name`,
 					},
 				],
 				default: 'company',

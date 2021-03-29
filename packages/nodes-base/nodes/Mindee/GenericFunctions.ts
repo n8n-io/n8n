@@ -54,7 +54,7 @@ export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			errors = errors.map((e: IDataObject) => e.message);
 			// Try to return the error prettier
 			throw new Error(
-				`Mindee error response [${error.statusCode}]: ${errors.join('|')}`
+				`Mindee error response [${error.statusCode}]: ${errors.join('|')}`,
 			);
 		}
 		throw error;

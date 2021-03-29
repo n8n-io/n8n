@@ -33,7 +33,7 @@ export async function freshdeskApiRequest(this: IExecuteFunctions | ILoadOptions
 		body,
 		qs: query,
 		uri: uri || `https://${credentials.domain}.${endpoint}${resource}`,
-		json: true
+		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.body;

@@ -56,7 +56,7 @@ export class WooCommerce implements INodeType {
 			{
 				name: 'wooCommerceApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{

@@ -21,7 +21,7 @@ export async function veroApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 			...body,
 		},
 		uri: uri ||`https://api.getvero.com/api/v2${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {

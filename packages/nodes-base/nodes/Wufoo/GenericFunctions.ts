@@ -29,7 +29,7 @@ export async function wufooApiRequest(this: IHookFunctions | IExecuteFunctions |
 		body,
 		qs,
 		uri: `https://${credentials!.subdomain}.wufoo.com/api/v3/${resource}`,
-		json: true
+		json: true,
 	};
 
 	options = Object.assign({}, options, option);

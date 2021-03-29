@@ -74,7 +74,7 @@ export class Postgres implements ICredentialType {
 				{
 					name: 'verify-full (not implemented)',
 					value: 'verify-full',
-				}
+				},
 			],
 			default: 'disable',
 		},

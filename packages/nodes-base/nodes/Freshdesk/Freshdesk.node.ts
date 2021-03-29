@@ -38,7 +38,7 @@ enum Priority {
 	Low = 1,
 	Medium = 2,
 	High = 3,
-	Urgent = 4
+	Urgent = 4,
 }
 
 enum Source {
@@ -126,7 +126,7 @@ export class Freshdesk implements INodeType {
 					show: {
 						resource: [
 							'ticket',
-						]
+						],
 					},
 				},
 				options: [
@@ -171,7 +171,7 @@ export class Freshdesk implements INodeType {
 						],
 						operation: [
 							'create',
-						]
+						],
 					},
 				},
 				options: [
@@ -221,7 +221,7 @@ export class Freshdesk implements INodeType {
 						],
 						operation: [
 							'create',
-						]
+						],
 					},
 				},
 				default: '',
@@ -239,7 +239,7 @@ export class Freshdesk implements INodeType {
 						],
 						operation: [
 							'create',
-						]
+						],
 					},
 				},
 				options: [
@@ -274,8 +274,8 @@ export class Freshdesk implements INodeType {
 							'ticket',
 						],
 						operation: [
-							'create'
-						]
+							'create',
+						],
 					},
 				},
 				options: [
@@ -294,7 +294,7 @@ export class Freshdesk implements INodeType {
 					{
 						name: 'Urgent',
 						value: 'urgent',
-					}
+					},
 				],
 				default: 'low',
 				description: 'Priority',
@@ -310,8 +310,8 @@ export class Freshdesk implements INodeType {
 							'ticket',
 						],
 						operation: [
-							'create'
-						]
+							'create',
+						],
 					},
 				},
 				options: [
@@ -448,7 +448,7 @@ export class Freshdesk implements INodeType {
 						type: 'options',
 						default: '',
 						typeOptions: {
-							loadOptionsMethod: 'getGroups'
+							loadOptionsMethod: 'getGroups',
 						},
 						description: `ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id`,
 					},
@@ -466,7 +466,7 @@ export class Freshdesk implements INodeType {
 						type: 'options',
 						default: '',
 						typeOptions: {
-							loadOptionsMethod: 'getProducts'
+							loadOptionsMethod: 'getProducts',
 						},
 						description: `ID of the product to which the ticket is associated.
 						It will be ignored if the email_config_id attribute is set in the request.`,
@@ -513,9 +513,9 @@ export class Freshdesk implements INodeType {
 								name: 'Refund',
 								value: 'Refund',
 							},
-						]
+						],
 					},
-				]
+				],
 			},
 			// {
 			// 	displayName: 'Custom Fields',
@@ -603,7 +603,7 @@ export class Freshdesk implements INodeType {
 						],
 						operation: [
 							'update',
-						]
+						],
 					},
 				},
 				default: '',
@@ -725,7 +725,7 @@ export class Freshdesk implements INodeType {
 							{
 								name: 'Urgent',
 								value: 'urgent',
-							}
+							},
 						],
 						default: 'low',
 						description: 'Priority',
@@ -797,7 +797,7 @@ export class Freshdesk implements INodeType {
 							{
 								name: 'Closed',
 								value: 'closed',
-							}
+							},
 						],
 						default: 'pending',
 						description: 'Status',
@@ -857,27 +857,27 @@ export class Freshdesk implements INodeType {
 						options: [
 							{
 								name: 'Feature Request',
-								value: 'Feature Request'
+								value: 'Feature Request',
 							},
 							{
 								name: 'Incident',
-								value: 'Incident'
+								value: 'Incident',
 							},
 							{
 								name: 'Problem',
-								value: 'Problem'
+								value: 'Problem',
 							},
 							{
 								name: 'Question',
-								value: 'Question'
+								value: 'Question',
 							},
 							{
 								name: 'Refund',
-								value: 'Refund'
+								value: 'Refund',
 							},
-						]
+						],
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Ticket ID',
@@ -890,8 +890,8 @@ export class Freshdesk implements INodeType {
 							'ticket',
 						],
 						operation: [
-							'get'
-						]
+							'get',
+						],
 					},
 				},
 				default: '',
@@ -1041,7 +1041,7 @@ export class Freshdesk implements INodeType {
 						type: 'dateTime',
 						default: '',
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Ticket ID',
@@ -1054,8 +1054,8 @@ export class Freshdesk implements INodeType {
 							'ticket',
 						],
 						operation: [
-							'delete'
-						]
+							'delete',
+						],
 					},
 				},
 				default: '',
@@ -1064,7 +1064,7 @@ export class Freshdesk implements INodeType {
 			// CONTACTS
 			...contactOperations,
 			...contactFields,
-		]
+		],
 	};
 
 	methods = {
@@ -1163,7 +1163,7 @@ export class Freshdesk implements INodeType {
 						// @ts-ignore
 						priority: Priority[capitalize(priority)],
 						// @ts-ignore
-						source: Source[capitalize(source)]
+						source: Source[capitalize(source)],
 					};
 
 					if (requester === 'requesterId') {

@@ -41,7 +41,7 @@ export const boardOperations = [
 		],
 		default: 'create',
 		description: 'The operation to perform.',
-	}
+	},
 ] as INodeProperties[];
 
 export const boardFields = [

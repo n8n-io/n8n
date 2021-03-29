@@ -25,7 +25,7 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 		},
 		auth: {
 			username: credentials!.email as string,
-			password: credentials!.apiKey as string
+			password: credentials!.apiKey as string,
 		},
 		uri: uri || `https://${credentials!.subdomain}.agilecrm.com/dev/${endpoint}`,
 		json: true,

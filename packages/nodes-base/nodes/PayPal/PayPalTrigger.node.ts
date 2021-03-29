@@ -20,7 +20,7 @@ export class PayPalTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'PayPal Trigger',
 		name: 'payPalTrigger',
-		icon: 'file:paypal.png',
+		icon: 'file:paypal.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle PayPal events via webhooks',
@@ -34,7 +34,7 @@ export class PayPalTrigger implements INodeType {
 			{
 				name: 'payPalApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -53,7 +53,7 @@ export class PayPalTrigger implements INodeType {
 				default: [],
 				description: 'The event to listen to.',
 				typeOptions: {
-					loadOptionsMethod: 'getEvents'
+					loadOptionsMethod: 'getEvents',
 				},
 				options: [],
 			},
@@ -70,7 +70,7 @@ export class PayPalTrigger implements INodeType {
 						name: '*',
 						value: '*',
 						description: 'Any time any event is triggered (Wildcard Event).',
-					}
+					},
 				];
 				let events;
 				try {
@@ -194,7 +194,7 @@ export class PayPalTrigger implements INodeType {
 		}
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body)
+				this.helpers.returnJsonArray(req.body),
 			],
 		};
 	}

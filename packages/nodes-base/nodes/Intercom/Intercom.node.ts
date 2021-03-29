@@ -56,7 +56,7 @@ export class Intercom implements INodeType {
 			{
 				name: 'intercomApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{

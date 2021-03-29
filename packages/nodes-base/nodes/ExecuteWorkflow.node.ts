@@ -143,7 +143,7 @@ export class ExecuteWorkflow implements INodeType {
 				required: true,
 				description: 'The URL from which to load the workflow from.',
 			},
-		]
+		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

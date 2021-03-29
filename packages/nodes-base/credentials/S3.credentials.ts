@@ -13,7 +13,7 @@ export class S3 implements ICredentialType {
 			displayName: 'S3 endpoint',
 			name: 'endpoint',
 			type: 'string' as NodePropertyTypes,
-			default: ''
+			default: '',
 		},
 		{
 			displayName: 'Region',
@@ -40,7 +40,7 @@ export class S3 implements ICredentialType {
 			displayName: 'Force path style',
 			name: 'forcePathStyle',
 			type: 'boolean' as NodePropertyTypes,
-			default: false
+			default: false,
 		},
 	];
 }

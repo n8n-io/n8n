@@ -21,7 +21,7 @@ export class Sms77 implements INodeType {
 			{
 				name: 'sms77Api',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{

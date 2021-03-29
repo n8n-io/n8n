@@ -49,7 +49,7 @@ export class WriteBinaryFile implements INodeType {
 				required: true,
 				description: 'Name of the binary property which contains<br />the data for the file to be written.',
 			},
-		]
+		],
 	};
 
 

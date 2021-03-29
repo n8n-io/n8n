@@ -46,7 +46,7 @@ export class Vonage implements INodeType {
 					},
 				],
 				default: 'sms',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -66,7 +66,7 @@ export class Vonage implements INodeType {
 					},
 				},
 				default: 'send',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'From',

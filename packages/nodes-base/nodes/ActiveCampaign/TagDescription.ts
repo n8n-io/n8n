@@ -228,5 +228,5 @@ export const tagFields = [
 	// ----------------------------------
 	//         tag:getAll
 	// ----------------------------------
-	...activeCampaignDefaultGetAllProperties('tag', 'getAll')
+	...activeCampaignDefaultGetAllProperties('tag', 'getAll'),
 ] as INodeProperties[];

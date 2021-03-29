@@ -31,7 +31,7 @@ export class Twilio implements INodeType {
 			{
 				name: 'twilioApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{

@@ -10,7 +10,9 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 export class FacebookGraphApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -22,7 +24,7 @@ export class FacebookGraphApi implements INodeType {
 		description: 'Interacts with Facebook using the Graph API',
 		defaults: {
 			name: 'Facebook Graph API',
-			color: '#772244',
+			color: '#3B5998',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -45,7 +47,7 @@ export class FacebookGraphApi implements INodeType {
 					{
 						name: 'Video Uploads',
 						value: 'graph-video.facebook.com',
-					}
+					},
 				],
 				default: 'graph.facebook.com',
 				description: 'The Host URL of the request. Almost all requests are passed to the graph.facebook.com host URL. The single exception is video uploads, which use graph-video.facebook.com.',
@@ -81,6 +83,18 @@ export class FacebookGraphApi implements INodeType {
 					{
 						name: 'Default',
 						value: '',
+					},
+					{
+						name: 'v10.0',
+						value: 'v10.0',
+					},
+					{
+						name: 'v9.0',
+						value: 'v9.0',
+					},
+					{
+						name: 'v8.0',
+						value: 'v8.0',
 					},
 					{
 						name: 'v7.0',
@@ -265,7 +279,7 @@ export class FacebookGraphApi implements INodeType {
 						placeholder: '{\"field_name\": \"field_value\"}',
 						description: 'The query parameters to send, defined as a JSON object',
 						required: false,
-					}
+					},
 				],
 			},
 		],

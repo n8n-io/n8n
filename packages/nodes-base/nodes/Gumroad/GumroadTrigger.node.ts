@@ -32,7 +32,7 @@ export class GumroadTrigger implements INodeType {
 			{
 				name: 'gumroadApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{

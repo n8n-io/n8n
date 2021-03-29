@@ -22,7 +22,7 @@ export async function jotformApiRequest(this: IHookFunctions | IExecuteFunctions
 		qs,
 		form: body,
 		uri: uri || `https://${credentials.apiDomain || 'api.jotform.com'}${resource}`,
-		json: true
+		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.form;

@@ -19,12 +19,12 @@ import {
 
 export class ActiveCampaignTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Active Campaign Trigger',
+		displayName: 'ActiveCampaign Trigger',
 		name: 'activeCampaignTrigger',
 		icon: 'file:activeCampaign.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Handle Active Campaign events via webhooks',
+		description: 'Handle ActiveCampaign events via webhooks',
 		defaults: {
 			name: 'ActiveCampaign Trigger',
 			color: '#356ae6',
@@ -35,7 +35,7 @@ export class ActiveCampaignTrigger implements INodeType {
 			{
 				name: 'activeCampaignApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -103,7 +103,7 @@ export class ActiveCampaignTrigger implements INodeType {
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 	// @ts-ignore
 	webhookMethods = {
@@ -132,7 +132,7 @@ export class ActiveCampaignTrigger implements INodeType {
 						url: webhookUrl,
 						events,
 						sources,
-					}
+					},
 				};
 				const { webhook } = await activeCampaignApiRequest.call(this, 'POST', '/api/3/webhooks', body);
 				webhookData.webhookId = webhook.id;
@@ -155,7 +155,7 @@ export class ActiveCampaignTrigger implements INodeType {
 		const req = this.getRequestObject();
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body)
+				this.helpers.returnJsonArray(req.body),
 			],
 		};
 	}

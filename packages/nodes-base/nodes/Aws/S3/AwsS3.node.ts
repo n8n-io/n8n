@@ -65,7 +65,7 @@ export class AwsS3 implements INodeType {
 			{
 				name: 'aws',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -148,7 +148,7 @@ export class AwsS3 implements INodeType {
 							'$': {
 								xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
 							},
-						}
+						},
 					};
 					let data = '';
 					// if credentials has the S3 defaul region (us-east-1) the body (XML) does not have to be sent.
@@ -282,7 +282,7 @@ export class AwsS3 implements INodeType {
 						for (const childObject of responseData) {
 							//@ts-ignore
 							(body.Delete.Object as IDataObject[]).push({
-								Key: childObject.Key as string
+								Key: childObject.Key as string,
 							});
 						}
 

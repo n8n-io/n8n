@@ -144,7 +144,7 @@ export class SpreadsheetFile implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'toFile'
+							'toFile',
 						],
 					},
 				},
@@ -207,13 +207,27 @@ export class SpreadsheetFile implements INodeType {
 						description: 'File name to set in binary data. By default will "spreadsheet.<fileFormat>" be used.',
 					},
 					{
+						displayName: 'Include Empty Cells',
+						name: 'includeEmptyCells',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'fromFile',
+								],
+							},
+						},
+						default: false,
+						description: 'When reading from file the empty cells will be filled with an empty string in the JSON.',
+					},
+					{
 						displayName: 'RAW Data',
 						name: 'rawData',
 						type: 'boolean',
 						displayOptions: {
 							show: {
 								'/operation': [
-									'fromFile'
+									'fromFile',
 								],
 							},
 						},
@@ -227,7 +241,7 @@ export class SpreadsheetFile implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'fromFile'
+									'fromFile',
 								],
 							},
 						},
@@ -241,7 +255,7 @@ export class SpreadsheetFile implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'fromFile'
+									'fromFile',
 								],
 							},
 						},
@@ -283,7 +297,7 @@ export class SpreadsheetFile implements INodeType {
 					},
 				],
 			},
-		]
+		],
 	};
 
 
@@ -341,6 +355,10 @@ export class SpreadsheetFile implements INodeType {
 					}
 				}
 
+				if (options.includeEmptyCells) {
+					sheetToJsonOptions.defval = '';
+				}
+
 				const sheetJson = xlsxUtils.sheet_to_json(workbook.Sheets[sheetName], sheetToJsonOptions);
 
 				// Check if data could be found in file
@@ -373,7 +391,7 @@ export class SpreadsheetFile implements INodeType {
 
 			const wopts: WritingOptions = {
 				bookSST: false,
-				type: 'buffer'
+				type: 'buffer',
 			};
 
 			if (fileFormat === 'csv') {
@@ -402,7 +420,7 @@ export class SpreadsheetFile implements INodeType {
 				SheetNames: [sheetName],
 				Sheets: {
 					[sheetName]: ws,
-				}
+				},
 			};
 			const wbout = xlsxWrite(wb, wopts);
 

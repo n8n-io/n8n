@@ -228,7 +228,7 @@ export class WufooTrigger implements INodeType {
 				formId: req.body.FormId as string,
 				formStructure: JSON.parse(req.body.FormStructure),
 				fieldStructure: JSON.parse(req.body.FieldStructure),
-				entries
+				entries,
 			};
 
 			return {

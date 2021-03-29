@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
-} from "n8n-workflow";
+} from 'n8n-workflow';
 
 import {
 	allCurrencies,
@@ -8,7 +8,7 @@ import {
 
 import {
 	activeCampaignDefaultGetAllProperties,
-} from "./GenericFunctions";
+} from './GenericFunctions';
 
 export const dealOperations = [
 	{
@@ -232,7 +232,7 @@ export const dealFields = [
 				default: 0,
 				description: 'The status of the deal',
 			},
-		]
+		],
 	},
 
 	// ----------------------------------
@@ -345,7 +345,7 @@ export const dealFields = [
 				default: 0,
 				description: 'The status of the deal',
 			},
-		]
+		],
 	},
 
 	// ----------------------------------

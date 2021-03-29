@@ -15,7 +15,7 @@ import {
  * @param {ICredentialDataDecryptedObject} credentials MongoDB credentials to use, unless conn string is overridden
  */
 function buildParameterizedConnString(
-	credentials: IMongoParametricCredentials
+	credentials: IMongoParametricCredentials,
 ): string {
 	if (credentials.port) {
 		return `mongodb://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}`;
@@ -31,7 +31,7 @@ function buildParameterizedConnString(
  * @param {ICredentialDataDecryptedObject} credentials raw/input MongoDB credentials to use
  */
 function buildMongoConnectionParams(
-	credentials: IMongoCredentialsType
+	credentials: IMongoCredentialsType,
 ): IMongoCredentials {
 	const sanitizedDbName =
 		credentials.database && credentials.database.trim().length > 0
@@ -44,17 +44,17 @@ function buildMongoConnectionParams(
 		) {
 			return {
 				connectionString: credentials.connectionString.trim(),
-				database: sanitizedDbName
+				database: sanitizedDbName,
 			};
 		} else {
 			throw new Error(
-				'Cannot override credentials: valid MongoDB connection string not provided '
+				'Cannot override credentials: valid MongoDB connection string not provided ',
 			);
 		}
 	} else {
 		return {
 			connectionString: buildParameterizedConnString(credentials),
-			database: sanitizedDbName
+			database: sanitizedDbName,
 		};
 	}
 }
@@ -65,7 +65,7 @@ function buildMongoConnectionParams(
  * @param {ICredentialDataDecryptedObject} credentials raw/input MongoDB credentials to use
  */
 export function validateAndResolveMongoCredentials(
-	credentials?: ICredentialDataDecryptedObject
+	credentials?: ICredentialDataDecryptedObject,
 ): IMongoCredentials {
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -86,7 +86,7 @@ export function validateAndResolveMongoCredentials(
  */
 export function getItemCopy(
 	items: INodeExecutionData[],
-	properties: string[]
+	properties: string[],
 ): IDataObject[] {
 	// Prepare the data to insert and copy it to be returned
 	let newItem: IDataObject;
@@ -101,4 +101,15 @@ export function getItemCopy(
 		}
 		return newItem;
 	});
+}
+
+export function handleDateFields(insertItems: IDataObject[], fields: string) {
+	const dateFields = (fields as string).split(',');
+	for (let i = 0; i < insertItems.length; i++) {
+		for (const key of Object.keys(insertItems[i])) {
+			if (dateFields.includes(key)) {
+				insertItems[i][key] = new Date(insertItems[i][key] as string);
+			}
+		}
+	}
 }

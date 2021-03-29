@@ -5,7 +5,7 @@ import {
 	ICredentialsEncrypted,
 } from 'n8n-workflow';
 
-import { enc, AES } from 'crypto-js';
+import { AES, enc } from 'crypto-js';
 
 
 export class Credentials extends ICredentials {

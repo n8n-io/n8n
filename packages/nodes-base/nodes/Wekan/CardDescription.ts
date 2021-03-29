@@ -72,7 +72,7 @@ export const cardFields = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to.'
+		description: 'The ID of the board that list belongs to.',
 	},
 	{
 		displayName: 'List ID',
@@ -231,7 +231,7 @@ export const cardFields = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to.'
+		description: 'The ID of the board that list belongs to.',
 	},
 	{
 		displayName: 'List ID',
@@ -255,7 +255,7 @@ export const cardFields = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to.'
+		description: 'The ID of the list that card belongs to.',
 	},
 	{
 		displayName: 'Card ID',
@@ -305,7 +305,7 @@ export const cardFields = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to.'
+		description: 'The ID of the board that list belongs to.',
 	},
 	{
 		displayName: 'List ID',
@@ -329,7 +329,7 @@ export const cardFields = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to.'
+		description: 'The ID of the list that card belongs to.',
 	},
 	{
 		displayName: 'Card ID',
@@ -372,7 +372,7 @@ export const cardFields = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to.'
+		description: 'The ID of the board that list belongs to.',
 	},
 	{
 		displayName: 'From Object',
@@ -400,7 +400,7 @@ export const cardFields = [
 			},
 		],
 		default: '',
-		description: ''
+		description: '',
 	},
 	{
 		displayName: 'List ID',
@@ -427,7 +427,7 @@ export const cardFields = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to.'
+		description: 'The ID of the list that card belongs to.',
 	},
 	{
 		displayName: 'Swimlane ID',
@@ -453,7 +453,7 @@ export const cardFields = [
 				],
 			},
 		},
-		description: 'The ID of the swimlane that card belongs to.'
+		description: 'The ID of the swimlane that card belongs to.',
 	},
 	{
 		displayName: 'Return All',
@@ -519,7 +519,7 @@ export const cardFields = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to.'
+		description: 'The ID of the board that list belongs to.',
 	},
 	{
 		displayName: 'List ID',
@@ -543,7 +543,7 @@ export const cardFields = [
 				],
 			},
 		},
-		description: 'The ID of the list that card belongs to.'
+		description: 'The ID of the list that card belongs to.',
 	},
 	{
 		displayName: 'Card ID',
@@ -646,7 +646,7 @@ export const cardFields = [
 					},
 					{
 						value: 'lime',
-						name: 'Lime'
+						name: 'Lime',
 					},
 					{
 						value: 'pink',
@@ -662,7 +662,7 @@ export const cardFields = [
 					},
 					{
 						value: 'peachpuff',
-						name: 'Peachpuff'
+						name: 'Peachpuff',
 					},
 					{
 						value: 'crimson',
@@ -670,7 +670,7 @@ export const cardFields = [
 					},
 					{
 						value: 'plum',
-						name: 'Plum'
+						name: 'Plum',
 					},
 					{
 						value: 'darkgreen',
@@ -678,7 +678,7 @@ export const cardFields = [
 					},
 					{
 						value: 'slateblue',
-						name: 'Slateblue'
+						name: 'Slateblue',
 					},
 					{
 						value: 'magenta',
@@ -702,7 +702,7 @@ export const cardFields = [
 					},
 					{
 						value: 'paleturquoise',
-						name: 'Paleturquoise'
+						name: 'Paleturquoise',
 					},
 					{
 						value: 'mistyrose',

@@ -21,7 +21,7 @@ export async function bitlyApiRequest(this: IHookFunctions | IExecuteFunctions |
 		qs,
 		body,
 		uri: uri ||`https://api-ssl.bitly.com/v4${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {

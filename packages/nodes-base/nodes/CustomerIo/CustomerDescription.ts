@@ -47,7 +47,7 @@ export const customerFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier for the customer.',
@@ -69,7 +69,7 @@ export const customerFields = [
 				],
 				operation: [
 					'upsert',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier for the customer.',
@@ -168,7 +168,7 @@ export const customerFields = [
 							},
 						],
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Email',

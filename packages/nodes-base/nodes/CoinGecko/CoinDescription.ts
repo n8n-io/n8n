@@ -197,7 +197,7 @@ export const coinFields = [
 					'coin',
 				],
 				searchBy: [
-					'coinId'
+					'coinId',
 				],
 			},
 		},
@@ -220,7 +220,7 @@ export const coinFields = [
 					'coin',
 				],
 				searchBy: [
-					'contractAddress'
+					'contractAddress',
 				],
 			},
 		},
@@ -249,7 +249,7 @@ export const coinFields = [
 					'coin',
 				],
 				searchBy: [
-					'contractAddress'
+					'contractAddress',
 				],
 			},
 		},
@@ -269,7 +269,7 @@ export const coinFields = [
 					'coin',
 				],
 				searchBy: [
-					'contractAddress'
+					'contractAddress',
 				],
 			},
 		},
@@ -292,7 +292,7 @@ export const coinFields = [
 					'coin',
 				],
 				searchBy: [
-					'coinId'
+					'coinId',
 				],
 			},
 			hide: {
@@ -541,7 +541,7 @@ export const coinFields = [
 					{
 						name: 'Id Desc',
 						value: 'id_desc',
-					}
+					},
 				],
 				default: '',
 				description: 'Sort results by field.',
@@ -740,42 +740,42 @@ export const coinFields = [
 				name: 'community_data',
 				type: 'boolean',
 				default: false,
-				description: 'Include community data.'
+				description: 'Include community data.',
 			},
 			{
 				displayName: 'Developer data',
 				name: 'developer_data',
 				type: 'boolean',
 				default: false,
-				description: 'Include developer data.'
+				description: 'Include developer data.',
 			},
 			{
 				displayName: 'Localization',
 				name: 'localization',
 				type: 'boolean',
 				default: false,
-				description: 'Include all localized languages in response.'
+				description: 'Include all localized languages in response.',
 			},
 			{
 				displayName: 'Market data',
 				name: 'market_data',
 				type: 'boolean',
 				default: false,
-				description: 'Include market data.'
+				description: 'Include market data.',
 			},
 			{
 				displayName: 'Sparkline',
 				name: 'sparkline',
 				type: 'boolean',
 				default: false,
-				description: 'Include sparkline 7 days data (eg. true, false).'
+				description: 'Include sparkline 7 days data (eg. true, false).',
 			},
 			{
 				displayName: 'Tickers',
 				name: 'tickers',
 				type: 'boolean',
 				default: false,
-				description: 'Include tickers data.'
+				description: 'Include tickers data.',
 			},
 		],
 	},

@@ -68,7 +68,7 @@ export class LinkedIn implements INodeType {
 				returnData.push({ name: `${person.localizedFirstName} ${person.localizedLastName}`, value: person.id });
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -206,19 +206,19 @@ export class LinkedIn implements INodeType {
 										{
 											status: 'READY',
 											description: {
-												text: description
+												text: description,
 											},
 											originalUrl,
 											title: {
-												text: title
-											}
-										}
-									]
-								}
+												text: title,
+											},
+										},
+									],
+								},
 							},
 							visibility: {
-								'com.linkedin.ugc.MemberNetworkVisibility': visibility
-							}
+								'com.linkedin.ugc.MemberNetworkVisibility': visibility,
+							},
 						};
 					} else {
 						body = {
@@ -233,8 +233,8 @@ export class LinkedIn implements INodeType {
 								},
 							},
 							visibility: {
-								'com.linkedin.ugc.MemberNetworkVisibility': visibility
-							}
+								'com.linkedin.ugc.MemberNetworkVisibility': visibility,
+							},
 						};
 					}
 

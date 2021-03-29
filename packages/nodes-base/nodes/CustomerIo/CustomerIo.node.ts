@@ -48,7 +48,7 @@ export class CustomerIo implements INodeType {
 			{
 				name: 'customerIoApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -87,7 +87,7 @@ export class CustomerIo implements INodeType {
 			...eventFields,
 			// SEGMENT
 			...segmentOperations,
-			...segmentFields
+			...segmentFields,
 		],
 	};
 

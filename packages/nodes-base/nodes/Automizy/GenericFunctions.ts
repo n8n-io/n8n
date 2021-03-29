@@ -43,7 +43,7 @@ export async function automizyApiRequest(this: IExecuteFunctions | IExecuteSingl
 		if (error.response && error.response.body) {
 
 			throw new Error(
-				`Automizy error response [${error.statusCode}]: ${error.response.body.title}`
+				`Automizy error response [${error.statusCode}]: ${error.response.body.title}`,
 			);
 		}
 

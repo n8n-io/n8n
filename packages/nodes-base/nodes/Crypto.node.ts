@@ -40,17 +40,17 @@ export class Crypto implements INodeType {
 					{
 						name: 'Hash',
 						description: 'Hash a text in a specified format.',
-						value: 'hash'
+						value: 'hash',
 					},
 					{
 						name: 'Hmac',
 						description: 'Hmac a text in a specified format.',
-						value: 'hmac'
+						value: 'hmac',
 					},
 					{
 						name: 'Sign',
 						description: 'Sign a string using a private key.',
-						value: 'sign'
+						value: 'sign',
 					},
 				],
 				default: 'hash',
@@ -61,7 +61,7 @@ export class Crypto implements INodeType {
 				displayOptions: {
 					show: {
 						action:[
-							'hash'
+							'hash',
 						],
 					},
 				},
@@ -74,6 +74,10 @@ export class Crypto implements INodeType {
 					{
 						name: 'SHA256',
 						value: 'SHA256',
+					},
+					{
+						name: 'SHA384',
+						value: 'SHA384',
 					},
 					{
 						name: 'SHA512',
@@ -90,7 +94,7 @@ export class Crypto implements INodeType {
 				displayOptions: {
 					show: {
 						action:[
-							'hash'
+							'hash',
 						],
 					},
 				},
@@ -108,7 +112,7 @@ export class Crypto implements INodeType {
 				displayOptions: {
 					show: {
 						action: [
-							'hash'
+							'hash',
 						],
 					},
 				},
@@ -120,7 +124,7 @@ export class Crypto implements INodeType {
 				displayOptions: {
 					show: {
 						action:[
-							'hash'
+							'hash',
 						],
 					},
 				},
@@ -144,7 +148,7 @@ export class Crypto implements INodeType {
 				displayOptions: {
 					show: {
 						action:[
-							'hmac'
+							'hmac',
 						],
 					},
 				},
@@ -157,6 +161,10 @@ export class Crypto implements INodeType {
 					{
 						name: 'SHA256',
 						value: 'SHA256',
+					},
+					{
+						name: 'SHA384',
+						value: 'SHA384',
 					},
 					{
 						name: 'SHA512',
@@ -173,7 +181,7 @@ export class Crypto implements INodeType {
 				displayOptions: {
 					show: {
 						action:[
-							'hmac'
+							'hmac',
 						],
 					},
 				},
@@ -191,7 +199,7 @@ export class Crypto implements INodeType {
 				displayOptions: {
 					show: {
 						action: [
-							'hmac'
+							'hmac',
 						],
 					},
 				},
@@ -203,7 +211,7 @@ export class Crypto implements INodeType {
 				displayOptions: {
 					show: {
 						action:[
-							'hmac'
+							'hmac',
 						],
 					},
 				},
@@ -241,7 +249,7 @@ export class Crypto implements INodeType {
 				displayOptions: {
 					show: {
 						action:[
-							'sign'
+							'sign',
 						],
 					},
 				},
@@ -259,7 +267,7 @@ export class Crypto implements INodeType {
 				displayOptions: {
 					show: {
 						action: [
-							'sign'
+							'sign',
 						],
 					},
 				},
@@ -312,7 +320,7 @@ export class Crypto implements INodeType {
 				displayOptions: {
 					show: {
 						action:[
-							'sign'
+							'sign',
 						],
 					},
 				},
@@ -344,7 +352,7 @@ export class Crypto implements INodeType {
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

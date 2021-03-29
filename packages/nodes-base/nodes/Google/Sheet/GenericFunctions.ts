@@ -26,7 +26,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		body,
 		qs,
 		uri: uri || `https://sheets.googleapis.com${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		if (Object.keys(headers).length !== 0) {
@@ -94,7 +94,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 	const signature = jwt.sign(
 		{
 			'iss': credentials.email as string,
-			'sub': credentials.email as string,
+			'sub': credentials.delegatedEmail || credentials.email as string,
 			'scope': scopes.join(' '),
 			'aud': `https://oauth2.googleapis.com/token`,
 			'iat': now,
@@ -108,7 +108,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 				'typ': 'JWT',
 				'alg': 'RS256',
 			},
-		}
+		},
 	);
 
 	const options: OptionsWithUri = {
@@ -121,7 +121,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 			assertion: signature,
 		},
 		uri: 'https://oauth2.googleapis.com/token',
-		json: true
+		json: true,
 	};
 
 	//@ts-ignore

@@ -38,7 +38,7 @@ export async function disqusApiRequest(
 		method,
 		body,
 		uri: `https://disqus.com/api/3.0/${uri}?${queryStringElements.join('&')}`,
-		json: true
+		json: true,
 	};
 
 	options = Object.assign({}, options, option);

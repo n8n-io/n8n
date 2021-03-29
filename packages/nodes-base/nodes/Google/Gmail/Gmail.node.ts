@@ -52,6 +52,7 @@ export interface IEmail {
 	reference?: string;
 	subject: string;
 	body: string;
+	htmlBody?: string;
 	attachments?: IDataObject[];
 }
 
@@ -65,24 +66,58 @@ export class Gmail implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gmail',
 		name: 'gmail',
-		icon: 'file:gmail.png',
+		icon: 'file:gmail.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the Gmail API',
 		defaults: {
 			name: 'Gmail',
-			color: '#d93025',
+			color: '#4285F4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
+				name: 'googleApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'serviceAccount',
+						],
+					},
+				},
+			},
+			{
 				name: 'gmailOAuth2',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'oAuth2',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -136,26 +171,26 @@ export class Gmail implements INodeType {
 			// Get all the labels to display them to user so that he can
 			// select them easily
 			async getLabels(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const labels = await googleApiRequestAllItems.call(
 					this,
 					'labels',
 					'GET',
-					'/gmail/v1/users/me/labels'
+					'/gmail/v1/users/me/labels',
 				);
 				for (const label of labels) {
 					const labelName = label.name;
 					const labelId = label.id;
 					returnData.push({
 						name: labelName,
-						value: labelId
+						value: labelId,
 					});
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -216,7 +251,7 @@ export class Gmail implements INodeType {
 						'GET',
 						`/gmail/v1/users/me/labels`,
 						{},
-						qs
+						qs,
 					);
 
 					responseData = responseData.labels;
@@ -325,11 +360,15 @@ export class Gmail implements INodeType {
 						attachments: attachmentsList,
 					};
 
+					if (this.getNodeParameter('includeHtml', i, false) as boolean === true) {
+						email.htmlBody = this.getNodeParameter('htmlMessage', i) as string;
+					}
+
 					endpoint = '/gmail/v1/users/me/messages/send';
 					method = 'POST';
 
 					body = {
-						raw: encodeEmail(email),
+						raw: await encodeEmail(email),
 					};
 
 					responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
@@ -420,6 +459,10 @@ export class Gmail implements INodeType {
 						attachments: attachmentsList,
 					};
 
+					if (this.getNodeParameter('includeHtml', i, false) as boolean === true) {
+						email.htmlBody = this.getNodeParameter('htmlMessage', i) as string;
+					}
+
 					endpoint = '/gmail/v1/users/me/messages/send';
 					method = 'POST';
 
@@ -427,7 +470,7 @@ export class Gmail implements INodeType {
 					email.reference = id;
 
 					body = {
-						raw: encodeEmail(email),
+						raw: await encodeEmail(email),
 						threadId: this.getNodeParameter('threadId', i) as string,
 					};
 
@@ -486,7 +529,7 @@ export class Gmail implements INodeType {
 							'GET',
 							`/gmail/v1/users/me/messages`,
 							{},
-							qs
+							qs,
 						);
 					} else {
 						qs.maxResults = this.getNodeParameter('limit', i) as number;
@@ -495,7 +538,7 @@ export class Gmail implements INodeType {
 							'GET',
 							`/gmail/v1/users/me/messages`,
 							{},
-							qs
+							qs,
 						);
 						responseData = responseData.messages;
 					}
@@ -520,7 +563,7 @@ export class Gmail implements INodeType {
 								'GET',
 								`/gmail/v1/users/me/messages/${responseData[i].id}`,
 								body,
-								qs
+								qs,
 							);
 
 							if (format === 'resolved') {
@@ -620,12 +663,16 @@ export class Gmail implements INodeType {
 						attachments: attachmentsList,
 					};
 
+					if (this.getNodeParameter('includeHtml', i, false) as boolean === true) {
+						email.htmlBody = this.getNodeParameter('htmlMessage', i) as string;
+					}
+
 					endpoint = '/gmail/v1/users/me/drafts';
 					method = 'POST';
 
 					body = {
 						message: {
-							raw: encodeEmail(email),
+							raw: await encodeEmail(email),
 						},
 					};
 
@@ -692,7 +739,7 @@ export class Gmail implements INodeType {
 							'GET',
 							`/gmail/v1/users/me/drafts`,
 							{},
-							qs
+							qs,
 						);
 					} else {
 						qs.maxResults = this.getNodeParameter('limit', i) as number;
@@ -701,7 +748,7 @@ export class Gmail implements INodeType {
 							'GET',
 							`/gmail/v1/users/me/drafts`,
 							{},
-							qs
+							qs,
 						);
 						responseData = responseData.drafts;
 					}
@@ -726,7 +773,7 @@ export class Gmail implements INodeType {
 								'GET',
 								`/gmail/v1/users/me/drafts/${responseData[i].id}`,
 								body,
-								qs
+								qs,
 							);
 
 							if (format === 'resolved') {

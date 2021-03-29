@@ -39,7 +39,7 @@ export class Vero implements INodeType {
 			{
 				name: 'veroApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{

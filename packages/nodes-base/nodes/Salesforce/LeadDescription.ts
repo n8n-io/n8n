@@ -48,7 +48,7 @@ export const leadOperations = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: `Returns an overview of Lead's metadata.`,
+				description: `Returns an overview of Lead's metadata`,
 			},
 			{
 				name: 'Update',
@@ -63,9 +63,9 @@ export const leadOperations = [
 
 export const leadFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                lead:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                lead:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Company',
 		name: 'company',
@@ -230,6 +230,13 @@ export const leadFields = [
 				description: 'Source from which the lead was obtained.',
 			},
 			{
+				displayName: 'Mobile Phone',
+				name: 'mobilePhone',
+				type: 'string',
+				default: '',
+				description: `Contact’s mobile phone number.`,
+			},
+			{
 				displayName: 'Number Of Employees',
 				name: 'numberOfEmployees',
 				type: 'number',
@@ -299,7 +306,7 @@ export const leadFields = [
 				name: 'street',
 				type: 'string',
 				default: '',
-				description: 'Street number and name for the address of the lead',
+				description: 'Street number and name for the address of the lead.',
 			},
 			{
 				displayName: 'Title',
@@ -315,11 +322,12 @@ export const leadFields = [
 				default: '',
 				description: 'Website for the lead.',
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 lead:update                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 lead:update                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Lead ID',
 		name: 'leadId',
@@ -333,10 +341,10 @@ export const leadFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
-		description: 'Id of Lead that needs to be fetched',
+		description: 'ID of Lead that needs to be fetched.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -480,6 +488,13 @@ export const leadFields = [
 				description: 'Source from which the lead was obtained.',
 			},
 			{
+				displayName: 'Mobile Phone',
+				name: 'mobilePhone',
+				type: 'string',
+				default: '',
+				description: `Contact’s mobile phone number.`,
+			},
+			{
 				displayName: 'Number Of Employees',
 				name: 'numberOfEmployees',
 				type: 'number',
@@ -549,7 +564,7 @@ export const leadFields = [
 				name: 'street',
 				type: 'string',
 				default: '',
-				description: 'Street number and name for the address of the lead',
+				description: 'Street number and name for the address of the lead.',
 			},
 			{
 				displayName: 'Title',
@@ -565,12 +580,12 @@ export const leadFields = [
 				default: '',
 				description: 'Website for the lead.',
 			},
-		]
+		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                  lead:get                                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  lead:get                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Lead ID',
 		name: 'leadId',
@@ -584,14 +599,15 @@ export const leadFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
-		description: 'Id of Lead that needs to be fetched',
+		description: 'ID of Lead that needs to be fetched.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  lead:delete                               */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  lead:delete                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Lead ID',
 		name: 'leadId',
@@ -605,14 +621,15 @@ export const leadFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
-		description: 'Id of Lead that needs to be fetched',
+		description: 'ID of Lead that needs to be fetched.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 lead:getAll                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 lead:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -672,17 +689,81 @@ export const leadFields = [
 		},
 		options: [
 			{
+				displayName: 'Conditions',
+				name: 'conditionsUi',
+				placeholder: 'Add Condition',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'The condition to set.',
+				default: {},
+				options: [
+					{
+						name: 'conditionValues',
+						displayName: 'Condition',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getLeadFields',
+								},
+								default: '',
+								description: 'For date, number, or boolean, please use expressions.',
+							},
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								options: [
+									{
+										name: '=',
+										value: 'equal',
+									},
+									{
+										name: '>',
+										value: '>',
+									},
+									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '>=',
+										value: '>=',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
+								],
+								default: 'equal',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
 				default: '',
 				description: 'Fields to include separated by ,',
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                            contact:addToCampaign                           */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                            contact:addToCampaign                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Lead ID',
 		name: 'leadId',
@@ -696,10 +777,10 @@ export const leadFields = [
 				],
 				operation: [
 					'addToCampaign',
-				]
+				],
 			},
 		},
-		description: 'Id of contact that needs to be fetched',
+		description: 'ID of contact that needs to be fetched.',
 	},
 	{
 		displayName: 'Campaign',
@@ -717,10 +798,10 @@ export const leadFields = [
 				],
 				operation: [
 					'addToCampaign',
-				]
+				],
 			},
 		},
-		description: 'Id of the campaign that needs to be fetched',
+		description: 'ID of the campaign that needs to be fetched.',
 	},
 	{
 		displayName: 'Options',
@@ -744,13 +825,14 @@ export const leadFields = [
 				name: 'status',
 				type: 'string',
 				default: '',
-				description: 'Controls the HasResponded flag on this object',
+				description: 'Controls the HasResponded flag on this object.',
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                             lead:addNote                                   */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                             lead:addNote                                   */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Lead ID',
 		name: 'leadId',
@@ -764,10 +846,10 @@ export const leadFields = [
 				],
 				operation: [
 					'addNote',
-				]
+				],
 			},
 		},
-		description: 'Id of lead that needs to be fetched',
+		description: 'ID of lead that needs to be fetched.',
 	},
 	{
 		displayName: 'Title',
@@ -782,7 +864,7 @@ export const leadFields = [
 				],
 				operation: [
 					'addNote',
-				]
+				],
 			},
 		},
 		description: 'Title of the note.',
@@ -831,6 +913,6 @@ export const leadFields = [
 				default: '',
 				description: 'ID of the user who owns the note.',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

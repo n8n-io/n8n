@@ -1,4 +1,6 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -31,7 +33,7 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		body,
 		qs: query,
 		uri: uri || `https://api.spotify.com/v1${endpoint}`,
-		json: true
+		json: true,
 	};
 
 	try {

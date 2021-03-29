@@ -34,7 +34,7 @@ export class ReadPdf implements INodeType {
 				required: true,
 				description: 'Name of the binary property from which to<br />read the PDF file.',
 			},
-		]
+		],
 	};
 
 
@@ -52,7 +52,7 @@ export class ReadPdf implements INodeType {
 
 		return {
 			binary: item.binary,
-			json: await pdf(binaryData)
+			json: await pdf(binaryData),
 		};
 	}
 }

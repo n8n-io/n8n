@@ -21,27 +21,27 @@ export const listOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new list'
+				description: 'Create a new list',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a list'
+				description: 'Delete a list',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get the data of a list'
+				description: 'Get the data of a list',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all board lists'
+				description: 'Get all board lists',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.'
-	}
+		description: 'The operation to perform.',
+	},
 ] as INodeProperties[];
 
 export const listFields = [
@@ -67,7 +67,7 @@ export const listFields = [
 				],
 			},
 		},
-		description: 'The ID of the board the list should be created in'
+		description: 'The ID of the board the list should be created in',
 	},
 	{
 		displayName: 'Title',
@@ -86,7 +86,7 @@ export const listFields = [
 				],
 			},
 		},
-		description: 'The title of the list.'
+		description: 'The title of the list.',
 	},
 
 	// ----------------------------------
@@ -111,7 +111,7 @@ export const listFields = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to.'
+		description: 'The ID of the board that list belongs to.',
 	},
 	{
 		displayName: 'List ID',
@@ -135,7 +135,7 @@ export const listFields = [
 				],
 			},
 		},
-		description: 'The ID of the list to delete.'
+		description: 'The ID of the list to delete.',
 	},
 
 	// ----------------------------------
@@ -160,7 +160,7 @@ export const listFields = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to.'
+		description: 'The ID of the board that list belongs to.',
 	},
 	{
 		displayName: 'List ID',
@@ -178,7 +178,7 @@ export const listFields = [
 				],
 			},
 		},
-		description: 'The ID of the list to get.'
+		description: 'The ID of the list to get.',
 	},
 
 	// ----------------------------------
@@ -203,7 +203,7 @@ export const listFields = [
 				],
 			},
 		},
-		description: 'ID of the board where the lists are in.'
+		description: 'ID of the board where the lists are in.',
 	},
 	{
 		displayName: 'Return All',

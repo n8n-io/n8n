@@ -42,7 +42,7 @@ export class JotFormTrigger implements INodeType {
 			{
 				name: 'jotFormApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -59,7 +59,7 @@ export class JotFormTrigger implements INodeType {
 				type: 'options',
 				required: true,
 				typeOptions: {
-					loadOptionsMethod: 'getForms'
+					loadOptionsMethod: 'getForms',
 				},
 				default: '',
 				description: '',
@@ -167,7 +167,7 @@ export class JotFormTrigger implements INodeType {
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
 		const onlyAnswers = this.getNodeParameter('onlyAnswers', false) as boolean;
 
-		const form = new formidable.IncomingForm();
+		const form = new formidable.IncomingForm({});
 
 		return new Promise((resolve, reject) => {
 

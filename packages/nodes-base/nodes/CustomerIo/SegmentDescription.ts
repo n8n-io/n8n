@@ -46,7 +46,7 @@ export const segmentFields = [
 				operation: [
 					'add',
 					'remove',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier of the segment.',
@@ -65,7 +65,7 @@ export const segmentFields = [
 				operation: [
 					'add',
 					'remove',
-				]
+				],
 			},
 		},
 		description: 'A list of customer ids to add to the segment.',

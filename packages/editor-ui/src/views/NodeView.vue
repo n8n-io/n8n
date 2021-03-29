@@ -3,11 +3,15 @@
 		<div
 			class="node-view-wrapper"
 			:class="workflowClasses"
+			@touchstart="mouseDown"
+			@touchend="mouseUp"
+			@touchmove="mouseMoveNodeWorkflow"
 			@mousedown="mouseDown"
+			v-touch:tap="touchTap"
 			@mouseup="mouseUp"
 			@wheel="wheelScroll"
 			>
-			<div class="node-view-background" :style="backgroundStyle"></div>
+			<div id="node-view-background" class="node-view-background" :style="backgroundStyle"></div>
 			<div id="node-view" class="node-view" :style="workflowStyle">
 				<node
 				v-for="nodeData in nodes"
@@ -110,6 +114,7 @@ import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
 import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { mouseSelect } from '@/components/mixins/mouseSelect';
 import { moveNodeWorkflow } from '@/components/mixins/moveNodeWorkflow';
@@ -127,9 +132,7 @@ import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
 import mixins from 'vue-typed-mixins';
-
-import { v4 as uuidv4 } from 'uuid';
-
+import { v4 as uuidv4} from 'uuid';
 import { debounce } from 'lodash';
 import axios from 'axios';
 import {
@@ -144,6 +147,7 @@ import {
 	NodeInputConnections,
 	NodeHelpers,
 	Workflow,
+	IRun,
 } from 'n8n-workflow';
 import {
 	IConnectionsUi,
@@ -158,10 +162,12 @@ import {
 	IUpdateInformation,
 	IWorkflowDataUpdate,
 	XYPositon,
+	IPushDataExecutionFinished,
 } from '../Interface';
 
 export default mixins(
 	copyPaste,
+	externalHooks,
 	genericHelpers,
 	mouseSelect,
 	moveNodeWorkflow,
@@ -191,6 +197,41 @@ export default mixins(
 				// When a node gets set as active deactivate the create-menu
 				this.createNodeActive = false;
 			},
+			nodes: {
+				async handler (val, oldVal) {
+					// Load a workflow
+					let workflowId = null as string | null;
+					if (this.$route && this.$route.params.name) {
+						workflowId = this.$route.params.name;
+					}
+				},
+				deep: true,
+			},
+			connections: {
+				async handler (val, oldVal) {
+					// Load a workflow
+					let workflowId = null as string | null;
+					if (this.$route && this.$route.params.name) {
+						workflowId = this.$route.params.name;
+					}
+				},
+				deep: true,
+			},
+		},
+		async beforeRouteLeave(to, from, next) {
+			const result = this.$store.getters.getStateIsDirty;
+			if(result) {
+				const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+				if (importConfirm === false) {
+					next(false);
+				} else {
+					// Prevent other popups from displaying
+					this.$store.commit('setStateDirty', false);
+					next();
+				}
+			} else {
+				next();
+			}
 		},
 		computed: {
 			activeNode (): INodeUi | null {
@@ -307,7 +348,7 @@ export default mixins(
 					throw new Error(`Execution with id "${executionId}" could not be found!`);
 				}
 
-				this.$store.commit('setWorkflowName', data.workflowData.name);
+				this.$store.commit('setWorkflowName', {newName: data.workflowData.name, setStateDirty: false});
 				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
 
 				this.$store.commit('setWorkflowExecutionData', data);
@@ -331,19 +372,31 @@ export default mixins(
 
 				this.$store.commit('setActive', data.active || false);
 				this.$store.commit('setWorkflowId', workflowId);
-				this.$store.commit('setWorkflowName', data.name);
+				this.$store.commit('setWorkflowName', {newName: data.name, setStateDirty: false});
 				this.$store.commit('setWorkflowSettings', data.settings || {});
 
 				await this.addNodes(data.nodes, data.connections);
-			},
-			mouseDown (e: MouseEvent) {
-				// Save the location of the mouse click
-				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
-				this.lastClickPosition[0] = e.pageX - offsetPosition[0];
-				this.lastClickPosition[1] = e.pageY - offsetPosition[1];
 
-				this.mouseDownMouseSelect(e);
-				this.mouseDownMoveWorkflow(e);
+				this.$store.commit('setStateDirty', false);
+
+				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
+
+				return data;
+			},
+			touchTap (e: MouseEvent | TouchEvent) {
+				if (this.isTouchDevice) {
+					this.mouseDown(e);
+				}
+			},
+			mouseDown (e: MouseEvent | TouchEvent) {
+				// Save the location of the mouse click
+				const position = this.getMousePosition(e);
+				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
+				this.lastClickPosition[0] = position.x - offsetPosition[0];
+				this.lastClickPosition[1] = position.y - offsetPosition[1];
+
+				this.mouseDownMouseSelect(e as MouseEvent);
+				this.mouseDownMoveWorkflow(e as MouseEvent);
 
 				// Hide the node-creator
 				this.createNodeActive = false;
@@ -353,6 +406,17 @@ export default mixins(
 				this.mouseUpMoveWorkflow(e);
 			},
 			wheelScroll (e: WheelEvent) {
+				//* Control + scroll zoom
+				if (e.ctrlKey) {
+					if (e.deltaY > 0) {
+						this.setZoom('out');
+					} else {
+						this.setZoom('in');
+					}
+
+					e.preventDefault();
+					return;
+				}
 				this.wheelMoveWorkflow(e);
 			},
 			keyUp (e: KeyboardEvent) {
@@ -435,6 +499,8 @@ export default mixins(
 					// Save workflow
 					e.stopPropagation();
 					e.preventDefault();
+
+					this.$store.commit('setStateDirty', false);
 
 					this.callDebounced('saveCurrentWorkflow', 1000);
 				} else if (e.key === 'Enter') {
@@ -664,7 +730,34 @@ export default mixins(
 						type: 'success',
 					});
 				} catch (error) {
-					this.$showError(error, 'Problem stopping execution', 'There was a problem stopping the execuction:');
+					// Execution stop might fail when the execution has already finished. Let's treat this here.
+					const execution = await this.restApi().getExecution(executionId) as IExecutionResponse;
+					if (execution.finished) {
+						const executedData = {
+							data: execution.data,
+							finished: execution.finished,
+							mode: execution.mode,
+							startedAt: execution.startedAt,
+							stoppedAt: execution.stoppedAt,
+						} as IRun;
+						const pushData = {
+							data: executedData,
+							executionId,
+							retryOf: execution.retryOf,
+						} as IPushDataExecutionFinished;
+						this.$store.commit('finishActiveExecution', pushData);
+						this.$titleSet(execution.workflowData.name, 'IDLE');
+						this.$store.commit('setExecutingNode', null);
+						this.$store.commit('setWorkflowExecutionData', executedData);
+						this.$store.commit('removeActiveAction', 'workflowRunning');
+						this.$showMessage({
+							title: 'Workflow finished executing',
+							message: 'Unable to stop operation in time. Workflow finished executing already.',
+							type: 'success',
+						});
+					} else {
+						this.$showError(error, 'Problem stopping execution', 'There was a problem stopping the execuction:');
+					}
 				}
 				this.stopExecutionInProgress = false;
 			},
@@ -868,7 +961,7 @@ export default mixins(
 					return originalName;
 				}
 
-				const nameMatch = originalName.match(/(.*[a-zA-Z])(\d*)/);
+				const nameMatch = originalName.match(/(.*\D+)(\d*)/);
 				let ignore, baseName, nameIndex, uniqueName;
 				let index = 1;
 
@@ -956,6 +1049,8 @@ export default mixins(
 				}
 
 				await this.addNodes([newNodeData]);
+
+				this.$store.commit('setStateDirty', true);
 
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
@@ -1217,7 +1312,6 @@ export default mixins(
 					if (![null, undefined].includes(inputNameOverlay)) {
 						inputNameOverlay.setVisible(false);
 					}
-
 					this.$store.commit('addConnection', {
 						connection: [
 							{
@@ -1231,6 +1325,7 @@ export default mixins(
 								index: targetInfo.index,
 							},
 						],
+						setStateDirty: true,
 					});
 				});
 
@@ -1307,11 +1402,14 @@ export default mixins(
 				];
 
 				await this.addNodes(defaultNodes);
+				this.$store.commit('setStateDirty', false);
+
 			},
 			async initView (): Promise<void> {
 				if (this.$route.params.action === 'workflowSave') {
 					// In case the workflow got saved we do not have to run init
 					// as only the route changed but all the needed data is already loaded
+					this.$store.commit('setStateDirty', false);
 					return Promise.resolve();
 				}
 
@@ -1320,12 +1418,20 @@ export default mixins(
 					const executionId = this.$route.params.id;
 					await this.openExecution(executionId);
 				} else {
+
+					const result = this.$store.getters.getStateIsDirty;
+					if(result) {
+						const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+						if (importConfirm === false) {
+							return Promise.resolve();
+						}
+					}
+
 					// Load a workflow
 					let workflowId = null as string | null;
 					if (this.$route.params.name) {
 						workflowId = this.$route.params.name;
 					}
-
 					if (workflowId !== null) {
 						const workflow = await this.restApi().getWorkflow(workflowId);
 						this.$titleSet(workflow.name, 'IDLE');
@@ -1339,6 +1445,17 @@ export default mixins(
 
 				document.addEventListener('keydown', this.keyDown);
 				document.addEventListener('keyup', this.keyUp);
+
+				window.addEventListener("beforeunload",  (e) => {
+					if(this.$store.getters.getStateIsDirty === true) {
+						const confirmationMessage = 'It looks like you have been editing something. '
+								+ 'If you leave before saving, your changes will be lost.';
+						(e || window.event).returnValue = confirmationMessage; //Gecko + IE
+						return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
+					} else {
+						return;
+					}
+				});
 			},
 			__addConnection (connection: [IConnection, IConnection], addVisualConnection = false) {
 				if (addVisualConnection === true) {
@@ -1354,9 +1471,10 @@ export default mixins(
 						detachable: !this.isReadOnly,
 					});
 				} else {
+					const connectionProperties = {connection, setStateDirty: false};
 					// When nodes get connected it gets saved automatically to the storage
 					// so if we do not connect we have to save the connection manually
-					this.$store.commit('addConnection', { connection });
+					this.$store.commit('addConnection', connectionProperties);
 				}
 			},
 			__removeConnection (connection: [IConnection, IConnection], removeVisualConnection = false) {
@@ -1427,6 +1545,8 @@ export default mixins(
 				}
 
 				await this.addNodes([newNodeData]);
+
+				this.$store.commit('setStateDirty', true);
 
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
@@ -1546,7 +1666,7 @@ export default mixins(
 					this.instance.deleteEveryEndpoint();
 				}
 				this.$store.commit('removeAllConnections');
-				this.$store.commit('removeAllNodes');
+				this.$store.commit('removeAllNodes', {setStateDirty: true});
 
 				// Wait a tick that the old nodes had time to get removed
 				await Vue.nextTick();
@@ -1562,6 +1682,11 @@ export default mixins(
 				if (!nodes || !nodes.length) {
 					return;
 				}
+
+				// Before proceeding we must check if all nodes contain the `properties` attribute.
+				// Nodes are loaded without this information so we must make sure that all nodes
+				// being added have this information.
+				await this.loadNodesProperties(nodes.map(node => node.type));
 
 				// Add the node to the node-list
 				let nodeType: INodeTypeDescription | null;
@@ -1673,6 +1798,9 @@ export default mixins(
 				let oldName: string;
 				let newName: string;
 				const createNodes: INode[] = [];
+
+				await this.loadNodesProperties(data.nodes.map(node => node.type));
+
 				data.nodes.forEach(node => {
 					if (nodeTypesCount[node.type] !== undefined) {
 						if (nodeTypesCount[node.type].exist >= nodeTypesCount[node.type].max) {
@@ -1753,6 +1881,8 @@ export default mixins(
 
 				// Add the nodes with the changed node names, expressions and connections
 				await this.addNodes(Object.values(tempWorkflow.nodes), tempWorkflow.connectionsBySourceNode);
+
+				this.$store.commit('setStateDirty', true);
 
 				return {
 					nodes: Object.values(tempWorkflow.nodes),
@@ -1840,8 +1970,8 @@ export default mixins(
 						});
 				}
 
-				this.$store.commit('removeAllConnections');
-				this.$store.commit('removeAllNodes');
+				this.$store.commit('removeAllConnections', {setStateDirty: false});
+				this.$store.commit('removeAllNodes', {setStateDirty: false});
 
 				// Reset workflow execution data
 				this.$store.commit('setWorkflowExecutionData', null);
@@ -1850,7 +1980,7 @@ export default mixins(
 
 				this.$store.commit('setActive', false);
 				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
-				this.$store.commit('setWorkflowName', '');
+				this.$store.commit('setWorkflowName', {newName: '', setStateDirty: false});
 				this.$store.commit('setWorkflowSettings', {});
 
 				this.$store.commit('setActiveExecutionId', null);
@@ -1861,7 +1991,7 @@ export default mixins(
 				this.$store.commit('resetNodeIndex');
 				this.$store.commit('resetSelectedNodes');
 
-				this.$store.commit('setNodeViewOffsetPosition', [0, 0]);
+				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0], setStateDirty: false});
 
 				return Promise.resolve();
 			},
@@ -1883,6 +2013,7 @@ export default mixins(
 				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
 				this.$store.commit('setVersionCli', settings.versionCli);
 				this.$store.commit('setOauthCallbackUrls', settings.oauthCallbackUrls);
+				this.$store.commit('setN8nMetadata', settings.n8nMetadata || {});
 			},
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();
@@ -1896,17 +2027,28 @@ export default mixins(
 				const credentials = await this.restApi().getAllCredentials();
 				this.$store.commit('setCredentials', credentials);
 			},
+			async loadNodesProperties(nodeNames: string[]): Promise<void> {
+				const allNodes = this.$store.getters.allNodeTypes;
+				const nodesToBeFetched = allNodes.filter((node: INodeTypeDescription) => nodeNames.includes(node.name) && !node.hasOwnProperty('properties')).map((node: INodeTypeDescription) => node.name) as string[];
+				if (nodesToBeFetched.length > 0) {
+					// Only call API if node information is actually missing
+					this.startLoading();
+					const nodeInfo = await this.restApi().getNodesInformation(nodesToBeFetched);
+					this.$store.commit('updateNodeTypes', nodeInfo);
+					this.stopLoading();
+				}
+			},
 		},
 
 		async mounted () {
 			this.$root.$on('importWorkflowData', async (data: IDataObject) => {
-				await this.importWorkflowData(data.data as IWorkflowDataUpdate);
+				const resData = await this.importWorkflowData(data.data as IWorkflowDataUpdate);
 			});
 
 			this.$root.$on('importWorkflowUrl', async (data: IDataObject) => {
 				const workflowData = await this.getWorkflowDataFromUrl(data.url as string);
 				if (workflowData !== undefined) {
-					await this.importWorkflowData(workflowData);
+					const resData = await this.importWorkflowData(workflowData);
 				}
 			});
 
@@ -1936,6 +2078,8 @@ export default mixins(
 				}
 				this.stopLoading();
 			});
+
+			this.$externalHooks().run('nodeView.mount');
 		},
 
 		destroyed () {
@@ -1995,6 +2139,7 @@ export default mixins(
 	position: relative;
 	width: 100%;
 	height: 100%;
+	transform-origin: 0 0;
 }
 
 .node-view-background {

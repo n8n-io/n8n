@@ -38,7 +38,7 @@ export const taskOperations = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: `Returns an overview of task's metadata.`,
+				description: `Returns an overview of task's metadata`,
 			},
 			{
 				name: 'Update',
@@ -53,9 +53,9 @@ export const taskOperations = [
 
 export const taskFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                task:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                task:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Status',
 		name: 'status',
@@ -224,7 +224,7 @@ export const taskFields = [
 				type: 'options',
 				default: '',
 				typeOptions: {
-					loadOptionsMethod: 'getTaskRecurrenceTypes'
+					loadOptionsMethod: 'getTaskRecurrenceTypes',
 				},
 				description: 'Recurrence Type of the task.',
 			},
@@ -278,52 +278,52 @@ export const taskFields = [
 				options: [
 					{
 						name: 'January',
-						value: 'January'
+						value: 'January',
 					},
 					{
 						name: 'February',
-						value: 'February'
+						value: 'February',
 					},
 					{
 						name: 'March',
-						value: 'March'
+						value: 'March',
 					},
 					{
 						name: 'April',
-						value: 'April'
+						value: 'April',
 					},
 					{
 						name: 'May',
-						value: 'May'
+						value: 'May',
 					},
 					{
 						name: 'June',
-						value: 'June'
+						value: 'June',
 					},
 					{
 						name: 'July',
-						value: 'July'
+						value: 'July',
 					},
 					{
 						name: 'August',
-						value: 'August'
+						value: 'August',
 					},
 					{
 						name: 'September',
-						value: 'September'
+						value: 'September',
 					},
 					{
 						name: 'October',
-						value: 'October'
+						value: 'October',
 					},
 					{
 						name: 'November',
-						value: 'November'
+						value: 'November',
 					},
 					{
 						name: 'December',
-						value: 'December'
-					}
+						value: 'December',
+					},
 				],
 				default: '',
 				description: 'The month of the year in which the task repeats.',
@@ -336,16 +336,16 @@ export const taskFields = [
 				options: [
 					{
 						name: 'After due date',
-						value: 'RecurrenceRegenerateAfterDueDate'
+						value: 'RecurrenceRegenerateAfterDueDate',
 					},
 					{
 						name: 'After date completed',
-						value: 'RecurrenceRegenerateAfterToday'
+						value: 'RecurrenceRegenerateAfterToday',
 					},
 					{
 						name: '(Task Closed)',
-						value: 'RecurrenceRegenerated'
-					}
+						value: 'RecurrenceRegenerated',
+					},
 				],
 				description: `Represents what triggers a repeating task to repeat.<br/>
 				 Add this field to a page layout together with the RecurrenceInterval field,<br/>
@@ -405,11 +405,12 @@ export const taskFields = [
 				description: `The WhoId represents a human such as a lead or a contact.<br/>
 				WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.`,
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 task:update                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:update                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
@@ -423,10 +424,10 @@ export const taskFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
-		description: 'Id of task that needs to be fetched',
+		description: 'ID of task that needs to be fetched.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -639,52 +640,52 @@ export const taskFields = [
 				options: [
 					{
 						name: 'January',
-						value: 'January'
+						value: 'January',
 					},
 					{
 						name: 'February',
-						value: 'February'
+						value: 'February',
 					},
 					{
 						name: 'March',
-						value: 'March'
+						value: 'March',
 					},
 					{
 						name: 'April',
-						value: 'April'
+						value: 'April',
 					},
 					{
 						name: 'May',
-						value: 'May'
+						value: 'May',
 					},
 					{
 						name: 'June',
-						value: 'June'
+						value: 'June',
 					},
 					{
 						name: 'July',
-						value: 'July'
+						value: 'July',
 					},
 					{
 						name: 'August',
-						value: 'August'
+						value: 'August',
 					},
 					{
 						name: 'September',
-						value: 'September'
+						value: 'September',
 					},
 					{
 						name: 'October',
-						value: 'October'
+						value: 'October',
 					},
 					{
 						name: 'November',
-						value: 'November'
+						value: 'November',
 					},
 					{
 						name: 'December',
-						value: 'December'
-					}
+						value: 'December',
+					},
 				],
 				default: '',
 				description: 'The month of the year in which the task repeats.',
@@ -705,16 +706,16 @@ export const taskFields = [
 				options: [
 					{
 						name: 'After due date',
-						value: 'RecurrenceRegenerateAfterDueDate'
+						value: 'RecurrenceRegenerateAfterDueDate',
 					},
 					{
 						name: 'After date completed',
-						value: 'RecurrenceRegenerateAfterToday'
+						value: 'RecurrenceRegenerateAfterToday',
 					},
 					{
 						name: '(Task Closed)',
-						value: 'RecurrenceRegenerated'
-					}
+						value: 'RecurrenceRegenerated',
+					},
 				],
 				description: `Represents what triggers a repeating task to repeat.<br/>
 				 Add this field to a page layout together with the RecurrenceInterval field,<br/>
@@ -727,7 +728,7 @@ export const taskFields = [
 				type: 'options',
 				default: '',
 				typeOptions: {
-					loadOptionsMethod: 'getTaskRecurrenceTypes'
+					loadOptionsMethod: 'getTaskRecurrenceTypes',
 				},
 				description: 'Website for the task.',
 			},
@@ -766,12 +767,12 @@ export const taskFields = [
 				description: `The WhoId represents a human such as a lead or a contact.<br/>
 				WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.`,
 			},
-		]
+		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                  task:get                                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  task:get                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
@@ -785,14 +786,15 @@ export const taskFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
-		description: 'Id of task that needs to be fetched',
+		description: 'ID of task that needs to be fetched.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  task:delete                               */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  task:delete                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
@@ -806,14 +808,15 @@ export const taskFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
-		description: 'Id of task that needs to be fetched',
+		description: 'ID of task that needs to be fetched.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 task:getAll                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -873,12 +876,75 @@ export const taskFields = [
 		},
 		options: [
 			{
+				displayName: 'Conditions',
+				name: 'conditionsUi',
+				placeholder: 'Add Condition',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'The condition to set.',
+				default: {},
+				options: [
+					{
+						name: 'conditionValues',
+						displayName: 'Condition',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getTaskFields',
+								},
+								default: '',
+								description: 'For date, number, or boolean, please use expressions.',
+							},
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								options: [
+									{
+										name: '=',
+										value: 'equal',
+									},
+									{
+										name: '>',
+										value: '>',
+									},
+									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '>=',
+										value: '>=',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
+								],
+								default: 'equal',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
 				default: '',
 				description: 'Fields to include separated by ,',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

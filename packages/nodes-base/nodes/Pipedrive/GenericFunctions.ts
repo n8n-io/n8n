@@ -75,7 +75,6 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 			}
 
 			query.api_token = credentials.apiToken;
-
 			//@ts-ignore
 			responseData = await this.helpers.request(options);
 
@@ -158,7 +157,7 @@ export async function pipedriveApiRequestAllItems(this: IHookFunctions | IExecut
 	);
 
 	return {
-		data: returnData
+		data: returnData,
 	};
 }
 

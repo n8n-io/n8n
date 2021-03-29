@@ -41,7 +41,7 @@ export class Discord implements INodeType {
 				},
 				default: '',
 				description: 'The text to send.',
-			}
+			},
 		],
 	};
 
@@ -67,9 +67,9 @@ export class Discord implements INodeType {
 				body,
 				uri: `${webhookUri}`,
 				headers: {
-					'content-type': 'application/json; charset=utf-8'
+					'content-type': 'application/json; charset=utf-8',
 				},
-				json: true
+				json: true,
 			};
 
 			let maxTries = 5;

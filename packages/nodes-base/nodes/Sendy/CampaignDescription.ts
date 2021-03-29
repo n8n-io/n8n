@@ -213,7 +213,7 @@ export const campaignFields = [
 				name: 'plainText',
 				type: 'string',
 				default: '',
-				description: `The 'Plain text version' of your campaign.`
+				description: `The 'Plain text version' of your campaign.`,
 			},
 			{
 				displayName: 'Querystring',

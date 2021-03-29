@@ -1,10 +1,10 @@
 import {
 	INodeProperties,
-} from "n8n-workflow";
+} from 'n8n-workflow';
 
 import {
 	activeCampaignDefaultGetAllProperties,
-} from "./GenericFunctions";
+} from './GenericFunctions';
 
 export const connectionOperations = [
 	{
@@ -234,7 +234,7 @@ export const connectionFields = [
 				default: 1,
 				description: 'The status of a sync triggered on the connection (0 = sync stopped; 1 = sync running).',
 			},
-		]
+		],
 	},
 
 	// ----------------------------------

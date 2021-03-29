@@ -42,7 +42,7 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 		method,
 		qs: query,
 		uri: `${credentials.apiUrl}${endpoint}`,
-		json: true
+		json: true,
 	};
 
 	if (Object.keys(body).length !== 0) {
@@ -187,4 +187,3 @@ export function activeCampaignDefaultGetAllProperties(resource: string, operatio
 		},
 	];
 }
-

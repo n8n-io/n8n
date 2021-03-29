@@ -136,7 +136,7 @@ export class GoogleSheet {
 	async spreadsheetBatchUpdate(requests: IDataObject[]) { // tslint:disable-line:no-any
 
 		const body = {
-			requests
+			requests,
 		};
 
 		const response = await googleApiRequest.call(this.executeFunctions, 'POST', `/v4/spreadsheets/${this.id}:batchUpdate`, body);
