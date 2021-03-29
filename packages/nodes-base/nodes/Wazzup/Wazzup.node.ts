@@ -86,6 +86,27 @@ export class Wazzup implements INodeType {
 				description: 'The operation to perform.',
 			},
 			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'channels'
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Retrieve all channels',
+					},				
+				],
+				default: 'getAll',
+				description: 'The operation to perform.',
+			},			
+			{
 				displayName: 'Channel ID',
 				name: 'channel',
 				type: 'string',
@@ -263,6 +284,51 @@ export class Wazzup implements INodeType {
 				description: 'The message to send',
 			},
 
+			
+			// ----------------------------------
+			//         wazzup:channels
+			// ----------------------------------	
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'channels',
+						],
+					},
+				},
+				default: true,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			// {
+			// 	displayName: 'Limit',
+			// 	name: 'limit',
+			// 	type: 'number',
+			// 	displayOptions: {
+			// 		show: {
+			// 			operation: [
+			// 				'getAll',
+			// 			],
+			// 			resource: [
+			// 				'channels',
+			// 			],
+			// 			returnAll: [
+			// 				false,
+			// 			],
+			// 		},
+			// 	},
+			// 	typeOptions: {
+			// 		minValue: 1,
+			// 		maxValue: 500,
+			// 	},
+			// 	default: 100,
+			// 	description: 'How many results to return.',
+			// },
 		],
 	};
 
@@ -288,10 +354,10 @@ export class Wazzup implements INodeType {
 			qs = {};
 				
 			resource = this.getNodeParameter('resource', i) as string;		
+			operation = this.getNodeParameter('operation', i) as string;
 
 			if (resource === 'whatsapp' || resource === 'instagram' || resource === 'vk') {
 
-				operation = this.getNodeParameter('operation', i) as string;
 				body.channelId = this.getNodeParameter('channel', i) as string;
 				body.chatId = this.getNodeParameter('to', i) as string;
 				body.chatType = resource;		
@@ -316,11 +382,16 @@ export class Wazzup implements INodeType {
 					throw new Error(`The operation "${operation}" is not known!`);
 				}
 			} else if (resource === 'channels') {
+				
+				let returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+				if (operation === 'getAll' && returnAll === true) {
 					// ----------------------------------
 					//         wazzup:channels
 					// ----------------------------------
 
 					endpoint = '/channels';
+				}
 			}
 			 else {
 				throw new Error(`The resource "${resource}" is not known!`);
