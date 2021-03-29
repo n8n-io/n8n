@@ -45,7 +45,7 @@ export async function stravaApiRequest(this: IExecuteFunctions | IExecuteSingleF
 
 		} else {
 			//@ts-ignore
-			return await this.helpers.requestOAuth2.call(this, 'stravaOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'stravaOAuth2Api', options, { includeCredentialsOnRefreshOnBody: true });
 		}
 	} catch (error) {
 

@@ -151,7 +151,7 @@ export class ExportCredentialsCommand extends Command {
 				let fileContents: string, i: number;
 				for (i = 0; i < credentials.length; i++) {
 					fileContents = JSON.stringify(credentials[i], null, flags.pretty ? 2 : undefined);
-					const filename = (flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) + credentials[i].id + ".json";
+					const filename = (flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) + credentials[i].id + '.json';
 					fs.writeFileSync(filename, fileContents);
 				}
 				console.info(`Successfully exported ${i} credentials.`);

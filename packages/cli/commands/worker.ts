@@ -35,7 +35,7 @@ import {
 	ResponseHelper,
 	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
-} from "../src";
+} from '../src';
 
 import { 
 	getLogger,
@@ -254,7 +254,7 @@ export class Worker extends Command {
 							lastTimer = now;
 							if (cumulativeTimeout > redisConnectionTimeoutLimit) {
 								logger.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + ". Exiting process.");
-								process.exit(3);
+								process.exit(1);
 							}
 						}
 						logger.warn('Redis unavailable - trying to reconnect...');

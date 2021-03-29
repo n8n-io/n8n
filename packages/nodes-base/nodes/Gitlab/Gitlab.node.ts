@@ -17,7 +17,7 @@ export class Gitlab implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitLab',
 		name: 'gitlab',
-		icon: 'file:gitlab.png',
+		icon: 'file:gitlab.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

@@ -8,7 +8,8 @@ import {
 
 import {
 	Db,
-} from "../../src";
+	GenericHelpers,
+} from '../../src';
 
 import { 
 	getLogger,
