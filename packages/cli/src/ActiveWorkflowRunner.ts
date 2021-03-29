@@ -36,7 +36,7 @@ import {
 
 import * as express from 'express';
 import { 
-	LoggerProxy,
+	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
 export class ActiveWorkflowRunner {
@@ -60,27 +60,25 @@ export class ActiveWorkflowRunner {
 
 		this.activeWorkflows = new ActiveWorkflows();
 
-		const logger = LoggerProxy.getInstance();
-
 		if (workflowsData.length !== 0) {
-			logger.info('\n ================================');
-			logger.info('   Start Active Workflows:');
-			logger.info(' ================================');
+			Logger.info('\n ================================');
+			Logger.info('   Start Active Workflows:');
+			Logger.info(' ================================');
 
 			for (const workflowData of workflowsData) {
 				console.log(`   - ${workflowData.name}`);
-				logger.debug(`Initializing active workflow ${workflowData.name} on startup.`, {workflowName: workflowData.name, workflowId: workflowData.id});
+				Logger.debug(`Initializing active workflow ${workflowData.name} on startup.`, {workflowName: workflowData.name, workflowId: workflowData.id});
 				try {
 					await this.add(workflowData.id.toString(), workflowData);
-					logger.verbose(`Successfully started workflow ${workflowData.name}.`, {workflowName: workflowData.name, workflowId: workflowData.id});
+					Logger.verbose(`Successfully started workflow ${workflowData.name}.`, {workflowName: workflowData.name, workflowId: workflowData.id});
 					console.log(`     => Started`);
 				} catch (error) {
 					console.log(`     => ERROR: Workflow could not be activated:`);
 					console.log(`               ${error.message}`);
-					logger.error(`Unable to initialize workflow ${workflowData.name} on startup.`, {workflowName: workflowData.name, workflowId: workflowData.id});
+					Logger.error(`Unable to initialize workflow ${workflowData.name} on startup.`, {workflowName: workflowData.name, workflowId: workflowData.id});
 				}
 			}
-			logger.verbose('Finished initializing active workflows on startup.');
+			Logger.verbose('Finished initializing active workflows on startup.');
 		}
 	}
 
@@ -96,7 +94,7 @@ export class ActiveWorkflowRunner {
 	 */
 	async removeAll(): Promise<void> {
 		const activeWorkflowId: string[] = [];
-		LoggerProxy.getInstance().verbose('Call to remove all active workflows received.');
+		Logger.verbose('Call to remove all active workflows received.');
 
 		if (this.activeWorkflows !== null) {
 			// TODO: This should be renamed!
@@ -126,7 +124,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async executeWebhook(httpMethod: WebhookHttpMethod, path: string, req: express.Request, res: express.Response): Promise<IResponseCallbackData> {
-		LoggerProxy.getInstance().debug(`Received webhoook ${httpMethod} for path ${path}`);
+		Logger.debug(`Received webhoook ${httpMethod} for path ${path}`);
 		if (this.activeWorkflows === null) {
 			throw new ResponseHelper.ResponseError('The "activeWorkflows" instance did not get initialized yet.', 404, 404);
 		}
@@ -460,7 +458,7 @@ export class ActiveWorkflowRunner {
 		return ((workflow: Workflow, node: INode) => {
 			const returnFunctions = NodeExecuteFunctions.getExecutePollFunctions(workflow, node, additionalData, mode);
 			returnFunctions.__emit = (data: INodeExecutionData[][]): void => {
-				LoggerProxy.getInstance().debug(`Received event to trigger execution for workflow ${workflow.name}`);
+				Logger.debug(`Received event to trigger execution for workflow ${workflow.name}`);
 				this.runWorkflow(workflowData, node, data, additionalData, mode);
 			};
 			return returnFunctions;
@@ -482,7 +480,7 @@ export class ActiveWorkflowRunner {
 		return ((workflow: Workflow, node: INode) => {
 			const returnFunctions = NodeExecuteFunctions.getExecuteTriggerFunctions(workflow, node, additionalData, mode);
 			returnFunctions.emit = (data: INodeExecutionData[][]): void => {
-				LoggerProxy.getInstance().debug(`Received trigger for workflow ${workflow.name}`);
+				Logger.debug(`Received trigger for workflow ${workflow.name}`);
 				WorkflowHelpers.saveStaticData(workflow);
 				this.runWorkflow(workflowData, node, data, additionalData, mode).catch((err) => console.error(err));
 			};
@@ -517,7 +515,7 @@ export class ActiveWorkflowRunner {
 
 			const canBeActivated = workflowInstance.checkIfWorkflowCanBeActivated(['n8n-nodes-base.start']);
 			if (canBeActivated === false) {
-				LoggerProxy.getInstance().error(`Unable to activate workflow ${workflowData.name}`);
+				Logger.error(`Unable to activate workflow ${workflowData.name}`);
 				throw new Error(`The workflow can not be activated because it does not contain any nodes which could start the workflow. Only workflows which have trigger or webhook nodes can be activated.`);
 			}
 
@@ -532,7 +530,7 @@ export class ActiveWorkflowRunner {
 
 			if (workflowInstance.getTriggerNodes().length !== 0	|| workflowInstance.getPollNodes().length !== 0) {
 				await this.activeWorkflows.add(workflowId, workflowInstance, additionalData, getTriggerFunctions, getPollFunctions);
-				LoggerProxy.getInstance().info(`Successfully activated workflow ${workflowData.name}`);
+				Logger.info(`Successfully activated workflow ${workflowData.name}`);
 			}
 
 			if (this.activationErrors[workflowId] !== undefined) {

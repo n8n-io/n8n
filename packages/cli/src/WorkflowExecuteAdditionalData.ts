@@ -36,7 +36,7 @@ import {
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
-	LoggerProxy,
+	LoggerProxy as Logger,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
@@ -132,7 +132,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				if (this.sessionId === undefined) {
 					return;
 				}
-				LoggerProxy.verbose(`Executing hook nodeExecuteBefore for hookFunctionsPush on node ${nodeName}`, {executionId: this.executionId});
+				Logger.verbose(`Executing hook nodeExecuteBefore for hookFunctionsPush on node ${nodeName}`, {executionId: this.executionId});
 
 				const pushInstance = Push.getInstance();
 				pushInstance.send('nodeExecuteBefore', {
@@ -147,7 +147,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				if (this.sessionId === undefined) {
 					return;
 				}
-				LoggerProxy.verbose(`Executing hook nodeExecuteAfter for hookFunctionsPush on node ${nodeName}`, {executionId: this.executionId});
+				Logger.verbose(`Executing hook nodeExecuteAfter for hookFunctionsPush on node ${nodeName}`, {executionId: this.executionId});
 
 				const pushInstance = Push.getInstance();
 				pushInstance.send('nodeExecuteAfter', {
@@ -159,7 +159,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 		],
 		workflowExecuteBefore: [
 			async function (this: WorkflowHooks): Promise<void> {
-				LoggerProxy.verbose(`Executing hook WorkflowExecuteBefore for hookFunctionsPush`, {executionId: this.executionId});
+				Logger.verbose(`Executing hook WorkflowExecuteBefore for hookFunctionsPush`, {executionId: this.executionId});
 				// Push data to session which started the workflow
 				if (this.sessionId === undefined) {
 					return;
@@ -177,7 +177,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 		],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
-				LoggerProxy.verbose(`Executing hook WorkflowExecuteAfter for hookFunctionsPush`, {executionId: this.executionId});
+				Logger.verbose(`Executing hook WorkflowExecuteAfter for hookFunctionsPush`, {executionId: this.executionId});
 				// Push data to session which started the workflow
 				if (this.sessionId === undefined) {
 					return;
@@ -310,7 +310,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 		workflowExecuteBefore: [],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
-				LoggerProxy.verbose(`Executing hook workflowExecuteAfter for hookFunctionsSave`, {executionId: this.executionId});
+				Logger.verbose(`Executing hook workflowExecuteAfter for hookFunctionsSave`, {executionId: this.executionId});
 
 				// Prune old execution data
 				if (config.get('executions.pruneData')) {

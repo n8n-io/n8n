@@ -4,18 +4,18 @@ import {
 } from './Interfaces';
 
 
-let instance: ILogger | undefined;
+let logger: ILogger | undefined;
 
-export function init(logger: ILogger) {
-	instance = logger;
+export function init(loggerInstance: ILogger) {
+	logger = loggerInstance;
 }
 
 export function getInstance(): ILogger {
-	if (instance === undefined) {
-		throw new Error('Logger not initialized');
+	if (logger === undefined) {
+		throw new Error('LoggerProxy not initialized');
 	}
 
-	return instance;
+	return logger;
 }
 
 export function log(type: LogTypes, message: string, meta: object = {}) {

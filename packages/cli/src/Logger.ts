@@ -6,7 +6,7 @@ import {
 	LogTypes,
 } from 'n8n-workflow';
 
-export class Logger implements ILogger {
+class Logger implements ILogger {
 	private logger: winston.Logger;
 	
 	constructor() {
@@ -70,7 +70,7 @@ export class Logger implements ILogger {
 
 let activeLoggerInstance: Logger | undefined;
 
-export function getInstance() {
+export function getLogger() {
 	if (activeLoggerInstance === undefined) {
 		activeLoggerInstance = new Logger();
 	}

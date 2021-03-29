@@ -21,7 +21,7 @@ import {
 import { IDataObject } from 'n8n-workflow';
 
 import { 
-	getInstance,
+	getLogger,
 } from '../src/Logger';
 
 import {
@@ -96,7 +96,7 @@ export class Webhook extends Command {
 
 
 	async run() {
-		const logger = getInstance();
+		const logger = getLogger();
 		LoggerProxy.init(logger);
 
 		// Make sure that n8n shuts down gracefully if possible

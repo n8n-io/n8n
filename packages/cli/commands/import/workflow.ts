@@ -8,7 +8,7 @@ import {
 } from '../../src';
 
 import { 
-	getInstance,
+	getLogger,
 } from '../../src/Logger';
 
 import {
@@ -39,7 +39,7 @@ export class ImportWorkflowsCommand extends Command {
 	};
 
 	async run() {
-		const logger = getInstance();
+		const logger = getLogger();
 		LoggerProxy.init(logger);
 
 		const { flags } = this.parse(ImportWorkflowsCommand);

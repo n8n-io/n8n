@@ -38,7 +38,7 @@ import {
 } from "../src";
 
 import { 
-	getInstance,
+	getLogger,
 } from '../src/Logger';
 
 import {
@@ -167,7 +167,7 @@ export class Worker extends Command {
 	}
 
 	async run() {
-		const logger = getInstance();
+		const logger = getLogger();
 		LoggerProxy.init(logger);
 
 		console.info('Starting n8n worker...');

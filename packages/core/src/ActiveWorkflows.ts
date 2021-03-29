@@ -7,7 +7,7 @@ import {
 	IPollResponse,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
-	LoggerProxy,
+	LoggerProxy as Logger,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -165,7 +165,7 @@ export class ActiveWorkflows {
 
 		// The trigger function to execute when the cron-time got reached
 		const executeTrigger = async () => {
-			LoggerProxy.info(`Polling trigger initiated for workflow ${workflow.name}`, {workflowName: workflow.name, workflowId: workflow.id});
+			Logger.info(`Polling trigger initiated for workflow ${workflow.name}`, {workflowName: workflow.name, workflowId: workflow.id});
 			const pollResponse = await workflow.runPoll(node, pollFunctions);
 
 			if (pollResponse !== null) {

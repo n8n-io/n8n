@@ -25,7 +25,7 @@ import {
 import { IDataObject } from 'n8n-workflow';
 
 import { 
-	getInstance,
+	getLogger,
 } from '../src/Logger';
 
 import {
@@ -76,7 +76,7 @@ export class Start extends Command {
 	 * get removed.
 	 */
 	static async stopProcess() {
-		getInstance().info('\nStopping n8n...');
+		getLogger().info('\nStopping n8n...');
 
 		try {
 			const externalHooks = ExternalHooks();
@@ -137,7 +137,7 @@ export class Start extends Command {
 		// Wrap that the process does not close but we can still use async
 		await (async () => {
 			try {
-				const logger = getInstance();
+				const logger = getLogger();
 				LoggerProxy.init(logger);
 				logger.info('Initializing n8n process');
 
