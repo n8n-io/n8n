@@ -1,4 +1,4 @@
-import { IExecuteSingleFunctions } from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	IBinaryKeyData,
 	IDataObject,
@@ -40,74 +40,84 @@ export class FunctionItem implements INodeType {
 		],
 	};
 
-	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
-		let item = this.getInputData();
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {		
+		const items = this.getInputData();
 
-		// Copy the items as they may get changed in the functions
-		item = JSON.parse(JSON.stringify(item));
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length as unknown as number;
+		let item: INodeExecutionData;
 
-		// Define the global objects for the custom function
-		const sandbox = {
-			getBinaryData: (): IBinaryKeyData | undefined => {
-				return item.binary;
-			},
-			getNodeParameter: this.getNodeParameter,
-			getWorkflowStaticData: this.getWorkflowStaticData,
-			helpers: this.helpers,
-			item: item.json,
-			setBinaryData: (data: IBinaryKeyData) => {
-				item.binary = data;
-			},
-		};
+		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 
-		// Make it possible to access data via $node, $parameter, ...
-		const dataProxy = this.getWorkflowDataProxy();
-		Object.assign(sandbox, dataProxy);
+			item = items[itemIndex];
 
-		const options = {
-			console: 'inherit',
-			sandbox,
-			require: {
-				external: false as boolean | { modules: string[] },
-				builtin: [] as string[],
-			},
-		};
+			// Copy the items as they may get changed in the functions
+			item = JSON.parse(JSON.stringify(item));
 
-		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
-			options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
-		}
+			// Define the global objects for the custom function
+			const sandbox = {
+				getBinaryData: (): IBinaryKeyData | undefined => {
+					return item.binary;
+				},
+				getNodeParameter: this.getNodeParameter,
+				getWorkflowStaticData: this.getWorkflowStaticData,
+				helpers: this.helpers,
+				item: item.json,
+				setBinaryData: (data: IBinaryKeyData) => {
+					item.binary = data;
+				},
+			};
 
-		if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
-			options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
-		}
+			// Make it possible to access data via $node, $parameter, ...
+			const dataProxy = this.getWorkflowDataProxy(itemIndex);
+			Object.assign(sandbox, dataProxy);
 
-		const vm = new NodeVM(options);
+			const options = {
+				console: 'inherit',
+				sandbox,
+				require: {
+					external: false as boolean | { modules: string[] },
+					builtin: [] as string[],
+				},
+			};
 
-		// Get the code to execute
-		const functionCode = this.getNodeParameter('functionCode') as string;
+			if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
+				options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
+			}
+
+			if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
+				options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
+			}
+
+			const vm = new NodeVM(options);
+
+			// Get the code to execute
+			const functionCode = this.getNodeParameter('functionCode', itemIndex) as string;
 
 
-		let jsonData: IDataObject;
-		try {
-			// Execute the function code
-			jsonData = await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname);
-		} catch (e) {
-			return Promise.reject(e);
-		}
+			let jsonData: IDataObject;
+			try {
+				// Execute the function code
+				jsonData = await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname);
+			} catch (e) {
+				return Promise.reject(e);
+			}
 
-		// Do very basic validation of the data
-		if (jsonData === undefined) {
-			throw new Error('No data got returned. Always an object has to be returned!');
-		}
+			// Do very basic validation of the data
+			if (jsonData === undefined) {
+				throw new Error('No data got returned. Always an object has to be returned!');
+			}
 
-		const returnItem: INodeExecutionData = {
-			json: jsonData,
-		};
+			const returnItem: INodeExecutionData = {
+				json: jsonData,
+			};
 
-		if (item.binary) {
-			returnItem.binary = item.binary;
-		}
-
-		return returnItem;
+			if (item.binary) {
+				returnItem.binary = item.binary;
+			}
+			
+			returnData.push(returnItem);
+		}		
+		return this.prepareOutputData(returnData);
 	}
 }
