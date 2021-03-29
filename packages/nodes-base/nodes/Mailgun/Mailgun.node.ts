@@ -105,9 +105,9 @@ export class Mailgun implements INodeType {
 	};
 
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {		
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		
+
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length as unknown as number;
 		let item: INodeExecutionData;
@@ -187,7 +187,7 @@ export class Mailgun implements INodeType {
 			returnData.push({
 				json: responseData,
 			});
-		}		
-		return this.prepareOutputData(returnData)
+		}
+		return this.prepareOutputData(returnData);
 	}
 }

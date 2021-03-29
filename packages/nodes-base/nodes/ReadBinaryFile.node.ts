@@ -49,7 +49,7 @@ export class ReadBinaryFile implements INodeType {
 	};
 
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {		
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
@@ -86,8 +86,8 @@ export class ReadBinaryFile implements INodeType {
 
 			newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(data, filePath);
 			returnData.push(newItem);
-		}	
-		
+		}
+
 		return this.prepareOutputData(returnData);
 	}
 

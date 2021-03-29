@@ -55,7 +55,7 @@ export class WriteBinaryFile implements INodeType {
 
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-				
+
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
@@ -65,9 +65,9 @@ export class WriteBinaryFile implements INodeType {
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 
 			const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
-			
+
 			const fileName = this.getNodeParameter('fileName', itemIndex) as string;
-						
+
 			item = items[itemIndex];
 
 			if (item.binary === undefined) {
@@ -95,7 +95,7 @@ export class WriteBinaryFile implements INodeType {
 			}
 
 			// Add the file name to data
-			
+
 			(newItem.json as IDataObject).fileName = fileName;
 
 			returnData.push(newItem);

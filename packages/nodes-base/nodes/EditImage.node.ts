@@ -948,9 +948,9 @@ export class EditImage implements INodeType {
 		},
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {		
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		
+
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length as unknown as number;
 		let item: INodeExecutionData;
@@ -1069,7 +1069,7 @@ export class EditImage implements INodeType {
 			if (operation === 'information') {
 				// Just return the information
 				const imageData = await new Promise<IDataObject>((resolve, reject) => {
-					gmInstance = gmInstance.identify((error:any, imageData:any) => {
+					gmInstance = gmInstance.identify((error, imageData) => {
 						if (error) {
 							reject(error);
 							return;
@@ -1241,7 +1241,7 @@ export class EditImage implements INodeType {
 						return resolve(newItem);
 					});
 			})));
-			
+
 		}
 		return this.prepareOutputData(returnData);
 	}
