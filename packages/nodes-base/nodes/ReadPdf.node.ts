@@ -45,7 +45,7 @@ export class ReadPdf implements INodeType {
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
-			
+
 			item = items[itemIndex];
 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
 
@@ -58,7 +58,7 @@ export class ReadPdf implements INodeType {
 				binary: item.binary,
 				json: await pdf(binaryData),
 			});
-			
+
 		}
 		return this.prepareOutputData(returnData);
 	}
