@@ -1,6 +1,6 @@
 import {
 	BINARY_ENCODING,
-	IExecuteSingleFunctions,
+	IExecuteFunctions,
 } from 'n8n-core';
 import {
 	IDataObject,
@@ -105,80 +105,89 @@ export class Mailgun implements INodeType {
 	};
 
 
-	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
-		const item = this.getInputData();
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {		
+		const items = this.getInputData();
+		
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length as unknown as number;
+		let item: INodeExecutionData;
 
-		const fromEmail = this.getNodeParameter('fromEmail') as string;
-		const toEmail = this.getNodeParameter('toEmail') as string;
-		const ccEmail = this.getNodeParameter('ccEmail') as string;
-		const bccEmail = this.getNodeParameter('bccEmail') as string;
-		const subject = this.getNodeParameter('subject') as string;
-		const text = this.getNodeParameter('text') as string;
-		const html = this.getNodeParameter('html') as string;
-		const attachmentPropertyString = this.getNodeParameter('attachments') as string;
+		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
+			item = items[itemIndex];
 
-		const credentials = this.getCredentials('mailgunApi');
+			const fromEmail = this.getNodeParameter('fromEmail', itemIndex) as string;
+			const toEmail = this.getNodeParameter('toEmail', itemIndex) as string;
+			const ccEmail = this.getNodeParameter('ccEmail', itemIndex) as string;
+			const bccEmail = this.getNodeParameter('bccEmail', itemIndex) as string;
+			const subject = this.getNodeParameter('subject', itemIndex) as string;
+			const text = this.getNodeParameter('text', itemIndex) as string;
+			const html = this.getNodeParameter('html', itemIndex) as string;
+			const attachmentPropertyString = this.getNodeParameter('attachments', itemIndex) as string;
 
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
-		}
+			const credentials = this.getCredentials('mailgunApi');
 
-		const formData: IDataObject = {
-			from: fromEmail,
-			to: toEmail,
-			subject,
-			text,
-			html,
-		};
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
 
-		if (ccEmail.length !== 0) {
-			formData.cc = ccEmail;
-		}
-		if (bccEmail.length !== 0) {
-			formData.bcc = bccEmail;
-		}
+			const formData: IDataObject = {
+				from: fromEmail,
+				to: toEmail,
+				subject,
+				text,
+				html,
+			};
 
-		if (attachmentPropertyString && item.binary) {
+			if (ccEmail.length !== 0) {
+				formData.cc = ccEmail;
+			}
+			if (bccEmail.length !== 0) {
+				formData.bcc = bccEmail;
+			}
 
-			const attachments = [];
-			const attachmentProperties: string[] = attachmentPropertyString.split(',').map((propertyName) => {
-				return propertyName.trim();
-			});
+			if (attachmentPropertyString && item.binary) {
 
-			for (const propertyName of attachmentProperties) {
-				if (!item.binary.hasOwnProperty(propertyName)) {
-					continue;
-				}
-				attachments.push({
-					value: Buffer.from(item.binary[propertyName].data, BINARY_ENCODING),
-					options: {
-						filename: item.binary[propertyName].fileName || 'unknown',
-
-					},
+				const attachments = [];
+				const attachmentProperties: string[] = attachmentPropertyString.split(',').map((propertyName) => {
+					return propertyName.trim();
 				});
+
+				for (const propertyName of attachmentProperties) {
+					if (!item.binary.hasOwnProperty(propertyName)) {
+						continue;
+					}
+					attachments.push({
+						value: Buffer.from(item.binary[propertyName].data, BINARY_ENCODING),
+						options: {
+							filename: item.binary[propertyName].fileName || 'unknown',
+
+						},
+					});
+				}
+
+				if (attachments.length) {
+					// @ts-ignore
+					formData.attachment = attachments;
+				}
 			}
 
-			if (attachments.length) {
-				// @ts-ignore
-				formData.attachment = attachments;
-			}
-		}
+			const options = {
+				method: 'POST',
+				formData,
+				uri: `https://${credentials.apiDomain}/v3/${credentials.emailDomain}/messages`,
+				auth: {
+					user: 'api',
+					pass: credentials.apiKey as string,
+				},
+				json: true,
+			};
 
-		const options = {
-			method: 'POST',
-			formData,
-			uri: `https://${credentials.apiDomain}/v3/${credentials.emailDomain}/messages`,
-			auth: {
-				user: 'api',
-				pass: credentials.apiKey as string,
-			},
-			json: true,
-		};
+			const responseData = await this.helpers.request(options);
 
-		const responseData = await this.helpers.request(options);
-
-		return {
-			json: responseData,
-		};
+			returnData.push({
+				json: responseData,
+			});
+		}		
+		return this.prepareOutputData(returnData)
 	}
 }
