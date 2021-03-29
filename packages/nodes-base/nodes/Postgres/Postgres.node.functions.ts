@@ -68,20 +68,25 @@ export async function pgInsert(
 	const schema = getNodeParam('schema', 0) as string;
 	let returnFields = (getNodeParam('returnFields', 0) as string).split(',') as string[];
 	const columnString = getNodeParam('columns', 0) as string;
-	const columns = columnString.split(',').map(column => column.trim());
-
-	const cs = new pgp.helpers.ColumnSet(columns);
+	const columns = columnString.split(',')
+		.map(column => column.trim().split(':'))
+		.map(([name, cast]) => ({name, cast}));
 
 	const te = new pgp.helpers.TableName({ table, schema });
 
 	// Prepare the data to insert and copy it to be returned
-	const insertItems = getItemCopy(items, columns);
+	const columnNames = columns.map(column => column.name);
+	const insertItems = getItemCopy(items, columnNames);
+
+	const columnSet = new pgp.helpers.ColumnSet(columns);
 
 	// Generate the multi-row insert query and return the id of new row
 	returnFields = returnFields.map(value => value.trim()).filter(value => !!value);
 	const query =
-		pgp.helpers.insert(insertItems, cs, te) +
+		pgp.helpers.insert(insertItems, columnSet, te) +
 		(returnFields.length ? ` RETURNING ${returnFields.join(',')}` : '');
+
+	console.log(query);
 
 	// Executing the query to insert the data
 	const insertData = await db.manyOrNone(query);
@@ -112,7 +117,7 @@ export async function pgUpdate(
 	const updateColumnParts = updateKey.split(':');
 	const updateColumn = {
 		name: updateColumnParts[0],
-		cast: updateColumnParts[1]
+		cast: updateColumnParts[1],
 	};
 
 	const columns = columnString.split(',')
