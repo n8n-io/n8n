@@ -1,6 +1,10 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-const resource = ['contact'];
+const resource = [
+	'contact',
+];
 
 export const contactOperations = [
 	{
@@ -48,7 +52,7 @@ export const contactOperations = [
 export const contactFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                contact:getAll                            */
+	/*                                contact:getAll                              */
 	/* -------------------------------------------------------------------------- */
 
 	{
@@ -121,7 +125,7 @@ export const contactFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                contact:get                            */
+	/*                                contact:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact Id',
@@ -141,7 +145,7 @@ export const contactFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                contact:delete                            */
+	/*                                contact:delete                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact Id',
@@ -161,7 +165,7 @@ export const contactFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                contact:create                           */
+	/*                                contact:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'First Name',
@@ -256,7 +260,7 @@ export const contactFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                contact:update                           */
+	/*                                contact:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact Id',

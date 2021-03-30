@@ -54,6 +54,7 @@ import {
 	taskFields,
 	taskOperations,
 } from './TaskDescription';
+
 import {
 	timeEntryFields,
 	timeEntryOperations,

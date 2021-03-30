@@ -1,5 +1,11 @@
-import { INodeProperties } from 'n8n-workflow';
-const resource = ['task'];
+import {
+	INodeProperties
+} from 'n8n-workflow';
+
+const resource = [
+	'task',
+];
+
 export const taskOperations = [
 	{
 		displayName: 'Operation',
@@ -46,7 +52,7 @@ export const taskOperations = [
 export const taskFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                task:getAll                            */
+	/*                                task:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -128,7 +134,7 @@ export const taskFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                task:get                            */
+	/*                                task:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task Id',
@@ -148,7 +154,7 @@ export const taskFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                task:delete                            */
+	/*                                task:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task Id',
@@ -168,7 +174,7 @@ export const taskFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                task:create                           */
+	/*                                task:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
@@ -232,10 +238,10 @@ export const taskFields = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                task:update                           */
+	/*                                task:update                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Task Id',
+		displayName: 'Task ID',
 		name: 'id',
 		type: 'string',
 		default: '',
