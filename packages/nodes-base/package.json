@@ -75,6 +75,7 @@
       "dist/credentials/DropboxOAuth2Api.credentials.js",
       "dist/credentials/EgoiApi.credentials.js",
       "dist/credentials/EmeliaApi.credentials.js",
+      "dist/credentials/ERPNextApi.credentials.js",
       "dist/credentials/EventbriteApi.credentials.js",
       "dist/credentials/EventbriteOAuth2Api.credentials.js",
       "dist/credentials/FacebookGraphApi.credentials.js",

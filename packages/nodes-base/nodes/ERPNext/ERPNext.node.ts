@@ -3,17 +3,17 @@ import {
 } from 'n8n-core';
 
 import {
-	ILoadOptionsFunctions,
-	INodeTypeDescription,
-	INodeType,
-	INodeExecutionData,
 	IDataObject,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
+	documentFields,
 	documentOperations,
-	documentFields
 } from './DocumentDescription';
 
 import {
@@ -21,14 +21,20 @@ import {
 	erpNextApiRequestAllItems
 } from './GenericFunctions';
 
+import {
+	DocumentProperties,
+	processNames,
+	toSQL,
+} from './utils';
+
 export class ERPNext implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ERPNext',
 		name: 'erpNext',
-		icon: 'file:erpnext.png',
+		icon: 'file:erpnext.svg',
 		group: ['output'],
 		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		description: 'Consume ERPNext API',
 		defaults: {
 			name: 'ERPNext',
@@ -41,36 +47,8 @@ export class ERPNext implements INodeType {
 				name: 'erpNextApi',
 				required: true,
 			},
-			// {
-			// 	name: 'erpNextOAuth2Api',
-			// 	required: true,
-			// 	displayOptions: {
-			// 		show: {
-			// 			authentication: [
-			// 				'oAuth2',
-			// 			],
-			// 		},
-			// 	},
-			// },
 		],
 		properties: [
-			// {
-			// 	displayName: 'Authentication',
-			// 	name: 'authentication',
-			// 	type: 'options',
-			// 	options: [
-			// 		{
-			// 			name: 'Access Token',
-			// 			value: 'accessToken',
-			// 		},
-			// 		{
-			// 			name: 'OAuth2',
-			// 			value: 'oAuth2',
-			// 		},
-			// 	],
-			// 	default: 'accessToken',
-			// 	description: 'The resource to operate on.',
-			// },
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -85,193 +63,197 @@ export class ERPNext implements INodeType {
 				description: 'Resource to consume.',
 			},
 
-			// DOCUMENT
 			...documentOperations,
-			...documentFields
+			...documentFields,
 		],
 	};
 
 	methods = {
 		loadOptions: {
-			// Get all the doc types to display them to user so that he can
-			// select them easily
-			async getDocTypes(
-				this: ILoadOptionsFunctions
-			): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const types = await erpNextApiRequestAllItems.call(
-					this,
-					'data',
-					'GET',
-					'/api/resource/DocType',
-					{},
-				);
+			async getDocTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const data = await erpNextApiRequestAllItems.call(this, 'data', 'GET', '/api/resource/DocType', {});
+				const docTypes = data.map(({ name }: { name: string }) => {
+					return { name, value: encodeURI(name) };
+				});
 
-				for (const type of types) {
-					const typeName = type.name;
-					const typeId = type.name;
-					returnData.push({
-						name: typeName,
-						value: encodeURI(typeId)
-					});
-				}
-				return returnData;
+				// return sortBy(docTypes, ['name']);
+				return processNames(docTypes);
 			},
 
-			// Get all the doc fields to display them to user so that he can
-			// select them easily
-			async getDocFields(
-				this: ILoadOptionsFunctions
-			): Promise<INodePropertyOptions[]> {
-				const docId = this.getCurrentNodeParameter('docType') as string;
-				const returnData: INodePropertyOptions[] = [];
-				const { data } = await erpNextApiRequest.call(
-					this,
-					'GET',
-					`/api/resource/DocType/${docId}`,
-					{},
-				);
-				for (const field of data.fields) {
-					//field.reqd wheater is required or not
-					const fieldName = field.label;
-					const fieldId = field.fieldname;
-					returnData.push({
-						name: fieldName,
-						value: fieldId
-					});
-				}
-				return returnData;
+			async getDocFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const docType = this.getCurrentNodeParameter('docType') as string;
+				const { data } = await erpNextApiRequest.call(this, 'GET', `/api/resource/DocType/${docType}`, {});
+
+				const docFields = data.fields.map(({ label, fieldname }: { label: string, fieldname: string }) => {
+					return ({ name: label, value: fieldname });
+				});
+
+				// return flow(ensureName, sortByName, uniqueByName)(docFields);
+				return processNames(docFields);
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
 		let responseData;
+
 		const body: IDataObject = {};
 		const qs: IDataObject = {};
+
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		for (let i = 0; i < length; i++) {
-			//https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/Resources/post_api_resource_Webhook
-			//https://frappeframework.com/docs/user/en/guides/integration/rest_api/manipulating_documents
+
+		for (let i = 0; i < items.length; i++) {
+
+			// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/Resources/post_api_resource_Webhook
+			// https://frappeframework.com/docs/user/en/guides/integration/rest_api/manipulating_documents
+
 			if (resource === 'document') {
+
+				// *********************************************************************
+				//                             document
+				// *********************************************************************
+
 				if (operation === 'get') {
+
+					// ----------------------------------
+					//          document: get
+					// ----------------------------------
+
+					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/get_api_resource__DocType___DocumentName_
+
 					const docType = this.getNodeParameter('docType', i) as string;
 					const documentName = this.getNodeParameter('documentName', i) as string;
 
-					const endpoint = `/api/resource/${docType}/${documentName}`;
-
-					responseData = await erpNextApiRequest.call(this, 'GET', endpoint, {});
-
+					responseData = await erpNextApiRequest.call(this, 'GET', `/api/resource/${docType}/${documentName}`);
 					responseData = responseData.data;
 				}
+
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					// ----------------------------------
+					//         document: getAll
+					// ----------------------------------
+
+					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/get_api_resource__DocType_
+
+					const {
+						fields,
+						filters,
+					} = this.getNodeParameter('additionalFields', i) as {
+						fields: string[],
+						filters: {
+							customProperty: Array<{ field: string, operator: string, value: string}>,
+						},
+					};
+
+					// fields=["test", "example", "hi"]
+					if (fields) {
+						qs.fields = JSON.stringify(fields);
+					}
+
+					// filters=[["Person","first_name","=","Jane"]]
+					// TODO: filters not working
+					if (filters) {
+						qs.filters = filters.customProperty.map((filter) => {
+							return [
+								docType,
+								filter.field,
+								toSQL(filter.operator),
+								filter.value,
+							];
+						});
+					}
+
 					const docType = this.getNodeParameter('docType', i) as string;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
 					const endpoint = `/api/resource/${docType}`;
 
-					// Add field options for query. FORMAT: fields=["test", "example", "hi"]
-					if (additionalFields.fields) {
-						qs.fields = JSON.stringify(additionalFields.fields as string[]);
-					}
-
-					// Add filter options for query. FORMAT: filters=[["Person","first_name","=","Jane"]]
-					if (additionalFields.filters) {
-
-						const operators: { [key: string]: string } = {
-							'is': '=',
-							'isNot': '!=',
-							'greater': '>',
-							'less': '<',
-							'equalsGreater': '>=',
-							'equalsLess': '<=',
-						};
-
-						const filterValues = (additionalFields.filters as IDataObject).customProperty as IDataObject[];
-						const filters: string[][] = [];
-						for (const filter of filterValues) {
-							const data = [
-								docType,
-								filter.field as string,
-								operators[filter.operator as string],
-								filter.value as string,
-							];
-							filters.push(data);
-						}
-						qs.filters = filters;
-					}
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					if (!returnAll) {
 
 						const limit = this.getNodeParameter('limit', i) as number;
-						qs.limit_page_lengt = limit;
+						qs.limit_page_length = limit;
 						qs.limit_start = 1;
 						responseData = await erpNextApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.data;
 
 					} else {
+
 						responseData = await erpNextApiRequestAllItems.call(this, 'data', 'GET', endpoint, {}, qs);
+
 					}
-				}
-				if (operation === 'create') {
+
+				} else if (operation === 'create') {
+
+					// ----------------------------------
+					//         document: create
+					// ----------------------------------
+
+					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/post_api_resource__DocType_
+
+					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
+
+					if (!properties.customProperty.length) {
+						throw new Error('Please enter at least one property for the document to create.');
+					}
+
+					properties.customProperty.forEach(property => {
+						body[property.field] = property.value;
+					});
+
 					const docType = this.getNodeParameter('docType', i) as string;
-					const endpoint = `/api/resource/${docType}`;
 
-					const properties = this.getNodeParameter('properties', i) as IDataObject;
-
-					if (properties) {
-						const fieldsValues = (properties as IDataObject).customProperty as IDataObject[];
-						if (Array.isArray(fieldsValues) && fieldsValues.length === 0) {
-							throw new Error(
-								`At least one property has to be defined`,
-							);
-						}
-						for (const fieldValue of fieldsValues) {
-							body[fieldValue.field as string] = fieldValue.value;
-						}
-					}
-
-					responseData = await erpNextApiRequest.call(this, 'POST', endpoint, body);
+					responseData = await erpNextApiRequest.call(this, 'POST', `/api/resource/${docType}`, body);
 					responseData = responseData.data;
-				}
-				if (operation === 'delete') {
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------
+					//         document: delete
+					// ----------------------------------
+
+					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/delete_api_resource__DocType___DocumentName_
+
 					const docType = this.getNodeParameter('docType', i) as string;
 					const documentName = this.getNodeParameter('documentName', i) as string;
 
-					const endpoint = `/api/resource/${docType}/${documentName}`;
+					responseData = await erpNextApiRequest.call(this, 'DELETE', `/api/resource/${docType}/${documentName}`);
 
-					responseData = await erpNextApiRequest.call(this, 'DELETE', endpoint, {});
-				}
-				if (operation === 'update') {
-					const docType = this.getNodeParameter('docType', i) as string;
-					const documentName = this.getNodeParameter('documentName', i) as string;
-					const endpoint = `/api/resource/${docType}/${documentName}`;
+				} else if (operation === 'update') {
 
-					const properties = this.getNodeParameter('properties', i) as IDataObject;
+					// ----------------------------------
+					//         document: update
+					// ----------------------------------
 
-					if (properties) {
-						const fieldsValues = (properties as IDataObject).customProperty as IDataObject[];
-						for (const fieldValue of fieldsValues) {
-							body[fieldValue.field as string] = fieldValue.value;
-						}
+					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/put_api_resource__DocType___DocumentName_
+
+					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
+
+					if (!properties.customProperty.length) {
+						throw new Error('Please enter at least one property for the document to update.');
 					}
 
-					responseData = await erpNextApiRequest.call(this, 'PUT', endpoint, body);
+					properties.customProperty.forEach(property => {
+						body[property.field] = property.value;
+					});
+
+					const docType = this.getNodeParameter('docType', i) as string;
+					const documentName = this.getNodeParameter('documentName', i) as string;
+
+					responseData = await erpNextApiRequest.call(this, 'PUT', `/api/resource/${docType}/${documentName}`, body);
 					responseData = responseData.data;
+
 				}
 			}
 
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as unknown as IDataObject);
-			}
+			Array.isArray(responseData)
+				? returnData.push(...responseData)
+				: returnData.push(responseData);
+
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

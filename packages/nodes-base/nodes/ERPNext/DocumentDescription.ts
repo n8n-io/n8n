@@ -18,7 +18,7 @@ export const documentOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a document',
+				description: 'Create a document.',
 			},
 			{
 				name: 'Delete',
@@ -28,12 +28,12 @@ export const documentOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a document.',
+				description: 'Retrieve a document.',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all documents.',
+				description: 'Retrieve all documents.',
 			},
 			{
 				name: 'Update',
@@ -42,14 +42,14 @@ export const documentOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
+		description: 'Operation to perform.',
 	},
 ] as INodeProperties[];
 
 export const documentFields = [
-/* -------------------------------------------------------------------------- */
-/*                                document:getAll                             */
-/* -------------------------------------------------------------------------- */
+	// ----------------------------------
+	//       document: getAll
+	// ----------------------------------
 	{
 		displayName: 'DocType',
 		name: 'docType',
@@ -58,7 +58,7 @@ export const documentFields = [
 			loadOptionsMethod: 'getDocTypes',
 		},
 		default: '',
-		description: 'The DocType of which the documents you want to get.',
+		description: 'DocType whose documents to retrieve.',
 		placeholder: 'Customer',
 		displayOptions: {
 			show: {
@@ -66,7 +66,7 @@ export const documentFields = [
 					'document',
 				],
 				operation: [
-					'getAll'
+					'getAll',
 				],
 			},
 		},
@@ -93,7 +93,7 @@ export const documentFields = [
 		name: 'limit',
 		type: 'number',
 		default: 10,
-		description: 'Limit number of results returned.',
+		description: 'The number of results to return.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -136,8 +136,8 @@ export const documentFields = [
 					],
 				},
 				default: '',
-				description: 'Comma separated fields you wish returned.',
-				placeholder: 'name,country'
+				description: 'Comma-separated list of fields to return.',
+				placeholder: 'name,country',
 			},
 			{
 				displayName: 'Filters',
@@ -157,49 +157,46 @@ export const documentFields = [
 								name: 'field',
 								type: 'string',
 								default: '',
-								description: 'Specific field of the Doctype.',
-								placeholder: 'country'
+								placeholder: 'country',
 							},
 							{
 								displayName: 'Operator',
 								name: 'operator',
 								type: 'options',
 								default: 'is',
-								description: 'Property value.',
 								options: [
 									{
 										name: 'IS',
-										value: 'is'
+										value: 'is',
 									},
 									{
 										name: 'IS NOT',
-										value: 'isNot'
+										value: 'isNot',
 									},
 									{
 										name: 'IS GREATER',
-										value: 'greater'
+										value: 'greater',
 									},
 									{
 										name: 'IS LESS',
-										value: 'less'
+										value: 'less',
 									},
 									{
 										name: 'EQUALS, or GREATER',
-										value: 'equalsGreater'
+										value: 'equalsGreater',
 									},
 									{
 										name: 'EQUALS, or LESS',
-										value: 'equalsLess'
+										value: 'equalsLess',
 									},
-								]
+								],
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of operator condition.',
-								placeholder: 'india'
+								description: 'Value of the operator condition.',
 							},
 						],
 					},
@@ -207,9 +204,10 @@ export const documentFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                document:create                             */
-/* -------------------------------------------------------------------------- */
+
+	// ----------------------------------
+	//       document: create
+	// ----------------------------------
 	{
 		displayName: 'DocType',
 		name: 'docType',
@@ -218,6 +216,7 @@ export const documentFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getDocTypes',
 		},
+		required: true,
 		description: 'DocType you would like to create.',
 		placeholder: 'Customer',
 		displayOptions: {
@@ -236,7 +235,7 @@ export const documentFields = [
 		name: 'properties',
 		type: 'fixedCollection',
 		placeholder: 'Add Property',
-		description: 'Properties of request body.',
+		required: true,
 		default: {},
 		typeOptions: {
 			multipleValues: true,
@@ -255,6 +254,7 @@ export const documentFields = [
 			{
 				displayName: 'Property',
 				name: 'customProperty',
+				placeholder: 'Add Property',
 				values: [
 					{
 						displayName: 'Field',
@@ -266,25 +266,22 @@ export const documentFields = [
 								'docType',
 							],
 						},
-						default: '',
-						description: 'Name of field.',
-						placeholder: 'Name'
+						default: [],
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of field.',
-						placeholder: 'John'
 					},
 				],
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                document:get                                */
-/* -------------------------------------------------------------------------- */
+
+	// ----------------------------------
+	//          document: get
+	// ----------------------------------
 	{
 		displayName: 'DocType',
 		name: 'docType',
@@ -304,7 +301,7 @@ export const documentFields = [
 				],
 			},
 		},
-		required: true
+		required: true,
 	},
 	{
 		displayName: 'Document Name',
@@ -318,15 +315,16 @@ export const documentFields = [
 					'document',
 				],
 				operation: [
-					'get'
+					'get',
 				],
 			},
 		},
-		required: true
+		required: true,
 	},
-/* -------------------------------------------------------------------------- */
-/*                                document:remove                             */
-/* -------------------------------------------------------------------------- */
+
+	// ----------------------------------
+	//       document: delete
+	// ----------------------------------
 	{
 		displayName: 'DocType',
 		name: 'docType',
@@ -342,11 +340,11 @@ export const documentFields = [
 					'document',
 				],
 				operation: [
-					'delete'
+					'delete',
 				],
 			},
 		},
-		required: true
+		required: true,
 	},
 	{
 		displayName: 'Document Name',
@@ -360,15 +358,16 @@ export const documentFields = [
 					'document',
 				],
 				operation: [
-					'delete'
+					'delete',
 				],
 			},
 		},
-		required: true
+		required: true,
 	},
-/* -------------------------------------------------------------------------- */
-/*                                document:update                             */
-/* -------------------------------------------------------------------------- */
+
+	// ----------------------------------
+	//       document: update
+	// ----------------------------------
 	{
 		displayName: 'DocType',
 		name: 'docType',
@@ -388,7 +387,7 @@ export const documentFields = [
 				],
 			},
 		},
-		required: true
+		required: true,
 	},
 	{
 		displayName: 'Document Name',
@@ -406,7 +405,7 @@ export const documentFields = [
 				],
 			},
 		},
-		required: true
+		required: true,
 	},
 	{
 		displayName: 'Properties',
@@ -443,16 +442,12 @@ export const documentFields = [
 							],
 						},
 						default: '',
-						description: 'Name of field.',
-						placeholder: 'Name'
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of field.',
-						placeholder: 'John'
 					},
 				],
 			},
