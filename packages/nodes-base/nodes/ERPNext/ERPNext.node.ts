@@ -138,6 +138,9 @@ export class ERPNext implements INodeType {
 
 					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/get_api_resource__DocType_
 
+					const docType = this.getNodeParameter('docType', i) as string;
+					const endpoint = `/api/resource/${docType}`;
+
 					const {
 						fields,
 						filters,
@@ -165,9 +168,6 @@ export class ERPNext implements INodeType {
 							];
 						});
 					}
-
-					const docType = this.getNodeParameter('docType', i) as string;
-					const endpoint = `/api/resource/${docType}`;
 
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
