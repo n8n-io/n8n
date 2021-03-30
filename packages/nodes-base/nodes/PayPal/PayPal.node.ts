@@ -31,7 +31,7 @@ export class PayPal implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'PayPal',
 		name: 'payPal',
-		icon: 'file:paypal.png',
+		icon: 'file:paypal.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

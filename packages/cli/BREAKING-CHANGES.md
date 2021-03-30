@@ -2,6 +2,36 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.113.0
+
+### What changed?
+In the Dropbox node, both credential types (Access Token & OAuth2) have a new parameter called "APP Access Type".
+
+### When is action necessary?
+
+If you are using a Dropbox APP with permission type, "App Folder".
+
+### How to upgrade:
+
+Open your Dropbox node's credentials and set the "APP Access Type" parameter to "App Folder".
+
+## 0.111.0
+
+### What changed?
+In the Dropbox node, now all operations are performed relative to the user's root directory.
+
+### When is action necessary?
+
+If you are using any resource/operation with OAuth2 authentication.
+
+If you are using the `folder:list` operation with the parameter `Folder Path` empty (root path) and have a Team Space in your Dropbox account.
+
+### How to upgrade:
+
+Open the Dropbox node, go to the OAuth2 credential you are using and reconnect it again.
+
+Also, if you are using the `folder:list` operation, make sure your logic is taking into account the team folders in the response.
+
 ## 0.105.0
 
 ### What changed?

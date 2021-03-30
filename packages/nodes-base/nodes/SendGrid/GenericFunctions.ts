@@ -13,7 +13,7 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-export async function sendGridApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, qs: IDataObject = {}, uri?: string | undefined): Promise<any> { // tslint:disable-line:no-any
+export async function sendGridApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('sendGridApi') as IDataObject;
 
 	const host = 'api.sendgrid.com/v3';
@@ -25,12 +25,16 @@ export async function sendGridApiRequest(this: IHookFunctions | IExecuteFunction
 		method,
 		qs,
 		body,
-		uri: uri || `https://${host}${endpoint}`,
+		uri: `https://${host}${endpoint}`,
 		json: true,
 	};
 
 	if (Object.keys(body).length === 0) {
 		delete options.body;
+	}
+
+	if (Object.keys(option).length !== 0) {
+		Object.assign(options, option);
 	}
 
 	try {
