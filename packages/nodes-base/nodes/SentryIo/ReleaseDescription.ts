@@ -30,6 +30,16 @@ export const releaseOperations = [
 				value: 'getAll',
 				description: 'Get all releases',
 			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a release',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a release',
+			},
 		],
 		default: 'get',
 		description: 'The operation to perform',
@@ -129,7 +139,7 @@ export const releaseFields = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                release:get                                   */
+	/*                                release:get/delete                          */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization Slug',
@@ -146,6 +156,7 @@ export const releaseFields = [
 				],
 				operation: [
 					'get',
+					'delete',
 				],
 			},
 		},
@@ -164,6 +175,7 @@ export const releaseFields = [
 				],
 				operation: [
 					'get',
+					'delete',
 				],
 			},
 		},
@@ -337,7 +349,7 @@ export const releaseFields = [
 												name: 'path',
 												type: 'string',
 												default: '',
-												description: 'he path to the file. Both forward and backward slashes are supported',
+												description: 'the path to the file. Both forward and backward slashes are supported',
 												required: true,
 											},
 											{
@@ -345,7 +357,238 @@ export const releaseFields = [
 												name: 'type',
 												type: 'options',
 												default: '',
-												description: 'he types of changes that happend in that commit',
+												description: 'the types of changes that happend in that commit',
+												options: [
+													{
+														name: 'Add',
+														value: 'add',
+													},
+													{
+														name: 'Modify',
+														value: 'modify',
+													},
+													{
+														name: 'Delete',
+														value: 'delete',
+													},
+												],
+											},
+										],
+									},
+								],
+							},
+							{
+								displayName: 'Repository',
+								name: 'repository',
+								type: 'string',
+								default: '',
+								description: 'Repository name',
+							},
+							{
+								displayName: 'Timestamp',
+								name: 'timestamp',
+								type: 'dateTime',
+								default: '',
+								description: 'Timestamp of commit',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Refs',
+				name: 'refs',
+				description: 'an optional way to indicate the start and end commits for each repository included in a release',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'refProperties',
+						displayName: 'Ref Properties',
+						values: [
+							{
+								displayName: 'Commit',
+								name: 'commit',
+								type: 'string',
+								default: '',
+								description: 'the head sha of the commit',
+								required: true,
+							},
+							{
+								displayName: 'Repository',
+								name: 'repository',
+								type: 'string',
+								default: '',
+								description: 'Repository name',
+								required: true,
+							},
+							{
+								displayName: 'Previous Commit',
+								name: 'previousCommit',
+								type: 'string',
+								default: '',
+								description: 'the sha of the HEAD of the previous release',
+							},
+						],
+					},
+				],
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                release:update                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Organization Slug',
+		name: 'organizationSlug',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getOrganizations',
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'release',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		required: true,
+		description: 'The slug of the organization the release belongs to',
+	},
+	{
+		displayName: 'Version',
+		name: 'version',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'release',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		required: true,
+		description: ' a version identifier for this release. Can be a version number, a commit hash etc',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'release',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Ref',
+				name: 'ref',
+				type: 'string',
+				default: '',
+				description: 'A URL that points to the release. This can be the path to an online interface to the sourcecode for instance',
+			},
+			{
+				displayName: 'URL',
+				name: 'url',
+				type: 'string',
+				default: '',
+				description: 'A URL that points to the release. This can be the path to an online interface to the sourcecode for instance',
+			},
+			{
+				displayName: 'Date released',
+				name: 'dateReleased',
+				type: 'dateTime',
+				default: '',
+				description: 'an optional date that indicates when the release went live. If not provided the current time is assumed',
+			},
+			{
+				displayName: 'Commits',
+				name: 'commits',
+				description: 'an optional list of commit data to be associated with the release',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'commitProperties',
+						displayName: 'Commit Properties',
+						values: [
+							{
+								displayName: 'Id',
+								name: 'id',
+								type: 'string',
+								default: '',
+								description: 'the sha of the commit',
+								required: true,
+							},
+							{
+								displayName: 'Author Email',
+								name: 'authorEmail',
+								type: 'string',
+								default: '',
+								description: 'Authors email',
+							},
+							{
+								displayName: 'Author Name',
+								name: 'authorName',
+								type: 'string',
+								default: '',
+								description: 'Name of author',
+							},
+							{
+								displayName: 'Message',
+								name: 'message',
+								type: 'string',
+								default: '',
+								description: 'Message of commit',
+							},
+							{
+								displayName: 'Patch Set',
+								name: 'patchSet',
+								description: 'A list of the files that have been changed in the commit. Specifying the patch_set is necessary to power suspect commits and suggested assignees',
+								type: 'fixedCollection',
+								typeOptions: {
+									multipleValues: true,
+								},
+								default: {},
+								options: [
+									{
+										name: 'patchSetProperties',
+										displayName: 'Patch Set Properties',
+										values: [
+											{
+												displayName: 'Path',
+												name: 'path',
+												type: 'string',
+												default: '',
+												description: 'the path to the file. Both forward and backward slashes are supported',
+												required: true,
+											},
+											{
+												displayName: 'Type',
+												name: 'type',
+												type: 'options',
+												default: '',
+												description: 'the types of changes that happend in that commit',
 												options: [
 													{
 														name: 'Add',

@@ -452,6 +452,20 @@ export class SentryIo implements INodeType {
 
 					responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, qs);
 				}
+				if (operation === 'update') {
+					const name = this.getNodeParameter('name', i) as string;
+					const organizationSlug = this.getNodeParameter('organization_slug', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const endpoint = `/api/0/organizations/${organizationSlug}/`;
+
+					const body = {name};
+
+					if (additionalFields.slug) {
+						Object.assign(body, additionalFields.slug as string); 
+					}
+
+					responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
+				}
 			}
 			if (resource === 'project') {
 				if (operation === 'get') {
@@ -476,6 +490,14 @@ export class SentryIo implements INodeType {
 						const limit = this.getNodeParameter('limit', i) as number;
 						responseData = responseData.splice(0, limit);
 					}
+				}
+				if (operation === 'update') {
+					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+					const projectSlug = this.getNodeParameter('projectSlug', i) as string;
+					const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/`;
+					const body = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
 				}
 			}
 			if (resource === 'release') {
@@ -508,7 +530,13 @@ export class SentryIo implements INodeType {
 						responseData = responseData.splice(0, limit);
 					}
 				}
-
+				if (operation === 'delete') {
+					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+					const version = this.getNodeParameter('version', i) as string;
+					const endpoint = `/api/0/organizations/${organizationSlug}/releases/${version}/`;
+					responseData = await sentryIoApiRequest.call(this, 'DELETE', endpoint, qs);
+					responseData = { success: true };
+				}
 				if (operation === 'create') {
 					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
 					const endpoint = `/api/0/organizations/${organizationSlug}/releases/`;
@@ -571,6 +599,60 @@ export class SentryIo implements INodeType {
 
 					responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, qs);
 				}
+				if (operation === 'update') {
+					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+					const version = this.getNodeParameter('version', i) as string;
+					const endpoint = `/api/0/organizations/${organizationSlug}/releases/${version}/`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body = {...additionalFields};
+
+					if (additionalFields.commits) {
+						const commits: ICommit[] = [];
+						//@ts-ignore
+						// tslint:disable-next-line: no-any
+						additionalFields.commits.commitProperties.map((commit: any) => {
+							const commitObject: ICommit = { id: commit.id };
+
+							if (commit.repository) {
+								commitObject.repository = commit.repository;
+							}
+							if (commit.message) {
+								commitObject.message = commit.message;
+							}
+							if (commit.patchSet && Array.isArray(commit.patchSet)) {
+								commit.patchSet.patchSetProperties.map((patchSet: IPatchSet) => {
+									commitObject.patch_set?.push(patchSet);
+								});
+							}
+							if (commit.authorName) {
+								commitObject.author_name = commit.authorName;
+							}
+							if (commit.authorEmail) {
+								commitObject.author_email = commit.authorEmail;
+							}
+							if (commit.timestamp) {
+								commitObject.timestamp = commit.timestamp;
+							}
+
+							commits.push(commitObject);
+						});
+
+						body.commits = commits;
+					}
+					if (additionalFields.refs) {
+						const refs: IRef[] = [];
+						//@ts-ignore
+						additionalFields.refs.refProperties.map((ref: IRef) => {
+							refs.push(ref);
+						});
+
+						body.refs = refs;
+					}
+					
+					responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
+				}
 			}
 			if (resource === 'team') {
 				if (operation === 'get') {
@@ -612,6 +694,30 @@ export class SentryIo implements INodeType {
 					}
 
 					responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, qs);
+				}
+				if (operation === 'update') {
+					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+					const teamSlug = this.getNodeParameter('teamSlug', i) as string;
+					const name = this.getNodeParameter('name', i) as string;
+					const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body={name};
+
+					if (additionalFields.slug) {
+						Object.assign(body, additionalFields);
+					}
+					
+					responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
+				}
+				if (operation === 'delete') {
+					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+					const teamSlug = this.getNodeParameter('teamSlug', i) as string;
+					const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/`;
+
+					responseData = await sentryIoApiRequest.call(this, 'DELETE', endpoint, qs);
+					responseData = { success: true };
 				}
 			}
 

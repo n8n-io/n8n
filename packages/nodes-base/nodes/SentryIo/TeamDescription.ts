@@ -30,6 +30,16 @@ export const teamOperations = [
 				value: 'getAll',
 				description: 'Get all teams',
 			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a team',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a team',
+			},
 		],
 		default: 'get',
 		description: 'The operation to perform',
@@ -229,7 +239,7 @@ export const teamFields = [
 					'team',
 				],
 				operation: [
-					'update', 'delete',
+					'update',
 				],
 			},
 		},
@@ -247,12 +257,30 @@ export const teamFields = [
 					'team',
 				],
 				operation: [
-					'update', 'delete',
+					'update',
 				],
 			},
 		},
 		required: true,
-		description: 'The slug of the team to get',
+		description: 'The slug of the team to update',
+	},
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'team',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		required: true,
+		description: 'The new name of the team',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -278,13 +306,48 @@ export const teamFields = [
 				default: '',
 				description: 'The new slug of the team. Must be unique and available',
 			},
-			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				description: 'The new name of the team',
-			},
 		],
+	},
+/* -------------------------------------------------------------------------- */
+/*                                team:delete                                 */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Organization Slug',
+		name: 'organizationSlug',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getOrganizations',
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'team',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		required: true,
+		description: 'The slug of the organization the team belongs to',
+	},
+	{
+		displayName: 'Team Slug',
+		name: 'teamSlug',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'team',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		required: true,
+		description: 'The slug of the team to delete',
 	},
 ] as INodeProperties[];

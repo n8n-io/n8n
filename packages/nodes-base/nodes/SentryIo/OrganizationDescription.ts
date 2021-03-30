@@ -30,6 +30,11 @@ export const organizationOperations = [
 				value: 'getAll',
 				description: 'Get all organizations',
 			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update an organization',
+			},
 		],
 		default: 'get',
 		description: 'The operation to perform',
@@ -199,6 +204,73 @@ export const organizationFields = [
 				type: 'string',
 				default: '',
 				description: 'The unique URL slug for this organization. If this is not provided a slug is automatically generated based on the name',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                organization:update                         */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Slug',
+		name: 'organization_slug',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getOrganizations',
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'organization',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		required: true,
+		description: 'The slug of the organization to update.',
+	},
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'organization',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		required: true,
+		description: 'The name of the organization',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'organization',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Slug',
+				name: 'slug',
+				type: 'string',
+				default: '',
+				description: 'The updated URL slug for this organization.',
 			},
 		],
 	},
