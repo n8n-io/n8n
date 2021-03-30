@@ -102,3 +102,59 @@ describe('pgUpdate', () => {
 		expect(results).toEqual([updateItem]);
 	});
 });
+
+
+
+describe('pgInsert', () => {
+	it('runs query to insert', async () => {
+		const insertItem = {id: 1234, name: 'test', age: 34};
+		const nodeParams = {
+			table: 'mytable',
+			schema: 'myschema',
+			columns: 'id,name,age',
+			returnFields: '*',
+		};
+		const getNodeParam = (key) => nodeParams[key];
+		const pgp = pgPromise();
+		const manyOrNone = jest.fn();
+		const db = {manyOrNone};
+
+		const items = [
+			{
+				json: insertItem,
+			},
+		];
+
+		const results = await PostgresFun.pgInsert(getNodeParam, pgp, db, items);
+		console.log(results);
+
+		expect(db.manyOrNone).toHaveBeenCalledWith(`insert into \"myschema\".\"mytable\"(\"id\",\"name\",\"age\") values(1234,'test',34) RETURNING *`);
+		expect(results).toEqual([undefined, [insertItem]]);
+	});
+
+	it('runs query to insert with type casting', async () => {
+		const insertItem = {id: 1234, name: 'test', age: 34};
+		const nodeParams = {
+			table: 'mytable',
+			schema: 'myschema',
+			columns: 'id:int,name:text,age',
+			returnFields: '*',
+		};
+		const getNodeParam = (key) => nodeParams[key];
+		const pgp = pgPromise();
+		const manyOrNone = jest.fn();
+		const db = {manyOrNone};
+
+		const items = [
+			{
+				json: insertItem,
+			},
+		];
+
+		const results = await PostgresFun.pgInsert(getNodeParam, pgp, db, items);
+		console.log(results);
+
+		expect(db.manyOrNone).toHaveBeenCalledWith(`insert into \"myschema\".\"mytable\"(\"id\",\"name\",\"age\") values(1234::int,'test'::text,34) RETURNING *`);
+		expect(results).toEqual([undefined, [insertItem]]);
+	});
+});

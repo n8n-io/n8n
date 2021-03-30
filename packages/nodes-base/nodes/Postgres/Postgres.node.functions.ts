@@ -86,8 +86,6 @@ export async function pgInsert(
 		pgp.helpers.insert(insertItems, columnSet, te) +
 		(returnFields.length ? ` RETURNING ${returnFields.join(',')}` : '');
 
-	console.log(query);
-
 	// Executing the query to insert the data
 	const insertData = await db.manyOrNone(query);
 
@@ -114,10 +112,10 @@ export async function pgUpdate(
 	const updateKey = getNodeParam('updateKey', 0) as string;
 	const columnString = getNodeParam('columns', 0) as string;
 
-	const updateColumnParts = updateKey.split(':');
+	const [updateColumnName, updateColumnCast] = updateKey.split(':');
 	const updateColumn = {
-		name: updateColumnParts[0],
-		cast: updateColumnParts[1],
+		name: updateColumnName,
+		cast: updateColumnCast,
 	};
 
 	const columns = columnString.split(',')
