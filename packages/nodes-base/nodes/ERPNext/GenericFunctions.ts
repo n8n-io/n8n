@@ -53,9 +53,14 @@ export async function erpNextApiRequest(
 	}
 
 	try {
-		console.log(JSON.stringify(options, null, 2));
 		return await this.helpers.request!(options);
 	} catch (error) {
+
+		if (error.statusCode === 403) {
+			throw new Error(
+				`ERPNext error response [${error.statusCode}]: DocType unavailable.`,
+			);
+		}
 
 		if (error.statusCode === 307) {
 			throw new Error(
