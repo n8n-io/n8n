@@ -115,13 +115,10 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import { get } from 'lodash';
 
 import {
 	INodeUi,
-	IVariableItemSelected,
-	IVariableSelectorOption,
 } from '@/Interface';
 import {
 	NodeHelpers,

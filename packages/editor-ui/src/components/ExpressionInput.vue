@@ -12,17 +12,14 @@ import 'quill/dist/quill.core.css';
 
 import Quill, { DeltaOperation } from 'quill';
 // @ts-ignore
-import AutoFormat, { AutoformatHelperAttribute } from 'quill-autoformat';
+import AutoFormat from 'quill-autoformat';
 import {
 	NodeParameterValue,
 	Workflow,
-	WorkflowDataProxy,
 } from 'n8n-workflow';
 
 import {
-	IExecutionResponse,
 	IVariableItemSelected,
-	IVariableSelectorOption,
 } from '@/Interface';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
@@ -261,9 +258,11 @@ export default mixins(
 				// Convert the expression string into a Quill Operations
 				const editorOperations: DeltaOperation[] = [];
 				currentValue.replace(/\{\{(.*?)\}\}/ig, '*%%#_@^$1*%%#_@').split('*%%#_@').forEach((value: string) => {
-					if (!value) {
+					if(!value) {
+						return;
+					}
 
-					} else if (value.charAt(0) === '^') {
+					if (value.charAt(0) === '^') {
 						// Is variable
 						let displayValue = `{{${value.slice(1)}}}` as string | number | boolean | null | undefined;
 						if (this.resolvedValue) {

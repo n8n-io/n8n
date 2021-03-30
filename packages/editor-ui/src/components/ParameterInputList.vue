@@ -76,7 +76,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 
 import {
 	INodeProperties,
@@ -88,8 +87,6 @@ import MultipleParameter from '@/components/MultipleParameter.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
-
-import { get } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 

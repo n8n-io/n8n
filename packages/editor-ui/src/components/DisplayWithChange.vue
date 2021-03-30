@@ -28,8 +28,6 @@ export default mixins(genericHelpers).extend({
 			return this.$store.getters.activeNode;
 		},
 		currentValue (): string {
-			const parameterNameParts = this.keyName.split('.');
-
 			const getDescendantProp = (obj: object, path: string): string => {
 				// @ts-ignore
 				return path.split('.').reduce((acc, part) => acc && acc[part], obj);

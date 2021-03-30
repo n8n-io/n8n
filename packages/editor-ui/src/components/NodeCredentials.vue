@@ -49,7 +49,6 @@ import {
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
-	IUpdateInformation,
 } from '@/Interface';
 import {
 	ICredentialType,
@@ -212,8 +211,6 @@ export default mixins(
 			return node.issues.credentials[credentialTypeName];
 		},
 		updateCredentials (credentialType: string): void {
-			const credentials = this.credentials[credentialType];
-
 			const name = this.credentials[credentialType];
 			const credentialData = this.credentialOptions[credentialType].find((optionData: ICredentialsResponse) => optionData.name === name);
 			if (credentialData === undefined) {

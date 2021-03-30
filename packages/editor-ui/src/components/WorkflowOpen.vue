@@ -35,7 +35,6 @@ import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
-import { titleChange } from '@/components/mixins/titleChange';
 import { IWorkflowShortResponse } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';

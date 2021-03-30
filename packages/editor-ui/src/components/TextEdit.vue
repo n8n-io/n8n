@@ -18,10 +18,6 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import {
-	Workflow,
-} from 'n8n-workflow';
-
 export default Vue.extend({
 
 	name: 'TextEdit',
@@ -44,7 +40,6 @@ export default Vue.extend({
 			// Handle the close externally as the visible parameter is an external prop
 			// and is so not allowed to be changed here.
 			this.$emit('closeDialog');
-			return false;
 		},
 	},
 	mounted () {
