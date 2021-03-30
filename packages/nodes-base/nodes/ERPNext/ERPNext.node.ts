@@ -76,7 +76,6 @@ export class ERPNext implements INodeType {
 					return { name, value: encodeURI(name) };
 				});
 
-				// return sortBy(docTypes, ['name']);
 				return processNames(docTypes);
 			},
 
@@ -88,7 +87,6 @@ export class ERPNext implements INodeType {
 					return ({ name: label, value: fieldname });
 				});
 
-				// return flow(ensureName, sortByName, uniqueByName)(docFields);
 				return processNames(docFields);
 			},
 		},
