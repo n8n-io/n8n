@@ -4,7 +4,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, ILoadOptionsFunctions, INodeProperties, NodeApiError,
+	IDataObject, ILoadOptionsFunctions, INodeProperties, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';

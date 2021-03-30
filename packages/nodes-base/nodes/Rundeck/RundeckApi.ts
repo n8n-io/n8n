@@ -17,7 +17,7 @@ export class RundeckApi {
 		const credentials = executeFunctions.getCredentials('rundeckApi');
 
 		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+			throw new Error('No credentials got returned!');
 		}
 
 		this.credentials = credentials as unknown as RundeckCredentials;
@@ -48,7 +48,7 @@ export class RundeckApi {
 				errorMessage = error.response.body.message.replace('\n', '');
 			}
 
-			throw new NodeOperationError(this.getNode(), `Rundeck Error [${error.statusCode}]: ${errorMessage}`);
+			throw new Error(`Rundeck Error [${error.statusCode}]: ${errorMessage}`);
 		}
 	}
 
