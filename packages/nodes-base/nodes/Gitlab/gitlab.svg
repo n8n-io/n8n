@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="60px" height="60px" viewBox="0 0 60 60" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>gitlab_node_icon</title>
+    <g id="gitlab_node_icon" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" stroke-linecap="round" stroke-linejoin="round">
+        <g id="Group" transform="translate(1.000000, 3.000000)">
+            <polygon id="Path" fill="#E24329" points="29.5 53.9670508 40.363375 20.7643729 18.636625 20.7643729"></polygon>
+            <polygon id="Path" fill="#FC6D26" points="29.5 53.9670508 18.636625 20.7643729 3.4109375 20.7643729"></polygon>
+            <path d="M3.4109375,20.7643729 L0.110625,30.8596271 C-0.190581485,31.779688 0.139159543,32.7876713 0.92740625,33.3564407 L29.5,53.9670508 L3.4109375,20.7643729 Z" id="Path" fill="#FCA326"></path>
+            <path d="M3.4109375,20.7643729 L18.6357031,20.7643729 L12.0931562,0.780711864 C11.7566719,-0.248033898 10.2908906,-0.248033898 9.95440625,0.780711864 L3.4109375,20.7643729 Z" id="Path" fill="#E24329"></path>
+            <polygon id="Path" fill="#FC6D26" points="29.5 53.9670508 40.363375 20.7643729 55.5890625 20.7643729"></polygon>
+            <path d="M55.5890625,20.7643729 L58.889375,30.8504746 C59.1905815,31.7705355 58.8608405,32.7785188 58.0725937,33.3472881 L29.5,53.9670508 L55.5890625,20.7643729 Z" id="Path" fill="#FCA326"></path>
+            <path d="M55.5890625,20.7643729 L40.363375,20.7643729 L46.9068438,0.771559322 C47.2433281,-0.257186441 48.7091094,-0.257186441 49.0455937,0.771559322 L55.5890625,20.7643729 Z" id="Path" fill="#E24329"></path>
+        </g>
+    </g>
+</svg>

@@ -33,7 +33,6 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftOneDriveOAuth2Api', options);
 	} catch (error) {

@@ -1,18 +1,21 @@
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
+
 import {
 	linkFields,
 	linkOperations
 } from './LinkDescription';
+
 import {
 	bitlyApiRequest,
 	bitlyApiRequestAllItems,

@@ -152,6 +152,10 @@ export const restApi = Vue.extend({
 					return self.restApi().makeRestApiRequest('GET', `/node-types`);
 				},
 
+				getNodesInformation: (nodeList: string[]): Promise<INodeTypeDescription[]> => {
+					return self.restApi().makeRestApiRequest('POST', `/node-types`, {nodeNames: nodeList});
+				},
+
 				// Returns all the parameter options from the server
 				getNodeParameterOptions: (nodeType: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]> => {
 					const sendData = {
@@ -296,11 +300,12 @@ export const restApi = Vue.extend({
 
 				// Returns all saved executions
 				// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
-				getPastExecutions: (filter: object, limit: number, lastId?: string | number): Promise<IExecutionsListResponse> => {
+				getPastExecutions: (filter: object, limit: number, lastId?: string | number, firstId?: string | number): Promise<IExecutionsListResponse> => {
 					let sendData = {};
 					if (filter) {
 						sendData = {
 							filter,
+							firstId,
 							lastId,
 							limit,
 						};

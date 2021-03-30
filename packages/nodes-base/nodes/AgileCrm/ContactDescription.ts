@@ -205,7 +205,7 @@ export const contactFields = [
 									},
 									{
 										name: 'Office',
-										value: 'office'
+										value: 'office',
 									},
 								],
 							},
@@ -656,15 +656,15 @@ export const contactFields = [
 								options: [
 									{
 										name: 'Home',
-										value: 'home'
+										value: 'home',
 									},
 									{
 										name: 'Office',
-										value: 'office'
+										value: 'office',
 									},
 									{
 										name: 'Postal',
-										value: 'postal'
+										value: 'postal',
 									},
 								],
 							},
@@ -715,8 +715,8 @@ export const contactFields = [
 									{
 										name: 'Personal',
 										value: 'personal',
-									}
-								]
+									},
+								],
 							},
 							{
 								displayName: 'Email',
@@ -752,7 +752,7 @@ export const contactFields = [
 				description: 'Lead score of contact',
 				typeOptions: {
 					minValue: 0,
-				}
+				},
 			},
 			{
 				displayName: 'Star Value',
@@ -966,7 +966,7 @@ export const contactFields = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Property name.'
+								description: 'Property name.',
 							},
 							{
 								displayName: 'Sub Type',

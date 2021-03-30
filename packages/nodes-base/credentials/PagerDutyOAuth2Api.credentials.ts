@@ -9,6 +9,7 @@ export class PagerDutyOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'PagerDuty OAuth2 API';
+	documentationUrl = 'pagerDuty';
 	properties = [
 		{
 			displayName: 'Authorization URL',
@@ -35,11 +36,11 @@ export class PagerDutyOAuth2Api implements ICredentialType {
 			default: '',
 		},
 		{
-            displayName: 'Authentication',
-            name: 'authentication',
-            type: 'hidden' as NodePropertyTypes,
-            default: 'header',
-            description: 'Method of authentication.',
-        },
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'hidden' as NodePropertyTypes,
+			default: 'header',
+			description: 'Method of authentication.',
+		},
 	];
 }

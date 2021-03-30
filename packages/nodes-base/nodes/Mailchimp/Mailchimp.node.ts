@@ -13,6 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	campaignFieldsMetadata,
 	mailchimpApiRequest,
 	mailchimpApiRequestAllItems,
 	validateJSON,
@@ -47,6 +48,7 @@ interface ICreateMemberBody {
 	timestamp_opt?: string;
 	tags?: string[];
 	merge_fields?: IDataObject;
+	interests?: IDataObject;
 }
 
 export class Mailchimp implements INodeType {
@@ -54,7 +56,7 @@ export class Mailchimp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailchimp',
 		name: 'mailchimp',
-		icon: 'file:mailchimp.png',
+		icon: 'file:mailchimp.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -112,6 +114,14 @@ export class Mailchimp implements INodeType {
 				name: 'resource',
 				type: 'options',
 				options: [
+					{
+						name: 'Campaign',
+						value: 'campaign',
+					},
+					{
+						name: 'List Group',
+						value: 'listGroup',
+					},
 					{
 						name: 'Member',
 						value: 'member',
@@ -194,6 +204,76 @@ export class Mailchimp implements INodeType {
 				default: 'create',
 				description: 'The operation to perform.',
 			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'listGroup',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all groups',
+					},
+				],
+				default: 'getAll',
+				description: 'The operation to perform.',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type:'options',
+				required: true,
+				displayOptions : {
+					show: {
+						resource: [
+							'campaign',
+						],
+					},
+
+				},
+				options: [
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a campaign',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get a campaign',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all the campaigns',
+					},
+					{
+						name: 'Replicate',
+						value: 'replicate',
+						description: 'Replicate a campaign',
+					},
+					{
+						name: 'Resend',
+						value: 'resend',
+						description: 'Creates a Resend to Non-Openers version of this campaign',
+					},
+					{
+						name: 'Send',
+						value: 'send',
+						description: 'Send a campaign',
+					},
+				],
+				default: 'getAll',
+				description: 'The operation to perform.',
+			},
 /* -------------------------------------------------------------------------- */
 /*                                 member:create                              */
 /* -------------------------------------------------------------------------- */
@@ -256,27 +336,22 @@ export class Mailchimp implements INodeType {
 					{
 						name: 'Subscribed',
 						value: 'subscribed',
-						description: '',
 					},
 					{
 						name: 'Unsubscribed',
 						value: 'unsubscribed',
-						description: '',
 					},
 					{
 						name: 'Cleaned',
 						value: 'cleaned',
-						description: '',
 					},
 					{
 						name: 'Pending',
 						value: 'pending',
-						description: '',
 					},
 					{
 						name: 'Transactional',
 						value: 'transactional',
-						description: '',
 					},
 				],
 				default: '',
@@ -287,11 +362,10 @@ export class Mailchimp implements INodeType {
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
-				description: '',
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'create',
@@ -324,12 +398,10 @@ export class Mailchimp implements INodeType {
 							{
 								name: 'HTML',
 								value: 'html',
-								description: '',
 							},
 							{
 								name: 'Text',
 								value: 'text',
-								description: '',
 							},
 						],
 						default: '',
@@ -428,7 +500,7 @@ export class Mailchimp implements INodeType {
 								default: '',
 							},
 						],
-					}
+					},
 				],
 			},
 			{
@@ -443,7 +515,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'create',
@@ -496,7 +568,6 @@ export class Mailchimp implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: '',
 				displayOptions: {
 					show: {
 						resource:[
@@ -519,7 +590,86 @@ export class Mailchimp implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: '',
+				displayOptions: {
+					show: {
+						resource:[
+							'member',
+						],
+						operation: [
+							'create',
+						],
+						jsonParameters: [
+							true,
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Interest Groups',
+				name: 'groupsUi',
+				placeholder: 'Add Interest Group',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				displayOptions: {
+					show: {
+						resource:[
+							'member',
+						],
+						operation: [
+							'create',
+						],
+						jsonParameters: [
+							false,
+						],
+					},
+				},
+				options: [
+					{
+						name: 'groupsValues',
+						displayName: 'Group',
+						typeOptions: {
+							multipleValueButtonText: 'Add Interest Group',
+						},
+						values: [
+							{
+								displayName: 'Category ID',
+								name: 'categoryId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getGroupCategories',
+									loadOptionsDependsOn: [
+										'list',
+									],
+								},
+								default: '',
+							},
+							{
+								displayName: 'Category Field ID',
+								name: 'categoryFieldId',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'boolean',
+								default: false,
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Interest Groups',
+				name: 'groupJson',
+				type: 'json',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
 				displayOptions: {
 					show: {
 						resource:[
@@ -651,7 +801,7 @@ export class Mailchimp implements INodeType {
 						default: '',
 						description: 'A comma-separated list of fields to exclude.',
 					},
-				]
+				],
 			},
 /* -------------------------------------------------------------------------- */
 /*                                 member:getAll                              */
@@ -772,12 +922,10 @@ export class Mailchimp implements INodeType {
 							{
 								name: 'HTML',
 								value: 'html',
-								description: '',
 							},
 							{
 								name: 'Text',
 								value: 'text',
-								description: '',
 							},
 						],
 						default: '',
@@ -791,27 +939,22 @@ export class Mailchimp implements INodeType {
 							{
 								name: 'Subscribed',
 								value: 'subscribed',
-								description: '',
 							},
 							{
 								name: 'Unsubscribed',
 								value: 'unsubscribed',
-								description: '',
 							},
 							{
 								name: 'Cleaned',
 								value: 'cleaned',
-								description: '',
 							},
 							{
 								name: 'Pending',
 								value: 'pending',
-								description: '',
 							},
 							{
 								name: 'Transactional',
 								value: 'transactional',
-								description: '',
 							},
 						],
 						default: '',
@@ -874,11 +1017,10 @@ export class Mailchimp implements INodeType {
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
-				description: '',
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'update',
@@ -911,16 +1053,72 @@ export class Mailchimp implements INodeType {
 							{
 								name: 'HTML',
 								value: 'html',
-								description: '',
 							},
 							{
 								name: 'Text',
 								value: 'text',
-								description: '',
 							},
 						],
 						default: '',
 						description: 'Type of email this member asked to get',
+					},
+					{
+						displayName: 'Interest Groups',
+						name: 'groupsUi',
+						placeholder: 'Add Interest Group',
+						type: 'fixedCollection',
+						default: {},
+						typeOptions: {
+							multipleValues: true,
+						},
+						displayOptions: {
+							show: {
+								'/resource':[
+									'member',
+								],
+								'/operation':[
+									'update',
+								],
+								'/jsonParameters': [
+									false,
+								],
+							},
+						},
+						options: [
+							{
+								name: 'groupsValues',
+								displayName: 'Group',
+								typeOptions: {
+									multipleValueButtonText: 'Add Interest Group',
+								},
+								values: [
+									{
+										displayName: 'Category ID',
+										name: 'categoryId',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getGroupCategories',
+											loadOptionsDependsOn: [
+												'list',
+											],
+										},
+										default: '',
+									},
+									{
+										displayName: 'Category Field ID',
+										name: 'categoryFieldId',
+										type: 'string',
+										default: '',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'boolean',
+										default: false,
+									},
+								],
+							},
+						],
 					},
 					{
 						displayName: 'Language',
@@ -941,7 +1139,7 @@ export class Mailchimp implements INodeType {
 						displayOptions: {
 							show: {
 								'/resource':[
-									'member'
+									'member',
 								],
 								'/operation':[
 									'update',
@@ -1024,27 +1222,22 @@ export class Mailchimp implements INodeType {
 							{
 								name: 'Subscribed',
 								value: 'subscribed',
-								description: '',
 							},
 							{
 								name: 'Unsubscribed',
 								value: 'unsubscribed',
-								description: '',
 							},
 							{
 								name: 'Cleaned',
 								value: 'cleaned',
-								description: '',
 							},
 							{
 								name: 'Pending',
 								value: 'pending',
-								description: '',
 							},
 							{
 								name: 'Transactional',
 								value: 'transactional',
-								description: '',
 							},
 						],
 						default: '',
@@ -1067,7 +1260,7 @@ export class Mailchimp implements INodeType {
 						displayOptions: {
 							show: {
 								'/resource':[
-									'member'
+									'member',
 								],
 								'/operation':[
 									'update',
@@ -1119,7 +1312,6 @@ export class Mailchimp implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: '',
 				displayOptions: {
 					show: {
 						resource:[
@@ -1142,7 +1334,28 @@ export class Mailchimp implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: '',
+				displayOptions: {
+					show: {
+						resource:[
+							'member',
+						],
+						operation: [
+							'update',
+						],
+						jsonParameters: [
+							true,
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Interest Groups',
+				name: 'groupJson',
+				type: 'json',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
 				displayOptions: {
 					show: {
 						resource:[
@@ -1213,7 +1426,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'memberTag'
+							'memberTag',
 						],
 						operation: [
 							'create',
@@ -1250,6 +1463,309 @@ export class Mailchimp implements INodeType {
 					},
 				],
 			},
+/* -------------------------------------------------------------------------- */
+/*                                 member:getAll                              */
+/* -------------------------------------------------------------------------- */
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getLists',
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'listGroup',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: '',
+				options: [],
+				required: true,
+				description: 'List of lists',
+			},
+			{
+				displayName: 'Group Category',
+				name: 'groupCategory',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getGroupCategories',
+					loadOptionsDependsOn: [
+						'list',
+					],
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'listGroup',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: '',
+				options: [],
+				required: true,
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'listGroup',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'listGroup',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 1000,
+				},
+				default: 500,
+				description: 'How many results to return.',
+			},
+/* -------------------------------------------------------------------------- */
+/*                                 campaign:getAll                            */
+/* -------------------------------------------------------------------------- */
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'campaign',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'campaign',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 1000,
+				},
+				default: 10,
+				description: 'How many results to return.',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource:[
+							'campaign',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Before Create Time',
+						name: 'beforeCreateTime',
+						type: 'dateTime',
+						default: '',
+						description: 'Restrict the response to campaigns created before the set time.',
+					},
+					{
+						displayName: 'Before Send Time',
+						name: 'beforeSendTime',
+						type: 'dateTime',
+						default: '',
+						description: 'Restrict the response to campaigns sent before the set time.',
+					},
+					{
+						displayName: 'Exclude Fields',
+						name: 'excludeFields',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getCampaignsFields',
+						},
+						default: [],
+						description: 'A comma-separated list of fields to exclude.',
+					},
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getCampaignsFields',
+						},
+						default: [
+							'campaigns.id',
+							'campaigns.status',
+							'campaigns.tracking',
+							'campaigns.settings.from_name',
+							'campaigns.settings.reply_to',
+							'campaigns.settings.title',
+						],
+						description: 'A comma-separated list of fields to return.',
+					},
+					{
+						displayName: 'List ID',
+						name: 'listId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getLists',
+						},
+						default: '',
+						description: 'List of lists',
+					},
+					{
+						displayName: 'Since Create Time',
+						name: 'sinceCreateTime',
+						type: 'dateTime',
+						default: '',
+						description: 'Restrict the response to campaigns created after the set time.',
+					},
+					{
+						displayName: 'Since Send Time',
+						name: 'sinceSendTime',
+						type: 'dateTime',
+						default: '',
+						description: 'Restrict the response to campaigns sent after the set time.',
+					},
+					{
+						displayName: 'Sort Direction',
+						name: 'sortDirection',
+						type: 'options',
+						options: [
+							{
+								name: 'ASC',
+								value: 'ASC',
+							},
+							{
+								name: 'DESC',
+								value: 'DESC',
+							},
+						],
+						default: '',
+						description: 'Determines the order direction for sorted results.',
+					},
+					{
+						displayName: 'Sort Field',
+						name: 'sortField',
+						type: 'options',
+						options: [
+							{
+								name: 'Create Time',
+								value: 'create_time',
+							},
+							{
+								name: 'Send Time',
+								value: 'send_time',
+							},
+						],
+						default: '',
+						description: 'Returns files sorted by the specified field.',
+					},
+					{
+						displayName: 'Status',
+						name: 'status',
+						type: 'options',
+						options: [
+							{
+								name: 'Save',
+								value: 'save',
+							},
+							{
+								name: 'Sending',
+								value: 'sending',
+							},
+							{
+								name: 'Sent',
+								value: 'sent',
+							},
+							{
+								name: 'Schedule',
+								value: 'schedule',
+							},
+						],
+						default: '',
+						description: 'The status of the campaign.',
+					},
+				],
+			},
+/* -------------------------------------------------------------------------- */
+/*                                 campaign:send                              */
+/* -------------------------------------------------------------------------- */
+			{
+				displayName: 'Campaign ID',
+				name: 'campaignId',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'campaign',
+						],
+						operation: [
+							'send',
+							'get',
+							'delete',
+							'replicate',
+							'resend',
+						],
+					},
+				},
+				required: true,
+				default: '',
+				description: 'List of Campaigns',
+				options:[],
+			},
 		],
 	};
 
@@ -1261,7 +1777,7 @@ export class Mailchimp implements INodeType {
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { lists } = await mailchimpApiRequest.call(this, '/lists', 'GET');
+				const lists = await mailchimpApiRequestAllItems.call(this, '/lists', 'GET', 'lists');
 				for (const list of lists) {
 					const listName = list.name;
 					const listId = list.id;
@@ -1289,7 +1805,51 @@ export class Mailchimp implements INodeType {
 				}
 				return returnData;
 			},
-		}
+
+			// Get all the interest fields to display them to user so that he can
+			// select them easily
+			async getGroupCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const listId = this.getCurrentNodeParameter('list');
+				const { categories } = await mailchimpApiRequest.call(this, `/lists/${listId}/interest-categories`, 'GET');
+				for (const category of categories) {
+					const categoryName = category.title;
+					const categoryId = category.id;
+					returnData.push({
+						name: categoryName,
+						value: categoryId,
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the available campaigns to display them to users so that they can select them easily
+			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const campaigns = await mailchimpApiRequestAllItems.call(this, '/campaigns', 'GET', 'campaigns');
+				for (const campaign of campaigns) {
+					const campaignName = campaign.settings.title;
+					const campaignId = campaign.id;
+					returnData.push({
+						name: campaignName,
+						value: campaignId,
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the available fields to display them to users so that they can select them easily
+			async getCampaignsFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				for (const campaignFields of campaignFieldsMetadata) {
+					returnData.push({
+						name: campaignFields,
+						value: campaignFields,
+					});
+				}
+				return returnData;
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -1302,6 +1862,22 @@ export class Mailchimp implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
+			if (resource === 'listGroup') {
+				//https://mailchimp.com/developer/reference/lists/interest-categories/#get_/lists/-list_id-/interest-categories/-interest_category_id-
+				if (operation === 'getAll') {
+					const listId = this.getNodeParameter('list', i) as string;
+					const categoryId = this.getNodeParameter('groupCategory', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					if (returnAll === true) {
+						responseData = await mailchimpApiRequestAllItems.call(this, `/lists/${listId}/interest-categories/${categoryId}/interests`, 'GET', 'interests', {}, qs);
+					} else {
+						qs.count = this.getNodeParameter('limit', i) as number;
+						responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/interest-categories/${categoryId}/interests`, 'GET', {}, qs);
+						responseData = responseData.interests;
+					}
+				}
+			}
 			if (resource === 'member') {
 				//https://mailchimp.com/developer/reference/lists/list-members/#post_/lists/-list_id-/members
 				if (operation === 'create') {
@@ -1314,7 +1890,7 @@ export class Mailchimp implements INodeType {
 					const body: ICreateMemberBody = {
 						listId,
 						email_address: email,
-						status
+						status,
 					};
 					if (options.emailType) {
 						body.email_type = options.emailType as string;
@@ -1363,14 +1939,28 @@ export class Mailchimp implements INodeType {
 							}
 							body.merge_fields = mergeFields;
 						}
+
+						const groupsValues = (this.getNodeParameter('groupsUi', i) as IDataObject).groupsValues as IDataObject[];
+						if (groupsValues) {
+							const groups = {};
+							for (let i = 0; i < groupsValues.length; i++) {
+								// @ts-ignore
+								groups[groupsValues[i].categoryFieldId] = groupsValues[i].value;
+							}
+							body.interests = groups;
+						}
 					} else {
 						const locationJson = validateJSON(this.getNodeParameter('locationJson', i) as string);
 						const mergeFieldsJson = validateJSON(this.getNodeParameter('mergeFieldsJson', i) as string);
+						const groupJson = validateJSON(this.getNodeParameter('groupJson', i) as string);
 						if (locationJson) {
 							body.location = locationJson;
 						}
 						if (mergeFieldsJson) {
 							body.merge_fields = mergeFieldsJson;
+						}
+						if (groupJson) {
+							body.interests = groupJson;
 						}
 					}
 					responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members`, 'POST', body);
@@ -1504,14 +2094,30 @@ export class Mailchimp implements INodeType {
 								body.merge_fields = mergeFields;
 							}
 						}
+						if (updateFields.groupsUi) {
+							const groupsValues = (updateFields.groupsUi  as IDataObject).groupsValues as IDataObject[];
+							if (groupsValues) {
+								const groups = {};
+								for (let i = 0; i < groupsValues.length; i++) {
+									// @ts-ignore
+									groups[groupsValues[i].categoryFieldId] = groupsValues[i].value;
+								}
+								body.interests = groups;
+							}
+						}
 					} else {
 						const locationJson = validateJSON(this.getNodeParameter('locationJson', i) as string);
 						const mergeFieldsJson = validateJSON(this.getNodeParameter('mergeFieldsJson', i) as string);
+						const groupJson = validateJSON(this.getNodeParameter('groupJson', i) as string);
+
 						if (locationJson) {
 							body.location = locationJson;
 						}
 						if (mergeFieldsJson) {
 							body.merge_fields = mergeFieldsJson;
+						}
+						if (groupJson) {
+							body.interests = groupJson;
 						}
 					}
 					responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}`, 'PUT', body);
@@ -1569,6 +2175,90 @@ export class Mailchimp implements INodeType {
 					}
 					responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}/tags`, 'POST', body);
 					responseData = { success: true };
+				}
+			}
+			if (resource === 'campaign') {
+				//https://mailchimp.com/developer/api/marketing/campaigns/list-campaigns/
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					if (options.status) {
+						qs.status = options.status as string;
+					}
+					if (options.beforeCreateTime) {
+						qs.before_create_time = options.beforeCreateTime as string;
+					}
+					if (options.beforeSendTime) {
+						qs.before_send_time = options.beforeSendTime as string;
+					}
+					if (options.excludeFields) {
+						qs.exclude_fields = (options.exclude_fields as string[]).join(',');
+					}
+					if (options.fields) {
+						qs.fields = (options.fields as string[]).join(',');
+						if ((options.fields as string[]).includes('*')) {
+							qs.fields = campaignFieldsMetadata.join(',');
+						}
+					} else {
+						qs.fields = [
+							'campaigns.id',
+							'campaigns.status',
+							'campaigns.tracking',
+							'campaigns.settings.from_name',
+							'campaigns.settings.title',
+							'campaigns.settings.reply_to',
+						].join(',');
+					}
+
+					if (options.listId) {
+						qs.list_id = options.listId as string;
+					}
+					if (options.sinceCreateTime) {
+						qs.since_create_time = options.sinceCreateTime as string;
+					}
+					if (options.sinceSendTime) {
+						qs.since_send_time = options.sinceSendTime as string;
+					}
+					if (options.sortDirection) {
+						qs.sort_dir = options.sortDirection as string;
+					}
+					if (options.sortField) {
+						qs.sort_field = options.sortField as string;
+					}
+					if (returnAll === true) {
+						responseData = await mailchimpApiRequestAllItems.call(this, `/campaigns`, 'GET', 'campaigns', {}, qs);
+					} else {
+						qs.count = this.getNodeParameter('limit', i) as number;
+						responseData = await mailchimpApiRequest.call(this, `/campaigns`, 'GET', {}, qs);
+						responseData = responseData.campaigns;
+					}
+				}
+				//https://mailchimp.com/developer/api/marketing/campaigns/send-campaign/
+				if (operation === 'send') {
+					const campaignId = this.getNodeParameter('campaignId', i) as string;
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/send`, 'POST', {});
+					responseData = { success: true };
+				}
+				//https://mailchimp.com/developer/api/marketing/campaigns/get-campaign-info/
+				if (operation === 'get') {
+					const campaignId = this.getNodeParameter('campaignId', i) as string;
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'GET', {});
+				}
+				//https://mailchimp.com/developer/api/marketing/campaigns/delete-campaign/
+				if (operation === 'delete') {
+					const campaignId = this.getNodeParameter('campaignId', i) as string;
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'DELETE', {});
+					responseData = { success: true };
+				}
+				//https://mailchimp.com/developer/api/marketing/campaigns/replicate-campaign/
+				if (operation === 'replicate') {
+					const campaignId = this.getNodeParameter('campaignId', i) as string;
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/replicate`, 'POST', {});
+				}
+				//https://mailchimp.com/developer/api/marketing/campaigns/resend-campaign/
+				if (operation === 'resend') {
+					const campaignId = this.getNodeParameter('campaignId', i) as string;
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/create-resend`, 'POST', {});
 				}
 			}
 

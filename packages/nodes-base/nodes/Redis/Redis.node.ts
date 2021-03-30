@@ -16,10 +16,10 @@ export class Redis implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Redis',
 		name: 'redis',
-		icon: 'file:redis.png',
+		icon: 'file:redis.svg',
 		group: ['input'],
 		version: 1,
-		description: 'Gets, sends data to Redis and receives generic information.',
+		description: 'Get, send and update data in Redis.',
 		defaults: {
 			name: 'Redis',
 			color: '#0033AA',
@@ -30,7 +30,7 @@ export class Redis implements INodeType {
 			{
 				name: 'redis',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -41,12 +41,12 @@ export class Redis implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Deletes a key from Redis.',
+						description: 'Delete a key from Redis.',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Returns the value of a key from Redis.',
+						description: 'Get the value of a key from Redis.',
 					},
 					{
 						name: 'Info',
@@ -61,7 +61,7 @@ export class Redis implements INodeType {
 					{
 						name: 'Set',
 						value: 'set',
-						description: 'Sets the value of a key in redis.',
+						description: 'Set the value of a key in redis.',
 					},
 				],
 				default: 'info',
@@ -78,7 +78,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 					},
 				},
@@ -93,7 +93,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'delete'
+							'delete',
 						],
 					},
 				},
@@ -108,7 +108,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 					},
 				},
@@ -123,7 +123,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 					},
 				},
@@ -165,7 +165,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 					},
 				},
@@ -195,7 +195,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'keys'
+							'keys',
 						],
 					},
 				},
@@ -214,7 +214,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'set'
+							'set',
 						],
 					},
 				},
@@ -229,7 +229,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'set'
+							'set',
 						],
 					},
 				},
@@ -243,7 +243,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'set'
+							'set',
 						],
 					},
 				},
@@ -285,7 +285,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'set'
+							'set',
 						],
 					},
 				},
@@ -303,7 +303,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'set'
+							'set',
 						],
 						expire: [
 							true,
@@ -312,8 +312,8 @@ export class Redis implements INodeType {
 				},
 				default: 60,
 				description: 'Number of seconds before key expiration.',
-			}
-		]
+			},
+		],
 	};
 
 
@@ -445,6 +445,7 @@ export class Redis implements INodeType {
 			const operation = this.getNodeParameter('operation', 0) as string;
 
 			client.on('error', (err: Error) => {
+				client.quit();
 				reject(err);
 			});
 
@@ -518,6 +519,7 @@ export class Redis implements INodeType {
 						}
 					}
 
+					client.quit();
 					resolve(this.prepareOutputData(returnItems));
 				}
 			});

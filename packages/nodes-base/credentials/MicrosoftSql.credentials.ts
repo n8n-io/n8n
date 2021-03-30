@@ -3,45 +3,59 @@ import { ICredentialType, NodePropertyTypes } from 'n8n-workflow';
 export class MicrosoftSql implements ICredentialType {
 	name = 'microsoftSql';
 	displayName = 'Microsoft SQL';
+	documentationUrl = 'microsoftSql';
 	properties = [
 		{
 			displayName: 'Server',
 			name: 'server',
 			type: 'string' as NodePropertyTypes,
-			default: 'localhost'
+			default: 'localhost',
 		},
 		{
 			displayName: 'Database',
 			name: 'database',
 			type: 'string' as NodePropertyTypes,
-			default: 'master'
+			default: 'master',
 		},
 		{
 			displayName: 'User',
 			name: 'user',
 			type: 'string' as NodePropertyTypes,
-			default: 'sa'
+			default: 'sa',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
 			type: 'string' as NodePropertyTypes,
 			typeOptions: {
-				password: true
+				password: true,
 			},
-			default: ''
+			default: '',
 		},
 		{
 			displayName: 'Port',
 			name: 'port',
 			type: 'number' as NodePropertyTypes,
-			default: 1433
+			default: 1433,
 		},
 		{
 			displayName: 'Domain',
 			name: 'domain',
 			type: 'string' as NodePropertyTypes,
-			default: ''
-		}
+			default: '',
+		},
+		{
+			displayName: 'TLS',
+			name: 'tls',
+			type: 'boolean' as NodePropertyTypes,
+			default: true,
+		},
+		{
+			displayName: 'Connect Timeout',
+			name: 'connectTimeout',
+			type: 'number' as NodePropertyTypes,
+			default: 15000,
+			description: 'Connection timeout in ms.',
+		},
 	];
 }

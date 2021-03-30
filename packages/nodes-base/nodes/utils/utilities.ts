@@ -14,7 +14,7 @@
  * chunk(['a', 'b', 'c', 'd'], 3)
  * // => [['a', 'b', 'c'], ['d']]
  */
-export function chunk(array: any[], size: number = 1) {
+export function chunk(array: any[], size = 1) { // tslint:disable-line:no-any
 	const length = array == null ? 0 : array.length;
 	if (!length || size < 1) {
 		return [];
@@ -40,11 +40,11 @@ export function chunk(array: any[], size: number = 1) {
  * // => ['a', 'b', 'c', 'd']
  *
  */
-export function flatten(nestedArray: any[][]) {
+export function flatten(nestedArray: any[][]) { // tslint:disable-line:no-any
 	const result = [];
 
-	(function loop(array: any[]) {
-		for (var i = 0; i < array.length; i++) {
+	(function loop(array: any[]) { // tslint:disable-line:no-any
+		for (let i = 0; i < array.length; i++) {
 			if (Array.isArray(array[i])) {
 				loop(array[i]);
 			} else {

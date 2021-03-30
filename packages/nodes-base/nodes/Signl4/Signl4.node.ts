@@ -1,14 +1,14 @@
 import {
-	IExecuteFunctions,
 	BINARY_ENCODING,
+	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
+	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IBinaryKeyData,
 } from 'n8n-workflow';
 
 import {
@@ -65,7 +65,12 @@ export class Signl4 implements INodeType {
 					{
 						name: 'Send',
 						value: 'send',
-						description: 'Send an alert.',
+						description: 'Send an alert',
+					},
+					{
+						name: 'Resolve',
+						value: 'resolve',
+						description: 'Resolve an alert',
 					},
 				],
 				default: 'send',
@@ -117,7 +122,7 @@ export class Signl4 implements INodeType {
 							{
 								name: 'Single ACK',
 								value: 'single_ack',
-								description: 'In case only one person needs to confirm this Signl.'
+								description: 'In case only one person needs to confirm this Signl.',
 							},
 							{
 								name: 'Multi ACK',
@@ -161,7 +166,8 @@ export class Signl4 implements INodeType {
 						default: '',
 						description: `If the event originates from a record in a 3rd party system, use this parameter to pass <br/>
 						the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4,<br/>
-						which is great for correlation/synchronization of that record with the alert.`,
+						which is great for correlation/synchronization of that record with the alert.<br/>
+						If you resolve / close an alert you must use the same External ID as in the original alert.`,
 					},
 					{
 						displayName: 'Filtering',
@@ -201,7 +207,7 @@ export class Signl4 implements INodeType {
 										default: '',
 									},
 								],
-							}
+							},
 						],
 					},
 					{
@@ -216,8 +222,30 @@ export class Signl4 implements INodeType {
 						name: 'title',
 						type: 'string',
 						default: '',
+						description: 'The title or subject of this alert.',
 					},
 				],
+			},
+			{
+				displayName: 'External ID',
+				name: 'externalId',
+				type: 'string',
+				default: '',
+				required: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'resolve',
+						],
+						resource: [
+							'alert',
+						],
+					},
+				},
+				description: `If the event originates from a record in a 3rd party system, use this parameter to pass <br/>
+				the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4,<br/>
+				which is great for correlation/synchronization of that record with the alert.<br/>
+				If you resolve / close an alert you must use the same External ID as in the original alert.`,
 			},
 		],
 	};
@@ -233,22 +261,21 @@ export class Signl4 implements INodeType {
 		for (let i = 0; i < length; i++) {
 			if (resource === 'alert') {
 				//https://connect.signl4.com/webhook/docs/index.html
+				// Send alert
 				if (operation === 'send') {
 					const message = this.getNodeParameter('message', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields',i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					const data: IDataObject = {
 						message,
 					};
 
-					if (additionalFields.alertingScenario) {
-						data['X-S4-AlertingScenario'] = additionalFields.alertingScenario as string;
+					if (additionalFields.title) {
+						data.title = additionalFields.title as string;
 					}
-					if (additionalFields.externalId) {
-						data['X-S4-ExternalID'] = additionalFields.externalId as string;
-					}
-					if (additionalFields.filtering) {
-						data['X-S4-Filtering'] = (additionalFields.filtering as boolean).toString();
+
+					if (additionalFields.service) {
+						data.service = additionalFields.service as string;
 					}
 					if (additionalFields.locationFieldsUi) {
 						const locationUi = (additionalFields.locationFieldsUi as IDataObject).locationFieldsValues as IDataObject;
@@ -256,15 +283,25 @@ export class Signl4 implements INodeType {
 							data['X-S4-Location'] = `${locationUi.latitude},${locationUi.longitude}`;
 						}
 					}
-					if (additionalFields.service) {
-						data['X-S4-Service'] = additionalFields.service as string;
-					}
-					if (additionalFields.title) {
-						data['title'] = additionalFields.title as string;
+
+					if (additionalFields.alertingScenario) {
+						data['X-S4-AlertingScenario'] = additionalFields.alertingScenario as string;
 					}
 
+					if (additionalFields.filtering) {
+						data['X-S4-Filtering'] = (additionalFields.filtering as boolean).toString();
+					}
+
+					if (additionalFields.externalId) {
+						data['X-S4-ExternalID'] = additionalFields.externalId as string;
+					}
+
+					data['X-S4-Status'] = 'new';
+
+					data['X-S4-SourceSystem'] = 'n8n';
+
+					// Attachments
 					const attachments = additionalFields.attachmentsUi as IDataObject;
-
 					if (attachments) {
 						if (attachments.attachmentsBinary && items[i].binary) {
 
@@ -274,14 +311,14 @@ export class Signl4 implements INodeType {
 
 							if (binaryProperty) {
 
-								const supportedFileExtension = ['png', 'jpg', 'txt'];
+								const supportedFileExtension = ['png', 'jpg', 'jpeg', 'bmp', 'gif', 'mp3', 'wav'];
 
 								if (!supportedFileExtension.includes(binaryProperty.fileExtension as string)) {
 
 									throw new Error(`Invalid extension, just ${supportedFileExtension.join(',')} are supported}`);
 								}
 
-								data['file'] = {
+								data.attachment = {
 									value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
 									options: {
 										filename: binaryProperty.fileName,
@@ -295,30 +332,43 @@ export class Signl4 implements INodeType {
 						}
 					}
 
-					const credentials = this.getCredentials('signl4Api');
+					responseData = await SIGNL4ApiRequest.call(
+						this,
+						'POST',
+						'',
+						{},
+						{
+							formData: data,
+						},
+					);
+				}
+				// Resolve alert
+				if (operation === 'resolve') {
 
-					const endpoint = `https://connect.signl4.com/webhook/${credentials?.teamSecret}`;
+					const data: IDataObject = {};
+
+					data['X-S4-ExternalID'] = this.getNodeParameter('externalId', i) as string;
+
+					data['X-S4-Status'] = 'resolved';
+
+					data['X-S4-SourceSystem'] = 'n8n';
 
 					responseData = await SIGNL4ApiRequest.call(
 						this,
 						'POST',
 						'',
 						{},
-						{},
-						endpoint,
 						{
-							formData: {
-								...data,
-							},
+							formData: data,
 						},
 					);
 				}
 			}
-		}
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else if (responseData !== undefined) {
+				returnData.push(responseData as IDataObject);
+			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

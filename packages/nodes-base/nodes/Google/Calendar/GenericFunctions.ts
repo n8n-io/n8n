@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -21,7 +21,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		body,
 		qs,
 		uri: uri || `https://www.googleapis.com${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		if (Object.keys(headers).length !== 0) {
@@ -40,14 +40,14 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			errors = errors.map((e: IDataObject) => e.message);
 			// Try to return the error prettier
 			throw new Error(
-				`Google Calendar error response [${error.statusCode}]: ${errors.join('|')}`
+				`Google Calendar error response [${error.statusCode}]: ${errors.join('|')}`,
 			);
 		}
 		throw error;
 	}
 }
 
-export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

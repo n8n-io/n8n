@@ -6,13 +6,15 @@ import {
 export class ZendeskApi implements ICredentialType {
 	name = 'zendeskApi';
 	displayName = 'Zendesk API';
+	documentationUrl = 'zendesk';
 	properties = [
 		{
 			displayName: 'Subdomain',
 			name: 'subdomain',
 			type: 'string' as NodePropertyTypes,
 			description: 'The subdomain of your Zendesk work environment.',
-			default: 'n8n',
+			placeholder: 'company',
+			default: '',
 		},
 		{
 			displayName: 'Email',

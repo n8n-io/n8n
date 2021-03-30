@@ -19,7 +19,6 @@ import { TlsOptions } from 'tls';
 import * as config from '../config';
 
 import {
-	MongoDb,
 	MySQLDb,
 	PostgresDb,
 	SQLite,
@@ -29,23 +28,12 @@ export let collections: IDatabaseCollections = {
 	Credentials: null,
 	Execution: null,
 	Workflow: null,
+	Webhook: null,
 };
 
-import {
-	InitialMigration1587669153312
-} from './databases/postgresdb/migrations';
-
-import {
-	InitialMigration1587563438936
-} from './databases/mongodb/migrations';
-
-import {
-	InitialMigration1588157391238
-} from './databases/mysqldb/migrations';
-
-import {
-	InitialMigration1588102412422
-} from './databases/sqlite/migrations';
+import { postgresMigrations } from './databases/postgresdb/migrations';
+import { mysqlMigrations } from './databases/mysqldb/migrations';
+import { sqliteMigrations } from './databases/sqlite/migrations';
 
 import * as path from 'path';
 
@@ -59,19 +47,6 @@ export async function init(): Promise<IDatabaseCollections> {
 	const entityPrefix = config.get('database.tablePrefix');
 
 	switch (dbType) {
-		case 'mongodb':
-			entities = MongoDb;
-			connectionOptions = {
-				type: 'mongodb',
-				entityPrefix,
-				url: await GenericHelpers.getConfigValue('database.mongodb.connectionUrl') as string,
-				useNewUrlParser: true,
-				migrations: [InitialMigration1587563438936],
-				migrationsRun: true,
-				migrationsTableName: `${entityPrefix}migrations`,
-			};
-			break;
-
 		case 'postgresdb':
 			entities = PostgresDb;
 
@@ -99,7 +74,7 @@ export async function init(): Promise<IDatabaseCollections> {
 				port: await GenericHelpers.getConfigValue('database.postgresdb.port') as number,
 				username: await GenericHelpers.getConfigValue('database.postgresdb.user') as string,
 				schema: config.get('database.postgresdb.schema'),
-				migrations: [InitialMigration1587669153312],
+				migrations: postgresMigrations,
 				migrationsRun: true,
 				migrationsTableName: `${entityPrefix}migrations`,
 				ssl,
@@ -118,7 +93,7 @@ export async function init(): Promise<IDatabaseCollections> {
 				password: await GenericHelpers.getConfigValue('database.mysqldb.password') as string,
 				port: await GenericHelpers.getConfigValue('database.mysqldb.port') as number,
 				username: await GenericHelpers.getConfigValue('database.mysqldb.user') as string,
-				migrations: [InitialMigration1588157391238],
+				migrations: mysqlMigrations,
 				migrationsRun: true,
 				migrationsTableName: `${entityPrefix}migrations`,
 			};
@@ -130,8 +105,8 @@ export async function init(): Promise<IDatabaseCollections> {
 				type: 'sqlite',
 				database:  path.join(n8nFolder, 'database.sqlite'),
 				entityPrefix,
-				migrations: [InitialMigration1588102412422],
-				migrationsRun: true,
+				migrations: sqliteMigrations,
+				migrationsRun: false, // migrations for sqlite will be ran manually for now; see below
 				migrationsTableName: `${entityPrefix}migrations`,
 			};
 			break;
@@ -146,15 +121,35 @@ export async function init(): Promise<IDatabaseCollections> {
 		logging: false,
 	});
 
-	const connection = await createConnection(connectionOptions);
+	let connection = await createConnection(connectionOptions);
 
-	await connection.runMigrations({
-		transaction: 'none',
-	});
+	if (dbType === 'sqlite') {
+		// This specific migration changes database metadata.
+		// A field is now nullable. We need to reconnect so that
+		// n8n knows it has changed. Happens only on sqlite.
+		let migrations = [];
+		try {
+			migrations = await connection.query(`SELECT id FROM ${entityPrefix}migrations where name = "MakeStoppedAtNullable1607431743769"`);
+		} catch(error) {
+			// Migration table does not exist yet - it will be created after migrations run for the first time.
+		}
+
+		// If you remove this call, remember to turn back on the
+		// setting to run migrations automatically above.
+		await connection.runMigrations({
+			transaction: 'none',
+		});
+
+		if (migrations.length === 0) {
+			await connection.close();
+			connection = await createConnection(connectionOptions);
+		}
+	}
 
 	collections.Credentials = getRepository(entities.CredentialsEntity);
 	collections.Execution = getRepository(entities.ExecutionEntity);
 	collections.Workflow = getRepository(entities.WorkflowEntity);
+	collections.Webhook = getRepository(entities.WebhookEntity);
 
 	return collections;
 }

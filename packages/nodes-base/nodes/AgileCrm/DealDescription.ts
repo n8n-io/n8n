@@ -143,7 +143,7 @@ export const dealFields = [
 		required: true,
 		typeOptions: {
 			minValue: 0,
-			maxValue: 1000000000000
+			maxValue: 1000000000000,
 		},
 		displayOptions: {
 			show: {
@@ -210,7 +210,7 @@ export const dealFields = [
 		required: true,
 		typeOptions: {
 			minValue: 0,
-			maxValue: 100
+			maxValue: 100,
 		},
 		displayOptions: {
 			show: {
@@ -318,7 +318,7 @@ export const dealFields = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Property name.'
+								description: 'Property name.',
 							},
 							{
 								displayName: 'Value',
@@ -444,7 +444,7 @@ export const dealFields = [
 				type: 'number',
 				typeOptions: {
 					minValue: 0,
-					maxValue: 10000
+					maxValue: 10000,
 				},
 				default: '',
 				description: 'Expected Value of deal.',
@@ -462,7 +462,7 @@ export const dealFields = [
 				type: 'number',
 				typeOptions: {
 					minValue: 0,
-					maxValue: 100
+					maxValue: 100,
 				},
 				default: 50,
 				description: 'Expected Value of deal.',
@@ -497,7 +497,7 @@ export const dealFields = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Property name.'
+								description: 'Property name.',
 							},
 							{
 								displayName: 'Value',
@@ -510,6 +510,6 @@ export const dealFields = [
 					},
 				],
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

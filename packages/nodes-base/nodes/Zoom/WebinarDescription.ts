@@ -39,11 +39,11 @@ export const webinarOperations = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update a webinar',
-			}
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
-	}
+	},
 ] as INodeProperties[];
 
 export const webinarFields = [
@@ -83,7 +83,7 @@ export const webinarFields = [
 				resource: [
 					'webinar',
 				],
-			}
+			},
 		},
 		options: [
 			{
@@ -205,7 +205,7 @@ export const webinarFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'Attendees register once and can attend any of the occurences',
+						name: 'Attendees register once and can attend any of the occurrences',
 						value: 1,
 					},
 					{
@@ -308,8 +308,8 @@ export const webinarFields = [
 		},
 		options: [
 			{
-				displayName: 'Occurence ID',
-				name: 'occurenceId',
+				displayName: 'Occurrence ID',
+				name: 'occurrenceId',
 				type: 'string',
 				default: '',
 				description: 'To view webinar details of a particular occurrence of the recurring webinar.',
@@ -657,7 +657,7 @@ export const webinarFields = [
 					},
 				],
 				default: 5,
-				description: 'Webinar type.'
+				description: 'Webinar type.',
 			},
 		],
 	},

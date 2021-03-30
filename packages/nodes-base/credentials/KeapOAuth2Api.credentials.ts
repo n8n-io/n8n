@@ -13,6 +13,7 @@ export class KeapOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Keap OAuth2 API';
+	documentationUrl = 'keap';
 	properties = [
 		{
 			displayName: 'Authorization URL',

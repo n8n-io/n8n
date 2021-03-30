@@ -26,7 +26,7 @@ export class Rundeck implements INodeType {
 			{
 				name: 'rundeckApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -50,7 +50,7 @@ export class Rundeck implements INodeType {
 					{
 						name: 'Execute',
 						value: 'execute',
-						description: 'Executes job',
+						description: 'Execute a job',
 					},
 					{
 						name: 'Get Metadata',
@@ -120,7 +120,7 @@ export class Rundeck implements INodeType {
 								type: 'string',
 								default: '',
 							},
-						]
+						],
 					},
 				],
 			},

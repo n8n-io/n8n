@@ -25,7 +25,7 @@ export async function webflowApiRequest(this: IHookFunctions | IExecuteFunctions
 		qs,
 		body,
 		uri: uri ||`https://api.webflow.com${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {

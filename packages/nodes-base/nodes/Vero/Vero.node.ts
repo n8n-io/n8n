@@ -3,21 +3,21 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
-	veroApiRequest,
 	validateJSON,
+	veroApiRequest,
 } from './GenericFunctions';
 import {
-	userOperations,
 	userFields,
+	userOperations,
 } from './UserDescription';
 import {
+	eventFields,
 	eventOperations,
-	eventFields
 } from './EventDescripion';
 
 export class Vero implements INodeType {
@@ -39,7 +39,7 @@ export class Vero implements INodeType {
 			{
 				name: 'veroApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -50,12 +50,12 @@ export class Vero implements INodeType {
 					{
 						name: 'User',
 						value: 'user',
-						description: `Lets you create, update and manage the subscription status of your users.`,
+						description: `Create, update and manage the subscription status of your users.`,
 					},
 					{
 						name: 'Event',
 						value: 'event',
-						description: `Lets you track events based on actions your customers take in real time.`,
+						description: `Track events based on actions your customers take in real time.`,
 					},
 				],
 				default: 'user',

@@ -2,9 +2,9 @@ import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
 	IPollFunctions,
 	ITriggerFunctions,
 } from 'n8n-core';
@@ -27,7 +27,7 @@ export async function togglApiRequest(this: ITriggerFunctions | IPollFunctions |
 		qs: query,
 		uri: uri || `https://www.toggl.com/api/v8${resource}`,
 		body,
-		json: true
+		json: true,
 	};
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;

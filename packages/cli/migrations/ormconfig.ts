@@ -1,4 +1,4 @@
-import {MongoDb, SQLite, MySQLDb, PostgresDb} from '../src/databases/index';
+import { SQLite, MySQLDb, PostgresDb} from '../src/databases/index';
 
 module.exports = [
     {
@@ -20,33 +20,14 @@ module.exports = [
         }
     },
     {
-        "name": "mongodb",
-        "type": "mongodb",
-        "logging": false,
-        "entities": Object.values(MongoDb),
-        "url": "mongodb://root:example@localhost:27017/n8n",
-        "authSource": 'admin',
-        "migrations": [
-           "./src/databases/mongodb/migrations/*.ts"
-        ],
-        "subscribers": [
-           "src/subscriber/**/*.ts"
-        ],
-        "cli": {
-           "entitiesDir": "./src/databases/mongodb",
-           "migrationsDir": "./src/databases/mongodb/Migrations",
-           "subscribersDir": "./src/databases/mongodb/Subscribers"
-        }
-    },
-    {
         "name": "postgres",
         "type": "postgres",
         "logging": false,
         "host": "localhost",
         "username": "postgres",
-        "password": "docker",
+        "password": "",
         "port": 5432,
-        "database": "postgres",
+        "database": "n8n",
         "schema": "public",
         "entities": Object.values(PostgresDb),
         "migrations": [
@@ -68,7 +49,7 @@ module.exports = [
         "username": "root",
         "password": "password",
         "host": "localhost",
-        "port": "3308",
+        "port": "3306",
         "logging": false,
         "entities": Object.values(MySQLDb),
         "migrations": [
@@ -90,7 +71,7 @@ module.exports = [
         "username": "root",
         "password": "password",
         "host": "localhost",
-        "port": "3308",
+        "port": "3306",
         "logging": false,
         "entities": Object.values(MySQLDb),
         "migrations": [

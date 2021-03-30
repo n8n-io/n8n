@@ -10,6 +10,7 @@ export class SpotifyOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Spotify OAuth2 API';
+	documentationUrl = 'spotify';
 	properties = [
 		{
 			displayName: 'Spotify Server',
@@ -35,7 +36,7 @@ export class SpotifyOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'user-read-playback-state playlist-read-collaborative user-modify-playback-state playlist-modify-public user-read-currently-playing playlist-read-private user-read-recently-played playlist-modify-private',
+			default: 'user-read-playback-state playlist-read-collaborative user-modify-playback-state playlist-modify-public user-read-currently-playing playlist-read-private user-read-recently-played playlist-modify-private user-library-read',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
@@ -48,6 +49,6 @@ export class SpotifyOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden' as NodePropertyTypes,
 			default: 'header',
-        }
+		},
 	];
 }

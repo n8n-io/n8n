@@ -7,6 +7,7 @@ import {
 export class Redis implements ICredentialType {
 	name = 'redis';
 	displayName = 'Redis';
+	documentationUrl = 'redis';
 	properties = [
 		{
 			displayName: 'Password',

@@ -62,7 +62,7 @@ export const postFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'The title for the post',
@@ -84,6 +84,16 @@ export const postFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Author ID',
+				name: 'authorId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getAuthors',
+				},
+				default: '',
+				description: 'The ID for the author of the object.',
+			},
 			{
 				displayName: 'Content',
 				name: 'content',
@@ -247,7 +257,7 @@ export const postFields = [
 				default: [],
 				description: 'The terms assigned to the object in the post_tag taxonomy.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 post:update                                */
@@ -265,7 +275,7 @@ export const postFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the object.',
@@ -287,6 +297,16 @@ export const postFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Author ID',
+				name: 'authorId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getAuthors',
+				},
+				default: '',
+				description: 'The ID for the author of the object.',
+			},
 			{
 				displayName: 'Title',
 				name: 'title',
@@ -457,7 +477,7 @@ export const postFields = [
 				default: [],
 				description: 'The terms assigned to the object in the post_tag taxonomy.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                  post:get                                  */
@@ -475,7 +495,7 @@ export const postFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the object.',
@@ -525,7 +545,7 @@ export const postFields = [
 				default: 'view',
 				description: 'Scope under which the request is made; determines fields present in response.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   post:getAll                              */
@@ -754,7 +774,7 @@ export const postFields = [
 				description: 'Limit result set to items that are sticky.',
 			},
 
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 post:delete                                */
@@ -772,7 +792,7 @@ export const postFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the object.',
@@ -801,6 +821,6 @@ export const postFields = [
 				default: false,
 				description: 'Whether to bypass trash and force deletion.',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

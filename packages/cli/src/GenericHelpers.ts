@@ -40,11 +40,12 @@ export function getBaseUrl(): string {
 	const protocol = config.get('protocol') as string;
 	const host = config.get('host') as string;
 	const port = config.get('port') as number;
+	const path = config.get('path') as string;
 
 	if (protocol === 'http' && port === 80 || protocol === 'https' && port === 443) {
-		return `${protocol}://${host}/`;
+		return `${protocol}://${host}${path}`;
 	}
-	return `${protocol}://${host}:${port}/`;
+	return `${protocol}://${host}:${port}${path}`;
 }
 
 
@@ -94,14 +95,15 @@ export async function getConfigValue(configKey: string): Promise<string | boolea
 
 	// Get the environment variable
 	const configSchema = config.getSchema();
-	let currentSchema = configSchema.properties as IDataObject;
+	// @ts-ignore
+	let currentSchema = configSchema._cvtProperties as IDataObject;
 	for (const key of configKeyParts) {
 		if (currentSchema[key] === undefined) {
 			throw new Error(`Key "${key}" of ConfigKey "${configKey}" does not exist`);
-		} else if ((currentSchema[key]! as IDataObject).properties === undefined) {
+		} else if ((currentSchema[key]! as IDataObject)._cvtProperties === undefined) {
 			currentSchema = currentSchema[key] as IDataObject;
 		} else {
-			currentSchema = (currentSchema[key] as IDataObject).properties as IDataObject;
+			currentSchema = (currentSchema[key] as IDataObject)._cvtProperties as IDataObject;
 		}
 	}
 

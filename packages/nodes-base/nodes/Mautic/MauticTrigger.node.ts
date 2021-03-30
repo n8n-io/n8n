@@ -8,12 +8,12 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
 	IDataObject,
-	INodePropertyOptions,
 	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
@@ -92,7 +92,8 @@ export class MauticTrigger implements INodeType {
 					loadOptionsMethod: 'getEvents',
 				},
 				default: [],
-			},	{
+			},
+			{
 				displayName: 'Events Order',
 				name: 'eventsOrder',
 				type: 'options',
@@ -130,7 +131,7 @@ export class MauticTrigger implements INodeType {
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 	// @ts-ignore
 	webhookMethods = {
@@ -170,7 +171,7 @@ export class MauticTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				try {
 					await mauticApiRequest.call(this, 'DELETE', `/hooks/${webhookData.webhookId}/delete`);
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				delete webhookData.webhookId;
@@ -183,7 +184,7 @@ export class MauticTrigger implements INodeType {
 		const req = this.getRequestObject();
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body)
+				this.helpers.returnJsonArray(req.body),
 			],
 		};
 	}

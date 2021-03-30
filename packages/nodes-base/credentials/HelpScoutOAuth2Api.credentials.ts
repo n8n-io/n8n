@@ -9,6 +9,7 @@ export class HelpScoutOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'HelpScout OAuth2 API';
+	documentationUrl = 'helpScout';
 	properties = [
 		{
 			displayName: 'Authorization URL',

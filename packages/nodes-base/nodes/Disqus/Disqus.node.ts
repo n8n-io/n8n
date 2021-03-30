@@ -3,9 +3,9 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { disqusApiRequest, disqusApiRequestAllItems } from './GenericFunctions';
@@ -30,7 +30,7 @@ export class Disqus implements INodeType {
 			{
 				name: 'disqusApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -65,23 +65,23 @@ export class Disqus implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Returns forum details.',
+						description: 'Return forum details',
 					},
 					{
 						name: 'Get All Categories',
 						value: 'getCategories',
-						description: 'Returns a list of categories within a forum.',
+						description: 'Return a list of categories within a forum',
 					},
 					{
 						name: 'Get All Threads',
 						value: 'getThreads',
-						description: 'Returns a list of threads within a forum.',
+						description: 'Return a list of threads within a forum',
 					},
 					{
 						name: 'Get All Posts',
 						value: 'getPosts',
-						description: 'Returns a list of posts within a forum.',
-					}
+						description: 'Return a list of posts within a forum',
+					},
 				],
 				default: 'get',
 				description: 'The operation to perform.',
@@ -316,7 +316,7 @@ export class Disqus implements INodeType {
 							},
 						],
 						default: [],
-						description: 'You may specify filters for your response.'
+						description: 'You may specify filters for your response.',
 					},
 					{
 						displayName: 'Include',
@@ -343,7 +343,7 @@ export class Disqus implements INodeType {
 							{
 								name: 'DESC',
 								value: 'desc',
-							}
+							},
 						],
 						default: 'asc',
 						description: 'You may specify order to sort your response.',
@@ -469,7 +469,7 @@ export class Disqus implements INodeType {
 							{
 								name: 'DESC',
 								value: 'desc',
-							}
+							},
 						],
 						default: 'asc',
 						description: 'You may specify order to sort your response.',
@@ -606,7 +606,7 @@ export class Disqus implements INodeType {
 							{
 								name: 'DESC',
 								value: 'desc',
-							}
+							},
 						],
 						default: 'asc',
 						description: 'You may specify order to sort your response.',
@@ -626,7 +626,7 @@ export class Disqus implements INodeType {
 						description: 'Looks up a thread by ID. You may pass us the "ident"<br />query type instead of an ID by including "forum". You may<br />pass us the "link" query type to filter by URL. You must pass<br />the "forum" if you do not have the Pro API Access addon.',
 					},
 				],
-			}
+			},
 		],
 	};
 

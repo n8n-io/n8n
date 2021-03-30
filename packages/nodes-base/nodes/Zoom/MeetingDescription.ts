@@ -228,7 +228,7 @@ export const meetingFields = [
 						type: 'options',
 						options: [
 							{
-								name: 'Attendees register once and can attend any of the occurences',
+								name: 'Attendees register once and can attend any of the occurrences',
 								value: 1,
 							},
 							{
@@ -422,7 +422,7 @@ export const meetingFields = [
 					{
 						name: 'Scheduled',
 						value: 'scheduled',
-						description: 'This includes all valid past meetings, live meetings and upcoming scheduled meetings'
+						description: 'This includes all valid past meetings, live meetings and upcoming scheduled meetings',
 					},
 					{
 						name: 'Live',
@@ -479,7 +479,7 @@ export const meetingFields = [
 		},
 		options: [
 			{
-				displayName: 'Occurence ID',
+				displayName: 'Occurrence ID',
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
@@ -672,7 +672,7 @@ export const meetingFields = [
 						type: 'options',
 						options: [
 							{
-								name: 'Attendees register once and can attend any of the occurences',
+								name: 'Attendees register once and can attend any of the occurrences',
 								value: 1,
 							},
 							{

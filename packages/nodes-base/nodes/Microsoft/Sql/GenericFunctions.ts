@@ -14,7 +14,7 @@ export function copyInputItem(
 	properties: string[],
 ): IDataObject {
 	// Prepare the data to insert and copy it to be returned
-	let newItem: IDataObject = {};
+	const newItem: IDataObject = {};
 	for (const property of properties) {
 		if (item.json[property] === undefined) {
 			newItem[property] = null;
@@ -70,14 +70,14 @@ export function createTableStruct(
 export function executeQueryQueue(
 	tables: ITables,
 	buildQueryQueue: Function,
-): Promise<any[]> {
+): Promise<any[]> { // tslint:disable-line:no-any
 	return Promise.all(
 		Object.keys(tables).map(table => {
 			const columnsResults = Object.keys(tables[table]).map(columnString => {
 				return Promise.all(
 					buildQueryQueue({
-						table: table,
-						columnString: columnString,
+						table,
+						columnString,
 						items: tables[table][columnString],
 					}),
 				);
@@ -94,7 +94,7 @@ export function executeQueryQueue(
  * @returns {string} (Val1, Val2, ...)
  */
 export function extractValues(item: IDataObject): string {
-	return `(${Object.values(item as any)
+	return `(${Object.values(item as any) // tslint:disable-line:no-any
 		.map(val => (typeof val === 'string' ? `'${val}'` : val)) // maybe other types such as dates have to be handled as well
 		.join(',')})`;
 }

@@ -22,17 +22,22 @@ import {
 	INodeTypesMaxCount,
 	INodeUi,
 	IWorkflowData,
+	IWorkflowDb,
 	IWorkflowDataUpdate,
 	XYPositon,
 } from '../../Interface';
 
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 
+import { isEqual } from 'lodash';
+
 import mixins from 'vue-typed-mixins';
 
 export const workflowHelpers = mixins(
+	externalHooks,
 	nodeHelpers,
 	restApi,
 	showMessage,
@@ -357,7 +362,7 @@ export const workflowHelpers = mixins(
 					connectionInputData = [];
 				}
 
-				return workflow.getParameterValue(expression, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, true);
+				return workflow.expression.getParameterValue(expression, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', true);
 			},
 
 			// Saves the currently loaded workflow to the database.
@@ -417,8 +422,9 @@ export const workflowHelpers = mixins(
 
 						this.$store.commit('setActive', workflowData.active || false);
 						this.$store.commit('setWorkflowId', workflowData.id);
-						this.$store.commit('setWorkflowName', workflowData.name);
+						this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
 						this.$store.commit('setWorkflowSettings', workflowData.settings || {});
+						this.$store.commit('setStateDirty', false);
 					} else {
 						// Workflow exists already so update it
 						await this.restApi().updateWorkflow(currentWorkflow, workflowData);
@@ -432,12 +438,13 @@ export const workflowHelpers = mixins(
 					}
 
 					this.$store.commit('removeActiveAction', 'workflowSaving');
-
+					this.$store.commit('setStateDirty', false);
 					this.$showMessage({
 						title: 'Workflow saved',
 						message: `The workflow "${workflowData.name}" got saved!`,
 						type: 'success',
 					});
+					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 				} catch (e) {
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
@@ -477,6 +484,30 @@ export const workflowHelpers = mixins(
 					node.position[0] += offsetPosition[0];
 					node.position[1] += offsetPosition[1];
 				}
+			},
+			async dataHasChanged(id: string) {
+				const currentData = await this.getWorkflowDataToSave();
+
+				let data: IWorkflowDb;
+				data = await this.restApi().getWorkflow(id);
+
+				if(data !== undefined) {
+					const x = {
+						nodes: data.nodes,
+						connections: data.connections,
+						settings: data.settings,
+						name: data.name,
+					};
+					const y = {
+						nodes: currentData.nodes,
+						connections: currentData.connections,
+						settings: currentData.settings,
+						name: currentData.name,
+					};
+					return !isEqual(x, y);
+				}
+
+				return true;
 			},
 		},
 	});

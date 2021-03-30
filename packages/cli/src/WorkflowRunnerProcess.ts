@@ -2,9 +2,12 @@
 import {
 	CredentialsOverwrites,
 	CredentialTypes,
+	Db,
+	ExternalHooks,
 	IWorkflowExecutionDataProcessWithExecution,
 	NodeTypes,
 	WorkflowExecuteAdditionalData,
+	WorkflowHelpers,
 } from './';
 
 import {
@@ -14,23 +17,42 @@ import {
 
 import {
 	IDataObject,
+	IExecuteData,
+	IExecuteWorkflowInfo,
 	IExecutionError,
+	INodeExecutionData,
 	INodeType,
 	INodeTypeData,
 	IRun,
+	IRunExecutionData,
 	ITaskData,
+	IWorkflowExecuteAdditionalData,
+	IWorkflowExecuteHooks,
 	Workflow,
 	WorkflowHooks,
 } from 'n8n-workflow';
+
+import * as config from '../config';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
 	startedAt = new Date();
 	workflow: Workflow | undefined;
 	workflowExecute: WorkflowExecute | undefined;
+	executionIdCallback: (executionId: string) => void | undefined;
+
+	static async stopProcess() {
+		setTimeout(() => {
+			// Attempt a graceful shutdown, giving executions 30 seconds to finish
+			process.exit(0);
+		}, 30000);
+	}
 
 
 	async runWorkflow(inputData: IWorkflowExecutionDataProcessWithExecution): Promise<IRun> {
+		process.on('SIGTERM', WorkflowRunnerProcess.stopProcess);
+		process.on('SIGINT', WorkflowRunnerProcess.stopProcess);
+
 		this.data = inputData;
 		let className: string;
 		let tempNode: INodeType;
@@ -66,11 +88,53 @@ export class WorkflowRunnerProcess {
 
 		// Load the credentials overwrites if any exist
 		const credentialsOverwrites = CredentialsOverwrites();
-		await credentialsOverwrites.init();
+		await credentialsOverwrites.init(inputData.credentialsOverwrite);
 
-		this.workflow = new Workflow({ id: this.data.workflowData.id as string | undefined, name: this.data.workflowData.name, nodes: this.data.workflowData!.nodes, connections: this.data.workflowData!.connections, active: this.data.workflowData!.active, nodeTypes, staticData: this.data.workflowData!.staticData, settings: this.data.workflowData!.settings});
+		// Load all external hooks
+		const externalHooks = ExternalHooks();
+		await externalHooks.init();
+
+		// This code has been split into 3 ifs just to make it easier to understand
+		// Can be made smaller but in the end it will make it impossible to read.
+		if (inputData.workflowData.settings !== undefined && inputData.workflowData.settings.saveExecutionProgress === true) {
+			// Workflow settings specifying it should save
+			await Db.init();
+		} else if (inputData.workflowData.settings !== undefined && inputData.workflowData.settings.saveExecutionProgress !== false && config.get('executions.saveExecutionProgress') as boolean) {
+			// Workflow settings not saying anything about saving but default settings says so
+			await Db.init();
+		} else if (inputData.workflowData.settings === undefined && config.get('executions.saveExecutionProgress') as boolean) {
+			// Workflow settings not saying anything about saving but default settings says so
+			await Db.init();
+		}
+
+		this.workflow = new Workflow({ id: this.data.workflowData.id as string | undefined, name: this.data.workflowData.name, nodes: this.data.workflowData!.nodes, connections: this.data.workflowData!.connections, active: this.data.workflowData!.active, nodeTypes, staticData: this.data.workflowData!.staticData, settings: this.data.workflowData!.settings });
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(this.data.credentials);
 		additionalData.hooks = this.getProcessForwardHooks();
+
+		const executeWorkflowFunction = additionalData.executeWorkflow;
+		additionalData.executeWorkflow = async (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[] | undefined): Promise<Array<INodeExecutionData[] | null> | IRun> => {
+			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(workflowInfo);
+			const runData = await WorkflowExecuteAdditionalData.getRunData(workflowData, inputData);
+			await sendToParentProcess('startExecution', { runData });
+			const executionId: string = await new Promise((resolve) => {
+				this.executionIdCallback = (executionId: string) => {
+					resolve(executionId);
+				};
+			});
+			let result: IRun;
+			try {
+				result = await executeWorkflowFunction(workflowInfo, additionalData, inputData, executionId, workflowData, runData);
+			} catch (e) {
+				await sendToParentProcess('finishExecution', { executionId });
+				// Throw same error we had 
+				throw e;	
+			}
+			
+			await sendToParentProcess('finishExecution', { executionId, result });
+
+			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(result);
+			return returnData!.data!.main;
+		};
 
 		if (this.data.executionData !== undefined) {
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode, this.data.executionData);
@@ -121,7 +185,7 @@ export class WorkflowRunnerProcess {
 	 * @returns
 	 */
 	getProcessForwardHooks(): WorkflowHooks {
-		const hookFunctions = {
+		const hookFunctions: IWorkflowExecuteHooks = {
 			nodeExecuteBefore: [
 				async (nodeName: string): Promise<void> => {
 					this.sendHookToParentProcess('nodeExecuteBefore', [nodeName]);
@@ -135,14 +199,22 @@ export class WorkflowRunnerProcess {
 			workflowExecuteBefore: [
 				async (): Promise<void> => {
 					this.sendHookToParentProcess('workflowExecuteBefore', []);
-				}
+				},
 			],
 			workflowExecuteAfter: [
 				async (fullRunData: IRun, newStaticData?: IDataObject): Promise<void> => {
 					this.sendHookToParentProcess('workflowExecuteAfter', [fullRunData, newStaticData]);
 				},
-			]
+			],
 		};
+
+		const preExecuteFunctions = WorkflowExecuteAdditionalData.hookFunctionsPreExecute();
+		for (const key of Object.keys(preExecuteFunctions)) {
+			if (hookFunctions[key] === undefined) {
+				hookFunctions[key] = [];
+			}
+			hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+		}
 
 		return new WorkflowHooks(hookFunctions, this.data!.executionMode, this.data!.executionId, this.data!.workflowData, { sessionId: this.data!.sessionId, retryOf: this.data!.retryOf as string });
 	}
@@ -190,17 +262,18 @@ process.on('message', async (message: IProcessMessage) => {
 
 			// Once the workflow got executed make sure the process gets killed again
 			process.exit();
-		} else if (message.type === 'stopExecution') {
+		} else if (message.type === 'stopExecution' || message.type === 'timeout') {
 			// The workflow execution should be stopped
 			let runData: IRun;
 
 			if (workflowRunner.workflowExecute !== undefined) {
 				// Workflow started already executing
-
 				runData = workflowRunner.workflowExecute.getFullRunData(workflowRunner.startedAt);
 
-				// If there is any data send it to parent process
-				await workflowRunner.workflowExecute.processSuccessExecution(workflowRunner.startedAt, workflowRunner.workflow!);
+				const timeOutError = message.type === 'timeout' ? { message: 'Workflow execution timed out!' } as IExecutionError : undefined;
+
+				// If there is any data send it to parent process, if execution timedout add the error
+				await workflowRunner.workflowExecute.processSuccessExecution(workflowRunner.startedAt, workflowRunner.workflow!, timeOutError);
 			} else {
 				// Workflow did not get started yet
 				runData = {
@@ -209,7 +282,7 @@ process.on('message', async (message: IProcessMessage) => {
 							runData: {},
 						},
 					},
-					finished: true,
+					finished: message.type !== 'timeout',
 					mode: workflowRunner.data!.executionMode,
 					startedAt: workflowRunner.startedAt,
 					stoppedAt: new Date(),
@@ -218,12 +291,14 @@ process.on('message', async (message: IProcessMessage) => {
 				workflowRunner.sendHookToParentProcess('workflowExecuteAfter', [runData]);
 			}
 
-			await sendToParentProcess('end', {
+			await sendToParentProcess(message.type === 'timeout' ? message.type : 'end', {
 				runData,
 			});
 
 			// Stop process
 			process.exit();
+		} else if (message.type === 'executionId') {
+			workflowRunner.executionIdCallback(message.data.executionId);
 		}
 	} catch (error) {
 		// Catch all uncaught errors and forward them to parent process

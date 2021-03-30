@@ -23,7 +23,7 @@ export class Function implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Function',
+				displayName: 'JavaScript Code',
 				name: 'functionCode',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
@@ -65,7 +65,7 @@ export class Function implements INodeType {
 			require: {
 				external: false as boolean | { modules: string[] },
 				builtin: [] as string[],
-			}
+			},
 		};
 
 		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
@@ -98,9 +98,6 @@ export class Function implements INodeType {
 			throw new Error('Always an Array of items has to be returned!');
 		}
 		for (const item of items) {
-			if (item.json === undefined) {
-				throw new Error('All returned items have to contain property named "json"!');
-			}
 			if (item.json === undefined) {
 				throw new Error('All returned items have to contain a property named "json"!');
 			}

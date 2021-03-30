@@ -4,11 +4,11 @@ import {
 
 import {
 	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -18,25 +18,25 @@ import {
 } from './GenericFunctions';
 
 import {
-	workbookOperations,
 	workbookFields,
+	workbookOperations,
 } from './WorkbookDescription';
 
 import {
-	worksheetOperations,
 	worksheetFields,
+	worksheetOperations,
 } from './WorksheetDescription';
 
 import {
-	tableOperations,
 	tableFields,
+	tableOperations,
 } from './TableDescription';
 
 export class MicrosoftExcel implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft Excel',
 		name: 'microsoftExcel',
-		icon: 'file:excel.png',
+		icon: 'file:excel.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -146,7 +146,7 @@ export class MicrosoftExcel implements INodeType {
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

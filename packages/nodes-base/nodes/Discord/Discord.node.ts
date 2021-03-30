@@ -2,9 +2,9 @@ import { get } from 'lodash';
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 export class Discord implements INodeType {
@@ -41,7 +41,7 @@ export class Discord implements INodeType {
 				},
 				default: '',
 				description: 'The text to send.',
-			}
+			},
 		],
 	};
 
@@ -67,9 +67,9 @@ export class Discord implements INodeType {
 				body,
 				uri: `${webhookUri}`,
 				headers: {
-					'content-type': 'application/json; charset=utf-8'
+					'content-type': 'application/json; charset=utf-8',
 				},
-				json: true
+				json: true,
 			};
 
 			let maxTries = 5;
