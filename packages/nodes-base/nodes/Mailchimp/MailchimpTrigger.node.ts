@@ -176,7 +176,7 @@ export class MailchimpTrigger implements INodeType {
 					response = await mailchimpApiRequest.call(this, '/lists', 'GET');
 					lists = response.lists;
 				} catch (err) {
-					throw new Error(`Mailchimp Error: ${err}`);
+					throw new NodeOperationError(this.getNode(), `Mailchimp Error: ${err}`);
 				}
 				for (const list of lists) {
 					const listName = list.name;
@@ -209,7 +209,7 @@ export class MailchimpTrigger implements INodeType {
 					if (err.statusCode === 404) {
 						return false;
 					}
-					throw new Error(`Mailchimp Error: ${err}`);
+					throw new NodeOperationError(this.getNode(), `Mailchimp Error: ${err}`);
 				}
 				return true;
 			},

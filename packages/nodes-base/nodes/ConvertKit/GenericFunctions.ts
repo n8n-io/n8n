@@ -11,7 +11,8 @@ import {
 import {
 	IDataObject,
 	IHookFunctions,
-	NodeApiError
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 export async function convertKitApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
@@ -20,7 +21,7 @@ export async function convertKitApiRequest(this: IExecuteFunctions | IExecuteSin
 	const credentials = this.getCredentials('convertKitApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	let options: OptionsWithUri = {

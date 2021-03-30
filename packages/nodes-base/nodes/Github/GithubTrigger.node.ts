@@ -8,6 +8,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -370,7 +371,7 @@ export class GithubTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				if (webhookUrl.includes('//localhost')) {
-					throw new Error('The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!');
+					throw new NodeOperationError(this.getNode(), 'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!');
 				}
 
 				const owner = this.getNodeParameter('owner') as string;
@@ -416,7 +417,7 @@ export class GithubTrigger implements INodeType {
 							}
 						}
 
-						throw new Error('A webhook with the identical URL probably exists already. Please delete it manually on Github!');
+						throw new NodeOperationError(this.getNode(), 'A webhook with the identical URL probably exists already. Please delete it manually on Github!');
 					}
 
 					throw e;
@@ -424,7 +425,7 @@ export class GithubTrigger implements INodeType {
 
 				if (responseData.id === undefined || responseData.active !== true) {
 					// Required data is missing so was not successful
-					throw new Error('Github webhook creation response did not contain the expected data.');
+					throw new NodeOperationError(this.getNode(), 'Github webhook creation response did not contain the expected data.');
 				}
 
 				webhookData.webhookId = responseData.id as string;

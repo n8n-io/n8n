@@ -22,7 +22,7 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialDataDecryptedObject, NodeApiError,
+	ICredentialDataDecryptedObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 function getEndpointForService(service: string, credentials: ICredentialDataDecryptedObject): string {
@@ -40,7 +40,7 @@ function getEndpointForService(service: string, credentials: ICredentialDataDecr
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('aws');
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	// Concatenate path and instantiate URL object so it parses correctly query strings
@@ -65,9 +65,9 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 
 		if (error.statusCode === 403) {
 			if (errorMessage === 'The security token included in the request is invalid.') {
-				throw new Error('The AWS credentials are not valid!');
+				throw new NodeOperationError(this.getNode(), 'The AWS credentials are not valid!');
 			} else if (errorMessage.startsWith('The request signature we calculated does not match the signature you provided')) {
-				throw new Error('The AWS credentials are not valid!');
+				throw new NodeOperationError(this.getNode(), 'The AWS credentials are not valid!');
 			}
 		}
 

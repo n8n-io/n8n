@@ -10,6 +10,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -244,11 +245,11 @@ export class MicrosoftOutlook implements INodeType {
 							const binaryPropertyName = attachment.binaryPropertyName as string;
 
 							if (items[i].binary === undefined) {
-								throw new Error('No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 							}
 							//@ts-ignore
 							if (items[i].binary[binaryPropertyName] === undefined) {
-								throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 							}
 
 							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
@@ -338,11 +339,11 @@ export class MicrosoftOutlook implements INodeType {
 							const binaryPropertyName = attachment.binaryPropertyName as string;
 
 							if (items[i].binary === undefined) {
-								throw new Error('No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 							}
 							//@ts-ignore
 							if (items[i].binary[binaryPropertyName] === undefined) {
-								throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 							}
 
 							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
@@ -516,11 +517,11 @@ export class MicrosoftOutlook implements INodeType {
 							const binaryPropertyName = attachment.binaryPropertyName as string;
 
 							if (items[i].binary === undefined) {
-								throw new Error('No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 							}
 							//@ts-ignore
 							if (items[i].binary[binaryPropertyName] === undefined) {
-								throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 							}
 
 							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
@@ -558,11 +559,11 @@ export class MicrosoftOutlook implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (items[i].binary === undefined) {
-						throw new Error('No binary data exists on item!');
+						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 					}
 					//@ts-ignore
 					if (items[i].binary[binaryPropertyName] === undefined) {
-						throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 					}
 
 					const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
@@ -571,7 +572,7 @@ export class MicrosoftOutlook implements INodeType {
 					const fileName = additionalFields.fileName === undefined ? binaryData.fileName : additionalFields.fileName;
 
 					if (!fileName) {
-						throw new Error('File name is not set. It has either to be set via "Additional Fields" or has to be set on the binary property!');
+						throw new NodeOperationError(this.getNode(), 'File name is not set. It has either to be set via "Additional Fields" or has to be set on the binary property!');
 					}
 
 					// Check if the file is over 3MB big
@@ -596,7 +597,7 @@ export class MicrosoftOutlook implements INodeType {
 						const uploadUrl = responseData.uploadUrl;
 
 						if (uploadUrl === undefined) {
-							throw new Error('Failed to get upload session');
+							throw new NodeOperationError(this.getNode(), 'Failed to get upload session');
 						}
 
 						for (let bytesUploaded = 0; bytesUploaded < dataBuffer.length; bytesUploaded += chunkSize) {

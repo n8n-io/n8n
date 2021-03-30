@@ -47,7 +47,7 @@ function buildMongoConnectionParams(
 				database: sanitizedDbName,
 			};
 		} else {
-			throw new Error(
+			throw new NodeOperationError(this.getNode(),
 				'Cannot override credentials: valid MongoDB connection string not provided ',
 			);
 		}
@@ -68,7 +68,7 @@ export function validateAndResolveMongoCredentials(
 	credentials?: ICredentialDataDecryptedObject,
 ): IMongoCredentials {
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	} else {
 		return buildMongoConnectionParams(
 			credentials as unknown as IMongoCredentialsType,

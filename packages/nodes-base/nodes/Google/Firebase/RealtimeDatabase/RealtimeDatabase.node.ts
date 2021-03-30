@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -144,7 +145,7 @@ export class RealtimeDatabase implements INodeType {
 		//https://firebase.google.com/docs/reference/rest/database
 
 		if (['push', 'create', 'update'].includes(operation) && items.length === 1 && Object.keys(items[0].json).length === 0) {
-			throw new Error(`The ${operation} operation needs input data`);
+			throw new NodeOperationError(this.getNode(), `The ${operation} operation needs input data`);
 		}
 
 		for (let i = 0; i < length; i++) {
@@ -185,7 +186,7 @@ export class RealtimeDatabase implements INodeType {
 
 			if (responseData === null) {
 				if (operation === 'get') {
-					throw new Error(`Google Firebase error response: Requested entity was not found.`);
+					throw new NodeOperationError(this.getNode(), `Google Firebase error response: Requested entity was not found.`);
 				} else if (method === 'DELETE') {
 					responseData = { success: true };
 				}

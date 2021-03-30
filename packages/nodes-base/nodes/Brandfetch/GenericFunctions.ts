@@ -10,14 +10,14 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function brandfetchApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	try {
 		const credentials = this.getCredentials('brandfetchApi');
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 		let options: OptionsWithUri = {
 			headers: {
@@ -46,7 +46,7 @@ export async function brandfetchApiRequest(this: IHookFunctions | IExecuteFuncti
 		const response = await this.helpers.request!(options);
 
 		if (response.statusCode && response.statusCode !== 200) {
-			throw new Error(`Brandfetch error response [${response.statusCode}]: ${response.response}`);
+			throw new NodeOperationError(this.getNode(), `Brandfetch error response [${response.statusCode}]: ${response.response}`);
 		}
 
 		return response;

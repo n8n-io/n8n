@@ -22,7 +22,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import { URL } from 'url';
@@ -34,11 +34,11 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 	credentials = this.getCredentials('s3');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	if (!(credentials.endpoint as string).startsWith('http')) {
-		throw new Error('HTTP(S) Scheme is required in endpoint definition');
+		throw new NodeOperationError(this.getNode(), 'HTTP(S) Scheme is required in endpoint definition');
 	}
 
 	const endpoint = new URL(credentials.endpoint as string);
@@ -84,9 +84,9 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 
 		if (error.statusCode === 403) {
 			if (errorMessage === 'The security token included in the request is invalid.') {
-				throw new Error('The S3 credentials are not valid!');
+				throw new NodeOperationError(this.getNode(), 'The S3 credentials are not valid!');
 			} else if (errorMessage.startsWith('The request signature we calculated does not match the signature you provided')) {
-				throw new Error('The S3 credentials are not valid!');
+				throw new NodeOperationError(this.getNode(), 'The S3 credentials are not valid!');
 			}
 		}
 

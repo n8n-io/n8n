@@ -15,6 +15,7 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 export async function twitterApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -85,7 +86,7 @@ export async function uploadAttachments(this: IExecuteFunctions, binaryPropertie
 		const binaryData = items[i].binary as IBinaryKeyData;
 
 		if (binaryData === undefined) {
-			throw new Error('No binary data set. So file can not be written!');
+			throw new NodeOperationError(this.getNode(), 'No binary data set. So file can not be written!');
 		}
 
 		if (!binaryData[binaryPropertyName]) {
@@ -100,7 +101,7 @@ export async function uploadAttachments(this: IExecuteFunctions, binaryPropertie
 		const isImage = binaryData[binaryPropertyName].mimeType.includes('image');
 
 		if (isImage && isAnimatedWebp) {
-			throw new Error('Animated .webp images are not supported use .gif instead');
+			throw new NodeOperationError(this.getNode(), 'Animated .webp images are not supported use .gif instead');
 		}
 
 		if (isImage) {

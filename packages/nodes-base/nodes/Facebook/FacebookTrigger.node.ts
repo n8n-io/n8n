@@ -8,6 +8,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as uuid from 'uuid/v4';
@@ -192,7 +193,7 @@ export class FacebookTrigger implements INodeType {
 
 				if (responseData.success !== true) {
 					// Facebook did not return success, so something went wrong
-					throw new Error('Facebook webhook creation response did not contain the expected data.');
+					throw new NodeOperationError(this.getNode(), 'Facebook webhook creation response did not contain the expected data.');
 				}
 				return true;
 			},

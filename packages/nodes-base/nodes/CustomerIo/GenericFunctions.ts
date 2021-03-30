@@ -9,7 +9,7 @@ import {
 } from 'request';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -20,7 +20,7 @@ export async function customerIoApiRequest(this: IHookFunctions | IExecuteFuncti
 	const credentials = this.getCredentials('customerIoApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	query = query || {};

@@ -3,7 +3,8 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
-	INodeTypeDescription
+	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as pgPromise from 'pg-promise';
@@ -197,7 +198,7 @@ export class Postgres implements INodeType {
 		const credentials = this.getCredentials('postgres');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		const pgp = pgPromise();
@@ -260,7 +261,7 @@ export class Postgres implements INodeType {
 			returnItems = this.helpers.returnJsonArray(updateItems);
 		} else {
 			await pgp.end();
-			throw new Error(`The operation "${operation}" is not supported!`);
+			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 		}
 
 		// Close the connection

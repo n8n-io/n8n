@@ -7,6 +7,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { awsApiRequestSOAP } from './GenericFunctions';
@@ -154,7 +155,7 @@ export class AwsSns implements INodeType {
 			try {
 				responseData = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=Publish&' + params.join('&'));
 			} catch (err) {
-				throw new Error(`AWS Error: ${err}`);
+				throw new NodeOperationError(this.getNode(), `AWS Error: ${err}`);
 			}
 			returnData.push({MessageId: responseData.PublishResponse.PublishResult.MessageId} as IDataObject);
 		}

@@ -7,6 +7,7 @@ import {
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -51,12 +52,12 @@ export async function bitwardenApiRequest(
 	} catch (error) {
 
 		if (error.statusCode === 404) {
-			throw new Error('Bitwarden error response [404]: Not found');
+			throw new NodeOperationError(this.getNode(), 'Bitwarden error response [404]: Not found');
 		}
 
 		if (error?.response?.body?.Message) {
 			const message = error?.response?.body?.Message;
-			throw new Error(`Bitwarden error response [${error.statusCode}]: ${message}`);
+			throw new NodeOperationError(this.getNode(), `Bitwarden error response [${error.statusCode}]: ${message}`);
 		}
 		//TODO handle Errors array
 		throw error;

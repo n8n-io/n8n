@@ -8,6 +8,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -855,7 +856,7 @@ export class StripeTrigger implements INodeType {
 
 				if (responseData.id === undefined || responseData.secret === undefined || responseData.status !== 'enabled') {
 					// Required data is missing so was not successful
-					throw new Error('Stripe webhook creation response did not contain the expected data.');
+					throw new NodeOperationError(this.getNode(), 'Stripe webhook creation response did not contain the expected data.');
 				}
 
 				const webhookData = this.getWorkflowStaticData('node');

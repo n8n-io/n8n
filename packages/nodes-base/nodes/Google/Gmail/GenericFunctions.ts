@@ -18,6 +18,7 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -59,7 +60,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			const credentials = this.getCredentials('googleApi');
 
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);

@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function deepLApiRequest(
@@ -45,7 +45,7 @@ export async function deepLApiRequest(
 		const credentials = this.getCredentials('deepLApi');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		options.qs.auth_key = credentials.apiKey;

@@ -7,6 +7,7 @@ import {
 	IHookFunctions,
 	INodePropertyOptions,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 /**
@@ -19,7 +20,7 @@ export async function emeliaGraphqlRequest(
 	const response = await emeliaApiRequest.call(this, 'POST', '/graphql', body);
 
 	if (response.errors) {
-		throw new Error(`Emelia error message: ${response.errors[0].message}`);
+		throw new NodeOperationError(this.getNode(), `Emelia error message: ${response.errors[0].message}`);
 	}
 
 	return response;

@@ -10,6 +10,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -292,7 +293,7 @@ export class EventbriteTrigger implements INodeType {
 		const req = this.getRequestObject();
 
 		if (req.body.api_url === undefined) {
-			throw new Error('The received data does not contain required "api_url" property!');
+			throw new NodeOperationError(this.getNode(), 'The received data does not contain required "api_url" property!');
 		}
 
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;

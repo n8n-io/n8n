@@ -2,7 +2,7 @@ import {
 	IExecuteFunctions,
 	IHookFunctions,
 } from 'n8n-core';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
 /**
  * Make an API request to Stripe
@@ -16,7 +16,7 @@ import { NodeApiError } from 'n8n-workflow';
 export async function stripeApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('stripeApi');
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const options = {

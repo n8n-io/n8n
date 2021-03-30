@@ -2,7 +2,7 @@ import {
 	IExecuteFunctions,
 	IHookFunctions,
 } from 'n8n-core';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
 import {
 	OptionsWithUri,
@@ -40,7 +40,7 @@ export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctio
 		if (authenticationMethod === 'accessToken') {
 			const credentials = this.getCredentials('nextCloudApi');
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			options.auth = {
@@ -57,7 +57,7 @@ export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctio
 		} else {
 			const credentials = this.getCredentials('nextCloudOAuth2Api');
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			options.uri = `${credentials.webDavUrl}/${encodeURI(endpoint)}`;

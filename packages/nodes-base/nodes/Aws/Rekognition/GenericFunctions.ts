@@ -27,6 +27,7 @@ import {
 
 import {
 	IDataObject,
+	NodeOperationError,
  } from 'n8n-workflow';
 
 import {
@@ -36,7 +37,7 @@ import {
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string | Buffer | IDataObject, query: IDataObject = {}, headers?: object, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('aws');
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const endpoint = new URL(((credentials.rekognitionEndpoint as string || '').replace('{region}', credentials.region as string) || `https://${service}.${credentials.region}.amazonaws.com`) + path);
@@ -63,13 +64,13 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 
 		if (error.statusCode === 403) {
 			if (errorMessage === 'The security token included in the request is invalid.') {
-				throw new Error('The AWS credentials are not valid!');
+				throw new NodeOperationError(this.getNode(), 'The AWS credentials are not valid!');
 			} else if (errorMessage.startsWith('The request signature we calculated does not match the signature you provided')) {
-				throw new Error('The AWS credentials are not valid!');
+				throw new NodeOperationError(this.getNode(), 'The AWS credentials are not valid!');
 			}
 		}
 
-		throw new Error(`AWS error response [${error.statusCode}]: ${errorMessage}`);
+		throw new NodeOperationError(this.getNode(), `AWS error response [${error.statusCode}]: ${errorMessage}`);
 	}
 }
 

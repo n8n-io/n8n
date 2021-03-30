@@ -12,6 +12,7 @@ import {
 	IDataObject,
 	IOAuth2Options,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as _ from 'lodash';
@@ -41,7 +42,7 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 		if (authenticationMethod === 'accessToken') {
 			const credentials = this.getCredentials('slackApi');
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 			//@ts-ignore
@@ -57,7 +58,7 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 		}
 
 		if (response.ok === false) {
-			throw new Error('Slack error response: ' + JSON.stringify(response));
+			throw new NodeOperationError(this.getNode(), 'Slack error response: ' + JSON.stringify(response));
 		}
 
 		return response;

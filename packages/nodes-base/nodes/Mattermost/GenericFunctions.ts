@@ -9,7 +9,7 @@ import {
 } from 'request';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export interface IAttachment {
@@ -34,7 +34,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	const credentials = this.getCredentials('mattermostApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	query = query || {};

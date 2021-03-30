@@ -10,6 +10,7 @@
 // 	INodeTypeDescription,
 // 	INodeType,
 // 	IWebhookResponseData,
+//  NodeOperationError,
 // } from 'n8n-workflow';
 
 // import { getAuthenticationClient } from './GoogleApi';
@@ -100,7 +101,7 @@
 // 				const credentials = this.getCredentials('googleApi');
 
 // 				if (credentials === undefined) {
-// 					throw new Error('No credentials got returned!');
+// 					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 // 				}
 
 // 				const scopes = [
@@ -167,7 +168,7 @@
 // 				// 	responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
 // 				// } catch (e) {
 // 				// 	if (e.message.includes('[422]:')) {
-// 				// 		throw new Error('A webhook with the identical URL exists already. Please delete it manually on Github!');
+// 				// 		throw new NodeOperationError(this.getNode(), 'A webhook with the identical URL exists already. Please delete it manually on Github!');
 // 				// 	}
 
 // 				// 	throw e;
@@ -175,7 +176,7 @@
 
 // 				// if (responseData.id === undefined || responseData.active !== true) {
 // 				// 	// Required data is missing so was not successful
-// 				// 	throw new Error('Github webhook creation response did not contain the expected data.');
+// 				// 	throw new NodeOperationError(this.getNode(), 'Github webhook creation response did not contain the expected data.');
 // 				// }
 
 // 				// const webhookData = this.getWorkflowStaticData('node');
@@ -192,7 +193,7 @@
 // 				const credentials = this.getCredentials('googleApi');
 
 // 				if (credentials === undefined) {
-// 					throw new Error('No credentials got returned!');
+// 					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 // 				}
 
 // 				const scopes = [

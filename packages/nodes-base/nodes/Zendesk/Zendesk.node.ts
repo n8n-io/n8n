@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -255,7 +256,7 @@ export class Zendesk implements INodeType {
 								Object.assign(body, JSON.parse(additionalFieldsJson));
 
 							} else {
-								throw new Error('Additional fields must be a valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
 							}
 						}
 
@@ -307,7 +308,7 @@ export class Zendesk implements INodeType {
 								Object.assign(body, JSON.parse(updateFieldsJson));
 
 							} else {
-								throw new Error('Additional fields must be a valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
 							}
 						}
 
@@ -378,7 +379,7 @@ export class Zendesk implements INodeType {
 					try {
 						responseData = await zendeskApiRequest.call(this, 'DELETE', `/tickets/${ticketId}`, {});
 					} catch (err) {
-						throw new Error(`Zendesk Error: ${err}`);
+						throw new NodeOperationError(this.getNode(), `Zendesk Error: ${err}`);
 					}
 				}
 			}

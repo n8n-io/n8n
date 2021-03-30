@@ -8,6 +8,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 
@@ -121,7 +122,7 @@ export class Mailgun implements INodeType {
 		const credentials = this.getCredentials('mailgunApi');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		const formData: IDataObject = {

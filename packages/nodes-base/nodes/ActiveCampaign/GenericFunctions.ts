@@ -28,7 +28,7 @@ export interface IProduct {
 export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKey?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('activeCampaignApi');
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	if (query === undefined) {
@@ -53,7 +53,7 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 		const responseData = await this.helpers.request!(options);
 
 		if (responseData.success === false) {
-			throw new Error(`ActiveCampaign error response: ${responseData.error} (${responseData.error_info})`);
+			throw new NodeOperationError(this.getNode(), `ActiveCampaign error response: ${responseData.error} (${responseData.error_info})`);
 		}
 
 		if (dataKey === undefined) {

@@ -10,6 +10,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -174,7 +175,7 @@ export class GetResponseTrigger implements INodeType {
 
 					if (data.url !== webhookUrl) {
 						if (deleteCurrentSubscription === false) {
-							throw new Error(`The webhook (${data.url}) is active in the account. Delete it manually or set the parameter "Delete Current Subscription" to true, and the node will delete it for you.`);
+							throw new NodeOperationError(this.getNode(), `The webhook (${data.url}) is active in the account. Delete it manually or set the parameter "Delete Current Subscription" to true, and the node will delete it for you.`);
 						}
 					}
 				} catch (error) {

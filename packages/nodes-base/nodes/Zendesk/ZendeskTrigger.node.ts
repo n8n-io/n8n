@@ -14,6 +14,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -515,7 +516,7 @@ export class ZendeskTrigger implements INodeType {
 					const conditions = this.getNodeParameter('conditions') as IDataObject;
 					const options = this.getNodeParameter('options') as IDataObject;
 					if (Object.keys(conditions).length === 0) {
-						throw new Error('You must have at least one condition');
+						throw new NodeOperationError(this.getNode(), 'You must have at least one condition');
 					}
 					if (options.fields) {
 						// @ts-ignore

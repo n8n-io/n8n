@@ -7,6 +7,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { awsApiRequestREST } from './GenericFunctions';
@@ -177,7 +178,7 @@ export class AwsLambda implements INodeType {
 					},
 				);
 			} catch (err) {
-				throw new Error(`AWS Error: ${err}`);
+				throw new NodeOperationError(this.getNode(), `AWS Error: ${err}`);
 			}
 
 			if (responseData !== null && responseData.errorMessage !== undefined) {
@@ -187,7 +188,7 @@ export class AwsLambda implements INodeType {
 					errorMessage += `\n\nStack trace:\n${responseData.stackTrace}`;
 				}
 
-				throw new Error(errorMessage);
+				throw new NodeOperationError(this.getNode(), errorMessage);
 			} else {
 				returnData.push({
 					result: responseData,

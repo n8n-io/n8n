@@ -5,7 +5,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 import { OptionsWithUri } from 'request';
 
@@ -38,7 +38,7 @@ export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions,
 		if (authenticationMethod === 'accessToken') {
 			const credentials = this.getCredentials('gitlabApi');
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			options.headers!['Private-Token'] = `${credentials.accessToken}`;
@@ -49,7 +49,7 @@ export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions,
 		} else {
 			const credentials = this.getCredentials('gitlabOAuth2Api');
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			options.uri = `${(credentials.server as string).replace(/\/$/, '')}/api/v4${endpoint}`;

@@ -7,6 +7,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -72,7 +73,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 
 			const credentials = this.getCredentials('pipedriveApi');
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			query.api_token = credentials.apiToken;
@@ -90,7 +91,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 		}
 
 		if (responseData.success === false) {
-			throw new Error(`Pipedrive error response: ${responseData.error} (${responseData.error_info})`);
+			throw new NodeOperationError(this.getNode(), `Pipedrive error response: ${responseData.error} (${responseData.error_info})`);
 		}
 
 		return {
@@ -168,7 +169,7 @@ export async function pipedriveGetCustomProperties(this: IHookFunctions | IExecu
 	};
 
 	if (endpoints[resource] === undefined) {
-		throw new Error(`The resource "${resource}" is not supported for resolving custom values!`);
+		throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not supported for resolving custom values!`);
 	}
 
 	const requestMethod = 'GET';

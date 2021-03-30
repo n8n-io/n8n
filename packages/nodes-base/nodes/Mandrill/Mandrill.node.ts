@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -709,7 +710,7 @@ export class Mandrill implements INodeType {
 				try {
 					templates = await mandrillApiRequest.call(this, '/templates', 'POST', '/list');
 				} catch (err) {
-					throw new Error(`Mandrill Error: ${err}`);
+					throw new NodeOperationError(this.getNode(), `Mandrill Error: ${err}`);
 				}
 				for (const template of templates) {
 					const templateName = template.name;

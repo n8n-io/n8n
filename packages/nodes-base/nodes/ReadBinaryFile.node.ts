@@ -3,6 +3,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -60,7 +61,7 @@ export class ReadBinaryFile implements INodeType {
 			data = await fsReadFileAsync(filePath) as Buffer;
 		} catch (error) {
 			if (error.code === 'ENOENT') {
-				throw new Error(`The file "${filePath}" could not be found.`);
+				throw new NodeOperationError(this.getNode(), `The file "${filePath}" could not be found.`);
 			}
 
 			throw error;

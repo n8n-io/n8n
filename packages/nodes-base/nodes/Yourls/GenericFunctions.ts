@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function yourlsApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, body: any = {}, qs: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -31,7 +31,7 @@ export async function yourlsApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		const response = await this.helpers.request.call(this, options);
 
 		if (response.status === 'fail') {
-			throw new Error(
+			throw new NodeOperationError(this.getNode(),
 				`Yourls error response [400]: ${response.message}`,
 			);
 		}

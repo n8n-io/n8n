@@ -5,7 +5,7 @@ import {
 } from 'n8n-core';
 
 import {
-	INodePropertyOptions, NodeApiError,
+	INodePropertyOptions, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -68,7 +68,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 			const credentials = this.getCredentials('typeformApi');
 
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			options.headers!['Authorization'] = `bearer ${credentials.accessToken}`;
@@ -137,7 +137,7 @@ export async function getForms(this: ILoadOptionsFunctions): Promise<INodeProper
 	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {});
 
 	if (responseData.items === undefined) {
-		throw new Error('No data got returned');
+		throw new NodeOperationError(this.getNode(), 'No data got returned');
 	}
 
 	const returnData: INodePropertyOptions[] = [];

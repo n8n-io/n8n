@@ -3,14 +3,14 @@ import {
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
 import { OptionsWithUri } from 'request';
 
 export async function cockpitApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('cockpitApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials available.');
+		throw new NodeOperationError(this.getNode(), 'No credentials available.');
 	}
 
 	let options: OptionsWithUri = {

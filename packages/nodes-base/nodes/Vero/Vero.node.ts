@@ -6,6 +6,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 import {
 	validateJSON,
@@ -111,7 +112,7 @@ export class Vero implements INodeType {
 					try {
 						responseData = await veroApiRequest.call(this, 'POST', '/users/track', body);
 					} catch (err) {
-						throw new Error(`Vero Error: ${err}`);
+						throw new NodeOperationError(this.getNode(), `Vero Error: ${err}`);
 					}
 				}
 				//https://developers.getvero.com/?bash#users-alias
@@ -125,7 +126,7 @@ export class Vero implements INodeType {
 					try {
 						responseData = await veroApiRequest.call(this, 'PUT', '/users/reidentify', body);
 					} catch (err) {
-						throw new Error(`Vero Error: ${err}`);
+						throw new NodeOperationError(this.getNode(), `Vero Error: ${err}`);
 					}
 				}
 				//https://developers.getvero.com/?bash#users-unsubscribe
@@ -141,7 +142,7 @@ export class Vero implements INodeType {
 					try {
 						responseData = await veroApiRequest.call(this, 'POST', `/users/${operation}`, body);
 					} catch (err) {
-						throw new Error(`Vero Error: ${err}`);
+						throw new NodeOperationError(this.getNode(), `Vero Error: ${err}`);
 					}
 				}
 				//https://developers.getvero.com/?bash#tags-add
@@ -164,7 +165,7 @@ export class Vero implements INodeType {
 					try {
 						responseData = await veroApiRequest.call(this, 'PUT', '/users/tags/edit', body);
 					} catch (err) {
-						throw new Error(`Vero Error: ${err}`);
+						throw new NodeOperationError(this.getNode(), `Vero Error: ${err}`);
 					}
 				}
 			}
@@ -217,7 +218,7 @@ export class Vero implements INodeType {
 					try {
 						responseData = await veroApiRequest.call(this, 'POST', '/events/track', body);
 					} catch (err) {
-						throw new Error(`Vero Error: ${err}`);
+						throw new NodeOperationError(this.getNode(), `Vero Error: ${err}`);
 					}
 				}
 			}

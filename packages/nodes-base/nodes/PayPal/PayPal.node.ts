@@ -6,6 +6,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 import {
 	payoutFields,
@@ -123,7 +124,7 @@ export class PayPal implements INodeType {
 							});
 							body.items = payoutItems;
 						} else {
-							throw new Error('You must have at least one item.');
+							throw new NodeOperationError(this.getNode(), 'You must have at least one item.');
 						}
 					} else {
 						const itemsJson = validateJSON(this.getNodeParameter('itemsJson', i) as string);
@@ -132,7 +133,7 @@ export class PayPal implements INodeType {
 					try {
 						responseData = await payPalApiRequest.call(this, '/payments/payouts', 'POST', body);
 					} catch (err) {
-						throw new Error(`PayPal Error: ${JSON.stringify(err)}`);
+						throw new NodeOperationError(this.getNode(), `PayPal Error: ${JSON.stringify(err)}`);
 					}
 				}
 				if (operation === 'get') {
@@ -147,7 +148,7 @@ export class PayPal implements INodeType {
 							responseData = responseData.items;
 						}
 					} catch (err) {
-						throw new Error(`PayPal Error: ${JSON.stringify(err)}`);
+						throw new NodeOperationError(this.getNode(), `PayPal Error: ${JSON.stringify(err)}`);
 					}
 				}
 			} else if (resource === 'payoutItem') {
@@ -156,7 +157,7 @@ export class PayPal implements INodeType {
 					try {
 						responseData = await payPalApiRequest.call(this,`/payments/payouts-item/${payoutItemId}`, 'GET', {}, qs);
 					} catch (err) {
-						throw new Error(`PayPal Error: ${JSON.stringify(err)}`);
+						throw new NodeOperationError(this.getNode(), `PayPal Error: ${JSON.stringify(err)}`);
 					}
 				}
 				if (operation === 'cancel') {
@@ -164,7 +165,7 @@ export class PayPal implements INodeType {
 					try {
 						responseData = await payPalApiRequest.call(this,`/payments/payouts-item/${payoutItemId}/cancel`, 'POST', {}, qs);
 					} catch (err) {
-						throw new Error(`PayPal Error: ${JSON.stringify(err)}`);
+						throw new NodeOperationError(this.getNode(), `PayPal Error: ${JSON.stringify(err)}`);
 					}
 				}
 			}

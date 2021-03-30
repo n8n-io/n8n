@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -210,7 +211,7 @@ export class GoogleCalendar implements INodeType {
 					if (responseData.calendars[calendarId].errors) {
 						let errors = responseData.calendars[calendarId].errors;
 						errors = errors.map((e: IDataObject) => e.reason);
-						throw new Error(
+						throw new NodeOperationError(this.getNode(),
 							`Google Calendar error response: ${errors.join('|')}`,
 						);
 					}
@@ -328,7 +329,7 @@ export class GoogleCalendar implements INodeType {
 							additionalFields.repeatHowManyTimes &&
 							additionalFields.repeatUntil
 						) {
-							throw new Error(
+							throw new NodeOperationError(this.getNode(),
 								`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
 							);
 						}
@@ -573,7 +574,7 @@ export class GoogleCalendar implements INodeType {
 						body.recurrence = [`RRULE:${updateFields.rrule}`];
 					} else {
 						if (updateFields.repeatHowManyTimes && updateFields.repeatUntil) {
-							throw new Error(
+							throw new NodeOperationError(this.getNode(),
 								`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
 							);
 						}

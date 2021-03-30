@@ -3,7 +3,7 @@ import {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
 import {
 	OptionsWithUri,
@@ -47,7 +47,7 @@ export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions |
 		return await this.helpers.request!(options);
 	} catch (error) {
 		if (error.error.code === 'ECONNREFUSED') {
-			throw new Error('Twake host is not accessible!');
+			throw new NodeOperationError(this.getNode(), 'Twake host is not accessible!');
 		}
 		throw new NodeApiError(this.getNode(), error);
 	}

@@ -77,7 +77,7 @@ export class PayPalTrigger implements INodeType {
 					const endpoint = '/notifications/webhooks-event-types';
 					events = await payPalApiRequest.call(this, endpoint, 'GET');
 				} catch (err) {
-					throw new Error(`PayPal Error: ${err}`);
+					throw new NodeOperationError(this.getNode(), `PayPal Error: ${err}`);
 				}
 				for (const event of events.event_types) {
 					const eventName = upperFist(event.name);
@@ -113,7 +113,7 @@ export class PayPalTrigger implements INodeType {
 						delete webhookData.webhookId;
 						return false;
 					}
-					throw new Error(`PayPal Error: ${err}`);
+					throw new NodeOperationError(this.getNode(), `PayPal Error: ${err}`);
 				}
 				return true;
 			},

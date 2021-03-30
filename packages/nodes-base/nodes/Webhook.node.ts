@@ -9,6 +9,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as basicAuth from 'basic-auth';
@@ -478,7 +479,7 @@ export class Webhook implements INodeType {
 				});
 
 				req.on('error', (err) => {
-					throw new Error(err.message);
+					throw new NodeOperationError(this.getNode(), err.message);
 				});
 			});
 		}

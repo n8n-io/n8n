@@ -8,6 +8,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -111,7 +112,7 @@ export class FlowTrigger implements INodeType {
 				const credentials = this.getCredentials('flowApi');
 
 				if (credentials === undefined) {
-					throw new Error('No credentials got returned!');
+					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 				}
 
 				let webhooks;
@@ -145,7 +146,7 @@ export class FlowTrigger implements INodeType {
 				const credentials = this.getCredentials('flowApi');
 
 				if (credentials === undefined) {
-					throw new Error('No credentials got returned!');
+					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 				}
 
 				let resourceIds, body, responseData;
@@ -189,7 +190,7 @@ export class FlowTrigger implements INodeType {
 				const credentials = this.getCredentials('flowApi');
 
 				if (credentials === undefined) {
-					throw new Error('No credentials got returned!');
+					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 				}
 
 				const qs: IDataObject = {};

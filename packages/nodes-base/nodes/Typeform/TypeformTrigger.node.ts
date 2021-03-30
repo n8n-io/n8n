@@ -8,6 +8,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -199,7 +200,7 @@ export class TypeformTrigger implements INodeType {
 			(bodyData.form_response as IDataObject).definition === undefined ||
 			(bodyData.form_response as IDataObject).answers === undefined
 		) {
-			throw new Error('Expected definition/answers data is missing!');
+			throw new NodeOperationError(this.getNode(), 'Expected definition/answers data is missing!');
 		}
 
 		const answers = (bodyData.form_response as IDataObject).answers as ITypeformAnswer[];

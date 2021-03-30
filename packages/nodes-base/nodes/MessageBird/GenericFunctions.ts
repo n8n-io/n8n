@@ -8,7 +8,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 /**
@@ -29,7 +29,7 @@ export async function messageBirdApiRequest(
 ): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('messageBirdApi');
 	if (credentials === undefined) {
-		throw new Error('No credentials returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials returned!');
 	}
 
 	const options: OptionsWithUri = {

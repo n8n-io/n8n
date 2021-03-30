@@ -8,6 +8,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 import {
 	leadFields,
@@ -102,7 +103,7 @@ export class Intercom implements INodeType {
 				try {
 					response = await intercomApiRequest.call(this, '/companies', 'GET');
 				} catch (err) {
-					throw new Error(`Intercom Error: ${err}`);
+					throw new NodeOperationError(this.getNode(), `Intercom Error: ${err}`);
 				}
 				companies = response.companies;
 				for (const company of companies) {
@@ -215,7 +216,7 @@ export class Intercom implements INodeType {
 					try {
 						responseData = await intercomApiRequest.call(this, '/contacts', 'POST', body);
 					} catch (err) {
-						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
+						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
 				if (operation === 'get') {
@@ -238,7 +239,7 @@ export class Intercom implements INodeType {
 							responseData = responseData.contacts;
 						}
 					} catch (err) {
-						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
+						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
 				if (operation === 'getAll') {
@@ -255,7 +256,7 @@ export class Intercom implements INodeType {
 							responseData = responseData.contacts;
 						}
 					} catch (err) {
-						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
+						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
 				if (operation === 'delete') {
@@ -269,7 +270,7 @@ export class Intercom implements INodeType {
 							responseData = await intercomApiRequest.call(this, '/contacts', 'DELETE', {}, qs);
 						}
 						} catch (err) {
-							throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
+							throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(err)}`);
 						}
 				}
 			}
@@ -379,7 +380,7 @@ export class Intercom implements INodeType {
 					try {
 						responseData = await intercomApiRequest.call(this, '/users', 'POST', body, qs);
 					} catch (err) {
-						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
+						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
 				if (operation === 'get') {
@@ -395,7 +396,7 @@ export class Intercom implements INodeType {
 							responseData = await intercomApiRequest.call(this, '/users', 'GET', {}, qs);
 						}
 					} catch (err) {
-						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
+						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
 				if (operation === 'getAll') {
@@ -412,7 +413,7 @@ export class Intercom implements INodeType {
 							responseData = responseData.users;
 						}
 					} catch (err) {
-						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
+						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
 				if (operation === 'delete') {
@@ -420,7 +421,7 @@ export class Intercom implements INodeType {
 					try {
 						responseData = await intercomApiRequest.call(this, `/users/${id}`, 'DELETE');
 						} catch (err) {
-							throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
+							throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(err)}`);
 						}
 				}
 			}
@@ -470,7 +471,7 @@ export class Intercom implements INodeType {
 					try {
 						responseData = await intercomApiRequest.call(this, '/companies', 'POST', body, qs);
 					} catch (err) {
-						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
+						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
 				if (operation === 'get') {
@@ -489,7 +490,7 @@ export class Intercom implements INodeType {
 							responseData = await intercomApiRequest.call(this, '/companies', 'GET', {}, qs);
 						}
 					} catch (err) {
-						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
+						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
 				if (operation === 'getAll') {
@@ -506,7 +507,7 @@ export class Intercom implements INodeType {
 							responseData = responseData.companies;
 						}
 					} catch (err) {
-						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
+						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
 				if (operation === 'users') {
@@ -523,7 +524,7 @@ export class Intercom implements INodeType {
 							responseData = await intercomApiRequest.call(this, '/companies', 'GET', {}, qs);
 						}
 					} catch (err) {
-						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
+						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
 			}

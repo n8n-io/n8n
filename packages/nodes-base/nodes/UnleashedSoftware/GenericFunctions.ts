@@ -11,7 +11,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -43,7 +43,7 @@ export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctio
 	const credentials = this.getCredentials('unleashedSoftwareApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const signature = createHmac('sha256', (credentials.apiKey as string))

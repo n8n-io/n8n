@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 interface OMauticErrorResponse {
@@ -68,7 +68,7 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 		if (returnData.errors) {
 			// They seem to to sometimes return 200 status but still error.
-			throw new Error(getErrors(returnData));
+			throw new NodeOperationError(this.getNode(), getErrors(returnData));
 		}
 
 		return returnData;

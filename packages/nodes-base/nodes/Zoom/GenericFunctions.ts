@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
@@ -38,7 +38,7 @@ export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 		if (authenticationMethod === 'accessToken') {
 			const credentials = this.getCredentials('zoomApi');
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 

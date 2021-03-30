@@ -5,6 +5,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
+	NodeOperationError,
 	NodeParameterValue,
 } from 'n8n-workflow';
 
@@ -490,7 +491,7 @@ export class Chargebee implements INodeType {
 		const credentials = this.getCredentials('chargebeeApi');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		const baseUrl = `https://${credentials.accountName}.chargebee.com/api/v2`;
@@ -532,7 +533,7 @@ export class Chargebee implements INodeType {
 
 					endpoint = `customers`;
 				} else {
-					throw new Error(`The operation "${operation}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 				}
 
 			} else if (resource === 'invoice') {
@@ -570,7 +571,7 @@ export class Chargebee implements INodeType {
 					const invoiceId = this.getNodeParameter('invoiceId', i) as string;
 					endpoint = `invoices/${invoiceId.trim()}/pdf`;
 				} else {
-					throw new Error(`The operation "${operation}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 				}
 
 			} else if (resource === 'subscription') {
@@ -596,10 +597,10 @@ export class Chargebee implements INodeType {
 
 					endpoint = `subscriptions/${subscriptionId.trim()}/delete`;
 				} else {
-					throw new Error(`The operation "${operation}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 				}
 			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 			}
 
 			const options = {

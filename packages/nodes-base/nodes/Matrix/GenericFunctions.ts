@@ -2,7 +2,7 @@ import {
 	OptionsWithUri,
 } from 'request';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
 import {
 	BINARY_ENCODING,
@@ -52,7 +52,7 @@ export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleF
 
 		const credentials = this.getCredentials('matrixApi');
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 		//@ts-ignore
 		options.uri = `${credentials.homeserverUrl}/_matrix/${option.overridePrefix || 'client'}/r0${resource}`;
@@ -190,7 +190,7 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 			if (item.binary === undefined
 				//@ts-ignore
 				|| item.binary[binaryPropertyName] === undefined) {
-				throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+				throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 			}
 
 			//@ts-ignore
@@ -232,5 +232,5 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 	}
 
 
-	throw new Error('Not implemented yet');
+	throw new NodeOperationError(this.getNode(), 'Not implemented yet');
 }

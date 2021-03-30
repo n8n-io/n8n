@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import * as moment from 'moment';
@@ -18,7 +18,7 @@ export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions
 	const credentials = this.getCredentials('theHiveApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const headerWithAuthentication = Object.assign({}, { Authorization: `Bearer ${credentials.ApiKey}` });

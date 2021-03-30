@@ -9,7 +9,8 @@ import {
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
-	NodeApiError
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 export async function calendlyApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -17,7 +18,7 @@ export async function calendlyApiRequest(this: IExecuteFunctions | IWebhookFunct
 	const credentials = this.getCredentials('calendlyApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const endpoint = 'https://calendly.com/api/v1';

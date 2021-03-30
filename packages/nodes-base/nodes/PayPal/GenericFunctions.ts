@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
@@ -45,7 +45,7 @@ function getEnvironment(env: string): string {
 async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('payPalApi');
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 	const env = getEnvironment(credentials!.env as string);
 	const data = Buffer.from(`${credentials!.clientId}:${credentials!.secret}`).toString(BINARY_ENCODING);
@@ -66,9 +66,9 @@ async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecut
 		const errorMessage = error.response.body.message || error.response.body.Message;
 
 		if (errorMessage !== undefined) {
-			throw new Error(errorMessage);
+			throw new NodeOperationError(this.getNode(), errorMessage);
 		}
-		throw new Error(error.response.body);
+		throw new NodeOperationError(this.getNode(), error.response.body);
 	}
 }
 

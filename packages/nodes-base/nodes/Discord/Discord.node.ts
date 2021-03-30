@@ -6,6 +6,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 export class Discord implements INodeType {
@@ -94,7 +95,7 @@ export class Discord implements INodeType {
 			} while (--maxTries);
 
 			if (maxTries <= 0) {
-				throw new Error('Could not send message. Max. amount of rate-limit retries got reached.');
+				throw new NodeOperationError(this.getNode(), 'Could not send message. Max. amount of rate-limit retries got reached.');
 			}
 
 			returnData.push({success: true});

@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 import { IContactUpdate } from './ContactInterface';
 
@@ -114,9 +114,9 @@ export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFu
 
 	} catch (error) {
 		if (successfulUpdates.length === 0) {
-			throw new Error(`AgileCRM error response: ${error.message}`);
+			throw new NodeOperationError(this.getNode(), `AgileCRM error response: ${error.message}`);
 		} else {
-			throw new Error(`Not all properties updated. Updated properties: ${successfulUpdates.join(', ')} \n \nAgileCRM error response: ${error.message}`);
+			throw new NodeOperationError(this.getNode(), `Not all properties updated. Updated properties: ${successfulUpdates.join(', ')} \n \nAgileCRM error response: ${error.message}`);
 		}
 	}
 

@@ -8,6 +8,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -237,7 +238,7 @@ export class GitlabTrigger implements INodeType {
 
 				if (responseData.id === undefined) {
 					// Required data is missing so was not successful
-					throw new Error('GitLab webhook creation response did not contain the expected data.');
+					throw new NodeOperationError(this.getNode(), 'GitLab webhook creation response did not contain the expected data.');
 				}
 
 				const webhookData = this.getWorkflowStaticData('node');

@@ -4,6 +4,7 @@ import {
 	INodeParameters,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 	NodeParameterValue,
 } from 'n8n-workflow';
 
@@ -337,7 +338,7 @@ export class If implements INodeType {
 			}
 
 			if (returnValue === undefined || isNaN(returnValue)) {
-				throw new Error(`The value "${value}" is not a valid DateTime.`);
+				throw new NodeOperationError(this.getNode(), `The value "${value}" is not a valid DateTime.`);
 			}
 
 			return returnValue;

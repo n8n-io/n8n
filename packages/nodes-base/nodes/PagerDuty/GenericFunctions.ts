@@ -12,6 +12,7 @@ import {
 	IHookFunctions,
 	IWebhookFunctions,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -50,7 +51,7 @@ export async function pagerDutyApiRequest(this: IExecuteFunctions | IWebhookFunc
 			const credentials = this.getCredentials('pagerDutyApi');
 
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			options.headers!['Authorization'] = `Token token=${credentials.apiToken}`;

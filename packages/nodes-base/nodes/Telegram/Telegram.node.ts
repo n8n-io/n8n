@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -1904,7 +1905,7 @@ export class Telegram implements INodeType {
 
 				}
 			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 			}
 
 			const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
@@ -1916,7 +1917,7 @@ export class Telegram implements INodeType {
 					const credentials = this.getCredentials('telegramApi');
 
 					if (credentials === undefined) {
-						throw new Error('No credentials got returned!');
+						throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 					}
 					const file = await apiRequest.call(this, 'GET', '', {}, {}, { json: false, encoding: null, uri: `https://api.telegram.org/file/bot${credentials.accessToken}/${filePath}`, resolveWithFullResponse: true });
 

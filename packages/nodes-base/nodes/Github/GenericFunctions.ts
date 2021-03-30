@@ -6,7 +6,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 /**
@@ -41,7 +41,7 @@ export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions,
 		if (authenticationMethod === 'accessToken') {
 			const credentials = this.getCredentials('githubApi');
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			const baseUrl = credentials!.server || 'https://api.github.com';
@@ -84,7 +84,7 @@ export async function getFileSha(this: IHookFunctions | IExecuteFunctions, owner
 	const responseData = await githubApiRequest.call(this, 'GET', getEndpoint, getBody, {});
 
 	if (responseData.sha === undefined) {
-		throw new Error('Could not get the SHA of the file.');
+		throw new NodeOperationError(this.getNode(), 'Could not get the SHA of the file.');
 	}
 	return responseData.sha;
 }

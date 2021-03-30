@@ -10,6 +10,7 @@ import {
 	INodeTypeDescription,
 	IWebhookResponseData,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -135,7 +136,7 @@ export class AwsSnsTrigger implements INodeType {
 				const topic = this.getNodeParameter('topic') as string;
 
 				if (webhookUrl.includes('%20')) {
-					throw new Error('The name of the SNS Trigger Node is not allowed to contain any spaces!');
+					throw new NodeOperationError(this.getNode(), 'The name of the SNS Trigger Node is not allowed to contain any spaces!');
 				}
 
 				const params = [

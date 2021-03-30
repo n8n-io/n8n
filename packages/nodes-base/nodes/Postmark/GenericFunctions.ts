@@ -11,7 +11,8 @@ import {
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
-	NodeApiError
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 
@@ -19,7 +20,7 @@ export async function postmarkApiRequest(this: IExecuteFunctions | IWebhookFunct
 	const credentials = this.getCredentials('postmarkApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	let options: OptionsWithUri = {

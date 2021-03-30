@@ -12,6 +12,7 @@ import {
 	IDataObject,
 	INodePropertyOptions,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -44,7 +45,7 @@ export async function asanaApiRequest(this: IHookFunctions | IExecuteFunctions |
 			const credentials = this.getCredentials('asanaApi');
 
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
