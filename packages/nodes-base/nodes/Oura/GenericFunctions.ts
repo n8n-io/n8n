@@ -31,6 +31,10 @@ export async function ouraApiRequest(this: IHookFunctions | IExecuteFunctions | 
 			json: true,
 		};
 
+		if (!Object.keys(body).length) {
+			delete options.body;
+		}
+
 		options = Object.assign({}, options, option);
 
 		return await this.helpers.request!(options);

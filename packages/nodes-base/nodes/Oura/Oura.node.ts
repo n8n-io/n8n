@@ -92,15 +92,15 @@ export class Oura implements INodeType {
 				qs.start = start;
 				qs.end = end;
 
-				if (operation === 'getSleepPeriods') {
+				if (operation === 'getSleep') {
 					responseData = await ouraApiRequest.call(this, 'GET', `/sleep`, {}, qs);
 					responseData = responseData.sleep;
 				}
-				if (operation === 'getActivitySummaries') {
+				if (operation === 'getActivity') {
 					responseData = await ouraApiRequest.call(this, 'GET', `/activity`, {}, qs);
 					responseData = responseData.activity;
 				}
-				if (operation === 'getReadinessSummaries') {
+				if (operation === 'getReadiness') {
 					responseData = await ouraApiRequest.call(this, 'GET', `/readiness`, {}, qs);
 					responseData = responseData.readiness;
 				}

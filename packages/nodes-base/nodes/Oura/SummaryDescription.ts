@@ -17,21 +17,21 @@ export const summaryOperations = [
 		options: [
 			{
 				name: 'Get Sleep Periods',
-				value: 'getSleepPeriods',
+				value: 'getSleep',
 				description: 'Get personal information',
 			},
 			{
 				name: 'Get Activity Summaries',
-				value: 'getActivitySummaries',
+				value: 'getActivity',
 				description: 'Get personal information',
 			},
 			{
 				name: 'Get Readiness Summaries',
-				value: 'getReadinessSummaries',
+				value: 'getReadiness',
 				description: 'Get personal information',
 			},
 		],
-		default: 'getSleepPeriods',
+		default: 'getSleep',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
