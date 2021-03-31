@@ -159,16 +159,22 @@ export class AwsDynamoDB implements INodeType {
 
 				// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_GetItem.html
 
+				const partitionKeyName = this.getNodeParameter('partitionKeyName', i) as string;
 				const partitionKeyType = this.getNodeParameter('partitionKeyType', i) as string;
+				const readConsistencyModel = this.getNodeParameter('additionalFields.readConsistencyModel', i) as string;
 
 				const body: IRequestBody = {
 					TableName: this.getNodeParameter('tableName', i) as string,
 					Key: {
-						id: {
+						[partitionKeyName]: {
 							[partitionKeyType]: this.getNodeParameter('partitionKeyValue', i) as string,
 						},
 					},
 				};
+
+				if (readConsistencyModel) {
+					body.ConsistentRead = readConsistencyModel === 'stronglyConsistentRead';
+				}
 
 				const headers = {
 					'Content-Type': 'application/x-amz-json-1.0',
@@ -177,9 +183,11 @@ export class AwsDynamoDB implements INodeType {
 
 				responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers);
 
-				if (responseData.Item) {
-					responseData = decodeItem(responseData.Item);
+				if (!responseData.Item) {
+					throw new Error('AWS Dynamo DB error response [404]: No item found.');
 				}
+
+				responseData = decodeItem(responseData.Item);
 
 			} else if (operation === 'query') {
 

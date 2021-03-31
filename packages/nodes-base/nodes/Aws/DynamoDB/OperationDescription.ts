@@ -87,6 +87,22 @@ export const operationFields = [
 	//              get
 	// ----------------------------------
 	{
+		displayName: 'Partition Key Name',
+		name: 'partitionKeyName',
+		description: 'Name of the partition key of the item to retrieve.',
+		placeholder: 'id',
+		default: '',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Partition Key Value',
 		name: 'partitionKeyValue',
 		description: 'Value of the partition key of the item to retrieve.',
@@ -129,6 +145,39 @@ export const operationFields = [
 				],
 			},
 		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Read Consistency Model',
+				name: 'readConsistencyModel',
+				type: 'options',
+				default: 'stronglyConsistentRead',
+				description: 'Select the <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html">read consistency model</a>.',
+				options: [
+					{
+						name: 'Eventually Consistent Read',
+						value: 'eventuallyConsistentRead',
+					},
+					{
+						name: 'Strongly Consistent Read',
+						value: 'stronglyConsistentRead',
+					},
+				],
+			},
+		],
 	},
 
 	// ----------------------------------
