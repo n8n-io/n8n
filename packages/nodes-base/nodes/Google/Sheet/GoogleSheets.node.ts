@@ -23,6 +23,7 @@ import {
 
 import {
 	googleApiRequest,
+	hexToRgb,
 } from './GenericFunctions';
 
 export class GoogleSheets implements INodeType {
@@ -112,6 +113,11 @@ export class GoogleSheets implements INodeType {
 				},
 				options: [
 					{
+						name: 'Add',
+						value: 'add',
+						description: 'Add a new sheet to a spreadsheet'
+					},
+					{
 						name: 'Append',
 						value: 'append',
 						description: 'Append data to a sheet',
@@ -159,6 +165,11 @@ export class GoogleSheets implements INodeType {
 							'sheet',
 						],
 					},
+					hide: {
+						operation: [
+							'add',
+						],
+					},
 				},
 				default: '',
 				required: true,
@@ -176,6 +187,7 @@ export class GoogleSheets implements INodeType {
 					},
 					hide: {
 						operation: [
+							'add',
 							'delete',
 						],
 					},
@@ -185,6 +197,217 @@ export class GoogleSheets implements INodeType {
 				description: 'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details.<br />If it contains multiple sheets it can also be<br />added like this: "MySheet!A:F"',
 			},
 
+			// ----------------------------------
+			//         add
+			// ----------------------------------
+			{
+				displayName: 'Spreadsheet ID',
+				name: 'spreadsheetId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'sheet',
+						],
+						operation: [
+							'add',
+						],
+					},
+				},
+				description: 'The ID of the spreadsheet in which the sheet will be added.',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'sheet',
+						],
+						operation: [
+							'add',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Sheet ID',
+						name: 'sheetId',
+						type: 'string',
+						default: '',
+						description: 'The Sheet ID.',
+					},
+					{
+						displayName: 'title',
+						name: 'title',
+						type: 'string',
+						default: '',
+						description: 'The Sheet name.',
+					},
+					{
+						displayName: 'Sheet Index',
+						name: 'index',
+						type: 'number',
+						default: 0,
+						description: 'The index of the sheet within the spreadsheet.',
+					},
+					{
+						displayName: 'Grid Properties',
+						name: 'gridProperties',
+						type: 'collection',
+						default: '',
+						options: [
+							{
+								displayName: 'Row Count',
+								name: 'rowCount',
+								type: 'number',
+								default: 0,
+								description: 'The number of rows in the grid.',
+							},
+							{
+								displayName: 'Column Count',
+								name: 'columnCount',
+								type: 'number',
+								default: 0,
+								description: 'The number of columns in the grid.',
+							},
+							{
+								displayName: 'Frozen Row Count',
+								name: 'frozenRowCount',
+								type: 'number',
+								default: 0,
+								description: 'The number of rows that are frozen in the grid.',
+							},
+							{
+								displayName: 'Frozen Column Count',
+								name: 'frozenColumnCount',
+								type: 'number',
+								default: 0,
+								description: 'The number of columns that are frozen in the grid.',
+							},
+							{
+								displayName: 'Hide Gridlines',
+								name: 'hideGridlines',
+								type: 'boolean',
+								default: false,
+								description: 'True if the grid isn\'t showing gridlines in the UI.',
+							},
+							{
+								displayName: 'Row Group Control After',
+								name: 'rowGroupControlAfter',
+								type: 'boolean',
+								default: false,
+								description: 'True if the row grouping control toggle is shown after the group.',
+							},
+							{
+								displayName: 'Column Group Control After',
+								name: 'columnGroupControlAfter',
+								type: 'boolean',
+								default: false,
+								description: 'True if the column grouping control toggle is shown after the group.',
+							},
+						],
+						description: 'The type of the sheet.',
+					},
+					{
+						displayName: 'Hidden',
+						name: 'hidden',
+						type: 'boolean',
+						default: false,
+						description: 'True if the sheet is hidden in the UI, false if it\'s visible.'
+					},
+					{
+						displayName: 'Tab Color',
+						name: 'tabColor',
+						type: 'color',
+						default: '',
+						description: 'The color of the tab in the UI.'
+					},
+					{
+						displayName: 'Tab Color Style',
+						name: 'tabColorStyle',
+						type: 'collection',
+						default: '',
+						options: [
+							{
+								displayName: 'RGB Color',
+								name: 'rgbColor',
+								type: 'color',
+								default: '',
+								description: 'RGB Color.'
+							},
+							{
+								displayName: 'Theme Color',
+								name: 'themeColor',
+								type: 'options',
+								default: 0,
+								options: [
+									{
+										name: 'Text',
+										value: 'TEXT',
+										description: 'Represents the primary text color.',
+									},
+									{
+										name: 'Background',
+										value: 'BACKGROUND',
+										description: 'Represents the primary background color.',
+									},
+									{
+										name: 'Accent1',
+										value: 'ACCENT1',
+										description: 'Represents the first accent color.',
+									},
+									{
+										name: 'Accent2',
+										value: 'ACCENT2',
+										description: 'Represents the second accent color.',
+									},
+									{
+										name: 'Accent3',
+										value: 'ACCENT3',
+										description: 'Represents the third accent color.',
+									},
+									{
+										name: 'Accent4',
+										value: 'ACCENT4',
+										description: 'Represents the fourth accent color.',
+									},
+									{
+										name: 'Accent5',
+										value: 'ACCENT5',
+										description: 'Represents the fifth accent color.',
+									},
+									{
+										name: 'Accent6',
+										value: 'ACCENT6',
+										description: 'Represents the sixth accent color.',
+									},
+									{
+										name: 'Link',
+										value: 'LINK',
+										description: 'Represents the color to use for hyperlinks.',
+									}
+								],
+
+								description: 'RGB color.'
+							}
+						],
+						description: 'The color of the tab in the UI. If tabColor is also set, this field takes precedence.'
+					},
+					{
+						displayName: 'Right To Left',
+						name: 'rightToLeft',
+						type: 'boolean',
+						default: false,
+						description: 'True if the sheet is an RTL sheet instead of an LTR sheet.'
+					}
+				]
+			},
 
 			// ----------------------------------
 			//         Delete
@@ -391,6 +614,7 @@ export class GoogleSheets implements INodeType {
 					},
 					hide: {
 						operation: [
+							'add',
 							'append',
 							'clear',
 							'delete',
@@ -421,6 +645,7 @@ export class GoogleSheets implements INodeType {
 					},
 					hide: {
 						operation: [
+							'add',
 							'clear',
 							'delete',
 						],
@@ -596,7 +821,7 @@ export class GoogleSheets implements INodeType {
 							{
 								name: 'Formula',
 								value: 'FORMULA',
-								description: '	Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
+								description: 'Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
 							},
 							{
 								name: 'Unformatted Value',
@@ -835,6 +1060,37 @@ export class GoogleSheets implements INodeType {
 
 		if (resource === 'sheet') {
 
+			if (operation === 'add') {
+				const spreadsheetId = this.getNodeParameter('spreadsheetId', 0) as string;
+				const spreadsheet = new GoogleSheet(spreadsheetId, this);
+				const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+				let properties = {...options}
+
+				if( options.tabColor){
+					const {red,green,blue} = hexToRgb(options.tabColor as string)!;
+					properties.tabColor = {red:red/255,green:green/255,blue:blue/255};
+				}
+				if( options.tabColorStyle){
+					// tabColorStyle take precendens over tabColor
+					delete properties.tabColor;
+
+					if( (options.tabColorStyle as IDataObject).themeColor){
+						properties.tabColorStyle = {"themeColor":(options.tabColorStyle as IDataObject).themeColor as string }
+					}else{
+						const {red,green,blue} = hexToRgb((options.tabColorStyle as IDataObject).rgbColor as string)!;
+						properties.tabColorStyle = {"rgbColor":{red:red/255,green:green/255,blue:blue/255} }
+					}
+				}
+				const requests = [{
+					"addSheet":{
+						"properties": properties
+					}
+				}];
+
+				const data = await spreadsheet.spreadsheetBatchUpdate(requests);
+
+				return this.prepareOutputData(this.helpers.returnJsonArray(data));
+			}
 			const spreadsheetId = this.getNodeParameter('sheetId', 0) as string;
 
 			const sheet = new GoogleSheet(spreadsheetId, this);
