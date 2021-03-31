@@ -55,30 +55,6 @@ export class Postgres implements INodeType {
 				default: 'insert',
 				description: 'The operation to perform.',
 			},
-			{
-				displayName: 'Mode',
-				name: 'mode',
-				type: 'options',
-				options: [
-					{
-						name: 'Normal',
-						value: 'normal',
-						description: 'Execute all querys together',
-					},
-					{
-						name: 'Independently',
-						value: 'independently',
-						description: 'Execute each query independently',
-					},
-					{
-						name: 'Transaction',
-						value: 'transaction',
-						description: 'Execute all querys as a transaction',
-					},
-				],
-				default: 'normal',
-				description: 'The mode how the querys should execute.',
-			},
 
 			// ----------------------------------
 			//         executeQuery
@@ -206,29 +182,56 @@ export class Postgres implements INodeType {
 			//         insert,update
 			// ----------------------------------
 			{
-				displayName: 'Enable Returning',
-				name: 'enableReturning',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						operation: ['insert', 'update'],
-					},
-				},
-				default: true,
-				description: 'Should the operation return the data',
-			},
-			{
 				displayName: 'Return Fields',
 				name: 'returnFields',
 				type: 'string',
 				displayOptions: {
 					show: {
 						operation: ['insert', 'update'],
-						enableReturning: [true],
 					},
 				},
 				default: '*',
 				description: 'Comma separated list of the fields that the operation will return',
+			},
+			// ----------------------------------
+			//         Additional fields
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{
+								name: 'Independently',
+								value: 'independently',
+								description: 'Execute each query independently',
+							},
+							{
+								name: 'Multiple queries',
+								value: 'multiple',
+								description: '<b>Default</b>. Sends multiple queries at once to database.',
+							},
+							{
+								name: 'Transaction',
+								value: 'transaction',
+								description: 'Executes all queries in a single transaction',
+							},
+						],
+						default: 'multiple',
+						description: [
+							'The way queries should be sent to database.',
+							'Can be used in conjunction with <b>Continue on Fail</b>.',
+							'See the docs for more examples',
+						].join('<br>'),
+					},
+				],
 			},
 		],
 	};
@@ -265,14 +268,13 @@ export class Postgres implements INodeType {
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
-		const mode = this.getNodeParameter('mode', 0) as string;
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
+			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
 			returnItems = this.helpers.returnJsonArray(queryResult);
 		} else if (operation === 'insert') {
@@ -280,7 +282,7 @@ export class Postgres implements INodeType {
 			//         insert
 			// ----------------------------------
 
-			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, mode, this.getNodeParameter('enableReturning', 0) as boolean, this.continueOnFail());
+			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
 			for (let i = 0; i < insertData.length; i++) {
 				returnItems.push({
@@ -292,7 +294,7 @@ export class Postgres implements INodeType {
 			//         update
 			// ----------------------------------
 
-			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, mode, this.getNodeParameter('enableReturning', 0) as boolean, this.continueOnFail());
+			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
 			returnItems = this.helpers.returnJsonArray(updateItems);
 		} else {

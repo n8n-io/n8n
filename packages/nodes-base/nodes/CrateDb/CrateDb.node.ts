@@ -7,11 +7,11 @@ import {
 } from 'n8n-workflow';
 
 import {
+	generateReturning,
+	getItemCopy,
 	pgInsert,
 	pgQuery,
 	pgUpdate,
-	getItemCopy,
-	generateReturning,
 } from '../Postgres/Postgres.node.functions';
 
 import * as pgPromise from 'pg-promise';
@@ -60,25 +60,6 @@ export class CrateDb implements INodeType {
 				],
 				default: 'insert',
 				description: 'The operation to perform.',
-			},
-			{
-				displayName: 'Mode',
-				name: 'mode',
-				type: 'options',
-				options: [
-					{
-						name: 'Normal',
-						value: 'normal',
-						description: 'Execute all querys together',
-					},
-					{
-						name: 'Independently',
-						value: 'independently',
-						description: 'Execute each query independently',
-					},
-				],
-				default: 'normal',
-				description: 'The mode how the querys should execute.',
 			},
 
 			// ----------------------------------
@@ -208,29 +189,51 @@ export class CrateDb implements INodeType {
 			//         insert,update
 			// ----------------------------------
 			{
-				displayName: 'Enable Returning',
-				name: 'enableReturning',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						operation: ['insert', 'update'],
-					},
-				},
-				default: true,
-				description: 'Should the operation return the data',
-			},
-			{
 				displayName: 'Return Fields',
 				name: 'returnFields',
 				type: 'string',
 				displayOptions: {
 					show: {
 						operation: ['insert', 'update'],
-						enableReturning: [true],
 					},
 				},
 				default: '*',
 				description: 'Comma separated list of the fields that the operation will return',
+			},
+			// ----------------------------------
+			//         additional fields
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{
+								name: 'Independently',
+								value: 'independently',
+								description: 'Execute each query independently',
+							},
+							{
+								name: 'Multiple queries',
+								value: 'multiple',
+								description: '<b>Default</b>. Sends multiple queries at once to database.',
+							},
+						],
+						default: 'multiple',
+						description: [
+							'The way queries should be sent to database.',
+							'Can be used in conjunction with <b>Continue on Fail</b>.',
+							'See the docs for more examples',
+						].join('<br>'),
+					},
+				],
 			},
 		],
 	};
@@ -260,16 +263,13 @@ export class CrateDb implements INodeType {
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
-		const mode = this.getNodeParameter('mode', 0) as string;
-		const enableReturning = this.getNodeParameter('enableReturning', 0) as boolean;
-		if(mode == 'transaction') throw new Error('transaction mode not supported');
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
+			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
 			returnItems = this.helpers.returnJsonArray(queryResult);
 		} else if (operation === 'insert') {
@@ -277,7 +277,7 @@ export class CrateDb implements INodeType {
 			//         insert
 			// ----------------------------------
 
-			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, mode, enableReturning, this.continueOnFail());
+			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
 			for (let i = 0; i < insertData.length; i++) {
 				returnItems.push({
@@ -288,12 +288,19 @@ export class CrateDb implements INodeType {
 			// ----------------------------------
 			//         update
 			// ----------------------------------
-			
+
+			const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+			const mode = additionalFields.mode ?? 'multiple' as string;
+	
 			if(mode === 'independently') {
-				const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, mode, enableReturning, this.continueOnFail());
+				const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
 				returnItems = this.helpers.returnJsonArray(updateItems);
-			} else if(mode === 'normal') {
+			} else if(mode === 'multiple') {
+				// Crate db does not support multiple-update queries 
+				// Therefore we cannot invoke `pgUpdate` using multiple mode
+				// so we have to call multiple updates manually here
+				
 				const table = this.getNodeParameter('table', 0) as string;
 				const schema = this.getNodeParameter('schema', 0) as string;
 				const updateKeys = (this.getNodeParameter('updateKey', 0) as string).split(',').map(column => column.trim());
@@ -311,23 +318,14 @@ export class CrateDb implements INodeType {
 
 				const where = ' WHERE ' + updateKeys.map(updateKey => pgp.as.name(updateKey) + ' = ${' + updateKey + '}').join(' AND ');
 				
-				if(enableReturning) {
-					const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
-					const queries:string[] = [];
-					for (let i = 0; i < items.length; i++) {
-						const itemCopy = getItemCopy(items[i], columns);
-						queries.push(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning);
-					}
-					const updateItems = (await db.multi(pgp.helpers.concat(queries))).flat(1);
-					returnItems = this.helpers.returnJsonArray(updateItems);
-				} else {
-					const queries:string[] = [];
-					for (let i = 0; i < items.length; i++) {
-						const itemCopy = getItemCopy(items[i], columns);
-						queries.push(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy));
-					}
-					await db.none(pgp.helpers.concat(queries));
+				const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
+				const queries:string[] = [];
+				for (let i = 0; i < items.length; i++) {
+					const itemCopy = getItemCopy(items[i], columns);
+					queries.push(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning);
 				}
+				const updateItems = (await db.multi(pgp.helpers.concat(queries))).flat(1);
+				returnItems = this.helpers.returnJsonArray(updateItems);
 			}
 		} else {
 			await pgp.end();

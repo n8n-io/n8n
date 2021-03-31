@@ -44,30 +44,7 @@ export function getItemCopy(item: INodeExecutionData, properties: string[]): IDa
  * @returns string
  */
 export function generateReturning(pgp: pgPromise.IMain<{}, pg.IClient>, returning: string): string {
-	let oldPos = 0;
-	let pos = returning.indexOf(',');
-	let result = '';
-	let splitString;
-	let first = true;
-	while(pos > 0) {
-		splitString = returning.substring(oldPos, pos).trim();
-		if(splitString) {
-			if(first) first = false;
-			else result += ',';
-			
-			result += pgp.as.name(splitString);
-		}
-		oldPos = pos+1;
-		pos = returning.indexOf(',', oldPos);
-	}
-	splitString = returning.substring(oldPos).trim();
-	if(first) {
-		if(splitString) return ' RETURNING ' + pgp.as.name(splitString);
-		else return '';
-	} else {
-		if(splitString) return ' RETURNING ' + result + ',' + pgp.as.name(splitString);
-		else return ' RETURNING ' + result;
-	}
+	return ' RETURNING ' + returning.split(',').map(returnedField => pgp.as.name(returnedField.trim())).join(', ');
 }
 
 /**
@@ -84,10 +61,11 @@ export async function pgQuery(
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 	input: INodeExecutionData[],
-	mode: string,
 	continueOnFail: boolean,
 ): Promise<IDataObject[]> {
-	if(mode === 'normal') {
+	const additionalFields = getNodeParam('additionalFields', 0) as IDataObject;
+	const mode = additionalFields.mode ?? 'multiple' as string;
+	if(mode === 'multiple') {
 		const queries: string[] = [];
 		for (let i = 0; i < input.length; i++) {
 			queries.push(getNodeParam('query', i) as string);
@@ -98,7 +76,7 @@ export async function pgQuery(
 			const result:IDataObject[] = [];
 			for (let i = 0; i < input.length; i++) {
 				try {
-					Array.prototype.push.apply(result, await t.any(getNodeParam('query', i) as string))
+					Array.prototype.push.apply(result, await t.any(getNodeParam('query', i) as string));
 				} catch(err) {
 					if(continueOnFail === false) throw err;
 					result.push({...input[i].json, code: err.code, message: err.message});
@@ -112,7 +90,7 @@ export async function pgQuery(
 			const result:IDataObject[] = [];
 			for (let i = 0; i < input.length; i++) {
 				try {
-					Array.prototype.push.apply(result, await t.any(getNodeParam('query', i) as string))
+					Array.prototype.push.apply(result, await t.any(getNodeParam('query', i) as string));
 				} catch(err) {
 					if(continueOnFail === false) throw err;
 					result.push({...input[i].json, code: err.code, message: err.message});
@@ -121,7 +99,7 @@ export async function pgQuery(
 			return result;
 		});
 	}
-	throw new Error('normal, independently or transaction are valid options');
+	throw new Error('multiple, independently or transaction are valid options');
 }
 
 /**
@@ -138,8 +116,6 @@ export async function pgInsert(
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 	items: INodeExecutionData[],
-	mode: string,
-	enableReturning: boolean,
 	continueOnFail: boolean,
 ): Promise<IDataObject[]> {
 	const table = getNodeParam('table', 0) as string;
@@ -147,76 +123,50 @@ export async function pgInsert(
 	const columns = (getNodeParam('columns', 0) as string).split(',').map(column => column.trim());
 	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
 	
-	if(enableReturning) {
-		const returning = generateReturning(pgp, getNodeParam('returnFields', 0) as string);
-		if(mode === 'normal') {
-			const query = pgp.helpers.insert(getItemsCopy(items, columns), cs) + returning;
-			return db.many(query);
-		} else if(mode === 'transaction') {
-			return db.tx(async t => {
-				const result:IDataObject[] = [];
-				for (let i = 0; i < items.length; i++) {
-					const itemCopy = getItemCopy(items[i], columns);
-					try {
-						result.push(await t.one(pgp.helpers.insert(itemCopy, cs) + returning));
-					} catch(err) {
-						if(continueOnFail === false) throw err;
-						result.push({...itemCopy, code: err.code, message: err.message});
-						return result;
-					}
+	const additionalFields = getNodeParam('additionalFields', 0) as IDataObject;
+	const mode = additionalFields.mode ?? 'multiple' as string;
+	
+	const returning = generateReturning(pgp, getNodeParam('returnFields', 0) as string);
+	if(mode === 'multiple') {
+		const query = pgp.helpers.insert(getItemsCopy(items, columns), cs) + returning;
+		return db.any(query);
+	} else if(mode === 'transaction') {
+		return db.tx(async t => {
+			const result:IDataObject[] = [];
+			for (let i = 0; i < items.length; i++) {
+				const itemCopy = getItemCopy(items[i], columns);
+				try {
+					result.push(await t.one(pgp.helpers.insert(itemCopy, cs) + returning));
+				} catch(err) {
+					if(continueOnFail === false) throw err;
+					result.push({...itemCopy, code: err.code, message: err.message});
+					return result;
 				}
-				return result;
-			});
-		} else if(mode === 'independently') {
-			return db.task(async t => {
-				const result:IDataObject[] = [];
-				for (let i = 0; i < items.length; i++) {
-					const itemCopy = getItemCopy(items[i], columns);
-					try {
-						result.push(await t.one(pgp.helpers.insert(itemCopy, cs) + returning));
-					} catch(err) {
-						if(continueOnFail === false) throw err;
-						result.push({...itemCopy, code: err.code, message: err.message});
+			}
+			return result;
+		});
+	} else if(mode === 'independently') {
+		return db.task(async t => {
+			const result:IDataObject[] = [];
+			for (let i = 0; i < items.length; i++) {
+				const itemCopy = getItemCopy(items[i], columns);
+				try {
+					const insertResult = await t.oneOrNone(pgp.helpers.insert(itemCopy, cs) + returning);
+					if (insertResult !== null) {
+						result.push(insertResult);
 					}
-				}
-				return result;
-			});
-		}
-	} else {
-		if(mode === 'normal') {
-			const query = pgp.helpers.insert(getItemsCopy(items, columns), cs);
-			await db.none(query);
-			return [];
-		} else if(mode === 'transaction') {
-			return db.tx(async t => {
-				for (let i = 0; i < items.length; i++) {
-					const itemCopy = getItemCopy(items[i], columns);
-					try {
-						await t.none(pgp.helpers.insert(itemCopy, cs));
-					} catch(err) {
-						if(continueOnFail === false) throw err;
-						return [{...itemCopy, code: err.code, message: err.message}];
+				} catch(err) {
+					if(continueOnFail === false) {
+						throw err;
 					}
+					result.push({...itemCopy, code: err.code, message: err.message});
 				}
-				return [];
-			});
-		} else if(mode === 'independently') {
-			return db.task(async t => {
-				const result:IDataObject[] = [];
-				for (let i = 0; i < items.length; i++) {
-					const itemCopy = getItemCopy(items[i], columns);
-					try {
-						await t.none(pgp.helpers.insert(itemCopy, cs));
-					} catch(err) {
-						if(continueOnFail === false) throw err;
-						result.push({...itemCopy, code: err.code, message: err.message});
-					}
-				}
-				return result;
-			});
-		}
+			}
+			return result;
+		});
 	}
-	throw new Error('normal, independently or transaction are valid options');
+	
+	throw new Error('multiple, independently or transaction are valid options');
 }
 
 /**
@@ -233,14 +183,14 @@ export async function pgUpdate(
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 	items: INodeExecutionData[],
-	mode: string,
-	enableReturning: boolean,
 	continueOnFail: boolean,
 ): Promise<IDataObject[]> {
 	const table = getNodeParam('table', 0) as string;
 	const schema = getNodeParam('schema', 0) as string;
 	const updateKeys = (getNodeParam('updateKey', 0) as string).split(',').map(column => column.trim());
 	const columns = (getNodeParam('columns', 0) as string).split(',').map(column => column.trim());
+	const additionalFields = getNodeParam('additionalFields', 0) as IDataObject;
+	const mode = additionalFields.mode ?? 'multiple' as string;
 	const queryColumns = columns.slice();
 	
 	updateKeys.forEach(updateKey => {
@@ -252,91 +202,48 @@ export async function pgUpdate(
 
 	const cs = new pgp.helpers.ColumnSet(queryColumns, { table: { table, schema } });
 	
-	if(enableReturning) {
-		const returning = generateReturning(pgp, getNodeParam('returnFields', 0) as string);
-		if(mode === 'normal') {
-			const query =
-				pgp.helpers.update(getItemsCopy(items, columns), cs)
-				+ ' WHERE ' + updateKeys.map(updateKey => {
-					updateKey = pgp.as.name(updateKey);
-					return 'v.' + updateKey + ' = t.' + updateKey;
-				}).join(' AND ')
-				+ returning;
-			return await db.any(query);
-		} else {
-			const where = ' WHERE ' + updateKeys.map(updateKey => pgp.as.name(updateKey) + ' = ${' + updateKey + '}').join(' AND ');
-			if(mode === 'transaction') {
-				return db.tx(async t => {
-					const result:IDataObject[] = [];
-					for (let i = 0; i < items.length; i++) {
-						const itemCopy = getItemCopy(items[i], columns);
-						try {
-							Array.prototype.push.apply(result, await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning));
-						} catch(err) {
-							if(continueOnFail === false) throw err;
-							result.push({...itemCopy, code: err.code, message: err.message});
-							return result;
-						}
-					}
-					return result;
-				});
-			} else if(mode === 'independently') {
-				return db.task(async t => {
-					const result:IDataObject[] = [];
-					for (let i = 0; i < items.length; i++) {
-						const itemCopy = getItemCopy(items[i], columns);
-						try {
-							Array.prototype.push.apply(result, await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning));
-						} catch(err) {
-							if(continueOnFail === false) throw err;
-							result.push({...itemCopy, code: err.code, message: err.message});
-						}
-					}
-					return result;
-				});
-			}
-		}
+	const returning = generateReturning(pgp, getNodeParam('returnFields', 0) as string);
+	if(mode === 'multiple') {
+		const query =
+			pgp.helpers.update(getItemsCopy(items, columns), cs)
+			+ ' WHERE ' + updateKeys.map(updateKey => {
+				updateKey = pgp.as.name(updateKey);
+				return 'v.' + updateKey + ' = t.' + updateKey;
+			}).join(' AND ')
+			+ returning;
+		return await db.any(query);
 	} else {
-		if(mode === 'normal') {
-			const query =
-				pgp.helpers.update(getItemsCopy(items, columns), cs)
-				+ ' WHERE ' + updateKeys.map(updateKey => {
-					updateKey = pgp.as.name(updateKey);
-					return 'v.' + updateKey + ' = t.' + updateKey;
-				}).join(' AND ');
-			await db.none(query);
-			return [];
-		} else {
-			const where = ' WHERE ' + updateKeys.map(updateKey => pgp.as.name(updateKey) + ' = ${' + updateKey + '}').join(' AND ');
-			if(mode === 'transaction') {
-				return db.tx(async t => {
-					for (let i = 0; i < items.length; i++) {
-						const itemCopy = getItemCopy(items[i], columns);
-						try {
-							await t.none(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy));
-						} catch(err) {
-							if(continueOnFail === false) throw err;
-							return [{...itemCopy, code: err.code, message: err.message}];
-						}
+		const where = ' WHERE ' + updateKeys.map(updateKey => pgp.as.name(updateKey) + ' = ${' + updateKey + '}').join(' AND ');
+		if(mode === 'transaction') {
+			return db.tx(async t => {
+				const result:IDataObject[] = [];
+				for (let i = 0; i < items.length; i++) {
+					const itemCopy = getItemCopy(items[i], columns);
+					try {
+						Array.prototype.push.apply(result, await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning));
+					} catch(err) {
+						if(continueOnFail === false) throw err;
+						result.push({...itemCopy, code: err.code, message: err.message});
+						return result;
 					}
-					return [];
-				});
-			} else if(mode === 'independently') {
-				return db.task(async t => {
-					const result:IDataObject[] = [];
-					for (let i = 0; i < items.length; i++) {
-						const itemCopy = getItemCopy(items[i], columns);
-						try {
-							await t.none(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy));
-						} catch(err) {
-							if(continueOnFail === false) throw err;
-							result.push({...itemCopy, code: err.code, message: err.message});
-						}
+				}
+				return result;
+			});
+		} else if(mode === 'independently') {
+			return db.task(async t => {
+				const result:IDataObject[] = [];
+				for (let i = 0; i < items.length; i++) {
+					const itemCopy = getItemCopy(items[i], columns);
+					try {
+						Array.prototype.push.apply(result, await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning));
+					} catch(err) {
+						if(continueOnFail === false) throw err;
+						result.push({...itemCopy, code: err.code, message: err.message});
 					}
-					return result;
-				});
-			}
+				}
+				return result;
+			});
 		}
 	}
-	throw new Error('normal, independently or transaction are valid options');
+	throw new Error('multiple, independently or transaction are valid options');
 }

@@ -11,7 +11,6 @@ import * as pgPromise from 'pg-promise';
 import {
 	pgInsert,
 	pgQuery,
-	pgUpdate,
 } from '../Postgres/Postgres.node.functions';
 
 export class QuestDb implements INodeType {
@@ -54,25 +53,6 @@ export class QuestDb implements INodeType {
 				default: 'insert',
 				description: 'The operation to perform.',
 			},
-			{
-				displayName: 'Mode',
-				name: 'mode',
-				type: 'options',
-				options: [
-					{
-						name: 'Normal',
-						value: 'normal',
-						description: 'Execute all querys together',
-					},
-					{
-						name: 'Independently',
-						value: 'independently',
-						description: 'Execute each query independently',
-					},
-				],
-				default: 'normal',
-				description: 'The mode how the querys should execute.',
-			},
 
 			// ----------------------------------
 			//         executeQuery
@@ -100,6 +80,20 @@ export class QuestDb implements INodeType {
 			// ----------------------------------
 			//         insert
 			// ----------------------------------
+			{
+				displayName: 'Schema',
+				name: 'schema',
+				type: 'hidden', // Schema is used by pgInsert
+				displayOptions: {
+					show: {
+						operation: [
+							'insert',
+						],
+					},
+				},
+				default: '',
+				description: 'Name of the schema the table belongs to',
+			},
 			{
 				displayName: 'Table',
 				name: 'table',
@@ -132,29 +126,56 @@ export class QuestDb implements INodeType {
 					'Comma separated list of the properties which should used as columns for the new rows.',
 			},
 			{
-				displayName: 'Enable Returning',
-				name: 'enableReturning',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						operation: ['insert'],
-					},
-				},
-				default: true,
-				description: 'Should the operation return the data',
-			},
-			{
 				displayName: 'Return Fields',
 				name: 'returnFields',
 				type: 'string',
 				displayOptions: {
 					show: {
 						operation: ['insert'],
-						enableReturning: [true],
 					},
 				},
 				default: '*',
 				description: 'Comma separated list of the fields that the operation will return',
+			},
+			// ----------------------------------
+			//         additional fields
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{
+								name: 'Independently',
+								value: 'independently',
+								description: 'Execute each query independently',
+							},
+							{
+								name: 'Multiple queries',
+								value: 'multiple',
+								description: '<b>Default</b>. Sends multiple queries at once to database.',
+							},
+							{
+								name: 'Transaction',
+								value: 'transaction',
+								description: 'Executes all queries in a single transaction',
+							},
+						],
+						default: 'multiple',
+						description: [
+							'The way queries should be sent to database.',
+							'Can be used in conjunction with <b>Continue on Fail</b>.',
+							'See the docs for more examples',
+						].join('<br>'),
+					},
+				],
 			},
 		],
 	};
@@ -184,31 +205,31 @@ export class QuestDb implements INodeType {
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
-		const mode = this.getNodeParameter('mode', 0) as string;
-		if(mode == 'transaction') throw new Error('transaction mode not supported');
-		const enableReturning = this.getNodeParameter('enableReturning', 0) as boolean;
+
+		const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+		const mode = additionalFields.mode ?? 'multiple' as string;
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, mode, this.continueOnFail());
+			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
 			returnItems = this.helpers.returnJsonArray(queryResult);
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
 			// ----------------------------------
-			await pgInsert(this.getNodeParameter, pgp, db, items, mode, false, this.continueOnFail());
+			await pgInsert(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 			
 			const returnFields = this.getNodeParameter('returnFields', 0) as string;
 			const table = this.getNodeParameter('table', 0) as string;
 			
-			const insertData = enableReturning ? await db.any('SELECT ${columns:name} from ${table:name}', {
+			const insertData = await db.any('SELECT ${columns:name} from ${table:name}', {
 				columns: returnFields.split(',').map(value => value.trim()).filter(value => !!value),
-				table: table
-			}) : [];
+				table,
+			});
 
 			returnItems = this.helpers.returnJsonArray(insertData);
 		} else {
