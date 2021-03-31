@@ -131,12 +131,13 @@ export class AwsDynamoDB implements INodeType {
 
 				// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_DeleteItem.html
 
+				const partitionKeyName = this.getNodeParameter('partitionKeyName', i) as string;
 				const partitionKeyType = this.getNodeParameter('partitionKeyType', i) as string;
 
 				const body: IRequestBody = {
 					TableName: this.getNodeParameter('tableName', i) as string,
 					Key: {
-						id: {
+						[partitionKeyName]: {
 							[partitionKeyType]: this.getNodeParameter('partitionKeyValue', i) as string,
 						},
 					},

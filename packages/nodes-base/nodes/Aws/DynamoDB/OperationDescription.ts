@@ -22,9 +22,26 @@ export const operationFields = [
 	//              delete
 	// ----------------------------------
 	{
+		displayName: 'Partition Key Name',
+		name: 'partitionKeyName',
+		description: 'Name of the partition key of the item to delete.',
+		placeholder: 'id',
+		default: '',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Partition Key Value',
 		name: 'partitionKeyValue',
 		description: 'Value of the partition key of the item to delete.',
+		placeholder: '7',
 		default: '',
 		type: 'string',
 		required: true,
@@ -39,7 +56,7 @@ export const operationFields = [
 	{
 		displayName: 'Partition Key Type',
 		name: 'partitionKeyType',
-		description: 'Type of the partition key of the item to retrieve.',
+		description: 'Type of the partition key of the item to delete.',
 		default: 'S',
 		type: 'options',
 		required: true,
