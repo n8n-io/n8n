@@ -428,3 +428,11 @@ export interface ITimeoutHMS {
 }
 
 export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
+
+export interface IMenuItem {
+	id: string;
+	title: string;
+	icon: string;
+	href: string;
+	newWindow: boolean;
+}

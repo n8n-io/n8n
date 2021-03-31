@@ -21,6 +21,13 @@
 					</a>
 				</el-menu-item>
 
+				<el-menu-item v-for="item in sidebarMenuTopItems" :key="item.id" :index="item.id">
+					<a :href="item.href" :target="item.newWindow? '_blank' : '_self'" class="primary-item">
+						<font-awesome-icon :icon="item.icon"/>
+						<span slot="title" class="item-title-root">{{item.title}}</span>
+					</a>
+				</el-menu-item>
+
 				<el-submenu index="workflow" title="Workflow">
 					<template slot="title">
 						<font-awesome-icon icon="network-wired"/>&nbsp;
@@ -167,6 +174,7 @@ import {
 	IExecutionResponse,
 	IExecutionsStopData,
 	IWorkflowDataUpdate,
+	IMenuItem,
 } from '../Interface';
 
 import About from '@/components/About.vue';
@@ -265,6 +273,9 @@ export default mixins(
 			},
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
+			},
+			sidebarMenuTopItems(): IMenuItem[] {
+				return this.$store.state.sidebarMenuTopItems;
 			},
 		},
 		methods: {
@@ -486,6 +497,8 @@ export default mixins(
 			this.$root.$on('openWorkflowDialog', async () => {
 				this.workflowOpenDialogVisible = true;
 			});
+
+			this.$externalHooks().run('mainSidebar.mount');
 		},
 	});
 </script>
@@ -533,6 +546,10 @@ export default mixins(
 .el-menu-item {
 	a {
 		color: #666;
+
+		&.primary-item {
+			color: $--color-primary;
+		}
 	}
 
 	&.logo-item {

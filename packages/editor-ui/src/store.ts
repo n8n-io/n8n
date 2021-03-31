@@ -27,6 +27,7 @@ import {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
+	IMenuItem,
 	XYPositon,
 } from './Interface';
 
@@ -79,6 +80,7 @@ export const store = new Vuex.Store({
 			nodes: [] as INodeUi[],
 			settings: {} as IWorkflowSettings,
 		} as IWorkflowDb,
+		sidebarMenuTopItems: [] as IMenuItem[],
 	},
 	mutations: {
 		// Active Actions
@@ -597,6 +599,11 @@ export const store = new Vuex.Store({
 			Vue.set(state, 'nodeTypes', updatedNodes);
 			state.nodeTypes = updatedNodes;
 		},
+
+		addTopSidebarMenuItems (state, menuItems: IMenuItem[]) {
+			const updated = [...state.sidebarMenuTopItems, ...menuItems];
+			Vue.set(state, 'sidebarMenuTopItems', updated);
+		},
 	},
 	getters: {
 
@@ -834,6 +841,9 @@ export const store = new Vuex.Store({
 			return workflowRunData[nodeName];
 		},
 
+		sidebarMenuTopItems: (state): IMenuItem[] => {
+			return state.sidebarMenuTopItems;
+		},
 	},
 
 });
