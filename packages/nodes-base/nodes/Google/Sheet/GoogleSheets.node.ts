@@ -115,7 +115,7 @@ export class GoogleSheets implements INodeType {
 					{
 						name: 'Add',
 						value: 'add',
-						description: 'Add a new sheet to a spreadsheet'
+						description: 'Add a new sheet to a spreadsheet',
 					},
 					{
 						name: 'Append',
@@ -319,14 +319,14 @@ export class GoogleSheets implements INodeType {
 						name: 'hidden',
 						type: 'boolean',
 						default: false,
-						description: 'True if the sheet is hidden in the UI, false if it\'s visible.'
+						description: 'True if the sheet is hidden in the UI, false if it\'s visible.',
 					},
 					{
 						displayName: 'Tab Color',
 						name: 'tabColor',
 						type: 'color',
 						default: '',
-						description: 'The color of the tab in the UI.'
+						description: 'The color of the tab in the UI.',
 					},
 					{
 						displayName: 'Tab Color Style',
@@ -339,7 +339,7 @@ export class GoogleSheets implements INodeType {
 								name: 'rgbColor',
 								type: 'color',
 								default: '',
-								description: 'RGB Color.'
+								description: 'RGB Color.',
 							},
 							{
 								displayName: 'Theme Color',
@@ -391,22 +391,22 @@ export class GoogleSheets implements INodeType {
 										name: 'Link',
 										value: 'LINK',
 										description: 'Represents the color to use for hyperlinks.',
-									}
+									},
 								],
 
-								description: 'RGB color.'
-							}
+								description: 'RGB color.',
+							},
 						],
-						description: 'The color of the tab in the UI. If tabColor is also set, this field takes precedence.'
+						description: 'The color of the tab in the UI. If tabColor is also set, this field takes precedence.',
 					},
 					{
 						displayName: 'Right To Left',
 						name: 'rightToLeft',
 						type: 'boolean',
 						default: false,
-						description: 'True if the sheet is an RTL sheet instead of an LTR sheet.'
-					}
-				]
+						description: 'True if the sheet is an RTL sheet instead of an LTR sheet.',
+					},
+				],
 			},
 
 			// ----------------------------------
@@ -1064,7 +1064,7 @@ export class GoogleSheets implements INodeType {
 				const spreadsheetId = this.getNodeParameter('spreadsheetId', 0) as string;
 				const spreadsheet = new GoogleSheet(spreadsheetId, this);
 				const options = this.getNodeParameter('options', 0, {}) as IDataObject;
-				let properties = {...options}
+				const properties = {...options};
 
 				if( options.tabColor){
 					const {red,green,blue} = hexToRgb(options.tabColor as string)!;
@@ -1075,16 +1075,16 @@ export class GoogleSheets implements INodeType {
 					delete properties.tabColor;
 
 					if( (options.tabColorStyle as IDataObject).themeColor){
-						properties.tabColorStyle = {"themeColor":(options.tabColorStyle as IDataObject).themeColor as string }
+						properties.tabColorStyle = {'themeColor':(options.tabColorStyle as IDataObject).themeColor as string };
 					}else{
 						const {red,green,blue} = hexToRgb((options.tabColorStyle as IDataObject).rgbColor as string)!;
-						properties.tabColorStyle = {"rgbColor":{red:red/255,green:green/255,blue:blue/255} }
+						properties.tabColorStyle = {'rgbColor':{red:red/255,green:green/255,blue:blue/255} };
 					}
 				}
 				const requests = [{
-					"addSheet":{
-						"properties": properties
-					}
+					'addSheet':{
+						'properties': properties,
+					},
 				}];
 
 				const data = await spreadsheet.spreadsheetBatchUpdate(requests);
