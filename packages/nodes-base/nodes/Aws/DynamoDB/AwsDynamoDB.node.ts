@@ -58,24 +58,29 @@ export class AwsDynamoDB implements INodeType {
 				default: 'get',
 				options: [
 					{
+						name: 'Create/Update',
+						value: 'createUpdate',
+						description: 'Create or update an item in a table.',
+					},
+					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete an item.',
+						description: 'Delete an item from a table.',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Retrieve an item.',
+						description: 'Retrieve an item from a table.',
 					},
 					{
 						name: 'Query',
 						value: 'query',
-						description: 'Search based on a partition key.',
+						description: 'Retrieve all items based on a partition key.',
 					},
 					{
 						name: 'Scan',
 						value: 'scan',
-						description: 'Search through all the database.',
+						description: 'Retrieve all items based on any property.',
 					},
 				],
 			},
@@ -108,7 +113,17 @@ export class AwsDynamoDB implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 
-			if (operation === 'delete') {
+			if (operation === 'createUpdate') {
+
+				// ----------------------------------
+				//          createUpdate
+				// ----------------------------------
+
+				// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html
+
+				// ...
+
+			} else if (operation === 'delete') {
 
 				// ----------------------------------
 				//              delete
