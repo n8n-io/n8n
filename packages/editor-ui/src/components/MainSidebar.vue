@@ -497,8 +497,6 @@ export default mixins(
 			this.$root.$on('openWorkflowDialog', async () => {
 				this.workflowOpenDialogVisible = true;
 			});
-
-			this.$externalHooks().run('mainSidebar.mount');
 		},
 	});
 </script>
