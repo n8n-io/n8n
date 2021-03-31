@@ -4,15 +4,18 @@ import {
 
 export const operationFields = [
 	// ----------------------------------
-	//              shared
+	//              all
 	// ----------------------------------
 	{
 		displayName: 'Table Name',
 		name: 'tableName',
-		description: 'Name of the table to operate on.',
-		type: 'string',
+		description: 'Table to operate on.',
+		type: 'options',
 		required: true,
-		default: '',
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getTables',
+		},
 	},
 
 	// ----------------------------------

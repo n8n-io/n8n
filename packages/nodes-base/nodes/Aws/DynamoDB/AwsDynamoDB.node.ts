@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -80,6 +81,21 @@ export class AwsDynamoDB implements INodeType {
 			},
 			...operationFields,
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			async getTables(this: ILoadOptionsFunctions) {
+				const headers = {
+					'Content-Type': 'application/x-amz-json-1.0',
+					'X-Amz-Target': 'DynamoDB_20120810.ListTables',
+				};
+
+				const responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify({}), headers);
+
+				return responseData.TableNames.map((table: string) => ({ name: table, value: table }));
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
