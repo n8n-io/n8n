@@ -275,7 +275,7 @@ export default mixins(
 				return this.$store.getters.isActionActive('workflowRunning');
 			},
 			sidebarMenuTopItems(): IMenuItem[] {
-				return this.$store.state.sidebarMenuTopItems;
+				return this.$store.getters.sidebarMenuTopItems;
 			},
 		},
 		methods: {
