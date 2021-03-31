@@ -29,7 +29,7 @@ export function adjustExpressionAttributeValues(eavUi: IAttributeValueUi[]) {
 	return eav;
 }
 
-export function decodeItem(item: IAttributeValue): IDataObject {
+export function simplifyItem(item: IAttributeValue): IDataObject {
 	const output: IDataObject = {};
 
 	for (const [attribute, value] of Object.entries(item)) {
@@ -53,5 +53,14 @@ function decodeAttribute(type: AttributeValueType, attribute: string) {
 			return attribute;
 		default:
 			return null;
+	}
+}
+
+// tslint:disable-next-line: no-any
+export function validateJSON(input: any): object {
+	try {
+		return JSON.parse(input);
+	} catch (error) {
+		throw new Error('Items must be a valid JSON');
 	}
 }

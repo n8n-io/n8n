@@ -35,3 +35,11 @@ type AttributeValueType =
 	| 'NS'   	// number set
 	| 'S' 		// string
 	| 'SS';   // string set
+
+export type PartitionKeyDetails = {
+	details: {
+		name: string;
+		type: string;
+		value: string;
+	},
+};

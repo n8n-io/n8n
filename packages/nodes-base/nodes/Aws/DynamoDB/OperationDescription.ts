@@ -87,13 +87,11 @@ export const operationFields = [
 	//              get
 	// ----------------------------------
 	{
-		displayName: 'Partition Key Name',
-		name: 'partitionKeyName',
-		description: 'Name of the partition key of the item to retrieve.',
-		placeholder: 'id',
-		default: '',
-		type: 'string',
-		required: true,
+		displayName: 'Enable JSON',
+		name: 'jsonEnabled',
+		type: 'boolean',
+		default: false,
+		description: 'Enable specifying the item to retrieve as JSON.',
 		displayOptions: {
 			show: {
 				operation: [
@@ -103,12 +101,11 @@ export const operationFields = [
 		},
 	},
 	{
-		displayName: 'Partition Key Value',
-		name: 'partitionKeyValue',
-		description: 'Value of the partition key of the item to retrieve.',
-		default: '',
-		type: 'string',
-		required: true,
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
+		default: true,
+		description: 'Simplify the response instead of returning the raw data.',
 		displayOptions: {
 			show: {
 				operation: [
@@ -118,34 +115,157 @@ export const operationFields = [
 		},
 	},
 	{
-		displayName: 'Partition Key Type',
-		name: 'partitionKeyType',
-		description: 'Type of the partition key of the item to retrieve.',
-		default: 'S',
-		type: 'options',
+		displayName: 'Item as JSON',
+		name: 'jsonItem',
+		type: 'json',
 		required: true,
+		default: '',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		description: 'Item to retrieve expressed as JSON.<br>Example: <code>{ "id": {"S": "1"} }</code>',
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				jsonEnabled: [
+					true,
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Partition Key',
+		name: 'partitionKey',
+		description: 'Partition key of the item to retrieve.',
+		placeholder: 'Add Property',
+		type: 'fixedCollection',
+		required: true,
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				jsonEnabled: [
+					false,
+				],
+			},
+		},
 		options: [
 			{
-				name: 'Binary',
-				value: 'B',
-			},
-			{
-				name: 'Number',
-				value: 'N',
-			},
-			{
-				name: 'String',
-				value: 'S',
-			},
-		],
-		displayOptions: {
-			show: {
-				operation: [
-					'get',
+				displayName: 'Details',
+				name: 'details',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						description: 'Name of the partition key of the item to retrieve.',
+						type: 'string',
+						default: 'id',
+					},
+					{
+						displayName: 'Type',
+						name: 'type',
+						description: 'Type of the partition key of the item to retrieve.',
+						type: 'options',
+						options: [
+							{
+								name: 'Binary',
+								value: 'B',
+							},
+							{
+								name: 'Number',
+								value: 'N',
+							},
+							{
+								name: 'String',
+								value: 'S',
+							},
+						],
+						default: 'S',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						description: 'Value of the partition key of the item to retrieve.',
+						type: 'string',
+						default: '',
+					},
 				],
 			},
-		},
+		],
 	},
+	// {
+	// 	displayName: 'Partition Key Name',
+	// 	name: 'partitionKeyName',
+	// 	description: 'Name of the partition key of the item to retrieve.',
+	// 	placeholder: 'id',
+	// 	default: '',
+	// 	type: 'string',
+	// 	required: true,
+	// 	displayOptions: {
+	// 		show: {
+	// 			operation: [
+	// 				'get',
+	// 			],
+	// 			jsonEnabled: [
+	// 				false,
+	// 			],
+	// 		},
+	// 	},
+	// },
+	// {
+	// 	displayName: 'Partition Key Value',
+	// 	name: 'partitionKeyValue',
+	// 	description: 'Value of the partition key of the item to retrieve.',
+	// 	default: '',
+	// 	type: 'string',
+	// 	required: true,
+	// 	displayOptions: {
+	// 		show: {
+	// 			operation: [
+	// 				'get',
+	// 			],
+	// 			jsonEnabled: [
+	// 				false,
+	// 			],
+	// 		},
+	// 	},
+	// },
+	// {
+	// 	displayName: 'Partition Key Type',
+	// 	name: 'partitionKeyType',
+	// 	description: 'Type of the partition key of the item to retrieve.',
+	// 	default: 'S',
+	// 	type: 'options',
+	// 	required: true,
+	// 	options: [
+	// 		{
+	// 			name: 'Binary',
+	// 			value: 'B',
+	// 		},
+	// 		{
+	// 			name: 'Number',
+	// 			value: 'N',
+	// 		},
+	// 		{
+	// 			name: 'String',
+	// 			value: 'S',
+	// 		},
+	// 	],
+	// 	displayOptions: {
+	// 		show: {
+	// 			operation: [
+	// 				'get',
+	// 			],
+	// 			jsonEnabled: [
+	// 				false,
+	// 			],
+	// 		},
+	// 	},
+	// },
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -164,16 +284,16 @@ export const operationFields = [
 				displayName: 'Read Consistency Model',
 				name: 'readConsistencyModel',
 				type: 'options',
-				default: 'stronglyConsistentRead',
+				default: 'stronglyConsistent',
 				description: 'Select the <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html">read consistency model</a>.',
 				options: [
 					{
-						name: 'Eventually Consistent Read',
-						value: 'eventuallyConsistentRead',
+						name: 'Eventually Consistent',
+						value: 'eventuallyConsistent',
 					},
 					{
-						name: 'Strongly Consistent Read',
-						value: 'stronglyConsistentRead',
+						name: 'Strongly Consistent',
+						value: 'stronglyConsistent',
 					},
 				],
 			},

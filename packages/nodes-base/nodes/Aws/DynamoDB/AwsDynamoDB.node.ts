@@ -21,11 +21,13 @@ import {
 import {
 	IAttributeValueUi,
 	IRequestBody,
+	PartitionKeyDetails,
 } from './types';
 
 import {
 	adjustExpressionAttributeValues,
-	decodeItem,
+	simplifyItem,
+	validateJSON,
 } from './utils';
 
 export class AwsDynamoDB implements INodeType {
@@ -159,21 +161,45 @@ export class AwsDynamoDB implements INodeType {
 
 				// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_GetItem.html
 
-				const partitionKeyName = this.getNodeParameter('partitionKeyName', i) as string;
-				const partitionKeyType = this.getNodeParameter('partitionKeyType', i) as string;
-				const readConsistencyModel = this.getNodeParameter('additionalFields.readConsistencyModel', i) as string;
+				const jsonEnabled = this.getNodeParameter('jsonEnabled', 0) as boolean;
 
 				const body: IRequestBody = {
 					TableName: this.getNodeParameter('tableName', i) as string,
-					Key: {
-						[partitionKeyName]: {
-							[partitionKeyType]: this.getNodeParameter('partitionKeyValue', i) as string,
-						},
-					},
 				};
 
-				if (readConsistencyModel) {
-					body.ConsistentRead = readConsistencyModel === 'stronglyConsistentRead';
+				if (jsonEnabled) {
+
+					const jsonItem = this.getNodeParameter('jsonItem', i) as string;
+					body.Key = validateJSON(jsonItem);
+
+				} else {
+
+					const partitionKey = this.getNodeParameter('partitionKey', i) as PartitionKeyDetails;
+
+					if (!partitionKey.details) {
+						throw new Error('Please specify name, type and value of the partition key for the item to retrieve.');
+					}
+
+					const { name, type, value } = partitionKey.details;
+
+					if ([name, type, value].some(property => property === undefined)) {
+						throw new Error('Please specify name, type and value of the partition key for the item to retrieve.');
+					}
+
+					body.Key = {
+						[name]: {
+							[type]: value,
+						},
+					};
+
+				}
+
+				const additionalFields = this.getNodeParameter('additionalFields', i) as {
+					readConsistencyModel: 'eventuallyConsistent' | 'stronglyConsistent';
+				};
+
+				if (additionalFields.readConsistencyModel) {
+					body.ConsistentRead = additionalFields.readConsistencyModel === 'stronglyConsistent';
 				}
 
 				const headers = {
@@ -184,10 +210,14 @@ export class AwsDynamoDB implements INodeType {
 				responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers);
 
 				if (!responseData.Item) {
-					throw new Error('AWS Dynamo DB error response [404]: No item found.');
+					responseData = [];
 				}
 
-				responseData = decodeItem(responseData.Item);
+				const simple = this.getNodeParameter('simple', 0) as boolean;
+
+				if (responseData.Item && simple) {
+					responseData = simplifyItem(responseData.Item);
+				}
 
 			} else if (operation === 'query') {
 
@@ -230,7 +260,7 @@ export class AwsDynamoDB implements INodeType {
 				responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers);
 
 				if (responseData.Items) {
-					responseData = responseData.Items.map(decodeItem);
+					responseData = responseData.Items.map(simplifyItem);
 				}
 
 			} else if (operation === 'scan') {
@@ -282,7 +312,7 @@ export class AwsDynamoDB implements INodeType {
 				responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers);
 
 				if (responseData.Items) {
-					responseData = responseData.Items.map(decodeItem);
+					responseData = responseData.Items.map(simplifyItem);
 				}
 
 			}
