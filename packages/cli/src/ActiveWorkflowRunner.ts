@@ -62,9 +62,9 @@ export class ActiveWorkflowRunner {
 		this.activeWorkflows = new ActiveWorkflows();
 
 		if (workflowsData.length !== 0) {
-			Logger.info('\n ================================');
-			Logger.info('   Start Active Workflows:');
-			Logger.info(' ================================');
+			console.info('\n ================================');
+			console.info('   Start Active Workflows:');
+			console.info(' ================================');
 
 			for (const workflowData of workflowsData) {
 				console.log(`   - ${workflowData.name}`);

@@ -49,7 +49,7 @@ export class Webhook extends Command {
 	 * get removed.
 	 */
 	static async stopProcess() {
-		LoggerProxy.getInstance().info(`\nStopping n8n...`);
+		LoggerProxy.info(`\nStopping n8n...`);
 
 		try {
 			const externalHooks = ExternalHooks();
@@ -79,7 +79,7 @@ export class Webhook extends Command {
 			let count = 0;
 			while (executingWorkflows.length !== 0) {
 				if (count++ % 4 === 0) {
-					LoggerProxy.getInstance().info(`Waiting for ${executingWorkflows.length} active executions to finish...`);
+					LoggerProxy.info(`Waiting for ${executingWorkflows.length} active executions to finish...`);
 				}
 				await new Promise((resolve) => {
 					setTimeout(resolve, 500);
@@ -88,7 +88,7 @@ export class Webhook extends Command {
 			}
 
 		} catch (error) {
-			LoggerProxy.getInstance().error('There was an error shutting down n8n.', error);
+			LoggerProxy.error('There was an error shutting down n8n.', error);
 		}
 
 		process.exit(processExistCode);

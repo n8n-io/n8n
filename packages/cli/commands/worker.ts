@@ -79,7 +79,7 @@ export class Worker extends Command {
 	 * get removed.
 	 */
 	static async stopProcess() {
-		LoggerProxy.getInstance().info(`\nStopping n8n...`);
+		LoggerProxy.info(`\nStopping n8n...`);
 
 		// Stop accepting new jobs
 		Worker.jobQueue.pause(true);
@@ -103,7 +103,7 @@ export class Worker extends Command {
 			while (Object.keys(Worker.runningJobs).length !== 0) {
 				if (count++ % 4 === 0) {
 					const waitLeft = Math.ceil((stopTime - new Date().getTime()) / 1000);
-					LoggerProxy.getInstance().info(`Waiting for ${Object.keys(Worker.runningJobs).length} active executions to finish... (wait ${waitLeft} more seconds)`);
+					LoggerProxy.info(`Waiting for ${Object.keys(Worker.runningJobs).length} active executions to finish... (wait ${waitLeft} more seconds)`);
 				}
 				await new Promise((resolve) => {
 					setTimeout(resolve, 500);
@@ -111,7 +111,7 @@ export class Worker extends Command {
 			}
 
 		} catch (error) {
-			LoggerProxy.getInstance().error('There was an error shutting down n8n.', error);
+			LoggerProxy.error('There was an error shutting down n8n.', error);
 		}
 
 		process.exit(Worker.processExistCode);
@@ -121,7 +121,7 @@ export class Worker extends Command {
 		const jobData = job.data as IBullJobData;
 		const executionDb = await Db.collections.Execution!.findOne(jobData.executionId) as IExecutionFlattedDb;
 		const currentExecutionDb = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
-		LoggerProxy.getInstance().info(`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id} | Execution: ${jobData.executionId})`);
+		LoggerProxy.info(`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id} | Execution: ${jobData.executionId})`);
 
 		let staticData = currentExecutionDb.workflowData!.staticData;
 		if (jobData.loadStaticData === true) {

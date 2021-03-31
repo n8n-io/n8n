@@ -11,9 +11,7 @@ class Logger implements ILogger {
 	
 	constructor() {
 
-		const logFormat = winston.format.printf(({ message }) => {
-			return message;
-		}) as winston.Logform.Format;
+		const logFormat = winston.format.printf(({ message }) => message) as winston.Logform.Format;
 		
 		this.logger = winston.createLogger({
 			level: config.get('logs.level'),
