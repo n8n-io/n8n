@@ -373,22 +373,29 @@ export class Jira implements INodeType {
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
+				//const fields: IDataObject[] = [];
+				//const length = items.length as unknown as number;
 				const operation = this.getCurrentNodeParameter('operation') as string;
-				let projectId;
+				let projectId: string;
+				let issueTypeId: string;
 				if (operation === 'create') {
-					projectId = this.getCurrentNodeParameter('project');
+					projectId = this.getCurrentNodeParameter('project') as string;
+					issueTypeId = this.getCurrentNodeParameter('issueType') as string;
 				} else {
-					const issueKey = this.getCurrentNodeParameter('issueKey');
-					const { fields: { project: { id } } } = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'GET', {}, {});
-					projectId = id;
+					const issueKey = this.getCurrentNodeParameter('issueKey') as string;
+					const res = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'GET', {}, {});
+					projectId = res.fields.project.id;
+					issueTypeId = res.fields.issuetype.id;
 				}
 
-				const fields = await jiraSoftwareCloudApiRequest.call(this, `/api/2/field`, 'GET');
-				for (const field of fields) {
-					if (field.custom === true && field.scope && field.scope.project && field.scope.project.id === projectId) {
+				const res = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/createmeta?projectIds=${projectId}&issueTypeIds=${issueTypeId}&expand=projects.issuetypes.fields`, 'GET');
+				const fields = res.projects.find( (o:any) => o.id == projectId ).issuetypes.find( (o:any) => o.id == issueTypeId ).fields
+				for (const key of Object.keys(fields)) {
+					const field = fields[key]
+					if ( field.schema && Object.keys(field.schema).includes("customId")) {
 						returnData.push({
 							name: field.name,
-							value: field.id,
+							value: field.fieldId,
 						});
 					}
 				}
