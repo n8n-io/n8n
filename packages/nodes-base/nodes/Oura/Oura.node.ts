@@ -22,18 +22,20 @@ import {
 	summaryOperations,
 } from './SummaryDescription';
 
+import * as moment from 'moment';
+
 export class Oura implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Oura',
 		name: 'oura',
-		icon: 'file:oura.png',
+		icon: 'file:oura.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Oura API',
 		defaults: {
 			name: 'Oura',
-			color: '#00ade8',
+			color: '#2f4a73',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -107,14 +109,16 @@ export class Oura implements INodeType {
 
 				const qs: IDataObject = {};
 
-				const { start, end } = this.getNodeParameter('additionalFields', i) as { start: string; end: string; };
+				const { start, end } = this.getNodeParameter('filters', i) as { start: string; end: string; };
+
+				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
 				if (start) {
-					qs.start = start;
+					qs.start = moment(start).format('YYYY-MM-DD');
 				}
 
 				if (end) {
-					qs.end = end;
+					qs.end = moment(end).format('YYYY-MM-DD');
 				}
 
 				if (operation === 'getActivity') {
@@ -126,6 +130,11 @@ export class Oura implements INodeType {
 					responseData = await ouraApiRequest.call(this, 'GET', '/activity', {}, qs);
 					responseData = responseData.activity;
 
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', 0) as number;
+						responseData = responseData.splice(0, limit);
+					}
+
 				} else if (operation === 'getReadiness') {
 
 					// ----------------------------------
@@ -135,6 +144,11 @@ export class Oura implements INodeType {
 					responseData = await ouraApiRequest.call(this, 'GET', '/readiness', {}, qs);
 					responseData = responseData.readiness;
 
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', 0) as number;
+						responseData = responseData.splice(0, limit);
+					}
+
 				} else if (operation === 'getSleep') {
 
 					// ----------------------------------
@@ -143,6 +157,11 @@ export class Oura implements INodeType {
 
 					responseData = await ouraApiRequest.call(this, 'GET', '/sleep', {}, qs);
 					responseData = responseData.sleep;
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', 0) as number;
+						responseData = responseData.splice(0, limit);
+					}
 
 				}
 

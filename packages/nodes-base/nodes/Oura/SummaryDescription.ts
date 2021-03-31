@@ -38,10 +38,45 @@ export const summaryOperations = [
 
 export const summaryFields = [
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'summary',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'summary',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 10,
+		},
+		default: 5,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filter',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
 				resource: [
@@ -52,18 +87,18 @@ export const summaryFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Start Date',
-				name: 'start',
-				type: 'dateTime',
-				default: '',
-				description: 'Start date for the summary retrieval. If omitted, it defaults to a week ago.',
-			},
-			{
 				displayName: 'End Date',
 				name: 'end',
 				type: 'dateTime',
 				default: '',
 				description: 'End date for the summary retrieval. If omitted, it defaults to the current day.',
+			},
+			{
+				displayName: 'Start Date',
+				name: 'start',
+				type: 'dateTime',
+				default: '',
+				description: 'Start date for the summary retrieval. If omitted, it defaults to a week ago.',
 			},
 		],
 	},
