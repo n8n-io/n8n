@@ -13,9 +13,16 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
+export async function ouraApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	body: IDataObject = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+) {
 
-export async function ouraApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	try {
 		const credentials = this.getCredentials('ouraApi');
 		if (credentials === undefined) {
 			throw new Error('No credentials got returned!');
@@ -35,18 +42,22 @@ export async function ouraApiRequest(this: IHookFunctions | IExecuteFunctions | 
 			delete options.body;
 		}
 
+		if (!Object.keys(qs).length) {
+			delete options.qs;
+		}
+
 		options = Object.assign({}, options, option);
 
+	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
 
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			const errorBody = error.response.body;
-			throw new Error(`Oura error response [${error.statusCode}]: ${errorBody.message}`);
+		const errorMessage = error?.response?.body?.message;
+
+		if (errorMessage) {
+			throw new Error(`Oura error response [${error.statusCode}]: ${errorMessage}`);
 		}
 
-		// Expected error data did not get returned so throw the actual error
 		throw error;
 	}
 }
