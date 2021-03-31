@@ -1,5 +1,6 @@
 import {
 	IDataObject,
+	IExecuteFunctions,
 } from 'n8n-workflow';
 
 import {
@@ -11,25 +12,26 @@ import {
 	IAttributeValue,
 	IAttributeValueUi,
 	IAttributeValueValue,
+	PartitionKey,
 } from './types';
+
+const addColon = (attribute: string) => attribute = attribute.charAt(0) === ':' ? attribute : `:${attribute}`;
 
 export function adjustExpressionAttributeValues(eavUi: IAttributeValueUi[]) {
 	if (isEmpty(eavUi)) {
 		throw new Error('Expression attribute values must not be empty.');
 	}
 
-	const adjustAttribute = (attribute: string) => attribute = attribute.charAt(0) === ':' ? attribute : `:${attribute}`;
-
 	const eav: IAttributeValue = {};
 
 	eavUi.forEach(({ attribute, type, value }) => {
-		eav[adjustAttribute(attribute)] = { [type]: value } as IAttributeValueValue;
+		eav[addColon(attribute)] = { [type]: value } as IAttributeValueValue;
 	});
 
 	return eav;
 }
 
-export function simplifyItem(item: IAttributeValue): IDataObject {
+export function simplify(item: IAttributeValue): IDataObject {
 	const output: IDataObject = {};
 
 	for (const [attribute, value] of Object.entries(item)) {
@@ -63,4 +65,24 @@ export function validateJSON(input: any): object {
 	} catch (error) {
 		throw new Error('Items must be a valid JSON');
 	}
+}
+
+export function populatePartitionKey(this: IExecuteFunctions, i: number) {
+	const partitionKey = this.getNodeParameter('partitionKey', i) as PartitionKey;
+
+	if (!partitionKey.details) {
+		throw new Error('Please specify name, type and value of the partition key for the item to retrieve.');
+	}
+
+	const { name, type, value } = partitionKey.details;
+
+	if ([name, type, value].some(property => property === undefined)) {
+		throw new Error('Please specify name, type and value of the partition key for the item to retrieve.');
+	}
+
+	return {
+		[name]: {
+			[type]: value,
+		},
+	};
 }

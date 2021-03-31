@@ -22,13 +22,11 @@ export const operationFields = [
 	//              delete
 	// ----------------------------------
 	{
-		displayName: 'Partition Key Name',
-		name: 'partitionKeyName',
-		description: 'Name of the partition key of the item to delete.',
-		placeholder: 'id',
-		default: '',
-		type: 'string',
-		required: true,
+		displayName: 'Enable JSON',
+		name: 'jsonEnabled',
+		type: 'boolean',
+		default: false,
+		description: 'Enable specifying the item to delete as JSON.',
 		displayOptions: {
 			show: {
 				operation: [
@@ -38,13 +36,34 @@ export const operationFields = [
 		},
 	},
 	{
-		displayName: 'Partition Key Value',
-		name: 'partitionKeyValue',
-		description: 'Value of the partition key of the item to delete.',
-		placeholder: '7',
-		default: '',
-		type: 'string',
+		displayName: 'Item as JSON',
+		name: 'jsonItem',
+		type: 'json',
 		required: true,
+		default: '',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		description: 'Item to delete specified as JSON.<br>Example: <code>{ "id": {"S": "1"} }</code>',
+		displayOptions: {
+			show: {
+				operation: [
+					'delete',
+				],
+				jsonEnabled: [
+					true,
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Partition Key',
+		name: 'partitionKey',
+		description: 'Partition key of the item to delete.',
+		placeholder: 'Add Property',
+		type: 'fixedCollection',
+		required: true,
+		default: {},
 		displayOptions: {
 			show: {
 				operation: [
@@ -52,35 +71,49 @@ export const operationFields = [
 				],
 			},
 		},
-	},
-	{
-		displayName: 'Partition Key Type',
-		name: 'partitionKeyType',
-		description: 'Type of the partition key of the item to delete.',
-		default: 'S',
-		type: 'options',
-		required: true,
 		options: [
 			{
-				name: 'Binary',
-				value: 'B',
-			},
-			{
-				name: 'Number',
-				value: 'N',
-			},
-			{
-				name: 'String',
-				value: 'S',
-			},
-		],
-		displayOptions: {
-			show: {
-				operation: [
-					'delete',
+				displayName: 'Details',
+				name: 'details',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						description: 'Name of the partition key of the item to retrieve.',
+						type: 'string',
+						default: 'id',
+					},
+					{
+						displayName: 'Type',
+						name: 'type',
+						description: 'Type of the partition key of the item to retrieve.',
+						type: 'options',
+						options: [
+							{
+								name: 'Binary',
+								value: 'B',
+							},
+							{
+								name: 'Number',
+								value: 'N',
+							},
+							{
+								name: 'String',
+								value: 'S',
+							},
+						],
+						default: 'S',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						description: 'Value of the partition key of the item to retrieve.',
+						type: 'string',
+						default: '',
+					},
 				],
 			},
-		},
+		],
 	},
 
 	// ----------------------------------
@@ -123,7 +156,7 @@ export const operationFields = [
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		description: 'Item to retrieve expressed as JSON.<br>Example: <code>{ "id": {"S": "1"} }</code>',
+		description: 'Item to retrieve specified as JSON.<br>Example: <code>{ "id": {"S": "1"} }</code>',
 		displayOptions: {
 			show: {
 				operation: [
@@ -197,75 +230,6 @@ export const operationFields = [
 			},
 		],
 	},
-	// {
-	// 	displayName: 'Partition Key Name',
-	// 	name: 'partitionKeyName',
-	// 	description: 'Name of the partition key of the item to retrieve.',
-	// 	placeholder: 'id',
-	// 	default: '',
-	// 	type: 'string',
-	// 	required: true,
-	// 	displayOptions: {
-	// 		show: {
-	// 			operation: [
-	// 				'get',
-	// 			],
-	// 			jsonEnabled: [
-	// 				false,
-	// 			],
-	// 		},
-	// 	},
-	// },
-	// {
-	// 	displayName: 'Partition Key Value',
-	// 	name: 'partitionKeyValue',
-	// 	description: 'Value of the partition key of the item to retrieve.',
-	// 	default: '',
-	// 	type: 'string',
-	// 	required: true,
-	// 	displayOptions: {
-	// 		show: {
-	// 			operation: [
-	// 				'get',
-	// 			],
-	// 			jsonEnabled: [
-	// 				false,
-	// 			],
-	// 		},
-	// 	},
-	// },
-	// {
-	// 	displayName: 'Partition Key Type',
-	// 	name: 'partitionKeyType',
-	// 	description: 'Type of the partition key of the item to retrieve.',
-	// 	default: 'S',
-	// 	type: 'options',
-	// 	required: true,
-	// 	options: [
-	// 		{
-	// 			name: 'Binary',
-	// 			value: 'B',
-	// 		},
-	// 		{
-	// 			name: 'Number',
-	// 			value: 'N',
-	// 		},
-	// 		{
-	// 			name: 'String',
-	// 			value: 'S',
-	// 		},
-	// 	],
-	// 	displayOptions: {
-	// 		show: {
-	// 			operation: [
-	// 				'get',
-	// 			],
-	// 			jsonEnabled: [
-	// 				false,
-	// 			],
-	// 		},
-	// 	},
-	// },
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -303,22 +267,6 @@ export const operationFields = [
 	// ----------------------------------
 	//              query
 	// ----------------------------------
-	{
-		displayName: 'Key Condition Expression',
-		name: 'keyConditionExpression',
-		description: 'Condition to determine the items to be retrieved. The condition must perform an equality test<br>on a single partition key value, in this format: <code>partitionKeyName = :partitionkeyval</code>',
-		placeholder: 'id = :id',
-		default: '',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'query',
-				],
-			},
-		},
-	},
 	{
 		displayName: 'Expression Attribute Values',
 		name: 'expressionAttributeValues',
@@ -376,6 +324,22 @@ export const operationFields = [
 		],
 	},
 	{
+		displayName: 'Key Condition Expression',
+		name: 'keyConditionExpression',
+		description: 'Condition to determine the items to be retrieved. The condition must perform an equality test<br>on a single partition key value, in this format: <code>partitionKeyName = :partitionkeyval</code>',
+		placeholder: 'id = :id',
+		default: '',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'query',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -392,7 +356,7 @@ export const operationFields = [
 			{
 				displayName: 'Index Name',
 				name: 'indexName',
-				description: 'Name of the index to query. This index can be any <br>secondary local or global index on the table.',
+				description: 'Name of the index to query. It can be any <br>secondary local or global index on the table.',
 				type: 'string',
 				default: '',
 			},
@@ -401,8 +365,24 @@ export const operationFields = [
 				name: 'projectionExpression',
 				description: 'Comma-separated list of attributes to retrieve.',
 				type: 'string',
-				placeholder: 'id, name',
 				default: '',
+			},
+			{
+				displayName: 'Read Consistency Model',
+				name: 'readConsistencyModel',
+				type: 'options',
+				default: 'stronglyConsistent',
+				description: 'Select the <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html">read consistency model</a>.',
+				options: [
+					{
+						name: 'Eventually Consistent',
+						value: 'eventuallyConsistent',
+					},
+					{
+						name: 'Strongly Consistent',
+						value: 'stronglyConsistent',
+					},
+				],
 			},
 		],
 	},
@@ -410,6 +390,77 @@ export const operationFields = [
 	// ----------------------------------
 	//             scan
 	// ----------------------------------
+	{
+		displayName: 'Expression Attribute Values',
+		name: 'expressionAttributeValues',
+		description: 'Substitution tokens for attribute names in an expression.',
+		placeholder: 'Add Metadata',
+		type: 'fixedCollection',
+		default: '',
+		required: true,
+		typeOptions: {
+			multipleValues: true,
+			minValue: 1,
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'scan',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'details',
+				displayName: 'Details',
+				values: [
+					{
+						displayName: 'Attribute',
+						name: 'attribute',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						options: [
+							{
+								name: 'Number',
+								value: 'N',
+							},
+							{
+								name: 'String',
+								value: 'S',
+							},
+						],
+						default: 'S',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Filter Expression',
+		name: 'filterExpression',
+		description: 'Condition to apply after the scan operation, but before the data is returned.',
+		type: 'string',
+		default: '',
+		placeholder: 'username = :username',
+		displayOptions: {
+			show: {
+				operation: [
+					'scan',
+				],
+			},
+		},
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -425,75 +476,11 @@ export const operationFields = [
 		},
 		options: [
 			{
-				displayName: 'Expression Attribute Values',
-				name: 'expressionAttributeValues',
-				description: 'Substitution tokens for attribute names in an expression.',
-				placeholder: 'Add Metadata',
-				type: 'fixedCollection',
-				default: '',
-				typeOptions: {
-					multipleValues: true,
-					minValue: 1,
-				},
-				options: [
-					{
-						name: 'details',
-						displayName: 'Details',
-						values: [
-							{
-								displayName: 'Attribute',
-								name: 'attribute',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Type',
-								name: 'type',
-								type: 'options',
-								options: [
-									{
-										name: 'Number',
-										value: 'N',
-									},
-									{
-										name: 'String',
-										value: 'S',
-									},
-								],
-								default: 'S',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'Filter Expression',
-				name: 'filterExpression',
-				description: 'Condition to apply after the scan operation, but before the data is returned.',
-				type: 'string',
-				default: '',
-				placeholder: 'id = :id',
-			},
-			{
 				displayName: 'Index Name',
 				name: 'indexName',
 				description: 'Name of the index to query. This index can be any <br>secondary local or global index on the table.',
 				type: 'string',
 				default: '',
-			},
-			{
-				displayName: 'Key Condition Expression',
-				name: 'keyConditionExpression',
-				description: 'Condition that determines the items to be retrieved. The condition must perform an equality test<br>on a single partition key value, in this format: <code>partitionKeyName = :partitionkeyval</code>',
-				placeholder: 'id = :id',
-				default: '',
-				type: 'string',
 			},
 			{
 				displayName: 'Projection Expression',
@@ -502,6 +489,23 @@ export const operationFields = [
 				type: 'string',
 				placeholder: 'id, name',
 				default: '',
+			},
+			{
+				displayName: 'Read Consistency Model',
+				name: 'readConsistencyModel',
+				type: 'options',
+				default: 'stronglyConsistent',
+				description: 'Select the <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html">read consistency model</a>.',
+				options: [
+					{
+						name: 'Eventually Consistent',
+						value: 'eventuallyConsistent',
+					},
+					{
+						name: 'Strongly Consistent',
+						value: 'stronglyConsistent',
+					},
+				],
 			},
 		],
 	},

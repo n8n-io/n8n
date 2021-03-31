@@ -36,7 +36,7 @@ type AttributeValueType =
 	| 'S' 		// string
 	| 'SS';   // string set
 
-export type PartitionKeyDetails = {
+export type PartitionKey = {
 	details: {
 		name: string;
 		type: string;
