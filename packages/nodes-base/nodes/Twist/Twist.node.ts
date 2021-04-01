@@ -168,6 +168,13 @@ export class Twist implements INodeType {
 
 					responseData = await twistApiRequest.call(this, 'POST', '/channels/add', body);
 				}
+				//https://developer.twist.com/v3/#remove-channel
+				if (operation === 'delete') {
+					const channelId = this.getNodeParameter('channelId', i) as string;
+					qs.id = channelId;
+
+					responseData = await twistApiRequest.call(this, 'POST', '/channels/remove', {}, qs);
+				}
 				//https://developer.twist.com/v3/#get-channel
 				if (operation === 'get') {
 					const channelId = this.getNodeParameter('channelId', i) as string;
@@ -200,6 +207,20 @@ export class Twist implements INodeType {
 					Object.assign(body, updateFields);
 
 					responseData = await twistApiRequest.call(this, 'POST', '/channels/update', body);
+				}
+				//https://developer.twist.com/v3/#archive-channel
+				if (operation === 'archive') {
+					const channelId = this.getNodeParameter('channelId', i) as string;
+					qs.id = channelId;
+
+					responseData = await twistApiRequest.call(this, 'POST', '/channels/archive', {}, qs);
+				}
+				//https://developer.twist.com/v3/#unarchive-channel
+				if (operation === 'unarchive') {
+					const channelId = this.getNodeParameter('channelId', i) as string;
+					qs.id = channelId;
+
+					responseData = await twistApiRequest.call(this, 'POST', '/channels/unarchive', {}, qs);
 				}
 			}
 			if (resource === 'messageConversation') {

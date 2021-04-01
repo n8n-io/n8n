@@ -16,9 +16,19 @@ export const channelOperations = [
 		},
 		options: [
 			{
+				name: 'Archive',
+				value: 'archive',
+				description: 'Archive a channel',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Initiates a public or private channel-based conversation',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a channel',
 			},
 			{
 				name: 'Get',
@@ -29,6 +39,11 @@ export const channelOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all channels',
+			},
+			{
+				name: 'Unarchive',
+				value: 'unarchive',
+				description: 'Unarchive a channel',
 			},
 			{
 				name: 'Update',
@@ -195,7 +210,7 @@ export const channelFields = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  channel:get                               */
+	/*                                  channel:get/archive/unarchive/delete      */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel ID',
@@ -205,7 +220,10 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
+					'archive',
+					'delete',
 					'get',
+					'unarchive',
 				],
 				resource: [
 					'channel',
