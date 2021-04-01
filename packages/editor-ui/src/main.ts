@@ -92,6 +92,7 @@ import {
 	faTrash,
 	faUndo,
 	faUsers,
+	faHome,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
@@ -135,6 +136,7 @@ library.add(faFileExport);
 library.add(faFileImport);
 library.add(faFilePdf);
 library.add(faFolderOpen);
+library.add(faHome);
 library.add(faHdd);
 library.add(faHourglass);
 library.add(faImage);
