@@ -295,6 +295,11 @@ export class Github implements INodeType {
 						value: 'getAll',
 						description: 'Get all repository releases.',
 					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a release.',
+					},
 				],
 				default: 'create',
 				description: 'The operation to perform.',
@@ -1048,7 +1053,7 @@ export class Github implements INodeType {
 			},
 
 			// ----------------------------------
-			//         release:get
+			//         release:get/delete
 			// ----------------------------------
 			{
 				displayName: 'Release ID',
@@ -1063,6 +1068,7 @@ export class Github implements INodeType {
 						],
 						operation: [
 							'get',
+							'delete',
 						],
 					},
 				},
@@ -1636,6 +1642,7 @@ export class Github implements INodeType {
 			'issue:edit',
 			'issue:get',
 			'release:create',
+			'release:delete',
 			'release:get',
 			'repository:get',
 			'repository:getLicense',
@@ -1652,8 +1659,8 @@ export class Github implements INodeType {
 			'repository:listPopularPaths',
 			'repository:listReferrers',
 			'user:getRepositories',
-			'review:getAll',
 			'release:getAll',
+			'review:getAll',
 		];
 
 
@@ -1856,6 +1863,17 @@ export class Github implements INodeType {
 
 					endpoint = `/repos/${owner}/${repository}/releases`;
 				}
+				if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
+
+					requestMethod = 'delete';
+
+					const releaseId = this.getNodeParameter('release_id', i) as string;
+
+					endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
+				}
 				if (operation === 'get') {
 					// ----------------------------------
 					//         get
@@ -2052,6 +2070,9 @@ export class Github implements INodeType {
 
 					return this.prepareOutputData(items);
 				}
+			}
+			if (fullOperation === 'release:delete') {
+				responseData = { success: true }
 			}
 
 			if (overwriteDataOperations.includes(fullOperation)) {
