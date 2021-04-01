@@ -80,7 +80,7 @@ export const store = new Vuex.Store({
 			nodes: [] as INodeUi[],
 			settings: {} as IWorkflowSettings,
 		} as IWorkflowDb,
-		sidebarMenuTopItems: [] as IMenuItem[],
+		sidebarMenuItems: [] as IMenuItem[],
 	},
 	mutations: {
 		// Active Actions
@@ -600,9 +600,9 @@ export const store = new Vuex.Store({
 			state.nodeTypes = updatedNodes;
 		},
 
-		addTopSidebarMenuItems (state, menuItems: IMenuItem[]) {
-			const updated = [...state.sidebarMenuTopItems, ...menuItems];
-			Vue.set(state, 'sidebarMenuTopItems', updated);
+		addSidebarMenuItems (state, menuItems: IMenuItem[]) {
+			const updated = [...state.sidebarMenuItems, ...menuItems];
+			Vue.set(state, 'sidebarMenuItems', updated);
 		},
 	},
 	getters: {
@@ -841,8 +841,8 @@ export const store = new Vuex.Store({
 			return workflowRunData[nodeName];
 		},
 
-		sidebarMenuTopItems: (state): IMenuItem[] => {
-			return state.sidebarMenuTopItems;
+		sidebarMenuItems: (state): IMenuItem[] => {
+			return state.sidebarMenuItems;
 		},
 	},
 

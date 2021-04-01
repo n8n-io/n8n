@@ -21,10 +21,19 @@
 					</a>
 				</el-menu-item>
 
-				<el-menu-item v-for="item in sidebarMenuTopItems" :key="item.id" :index="item.id">
-					<a :href="item.href" :target="item.newWindow? '_blank' : '_self'" class="primary-item">
-						<font-awesome-icon :icon="item.icon"/>
-						<span slot="title" class="item-title-root">{{item.title}}</span>
+				<el-menu-item
+					v-for="item in sidebarMenuTopItems"
+					:key="item.id"
+					:index="item.id"
+				>
+					<a
+						v-if="item.type === 'link'"
+						:href="item.properties.href"
+						:target="item.properties.newWindow ? '_blank' : '_self'"
+						class="primary-item"
+					>
+						<font-awesome-icon :icon="item.properties.icon" />
+						<span slot="title" class="item-title-root">{{ item.properties.title }}</span>
 					</a>
 				</el-menu-item>
 
@@ -159,6 +168,22 @@
 					</el-menu-item>
 				</el-submenu>
 
+				<el-menu-item
+					v-for="item in sidebarMenuBottomItems"
+					:key="item.id"
+					:index="item.id"
+				>
+					<a
+						v-if="item.type === 'link'"
+						:href="item.properties.href"
+						:target="item.properties.newWindow ? '_blank' : '_self'"
+						class="primary-item"
+					>
+						<font-awesome-icon :icon="item.properties.icon" />
+						<span slot="title" class="item-title-root">{{ item.properties.title }}</span>
+					</a>
+				</el-menu-item>
+
 			</el-menu>
 
 		</div>
@@ -275,7 +300,10 @@ export default mixins(
 				return this.$store.getters.isActionActive('workflowRunning');
 			},
 			sidebarMenuTopItems(): IMenuItem[] {
-				return this.$store.getters.sidebarMenuTopItems;
+				return this.$store.getters.sidebarMenuItems.filter((item: IMenuItem) => item.position === 'top');
+			},
+			sidebarMenuBottomItems(): IMenuItem[] {
+				return this.$store.getters.sidebarMenuItems.filter((item: IMenuItem) => item.position === 'bottom');
 			},
 		},
 		methods: {

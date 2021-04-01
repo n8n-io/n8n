@@ -429,10 +429,19 @@ export interface ITimeoutHMS {
 
 export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
 
+export type MenuItemType = 'link';
+export type MenuItemPosition = 'top' | 'bottom';
+
 export interface IMenuItem {
 	id: string;
+	type: MenuItemType;
+	position: MenuItemPosition;
+	properties: ILinkMinuItemProperties;
+}
+
+export interface ILinkMinuItemProperties {
 	title: string;
 	icon: string;
 	href: string;
-	newWindow: boolean;
+	newWindow?: boolean;
 }
