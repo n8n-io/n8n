@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function phantombusterApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
@@ -37,12 +37,12 @@ export async function phantombusterApiRequest(this: IExecuteFunctions | IExecute
 	}
 }
 
-export function validateJSON(json: string | undefined, name: string): any { // tslint:disable-line:no-any
+export function validateJSON(self: IExecuteFunctions, json: string | undefined, name: string) {
 	let result;
 	try {
 		result = JSON.parse(json!);
 	} catch (exception) {
-		throw new Error(`${name} must provide a valid JSON`);
+		throw new NodeOperationError(self.getNode(), `${name} must provide a valid JSON`);
 	}
 	return result;
 }

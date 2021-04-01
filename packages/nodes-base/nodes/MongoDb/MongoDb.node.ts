@@ -6,7 +6,8 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
-	INodeTypeDescription
+	INodeTypeDescription,
+	NodeOperationError
 } from 'n8n-workflow';
 
 import {
@@ -140,7 +141,7 @@ export class MongoDb implements INodeType {
 			}
 			returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
 		} else {
-			throw new Error(`The operation "${operation}" is not supported!`);
+			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 		}
 
 		return this.prepareOutputData(returnItems);

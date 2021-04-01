@@ -5,6 +5,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { set } from 'lodash';
@@ -382,7 +383,7 @@ export class Redis implements INodeType {
 		}
 
 
-		async function setValue(client: redis.RedisClient, keyName: string, value: string | number | object | string[] | number[], expire: boolean, ttl: number, type?: string) {
+		const setValue = async (client: redis.RedisClient, keyName: string, value: string | number | object | string[] | number[], expire: boolean, ttl: number, type?: string) => {
 			if (type === undefined || type === 'automatic') {
 				// Request the type first
 				if (typeof value === 'string') {
@@ -392,7 +393,7 @@ export class Redis implements INodeType {
 				} else if (typeof value === 'object') {
 					type = 'hash';
 				} else {
-					throw new Error('Could not identify the type to set. Please set it manually!');
+					throw new NodeOperationError(this.getNode(), 'Could not identify the type to set. Please set it manually!');
 				}
 			}
 
@@ -417,7 +418,7 @@ export class Redis implements INodeType {
 				await clientExpire(keyName, ttl);
 			}
 			return;
-		}
+		};
 
 
 		return new Promise((resolve, reject) => {
@@ -428,7 +429,7 @@ export class Redis implements INodeType {
 			const credentials = this.getCredentials('redis');
 
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			const redisOptions: redis.ClientOpts = {
