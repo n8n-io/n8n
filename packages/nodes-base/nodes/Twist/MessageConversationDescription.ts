@@ -35,6 +35,11 @@ export const messageConversationOperations = [
 				value: 'get',
 				description: 'Get a message in a conversation',
 			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a message in a conversation',
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -348,7 +353,7 @@ export const messageConversationFields = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                messageConversation:get/delete              */
+	/*                                messageConversation:get/delete/update       */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
@@ -360,6 +365,7 @@ export const messageConversationFields = [
 				operation: [
 					'delete',
 					'get',
+					'update',
 				],
 				resource: [
 					'messageConversation',
@@ -368,5 +374,159 @@ export const messageConversationFields = [
 		},
 		required: true,
 		description: 'The id of the conversation message.',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                messageConversation:update                  */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Workspace ID',
+		name: 'workspaceId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getWorkspaces',
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'messageConversation',
+				],
+			},
+		},
+		required: true,
+		description: 'The ID of the workspace.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'messageConversation',
+				],
+			},
+		},
+		default: {},
+		description: 'Other options to set',
+		options: [
+			{
+				displayName: 'Content',
+				name: 'content',
+				type: 'string',
+				default: '',
+				description: `The content of the new message. Mentions can be used as [Name](twist-mention://user_id) for users or [Group name](twist-group-mention://group_id) for groups.`,
+			},
+			{
+				displayName: 'Actions',
+				name: 'actionsUi',
+				type: 'fixedCollection',
+				placeholder: 'Add Action',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						displayName: 'Action',
+						name: 'actionValues',
+						values: [
+							{
+								displayName: 'Action',
+								name: 'action',
+								type: 'options',
+								description: 'The action of the button',
+								options: [
+									{
+										name: 'Open URL',
+										value: 'open_url',
+									},
+									{
+										name: 'Prefill Message',
+										value: 'prefill_message',
+									},
+									{
+										name: 'Send Reply',
+										value: 'send_reply',
+									},
+								],
+								default: '',
+							},
+							{
+								displayName: 'Button Text',
+								name: 'button_text',
+								type: 'string',
+								description: 'The text for the action button.',
+								default: '',
+							},
+							{
+								displayName: 'Message',
+								name: 'message',
+								type: 'string',
+								displayOptions: {
+									show: {
+										action: [
+											'send_reply',
+											'prefill_message',
+										],
+									},
+								},
+								description: 'The text for the action button.',
+								default: '',
+							},
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								description: 'The type of the button, for now just action is available.',
+								options: [
+									{
+										name: 'Action',
+										value: 'action',
+									},
+								],
+								default: '',
+							},
+							{
+								displayName: 'URL',
+								name: 'url',
+								type: 'string',
+								displayOptions: {
+									show: {
+										action: [
+											'open_url',
+										],
+									},
+								},
+								description: 'URL to redirect',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Attachments',
+				name: 'binaryProperties',
+				type: 'string',
+				default: 'data',
+				description: 'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
+			},
+			{
+				displayName: 'Direct Mentions',
+				name: 'direct_mentions',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				default: [],
+				description: `The users that are directly mentioned`,
+			},
+		],
 	},
 ] as INodeProperties[];

@@ -304,6 +304,72 @@ export class Twist implements INodeType {
 
 					responseData = await twistApiRequest.call(this, 'POST', '/conversation_messages/remove', {}, qs);
 				}
+				//https://developer.twist.com/v3/#update-message-in-conversation
+				if (operation === 'update') {
+					const id = this.getNodeParameter('id', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IDataObject = {
+						id,
+					};
+					Object.assign(body, additionalFields);
+
+					if (body.actionsUi) {
+						const actions = (body.actionsUi as IDataObject).actionValues as IDataObject[];
+
+						if (actions) {
+							body.actions = actions;
+							delete body.actionsUi;
+						}
+					}
+
+					if (body.binaryProperties) {
+						const binaryProperties = (body.binaryProperties as string).split(',') as string[];
+
+						const attachments: IDataObject[] = [];
+
+						for (const binaryProperty of binaryProperties) {
+
+							const item = items[i].binary as IBinaryKeyData;
+
+							const binaryData = item[binaryProperty] as IBinaryData;
+
+							if (binaryData === undefined) {
+								throw new Error(`No binary data property "${binaryProperty}" does not exists on item!`);
+							}
+
+							attachments.push(await twistApiRequest.call(
+								this,
+								'POST',
+								`/attachments/upload`,
+								{},
+								{},
+								{
+									formData: {
+										file_name: {
+											value: Buffer.from(binaryData.data, BINARY_ENCODING),
+											options: {
+												filename: binaryData.fileName,
+											},
+										},
+										attachment_id: uuid(),
+									},
+								},
+							));
+						}
+
+						body.attachments = attachments;
+					}
+
+					if (body.direct_mentions) {
+						const direcMentions: string[] = [];
+						for (const directMention of body.direct_mentions as number[]) {
+							direcMentions.push(`[name](twist-mention://${directMention})`);
+						}
+						body.content = `${direcMentions.join(' ')} ${body.content}`;
+					}
+
+					responseData = await twistApiRequest.call(this, 'POST', '/conversation_messages/update', body);
+				}
 			}
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
