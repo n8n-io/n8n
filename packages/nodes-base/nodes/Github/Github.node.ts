@@ -2161,7 +2161,7 @@ export class Github implements INodeType {
 				}
 			}
 			if (fullOperation === 'release:delete') {
-				responseData = { success: true }
+				responseData = { success: true };
 			}
 
 			if (overwriteDataOperations.includes(fullOperation)) {
