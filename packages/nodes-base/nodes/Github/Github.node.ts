@@ -285,6 +285,16 @@ export class Github implements INodeType {
 						value: 'create',
 						description: 'Creates a new release.',
 					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get a release.',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all repository releases.',
+					},
 				],
 				default: 'create',
 				description: 'The operation to perform.',
@@ -1037,6 +1047,72 @@ export class Github implements INodeType {
 				],
 			},
 
+			// ----------------------------------
+			//         release:get
+			// ----------------------------------
+			{
+				displayName: 'Release ID',
+				name: 'release_id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'release',
+						],
+						operation: [
+							'get',
+						],
+					},
+				},
+				description: 'The release ID.',
+			},
+
+			// ----------------------------------
+			//         release:getAll
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'release',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'release',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'How many results to return.',
+			},
 
 
 			// ----------------------------------
@@ -1560,6 +1636,7 @@ export class Github implements INodeType {
 			'issue:edit',
 			'issue:get',
 			'release:create',
+			'release:get',
 			'repository:get',
 			'repository:getLicense',
 			'repository:getProfile',
@@ -1576,6 +1653,7 @@ export class Github implements INodeType {
 			'repository:listReferrers',
 			'user:getRepositories',
 			'review:getAll',
+			'release:getAll',
 		];
 
 
@@ -1777,6 +1855,32 @@ export class Github implements INodeType {
 					body.tag_name = this.getNodeParameter('releaseTag', i) as string;
 
 					endpoint = `/repos/${owner}/${repository}/releases`;
+				}
+				if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const releaseId = this.getNodeParameter('release_id', i) as string;
+
+					endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
+				}
+				if (operation === 'getAll') {
+					// ----------------------------------
+					//         getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					endpoint = `/repos/${owner}/${repository}/releases`;
+
+					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					if (returnAll === false) {
+						qs.per_page = this.getNodeParameter('limit', 0) as number;
+					}
 				}
 			} else if (resource === 'repository') {
 				if (operation === 'listPopularPaths') {
