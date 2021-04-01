@@ -297,6 +297,13 @@ export class Twist implements INodeType {
 
 					responseData = await twistApiRequest.call(this, 'GET', '/conversation_messages/get', {}, qs);
 				}
+				//https://developer.twist.com/v3/#remove-message-from-conversation
+				if (operation === 'delete') {
+					const id = this.getNodeParameter('id', i) as string;
+					qs.id =id;
+
+					responseData = await twistApiRequest.call(this, 'POST', '/conversation_messages/remove', {}, qs);
+				}
 			}
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);

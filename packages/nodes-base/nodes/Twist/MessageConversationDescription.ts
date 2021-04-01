@@ -21,6 +21,11 @@ export const messageConversationOperations = [
 				description: 'Create a message in a conversation',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a message in a conversation',
+			},
+			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all messages in a conversation',
@@ -343,7 +348,7 @@ export const messageConversationFields = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                messageConversation:get                     */
+	/*                                messageConversation:get/delete              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
@@ -353,6 +358,7 @@ export const messageConversationFields = [
 		displayOptions: {
 			show: {
 				operation: [
+					'delete',
 					'get',
 				],
 				resource: [
