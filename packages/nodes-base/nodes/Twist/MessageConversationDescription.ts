@@ -20,6 +20,16 @@ export const messageConversationOperations = [
 				value: 'create',
 				description: 'Create a message in a conversation',
 			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all messages in a conversation',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a message in a conversation',
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -226,5 +236,131 @@ export const messageConversationFields = [
 			// 	description: `The groups that are directly mentioned`,
 			// },
 		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                messageConversation:getAll                  */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Workspace ID',
+		name: 'workspaceId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getWorkspaces',
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'messageConversation',
+				],
+			},
+		},
+		required: true,
+		description: 'The ID of the workspace.',
+	},
+	{
+		displayName: 'Conversation ID',
+		name: 'conversationId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getConversations',
+			loadOptionsDependsOn: [
+				'workspaceId',
+			],
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'messageConversation',
+				],
+			},
+		},
+		required: true,
+		description: 'The ID of the conversation.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'messageConversation',
+				],
+			},
+		},
+		default: {},
+		description: 'Other options to set',
+		options: [
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				default: 50,
+				description: 'Limits the number of messages returned.',
+			},
+			{
+				displayName: 'Starting object index',
+				name: 'from_obj_index',
+				type: 'number',
+				default: 0,
+				description: 'Limit messages starting at the specified object index.',
+			},
+			{
+				displayName: 'Ending object index',
+				name: 'to_obj_index',
+				type: 'number',
+				default: 50,
+				description: 'Limit messages ending at the specified object index.',
+			},
+			{
+				displayName: 'Order By',
+				name: 'order_by',
+				type: 'options',
+				default: 'ASC',
+				description: 'The order of the conversations returned one of DESC or ASC.',
+				options:[
+					{
+						name: 'ASC',
+						value: 'ASC',
+					},
+					{
+						name: 'DESC',
+						value: 'DESC',
+					},
+				],
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                messageConversation:get                     */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'messageConversation',
+				],
+			},
+		},
+		required: true,
+		description: 'The id of the conversation message.',
 	},
 ] as INodeProperties[];

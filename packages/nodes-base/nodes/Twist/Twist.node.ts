@@ -281,6 +281,22 @@ export class Twist implements INodeType {
 
 					responseData = await twistApiRequest.call(this, 'POST', '/conversation_messages/add', body);
 				}
+				//https://developer.twist.com/v3/#get-message
+				if (operation === 'get') {
+					const id = this.getNodeParameter('id', i) as string;
+					qs.id =id;
+
+					responseData = await twistApiRequest.call(this, 'GET', '/conversation_messages/getone', {}, qs);
+				}
+				//https://developer.twist.com/v3/#get-all-messages
+				if (operation === 'getAll') {
+					const conversationId = this.getNodeParameter('conversationId', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					qs.conversation_id= conversationId;
+					Object.assign(qs, additionalFields);
+
+					responseData = await twistApiRequest.call(this, 'GET', '/conversation_messages/get', {}, qs);
+				}
 			}
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
