@@ -123,7 +123,25 @@ export class AwsDynamoDB implements INodeType {
 
 				// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html
 
-				// ...
+				const eavUi = this.getNodeParameter('expressionAttributeValues.details', i) as IAttributeValueUi[];
+
+				const body: IRequestBody = {
+					TableName: this.getNodeParameter('tableName', i) as string,
+					ConditionExpression: this.getNodeParameter('conditionExpression', i) as string,
+					ExpressionAttributeValues: adjustExpressionAttributeValues(eavUi),
+				};
+
+				body.Item = items[i].json;
+
+				const headers = {
+					'Content-Type': 'application/x-amz-json-1.0',
+					'X-Amz-Target': 'DynamoDB_20120810.PutItem',
+				};
+
+				console.log(body);
+
+				responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers);
+				responseData = { success: true };
 
 			} else if (operation === 'delete') {
 

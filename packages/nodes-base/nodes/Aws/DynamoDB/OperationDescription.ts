@@ -19,6 +19,81 @@ export const operationFields = [
 	},
 
 	// ----------------------------------
+	//           createUpdate
+	// ----------------------------------
+	{
+		displayName: 'Expression Attribute Values',
+		name: 'expressionAttributeValues',
+		description: 'Substitution tokens for attribute names in an expression.',
+		placeholder: 'Add Metadata',
+		type: 'fixedCollection',
+		default: '',
+		required: true,
+		typeOptions: {
+			multipleValues: true,
+			minValue: 1,
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'createUpdate',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'details',
+				displayName: 'Details',
+				values: [
+					{
+						displayName: 'Attribute',
+						name: 'attribute',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						options: [
+							{
+								name: 'Number',
+								value: 'N',
+							},
+							{
+								name: 'String',
+								value: 'S',
+							},
+						],
+						default: 'S',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Condition Expression',
+		name: 'conditionExpression',
+		description: 'Condition to be satisfied for the create/update operation to succeed.',
+		type: 'string',
+		default: '',
+		placeholder: 'id = :id',
+		displayOptions: {
+			show: {
+				operation: [
+					'createUpdate',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------
 	//              delete
 	// ----------------------------------
 	{
@@ -79,14 +154,14 @@ export const operationFields = [
 					{
 						displayName: 'Name',
 						name: 'name',
-						description: 'Name of the partition key of the item to retrieve.',
+						description: 'Name of the partition key of the item to delete.',
 						type: 'string',
 						default: 'id',
 					},
 					{
 						displayName: 'Type',
 						name: 'type',
-						description: 'Type of the partition key of the item to retrieve.',
+						description: 'Type of the partition key of the item to delete.',
 						type: 'options',
 						options: [
 							{
@@ -107,7 +182,7 @@ export const operationFields = [
 					{
 						displayName: 'Value',
 						name: 'value',
-						description: 'Value of the partition key of the item to retrieve.',
+						description: 'Value of the partition key of the item to delete.',
 						type: 'string',
 						default: '',
 					},
@@ -487,7 +562,7 @@ export const operationFields = [
 				name: 'projectionExpression',
 				description: 'Comma-separated list of attributes to retrieve.',
 				type: 'string',
-				placeholder: 'id, name',
+				placeholder: 'id, username',
 				default: '',
 			},
 			{
