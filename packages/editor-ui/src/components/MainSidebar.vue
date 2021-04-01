@@ -575,6 +575,7 @@ export default mixins(
 
 		&.primary-item {
 			color: $--color-primary;
+			vertical-align: baseline;
 		}
 	}
 
