@@ -315,6 +315,7 @@
       "dist/nodes/Contentful/Contentful.node.js",
       "dist/nodes/ConvertKit/ConvertKit.node.js",
       "dist/nodes/ConvertKit/ConvertKitTrigger.node.js",
+      "dist/nodes/Copper/Copper.node.js",
       "dist/nodes/Copper/CopperTrigger.node.js",
       "dist/nodes/Cortex/Cortex.node.js",
       "dist/nodes/CrateDb/CrateDb.node.js",
