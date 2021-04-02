@@ -16,11 +16,6 @@ export const summaryOperations = [
 		},
 		options: [
 			{
-				name: 'Get Sleep Periods',
-				value: 'getSleep',
-				description: 'Get the user\'s sleep summary.',
-			},
-			{
 				name: 'Get Activity Summary',
 				value: 'getActivity',
 				description: 'Get the user\'s activity summary.',
@@ -29,6 +24,11 @@ export const summaryOperations = [
 				name: 'Get Readiness Summary',
 				value: 'getReadiness',
 				description: 'Get the user\'s readiness summary.',
+			},
+			{
+				name: 'Get Sleep Periods',
+				value: 'getSleep',
+				description: 'Get the user\'s sleep summary.',
 			},
 		],
 		default: 'getSleep',
@@ -74,7 +74,7 @@ export const summaryFields = [
 	},
 	{
 		displayName: 'Filters',
-		name: 'filter',
+		name: 'filters',
 		type: 'collection',
 		placeholder: 'Add Filter',
 		displayOptions: {
