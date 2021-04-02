@@ -254,6 +254,16 @@ export const issueFields = [
 				description: 'Priority',
 			},
 			{
+				displayName: 'Reporter',
+				name: 'reporter',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				default: '',
+				description: 'Reporter',
+			},
+			{
 				displayName: 'Update History',
 				name: 'updateHistory',
 				type: 'boolean',
@@ -417,6 +427,16 @@ export const issueFields = [
 				},
 				default: '',
 				description: 'Priority',
+			},
+			{
+				displayName: 'Reporter',
+				name: 'reporter',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				default: '',
+				description: 'Reporter',
 			},
 			{
 				displayName: 'Summary',
