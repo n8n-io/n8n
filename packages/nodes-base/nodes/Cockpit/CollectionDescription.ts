@@ -51,7 +51,7 @@ export const collectionFields = [
 			},
 		},
 		required: true,
-		description: 'Name of the collection to operate on.'
+		description: 'Name of the collection to operate on.',
 	},
 
 	// Collection:entry:getAll
@@ -109,7 +109,7 @@ export const collectionFields = [
 				],
 				operation: [
 					'getAll',
-				]
+				],
 			},
 		},
 		options: [
@@ -189,7 +189,7 @@ export const collectionFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'The entry ID.',
@@ -210,7 +210,7 @@ export const collectionFields = [
 				operation: [
 					'create',
 					'update',
-				]
+				],
 			},
 		},
 		description: 'If new entry fields should be set via the value-key pair UI or JSON.',
@@ -234,7 +234,7 @@ export const collectionFields = [
 				operation: [
 					'create',
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Entry data to send as JSON.',
@@ -258,7 +258,7 @@ export const collectionFields = [
 				operation: [
 					'create',
 					'update',
-				]
+				],
 			},
 		},
 		options: [

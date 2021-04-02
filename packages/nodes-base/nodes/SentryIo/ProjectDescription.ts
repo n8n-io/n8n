@@ -24,7 +24,7 @@ export const projectOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all projects',
-			}
+			},
 		],
 		default: 'get',
 		description: 'The operation to perform',
@@ -145,7 +145,7 @@ export const projectFields = [
 				default: '',
 				description: 'Optionally a slug for the new project. If it’s not provided a slug is generated from the name',
 			},
-		]
+		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                project:getAll                              */

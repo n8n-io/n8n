@@ -1,10 +1,10 @@
 import * as cheerio from 'cheerio';
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IDataObject,
 } from 'n8n-workflow';
 
 type Cheerio = ReturnType<typeof cheerio>;
@@ -206,8 +206,8 @@ export class HtmlExtract implements INodeType {
 						description: 'Removes automatically all spaces and newlines from<br />the beginning and end of the values.',
 					},
 				],
-			}
-		]
+			},
+		],
 	};
 
 

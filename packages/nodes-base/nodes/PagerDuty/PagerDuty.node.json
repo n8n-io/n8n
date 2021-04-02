@@ -1,0 +1,28 @@
+{
+	"node": "n8n-nodes-base.pagerDuty",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Communication",
+		"Development"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/pagerDuty"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.pagerDuty/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Creating Custom Incident Response Workflows with n8n",
+				"icon": "🚨",
+				"url": "https://medium.com/n8n-io/creating-custom-incident-response-workflows-with-n8n-9baef0bbedb9"
+			}
+		]
+	}
+}

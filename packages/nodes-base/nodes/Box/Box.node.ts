@@ -4,11 +4,11 @@ import {
 } from 'n8n-core';
 
 import {
+	IBinaryKeyData,
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
-	IBinaryKeyData,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -308,6 +308,12 @@ export class Box implements INodeType {
 
 					responseData = await boxApiRequest.call(this, 'DELETE', `/folders/${folderId}`, qs);
 					responseData = { success: true };
+					returnData.push(responseData as IDataObject);
+				}
+				// https://developer.box.com/reference/get-folders-id/
+				if (operation === 'get') {
+					const folderId = this.getNodeParameter('folderId', i) as string;
+					responseData = await boxApiRequest.call(this, 'GET', `/folders/${folderId}`, qs);
 					returnData.push(responseData as IDataObject);
 				}
 				// https://developer.box.com/reference/get-search/

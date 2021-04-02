@@ -142,6 +142,15 @@ describe('ObservableObject', () => {
 		expect(testObject).toEqual({ a: {} });
 	});
 
+	test('should recognize that item on second child level changed with null (init data exists)', () => {
+		const testObject = ObservableObject.create({ a: { b: { c: null } } });
+		expect(testObject.__dataChanged).toBeFalsy();
+		expect((testObject.a! as IDataObject).b).toEqual({ c: null });
+		expect(((testObject.a! as IDataObject).b! as IDataObject).c).toEqual(null);
+		((testObject.a! as IDataObject).b! as IDataObject).c = 2;
+		expect(testObject.__dataChanged).toBeTruthy();
+		expect((testObject.a! as IDataObject).b).toEqual({ c: 2 });
+	});
 
 
 

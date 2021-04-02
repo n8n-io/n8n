@@ -15,8 +15,8 @@ export class Mqtt implements ICredentialType {
 		{
 			displayName: 'Protocol',
 			name: 'protocol',
-      type: 'options' as NodePropertyTypes,
-      options: [
+			type: 'options' as NodePropertyTypes,
+			options: [
 				{
 					name: 'mqtt',
 					value: 'mqtt',
@@ -57,4 +57,3 @@ export class Mqtt implements ICredentialType {
 		},
 	];
 }
-

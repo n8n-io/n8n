@@ -6,8 +6,8 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodeType,
 	INodePropertyOptions,
+	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
@@ -129,7 +129,7 @@ export class Medium implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Are you posting for a publication?'
+				description: 'Are you posting for a publication?',
 			},
 			{
 				displayName: 'Publication ID',
@@ -510,7 +510,7 @@ export class Medium implements INodeType {
 							'POST',
 							`/publications/${publicationId}/posts`,
 							bodyRequest,
-							qs
+							qs,
 						);
 					}
 					else {
@@ -519,7 +519,7 @@ export class Medium implements INodeType {
 							'GET',
 							'/me',
 							{},
-							qs
+							qs,
 						);
 
 						const authorId = responseAuthorId.data.id;
@@ -528,7 +528,7 @@ export class Medium implements INodeType {
 							'POST',
 							`/users/${authorId}/posts`,
 							bodyRequest,
-							qs
+							qs,
 						);
 
 						responseData = responseData.data;

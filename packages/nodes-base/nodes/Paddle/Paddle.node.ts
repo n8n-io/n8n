@@ -121,7 +121,7 @@ export class Paddle implements INodeType {
 			// ...orderFields,
 			// USER
 			...userOperations,
-			...userFields
+			...userFields,
 		],
 	};
 
@@ -177,7 +177,7 @@ export class Paddle implements INodeType {
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

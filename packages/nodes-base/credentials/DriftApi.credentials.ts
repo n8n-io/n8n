@@ -13,7 +13,7 @@ export class DriftApi implements ICredentialType {
 			name: 'accessToken',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			description: 'Visit your account details page, and grab the Access Token. See <a href="https://devdocs.drift.com/docs/quick-start">Drift auth</a>.'
+			description: 'Visit your account details page, and grab the Access Token. See <a href="https://devdocs.drift.com/docs/quick-start">Drift auth</a>.',
 		},
 	];
 }

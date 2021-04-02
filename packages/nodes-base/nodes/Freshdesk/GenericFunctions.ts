@@ -3,9 +3,9 @@ import {
 } from 'request';
 
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	BINARY_ENCODING
 } from 'n8n-core';
 
 import {
@@ -33,7 +33,7 @@ export async function freshdeskApiRequest(this: IExecuteFunctions | ILoadOptions
 		body,
 		qs: query,
 		uri: uri || `https://${credentials.domain}.${endpoint}${resource}`,
-		json: true
+		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.body;

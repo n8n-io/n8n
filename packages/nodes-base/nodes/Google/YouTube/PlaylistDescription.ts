@@ -42,8 +42,8 @@ export const playlistOperations = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.'
-	}
+		description: 'The operation to perform.',
+	},
 ] as INodeProperties[];
 
 export const playlistFields = [
@@ -107,7 +107,7 @@ export const playlistFields = [
 					},
 					{
 						name: 'Unlisted',
-						value: 'unlistef',
+						value: 'unlisted',
 					},
 				],
 				default: '',
@@ -553,7 +553,7 @@ export const playlistFields = [
 					},
 					{
 						name: 'Unlisted',
-						value: 'unlistef',
+						value: 'unlisted',
 					},
 				],
 				default: '',

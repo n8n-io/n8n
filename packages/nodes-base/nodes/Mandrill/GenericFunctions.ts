@@ -26,7 +26,7 @@ export async function mandrillApiRequest(this: IExecuteFunctions | IHookFunction
 		method,
 		uri: `https://${endpoint}${resource}${action}.json`,
 		body: data,
-		json: true
+		json: true,
 	};
 
 
@@ -56,13 +56,13 @@ export function getToEmailArray(toEmail: string): any { // tslint:disable-line:n
 		toEmailArray = _.map(array, (email) => {
 			return {
 				email,
-				type: 'to'
+				type: 'to',
 			};
 		});
 	} else {
 		toEmailArray = [{
 			email: toEmail,
-			type: 'to'
+			type: 'to',
 		}];
 	}
 	return toEmailArray;

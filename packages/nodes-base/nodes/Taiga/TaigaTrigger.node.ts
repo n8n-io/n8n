@@ -14,8 +14,8 @@ import {
 } from 'n8n-core';
 
 import {
-	taigaApiRequest,
 	getAutomaticSecret,
+	taigaApiRequest,
 } from './GenericFunctions';
 
 // import {
@@ -218,7 +218,7 @@ export class TaigaTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(bodyData)
+				this.helpers.returnJsonArray(bodyData),
 			],
 		};
 	}

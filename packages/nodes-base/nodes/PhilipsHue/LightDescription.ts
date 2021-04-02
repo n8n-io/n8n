@@ -34,11 +34,11 @@ export const lightOperations = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update an light',
-			}
+			},
 		],
 		default: 'update',
-		description: 'The operation to perform.'
-	}
+		description: 'The operation to perform.',
+	},
 ] as INodeProperties[];
 
 export const lightFields = [

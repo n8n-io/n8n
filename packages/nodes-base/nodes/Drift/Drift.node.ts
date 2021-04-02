@@ -2,10 +2,10 @@ import {
 	IExecuteFunctions,
 } from 'n8n-core';
 import {
-	INodeTypeDescription,
-	INodeType,
-	INodeExecutionData,
 	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
 	driftApiRequest,

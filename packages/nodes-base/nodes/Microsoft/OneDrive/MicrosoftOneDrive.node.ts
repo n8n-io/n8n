@@ -159,6 +159,18 @@ export class MicrosoftOneDrive implements INodeType {
 					responseData = responseData.filter((item: IDataObject) => item.file);
 					returnData.push.apply(returnData, responseData as IDataObject[]);
 				}
+				//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_createlink?view=odsp-graph-online
+				if (operation === 'share') {
+					const fileId = this.getNodeParameter('fileId', i) as string;
+					const type = this.getNodeParameter('type', i) as string;
+					const scope = this.getNodeParameter('scope', i) as string;
+					const body: IDataObject = {
+						type,
+						scope,
+					};
+					responseData = await microsoftApiRequest.call(this, 'POST', `/drive/items/${fileId}/createLink`, body);
+					returnData.push(responseData);
+				}
 				//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_put_content?view=odsp-graph-online#example-upload-a-new-file
 				if (operation === 'upload') {
 					const parentId = this.getNodeParameter('parentId', i) as string;
@@ -220,6 +232,18 @@ export class MicrosoftOneDrive implements INodeType {
 					responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/drive/root/search(q='${query}')`);
 					responseData = responseData.filter((item: IDataObject) => item.folder);
 					returnData.push.apply(returnData, responseData as IDataObject[]);
+				}
+				//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_createlink?view=odsp-graph-online
+				if (operation === 'share') {
+					const folderId = this.getNodeParameter('folderId', i) as string;
+					const type = this.getNodeParameter('type', i) as string;
+					const scope = this.getNodeParameter('scope', i) as string;
+					const body: IDataObject = {
+						type,
+						scope,
+					};
+					responseData = await microsoftApiRequest.call(this, 'POST', `/drive/items/${folderId}/createLink`, body);
+					returnData.push(responseData);
 				}
 			}
 		}

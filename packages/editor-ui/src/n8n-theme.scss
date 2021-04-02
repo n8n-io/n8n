@@ -58,7 +58,11 @@ h1, h2, h3, h4, h5, h6 {
 	-webkit-box-shadow: none;
 	box-shadow: none;
 
-	@media (max-height: 720px) {
+	@media (max-height: 1050px) {
+		margin: 4em auto !important;
+	}
+
+	@media (max-height: 930px) {
 		margin: 1em auto !important;
 	}
 

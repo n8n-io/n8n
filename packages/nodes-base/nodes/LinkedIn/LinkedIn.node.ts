@@ -1,14 +1,20 @@
-import { IExecuteFunctions, BINARY_ENCODING } from 'n8n-core';
+import {
+	BINARY_ENCODING,
+	IExecuteFunctions,
+} from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import { linkedInApiRequest } from './GenericFunctions';
-import { postOperations, postFields } from './PostDescription';
+import {
+	postFields,
+	postOperations,
+} from './PostDescription';
 
 export class LinkedIn implements INodeType {
 	description: INodeTypeDescription = {
@@ -62,7 +68,7 @@ export class LinkedIn implements INodeType {
 				returnData.push({ name: `${person.localizedFirstName} ${person.localizedLastName}`, value: person.id });
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -200,19 +206,19 @@ export class LinkedIn implements INodeType {
 										{
 											status: 'READY',
 											description: {
-												text: description
+												text: description,
 											},
 											originalUrl,
 											title: {
-												text: title
-											}
-										}
-									]
-								}
+												text: title,
+											},
+										},
+									],
+								},
 							},
 							visibility: {
-								'com.linkedin.ugc.MemberNetworkVisibility': visibility
-							}
+								'com.linkedin.ugc.MemberNetworkVisibility': visibility,
+							},
 						};
 					} else {
 						body = {
@@ -227,8 +233,8 @@ export class LinkedIn implements INodeType {
 								},
 							},
 							visibility: {
-								'com.linkedin.ugc.MemberNetworkVisibility': visibility
-							}
+								'com.linkedin.ugc.MemberNetworkVisibility': visibility,
+							},
 						};
 					}
 

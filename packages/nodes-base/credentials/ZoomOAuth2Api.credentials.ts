@@ -13,31 +13,31 @@ export class ZoomOAuth2Api implements ICredentialType {
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'https://zoom.us/oauth/authorize'
+			default: 'https://zoom.us/oauth/authorize',
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'https://zoom.us/oauth/token'
+			default: 'https://zoom.us/oauth/token',
 		},
 		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
-			default: ''
+			default: '',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden' as NodePropertyTypes,
-			default: ''
+			default: '',
 		},
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'header'
-		}
+			default: 'header',
+		},
 	];
 }

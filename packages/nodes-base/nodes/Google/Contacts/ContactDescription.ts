@@ -42,8 +42,8 @@ export const contactOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.'
-	}
+		description: 'The operation to perform.',
+	},
 ] as INodeProperties[];
 
 export const contactFields = [
@@ -180,7 +180,7 @@ export const contactFields = [
 				default: '',
 				placeholder: 'Add Company',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				options: [
 					{
@@ -222,7 +222,7 @@ export const contactFields = [
 				default: '',
 				placeholder: 'Add Custom Field',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				options: [
 					{
@@ -254,7 +254,7 @@ export const contactFields = [
 				default: '',
 				placeholder: 'Add Email',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				options: [
 					{
@@ -301,7 +301,7 @@ export const contactFields = [
 				placeholder: 'Add Event',
 				description: 'An event related to the person.',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				options: [
 					{
@@ -386,7 +386,7 @@ export const contactFields = [
 				default: '',
 				placeholder: 'Add Phone',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				options: [
 					{
@@ -467,7 +467,7 @@ export const contactFields = [
 				default: '',
 				placeholder: 'Add Relation',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				options: [
 					{
@@ -1208,7 +1208,7 @@ export const contactFields = [
 				default: '',
 				placeholder: 'Add Company',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				options: [
 					{
@@ -1250,7 +1250,7 @@ export const contactFields = [
 				default: '',
 				placeholder: 'Add Custom Field',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				options: [
 					{
@@ -1282,7 +1282,7 @@ export const contactFields = [
 				default: '',
 				placeholder: 'Add Email',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				options: [
 					{
@@ -1329,7 +1329,7 @@ export const contactFields = [
 				placeholder: 'Add Event',
 				description: 'An event related to the person.',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				options: [
 					{
@@ -1414,7 +1414,7 @@ export const contactFields = [
 				default: '',
 				placeholder: 'Add Phone',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				options: [
 					{
@@ -1495,7 +1495,7 @@ export const contactFields = [
 				default: '',
 				placeholder: 'Add Relation',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				options: [
 					{

@@ -38,11 +38,11 @@ export class ClickUpOAuth2Api implements ICredentialType {
 			default: '',
 		},
 		{
-            displayName: 'Authentication',
-            name: 'authentication',
-            type: 'hidden' as NodePropertyTypes,
-            default: 'body',
-            description: 'Resource to consume.',
-        },
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'hidden' as NodePropertyTypes,
+			default: 'body',
+			description: 'Resource to consume.',
+		},
 	];
 }

@@ -20,11 +20,11 @@ export async function cockpitApiRequest(this: IExecuteFunctions | IExecuteSingle
 		},
 		method,
 		qs: {
-			token: credentials!.accessToken
+			token: credentials!.accessToken,
 		},
 		body,
 		uri: uri || `${credentials!.url}/api${resource}`,
-		json: true
+		json: true,
 	};
 
 	options = Object.assign({}, options, option);
@@ -50,7 +50,7 @@ export function createDataFromParameters(this: IExecuteFunctions | IExecuteSingl
 
 	if (dataFieldsAreJson) {
 		// Parameters are defined as JSON
-		return JSON.parse(this.getNodeParameter('dataFieldsJson', itemIndex, {}) as string);
+		return JSON.parse(this.getNodeParameter('dataFieldsJson', itemIndex, '{}') as string);
 	}
 
 	// Parameters are defined in UI

@@ -1,5 +1,5 @@
 import {
-	 INodeProperties,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export const userOperations = [
@@ -27,11 +27,12 @@ export const userOperations = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.'
-	}
+		description: 'The operation to perform.',
+	},
 ] as INodeProperties[];
 
 export const userFields = [
+
 	/* -------------------------------------------------------------------------- */
 	/*                                  user:get                                  */
 	/* -------------------------------------------------------------------------- */
@@ -51,8 +52,9 @@ export const userFields = [
 				],
 			},
 		},
-		description: 'Id of user that needs to be fetched'
+		description: 'ID of user that needs to be fetched.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -68,10 +70,10 @@ export const userFields = [
 				operation: [
 					'getAll',
 				],
-			}
+			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.'
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -92,10 +94,10 @@ export const userFields = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 100
+			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.'
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Options',
@@ -115,11 +117,74 @@ export const userFields = [
 		},
 		options: [
 			{
+				displayName: 'Conditions',
+				name: 'conditionsUi',
+				placeholder: 'Add Condition',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'The condition to set.',
+				default: {},
+				options: [
+					{
+						name: 'conditionValues',
+						displayName: 'Condition',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getUserFields',
+								},
+								default: '',
+								description: 'For date, number, or boolean, please use expressions.',
+							},
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								options: [
+									{
+										name: '=',
+										value: 'equal',
+									},
+									{
+										name: '>',
+										value: '>',
+									},
+									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '>=',
+										value: '>=',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
+								],
+								default: 'equal',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields to include separated by ,'
+				description: 'Fields to include separated by ,',
 			},
 		],
 	},

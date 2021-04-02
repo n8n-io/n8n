@@ -181,7 +181,6 @@ import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { workflowSave } from '@/components/mixins/workflowSave';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
 import { saveAs } from 'file-saver';
@@ -195,7 +194,6 @@ export default mixins(
 	titleChange,
 	workflowHelpers,
 	workflowRun,
-	workflowSave,
 )
 	.extend({
 		name: 'MainHeader',
@@ -398,7 +396,7 @@ export default mixins(
 						return;
 					}
 
-					this.$store.commit('setWorkflowName', workflowName);
+					this.$store.commit('setWorkflowName', {newName: workflowName, setStateDirty: false});
 
 					this.$showMessage({
 						title: 'Workflow renamed',
@@ -448,13 +446,29 @@ export default mixins(
 				} else if (key === 'workflow-settings') {
 					this.workflowSettingsDialogVisible = true;
 				} else if (key === 'workflow-new') {
-					this.$router.push({ name: 'NodeViewNew' });
+					const result = this.$store.getters.getStateIsDirty;
+					if(result) {
+						const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+						if (importConfirm === true) {
+							this.$store.commit('setStateDirty', false);
+							this.$router.push({ name: 'NodeViewNew' });
 
-					this.$showMessage({
-						title: 'Workflow created',
-						message: 'A new workflow got created!',
-						type: 'success',
-					});
+							this.$showMessage({
+								title: 'Workflow created',
+								message: 'A new workflow got created!',
+								type: 'success',
+							});
+						}
+					} else {
+						this.$router.push({ name: 'NodeViewNew' });
+
+						this.$showMessage({
+							title: 'Workflow created',
+							message: 'A new workflow got created!',
+							type: 'success',
+						});
+					}
+					this.$titleReset();
 				} else if (key === 'credentials-open') {
 					this.credentialOpenDialogVisible = true;
 				} else if (key === 'credentials-new') {

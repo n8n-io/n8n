@@ -325,7 +325,7 @@ export const contactNoteFields = [
 				name: 'contactId',
 				type: 'number',
 				typeOptions: {
-					minValue: 0
+					minValue: 0,
 				},
 				default: 0,
 			},

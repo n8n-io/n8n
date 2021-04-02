@@ -1,4 +1,4 @@
-import {MongoDb, SQLite, MySQLDb, PostgresDb} from '../src/databases/index';
+import { SQLite, MySQLDb, PostgresDb} from '../src/databases/index';
 
 module.exports = [
     {
@@ -17,25 +17,6 @@ module.exports = [
            "entitiesDir": "./src/databases/sqlite",
            "migrationsDir": "./src/databases/sqlite/migrations",
            "subscribersDir": "./src/databases/sqlite/subscribers"
-        }
-    },
-    {
-        "name": "mongodb",
-        "type": "mongodb",
-        "logging": false,
-        "entities": Object.values(MongoDb),
-        "url": "mongodb://root:example@localhost:27017/n8n",
-        "authSource": 'admin',
-        "migrations": [
-           "./src/databases/mongodb/migrations/*.ts"
-        ],
-        "subscribers": [
-           "src/subscriber/**/*.ts"
-        ],
-        "cli": {
-           "entitiesDir": "./src/databases/mongodb",
-           "migrationsDir": "./src/databases/mongodb/Migrations",
-           "subscribersDir": "./src/databases/mongodb/Subscribers"
         }
     },
     {

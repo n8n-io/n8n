@@ -61,7 +61,7 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 		method,
 		path: `${path}?${queryToString(query).replace(/\+/g, '%2B')}`,
 		service: 's3',
-		body
+		body,
 	};
 
 	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim() });

@@ -21,7 +21,7 @@ export async function zohoApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 		},
 		qs,
 		uri: uri || `https://www.zohoapis.com/crm/v2${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		//@ts-ignore

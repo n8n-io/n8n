@@ -74,12 +74,12 @@ export const invoiceFields = [
 			{
 				name: 'Bill',
 				value: 'ACCPAY',
-				description: 'Accounts Payable or supplier invoice'
+				description: 'Accounts Payable or supplier invoice',
 			},
 			{
 				name: 'Sales Invoice',
 				value: 'ACCREC',
-				description: ' Accounts Receivable or customer invoice'
+				description: ' Accounts Receivable or customer invoice',
 			},
 		],
 		default: '',
@@ -130,7 +130,7 @@ export const invoiceFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Line item data',

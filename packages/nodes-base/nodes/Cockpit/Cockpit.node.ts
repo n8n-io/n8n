@@ -27,8 +27,8 @@ import {
 	singletonOperations,
 } from './SingletonDescription';
 import {
-	getSingleton,
 	getAllSingletonNames,
+	getSingleton,
 } from './SingletonFunctions';
 
 export class Cockpit implements INodeType {
