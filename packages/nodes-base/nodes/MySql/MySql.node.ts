@@ -238,7 +238,7 @@ export class MySql implements INodeType {
 			const updateItems = copyInputItems(items, columns);
 			const updateSQL = `UPDATE ${table} SET ${columns.map(column => `${column} = ?`).join(',')} WHERE ${updateKey} = ?;`;
 			const queryQueue = updateItems.map((item) => connection.query(updateSQL, Object.values(item).concat(item[updateKey])));
-			let queryResult = await Promise.all(queryQueue);
+			const queryResult = await Promise.all(queryQueue);
 			returnItems = this.helpers.returnJsonArray(queryResult.map(result => result[0]) as unknown as IDataObject[]);
 
 		} else {
