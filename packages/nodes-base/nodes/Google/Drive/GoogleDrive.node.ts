@@ -1997,8 +1997,8 @@ export class GoogleDrive implements INodeType {
 					}
 
 					const qs = {
-						supportsAllDrives: true
-					}
+						supportsAllDrives: true,
+					};
 					
 					const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/copy`, body, qs);
 
