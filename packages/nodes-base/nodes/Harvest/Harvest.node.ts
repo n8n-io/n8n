@@ -175,17 +175,6 @@ export class Harvest implements INodeType {
 				description: 'The resource to operate on.',
 			},
 
-			{
-				displayName: 'Account ID',
-				name: 'accountId',
-				type: 'options',
-				required: true,
-				typeOptions: {
-					loadOptionsMethod: 'getAccounts',
-				},
-				default: '',
-			},
-
 			// operations
 			...clientOperations,
 			...companyOperations,
@@ -197,6 +186,17 @@ export class Harvest implements INodeType {
 			...taskOperations,
 			...timeEntryOperations,
 			...userOperations,
+
+			{
+				displayName: 'Account ID',
+				name: 'accountId',
+				type: 'options',
+				required: true,
+				typeOptions: {
+					loadOptionsMethod: 'getAccounts',
+				},
+				default: '',
+			},
 
 			// fields
 			...clientFields,

@@ -222,21 +222,22 @@ export const taskFields = [
 				description: 'The default hourly rate to use for this task when it is added to a project. Defaults to 0.',
 			},
 			{
-				displayName: 'Is Default',
-				name: 'is_default',
-				type: 'boolean',
-				default: false,
-				description: 'Whether this task should be automatically added to future projects. Defaults to false.',
-			},
-			{
 				displayName: 'Is Active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
 				description: 'Whether this task is active or archived. Defaults to true',
 			},
+			{
+				displayName: 'Is Default',
+				name: 'is_default',
+				type: 'boolean',
+				default: false,
+				description: 'Whether this task should be automatically added to future projects. Defaults to false.',
+			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                task:update                                 */
 	/* -------------------------------------------------------------------------- */

@@ -1,4 +1,4 @@
-import { 
+import {
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -580,7 +580,6 @@ export const projectFields = [
 				default: false,
 				description: 'Option to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.',
 			},
-
 			{
 				displayName: 'Starts On',
 				name: 'starts_on',
