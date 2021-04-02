@@ -63,8 +63,15 @@ export async function createCustomTsconfig () {
 export async function buildFiles (options?: IBuildOptions): Promise<string> {
 	options = options || {};
 
-	// Get the path of the TypeScript cli of this project
-	const tscPath = join(__dirname, '../../node_modules/.bin/tsc');
+	let typescriptPath;
+
+	// Check for OS to designate correct tsc path
+	if (process.platform === 'win32') {
+		typescriptPath = '../../node_modules/TypeScript/lib/tsc';
+	} else {
+		typescriptPath = '../../node_modules/.bin/tsc';
+	}
+	const tscPath = join(__dirname, typescriptPath);
 
 	const tsconfigData = await createCustomTsconfig();
 

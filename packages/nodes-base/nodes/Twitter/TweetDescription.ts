@@ -18,12 +18,27 @@ export const tweetOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new tweet',
+				description: 'Create or reply a tweet',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a tweet',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search tweets',
+			},
+			{
+				name: 'Like',
+				value: 'like',
+				description: 'Like a tweet',
+			},
+			{
+				name: 'Retweet',
+				value: 'retweet',
+				description: 'Retweet a tweet',
 			},
 		],
 		default: 'create',
@@ -32,9 +47,9 @@ export const tweetOperations = [
 ] as INodeProperties[];
 
 export const tweetFields = [
-/* -------------------------------------------------------------------------- */
-/*                                tweet:create                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                tweet:create                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Text',
 		name: 'text',
@@ -88,6 +103,13 @@ export const tweetFields = [
 				description: 'Whether or not to put a pin on the exact coordinates a Tweet has been sent from.',
 			},
 			{
+				displayName: 'In Reply to Tweet',
+				name: 'inReplyToStatusId',
+				type: 'string',
+				default: '',
+				description: 'The ID of an existing status that the update is in reply to.',
+			},
+			{
 				displayName: 'Location',
 				name: 'locationFieldsUi',
 				type: 'fixedCollection',
@@ -126,11 +148,34 @@ export const tweetFields = [
 				default: false,
 				description: 'If you upload Tweet media that might be considered sensitive content such as nudity, or medical procedures, you must set this value to true.',
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                tweet:search                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                tweet:delete                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Tweet ID',
+		name: 'tweetId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'delete',
+				],
+				resource: [
+					'tweet',
+				],
+			},
+		},
+		description: 'The ID of the tweet to delete.',
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                tweet:search                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Search Text',
 		name: 'searchText',
@@ -306,7 +351,7 @@ export const tweetFields = [
 					{
 						name: 'Popular',
 						value: 'popular',
-						description: 'Return only the most popular results in the response.'
+						description: 'Return only the most popular results in the response.',
 					},
 				],
 				default: 'mixed',
@@ -318,6 +363,102 @@ export const tweetFields = [
 				type: 'dateTime',
 				default: '',
 				description: 'Returns tweets created before the given date',
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                tweet:like                                  */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Tweet ID',
+		name: 'tweetId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'like',
+				],
+				resource: [
+					'tweet',
+				],
+			},
+		},
+		description: 'The ID of the tweet',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'like',
+				],
+				resource: [
+					'tweet',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include Entities',
+				name: 'includeEntities',
+				type: 'boolean',
+				default: false,
+				description: 'The entities will be omitted when set to false',
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                tweet:retweet                               */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Tweet ID',
+		name: 'tweetId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'retweet',
+				],
+				resource: [
+					'tweet',
+				],
+			},
+		},
+		description: 'The ID of the tweet',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'retweet',
+				],
+				resource: [
+					'tweet',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Trim User',
+				name: 'trimUser',
+				type: 'boolean',
+				default: false,
+				description: `When set to either true, each tweet returned in a timeline will include a user object including only the status authors numerical ID.`,
 			},
 		],
 	},

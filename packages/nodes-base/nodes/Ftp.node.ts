@@ -17,6 +17,24 @@ import {
 import * as ftpClient from 'promise-ftp';
 import * as sftpClient from 'ssh2-sftp-client';
 
+interface ReturnFtpItem {
+	type: string;
+	name: string;
+	size: number;
+	accessTime: Date;
+	modifyTime: Date;
+	rights: {
+		user: string;
+		group: string;
+		other: string;
+	};
+	owner: string | number;
+	group: string | number;
+	target: string;
+	sticky?: boolean;
+	path: string;
+}
+
 export class Ftp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'FTP',
@@ -80,6 +98,11 @@ export class Ftp implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a file.',
+					},
+					{
 						name: 'Download',
 						value: 'download',
 						description: 'Download a file.',
@@ -90,6 +113,11 @@ export class Ftp implements INodeType {
 						description: 'List folder content.',
 					},
 					{
+						name: 'Rename',
+						value: 'rename',
+						description: 'Rename/move oldPath to newPath.',
+					},
+					{
 						name: 'Upload',
 						value: 'upload',
 						description: 'Upload a file.',
@@ -97,6 +125,25 @@ export class Ftp implements INodeType {
 				],
 				default: 'download',
 				description: 'Operation to perform.',
+			},
+
+			// ----------------------------------
+			//         delete
+			// ----------------------------------
+			{
+				displayName: 'Path',
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+						],
+					},
+				},
+				name: 'path',
+				type: 'string',
+				default: '',
+				description: 'The file path of the file to delete. Has to contain the full path.',
+				required: true,
 			},
 
 			// ----------------------------------
@@ -131,6 +178,40 @@ export class Ftp implements INodeType {
 				type: 'string',
 				default: 'data',
 				description: 'Object property name which holds binary data.',
+				required: true,
+			},
+
+			// ----------------------------------
+			//         rename
+			// ----------------------------------
+			{
+				displayName: 'Old Path',
+				displayOptions: {
+					show: {
+						operation: [
+							'rename',
+						],
+					},
+				},
+				name: 'oldPath',
+				type: 'string',
+				default: '',
+				description: 'The old path',
+				required: true,
+			},
+			{
+				displayName: 'New Path',
+				displayOptions: {
+					show: {
+						operation: [
+							'rename',
+						],
+					},
+				},
+				name: 'newPath',
+				type: 'string',
+				default: '',
+				description: 'The new path',
 				required: true,
 			},
 
@@ -175,7 +256,7 @@ export class Ftp implements INodeType {
 						],
 						binaryData: [
 							true,
-						]
+						],
 					},
 				},
 				name: 'binaryPropertyName',
@@ -193,7 +274,7 @@ export class Ftp implements INodeType {
 						],
 						binaryData: [
 							false,
-						]
+						],
 					},
 				},
 				name: 'fileContent',
@@ -220,6 +301,21 @@ export class Ftp implements INodeType {
 				description: 'Path of directory to list contents of.',
 				required: true,
 			},
+			{
+				displayName: 'Recursive',
+				displayOptions: {
+					show: {
+						operation: [
+							'list',
+						],
+					},
+				},
+				name: 'recursive',
+				type: 'boolean',
+				default: false,
+				description: 'Return object representing all directories / objects recursively found within SFTP server',
+				required: true,
+			},
 		],
 	};
 
@@ -234,6 +330,7 @@ export class Ftp implements INodeType {
 
 		let credentials: ICredentialDataDecryptedObject | undefined = undefined;
 		const protocol = this.getNodeParameter('protocol', 0) as string;
+
 		if (protocol === 'sftp') {
 			credentials = this.getCredentials('sftp');
 		} else {
@@ -244,26 +341,27 @@ export class Ftp implements INodeType {
 			throw new Error('Failed to get credentials!');
 		}
 
-		let ftp: ftpClient;
-		let sftp: sftpClient;
+		let ftp : ftpClient;
+		let sftp : sftpClient;
+
 		if (protocol === 'sftp') {
 			sftp = new sftpClient();
-
 			await sftp.connect({
 				host: credentials.host as string,
 				port: credentials.port as number,
 				username: credentials.username as string,
 				password: credentials.password as string,
+				privateKey: credentials.privateKey as string | undefined,
+				passphrase: credentials.passphrase as string | undefined,
 			});
 
 		} else {
 			ftp = new ftpClient();
-
 			await ftp.connect({
 				host: credentials.host as string,
 				port: credentials.port as number,
 				user: credentials.username as string,
-				password: credentials.password as string
+				password: credentials.password as string,
 			});
 		}
 
@@ -283,14 +381,43 @@ export class Ftp implements INodeType {
 			items[i] = newItem;
 
 			if (protocol === 'sftp') {
-				const path = this.getNodeParameter('path', i) as string;
 
 				if (operation === 'list') {
-					responseData = await sftp!.list(path);
-					returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+					const path = this.getNodeParameter('path', i) as string;
+
+					const recursive = this.getNodeParameter('recursive', i) as boolean;
+
+					if (recursive) {
+						responseData = await callRecursiveList(path, sftp!, normalizeSFtpItem);
+						returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+					} else {
+						responseData = await sftp!.list(path);
+						responseData.forEach(item => normalizeSFtpItem(item as sftpClient.FileInfo, path));
+						returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+					}
+				}
+
+				if (operation === 'delete') {
+					const path = this.getNodeParameter('path', i) as string;
+
+					responseData = await sftp!.delete(path);
+
+					returnItems.push({ json: { success: true } });
+				}
+
+				if (operation === 'rename') {
+					const oldPath = this.getNodeParameter('oldPath', i) as string;
+
+					const newPath = this.getNodeParameter('newPath', i) as string;
+
+					responseData = await sftp!.rename(oldPath, newPath);
+
+					returnItems.push({ json: { success: true } });
 				}
 
 				if (operation === 'download') {
+					const path = this.getNodeParameter('path', i) as string;
+
 					responseData = await sftp!.get(path);
 
 					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
@@ -305,13 +432,11 @@ export class Ftp implements INodeType {
 					const remotePath = this.getNodeParameter('path', i) as string;
 
 					// Check if dir path exists
-					const dirExists = await sftp!.exists(dirname(remotePath));
+					const dirPath = dirname(remotePath);
+					const dirExists = await sftp!.exists(dirPath);
 
 					// If dir does not exist, create all recursively in path
 					if (!dirExists) {
-						// Separate filename from dir path
-						const fileName = basename(remotePath);
-						const dirPath = remotePath.replace(fileName, '');
 						// Create directory
 						await sftp!.mkdir(dirPath, true);
 					}
@@ -344,14 +469,32 @@ export class Ftp implements INodeType {
 
 			if (protocol === 'ftp') {
 
-				const path = this.getNodeParameter('path', i) as string;
-
 				if (operation === 'list') {
-					responseData = await ftp!.list(path);
-					returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+					const path = this.getNodeParameter('path', i) as string;
+
+					const recursive = this.getNodeParameter('recursive', i) as boolean;
+
+					if (recursive) {
+						responseData = await callRecursiveList(path, ftp!, normalizeFtpItem);
+						returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+					} else {
+						responseData = await ftp!.list(path);
+						responseData.forEach(item => normalizeFtpItem(item as ftpClient.ListingElement, path));
+						returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+					}
+				}
+
+				if (operation === 'delete') {
+					const path = this.getNodeParameter('path', i) as string;
+
+					responseData = await ftp!.delete(path);
+
+					returnItems.push({ json: { success: true } });
 				}
 
 				if (operation === 'download') {
+					const path = this.getNodeParameter('path', i) as string;
+
 					responseData = await ftp!.get(path);
 
 					// Convert readable stream to buffer so that can be displayed properly
@@ -369,6 +512,17 @@ export class Ftp implements INodeType {
 					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(responseData, filePathDownload);
 
 					returnItems.push(items[i]);
+				}
+
+				if (operation === 'rename') {
+
+					const oldPath = this.getNodeParameter('oldPath', i) as string;
+
+					const newPath = this.getNodeParameter('newPath', i) as string;
+
+					responseData = await ftp!.rename(oldPath, newPath);
+
+					returnItems.push({ json: { success: true } });
 				}
 
 				if (operation === 'upload') {
@@ -431,4 +585,55 @@ export class Ftp implements INodeType {
 
 		return [returnItems];
 	}
+}
+
+
+function normalizeFtpItem(input: ftpClient.ListingElement, path: string) {
+	const item = input as unknown as ReturnFtpItem;
+	item.modifyTime = input.date;
+	item.path = `${path}${path.endsWith('/') ? '' : '/'}${item.name}`;
+	// @ts-ignore
+	item.date = undefined;
+}
+
+
+function normalizeSFtpItem(input: sftpClient.FileInfo, path: string) {
+	const item = input as unknown as ReturnFtpItem;
+	item.accessTime = new Date(input.accessTime);
+	item.modifyTime = new Date(input.modifyTime);
+	item.path = `${path}${path.endsWith('/') ? '' : '/'}${item.name}`;
+}
+
+async function callRecursiveList(path: string, client: sftpClient | ftpClient, normalizeFunction: (input: ftpClient.ListingElement & sftpClient.FileInfo, path: string) => void) {
+	const pathArray : string[] = [path];
+	let currentPath = path;
+	const directoryItems : sftpClient.FileInfo[] = [];
+	let index = 0;
+
+	do {
+		// tslint:disable-next-line: array-type
+		const returnData : sftpClient.FileInfo[] | (string | ftpClient.ListingElement)[] = await client.list(pathArray[index]);
+
+		// @ts-ignore
+		returnData.map((item : sftpClient.FileInfo) => {
+			if ((pathArray[index] as string).endsWith('/')) {
+				currentPath = `${pathArray[index]}${item.name}`;
+			} else {
+				currentPath = `${pathArray[index]}/${item.name}`;
+			}
+
+			// Is directory
+			if (item.type === 'd') {
+				pathArray.push(currentPath);
+			}
+
+			normalizeFunction(item as ftpClient.ListingElement & sftpClient.FileInfo, currentPath);
+			directoryItems.push(item);
+		});
+		index++;
+
+	} while (index <= pathArray.length - 1);
+
+
+	return directoryItems;
 }

@@ -265,7 +265,7 @@ export default mixins(
 
 					} else if (value.charAt(0) === '^') {
 						// Is variable
-						let displayValue = `{{${value.slice(1)}}}` as string | number | boolean | null;
+						let displayValue = `{{${value.slice(1)}}}` as string | number | boolean | null | undefined;
 						if (this.resolvedValue) {
 							displayValue = [null, undefined].includes(displayValue as null | undefined) ? '' : displayValue;
 							displayValue = this.resolveParameterString((displayValue as string).toString()) as NodeParameterValue;

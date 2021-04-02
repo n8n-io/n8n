@@ -1,7 +1,7 @@
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions
 } from 'n8n-core';
 
 import {
@@ -9,7 +9,6 @@ import {
 } from 'n8n-workflow';
 
 import {OptionsWithUri} from 'request';
-import {Url} from "url";
 
 interface ScriptsOptions {
 	script?: any; //tslint:disable-line:no-any
@@ -23,6 +22,12 @@ interface LayoutObject {
 	name: string;
 	isFolder?: boolean;
 	folderLayoutNames?:LayoutObject[];
+}
+
+interface ScriptObject {
+	name: string;
+	isFolder?: boolean;
+	folderScriptNames?:LayoutObject[];
 }
 
 /**
@@ -49,7 +54,7 @@ export async function layoutsApiRequest(this: ILoadOptionsFunctions | IExecuteFu
 		},
 		method: 'GET',
 		uri: url,
-		json: true
+		json: true,
 	};
 
 	try {
@@ -101,13 +106,12 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> { // 
 		},
 		method: 'GET',
 		uri: url,
-		json: true
+		json: true,
 	};
 
 	try {
 		const responseData = await this.helpers.request!(options);
 		return responseData.response.fieldMetaData;
-
 	} catch (error) {
 		// If that data does not exist for some reason return the actual error
 		throw error;
@@ -138,7 +142,7 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> { //
 		},
 		method: 'GET',
 		uri: url,
-		json: true
+		json: true,
 	};
 
 	try {
@@ -173,17 +177,34 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> { //
 		},
 		method: 'GET',
 		uri: url,
-		json: true
+		json: true,
 	};
 
 	try {
 		const responseData = await this.helpers.request!(options);
-		return responseData.response.scripts;
+		const items = parseScriptsList(responseData.response.scripts);
+		items.sort((a, b) => a.name > b.name ? 0 : 1);
+		return items;
 
 	} catch (error) {
 		// If that data does not exist for some reason return the actual error
 		throw error;
 	}
+}
+
+function parseScriptsList(scripts: ScriptObject[]): INodePropertyOptions[] {
+	const returnData: INodePropertyOptions[] = [];
+	for (const script of scripts) {
+		if (script.isFolder!)  {
+			returnData.push(...parseScriptsList(script.folderScriptNames!));
+		} else if (script.name !== '-') {
+			returnData.push({
+				name: script.name,
+				value: script.name,
+			});
+		}
+	}
+	return returnData;
 }
 
 export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions): Promise<any> { // tslint:disable-line:no-any
@@ -205,7 +226,7 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 		uri: url,
 		headers: {},
 		method: 'POST',
-		json: true
+		json: true,
 		//rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
 	};
 	requestOptions.auth = {
@@ -213,13 +234,13 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 		pass: password as string,
 	};
 	requestOptions.body = {
-		"fmDataSource": [
+		'fmDataSource': [
 			{
-				"database": host,
-				"username": login as string,
-				"password": password as string
-			}
-		]
+				'database': host,
+				'username': login as string,
+				'password': password as string,
+			},
+		],
 	};
 
 	try {
@@ -231,8 +252,6 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 
 		return response.response.token;
 	} catch (error) {
-		console.error(error);
-
 		let errorMessage;
 		if (error.response) {
 			errorMessage = error.response.body.messages[0].message + '(' + error.response.body.messages[0].message + ')';
@@ -263,7 +282,7 @@ export async function logout(this: ILoadOptionsFunctions | IExecuteFunctions | I
 		uri: url,
 		headers: {},
 		method: 'DELETE',
-		json: true
+		json: true,
 		//rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
 	};
 
@@ -276,8 +295,6 @@ export async function logout(this: ILoadOptionsFunctions | IExecuteFunctions | I
 
 		return response;
 	} catch (error) {
-		console.error(error);
-
 		const errorMessage = error.response.body.messages[0].message + '(' + error.response.body.messages[0].message + ')';
 
 		if (errorMessage !== undefined) {
@@ -301,7 +318,7 @@ export function parseSort(this: IExecuteFunctions, i: number): object | null {
 				// @ts-ignore
 				sort.push({
 					'fieldName': parameterData!.name as string,
-					'sortOrder': parameterData!.value
+					'sortOrder': parameterData!.value,
 				});
 			}
 		}

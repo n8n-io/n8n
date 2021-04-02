@@ -36,7 +36,7 @@ export class LoadNodeParameterOptions {
 			position: [
 				0,
 				0,
-			]
+			],
 		};
 
 		if (credentials) {

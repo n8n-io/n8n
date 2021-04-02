@@ -1,8 +1,8 @@
 import { OptionsWithUri } from 'request';
 import {
 	IExecuteFunctions,
-	ILoadOptionsFunctions,
 	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 import { IDataObject } from 'n8n-workflow';
 
@@ -18,7 +18,7 @@ export async function codaApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 		qs,
 		body,
 		uri: uri ||`https://coda.io/apis/v1${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {

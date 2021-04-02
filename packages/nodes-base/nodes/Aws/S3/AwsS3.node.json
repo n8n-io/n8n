@@ -1,0 +1,28 @@
+{
+	"node": "n8n-nodes-base.awsS3",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Development",
+		"Data & Storage"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/aws"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.awsS3/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Why this CEO loves n8n",
+				"icon": "🧬",
+				"url": "https://medium.com/n8n-io/why-this-ceo-loves-n8n-ee7d102b0948"
+			}
+		]
+	}
+}

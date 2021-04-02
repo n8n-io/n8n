@@ -26,7 +26,7 @@ export class Rundeck implements INodeType {
 			{
 				name: 'rundeckApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -120,7 +120,7 @@ export class Rundeck implements INodeType {
 								type: 'string',
 								default: '',
 							},
-						]
+						],
 					},
 				],
 			},

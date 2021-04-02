@@ -23,7 +23,10 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 		body,
 		//@ts-ignore
 		uri,
-		json: true
+		json: true,
+		qsStringifyOptions: {
+			arrayFormat: 'brackets',
+		},
 	};
 
 	options = Object.assign({}, options, option);
@@ -56,6 +59,7 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 			return await this.helpers.requestOAuth2!.call(this, 'zendeskOAuth2Api', options);
 		}
 	} catch(err) {
+
 		let errorMessage = err.message;
 		if (err.response && err.response.body && err.response.body.error) {
 			errorMessage = err.response.body.error;

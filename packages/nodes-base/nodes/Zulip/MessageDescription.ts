@@ -91,7 +91,7 @@ export const messageFields = [
 				],
 				operation: [
 					'sendPrivate',
-				]
+				],
 			},
 		},
 		description: 'The content of the message.',
@@ -158,7 +158,7 @@ export const messageFields = [
 				],
 				operation: [
 					'sendStream',
-				]
+				],
 			},
 		},
 		description: 'The content of the message.',
@@ -179,7 +179,7 @@ export const messageFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the message.',
@@ -239,7 +239,7 @@ export const messageFields = [
 				default: '',
 				description: 'The topic of the message. Only required for stream messages',
 			},
-		]
+		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 message:get                                */
@@ -257,7 +257,7 @@ export const messageFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the message.',
@@ -278,7 +278,7 @@ export const messageFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the message.',
@@ -299,7 +299,7 @@ export const messageFields = [
 				],
 				operation: [
 					'updateFile',
-				]
+				],
 			},
 		},
 		description: 'Name of the binary property to which to<br />write the data of the read file.',

@@ -47,7 +47,7 @@ export class ReadBinaryFiles implements INodeType {
 				required: true,
 				description: 'Name of the binary property to which to<br />write the data of the read files.',
 			},
-		]
+		],
 	};
 
 
@@ -60,14 +60,12 @@ export class ReadBinaryFiles implements INodeType {
 		const items: INodeExecutionData[] = [];
 		let item: INodeExecutionData;
 		let data: Buffer;
-		let fileName: string;
 		for (const filePath of files) {
 			data = await fsReadFileAsync(filePath) as Buffer;
 
-			fileName = path.parse(filePath).base;
 			item = {
 				binary: {
-					[dataPropertyName]: await this.helpers.prepareBinaryData(data, fileName)
+					[dataPropertyName]: await this.helpers.prepareBinaryData(data, filePath),
 				},
 				json: {},
 			};

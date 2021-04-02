@@ -1,4 +1,10 @@
-import { ContainerOptions } from 'rhea';
+import {
+	ContainerOptions,
+	create_container,
+	EventContext,
+	Message,
+	ReceiverOptions,
+} from 'rhea';
 
 import { ITriggerFunctions } from 'n8n-core';
 import {
@@ -62,11 +68,18 @@ export class AmqpTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Only Body',
-						name: 'onlyBody',
+						displayName: 'Container ID',
+						name: 'containerId',
+						type: 'string',
+						default: '',
+						description: 'Will be used to pass to the RHEA Backend as container_id',
+					},
+					{
+						displayName: 'Convert Body To String',
+						name: 'jsonConvertByteArrayToString',
 						type: 'boolean',
 						default: false,
-						description: 'Returns only the body property.',
+						description: 'Convert JSON Body content (["body"]["content"]) from Byte Array to string. Needed for Azure Service Bus.',
 					},
 					{
 						displayName: 'JSON Parse Body',
@@ -75,9 +88,44 @@ export class AmqpTrigger implements INodeType {
 						default: false,
 						description: 'Parse the body to an object.',
 					},
+					{
+						displayName: 'Messages per Cicle',
+						name: 'pullMessagesNumber',
+						type: 'number',
+						default: 100,
+						description: 'Number of messages to pull from the bus for every cicle',
+					},
+					{
+						displayName: 'Only Body',
+						name: 'onlyBody',
+						type: 'boolean',
+						default: false,
+						description: 'Returns only the body property.',
+					},
+					{
+						displayName: 'Reconnect',
+						name: 'reconnect',
+						type: 'boolean',
+						default: true,
+						description: 'Automatically reconnect if disconnected',
+					},
+					{
+						displayName: 'Reconnect Limit',
+						name: 'reconnectLimit',
+						type: 'number',
+						default: 50,
+						description: 'Maximum number of reconnect attempts',
+					},
+					{
+						displayName: 'Sleep Time',
+						name: 'sleepTime',
+						type: 'number',
+						default: 10,
+						description: 'Milliseconds to sleep after every cicle.',
+					},
 				],
 			},
-		]
+		],
 	};
 
 
@@ -92,6 +140,10 @@ export class AmqpTrigger implements INodeType {
 		const clientname = this.getNodeParameter('clientname', '') as string;
 		const subscription = this.getNodeParameter('subscription', '') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
+		const pullMessagesNumber = options.pullMessagesNumber as number || 100;
+		const containerId = options.containerId as string;
+		const containerReconnect = options.reconnect as boolean || true;
+		const containerReconnectLimit = options.reconnectLimit as number || 50;
 
 		if (sink === '') {
 			throw new Error('Queue or Topic required!');
@@ -103,30 +155,47 @@ export class AmqpTrigger implements INodeType {
 			durable = true;
 		}
 
-		const container = require('rhea');
-		const connectOptions: ContainerOptions = {
-			host: credentials.hostname,
-			port: credentials.port,
-			reconnect: true,		// this id the default anyway
-			reconnect_limit: 50,	// try for max 50 times, based on a back-off algorithm
-			container_id: (durable ? clientname : null)
-		};
-		if (credentials.username || credentials.password) {
-			container.options.username = credentials.username;
-			container.options.password = credentials.password;
-		}
+		const container = create_container();
 
-		let lastMsgId: number | undefined = undefined;
+		let lastMsgId: string | number | Buffer | undefined = undefined;
 		const self = this;
 
-		container.on('message', (context: any) => { // tslint:disable-line:no-any
-			if (context.message.message_id && context.message.message_id === lastMsgId) {
-				// ignore duplicate message check, don't think it's necessary, but it was in the rhea-lib example code
-				lastMsgId = context.message.message_id;
+		container.on('receiver_open', (context: EventContext) => {
+			context.receiver?.add_credit(pullMessagesNumber);
+		});
+
+		container.on('message', (context: EventContext) => {
+
+			// No message in the context
+			if (!context.message) {
 				return;
 			}
 
+			// ignore duplicate message check, don't think it's necessary, but it was in the rhea-lib example code
+			if (context.message.message_id && context.message.message_id === lastMsgId) {
+				return;
+			}
+			lastMsgId = context.message.message_id;
+
 			let data = context.message;
+
+			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
+				// The buffer is not ready... Stringify and parse back to load it.
+				const cont = JSON.stringify(data.body.content);
+				data.body = String.fromCharCode.apply(null, JSON.parse(cont).data);
+			}
+
+			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
+				// The buffer is not ready... Stringify and parse back to load it.
+				const cont = JSON.stringify(data.body.content);
+				data.body = String.fromCharCode.apply(null, JSON.parse(cont).data);
+			}
+
+			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
+				// The buffer is not ready... Stringify and parse back to load it.
+				const content = JSON.stringify(data.body.content);
+				data.body = String.fromCharCode.apply(null, JSON.parse(content).data);
+			}
 
 			if (options.jsonParseBody === true) {
 				data.body = JSON.parse(data.body);
@@ -135,35 +204,50 @@ export class AmqpTrigger implements INodeType {
 				data = data.body;
 			}
 
-			self.emit([self.helpers.returnJsonArray([data])]);
+
+			self.emit([self.helpers.returnJsonArray([data as any])]); // tslint:disable-line:no-any
+
+			if (!context.receiver?.has_credit()) {
+				setTimeout(() => {
+					context.receiver?.add_credit(pullMessagesNumber);
+				}, options.sleepTime as number || 10);
+			}
 		});
 
+		/*
+			Values are documentet here: https://github.com/amqp/rhea#container
+		 */
+		const connectOptions: ContainerOptions = {
+			host: credentials.hostname,
+			hostname: credentials.hostname,
+			port: credentials.port,
+			reconnect: containerReconnect,
+			reconnect_limit: containerReconnectLimit,
+			username: credentials.username ? credentials.username : undefined,
+			password: credentials.password ? credentials.password : undefined,
+			transport: credentials.transportType ? credentials.transportType : undefined,
+			container_id: containerId ? containerId : undefined,
+			id: containerId ? containerId : undefined,
+		};
 		const connection = container.connect(connectOptions);
-		let clientOptions = undefined;
-		if (durable) {
-			clientOptions = {
-				name: subscription,
-				source: {
-					address: sink,
-					durable: 2,
-					expiry_policy: 'never'
-				},
-				credit_window: 1	// prefetch 1
-			};
-		} else {
-			clientOptions = {
-				source: {
-					address: sink,
-				},
-				credit_window: 1	// prefetch 1
-			};
-		}
+
+		const clientOptions: ReceiverOptions = {
+			name: subscription ? subscription : undefined,
+			source: {
+				address: sink,
+				durable: (durable ? 2 : undefined),
+				expiry_policy: (durable ? 'never' : undefined),
+			},
+			credit_window: 0,	// prefetch 1
+		};
 		connection.open_receiver(clientOptions);
 
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
+			container.removeAllListeners('receiver_open');
+			container.removeAllListeners('message');
 			connection.close();
 		}
 
@@ -173,18 +257,19 @@ export class AmqpTrigger implements INodeType {
 		// for AMQP it doesn't make much sense to wait here but
 		// for a new user who doesn't know how this works, it's better to wait and show a respective info message
 		async function manualTriggerFunction() {
-			await new Promise(( resolve, reject ) => {
+			await new Promise((resolve, reject) => {
 				const timeoutHandler = setTimeout(() => {
 					reject(new Error('Aborted, no message received within 30secs. This 30sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.'));
 				}, 30000);
-				container.on('message', (context: any) => { // tslint:disable-line:no-any
+				container.on('message', (context: EventContext) => {
 					// Check if the only property present in the message is body
 					// in which case we only emit the content of the body property
 					// otherwise we emit all properties and their content
-					if (Object.keys(context.message)[0] === 'body' && Object.keys(context.message).length === 1) {
-						self.emit([self.helpers.returnJsonArray([context.message.body])]);
+					const message = context.message as Message;
+					if (Object.keys(message)[0] === 'body' && Object.keys(message).length === 1) {
+						self.emit([self.helpers.returnJsonArray([message.body])]);
 					} else {
-						self.emit([self.helpers.returnJsonArray([context.message])]);
+						self.emit([self.helpers.returnJsonArray([message as any])]); // tslint:disable-line:no-any
 					}
 					clearTimeout(timeoutHandler);
 					resolve(true);

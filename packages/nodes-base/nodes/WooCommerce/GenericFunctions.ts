@@ -1,6 +1,6 @@
-import { OptionsWithUri } from 'request';
-import { createHash } from 'crypto';
-import { snakeCase } from 'change-case';
+import { 
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -10,15 +10,24 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 import {
+	ICredentialDataDecryptedObject,
 	IDataObject,
-	ICredentialDataDecryptedObject
 } from 'n8n-workflow';
+
 import {
-	 IShoppingLine,
-	 IFeeLine,
-	 ILineItem,
-	 ICouponLine
+	ICouponLine,
+	IFeeLine,
+	ILineItem,
+	IShoppingLine,
 } from './OrderInterface';
+
+import { 
+	createHash,
+} from 'crypto';
+
+import { 
+	snakeCase,
+} from 'change-case';
 
 export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('wooCommerceApi');
@@ -33,13 +42,14 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 		method,
 		qs,
 		body,
-		uri: uri ||`${credentials.url}/wp-json/wc/v3${resource}`,
-		json: true
+		uri: uri || `${credentials.url}/wp-json/wc/v3${resource}`,
+		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.form;
 	}
 	options = Object.assign({}, options, option);
+	
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
@@ -58,7 +68,7 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 	}
 }
 
-export async function woocommerceApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function woocommerceApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -67,7 +77,7 @@ export async function woocommerceApiRequestAllItems(this: IExecuteFunctions | IL
 	query.per_page = 100;
 	do {
 		responseData = await woocommerceApiRequest.call(this, method, endpoint, body, query, uri, { resolveWithFullResponse: true });
-		uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>','');
+		uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>', '');
 		returnData.push.apply(returnData, responseData.body);
 	} while (
 		responseData.headers['link'] !== undefined &&

@@ -42,7 +42,7 @@ export class EventbriteOAuth2Api implements ICredentialType {
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'body'
+			default: 'body',
 		},
 	];
 }

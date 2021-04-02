@@ -21,6 +21,11 @@ export const folderOperations = [
 				description: 'Create a folder',
 			},
 			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a folder',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a folder',
@@ -122,6 +127,26 @@ export const folderFields = [
 		],
 	},
 
+	/* -------------------------------------------------------------------------- */
+	/*                                 folder:get                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Folder ID',
+		name: 'folderId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'folder',
+				],
+			},
+		},
+		default: '',
+		description: 'Folder ID',
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 folder:delete                              */
 	/* -------------------------------------------------------------------------- */

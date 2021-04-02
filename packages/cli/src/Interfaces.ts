@@ -33,6 +33,15 @@ export interface IActivationError {
 	};
 }
 
+export interface IBullJobData {
+	executionId: string;
+	loadStaticData: boolean;
+}
+
+export interface IBullJobResponse {
+	success: boolean;
+}
+
 export interface ICustomRequest extends Request {
 	parsedUrl: Url | undefined;
 }
@@ -57,6 +66,8 @@ export interface IWebhookDb {
 	webhookPath: string;
 	method: string;
 	node: string;
+	webhookId?: string;
+	pathLength?: number;
 }
 
 export interface IWorkflowBase extends IWorkflowBaseWorkflow {
@@ -103,14 +114,14 @@ export interface ICredentialsDecryptedResponse extends ICredentialsDecryptedDb {
 	id: string;
 }
 
-export type DatabaseType = 'mariadb' | 'mongodb' | 'postgresdb' | 'mysqldb' | 'sqlite';
+export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';
 export type SaveExecutionDataType = 'all' | 'none';
 
 export interface IExecutionBase {
 	id?: number | string | ObjectID;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
-	stoppedAt: Date;
+	stoppedAt?: Date; // empty value means execution is still running
 	workflowId?: string; // To be able to filter executions easily //
 	finished: boolean;
 	retryOf?: number | string | ObjectID; // If it is a retry, the id of the execution it is a retry of.
@@ -164,12 +175,11 @@ export interface IExecutionsStopData {
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
-	stoppedAt: Date;
+	stoppedAt?: Date;
 }
 
 export interface IExecutionsSummary {
-	id?: string; // executionIdDb
-	idActive?: string; // executionIdActive
+	id: string;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	retryOf?: string;
@@ -219,6 +229,12 @@ export interface IExternalHooks {
 	};
 }
 
+export interface IExternalHooksFileData {
+	[key: string]: {
+		[key: string]: Array<(...args: any[]) => Promise<void>>; //tslint:disable-line:no-any
+	};
+}
+
 export interface IExternalHooksFunctions {
 	dbCollections: IDatabaseCollections;
 }
@@ -241,9 +257,6 @@ export interface IN8nConfig {
 
 export interface IN8nConfigDatabase {
 	type: DatabaseType;
-	mongodb: {
-		connectionUrl: string;
-	};
 	postgresdb: {
 		host: string;
 		password: string;
@@ -288,9 +301,16 @@ export interface IN8nUISettings {
 	saveManualExecutions: boolean;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
+	oauthCallbackUrls: {
+		oauth1: string;
+		oauth2: string;
+	};
 	timezone: string;
 	urlBaseWebhook: string;
 	versionCli: string;
+	n8nMetadata?: {
+		[key: string]: string | number | undefined;
+	};
 }
 
 export interface IPackageVersions {
@@ -306,8 +326,7 @@ export type IPushDataType = 'executionFinished' | 'executionStarted' | 'nodeExec
 
 export interface IPushDataExecutionFinished {
 	data: IRun;
-	executionIdActive: string;
-	executionIdDb?: string;
+	executionId: string;
 	retryOf?: string;
 }
 

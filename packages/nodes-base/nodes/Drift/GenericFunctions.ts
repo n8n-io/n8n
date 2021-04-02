@@ -18,7 +18,7 @@ export async function driftApiRequest(this: IExecuteFunctions | IWebhookFunction
 		body,
 		qs: query,
 		uri: uri || `https://driftapi.com${resource}`,
-		json: true
+		json: true,
 	};
 
 	if (!Object.keys(body).length) {

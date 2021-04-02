@@ -2,6 +2,225 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.113.0
+
+### What changed?
+In the Dropbox node, both credential types (Access Token & OAuth2) have a new parameter called "APP Access Type".
+
+### When is action necessary?
+
+If you are using a Dropbox APP with permission type, "App Folder".
+
+### How to upgrade:
+
+Open your Dropbox node's credentials and set the "APP Access Type" parameter to "App Folder".
+
+## 0.111.0
+
+### What changed?
+In the Dropbox node, now all operations are performed relative to the user's root directory.
+
+### When is action necessary?
+
+If you are using any resource/operation with OAuth2 authentication.
+
+If you are using the `folder:list` operation with the parameter `Folder Path` empty (root path) and have a Team Space in your Dropbox account.
+
+### How to upgrade:
+
+Open the Dropbox node, go to the OAuth2 credential you are using and reconnect it again.
+
+Also, if you are using the `folder:list` operation, make sure your logic is taking into account the team folders in the response.
+
+## 0.105.0
+
+### What changed?
+In the Hubspot Trigger, now multiple events can be provided and the field `App ID` was so moved to the credentials.
+
+### When is action necessary?
+If you are using the Hubspot Trigger node.
+
+### How to upgrade:
+Open the Hubspot Trigger and set the events again. Also open the credentials `Hubspot Developer API` and set your APP ID.
+
+
+## 0.104.0
+
+### What changed?
+Support for MongoDB as a database for n8n has been dropped as MongoDB had problems saving large amounts of data in a document, among other issues.
+
+### When is action necessary?
+If you have been using MongoDB as a database for n8n. Please note that this is not related to the MongoDB node.
+
+### How to upgrade:
+Before upgrading, you can [export](https://docs.n8n.io/reference/start-workflows-via-cli.html#export-workflows-and-credentials) all your credentials and workflows using the CLI.
+
+```
+n8n export:workflow --backup --output=backups/latest/
+n8n export:credentials --backup --output=backups/latest/
+```
+
+You can then change the database to one of the supported databases mentioned [here](https://docs.n8n.io/reference/data/database.html). Finally, you can upgrade n8n and [import](https://docs.n8n.io/reference/start-workflows-via-cli.html#import-workflows-and-credentials) all your credentials and workflows back into n8n.
+
+```
+n8n import:workflow --separate --input=backups/latest/
+n8n import:credentials --separate --input=backups/latest/
+```
+
+## 0.102.0
+
+### What changed?
+- The `As User` property  and the `User Name` field got combined and renamed to `Send as User`. It also got moved under “Add Options”.
+- The `Ephemeral` property got removed. To send an ephemeral message, you have to select the "Post (Ephemeral)" operation.
+
+### When is action necessary?
+If you are using the following fields or properties in the Slack node:
+- As User
+- Ephemeral
+- User Name
+
+### How to upgrade:
+Open the Slack node and set them again to the appropriate values.
+
+----------------------------
+
+### What changed?
+If you have a question in Typeform that uses a previously answered question as part of its text, the question text would look like this in the Typeform Trigger node:
+
+`You have chosen {{field:23234242}} as your answer. Is this correct?`
+
+Those curly braces broke the expression editor. The change makes it now display like this:
+
+`You have chosen [field:23234242] as your answer. Is this correct?`
+
+### When is action necessary?
+If you are using the Typeform Trigger node with questions using the [Recall information](https://help.typeform.com/hc/en-us/articles/360050447072-What-is-Recall-information-) feature.
+
+### How to upgrade:
+In workflows using the Typeform Trigger node, nodes that reference such key names (questions that use a previously answered question as part of its text) will need to be updated.
+
+## 0.95.0
+
+### What changed?
+
+In the Harvest Node, we moved the account field from the credentials to the node parameters. This will allow you to work witn multiples accounts without having to create multiples credentials.
+
+### When is action necessary?
+
+If you are using the Harvest Node.
+
+### How to upgrade:
+
+Open the node set the parameter `Account ID`.
+
+## 0.94.0
+
+### What changed?
+
+In the Segment Node, we have changed how the properties 'traits' and 'properties' are defined. Now, key/value pairs can be provided, allowing you to send customs traits/properties.
+
+### When is action necessary?
+
+When the properties 'traits' or 'properties' are set, and one of the following resources/operations is used:
+
+| Resource | Operation |
+|--|--|
+| Identify | Create |
+| Track | Event |
+| Track | Page |
+| Group | Add |
+
+### How to upgrade:
+
+Open the affected resource/operation and set the parameters 'traits' or 'properties' again.
+
+## 0.93.0
+
+### What changed?
+
+Change in naming of the Authentication field for the Pipedrive Trigger node.
+
+### When is action necessary?
+
+If you had set "Basic Auth" for the "Authentication" field in the node.
+
+### How to upgrade:
+
+The "Authentication" field has been renamed to "Incoming Authentication". Please set the parameter “Incoming Authentication” to “Basic Auth” to activate it again.
+
+
+## 0.90.0
+
+### What changed?
+
+Node.js version 12.9 or newer is required to run n8n.
+
+### When is action necessary?
+
+If you are running Node.js version older than 12.9.
+
+### How to upgrade:
+
+You can find download and install the latest version of Node.js from [here](https://nodejs.org/en/download/).
+
+
+## 0.87.0
+
+### What changed?
+
+The link.fish node got removed because the service is shutting down.
+
+### When is action necessary?
+
+If you are are actively using the link.fish node.
+
+### How to upgrade:
+
+Unfortunately, that's not possible. We'd recommend you to look for an alternative service.
+
+
+## 0.83.0
+
+### What changed?
+
+In the Active Campaign Node, we have changed how the `getAll` operation works with various resources for the sake of consistency. To achieve this, a new parameter called 'Simple' has been added.
+
+### When is action necessary?
+
+When one of the following resources/operations is used:
+
+| Resource | Operation |
+|--|--|
+| Deal | Get All |
+| Connector | Get All |
+|  E-commerce Order | Get All |
+|  E-commerce Customer | Get All |
+|  E-commerce Order Products | Get All |
+
+### How to upgrade:
+
+Open the affected resource/operation and set the parameter `Simple` to false.
+
+## 0.79.0
+
+### What changed?
+
+We have renamed the operations in the Todoist Node for consistency with the codebase. We also deleted the `close_match` and `delete_match` operations as these can be accomplished using the following operations: `getAll`, `close`, and `delete`.
+
+### When is action necessary?
+
+When one of the following operations is used:
+
+- close_by
+- close_match
+- delete_id
+- delete_match
+
+### How to upgrade:
+
+After upgrading, open all workflows which contain the Todoist Node. Set the corresponding operation, and then save the workflow.
+
+If the operations `close_match` or `delete_match` are used, recreate them using the operations: `getAll`, `delete`, and `close`.
 
 ## 0.69.0
 
