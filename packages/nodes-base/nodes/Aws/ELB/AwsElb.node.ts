@@ -3,12 +3,12 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
-	INodePropertyOptions,
-	ILoadOptionsFunctions,
 	IDataObject,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -25,13 +25,12 @@ import {
 	listenerCertificateFields,
 	listenerCertificateOperations,
 } from './ListenerCertificateDescription';
-import { response } from 'express';
 
 export class AwsElb implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS ELB',
 		name: 'awsElb',
-		icon: 'file:elb.png',
+		icon: 'file:elb.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
