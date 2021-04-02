@@ -1,12 +1,18 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	BINARY_ENCODING
 } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
+} from 'n8n-workflow';
 
 export async function affinityApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
@@ -29,7 +35,7 @@ export async function affinityApiRequest(this: IExecuteFunctions | IWebhookFunct
 		body,
 		qs: query,
 		uri: uri || `${endpoint}${resource}`,
-		json: true
+		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.body;
@@ -43,7 +49,7 @@ export async function affinityApiRequest(this: IExecuteFunctions | IWebhookFunct
 	} catch (error) {
 		if (error.response) {
 			const errorMessage = error.response.body.message || error.response.body.description || error.message;
-			throw new Error(`Affinity error response: ${errorMessage}`);
+			throw new Error(`Affinity error response [${error.statusCode}]: ${errorMessage}`);
 		}
 		throw error;
 	}

@@ -22,7 +22,7 @@ export const formOperations = [
 		],
 		default: 'submit',
 		description: 'The operation to perform.',
-	}
+	},
 ] as INodeProperties[];
 
 export const formFields = [
@@ -39,7 +39,7 @@ export const formFields = [
 		},
 		default: '',
 		required: true,
-		description: 'Name of the form to operate on.'
+		description: 'Name of the form to operate on.',
 	},
 
 	// Form:submit
@@ -55,7 +55,7 @@ export const formFields = [
 				],
 				operation: [
 					'submit',
-				]
+				],
 			},
 		},
 		description: 'If form fields should be set via the value-key pair UI or JSON.',
@@ -78,7 +78,7 @@ export const formFields = [
 				],
 				operation: [
 					'submit',
-				]
+				],
 			},
 		},
 		description: 'Form data to send as JSON.',
@@ -101,7 +101,7 @@ export const formFields = [
 				],
 				operation: [
 					'submit',
-				]
+				],
 			},
 		},
 		options: [

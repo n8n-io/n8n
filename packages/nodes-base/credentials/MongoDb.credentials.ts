@@ -39,7 +39,7 @@ export class MongoDb implements ICredentialType {
 			placeholder: 'mongodb://<USERNAME>:<PASSWORD>@localhost:27017/?authSource=admin&readPreference=primary&appname=n8n&ssl=false',
 			required: false,
 			description: `If provided, the value here will be used as a MongoDB connection string,<br />
-						  and the MongoDB credentials will be ignored`
+						  and the MongoDB credentials will be ignored`,
 		},
 		{
 			displayName: 'Host',
@@ -52,14 +52,14 @@ export class MongoDb implements ICredentialType {
 					],
 				},
 			},
-			default: 'localhost'
+			default: 'localhost',
 		},
 		{
 			displayName: 'Database',
 			name: 'database',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			description: 'Note: the database should still be provided even if using an override connection string'
+			description: 'Note: the database should still be provided even if using an override connection string',
 		},
 		{
 			displayName: 'User',
@@ -72,14 +72,14 @@ export class MongoDb implements ICredentialType {
 					],
 				},
 			},
-			default: ''
+			default: '',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
 			type: 'string' as NodePropertyTypes,
 			typeOptions: {
-				password: true
+				password: true,
 			},
 			displayOptions: {
 				show: {
@@ -88,7 +88,7 @@ export class MongoDb implements ICredentialType {
 					],
 				},
 			},
-			default: ''
+			default: '',
 		},
 		{
 			displayName: 'Port',
@@ -101,7 +101,7 @@ export class MongoDb implements ICredentialType {
 					],
 				},
 			},
-			default: 27017
+			default: 27017,
 		},
 	];
 }

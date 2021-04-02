@@ -75,7 +75,7 @@ export const viewFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -93,7 +93,7 @@ export const viewFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'The view to get the row from.',
@@ -117,7 +117,7 @@ export const viewFields = [
 				],
 				operation: [
 					'getAll',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -133,7 +133,7 @@ export const viewFields = [
 				],
 				operation: [
 					'getAll',
-				]
+				],
 			},
 		},
 		default: false,
@@ -182,7 +182,7 @@ export const viewFields = [
 				],
 				operation: [
 					'getAllViewRows',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -206,7 +206,7 @@ export const viewFields = [
 				],
 				operation: [
 					'getAllViewRows',
-				]
+				],
 			},
 		},
 		description: 'The table to get the rows from.',
@@ -222,7 +222,7 @@ export const viewFields = [
 				],
 				operation: [
 					'getAllViewRows',
-				]
+				],
 			},
 		},
 		default: false,
@@ -336,7 +336,7 @@ export const viewFields = [
 				description: `Specifies the sort order of the rows returned.<br />
 				If left unspecified, rows are returned by creation time ascending.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   view:getAllViewColumns                   */
@@ -357,7 +357,7 @@ export const viewFields = [
 				],
 				operation: [
 					'getAllViewColumns',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -381,7 +381,7 @@ export const viewFields = [
 				],
 				operation: [
 					'getAllViewColumns',
-				]
+				],
 			},
 		},
 		description: 'The table to get the rows from.',
@@ -397,7 +397,7 @@ export const viewFields = [
 				],
 				operation: [
 					'getAllViewColumns',
-				]
+				],
 			},
 		},
 		default: false,
@@ -446,7 +446,7 @@ export const viewFields = [
 				],
 				operation: [
 					'deleteViewRow',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -470,7 +470,7 @@ export const viewFields = [
 				],
 				operation: [
 					'deleteViewRow',
-				]
+				],
 			},
 		},
 		description: 'The view to get the row from.',
@@ -494,7 +494,7 @@ export const viewFields = [
 				],
 				operation: [
 					'deleteViewRow',
-				]
+				],
 			},
 		},
 		description: 'The view to get the row from.',
@@ -518,7 +518,7 @@ export const viewFields = [
 				],
 				operation: [
 					'pushViewButton',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -542,7 +542,7 @@ export const viewFields = [
 				],
 				operation: [
 					'pushViewButton',
-				]
+				],
 			},
 		},
 		description: 'The view to get the row from.',
@@ -566,7 +566,7 @@ export const viewFields = [
 				],
 				operation: [
 					'pushViewButton',
-				]
+				],
 			},
 		},
 		description: 'The view to get the row from.',
@@ -591,7 +591,7 @@ export const viewFields = [
 				],
 				operation: [
 					'pushViewButton',
-				]
+				],
 			},
 		},
 	},
@@ -614,7 +614,7 @@ export const viewFields = [
 				],
 				operation: [
 					'updateViewRow',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -638,7 +638,7 @@ export const viewFields = [
 				],
 				operation: [
 					'updateViewRow',
-				]
+				],
 			},
 		},
 		description: 'The view to get the row from.',
@@ -662,7 +662,7 @@ export const viewFields = [
 				],
 				operation: [
 					'updateViewRow',
-				]
+				],
 			},
 		},
 		description: 'The view to get the row from.',
@@ -680,7 +680,7 @@ export const viewFields = [
 				],
 				operation: [
 					'updateViewRow',
-				]
+				],
 			},
 		},
 		description: 'The view to get the row from.',
@@ -709,6 +709,6 @@ export const viewFields = [
 				default: false,
 				description: `If true, the API will not attempt to parse the data in any way.`,
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

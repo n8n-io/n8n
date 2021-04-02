@@ -7,10 +7,10 @@ const fsReadFileAsync = promisify(fsReadFile);
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IExecuteWorkflowInfo,
 	IWorkflowBase,
 } from 'n8n-workflow';
 
@@ -143,7 +143,7 @@ export class ExecuteWorkflow implements INodeType {
 				required: true,
 				description: 'The URL from which to load the workflow from.',
 			},
-		]
+		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

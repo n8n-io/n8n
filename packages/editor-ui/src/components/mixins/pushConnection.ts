@@ -10,12 +10,14 @@ import {
 
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
+import { titleChange } from '@/components/mixins/titleChange';
 
 import mixins from 'vue-typed-mixins';
 
 export const pushConnection = mixins(
 	nodeHelpers,
 	showMessage,
+	titleChange,
 )
 	.extend({
 		data () {
@@ -147,7 +149,6 @@ export const pushConnection = mixins(
 			 */
 			pushMessageReceived (event: Event, isRetry?: boolean): boolean {
 				const retryAttempts = 5;
-
 				let receivedData: IPushData;
 				try {
 					// @ts-ignore
@@ -190,7 +191,7 @@ export const pushConnection = mixins(
 						return false;
 					}
 
-					if (this.$store.getters.activeExecutionId !== pushData.executionIdActive) {
+					if (this.$store.getters.activeExecutionId !== pushData.executionId) {
 						// The workflow which did finish execution did either not get started
 						// by this session or we do not have the execution id yet.
 						if (isRetry !== true) {
@@ -201,13 +202,15 @@ export const pushConnection = mixins(
 
 					const runDataExecuted = pushData.data;
 
+					// @ts-ignore
+					const workflow = this.getWorkflow();
 					if (runDataExecuted.finished !== true) {
 						// There was a problem with executing the workflow
 						let errorMessage = 'There was a problem executing the workflow!';
 						if (runDataExecuted.data.resultData.error && runDataExecuted.data.resultData.error.message) {
 							errorMessage = `There was a problem executing the workflow:<br /><strong>"${runDataExecuted.data.resultData.error.message}"</strong>`;
 						}
-
+						this.$titleSet(workflow.name, 'ERROR');
 						this.$showMessage({
 							title: 'Problem executing workflow',
 							message: errorMessage,
@@ -215,6 +218,7 @@ export const pushConnection = mixins(
 						});
 					} else {
 						// Workflow did execute without a problem
+						this.$titleSet(workflow.name, 'IDLE');
 						this.$showMessage({
 							title: 'Workflow got executed',
 							message: 'Workflow did get executed successfully!',
@@ -238,7 +242,7 @@ export const pushConnection = mixins(
 					const pushData = receivedData.data as IPushDataExecutionStarted;
 
 					const executionData: IExecutionsCurrentSummaryExtended = {
-						idActive: pushData.executionId,
+						id: pushData.executionId,
 						finished: false,
 						mode: pushData.mode,
 						startedAt: pushData.startedAt,

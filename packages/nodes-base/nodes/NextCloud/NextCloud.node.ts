@@ -5,9 +5,9 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -20,15 +20,15 @@ import {
 
 export class NextCloud implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'NextCloud',
+		displayName: 'Nextcloud',
 		name: 'nextCloud',
 		icon: 'file:nextcloud.png',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Access data on NextCloud',
+		description: 'Access data on Nextcloud',
 		defaults: {
-			name: 'NextCloud',
+			name: 'Nextcloud',
 			color: '#1cafff',
 		},
 		inputs: ['main'],
@@ -87,6 +87,10 @@ export class NextCloud implements INodeType {
 					{
 						name: 'Folder',
 						value: 'folder',
+					},
+					{
+						name: 'User',
+						value: 'user',
 					},
 				],
 				default: 'file',
@@ -170,7 +174,7 @@ export class NextCloud implements INodeType {
 					{
 						name: 'List',
 						value: 'list',
-						description: 'Return the files and folders in a given folder',
+						description: 'Return the contents of a given folder',
 					},
 					{
 						name: 'Move',
@@ -182,7 +186,27 @@ export class NextCloud implements INodeType {
 				description: 'The operation to perform.',
 			},
 
-
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Invite a user to a NextCloud organization',
+					},
+				],
+				default: 'create',
+				description: 'The operation to perform.',
+			},
 
 			// ----------------------------------
 			//         file
@@ -200,7 +224,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'copy'
+							'copy',
 						],
 						resource: [
 							'file',
@@ -220,7 +244,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'copy'
+							'copy',
 						],
 						resource: [
 							'file',
@@ -244,7 +268,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'delete'
+							'delete',
 						],
 						resource: [
 							'file',
@@ -268,7 +292,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'move'
+							'move',
 						],
 						resource: [
 							'file',
@@ -288,7 +312,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'move'
+							'move',
 						],
 						resource: [
 							'file',
@@ -312,7 +336,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'download'
+							'download',
 						],
 						resource: [
 							'file',
@@ -331,7 +355,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'download'
+							'download',
 						],
 						resource: [
 							'file',
@@ -353,7 +377,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
@@ -372,7 +396,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
@@ -389,10 +413,10 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						binaryDataUpload: [
-							false
+							false,
 						],
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
@@ -412,10 +436,10 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						binaryDataUpload: [
-							true
+							true,
 						],
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
@@ -445,7 +469,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'folder',
@@ -467,7 +491,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'list'
+							'list',
 						],
 						resource: [
 							'folder',
@@ -478,6 +502,77 @@ export class NextCloud implements INodeType {
 				description: 'The path of which to list the content.',
 			},
 
+			// ----------------------------------
+			//         user
+			// ----------------------------------
+
+			// ----------------------------------
+			//         user:create
+			// ----------------------------------
+			{
+				displayName: 'Username',
+				name: 'userId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				placeholder: 'john',
+				description: 'Username the user will have.',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				placeholder: 'john@email.com',
+				description: 'The email of the user to invite.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Display name',
+						name: 'displayName',
+						type: 'string',
+						default: '',
+						description: 'The display name of the user to invite.',
+					},
+				],
+			},
 		],
 	};
 
@@ -598,6 +693,31 @@ export class NextCloud implements INodeType {
 					headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
 
 				}
+
+			} else if (resource === 'user') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         user:create
+					// ----------------------------------
+					requestMethod = 'POST';
+
+					endpoint = 'ocs/v1.php/cloud/users';
+
+					headers['OCS-APIRequest'] = true;
+					headers['Content-Type'] = 'application/x-www-form-urlencoded';
+
+					const userid = this.getNodeParameter('userId', i) as string;
+					const email = this.getNodeParameter('email', i) as string;
+
+					body = `userid=${userid}&email=${email}`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.displayName) {
+						body += `&displayName=${additionalFields.displayName}`;
+					}
+				}
+
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
@@ -645,6 +765,25 @@ export class NextCloud implements INodeType {
 				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
 				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);
+
+			} else if (resource === 'user' && operation === 'create') {
+
+				const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+					parseString(responseData, { explicitArray: false }, (err, data) => {
+						if (err) {
+							return reject(err);
+						}
+
+						if (data.ocs.meta.status !== 'ok') {
+							return reject(new Error(data.ocs.meta.message));
+						}
+
+						resolve(data.ocs.data as IDataObject);
+					});
+				});
+
+				returnData.push(jsonResponseData as IDataObject);
+
 			} else if (resource === 'folder' && operation === 'list') {
 
 				const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
@@ -706,7 +845,7 @@ export class NextCloud implements INodeType {
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
 			return this.prepareOutputData(items);
-		} else  {
+		} else {
 			// For all other ones does the output get replaced
 			return [this.helpers.returnJsonArray(returnData)];
 		}

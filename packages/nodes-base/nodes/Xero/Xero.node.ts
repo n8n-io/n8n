@@ -4,11 +4,11 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -41,7 +41,7 @@ export class Xero implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Xero',
 		name: 'xero',
-		icon: 'file:xero.png',
+		icon: 'file:xero.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -56,7 +56,7 @@ export class Xero implements INodeType {
 			{
 				name: 'xeroOAuth2Api',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{

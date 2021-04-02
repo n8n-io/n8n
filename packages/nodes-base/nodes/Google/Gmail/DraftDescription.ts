@@ -34,7 +34,7 @@ export const draftOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all drafts',
-			}
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -56,7 +56,7 @@ export const draftFields = [
 				operation: [
 					'delete',
 					'get',
-				]
+				],
 			},
 		},
 		placeholder: 'r-3254521568507167962',
@@ -75,11 +75,49 @@ export const draftFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		placeholder: 'Hello World!',
 		description: 'The message subject.',
+	},
+	{
+		displayName: 'HTML',
+		name: 'includeHtml',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'draft',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: false,
+		description: 'Switch ON if the message should also be included as HTML.',
+	},
+	{
+		displayName: 'HTML Message',
+		name: 'htmlMessage',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				includeHtml: [
+					true,
+				],
+				resource: [
+					'draft',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		description: 'The HTML message body.',
 	},
 	{
 		displayName: 'Message',
@@ -94,11 +132,11 @@ export const draftFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		placeholder: 'Hello World!',
-		description: 'The message body. This can be in HTML.',
+		description:  'The message body. If HTML formatted, then you have to add and activate the option "HTML content" in the "Additional Options" section.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -112,7 +150,7 @@ export const draftFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		default: {},
@@ -193,7 +231,7 @@ export const draftFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		default: {},
@@ -238,7 +276,7 @@ export const draftFields = [
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.'
+						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.',
 					},
 					{
 						name: 'Resolved',
@@ -249,7 +287,7 @@ export const draftFields = [
 				default: 'resolved',
 				description: 'The format to return the message in',
 			},
-		]
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -359,7 +397,7 @@ export const draftFields = [
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.'
+						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.',
 					},
 					{
 						name: 'Resolved',

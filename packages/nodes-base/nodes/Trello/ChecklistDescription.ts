@@ -1,4 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const checklistOperations = [
 	// ----------------------------------
@@ -16,6 +18,11 @@ export const checklistOperations = [
 			},
 		},
 		options: [
+			{
+				name: 'Create Checklist Item',
+				value: 'createCheckItem',
+				description: 'Create a checklist item',
+			},
 			{
 				name: 'Create',
 				value: 'create',
@@ -275,6 +282,79 @@ export const checklistFields = [
 	},
 
 	// ----------------------------------
+	//         checklist:createCheckItem
+	// ----------------------------------
+	{
+		displayName: 'Checklist ID',
+		name: 'checklistId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'createCheckItem',
+				],
+				resource: [
+					'checklist',
+				],
+			},
+		},
+		description: 'The ID of the checklist to update.',
+	},
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'createCheckItem',
+				],
+				resource: [
+					'checklist',
+				],
+			},
+		},
+		description: 'The name of the new check item on the checklist.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'createCheckItem',
+				],
+				resource: [
+					'checklist',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Checked',
+				name: 'checked',
+				type: 'boolean',
+				default: false,
+				description: 'Determines whether the check item is already checked when created.',
+			},
+			{
+				displayName: 'Position',
+				name: 'pos',
+				type: 'string',
+				default: '',
+				description: 'The position of the checklist on the card. One of: top, bottom, or a positive number.',
+			},
+		],
+	},
+
+	// ----------------------------------
 	//         checklist:deleteCheckItem
 	// ----------------------------------
 	{
@@ -450,7 +530,7 @@ export const checklistFields = [
 				options: [
 					{
 						name: 'complete',
-						value: 'complete'
+						value: 'complete',
 					},
 					{
 						name: 'incomplete',

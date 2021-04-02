@@ -34,7 +34,7 @@ export const meetingRegistrantOperations = [
 		],
 		default: 'create',
 		description: 'The operation to perform.',
-	}
+	},
 ] as INodeProperties[];
 
 export const meetingRegistrantFields = [
@@ -357,7 +357,7 @@ export const meetingRegistrantFields = [
 				description: `Registrant Status.`,
 			},
 
-		]
+		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 meetingRegistrant:update                   */
@@ -438,6 +438,6 @@ export const meetingRegistrantFields = [
 			},
 
 		],
-	}
+	},
 
 ] as INodeProperties[];

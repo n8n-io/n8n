@@ -1,4 +1,3 @@
-
 export interface ITask {
 	WhoId?: string;
 	Status?: string;
@@ -12,7 +11,7 @@ export interface ITask {
 	ActivityDate?: string;
 	IsReminderSet?: boolean;
 	RecurrenceType?: string;
-	CallDisposition?:string;
+	CallDisposition?: string;
 	ReminderDateTime?: string;
 	RecurrenceInstance?: string;
 	RecurrenceInterval?: number;

@@ -1,7 +1,7 @@
 import {
 	INodeType,
-	INodeTypes,
 	INodeTypeData,
+	INodeTypes,
 } from '../src';
 
 export interface INodeTypesObject {
@@ -38,10 +38,10 @@ class NodeTypesClass implements INodeTypes {
 							name: 'value2',
 							type: 'string',
 							default: 'default-value2',
-						}
-					]
-				}
-			}
+						},
+					],
+				},
+			},
 		},
 		'test.setMulti': {
 			sourcePath: '',
@@ -86,13 +86,13 @@ class NodeTypesClass implements INodeTypes {
 											default: '',
 											placeholder: 'The string value to write in the property.',
 										},
-									]
+									],
 								},
 							],
 						},
-					]
-				}
-			}
+					],
+				},
+			},
 		},
 	};
 

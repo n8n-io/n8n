@@ -6,7 +6,7 @@ import {
 export class Sftp implements ICredentialType {
 	name = 'sftp';
 	displayName = 'SFTP';
-	documentationUrl = 'sftp';
+	documentationUrl = 'ftp';
 	properties = [
 		{
 			displayName: 'Host',
@@ -37,6 +37,26 @@ export class Sftp implements ICredentialType {
 				password: true,
 			},
 			default: '',
+		},
+		{
+			displayName: 'Private Key',
+			name: 'privateKey',
+			type: 'string' as NodePropertyTypes,
+			typeOptions: {
+				alwaysOpenEditWindow: true,
+			},
+			default: '',
+			description: 'String that contains a private key for either key-based or hostbased user authentication (OpenSSH format).',
+		},
+		{
+			displayName: 'Passphrase',
+			name: 'passphrase',
+			typeOptions: {
+				password: true,
+			},
+			type: 'string' as NodePropertyTypes,
+			default: '',
+			description: 'For an encrypted private key, this is the passphrase used to decrypt it.',
 		},
 	];
 }

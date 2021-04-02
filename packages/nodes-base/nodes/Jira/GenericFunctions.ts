@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -10,11 +10,11 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
 	ICredentialDataDecryptedObject,
+	IDataObject,
 } from 'n8n-workflow';
 
-export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	let data; let domain;
 
 	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
@@ -43,13 +43,26 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 			Authorization: `Basic ${data}`,
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
+			'X-Atlassian-Token': 'no-check',
 		},
 		method,
 		qs: query,
 		uri: uri || `${domain}/rest${endpoint}`,
 		body,
-		json: true
+		json: true,
 	};
+
+	if (Object.keys(option).length !== 0) {
+		Object.assign(options, option);
+	}
+
+	if (Object.keys(body).length === 0) {
+		delete options.body;
+	}
+
+	if (Object.keys(query || {}).length === 0) {
+		delete options.qs;
+	}
 
 	try {
 		return await this.helpers.request!(options);
@@ -73,7 +86,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	}
 }
 
-export async function jiraSoftwareCloudApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function jiraSoftwareCloudApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -82,7 +95,7 @@ export async function jiraSoftwareCloudApiRequestAllItems(this: IHookFunctions |
 	query.startAt = 0;
 	body.startAt = 0;
 	query.maxResults = 100;
-	body.maxResults  = 100;
+	body.maxResults = 100;
 
 	do {
 		responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, method, body, query);
@@ -106,7 +119,7 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 	return result;
 }
 
-export function eventExists (currentEvents : string[], webhookEvents: string[]) {
+export function eventExists(currentEvents: string[], webhookEvents: string[]) {
 	for (const currentEvent of currentEvents) {
 		if (!webhookEvents.includes(currentEvent)) {
 			return false;
@@ -115,7 +128,7 @@ export function eventExists (currentEvents : string[], webhookEvents: string[]) 
 	return true;
 }
 
-export function getId (url: string) {
+export function getId(url: string) {
 	return url.split('/').pop();
 }
 

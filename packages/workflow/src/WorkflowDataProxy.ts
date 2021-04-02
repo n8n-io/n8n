@@ -5,6 +5,7 @@ import {
 	IWorkflowDataProxyData,
 	NodeHelpers,
 	Workflow,
+	WorkflowExecuteMode,
 } from './';
 
 
@@ -17,10 +18,12 @@ export class WorkflowDataProxy {
 	private itemIndex: number;
 	private activeNodeName: string;
 	private connectionInputData: INodeExecutionData[];
+	private mode: WorkflowExecuteMode;
+	private selfData: IDataObject;
 
 
 
-	constructor(workflow: Workflow, runExecutionData: IRunExecutionData | null, runIndex: number, itemIndex: number, activeNodeName: string, connectionInputData: INodeExecutionData[], defaultReturnRunIndex = -1) {
+	constructor(workflow: Workflow, runExecutionData: IRunExecutionData | null, runIndex: number, itemIndex: number, activeNodeName: string, connectionInputData: INodeExecutionData[], mode: WorkflowExecuteMode, defaultReturnRunIndex = -1, selfData = {}) {
 		this.workflow = workflow;
 		this.runExecutionData = runExecutionData;
 		this.defaultReturnRunIndex = defaultReturnRunIndex;
@@ -28,6 +31,8 @@ export class WorkflowDataProxy {
 		this.itemIndex = itemIndex;
 		this.activeNodeName = activeNodeName;
 		this.connectionInputData = connectionInputData;
+		this.mode = mode;
+		this.selfData = selfData;
 	}
 
 
@@ -63,10 +68,25 @@ export class WorkflowDataProxy {
 				}
 
 				return contextData[name];
-			}
+			},
 		});
 	}
 
+
+
+	private selfGetter() {
+		const that = this;
+
+		return new Proxy({}, {
+			ownKeys(target) {
+				return Reflect.ownKeys(target);
+			},
+			get(target, name, receiver) {
+				name = name.toString();
+				return that.selfData[name];
+			},
+		});
+	}
 
 
 	/**
@@ -97,11 +117,11 @@ export class WorkflowDataProxy {
 
 				if (typeof returnValue === 'string' && returnValue.charAt(0) === '=') {
 					// The found value is an expression so resolve it
-					return that.workflow.getParameterValue(returnValue, that.runExecutionData, that.runIndex, that.itemIndex, that.activeNodeName, that.connectionInputData);
+					return that.workflow.expression.getParameterValue(returnValue, that.runExecutionData, that.runIndex, that.itemIndex, that.activeNodeName, that.connectionInputData, that.mode);
 				}
 
 				return returnValue;
-			}
+			},
 		});
 	}
 
@@ -252,7 +272,7 @@ export class WorkflowDataProxy {
 				}
 
 				return Reflect.get(target, name, receiver);
-			}
+			},
 		});
 	}
 
@@ -269,7 +289,7 @@ export class WorkflowDataProxy {
 		return new Proxy({}, {
 			get(target, name, receiver) {
 				return process.env[name.toString()];
-			}
+			},
 		});
 	}
 
@@ -298,7 +318,7 @@ export class WorkflowDataProxy {
 
 				// @ts-ignore
 				return that.workflow[name.toString()];
-			}
+			},
 		});
 	}
 
@@ -316,7 +336,7 @@ export class WorkflowDataProxy {
 		return new Proxy({}, {
 			get(target, name, receiver) {
 				return that.nodeDataGetter(name.toString());
-			}
+			},
 		});
 	}
 
@@ -337,11 +357,11 @@ export class WorkflowDataProxy {
 			$env: this.envGetter(),
 			$evaluateExpression: (expression: string, itemIndex?: number) => {
 				itemIndex = itemIndex || that.itemIndex;
-				return that.workflow.getParameterValue('=' + expression, that.runExecutionData, that.runIndex, itemIndex, that.activeNodeName, that.connectionInputData);
+				return that.workflow.expression.getParameterValue('=' + expression, that.runExecutionData, that.runIndex, itemIndex, that.activeNodeName, that.connectionInputData, that.mode);
 			},
 			$item: (itemIndex: number, runIndex?: number) => {
 				const defaultReturnRunIndex = runIndex === undefined ? -1 : runIndex;
-				const dataProxy = new WorkflowDataProxy(this.workflow, this.runExecutionData, this.runIndex, itemIndex, this.activeNodeName, this.connectionInputData, defaultReturnRunIndex);
+				const dataProxy = new WorkflowDataProxy(this.workflow, this.runExecutionData, this.runIndex, itemIndex, this.activeNodeName, this.connectionInputData, that.mode, defaultReturnRunIndex);
 				return dataProxy.getDataProxy();
 			},
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {
@@ -359,8 +379,10 @@ export class WorkflowDataProxy {
 			},
 			$json: {}, // Placeholder
 			$node: this.nodeGetter(),
+			$self: this.selfGetter(),
 			$parameter: this.nodeParameterGetter(this.activeNodeName),
 			$runIndex: this.runIndex,
+			$mode: this.mode,
 			$workflow: this.workflowGetter(),
 		};
 
@@ -375,7 +397,7 @@ export class WorkflowDataProxy {
 				}
 
 				return Reflect.get(target, name, receiver);
-			}
+			},
 		});
 	}
 }

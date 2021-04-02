@@ -30,7 +30,7 @@ n8n is split up in different modules which are all in a single mono repository.
 
 The most important directories:
 
- - [/docker/image](/docker/image) - Dockerfiles to create n8n containers
+ - [/docker/image](/docker/images) - Dockerfiles to create n8n containers
  - [/docker/compose](/docker/compose) - Examples Docker Setups
  - [/packages](/packages) - The different n8n modules
  - [/packages/cli](/packages/cli) - CLI code to run front- & backend
@@ -57,9 +57,14 @@ dependencies are installed and the packages get linked correctly. Here a short g
 
 The packages which n8n uses depend on a few build tools:
 
-Linux:
+Debian/Ubuntu:
 ```
 apt-get install -y build-essential python
+```
+
+CentOS:
+```
+yum install gcc gcc-c++ make
 ```
 
 Windows:
@@ -119,6 +124,10 @@ To start n8n execute:
 npm run start
 ```
 
+To start n8n with tunnel:
+```
+./packages/cli/bin/n8n start --tunnel
+```
 
 ## Development Cycle
 
@@ -213,23 +222,7 @@ If you'd like to submit a new node, please go through the following checklist. T
 
 ## Extend Documentation
 
-All the files which get used in the n8n documentation on [https://docs.n8n.io](https://docs.n8n.io)
-can be found in the [/docs](https://github.com/n8n-io/n8n/tree/master/docs) folder. So all changes
-and additions can directly be made in there
-
-That the markdown docs look pretty we use [docsify](https://docsify.js.org). It is possible to test
-locally how it looks like rendered with the following commands:
-
-```bash
-# 1. Install docisify
-npm i docsify-cli -g
-
-# 2. Go into n8n folder (the same folder which contains this file). For example:
-cd /data/n8n
-
-# 3. Start docsificy
-docsify serve ./docs
-```
+The repository for the n8n documentation on https://docs.n8n.io can be found [here](https://github.com/n8n-io/n8n-docs).
 
 
 ## Contributor License Agreement

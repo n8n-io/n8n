@@ -3,11 +3,11 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
 	codaApiRequest,
@@ -49,7 +49,7 @@ export class Coda implements INodeType {
 			{
 				name: 'codaApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -237,10 +237,6 @@ export class Coda implements INodeType {
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const endpoint = `/docs/${docId}/tables/${tableId}/rows`;
 
-					if (options.keyColumns) {
-						// @ts-ignore
-						items[i].json['keyColumns'] = options.keyColumns.split(',') as string[];
-					}
 					if (options.disableParsing) {
 						qs.disableParsing = options.disableParsing as boolean;
 					}
@@ -264,6 +260,11 @@ export class Coda implements INodeType {
 						};
 					}
 					((sendData[endpoint]! as IDataObject).rows! as IDataObject[]).push({ cells });
+
+					if (options.keyColumns) {
+						// @ts-ignore
+						(sendData[endpoint]! as IDataObject).keyColumns! = options.keyColumns.split(',') as string[];
+					}
 				}
 
 				// Now that all data got collected make all the requests
@@ -298,7 +299,7 @@ export class Coda implements INodeType {
 					} else {
 						returnData.push({
 							id: responseData.id,
-							...responseData.values
+							...responseData.values,
 						});
 					}
 				}
@@ -347,7 +348,7 @@ export class Coda implements INodeType {
 					for (const item of responseData) {
 						returnData.push({
 							id: item.id,
-							...item.values
+							...item.values,
 						});
 					}
 					return [this.helpers.returnJsonArray(returnData)];
@@ -623,7 +624,7 @@ export class Coda implements INodeType {
 						});
 					}
 					body.row = {
-						cells
+						cells,
 					};
 					await codaApiRequest.call(this, 'PUT', endpoint, body, qs);
 				}

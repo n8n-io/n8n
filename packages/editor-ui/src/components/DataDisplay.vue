@@ -9,16 +9,16 @@
 				</div>
 				<transition name="fade">
 					<div v-if="showDocumentHelp && nodeType" class="doc-help-wrapper">
-								<svg id="help-logo"  v-if="showDocumentHelp && nodeType" :href="'https://docs.n8n.io/nodes/' + nodeType.name" target="_blank" width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+								<svg id="help-logo" v-if="showDocumentHelp && nodeType" :href="documentationUrl" target="_blank" width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 									<title>Node Documentation</title>
-									<g id="MVP-Onboard-proposal" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-										<g id="Node-modal-(docs-link)" transform="translate(-1127.000000, -836.000000)" fill-rule="nonzero">
-											<g id="Group" transform="translate(1117.000000, 825.000000)">
-												<g id="mdi-help-box" transform="translate(10.000000, 11.000000)">
-													<g id="Icon" transform="translate(2.250000, 2.250000)" fill="#FF6150">
-														<path d="M6,11.25 L7.5,11.25 L7.5,9.75 L6,9.75 L6,11.25 M6.75,2.25 C5.09314575,2.25 3.75,3.59314575 3.75,5.25 L5.25,5.25 C5.25,4.42157288 5.92157288,3.75 6.75,3.75 C7.57842712,3.75 8.25,4.42157288 8.25,5.25 C8.25,6.75 6,6.5625 6,9 L7.5,9 C7.5,7.3125 9.75,7.125 9.75,5.25 C9.75,3.59314575 8.40685425,2.25 6.75,2.25 M1.5,0 L12,0 C12.8284271,0 13.5,0.671572875 13.5,1.5 L13.5,12 C13.5,12.8284271 12.8284271,13.5 12,13.5 L1.5,13.5 C0.671572875,13.5 0,12.8284271 0,12 L0,1.5 C0,0.671572875 0.671572875,0 1.5,0 Z" id="Icon-Shape"></path>
+									<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+										<g transform="translate(-1127.000000, -836.000000)" fill-rule="nonzero">
+											<g transform="translate(1117.000000, 825.000000)">
+												<g transform="translate(10.000000, 11.000000)">
+													<g transform="translate(2.250000, 2.250000)" fill="#FF6150">
+														<path d="M6,11.25 L7.5,11.25 L7.5,9.75 L6,9.75 L6,11.25 M6.75,2.25 C5.09314575,2.25 3.75,3.59314575 3.75,5.25 L5.25,5.25 C5.25,4.42157288 5.92157288,3.75 6.75,3.75 C7.57842712,3.75 8.25,4.42157288 8.25,5.25 C8.25,6.75 6,6.5625 6,9 L7.5,9 C7.5,7.3125 9.75,7.125 9.75,5.25 C9.75,3.59314575 8.40685425,2.25 6.75,2.25 M1.5,0 L12,0 C12.8284271,0 13.5,0.671572875 13.5,1.5 L13.5,12 C13.5,12.8284271 12.8284271,13.5 12,13.5 L1.5,13.5 C0.671572875,13.5 0,12.8284271 0,12 L0,1.5 C0,0.671572875 0.671572875,0 1.5,0 Z"></path>
 													</g>
-													<rect id="ViewBox" x="0" y="0" width="18" height="18"></rect>
+													<rect x="0" y="0" width="18" height="18"></rect>
 												</g>
 											</g>
 										</g>
@@ -26,7 +26,7 @@
 								</svg>
 
 							<div v-if="showDocumentHelp && nodeType" class="text">
-								Need help? <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="'https://docs.n8n.io/nodes/' + nodeType.name + '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=' + nodeType.name" target="_blank">Open {{nodeType.displayName}} documentation</a>
+								Need help? <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="documentationUrl" target="_blank">Open {{nodeType.displayName}} documentation</a>
 							</div>
 					</div>
 				</transition>
@@ -65,6 +65,17 @@ export default Vue.extend({
 		};
 	},
 	computed: {
+		documentationUrl (): string {
+			if (!this.nodeType) {
+				return '';
+			}
+
+			if (this.nodeType.documentationUrl && this.nodeType.documentationUrl.startsWith('http')) {
+				return this.nodeType.documentationUrl;
+			}
+
+			return 'https://docs.n8n.io/nodes/' + (this.nodeType.documentationUrl || this.nodeType.name) + '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=' + this.nodeType.name;
+		},
 		node (): INodeUi {
 			return this.$store.getters.activeNode;
 		},
@@ -136,7 +147,7 @@ export default Vue.extend({
 		position: relative;
 		width: 80%;
 		height: 80%;
-		margin: 6em auto;
+		margin: 3em auto;
 		background-color: #fff;
 		border-radius: 2px;
 		@media (max-height: 720px) {

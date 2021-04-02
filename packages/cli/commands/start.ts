@@ -5,20 +5,25 @@ import {
 } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 const open = require('open');
+import * as Redis from 'ioredis';
 
 import * as config from '../config';
 import {
+	ActiveExecutions,
 	ActiveWorkflowRunner,
-	CredentialTypes,
 	CredentialsOverwrites,
+	CredentialTypes,
+	DatabaseType,
 	Db,
 	ExternalHooks,
 	GenericHelpers,
+	IExecutionsCurrentSummary,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	Server,
 	TestWebhooks,
-} from "../src";
+} from '../src';
+import { IDataObject } from 'n8n-workflow';
 
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
@@ -68,22 +73,50 @@ export class Start extends Command {
 	static async stopProcess() {
 		console.log(`\nStopping n8n...`);
 
-		setTimeout(() => {
-			// In case that something goes wrong with shutdown we
-			// kill after max. 30 seconds no matter what
-			process.exit(processExistCode);
-		}, 30000);
+		try {
+			const externalHooks = ExternalHooks();
+			await externalHooks.run('n8n.stop', []);
 
-		const removePromises = [];
-		if (activeWorkflowRunner !== undefined) {
-			removePromises.push(activeWorkflowRunner.removeAll());
+			setTimeout(() => {
+				// In case that something goes wrong with shutdown we
+				// kill after max. 30 seconds no matter what
+				process.exit(processExistCode);
+			}, 30000);
+
+			const skipWebhookDeregistration = config.get('endpoints.skipWebhoooksDeregistrationOnShutdown') as boolean;
+
+			const removePromises = [];
+			if (activeWorkflowRunner !== undefined && skipWebhookDeregistration !== true) {
+				removePromises.push(activeWorkflowRunner.removeAll());
+			}
+
+			// Remove all test webhooks
+			const testWebhooks = TestWebhooks.getInstance();
+			removePromises.push(testWebhooks.removeAll());
+
+			await Promise.all(removePromises);
+
+			// Wait for active workflow executions to finish
+			const activeExecutionsInstance = ActiveExecutions.getInstance();
+			let executingWorkflows = activeExecutionsInstance.getActiveExecutions() as IExecutionsCurrentSummary[];
+
+			let count = 0;
+			while (executingWorkflows.length !== 0) {
+				if (count++ % 4 === 0) {
+					console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
+					executingWorkflows.map(execution => {
+						console.log(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
+					});
+				}
+				await new Promise((resolve) => {
+					setTimeout(resolve, 500);
+				});
+				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
+			}
+
+		} catch (error) {
+			console.error('There was an error shutting down n8n.', error);
 		}
-
-		// Remove all test webhooks
-		const testWebhooks = TestWebhooks.getInstance();
-		removePromises.push(testWebhooks.removeAll());
-
-		await Promise.all(removePromises);
 
 		process.exit(processExistCode);
 	}
@@ -97,10 +130,16 @@ export class Start extends Command {
 		const { flags } = this.parse(Start);
 
 		// Wrap that the process does not close but we can still use async
-		(async () => {
+		await (async () => {
 			try {
 				// Start directly with the init of the database to improve startup time
-				const startDbInitPromise = Db.init();
+				const startDbInitPromise = Db.init().catch((error: Error) => {
+					console.error(`There was an error initializing DB: ${error.message}`);
+
+					processExistCode = 1;
+					// @ts-ignore
+					process.emit('SIGINT');
+				});
 
 				// Make sure the settings exist
 				const userSettings = await UserSettings.prepareUserSettings();
@@ -125,6 +164,70 @@ export class Start extends Command {
 
 				// Wait till the database is ready
 				await startDbInitPromise;
+
+				if (config.get('executions.mode') === 'queue') {
+					const redisHost = config.get('queue.bull.redis.host');
+					const redisPassword = config.get('queue.bull.redis.password');
+					const redisPort = config.get('queue.bull.redis.port');
+					const redisDB = config.get('queue.bull.redis.db');
+					const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
+					let lastTimer = 0, cumulativeTimeout = 0;
+
+					const settings = {
+						retryStrategy: (times: number): number | null => {
+							const now = Date.now();
+							if (now - lastTimer > 30000) {
+								// Means we had no timeout at all or last timeout was temporary and we recovered
+								lastTimer = now;
+								cumulativeTimeout = 0;
+							} else {
+								cumulativeTimeout += now - lastTimer;
+								lastTimer = now;
+								if (cumulativeTimeout > redisConnectionTimeoutLimit) {
+									console.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + '. Exiting process.');
+									process.exit(1);
+								}
+							}
+							return 500;
+						},
+					} as IDataObject;
+
+					if (redisHost) {
+						settings.host = redisHost;
+					}
+					if (redisPassword) {
+						settings.password = redisPassword;
+					}
+					if (redisPort) {
+						settings.port = redisPort;
+					}
+					if (redisDB) {
+						settings.db = redisDB;
+					}
+
+					// This connection is going to be our heartbeat
+					// IORedis automatically pings redis and tries to reconnect
+					// We will be using the retryStrategy above
+					// to control how and when to exit.
+					const redis = new Redis(settings);
+
+					redis.on('error', (error) => {
+						if (error.toString().includes('ECONNREFUSED') === true) {
+							console.warn('Redis unavailable - trying to reconnect...');
+						} else {
+							console.warn('Error with Redis: ', error);
+						}
+					});
+				}
+
+				const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
+
+				if (dbType === 'sqlite') {
+					const shouldRunVacuum = config.get('database.sqlite.executeVacuumOnStartup') as number;
+					if (shouldRunVacuum) {
+						Db.collections.Execution!.query('VACUUM;');
+					}
+				}
 
 				if (flags.tunnel === true) {
 					this.log('\nWaiting for tunnel ...');
@@ -156,8 +259,8 @@ export class Start extends Command {
 					// @ts-ignore
 					const webhookTunnel = await localtunnel(port, tunnelSettings);
 
-					process.env.WEBHOOK_TUNNEL_URL = webhookTunnel.url + '/';
-					this.log(`Tunnel URL: ${process.env.WEBHOOK_TUNNEL_URL}\n`);
+					process.env.WEBHOOK_URL = webhookTunnel.url + '/';
+					this.log(`Tunnel URL: ${process.env.WEBHOOK_URL}\n`);
 					this.log('IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!');
 				}
 
@@ -181,7 +284,7 @@ export class Start extends Command {
 						Start.openBrowser();
 					}
 					this.log(`\nPress "o" to open in Browser.`);
-					process.stdin.on("data", (key : string) => {
+					process.stdin.on('data', (key: string) => {
 						if (key === 'o') {
 							Start.openBrowser();
 							inputText = '';

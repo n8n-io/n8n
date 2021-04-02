@@ -49,7 +49,7 @@ export const templateFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the template.',

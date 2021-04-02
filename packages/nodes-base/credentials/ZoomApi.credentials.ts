@@ -9,7 +9,7 @@ export class ZoomApi implements ICredentialType {
 			displayName: 'JWT Token',
 			name: 'accessToken',
 			type: 'string' as NodePropertyTypes,
-			default: ''
-		}
+			default: '',
+		},
 	];
 }

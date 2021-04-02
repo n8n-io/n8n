@@ -118,7 +118,7 @@ export const worksheetFields = [
 				default: '',
 				description: `Fields the response will containt. Multiple can be added separated by ,.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 worksheet:getContent                       */
@@ -209,7 +209,7 @@ export const worksheetFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'getContent'
+					'getContent',
 				],
 				resource: [
 					'worksheet',
@@ -240,7 +240,7 @@ export const worksheetFields = [
 			},
 			hide: {
 				rawData: [
-					true
+					true,
 				],
 			},
 		},
@@ -264,7 +264,7 @@ export const worksheetFields = [
 			},
 			hide: {
 				rawData: [
-					true
+					true,
 				],
 			},
 		},
@@ -298,6 +298,6 @@ export const worksheetFields = [
 				default: '',
 				description: `Fields the response will containt. Multiple can be added separated by ,.`,
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

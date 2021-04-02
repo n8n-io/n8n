@@ -182,7 +182,7 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'download'
+					'download',
 				],
 				resource: [
 					'file',

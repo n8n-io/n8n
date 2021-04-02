@@ -27,7 +27,7 @@ export async function circleciApiRequest(this: IHookFunctions | IExecuteFunction
 		qs,
 		body,
 		uri: uri ||`https://circleci.com/api/v2${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {

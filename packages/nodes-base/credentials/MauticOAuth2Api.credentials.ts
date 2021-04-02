@@ -21,17 +21,15 @@ export class MauticOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
-			type: 'string' as NodePropertyTypes,
-			default: '',
-			placeholder: 'https://name.mautic.net/oauth/v2/authorize',
+			type: 'hidden' as NodePropertyTypes,
+			default: '={{$self["url"]}}/oauth/v2/authorize',
 			required: true,
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
-			type: 'string' as NodePropertyTypes,
-			default: '',
-			placeholder: 'https://name.mautic.net/oauth/v2/token',
+			type: 'hidden' as NodePropertyTypes,
+			default: '={{$self["url"]}}/oauth/v2/token',
 			required: true,
 		},
 		{
@@ -50,7 +48,7 @@ export class MauticOAuth2Api implements ICredentialType {
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'header',
+			default: 'body',
 		},
 	];
 }
