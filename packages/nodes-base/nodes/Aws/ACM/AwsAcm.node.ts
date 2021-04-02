@@ -23,7 +23,7 @@ export class AwsAcm implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS ACM',
 		name: 'awsAcm',
-		icon: 'file:acm.png',
+		icon: 'file:acm.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
