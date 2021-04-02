@@ -71,7 +71,7 @@ export const certificateFields = [
 			},
 		},
 		description: `String that contains the ARN of the ACM certificate to be renewed. </br>
-		This must be of the form: arn:aws:acm:region:123456789012:certificate/12345678-1234-1234-1234-123456789012`
+		This must be of the form: arn:aws:acm:region:123456789012:certificate/12345678-1234-1234-1234-123456789012`,
 	},
 /* -------------------------------------------------------------------------- */
 /*                                certificate:delete                          */

@@ -15,8 +15,8 @@ import {
 } from './CertificateDescription';
 
 import {
-	awsApiRequestREST,
 	awsApiRequestAllItems,
+	awsApiRequestREST,
 } from './GenericFunctions';
 
 export class AwsAcm implements INodeType {
