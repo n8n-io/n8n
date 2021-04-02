@@ -50,11 +50,11 @@ export class AwsSqs implements INodeType {
 				options: [
 					{
 						name: 'Send message',
-						value: 'SendMessage',
+						value: 'sendMessage',
 						description: 'Send a message to a queue.',
 					},
 				],
-				default: 'SendMessage',
+				default: 'sendMessage',
 				description: 'The operation to perform.',
 			},
 			{
@@ -67,7 +67,7 @@ export class AwsSqs implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'SendMessage',
+							'sendMessage',
 						],
 					},
 				},
@@ -82,14 +82,14 @@ export class AwsSqs implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Standard',
-						value: 'standard',
-						description: 'Standard SQS queue.',
-					},
-					{
 						name: 'FIFO',
 						value: 'fifo',
 						description: 'FIFO SQS queue.',
+					},
+					{
+						name: 'Standard',
+						value: 'standard',
+						description: 'Standard SQS queue.',
 					},
 				],
 				default: 'standard',
@@ -109,7 +109,7 @@ export class AwsSqs implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'SendMessage',
+							'sendMessage',
 						],
 						sendInputData: [
 							false,
@@ -145,7 +145,7 @@ export class AwsSqs implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'SendMessage',
+							'sendMessage',
 						],
 					},
 				},
