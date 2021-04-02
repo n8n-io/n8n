@@ -190,9 +190,8 @@ export class MySql implements INodeType {
 
 				return connection.query(rawQuery);
 			});
-			let queryResult = await Promise.all(queryQueue);
 
-			queryResult = queryResult.reduce((collection, result) => {
+			const queryResult = (await Promise.all(queryQueue) as mysql2.OkPacket[][]).reduce((collection, result) => {
 				const [rows, fields] = result;
 
 				if (Array.isArray(rows)) {
@@ -204,7 +203,7 @@ export class MySql implements INodeType {
 				return collection;
 			}, []);
 
-			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+			returnItems = this.helpers.returnJsonArray(queryResult as unknown as IDataObject[]);
 
 		} else if (operation === 'insert') {
 			// ----------------------------------
@@ -220,7 +219,7 @@ export class MySql implements INodeType {
 			const queryItems = insertItems.reduce((collection, item) => collection.concat(Object.values(item as any)), []); // tslint:disable-line:no-any
 			const queryResult = await connection.query(insertSQL, queryItems);
 
-			returnItems = this.helpers.returnJsonArray(queryResult[0] as IDataObject);
+			returnItems = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
 
 		} else if (operation === 'update') {
 			// ----------------------------------
@@ -240,9 +239,7 @@ export class MySql implements INodeType {
 			const updateSQL = `UPDATE ${table} SET ${columns.map(column => `${column} = ?`).join(',')} WHERE ${updateKey} = ?;`;
 			const queryQueue = updateItems.map((item) => connection.query(updateSQL, Object.values(item).concat(item[updateKey])));
 			let queryResult = await Promise.all(queryQueue);
-
-			queryResult = queryResult.map(result => result[0]);
-			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+			returnItems = this.helpers.returnJsonArray(queryResult.map(result => result[0]) as unknown as IDataObject[]);
 
 		} else {
 			await connection.end();
