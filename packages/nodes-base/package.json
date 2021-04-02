@@ -287,6 +287,7 @@
       "dist/nodes/Autopilot/Autopilot.node.js",
       "dist/nodes/Autopilot/AutopilotTrigger.node.js",
       "dist/nodes/Aws/AwsLambda.node.js",
+      "dist/nodes/Aws/ACM/AwsAcm.node.js",
       "dist/nodes/Aws/ELB/AwsElb.node.js",
       "dist/nodes/Aws/Comprehend/AwsComprehend.node.js",
       "dist/nodes/Aws/Rekognition/AwsRekognition.node.js",
