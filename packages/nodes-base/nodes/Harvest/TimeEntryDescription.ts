@@ -1,5 +1,11 @@
-import { INodeProperties } from 'n8n-workflow';
-export const resource = ['timeEntry'];
+import { 
+	INodeProperties,
+} from 'n8n-workflow';
+
+export const resource = [
+	'timeEntry',
+];
+
 export const timeEntryOperations = [
 	{
 		displayName: 'Operation',

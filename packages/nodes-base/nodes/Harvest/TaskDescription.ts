@@ -1,5 +1,11 @@
-import { INodeProperties } from 'n8n-workflow';
-const resource = ['task'];
+import {
+	INodeProperties
+} from 'n8n-workflow';
+
+const resource = [
+	'task',
+];
+
 export const taskOperations = [
 	{
 		displayName: 'Operation',
@@ -46,7 +52,7 @@ export const taskOperations = [
 export const taskFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                task:getAll                            */
+	/*                                task:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -128,7 +134,7 @@ export const taskFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                task:get                            */
+	/*                                task:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task Id',
@@ -148,7 +154,7 @@ export const taskFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                task:delete                            */
+	/*                                task:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task Id',
@@ -164,11 +170,11 @@ export const taskFields = [
 				resource,
 			},
 		},
-		description: 'The ID of the task you wan to delete.',
+		description: 'The ID of the task you want to delete.',
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                task:create                           */
+	/*                                task:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
@@ -205,14 +211,14 @@ export const taskFields = [
 				displayName: 'Billable By Default',
 				name: 'billable_by_default',
 				type: 'boolean',
-				default: '',
+				default: true,
 				description: 'Used in determining whether default tasks should be marked billable when creating a new project. Defaults to true.',
 			},
 			{
 				displayName: 'Default Hourly Rate',
 				name: 'default_hourly_rate',
-				type: 'string',
-				default: '0',
+				type: 'number',
+				default: 0,
 				description: 'The default hourly rate to use for this task when it is added to a project. Defaults to 0.',
 			},
 			{
@@ -232,8 +238,24 @@ export const taskFields = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                task:update                           */
+	/*                                task:update                                 */
 	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Task ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource,
+			},
+		},
+		description: 'The ID of the task you want to update.',
+	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -260,8 +282,8 @@ export const taskFields = [
 			{
 				displayName: 'Default Hourly Rate',
 				name: 'default_hourly_rate',
-				type: 'string',
-				default: '0',
+				type: 'number',
+				default: 0,
 				description: 'The default hourly rate to use for this task when it is added to a project. Defaults to 0.',
 			},
 			{
