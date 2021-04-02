@@ -22,8 +22,8 @@ export const policyOperations = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.'
-	}
+		description: 'The operation to perform.',
+	},
 ] as INodeProperties[];
 
 export const policyFields = [

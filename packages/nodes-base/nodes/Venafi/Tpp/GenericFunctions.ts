@@ -33,7 +33,7 @@ export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		qs,
 		rejectUnauthorized: false,
 		uri: uri || `${credentials.domain}${resource}`,
-		json: true
+		json: true,
 	};
 
 	try {
@@ -53,7 +53,7 @@ export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			errors = errors.map((e: IDataObject) => e.message);
 			// Try to return the error prettier
 			throw new Error(
-				`Venafi error response [${error.statusCode}]: ${errors.join('|')}`
+				`Venafi error response [${error.statusCode}]: ${errors.join('|')}`,
 			);
 		}
 		throw error;

@@ -5,8 +5,8 @@ import {
 import {
 	IDataObject,
 	INodeExecutionData,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -15,13 +15,13 @@ import {
 } from './GenericFunctions';
 
 import {
-	certificateOperations,
 	certificateFields,
+	certificateOperations,
 } from './CertificateDescription';
 
 import {
-	policyOperations,
 	policyFields,
+	policyOperations,
 } from './PolicyDescription';
 
 export class VenafiTpp implements INodeType {
@@ -61,7 +61,7 @@ export class VenafiTpp implements INodeType {
 					},
 				],
 				default: 'certificate',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			...certificateOperations,
 			...certificateFields,
@@ -107,7 +107,7 @@ export class VenafiTpp implements INodeType {
 						'POST',
 						`/vedsdk/Certificates/Request`,
 						body,
-						qs
+						qs,
 					);
 				}
 
@@ -120,7 +120,7 @@ export class VenafiTpp implements INodeType {
 						'DELETE',
 						`/vedsdk/Certificates/${certificateId}`,
 						{},
-						qs
+						qs,
 					);
 				}
 
@@ -133,7 +133,7 @@ export class VenafiTpp implements INodeType {
 						'GET',
 						`/vedsdk/Certificates/${certificateId}`,
 						{},
-						qs
+						qs,
 					);
 				}
 
@@ -155,7 +155,7 @@ export class VenafiTpp implements INodeType {
 							'GET',
 							`/vedsdk/Certificates`,
 							{},
-							qs
+							qs,
 						);
 
 					} else {
@@ -165,7 +165,7 @@ export class VenafiTpp implements INodeType {
 							'GET',
 							`/vedsdk/Certificates`,
 							{},
-							qs
+							qs,
 						);
 
 						responseData = responseData.Certificates;
@@ -189,7 +189,7 @@ export class VenafiTpp implements INodeType {
 						'POST',
 						`/vedsdk/Certificates/Renew`,
 						{},
-						qs
+						qs,
 					);
 				}
 			}
@@ -212,7 +212,7 @@ export class VenafiTpp implements INodeType {
 						'POST',
 						`/vedsdk/Certificates/CheckPolicy`,
 						body,
-						qs
+						qs,
 					);
 				}
 			}

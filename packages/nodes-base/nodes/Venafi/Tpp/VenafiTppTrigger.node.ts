@@ -32,7 +32,7 @@ export class VenafiTppTrigger implements INodeType {
 			{
 				name: 'venafiTppApi',
 				required: true,
-			}
+			},
 		],
 		polling: true,
 		inputs: [],

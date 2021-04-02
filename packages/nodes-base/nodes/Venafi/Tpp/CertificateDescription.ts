@@ -39,11 +39,11 @@ export const certificateOperations = [
 				name: 'Renew',
 				value: 'renew',
 				description: 'Renew a certificate',
-			}
+			},
 		],
 		default: 'create',
-		description: 'The operation to perform.'
-	}
+		description: 'The operation to perform.',
+	},
 ] as INodeProperties[];
 
 export const certificateFields = [
@@ -65,7 +65,7 @@ export const certificateFields = [
 			},
 		},
 		default: '',
-		description: 'The folder DN for the new certificate. If the value is missing, the folder name is the system default. If no system default is configured'
+		description: 'The folder DN for the new certificate. If the value is missing, the folder name is the system default. If no system default is configured',
 	},
 	{
 		displayName: 'Subject',
@@ -82,7 +82,7 @@ export const certificateFields = [
 			},
 		},
 		default: '',
-		description: 'The Common Name field for the certificate Subject (DN)'
+		description: 'The Common Name field for the certificate Subject (DN)',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -109,14 +109,14 @@ export const certificateFields = [
 					multipleValues: true,
 				},
 				default: '',
-				description: 'An array of one or more identities for certificate workflow approvers.'
+				description: 'An array of one or more identities for certificate workflow approvers.',
 			},
 			{
 				displayName: 'CADN',
 				name: 'CADN',
 				type: 'string',
 				default: '',
-				description: 'Only required when no policy sets a CA template. The Distinguished Name (DN) of the Trust Protection Platform Certificate Authority Template object for enrolling the certificate.'
+				description: 'Only required when no policy sets a CA template. The Distinguished Name (DN) of the Trust Protection Platform Certificate Authority Template object for enrolling the certificate.',
 			},
 			{
 				displayName: 'Certificate Type',
@@ -152,7 +152,7 @@ export const certificateFields = [
 				name: 'City',
 				type: 'string',
 				default: '',
-				description: ' The City field for the certificate Subject DN. Specify a value when requesting a centrally generated CSR.'
+				description: ' The City field for the certificate Subject DN. Specify a value when requesting a centrally generated CSR.',
 			},
 			{
 				displayName: 'Contacts',
@@ -162,14 +162,14 @@ export const certificateFields = [
 					multipleValues: true,
 				},
 				default: [],
-				description: 'An array of one or more identities for users or groups who receive notifications about events pertaining to the object'
+				description: 'An array of one or more identities for users or groups who receive notifications about events pertaining to the object',
 			},
 			{
 				displayName: 'Country',
 				name: 'Country',
 				type: 'string',
 				default: '',
-				description: 'The Country field for the certificate Subject DN. Specify a value when requesting a centrally generated CSR.'
+				description: 'The Country field for the certificate Subject DN. Specify a value when requesting a centrally generated CSR.',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -207,7 +207,7 @@ export const certificateFields = [
 				name: 'CreatedBy',
 				type: 'string',
 				default: 'Web SDK',
-				description: 'The person, entity, or caller of this request. The default is Web SDK. Avoid overriding the default unless the caller is a significant enterprise application that is tightly integrated with Trust Protection Platform, such as a custom web portal. To add details, use Origin instead. If you want both attributes to have the same value, set only CreatedBy.'
+				description: 'The person, entity, or caller of this request. The default is Web SDK. Avoid overriding the default unless the caller is a significant enterprise application that is tightly integrated with Trust Protection Platform, such as a custom web portal. To add details, use Origin instead. If you want both attributes to have the same value, set only CreatedBy.',
 			},
 			{
 				displayName: 'Devices',
@@ -216,7 +216,7 @@ export const certificateFields = [
 				placeholder: 'Add Field',
 				typeOptions: {
 					multipleValues: true,
-					multipleValueButtonText: 'Add Device'
+					multipleValueButtonText: 'Add Device',
 				},
 				default: {},
 				options: [
@@ -225,7 +225,7 @@ export const certificateFields = [
 						name: 'applications',
 						type: 'string',
 						default: '',
-						description: 'An array of one or more Application objects to allow software, which runs on ObjectName, to use the same certificate'
+						description: 'An array of one or more Application objects to allow software, which runs on ObjectName, to use the same certificate',
 					},
 					{
 						displayName: 'Cloud Instance ID',
@@ -349,7 +349,7 @@ export const certificateFields = [
 				name: 'DisableAutomaticRenewal',
 				type: 'boolean',
 				default: false,
-				description: 'The setting to control whether manual intervention is required for certificate renewal.'
+				description: 'The setting to control whether manual intervention is required for certificate renewal.',
 			},
 			{
 				displayName: 'Elliptic Curve',
@@ -359,17 +359,17 @@ export const certificateFields = [
 					{
 						name: 'P256',
 						value: 'P256',
-						description: 'Use Elliptic Prime Curve 256 bit encryption.'
+						description: 'Use Elliptic Prime Curve 256 bit encryption.',
 					},
 					{
 						name: 'P384',
 						value: 'P384',
-						description: 'Use Elliptic Prime Curve 384 bit encryption.'
+						description: 'Use Elliptic Prime Curve 384 bit encryption.',
 					},
 					{
 						name: 'P521',
 						value: 'P521',
-						description: 'Use Elliptic Prime Curve 521 bit encryption. (not supported by all Certificate Authorities).'
+						description: 'Use Elliptic Prime Curve 521 bit encryption. (not supported by all Certificate Authorities).',
 					},
 				],
 				default: '',
@@ -388,7 +388,7 @@ export const certificateFields = [
 					{
 						name: 'ECC',
 						value: 'ECC',
-						description: 'Elliptic Curve Cryptography (ECC).'
+						description: 'Elliptic Curve Cryptography (ECC).',
 					},
 				],
 				default: '',
@@ -399,7 +399,7 @@ export const certificateFields = [
 				name: 'KeyBitSize',
 				type: 'number',
 				default: 2048,
-				description: 'Use this parameter when KeyAlgorithm is RSA. The number of bits to allow for key generation'
+				description: 'Use this parameter when KeyAlgorithm is RSA. The number of bits to allow for key generation',
 			},
 			{
 				displayName: 'Management Type',
@@ -414,12 +414,12 @@ export const certificateFields = [
 					{
 						name: 'Monitoring',
 						value: 'Monitoring',
-						description: ' Allow Trust Protection Platform to monitor the certificate for expiration and renewal.'
+						description: ' Allow Trust Protection Platform to monitor the certificate for expiration and renewal.',
 					},
 					{
 						name: 'Provisioning',
 						value: 'Provisioning',
-						description: ' Issue a new certificate, renew a certificate, or send a key generation request to a CA for enrollment. Automatically install or provision the certificate.'
+						description: ' Issue a new certificate, renew a certificate, or send a key generation request to a CA for enrollment. Automatically install or provision the certificate.',
 					},
 					{
 						name: 'Unassigned',
@@ -438,7 +438,7 @@ export const certificateFields = [
 					multipleValues: true,
 				},
 				default: 'Web SDK',
-				description: 'Additional information, such as the name and version of the calling application, that describes the source of this enrollment, renewal, or provisioning request. The default is Web SDK.'
+				description: 'Additional information, such as the name and version of the calling application, that describes the source of this enrollment, renewal, or provisioning request. The default is Web SDK.',
 			},
 			{
 				displayName: 'Organization',
