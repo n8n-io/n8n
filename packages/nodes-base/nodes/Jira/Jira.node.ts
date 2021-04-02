@@ -448,6 +448,11 @@ export class Jira implements INodeType {
 							};
 						}
 					}
+					if (additionalFields.reporter) {
+						fields.reporter = {
+							id: additionalFields.reporter as string,
+						};
+					}
 					if (additionalFields.description) {
 						fields.description = additionalFields.description as string;
 					}
@@ -519,6 +524,11 @@ export class Jira implements INodeType {
 								id: updateFields.assignee as string,
 							};
 						}
+					}
+					if (updateFields.reporter) {
+						fields.reporter = {
+							id: updateFields.reporter as string,
+						};
 					}
 					if (updateFields.description) {
 						fields.description = updateFields.description as string;
