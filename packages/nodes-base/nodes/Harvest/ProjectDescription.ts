@@ -1,6 +1,10 @@
-import { INodeProperties } from 'n8n-workflow';
+import { 
+	INodeProperties,
+} from 'n8n-workflow';
 
-const resource = ['project'];
+const resource = [
+	'project',
+];
 
 export const projectOperations = [
 	{
@@ -48,7 +52,7 @@ export const projectOperations = [
 export const projectFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                projects:getAll                            */
+	/*                                projects:getAll                             */
 	/* -------------------------------------------------------------------------- */
 
 	{
@@ -138,7 +142,7 @@ export const projectFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                project:get                            */
+	/*                                project:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Project Id',
@@ -158,7 +162,7 @@ export const projectFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                project:delete                            */
+	/*                                project:delete                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Project Id',
@@ -178,7 +182,7 @@ export const projectFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                project:create                           */
+	/*                                project:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
@@ -399,7 +403,7 @@ export const projectFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                project:update                           */
+	/*                                project:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Project Id',
