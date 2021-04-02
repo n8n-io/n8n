@@ -54,6 +54,7 @@ import {
 	taskFields,
 	taskOperations,
 } from './TaskDescription';
+
 import {
 	timeEntryFields,
 	timeEntryOperations,
@@ -692,6 +693,37 @@ export class Harvest implements INodeType {
 
 					const responseData: IDataObject[] = await getAllResource.call(this, 'tasks', i);
 					returnData.push.apply(returnData, responseData);
+
+				} else if (operation === 'create') {
+					// ----------------------------------
+					//         create
+					// ----------------------------------
+
+					requestMethod = 'POST';
+					endpoint = 'tasks';
+
+					body.name = this.getNodeParameter('name', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(body, additionalFields);
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+					returnData.push(responseData);
+
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         update
+					// ----------------------------------
+
+					requestMethod = 'PATCH';
+					const id = this.getNodeParameter('id', i) as string;
+					endpoint = `tasks/${id}`;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					Object.assign(qs, updateFields);
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+					returnData.push(responseData);
 
 				} else if (operation === 'delete') {
 					// ----------------------------------

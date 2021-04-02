@@ -1,6 +1,10 @@
-import { INodeProperties } from 'n8n-workflow';
+import { 
+	INodeProperties,
+} from 'n8n-workflow';
 
-const resource = ['client'];
+const resource = [
+	'client',
+];
 
 export const clientOperations = [
 	{
@@ -49,7 +53,7 @@ export const clientOperations = [
 export const clientFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                client:getAll                            */
+	/*                                client:getAll                               */
 	/* -------------------------------------------------------------------------- */
 
 	{
@@ -122,7 +126,7 @@ export const clientFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                client:get                            */
+	/*                                client:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Client Id',
@@ -142,7 +146,7 @@ export const clientFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                client:delete                            */
+	/*                                client:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Client Id',
@@ -162,7 +166,7 @@ export const clientFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                client:create                           */
+	/*                                client:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
@@ -220,7 +224,7 @@ export const clientFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                client:update                           */
+	/*                                client:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Client Id',
