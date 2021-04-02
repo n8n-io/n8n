@@ -12,7 +12,7 @@ export async function linkedInApiRequest(this: IHookFunctions | IExecuteFunction
 	const options: OptionsWithUrl = {
 		headers: {
 			'Accept': 'application/json',
-			'X-Restli-Protocol-Version': '2.0.0'
+			'X-Restli-Protocol-Version': '2.0.0',
 		},
 		method,
 		body,

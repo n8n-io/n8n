@@ -5,8 +5,8 @@ import {
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
 	IHookFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {

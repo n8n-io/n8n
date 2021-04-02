@@ -46,7 +46,7 @@ export const messageLabelFields = [
 				operation: [
 					'add',
 					'remove',
-				]
+				],
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
@@ -69,7 +69,7 @@ export const messageLabelFields = [
 				operation: [
 					'add',
 					'remove',
-				]
+				],
 			},
 		},
 		description: 'The ID of the label',

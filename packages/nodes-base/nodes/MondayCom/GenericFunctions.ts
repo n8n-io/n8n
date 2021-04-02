@@ -35,7 +35,7 @@ export async function mondayComApiRequest(this: IExecuteFunctions | IWebhookFunc
 		method: 'POST',
 		body,
 		uri: endpoint,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	try {

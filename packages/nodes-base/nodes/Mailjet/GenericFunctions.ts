@@ -17,7 +17,7 @@ export async function mailjetApiRequest(this: IExecuteFunctions | IExecuteSingle
 		qs,
 		body,
 		uri: uri ||`https://api.mailjet.com${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {

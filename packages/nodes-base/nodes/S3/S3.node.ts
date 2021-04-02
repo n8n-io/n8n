@@ -1,7 +1,7 @@
 
 import {
-	snakeCase,
 	paramCase,
+	snakeCase,
 } from 'change-case';
 
 import {
@@ -105,11 +105,11 @@ export class S3 implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const qs: IDataObject = {};
-		const headers: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < items.length; i++) {
+			const headers: IDataObject = {};
 			if (resource === 'bucket') {
 				//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html
 				if (operation === 'create') {
@@ -156,7 +156,7 @@ export class S3 implements INodeType {
 							'$': {
 								xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
 							},
-						}
+						},
 					};
 					let data = '';
 					// if credentials has the S3 defaul region (us-east-1) the body (XML) does not have to be sent.
@@ -290,7 +290,7 @@ export class S3 implements INodeType {
 						for (const childObject of responseData) {
 							//@ts-ignore
 							(body.Delete.Object as IDataObject[]).push({
-								Key: childObject.Key as string
+								Key: childObject.Key as string,
 							});
 						}
 

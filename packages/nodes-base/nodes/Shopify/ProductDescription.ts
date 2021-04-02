@@ -233,7 +233,7 @@ export const productFields = [
 								default: '',
 								description: `Option\'s values.`,
 							},
-						]
+						],
 					},
 				],
 			},
@@ -458,7 +458,7 @@ export const productFields = [
 								default: '',
 								description: `Option\'s values.`,
 							},
-						]
+						],
 					},
 				],
 			},

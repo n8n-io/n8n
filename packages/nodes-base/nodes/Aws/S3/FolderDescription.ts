@@ -97,7 +97,7 @@ export const folderFields = [
 				name: 'parentFolderKey',
 				type: 'string',
 				default: '',
-				description: 'Parent folder you want to create the folder in'
+				description: 'Parent folder you want to create the folder in',
 			},
 			{
 				displayName: 'Requester Pays',
@@ -141,7 +141,7 @@ export const folderFields = [
 					},
 				],
 				default: 'standard',
-				description: 'Amazon S3 storage classes.'
+				description: 'Amazon S3 storage classes.',
 			},
 		],
 	},

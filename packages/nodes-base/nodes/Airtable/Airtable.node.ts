@@ -1,31 +1,31 @@
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
 	apiRequest,
 	apiRequestAllItems,
+	downloadRecordAttachments,
 } from './GenericFunctions';
 
 export class Airtable implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Airtable',
 		name: 'airtable',
-		icon: 'file:airtable.png',
+		icon: 'file:airtable.svg',
 		group: ['input'],
 		version: 1,
 		description: 'Read, update, write and delete data from Airtable',
 		defaults: {
 			name: 'Airtable',
-			color: '#445599',
+			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -33,7 +33,7 @@ export class Airtable implements INodeType {
 			{
 				name: 'airtableApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -49,22 +49,22 @@ export class Airtable implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete data from a table'
+						description: 'Delete data from a table',
 					},
 					{
 						name: 'List',
 						value: 'list',
-						description: 'List data from a table'
+						description: 'List data from a table',
 					},
 					{
 						name: 'Read',
 						value: 'read',
-						description: 'Read data from a table'
+						description: 'Read data from a table',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Update data in a table'
+						description: 'Update data in a table',
 					},
 				],
 				default: 'read',
@@ -75,12 +75,12 @@ export class Airtable implements INodeType {
 			//         All
 			// ----------------------------------
 			{
-				displayName: 'Application ID',
+				displayName: 'Base ID',
 				name: 'application',
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'The ID of the application to access.',
+				description: 'The ID of the base to access.',
 			},
 			{
 				displayName: 'Table',
@@ -137,7 +137,7 @@ export class Airtable implements INodeType {
 			//         delete
 			// ----------------------------------
 			{
-				displayName: 'Id',
+				displayName: 'ID',
 				name: 'id',
 				type: 'string',
 				displayOptions: {
@@ -190,7 +190,38 @@ export class Airtable implements INodeType {
 				default: 100,
 				description: 'Number of results to return.',
 			},
-
+			{
+				displayName: 'Download Attachments',
+				name: 'downloadAttachments',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'list',
+						],
+					},
+				},
+				default: false,
+				description: `When set to true the attachment fields define in 'Download Fields' will be downloaded.`,
+			},
+			{
+				displayName: 'Download Fields',
+				name: 'downloadFieldNames',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'list',
+						],
+						downloadAttachments: [
+							true,
+						],
+					},
+				},
+				default: '',
+				description: `Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.`,
+			},
 			{
 				displayName: 'Additional Options',
 				name: 'additionalOptions',
@@ -198,7 +229,7 @@ export class Airtable implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'list'
+							'list',
 						],
 					},
 				},
@@ -261,13 +292,13 @@ export class Airtable implements INodeType {
 											{
 												name: 'DESC',
 												value: 'desc',
-												description: 'Sort in descending order (large -> small)'
+												description: 'Sort in descending order (large -> small)',
 											},
 										],
 										default: 'asc',
 										description: 'The sort direction.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -286,7 +317,7 @@ export class Airtable implements INodeType {
 			//         read
 			// ----------------------------------
 			{
-				displayName: 'Id',
+				displayName: 'ID',
 				name: 'id',
 				type: 'string',
 				displayOptions: {
@@ -305,7 +336,7 @@ export class Airtable implements INodeType {
 			//         update
 			// ----------------------------------
 			{
-				displayName: 'Id',
+				displayName: 'ID',
 				name: 'id',
 				type: 'string',
 				displayOptions: {
@@ -375,6 +406,23 @@ export class Airtable implements INodeType {
 				},
 				default: {},
 				options: [
+					{
+						displayName: 'Ignore Fields',
+						name: 'ignoreFields',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'update',
+								],
+								'/updateAllFields': [
+									true,
+								],
+							},
+						},
+						default: '',
+						description: 'Comma separated list of fields to ignore.',
+					},
 					{
 						displayName: 'Typecast',
 						name: 'typecast',
@@ -451,7 +499,7 @@ export class Airtable implements INodeType {
 			for (let i = 0; i < items.length; i++) {
 				id = this.getNodeParameter('id', i) as string;
 
-				endpoint = `${application}/${table}/${id}`;
+				endpoint = `${application}/${table}`;
 
 				// Make one request after another. This is slower but makes
 				// sure that we do not run into the rate limit they have in
@@ -459,9 +507,11 @@ export class Airtable implements INodeType {
 				// functionality in core should make it easy to make requests
 				// according to specific rules like not more than 5 requests
 				// per seconds.
+				qs.records = [id];
+
 				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-				returnData.push(responseData);
+				returnData.push(...responseData.records);
 			}
 
 		} else if (operation === 'list') {
@@ -473,6 +523,8 @@ export class Airtable implements INodeType {
 			endpoint = `${application}/${table}`;
 
 			returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+			const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
 
 			const additionalOptions = this.getNodeParameter('additionalOptions', 0, {}) as IDataObject;
 
@@ -492,6 +544,12 @@ export class Airtable implements INodeType {
 			}
 
 			returnData.push.apply(returnData, responseData.records);
+
+			if (downloadAttachments === true) {
+				const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
+				const data = await downloadRecordAttachments.call(this, responseData.records, downloadFieldNames);
+				return [data];
+			}
 
 		} else if (operation === 'read') {
 			// ----------------------------------
@@ -530,7 +588,6 @@ export class Airtable implements INodeType {
 			let updateAllFields: boolean;
 			let fields: string[];
 			let options: IDataObject;
-
 			for (let i = 0; i < items.length; i++) {
 				updateAllFields = this.getNodeParameter('updateAllFields', i) as boolean;
 				options = this.getNodeParameter('options', i, {}) as IDataObject;
@@ -538,6 +595,16 @@ export class Airtable implements INodeType {
 				if (updateAllFields === true) {
 					// Update all the fields the item has
 					body.fields = items[i].json;
+
+					if (options.ignoreFields && options.ignoreFields !== '') {
+						const ignoreFields = (options.ignoreFields as string).split(',').map(field => field.trim()).filter(field => !!field);
+						if (ignoreFields.length) {
+							// From: https://stackoverflow.com/questions/17781472/how-to-get-a-subset-of-a-javascript-objects-properties
+							body.fields = Object.entries(items[i].json)
+								.filter(([key]) => !ignoreFields.includes(key))
+								.reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {});
+						}
+					}
 				} else {
 					// Update only the specified fields
 					body.fields = {} as IDataObject;
@@ -550,13 +617,9 @@ export class Airtable implements INodeType {
 					}
 				}
 
-				if (options.typecast === true) {
-					body['typecast'] = true;
-				}
-
 				id = this.getNodeParameter('id', i) as string;
 
-				endpoint = `${application}/${table}/${id}`;
+				endpoint = `${application}/${table}`;
 
 				// Make one request after another. This is slower but makes
 				// sure that we do not run into the rate limit they have in
@@ -565,9 +628,11 @@ export class Airtable implements INodeType {
 				// according to specific rules like not more than 5 requests
 				// per seconds.
 
-				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+				const data = { records: [{ id, fields: body.fields }], typecast: (options.typecast) ? true : false };
 
-				returnData.push(responseData);
+				responseData = await apiRequest.call(this, requestMethod, endpoint, data, qs);
+
+				returnData.push(...responseData.records);
 			}
 
 		} else {

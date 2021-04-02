@@ -17,7 +17,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 		body,
 		qs,
 		uri: uri || `https://graph.microsoft.com/v1.0/me${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		if (Object.keys(headers).length !== 0) {

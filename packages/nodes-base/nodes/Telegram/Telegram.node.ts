@@ -5,13 +5,13 @@ import {
 import {
 	IDataObject,
 	INodeExecutionData,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
-	apiRequest,
 	addAdditionalFields,
+	apiRequest,
 } from './GenericFunctions';
 
 
@@ -19,7 +19,7 @@ export class Telegram implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Telegram',
 		name: 'telegram',
-		icon: 'file:telegram.png',
+		icon: 'file:telegram.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -34,7 +34,7 @@ export class Telegram implements INodeType {
 			{
 				name: 'telegramApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -42,6 +42,10 @@ export class Telegram implements INodeType {
 				name: 'resource',
 				type: 'options',
 				options: [
+					// {
+					// 	name: 'Bot',
+					// 	value: 'bot',
+					// },
 					{
 						name: 'Chat',
 						value: 'chat',
@@ -51,15 +55,43 @@ export class Telegram implements INodeType {
 						value: 'callback',
 					},
 					{
+						name: 'File',
+						value: 'file',
+					},
+					{
 						name: 'Message',
 						value: 'message',
-					}
+					},
 				],
 				default: 'message',
 				description: 'The resource to operate on.',
 			},
 
+			// ----------------------------------
+			//         operation
+			// ----------------------------------
 
+			// {
+			// 	displayName: 'Operation',
+			// 	name: 'operation',
+			// 	type: 'options',
+			// 	displayOptions: {
+			// 		show: {
+			// 			resource: [
+			// 				'bot',
+			// 			],
+			// 		},
+			// 	},
+			// 	options: [
+			// 		{
+			// 			name: 'Info',
+			// 			value: 'info',
+			// 			description: 'Get information about the bot associated with the access token.',
+			// 		},
+			// 	],
+			// 	default: 'info',
+			// 	description: 'The operation to perform.',
+			// },
 
 			// ----------------------------------
 			//         operation
@@ -124,8 +156,34 @@ export class Telegram implements INodeType {
 						value: 'answerQuery',
 						description: 'Send answer to callback query sent from inline keyboard.',
 					},
+					{
+						name: 'Answer Inline Query',
+						value: 'answerInlineQuery',
+						description: 'Send answer to callback query sent from inline bot.',
+					},
 				],
 				default: 'answerQuery',
+				description: 'The operation to perform.',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get a file.',
+					},
+				],
+				default: 'get',
 				description: 'The operation to perform.',
 			},
 
@@ -147,6 +205,16 @@ export class Telegram implements INodeType {
 						description: 'Edit a text message',
 					},
 					{
+						name: 'Pin Chat Message',
+						value: 'pinChatMessage',
+						description: 'Pin a chat message',
+					},
+					{
+						name: 'Unpin Chat Message',
+						value: 'unpinChatMessage',
+						description: 'Unpin a chat message',
+					},
+					{
 						name: 'Send Animation',
 						value: 'sendAnimation',
 						description: 'Send an animated file',
@@ -165,6 +233,11 @@ export class Telegram implements INodeType {
 						name: 'Send Document',
 						value: 'sendDocument',
 						description: 'Send a document',
+					},
+					{
+						name: 'Send Location',
+						value: 'sendLocation',
+						description: 'Send a location',
 					},
 					{
 						name: 'Send Message',
@@ -212,12 +285,15 @@ export class Telegram implements INodeType {
 							'get',
 							'leave',
 							'member',
+							'pinChatMessage',
+							'unpinChatMessage',
 							'setDescription',
 							'setTitle',
 							'sendAnimation',
 							'sendAudio',
 							'sendChatAction',
 							'sendDocument',
+							'sendLocation',
 							'sendMessage',
 							'sendMediaGroup',
 							'sendPhoto',
@@ -234,6 +310,54 @@ export class Telegram implements INodeType {
 				description: 'Unique identifier for the target chat or username of the target<br />channel (in the format @channelusername).',
 			},
 
+			// ----------------------------------
+			//       message:pinChatMessage
+			// ----------------------------------
+			{
+				displayName: 'Message ID',
+				name: 'messageId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'pinChatMessage',
+							'unpinChatMessage',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				required: true,
+				description: 'Unique identifier of the message to pin or unpin.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'pinChatMessage',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Disable Notification',
+						name: 'disable_notification',
+						type: 'boolean',
+						default: false,
+						description: 'Do not send a notification to all chat members about the new pinned message.',
+					},
+				],
+			},
 
 			// ----------------------------------
 			//         chat
@@ -250,7 +374,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'member'
+							'member',
 						],
 						resource: [
 							'chat',
@@ -273,7 +397,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'setDescription'
+							'setDescription',
 						],
 						resource: [
 							'chat',
@@ -296,7 +420,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'setTitle'
+							'setTitle',
 						],
 						resource: [
 							'chat',
@@ -323,7 +447,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'answerQuery'
+							'answerQuery',
 						],
 						resource: [
 							'callback',
@@ -342,7 +466,100 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'answerQuery'
+							'answerQuery',
+						],
+						resource: [
+							'callback',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Cache Time',
+						name: 'cache_time',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+						},
+						default: 0,
+						description: 'The maximum amount of time in seconds that the result of the callback query may be cached client-side.',
+					},
+					{
+						displayName: 'Show Alert',
+						name: 'show_alert',
+						type: 'boolean',
+						default: false,
+						description: 'If true, an alert will be shown by the client instead of a notification at the top of the chat screen.',
+					},
+					{
+						displayName: 'Text',
+						name: 'text',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Text of the notification. If not specified, nothing will be shown to the user, 0-200 characters.',
+					},
+					{
+						displayName: 'URL',
+						name: 'url',
+						type: 'string',
+						default: '',
+						description: 'URL that will be opened by the user\'s client.',
+					},
+				],
+			},
+
+			// -----------------------------------------------
+			//         callback:answerInlineQuery
+			// -----------------------------------------------
+			{
+				displayName: 'Query ID',
+				name: 'queryId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'answerInlineQuery',
+						],
+						resource: [
+							'callback',
+						],
+					},
+				},
+				required: true,
+				description: 'Unique identifier for the answered query.',
+			},
+			{
+				displayName: 'Results',
+				name: 'results',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'answerInlineQuery',
+						],
+						resource: [
+							'callback',
+						],
+					},
+				},
+				required: true,
+				description: 'A JSON-serialized array of results for the inline query.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'answerInlineQuery',
 						],
 						resource: [
 							'callback',
@@ -389,6 +606,49 @@ export class Telegram implements INodeType {
 			},
 
 
+			// ----------------------------------
+			//         file
+			// ----------------------------------
+
+			// ----------------------------------
+			//         file:get/download
+			// ----------------------------------
+
+			{
+				displayName: 'File ID',
+				name: 'fileId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				required: true,
+				description: 'The ID of the file.',
+			},
+			{
+				displayName: 'Download',
+				name: 'download',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				default: true,
+				description: 'Download the file.',
+			},
 
 			// ----------------------------------
 			//         message
@@ -434,7 +694,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						messageType: [
-							'message'
+							'message',
 						],
 						operation: [
 							'editMessageText',
@@ -455,7 +715,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						messageType: [
-							'message'
+							'message',
 						],
 						operation: [
 							'editMessageText',
@@ -476,7 +736,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						messageType: [
-							'inlineMessage'
+							'inlineMessage',
 						],
 						operation: [
 							'editMessageText',
@@ -530,7 +790,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendAnimation'
+							'sendAnimation',
 						],
 						resource: [
 							'message',
@@ -553,7 +813,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendAudio'
+							'sendAudio',
 						],
 						resource: [
 							'message',
@@ -575,7 +835,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendChatAction'
+							'sendChatAction',
 						],
 						resource: [
 							'message',
@@ -641,7 +901,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendDocument'
+							'sendDocument',
 						],
 						resource: [
 							'message',
@@ -653,6 +913,55 @@ export class Telegram implements INodeType {
 
 
 			// ----------------------------------
+			//         message:sendLocation
+			// ----------------------------------
+			{
+				displayName: 'Latitude',
+				name: 'latitude',
+				type: 'number',
+				default: 0.0,
+				typeOptions: {
+					numberPrecision: 10,
+					minValue: -90,
+					maxValue: 90,
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'sendLocation',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				description: 'Location latitude',
+			},
+
+			{
+				displayName: 'Longitude',
+				name: 'longitude',
+				type: 'number',
+				typeOptions: {
+					numberPrecision: 10,
+					minValue: -180,
+					maxValue: 180,
+				},
+				default: 0.0,
+				displayOptions: {
+					show: {
+						operation: [
+							'sendLocation',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				description: 'Location longitude',
+			},
+
+			// ----------------------------------
 			//         message:sendMediaGroup
 			// ----------------------------------
 			{
@@ -662,7 +971,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendMediaGroup'
+							'sendMediaGroup',
 						],
 						resource: [
 							'message',
@@ -784,7 +1093,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendPhoto'
+							'sendPhoto',
 						],
 						resource: [
 							'message',
@@ -806,7 +1115,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendSticker'
+							'sendSticker',
 						],
 						resource: [
 							'message',
@@ -828,7 +1137,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendVideo'
+							'sendVideo',
 						],
 						resource: [
 							'message',
@@ -840,7 +1149,7 @@ export class Telegram implements INodeType {
 
 
 			// ----------------------------------
-			//         message:editMessageText/sendAnimation/sendAudio/sendMessage/sendPhoto/sendSticker/sendVideo
+			//         message:editMessageText/sendAnimation/sendAudio/sendLocation/sendMessage/sendPhoto/sendSticker/sendVideo
 			// ----------------------------------
 
 			{
@@ -855,6 +1164,8 @@ export class Telegram implements INodeType {
 							'sendPhoto',
 							'sendSticker',
 							'sendVideo',
+							'sendAudio',
+							'sendLocation',
 						],
 						resource: [
 							'message',
@@ -1178,7 +1489,9 @@ export class Telegram implements INodeType {
 						operation: [
 							'editMessageText',
 							'sendAnimation',
+							'sendAudio',
 							'sendDocument',
+							'sendLocation',
 							'sendMessage',
 							'sendMediaGroup',
 							'sendPhoto',
@@ -1397,7 +1710,7 @@ export class Telegram implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		// For Post
 		let body: IDataObject;
@@ -1431,7 +1744,21 @@ export class Telegram implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					Object.assign(body, additionalFields);
 
+				} else if (operation === 'answerInlineQuery') {
+					// -----------------------------------------------
+					//         callback:answerInlineQuery
+					// -----------------------------------------------
+
+					endpoint = 'answerInlineQuery';
+
+					body.inline_query_id = this.getNodeParameter('queryId', i) as string;
+					body.results = this.getNodeParameter('results', i) as string;
+
+					// Add additional fields
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(body, additionalFields);
 				}
+
 			} else if (resource === 'chat') {
 				if (operation === 'get') {
 					// ----------------------------------
@@ -1482,6 +1809,21 @@ export class Telegram implements INodeType {
 					body.title = this.getNodeParameter('title', i) as string;
 
 				}
+				// } else if (resource === 'bot') {
+				// 	if (operation === 'info') {
+				// 		endpoint = 'getUpdates';
+				// 	}
+			} else if (resource === 'file') {
+
+				if (operation === 'get') {
+					// ----------------------------------
+					//         file:get
+					// ----------------------------------
+
+					endpoint = 'getFile';
+
+					body.file_id = this.getNodeParameter('fileId', i) as string;
+				}
 
 			} else if (resource === 'message') {
 
@@ -1506,6 +1848,30 @@ export class Telegram implements INodeType {
 					// Add additional fields and replyMarkup
 					addAdditionalFields.call(this, body, i);
 
+				} else if (operation === 'pinChatMessage') {
+					// ----------------------------------
+					//        message:pinChatMessage
+					// ----------------------------------
+
+					endpoint = 'pinChatMessage';
+
+					body.chat_id = this.getNodeParameter('chatId', i) as string;
+					body.message_id = this.getNodeParameter('messageId', i) as string;
+
+					const { disable_notification } = this.getNodeParameter('additionalFields', i) as IDataObject;
+					if (disable_notification) {
+						body.disable_notification = true;
+					}
+
+				} else if (operation === 'unpinChatMessage') {
+					// ----------------------------------
+					//        message:unpinChatMessage
+					// ----------------------------------
+
+					endpoint = 'unpinChatMessage';
+
+					body.chat_id = this.getNodeParameter('chatId', i) as string;
+					body.message_id = this.getNodeParameter('messageId', i) as string;
 
 				} else if (operation === 'sendAnimation') {
 					// ----------------------------------
@@ -1553,6 +1919,20 @@ export class Telegram implements INodeType {
 
 					body.chat_id = this.getNodeParameter('chatId', i) as string;
 					body.document = this.getNodeParameter('file', i) as string;
+
+					// Add additional fields and replyMarkup
+					addAdditionalFields.call(this, body, i);
+
+				} else if (operation === 'sendLocation') {
+					// ----------------------------------
+					//         message:sendLocation
+					// ----------------------------------
+
+					endpoint = 'sendLocation';
+
+					body.chat_id = this.getNodeParameter('chatId', i) as string;
+					body.latitude = this.getNodeParameter('latitude', i) as string;
+					body.longitude = this.getNodeParameter('longitude', i) as string;
 
 					// Add additional fields and replyMarkup
 					addAdditionalFields.call(this, body, i);
@@ -1637,9 +2017,41 @@ export class Telegram implements INodeType {
 			}
 
 			const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-			returnData.push(responseData);
+
+			if (resource === 'file' && operation === 'get') {
+				if (this.getNodeParameter('download', i, false) as boolean === true) {
+					const filePath = responseData.result.file_path;
+
+					const credentials = this.getCredentials('telegramApi');
+
+					if (credentials === undefined) {
+						throw new Error('No credentials got returned!');
+					}
+					const file = await apiRequest.call(this, 'GET', '', {}, {}, { json: false, encoding: null, uri: `https://api.telegram.org/file/bot${credentials.accessToken}/${filePath}`, resolveWithFullResponse: true });
+
+					const fileName = filePath.split('/').pop();
+					const binaryData = await this.helpers.prepareBinaryData(Buffer.from(file.body as string), fileName);
+
+					returnData.push({
+						json: responseData,
+						binary: {
+							data: binaryData,
+						},
+					});
+					continue;
+				}
+			}
+
+			// if (resource === 'bot' && operation === 'info') {
+			// 	responseData = {
+			// 		user: responseData.result[0].message.from,
+			// 		chat: responseData.result[0].message.chat,
+			// 	};
+			// }
+
+			returnData.push({ json: responseData });
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

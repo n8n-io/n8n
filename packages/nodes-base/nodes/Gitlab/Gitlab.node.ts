@@ -5,8 +5,8 @@ import {
 import {
 	IDataObject,
 	INodeExecutionData,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -17,7 +17,7 @@ export class Gitlab implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitLab',
 		name: 'gitlab',
-		icon: 'file:gitlab.png',
+		icon: 'file:gitlab.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -711,7 +711,7 @@ export class Gitlab implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'getIssues'
+							'getIssues',
 						],
 						resource: [
 							'repository',
@@ -790,7 +790,7 @@ export class Gitlab implements INodeType {
 							{
 								name: 'Priority',
 								value: 'priority',
-								description: 'Sort by priority.'
+								description: 'Sort by priority.',
 							},
 						],
 						default: 'created_at',

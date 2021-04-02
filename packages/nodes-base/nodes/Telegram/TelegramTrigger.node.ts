@@ -23,7 +23,7 @@ export class TelegramTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Telegram Trigger',
 		name: 'telegramTrigger',
-		icon: 'file:telegram.png',
+		icon: 'file:telegram.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '=Updates: {{$parameter["updates"].join(", ")}}',
@@ -122,7 +122,7 @@ export class TelegramTrigger implements INodeType {
 						name: 'download',
 						type: 'boolean',
 						default: false,
-						description: `Telegram develiers the image in 3 sizes.<br>
+						description: `Telegram delivers the image in 3 sizes.<br>
 						By default, just the larger image would be downloaded.<br>
 						if you want to change the size set the field 'Image Size'`,
 					},
@@ -225,7 +225,6 @@ export class TelegramTrigger implements INodeType {
 				if (additionalFields.imageSize) {
 
 					imageSize = additionalFields.imageSize as string;
-
 				}
 
 				let fileId;
@@ -266,8 +265,8 @@ export class TelegramTrigger implements INodeType {
 								binary: {
 									data: binaryData,
 								},
-							}
-						]
+							},
+						],
 					],
 				};
 			}
@@ -275,7 +274,7 @@ export class TelegramTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray([bodyData as unknown as IDataObject])
+				this.helpers.returnJsonArray([bodyData as unknown as IDataObject]),
 			],
 		};
 	}

@@ -4,21 +4,21 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
-	eventOperations,
 	eventFields,
+	eventOperations,
 } from './EventDescription';
 
 import {
-	issueOperations,
 	issueFields,
+	issueOperations,
 } from './IssueDescription';
 
 import {
@@ -27,23 +27,23 @@ import {
 } from './OrganizationDescription';
 
 import {
-	projectOperations,
 	projectFields,
+	projectOperations,
 } from './ProjectDescription';
 
 import {
-	releaseOperations,
 	releaseFields,
+	releaseOperations,
 } from './ReleaseDescription';
 
 import {
-	teamOperations,
 	teamFields,
+	teamOperations,
 } from './TeamDescription';
 
 import {
-	sentryIoApiRequest,
 	sentryApiRequestAllItems,
+	sentryIoApiRequest,
 } from './GenericFunctions';
 
 import {
@@ -56,14 +56,14 @@ export class SentryIo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sentry.io',
 		name: 'sentryIo',
-		icon: 'file:sentryio.png',
+		icon: 'file:sentryio.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Sentry.io API',
 		defaults: {
 			name: 'Sentry.io',
-			color: '#000000',
+			color: '#362d59',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -228,7 +228,7 @@ export class SentryIo implements INodeType {
 
 			// TEAM
 			...teamOperations,
-			...teamFields
+			...teamFields,
 		],
 	};
 

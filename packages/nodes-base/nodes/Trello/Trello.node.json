@@ -1,0 +1,26 @@
+{
+	"node": "n8n-nodes-base.trello",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Productivity"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/trello"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.trello/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Automating Conference Organization Processes with n8n",
+				"url": "https://medium.com/n8n-io/automating-conference-organization-processes-with-n8n-ab8f64a7a520"
+			}
+		]
+	}
+}

@@ -6,13 +6,13 @@ import {
 
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IDataObject,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
-export interface IAttachment  {
+export interface IAttachment {
 	fields: {
 		item?: object[];
 	};
@@ -46,9 +46,9 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		uri: `${credentials.baseUrl}/api/v4/${endpoint}`,
 		headers: {
 			Authorization: `Bearer ${credentials.accessToken}`,
-			'content-type': 'application/json; charset=utf-8'
+			'content-type': 'application/json; charset=utf-8',
 		},
-		json: true
+		json: true,
 	};
 
 	try {

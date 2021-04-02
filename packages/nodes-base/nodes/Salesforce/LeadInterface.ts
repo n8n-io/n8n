@@ -1,4 +1,3 @@
-
 export interface ILead {
 	Company?: string;
 	LastName?: string;
@@ -23,4 +22,5 @@ export interface ILead {
 	AnnualRevenue?: number;
 	IsUnreadByOwner?: boolean;
 	NumberOfEmployees?: number;
+	MobilePhone?: string;
 }

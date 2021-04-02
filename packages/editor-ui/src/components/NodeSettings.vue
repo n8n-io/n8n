@@ -248,7 +248,7 @@ export default mixins(
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If active, the workflow continues even if this node\'s <br /execution fails. When this occurs, the node passes along input data from<br />previous nodes - so your workflow should account for unexpected output data.',
+						description: 'If active, the workflow continues even if this node\'s <br />execution fails. When this occurs, the node passes along input data from<br />previous nodes - so your workflow should account for unexpected output data.',
 					},
 				] as INodeProperties[],
 

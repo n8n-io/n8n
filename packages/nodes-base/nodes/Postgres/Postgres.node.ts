@@ -137,6 +137,19 @@ export class Postgres implements INodeType {
 			//         update
 			// ----------------------------------
 			{
+				displayName: 'Schema',
+				name: 'schema',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['update'],
+					},
+				},
+				default: 'public',
+				required: true,
+				description: 'Name of the schema the table belongs to',
+			},
+			{
 				displayName: 'Table',
 				name: 'table',
 				type: 'string',

@@ -4,11 +4,11 @@ import {
 
 import {
 	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -19,8 +19,8 @@ import {
 } from './GenericFunctions';
 
 import {
-	contactOperations,
 	contactFields,
+	contactOperations,
 } from './ContactDescription';
 
 import * as moment from 'moment';
@@ -58,7 +58,7 @@ export class GoogleContacts implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			...contactOperations,
 			...contactFields,
@@ -70,7 +70,7 @@ export class GoogleContacts implements INodeType {
 			// Get all the calendars to display them to user so that he can
 			// select them easily
 			async getGroups(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const groups = await googleApiRequestAllItems.call(
@@ -84,12 +84,12 @@ export class GoogleContacts implements INodeType {
 					const groupId = group.resourceName;
 					returnData.push({
 						name: groupName,
-						value: groupId
+						value: groupId,
 					});
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -177,9 +177,9 @@ export class GoogleContacts implements INodeType {
 								date: {
 									day,
 									month,
-									year
-								}
-							}
+									year,
+								},
+							},
 						];
 					}
 
@@ -206,8 +206,8 @@ export class GoogleContacts implements INodeType {
 						const memberships = (additionalFields.group as string[]).map((groupId: string) => {
 							return {
 								contactGroupMembership: {
-									contactGroupResourceName: groupId
-								}
+									contactGroupResourceName: groupId,
+								},
 							};
 						});
 
@@ -219,7 +219,7 @@ export class GoogleContacts implements INodeType {
 						'POST',
 						`/people:createContact`,
 						body,
-						qs
+						qs,
 					);
 
 					responseData.contactId = responseData.resourceName.split('/')[1];
@@ -232,7 +232,7 @@ export class GoogleContacts implements INodeType {
 						this,
 						'DELETE',
 						`/people/${contactId}:deleteContact`,
-						{}
+						{},
 					);
 					responseData = { success: true };
 				}
@@ -425,9 +425,9 @@ export class GoogleContacts implements INodeType {
 								date: {
 									day,
 									month,
-									year
-								}
-							}
+									year,
+								},
+							},
 						];
 
 						updatePersonFields.push('birthdays');
@@ -459,8 +459,8 @@ export class GoogleContacts implements INodeType {
 						const memberships = (updateFields.group as string[]).map((groupId: string) => {
 							return {
 								contactGroupMembership: {
-									contactGroupResourceName: groupId
-								}
+									contactGroupResourceName: groupId,
+								},
 							};
 						});
 
@@ -479,7 +479,7 @@ export class GoogleContacts implements INodeType {
 						'PATCH',
 						`/people/${contactId}:updateContact`,
 						body,
-						qs
+						qs,
 					);
 
 					responseData.contactId = responseData.resourceName.split('/')[1];

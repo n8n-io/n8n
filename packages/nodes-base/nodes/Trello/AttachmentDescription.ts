@@ -37,7 +37,7 @@ export const attachmentOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Returns all attachments for the card',
-			}
+			},
 		],
 		default: 'getAll',
 		description: 'The operation to perform.',

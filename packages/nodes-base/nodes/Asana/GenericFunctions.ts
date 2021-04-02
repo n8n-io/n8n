@@ -76,7 +76,7 @@ export async function asanaApiRequest(this: IHookFunctions | IExecuteFunctions |
 	}
 }
 
-export async function asanaApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function asanaApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -95,12 +95,12 @@ export async function asanaApiRequestAllItems(this: IExecuteFunctions | ILoadOpt
 	return returnData;
 }
 
-export async function getWorkspaces(this: ILoadOptionsFunctions): Promise < INodePropertyOptions[] > {
+export async function getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const endpoint = '/workspaces';
 	const responseData = await asanaApiRequestAllItems.call(this, 'GET', endpoint, {});
 
 	const returnData: INodePropertyOptions[] = [];
-	for(const workspaceData of responseData) {
+	for (const workspaceData of responseData) {
 		if (workspaceData.resource_type !== 'workspace') {
 			// Not sure if for some reason also ever other resources
 			// get returned but just in case filter them out
@@ -113,11 +113,48 @@ export async function getWorkspaces(this: ILoadOptionsFunctions): Promise < INod
 		});
 	}
 
-				returnData.sort((a, b) => {
+	returnData.sort((a, b) => {
 		if (a.name < b.name) { return -1; }
 		if (a.name > b.name) { return 1; }
 		return 0;
 	});
 
 	return returnData;
+}
+
+export function getTaskFields() {
+	return [
+		'*',
+		'GID',
+		'Resource Type',
+		'name',
+		'Approval Status',
+		'Assignee Status',
+		'Completed',
+		'Completed At',
+		'Completed By',
+		'Created At',
+		'Dependencies',
+		'Dependents',
+		'Due At',
+		'Due On',
+		'External',
+		'HTML Notes',
+		'Liked',
+		'Likes',
+		'Memberships',
+		'Modified At',
+		'Notes',
+		'Num Likes',
+		'Resource Subtype',
+		'Start On',
+		'Assignee',
+		'Custom Fields',
+		'Followers',
+		'Parent',
+		'Permalink URL',
+		'Projects',
+		'Tags',
+		'Workspace',
+	];
 }

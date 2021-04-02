@@ -6,6 +6,7 @@ import {
 export class TaigaCloudApi implements ICredentialType {
 	name = 'taigaCloudApi';
 	displayName = 'Taiga Cloud API';
+	documentationUrl = 'taiga';
 	properties = [
 		{
 			displayName: 'Username',

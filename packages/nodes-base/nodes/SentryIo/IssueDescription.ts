@@ -172,6 +172,13 @@ export const issueFields = [
 		},
 		options: [
 			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				description: 'An optional Sentry structured search query. If not provided an implied "is:unresolved" is assumed. Info <a href="https://docs.sentry.io/product/sentry-basics/search/" target="_blank">here</a>.',
+			},
+			{
 				displayName: 'Stats Period',
 				name: 'statsPeriod',
 				type: 'options',
@@ -180,13 +187,13 @@ export const issueFields = [
 				options: [
 					{
 						name: '14 Days',
-						value: '14d'
+						value: '14d',
 					},
 					{
 						name: '24 Hours',
-						value: '24h'
+						value: '24h',
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Short ID lookup',
@@ -195,7 +202,7 @@ export const issueFields = [
 				default: true,
 				description: 'If this is set to true then short IDs are looked up by this function as well. This can cause the return value of the function to return an event issue of a different project which is why this is an opt-in',
 			},
-		]
+		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                issue:update                                */
@@ -279,22 +286,22 @@ export const issueFields = [
 				options: [
 					{
 						name: 'Ignored',
-						value: 'ignored'
+						value: 'ignored',
 					},
 					{
 						name: 'Resolved',
-						value: 'resolved'
+						value: 'resolved',
 					},
 					{
 						name: 'Resolved Next Release',
-						value: 'resolvedInNextRelease'
+						value: 'resolvedInNextRelease',
 					},
 					{
 						name: 'Unresolved',
-						value: 'unresolved'
+						value: 'unresolved',
 					},
-				]
+				],
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

@@ -9,7 +9,13 @@ import {
 	ITriggerResponse,
 } from 'n8n-workflow';
 
-import { connect as imapConnect, ImapSimple, ImapSimpleOptions, getParts, Message } from 'imap-simple';
+import {
+	connect as imapConnect,
+	getParts,
+	ImapSimple,
+	ImapSimpleOptions,
+	Message,
+} from 'imap-simple';
 import {
 	simpleParser,
 	Source as ParserSource,
@@ -35,7 +41,7 @@ export class EmailReadImap implements INodeType {
 			{
 				name: 'imap',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -83,7 +89,7 @@ export class EmailReadImap implements INodeType {
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.'
+						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.',
 					},
 					{
 						name: 'Resolved',
@@ -142,7 +148,7 @@ export class EmailReadImap implements INodeType {
 						name: 'customEmailConfig',
 						type: 'string',
 						default: '["UNSEEN"]',
-						description: 'Custom email fetching rules. See <a href="https://github.com/mscdex/node-imap">node-imap</a>\'s search function for more details'
+						description: 'Custom email fetching rules. See <a href="https://github.com/mscdex/node-imap">node-imap</a>\'s search function for more details',
 					},
 					{
 						displayName: 'Ignore SSL Issues',
@@ -170,7 +176,7 @@ export class EmailReadImap implements INodeType {
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 		let searchCriteria = [
-			'UNSEEN'
+			'UNSEEN',
 		];
 		if (options.customEmailConfig !== undefined) {
 			try {
@@ -295,7 +301,7 @@ export class EmailReadImap implements INodeType {
 							textHtml: await getText(parts, message, 'html'),
 							textPlain: await getText(parts, message, 'plain'),
 							metadata: {} as IDataObject,
-						}
+						},
 					};
 
 					messageHeader = message.parts.filter((part) => {
@@ -336,8 +342,8 @@ export class EmailReadImap implements INodeType {
 					// Return base64 string
 					newEmail = {
 						json: {
-							raw: part.body
-						}
+							raw: part.body,
+						},
 					};
 
 					newEmails.push(newEmail);
@@ -356,7 +362,7 @@ export class EmailReadImap implements INodeType {
 				host: credentials.host as string,
 				port: credentials.port as number,
 				tls: credentials.secure as boolean,
-				authTimeout: 3000
+				authTimeout: 20000,
 			},
 			onmail: async () => {
 				const returnData = await getNewEmails(connection, searchCriteria);
@@ -369,7 +375,7 @@ export class EmailReadImap implements INodeType {
 
 		if (options.allowUnauthorizedCerts === true) {
 			config.imap.tlsOptions = {
-				rejectUnauthorized: false
+				rejectUnauthorized: false,
 			};
 		}
 
