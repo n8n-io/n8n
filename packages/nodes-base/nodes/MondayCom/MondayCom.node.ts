@@ -49,7 +49,7 @@ export class MondayCom implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Monday.com',
 		name: 'mondayCom',
-		icon: 'file:mondayCom.png',
+		icon: 'file:mondayCom.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
