@@ -163,10 +163,10 @@ export const companyFields = [
 		displayOptions: {
 			show: {
 				resource: [
-				'company',
+					'company',
 				],
 				operation: [
-				'getAll',
+					'getAll',
 				],
 			},
 		},

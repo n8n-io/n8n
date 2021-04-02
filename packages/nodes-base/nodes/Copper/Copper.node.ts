@@ -338,8 +338,8 @@ export class Copper implements INodeType {
 
 						const body: IDataObject = {
 							name: this.getNodeParameter('name', i),
-							customer_source_id: this.getNodeParameter('customer_source_id', i),
-							primary_contact_id: this.getNodeParameter('primary_contact_id', i),
+							customer_source_id: this.getNodeParameter('customerSourceId', i),
+							primary_contact_id: this.getNodeParameter('primaryContactId', i),
 						};
 
 						responseData = await copperApiRequest.call(this, 'POST', '/opportunities', body);

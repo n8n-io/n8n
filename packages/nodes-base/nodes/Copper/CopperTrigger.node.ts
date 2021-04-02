@@ -147,7 +147,7 @@ export class CopperTrigger implements INodeType {
 				const endpoint = `/webhooks/${webhookData.webhookId}`;
 				try {
 					await copperApiRequest.call(this, 'DELETE', endpoint);
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				delete webhookData.webhookId;

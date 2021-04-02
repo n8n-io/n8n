@@ -260,12 +260,7 @@ export const leadFields = [
 				default: '',
 				description: 'Description to set for the lead.',
 			},
-			{
-				displayName: 'Email',
-				name: 'email',
-				type: 'string',
-				default: '',
-			},
+			emailFixedCollection,
 			{
 				displayName: 'Name',
 				name: 'name',

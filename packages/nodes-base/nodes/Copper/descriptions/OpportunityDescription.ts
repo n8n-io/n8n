@@ -65,7 +65,7 @@ export const opportunityFields = [
 	},
 	{
 		displayName: 'Customer Source ID',
-		name: 'customer_source_id',
+		name: 'customerSourceId',
 		type: 'string',
 		default: '',
 		description: 'ID of the customer source that generated this opportunity.',
@@ -82,7 +82,7 @@ export const opportunityFields = [
 	},
 	{
 		displayName: 'Primary Contact ID',
-		name: 'primary_contact_id',
+		name: 'primaryContactId',
 		type: 'string',
 		default: '',
 		description: 'ID of the primary company associated with this opportunity.',
