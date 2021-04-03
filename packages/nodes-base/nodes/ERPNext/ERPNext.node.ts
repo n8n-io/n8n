@@ -96,7 +96,7 @@ export class ERPNext implements INodeType {
 				const docFields = data.fields.map(({ label, fieldname }: { label: string, fieldname: string }) => {
 					return ({ name: label, value: fieldname });
 				});
-				
+
 				return processNames(docFields);
 			},
 		},
