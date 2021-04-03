@@ -355,13 +355,12 @@ export class RabbitMQ implements INodeType {
 
 				let headers : IDataObject = {};
 				if (options.headers && ((options.headers as IDataObject).header! as IDataObject[]).length) {
-					const additionalArguments: IDataObject = {};
+					const additionalHeaders: IDataObject = {};
 					((options.headers as IDataObject).header as IDataObject[]).forEach((header: IDataObject) => {
-						additionalArguments[header.key as string] = header.value;
+						additionalHeaders[header.key as string] = header.value;
 					});
-					headers = additionalArguments;
+					headers = additionalHeaders;
 				}
-				console.log(headers);
 
 				channel = await rabbitmqConnectExchange.call(this, exchange, type, options);
 
