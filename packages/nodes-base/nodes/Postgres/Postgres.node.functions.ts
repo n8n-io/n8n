@@ -70,7 +70,7 @@ export async function pgInsert(
 	const columnString = getNodeParam('columns', 0) as string;
 	const columns = columnString.split(',')
 		.map(column => column.trim().split(':'))
-		.map(([name, cast]) => ({name, cast}));
+		.map(([name, cast]) => ({ name, cast }));
 
 	const te = new pgp.helpers.TableName({ table, schema });
 
@@ -120,7 +120,7 @@ export async function pgUpdate(
 
 	const columns = columnString.split(',')
 		.map(column => column.trim().split(':'))
-		.map(([name, cast]) => ({name, cast}));
+		.map(([name, cast]) => ({ name, cast }));
 
 	const te = new pgp.helpers.TableName({ table, schema });
 

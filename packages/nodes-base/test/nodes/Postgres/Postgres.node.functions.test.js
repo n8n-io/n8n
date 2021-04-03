@@ -126,7 +126,6 @@ describe('pgInsert', () => {
 		];
 
 		const results = await PostgresFun.pgInsert(getNodeParam, pgp, db, items);
-		console.log(results);
 
 		expect(db.manyOrNone).toHaveBeenCalledWith(`insert into \"myschema\".\"mytable\"(\"id\",\"name\",\"age\") values(1234,'test',34) RETURNING *`);
 		expect(results).toEqual([undefined, [insertItem]]);
@@ -152,7 +151,6 @@ describe('pgInsert', () => {
 		];
 
 		const results = await PostgresFun.pgInsert(getNodeParam, pgp, db, items);
-		console.log(results);
 
 		expect(db.manyOrNone).toHaveBeenCalledWith(`insert into \"myschema\".\"mytable\"(\"id\",\"name\",\"age\") values(1234::int,'test'::text,34) RETURNING *`);
 		expect(results).toEqual([undefined, [insertItem]]);
