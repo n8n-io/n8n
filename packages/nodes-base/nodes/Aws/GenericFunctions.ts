@@ -20,6 +20,8 @@ function getEndpointForService(service: string, credentials: ICredentialDataDecr
 		endpoint = credentials.lambdaEndpoint;
 	} else if (service === 'sns' && credentials.snsEndpoint) {
 		endpoint = credentials.snsEndpoint;
+	} else if (service === 'sqs' && credentials.sqsEndpoint) {
+		endpoint = credentials.sqsEndpoint;
 	} else {
 		endpoint = `https://${service}.${credentials.region}.amazonaws.com`;
 	}
