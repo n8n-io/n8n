@@ -28,7 +28,7 @@ export class Asana implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Asana',
 		name: 'asana',
-		icon: 'file:asana.png',
+		icon: 'file:asana.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

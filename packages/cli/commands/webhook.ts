@@ -17,7 +17,7 @@ import {
 	NodeTypes,
 	TestWebhooks,
 	WebhookServer,
-} from "../src";
+} from '../src';
 import { IDataObject } from 'n8n-workflow';
 
 
@@ -98,7 +98,7 @@ export class Webhook extends Command {
 		// Wrap that the process does not close but we can still use async
 		await (async () => {
 			if (config.get('executions.mode') !== 'queue') {
-				/** 
+				/**
 				 * It is technically possible to run without queues but
 				 * there are 2 known bugs when running in this mode:
 				 * - Executions list will be problematic as the main process
@@ -154,7 +154,7 @@ export class Webhook extends Command {
 					const redisDB = config.get('queue.bull.redis.db');
 					const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
 					let lastTimer = 0, cumulativeTimeout = 0;
-					
+
 					const settings = {
 						retryStrategy: (times: number): number | null => {
 							const now = Date.now();
@@ -166,7 +166,7 @@ export class Webhook extends Command {
 								cumulativeTimeout += now - lastTimer;
 								lastTimer = now;
 								if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-									console.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + ". Exiting process.");
+									console.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + '. Exiting process.');
 									process.exit(1);
 								}
 							}
@@ -186,7 +186,7 @@ export class Webhook extends Command {
 					if (redisDB) {
 						settings.db = redisDB;
 					}
-					
+
 					// This connection is going to be our heartbeat
 					// IORedis automatically pings redis and tries to reconnect
 					// We will be using the retryStrategy above
@@ -201,7 +201,7 @@ export class Webhook extends Command {
 						}
 					});
 				}
-				
+
 				await WebhookServer.start();
 
 				// Start to get active workflows and run their triggers

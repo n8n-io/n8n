@@ -35,7 +35,7 @@ import {
 	ResponseHelper,
 	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
-} from "../src";
+} from '../src';
 
 import * as config from '../config';
 import * as Bull from 'bull';
@@ -241,7 +241,7 @@ export class Worker extends Command {
 							cumulativeTimeout += now - lastTimer;
 							lastTimer = now;
 							if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-								console.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + ". Exiting process.");
+								console.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + '. Exiting process.');
 								process.exit(1);
 							}
 						}

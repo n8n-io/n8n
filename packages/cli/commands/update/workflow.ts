@@ -9,7 +9,7 @@ import {
 import {
 	Db,
 	GenericHelpers,
-} from "../../src";
+} from '../../src';
 
 
 export class UpdateWorkflowCommand extends Command {

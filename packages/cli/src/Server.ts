@@ -92,9 +92,7 @@ import {
 import {
 	FindManyOptions,
 	FindOneOptions,
-	LessThan,
 	LessThanOrEqual,
-	MoreThanOrEqual,
 	Not,
 } from 'typeorm';
 

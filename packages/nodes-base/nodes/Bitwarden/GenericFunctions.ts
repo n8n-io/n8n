@@ -157,9 +157,9 @@ export async function loadResource(
 
 	const { data } = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {}, token);
 
-	data.forEach(({ id, name }: { id: string, name: string }) => {
+	data.forEach(({ id, name, externalId }: { id: string, name: string, externalId?: string }) => {
 		returnData.push({
-			name: name || id,
+			name: externalId || name || id,
 			value: id,
 		});
 	});
