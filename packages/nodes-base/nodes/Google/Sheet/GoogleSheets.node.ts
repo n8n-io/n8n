@@ -92,10 +92,6 @@ export class GoogleSheets implements INodeType {
 						value: 'spreadsheet',
 					},
 					{
-						name: 'Spreadsheet Sheet',
-						value: 'spreadsheetSheet',
-					},
-					{
 						name: 'Sheet',
 						value: 'sheet',
 					},
@@ -127,6 +123,11 @@ export class GoogleSheets implements INodeType {
 						description: 'Clear data from a sheet',
 					},
 					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new sheet',
+					},
+					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete columns and rows from a sheet',
@@ -142,6 +143,11 @@ export class GoogleSheets implements INodeType {
 						description: 'Read data from a sheet',
 					},
 					{
+						name: 'Remove',
+						value: 'remove',
+						description: 'Remove a sheet',
+					},
+					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update rows in a sheet',
@@ -155,7 +161,7 @@ export class GoogleSheets implements INodeType {
 			//         All
 			// ----------------------------------
 			{
-				displayName: 'Sheet ID',
+				displayName: 'Spreadsheet ID',
 				name: 'sheetId',
 				type: 'string',
 				displayOptions: {
@@ -167,7 +173,7 @@ export class GoogleSheets implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The ID of the Google Sheet.<br />Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/',
+				description: 'The ID of the Google Spreadsheet.<br />Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/',
 			},
 			{
 				displayName: 'Range',
@@ -181,8 +187,9 @@ export class GoogleSheets implements INodeType {
 					},
 					hide: {
 						operation: [
-							'add',
+							'create',
 							'delete',
+							'remove',
 						],
 					},
 				},
@@ -397,8 +404,10 @@ export class GoogleSheets implements INodeType {
 					hide: {
 						operation: [
 							'append',
+							'create',
 							'clear',
 							'delete',
+							'remove',
 						],
 						rawData: [
 							true,
@@ -427,7 +436,9 @@ export class GoogleSheets implements INodeType {
 					hide: {
 						operation: [
 							'clear',
+							'create',
 							'delete',
+							'remove',
 						],
 						rawData: [
 							true,
@@ -798,55 +809,10 @@ export class GoogleSheets implements INodeType {
 					},
 				],
 			},
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				displayOptions: {
-					show: {
-						resource: [
-							'spreadsheetSheet',
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Add',
-						value: 'add',
-						description: 'Add a new sheet to a spreadsheet',
-					},
-					{
-						name: 'Remove',
-						value: 'remove',
-						description: 'Remove a sheet from a spreadsheet',
-					},
-				],
-				default: 'add',
-				description: 'The operation to perform.',
-			},
 
 			// ----------------------------------
-			//         add
+			//         sheet:create
 			// ----------------------------------
-			{
-				displayName: 'Spreadsheet ID',
-				name: 'spreadsheetId',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						resource: [
-							'spreadsheetSheet',
-						],
-						operation: [
-							'add',
-							'remove',
-						],
-					},
-				},
-				description: 'The ID of the spreadsheet in which the sheet will be added.',
-			},
 			{
 				displayName: 'Simple',
 				name: 'simple',
@@ -855,10 +821,10 @@ export class GoogleSheets implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'spreadsheetSheet',
+							'sheet',
 						],
 						operation: [
-							'add',
+							'create',
 						],
 					},
 				},
@@ -873,10 +839,10 @@ export class GoogleSheets implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'spreadsheetSheet',
+							'sheet',
 						],
 						operation: [
-							'add',
+							'create',
 						],
 					},
 				},
@@ -889,13 +855,6 @@ export class GoogleSheets implements INodeType {
 						default: '',
 						options: [
 							{
-								displayName: 'Row Count',
-								name: 'rowCount',
-								type: 'number',
-								default: 0,
-								description: 'The number of rows in the grid.',
-							},
-							{
 								displayName: 'Column Count',
 								name: 'columnCount',
 								type: 'number',
@@ -903,11 +862,11 @@ export class GoogleSheets implements INodeType {
 								description: 'The number of columns in the grid.',
 							},
 							{
-								displayName: 'Frozen Row Count',
-								name: 'frozenRowCount',
-								type: 'number',
-								default: 0,
-								description: 'The number of rows that are frozen in the grid.',
+								displayName: 'Column Group Control After',
+								name: 'columnGroupControlAfter',
+								type: 'boolean',
+								default: false,
+								description: 'True if the column grouping control toggle is shown after the group.',
 							},
 							{
 								displayName: 'Frozen Column Count',
@@ -917,11 +876,25 @@ export class GoogleSheets implements INodeType {
 								description: 'The number of columns that are frozen in the grid.',
 							},
 							{
+								displayName: 'Frozen Row Count',
+								name: 'frozenRowCount',
+								type: 'number',
+								default: 0,
+								description: 'The number of rows that are frozen in the grid.',
+							},
+							{
 								displayName: 'Hide Gridlines',
 								name: 'hideGridlines',
 								type: 'boolean',
 								default: false,
 								description: 'True if the grid isn\'t showing gridlines in the UI.',
+							},
+							{
+								displayName: 'Row Count',
+								name: 'rowCount',
+								type: 'number',
+								default: 0,
+								description: 'The number of rows in the grid.',
 							},
 							{
 								displayName: 'Row Group Control After',
@@ -930,13 +903,7 @@ export class GoogleSheets implements INodeType {
 								default: false,
 								description: 'True if the row grouping control toggle is shown after the group.',
 							},
-							{
-								displayName: 'Column Group Control After',
-								name: 'columnGroupControlAfter',
-								type: 'boolean',
-								default: false,
-								description: 'True if the column grouping control toggle is shown after the group.',
-							},
+
 						],
 						description: 'The type of the sheet.',
 					},
@@ -986,18 +953,18 @@ export class GoogleSheets implements INodeType {
 			},
 
 			// ----------------------------------
-			//         remove
+			//         sheet:remove
 			// ----------------------------------
 			{
 				displayName: 'Sheet ID',
-				name: 'sheetId',
+				name: 'id',
 				type: 'string',
 				default: '',
 				required: true,
 				displayOptions: {
 					show: {
 						resource: [
-							'spreadsheetSheet',
+							'sheet',
 						],
 						operation: [
 							'remove',
@@ -1053,7 +1020,7 @@ export class GoogleSheets implements INodeType {
 			const sheet = new GoogleSheet(spreadsheetId, this);
 
 			let range = '';
-			if (operation !== 'delete') {
+			if (!['create', 'delete', 'remove'].includes(operation)) {
 				range = this.getNodeParameter('range', 0) as string;
 			}
 
@@ -1091,6 +1058,39 @@ export class GoogleSheets implements INodeType {
 
 				const items = this.getInputData();
 				return this.prepareOutputData(items);
+
+			} else if (operation === 'create') {
+				const returnData: IDataObject[] = [];
+
+				let responseData;
+				for (let i = 0; i < this.getInputData().length; i++) {
+					const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
+					const options = this.getNodeParameter('options', i, {}) as IDataObject;
+					const simple = this.getNodeParameter('simple', 0) as boolean;
+					const properties = { ...options };
+
+					if (options.tabColor) {
+						const { red, green, blue } = hexToRgb(options.tabColor as string)!;
+						properties.tabColor = { red: red / 255, green: green / 255, blue: blue / 255 };
+					}
+
+					const requests = [{
+						addSheet: {
+							properties,
+						},
+					}];
+
+					responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
+
+					if (simple === true) {
+						Object.assign(responseData, responseData.replies[0].addSheet.properties);
+						delete responseData.replies;
+					}
+					returnData.push(responseData);
+				}
+
+				return [this.helpers.returnJsonArray(returnData)];
+
 			} else if (operation === 'delete') {
 				// ----------------------------------
 				//         delete
@@ -1190,6 +1190,27 @@ export class GoogleSheets implements INodeType {
 				}
 
 				return [this.helpers.returnJsonArray(returnData)];
+
+			} else if (operation === 'remove') {
+				const returnData: IDataObject[] = [];
+
+				let responseData;
+				for (let i = 0; i < this.getInputData().length; i++) {
+					const sheetId = this.getNodeParameter('id', i) as string;
+					const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
+
+					const requests = [{
+						deleteSheet: {
+							sheetId,
+						},
+					}];
+
+					responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
+					delete responseData.replies;
+					returnData.push(responseData);
+				}
+
+				return [this.helpers.returnJsonArray(returnData)];
 			} else if (operation === 'update') {
 				// ----------------------------------
 				//         update
@@ -1283,65 +1304,6 @@ export class GoogleSheets implements INodeType {
 			}
 
 			return [this.helpers.returnJsonArray(returnData)];
-		}
-
-		if (resource === 'spreadsheetSheet') {
-
-			const returnData: IDataObject[] = [];
-
-			let responseData;
-
-			if (operation === 'add') {
-
-				for (let i = 0; i < this.getInputData().length; i++) {
-					const spreadsheetId = this.getNodeParameter('spreadsheetId', i) as string;
-					const options = this.getNodeParameter('options', i, {}) as IDataObject;
-					const simple = this.getNodeParameter('simple', 0) as boolean;
-					const properties = { ...options };
-
-					if (options.tabColor) {
-						const { red, green, blue } = hexToRgb(options.tabColor as string)!;
-						properties.tabColor = { red: red / 255, green: green / 255, blue: blue / 255 };
-					}
-
-					const requests = [{
-						addSheet: {
-							properties,
-						},
-					}];
-
-					responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
-
-					if (simple === true) {
-						Object.assign(responseData, responseData.replies[0].addSheet.properties);
-						delete responseData.replies;
-					}
-					returnData.push(responseData);
-				}
-
-				return [this.helpers.returnJsonArray(returnData)];
-			}
-
-
-			if (operation === 'remove') {
-
-				for (let i = 0; i < this.getInputData().length; i++) {
-					const sheetId = this.getNodeParameter('sheetId', i) as string;
-					const spreadsheetId = this.getNodeParameter('spreadsheetId', i) as string;
-
-					const requests = [{
-						deleteSheet: {
-							sheetId,
-						},
-					}];
-
-					responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets/${spreadsheetId}:batchUpdate`, { requests });
-					delete responseData.replies;
-					returnData.push(responseData);
-				}
-
-				return [this.helpers.returnJsonArray(returnData)];
-			}
 		}
 
 		return [];
