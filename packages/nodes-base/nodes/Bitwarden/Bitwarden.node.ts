@@ -303,7 +303,7 @@ export class Bitwarden implements INodeType {
 					//       group: update
 					// ----------------------------------
 
-					const body = {} as IDataObject;
+					const groupId = this.getNodeParameter('groupId', i);
 
 					const updateFields = this.getNodeParameter('updateFields', i) as GroupUpdateFields;
 
@@ -311,7 +311,25 @@ export class Bitwarden implements INodeType {
 						throw new Error(`Please enter at least one field to update for the ${resource}.`);
 					}
 
-					const { name, collections, externalId, accessAll } = updateFields;
+					// set defaults for `name` and `accessAll`, required by Bitwarden but optional in n8n
+
+					let { name, accessAll } = updateFields;
+
+					if (name === undefined) {
+						responseData = await bitwardenApiRequest.call(this, 'GET', `/public/groups/${groupId}`, {}, {}) as { name: string };
+						name = responseData.name;
+					}
+
+					if (accessAll === undefined) {
+						accessAll = false;
+					}
+
+					const body = {
+						name,
+						AccessAll: accessAll,
+					} as IDataObject;
+
+					const { collections, externalId } = updateFields;
 
 					if (collections) {
 						body.collections = collections.map((collectionId) => ({
@@ -320,20 +338,11 @@ export class Bitwarden implements INodeType {
 						}));
 					}
 
-					if (name) {
-						body.name = name;
-					}
-
 					if (externalId) {
 						body.externalId = externalId;
 					}
 
-					if (accessAll !== undefined) {
-						body.AccessAll = accessAll;
-					}
-
-					const id = this.getNodeParameter('groupId', i);
-					const endpoint = `/public/groups/${id}`;
+					const endpoint = `/public/groups/${groupId}`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 
 				} else if (operation === 'updateMembers') {
