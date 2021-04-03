@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -51,7 +51,6 @@ export async function erpNextApiRequest(
 	if (!Object.keys(options.qs).length) {
 		delete options.qs;
 	}
-
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
@@ -93,13 +92,13 @@ export async function erpNextApiRequestAllItems(
 	const returnData: any[] = [];
 
 	let responseData;
-	query!.limit_start = 1;
-	query!.limit_page_lengt = 20;
+	query!.limit_start = 0;
+	query!.limit_page_length = 1000;
 
 	do {
 		responseData = await erpNextApiRequest.call(this, method, resource, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
-		query!.limit_start += query!.limit_page_lengt - 1;
+		query!.limit_start += query!.limit_page_length - 1;
 	} while (
 		responseData.data.length > 0
 	);

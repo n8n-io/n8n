@@ -109,8 +109,8 @@ export const documentFields = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -130,7 +130,7 @@ export const documentFields = [
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
-					loadOptionsMethod: 'getDocFields',
+					loadOptionsMethod: 'getDocFilters',
 					loadOptionsDependsOn: [
 						'docType',
 					],
@@ -143,6 +143,7 @@ export const documentFields = [
 				displayName: 'Filters',
 				name: 'filters',
 				type: 'fixedCollection',
+				placeholder: 'Add Filter',
 				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
@@ -155,9 +156,14 @@ export const documentFields = [
 							{
 								displayName: 'Field',
 								name: 'field',
-								type: 'string',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getDocFields',
+									loadOptionsDependsOn: [
+										'docType',
+									],
+								},
 								default: '',
-								placeholder: 'country',
 							},
 							{
 								displayName: 'Operator',
@@ -411,6 +417,7 @@ export const documentFields = [
 		displayName: 'Properties',
 		name: 'properties',
 		type: 'fixedCollection',
+		placeholder: 'Add Property',
 		description: 'Properties of request body.',
 		default: {},
 		typeOptions: {

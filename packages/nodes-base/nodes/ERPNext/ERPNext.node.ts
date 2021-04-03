@@ -62,7 +62,6 @@ export class ERPNext implements INodeType {
 				default: 'document',
 				description: 'Resource to consume.',
 			},
-
 			...documentOperations,
 			...documentFields,
 		],
@@ -78,8 +77,7 @@ export class ERPNext implements INodeType {
 
 				return processNames(docTypes);
 			},
-
-			async getDocFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getDocFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const docType = this.getCurrentNodeParameter('docType') as string;
 				const { data } = await erpNextApiRequest.call(this, 'GET', `/api/resource/DocType/${docType}`, {});
 
@@ -87,6 +85,18 @@ export class ERPNext implements INodeType {
 					return ({ name: label, value: fieldname });
 				});
 
+				docFields.unshift({ name: '*', value: '*' });
+
+				return processNames(docFields);
+			},
+			async getDocFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const docType = this.getCurrentNodeParameter('docType') as string;
+				const { data } = await erpNextApiRequest.call(this, 'GET', `/api/resource/DocType/${docType}`, {});
+
+				const docFields = data.fields.map(({ label, fieldname }: { label: string, fieldname: string }) => {
+					return ({ name: label, value: fieldname });
+				});
+				
 				return processNames(docFields);
 			},
 		},
@@ -144,45 +154,45 @@ export class ERPNext implements INodeType {
 					const {
 						fields,
 						filters,
-					} = this.getNodeParameter('additionalFields', i) as {
+					} = this.getNodeParameter('options', i) as {
 						fields: string[],
 						filters: {
-							customProperty: Array<{ field: string, operator: string, value: string}>,
+							customProperty: Array<{ field: string, operator: string, value: string }>,
 						},
 					};
 
 					// fields=["test", "example", "hi"]
 					if (fields) {
-						qs.fields = JSON.stringify(fields);
+						if (fields.includes('*')) {
+							qs.fields = JSON.stringify(['*']);
+						} else {
+							qs.fields = JSON.stringify(fields);
+						}
 					}
-
 					// filters=[["Person","first_name","=","Jane"]]
 					// TODO: filters not working
 					if (filters) {
-						qs.filters = filters.customProperty.map((filter) => {
+						qs.filters = JSON.stringify(filters.customProperty.map((filter) => {
 							return [
 								docType,
 								filter.field,
 								toSQL(filter.operator),
 								filter.value,
 							];
-						});
+						}));
 					}
 
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					if (!returnAll) {
-
 						const limit = this.getNodeParameter('limit', i) as number;
 						qs.limit_page_length = limit;
-						qs.limit_start = 1;
+						qs.limit_start = 0;
 						responseData = await erpNextApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.data;
 
 					} else {
-
 						responseData = await erpNextApiRequestAllItems.call(this, 'data', 'GET', endpoint, {}, qs);
-
 					}
 
 				} else if (operation === 'create') {
