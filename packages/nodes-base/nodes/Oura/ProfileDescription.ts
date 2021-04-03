@@ -2,29 +2,26 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-const resource = [
-	'company',
-];
-
-export const companyOperations = [
+export const profileOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource,
+				resource: [
+					'profile',
+				],
 			},
 		},
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieves the company for the currently authenticated user',
+				description: 'Get the user\'s personal information.',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
+		description: 'Operation to perform.',
 	},
-
 ] as INodeProperties[];
