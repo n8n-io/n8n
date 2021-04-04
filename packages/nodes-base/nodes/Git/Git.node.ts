@@ -154,10 +154,6 @@ export class Git implements INodeType {
 			// TODO: Allow to set credentials
 			const git: SimpleGit = simpleGit(gitOptions);
 
-			// TODO: Allow to set users
-			// git = git.addConfig('user.name', 'Some One')
-			// 	.addConfig('user.email', 'some@one.com');
-
 			// TODO: Add continue on error
 			// TODO: Make it possible to auto-confirm RSA key fingerprint
 
