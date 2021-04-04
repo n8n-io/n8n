@@ -4,7 +4,9 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -12,11 +14,6 @@ import {
 import {
 	googleApiRequest,
 } from './GenericFunctions';
-
-export interface IGoogleAuthCredentials {
-	email: string;
-	privateKey: string;
-}
 
 export class GoogleSlides implements INodeType {
 	description: INodeTypeDescription = {
@@ -111,6 +108,11 @@ export class GoogleSlides implements INodeType {
 						value: 'getSlides',
 						description: 'Get presentation slides',
 					},
+					{
+						name: 'Replace Text',
+						value: 'replaceText',
+						description: 'Replace text in a presentation',
+					},
 				],
 				displayOptions: {
 					show: {
@@ -184,9 +186,51 @@ export class GoogleSlides implements INodeType {
 							'get',
 							'getThumbnail',
 							'getSlides',
+							'replaceText',
 						],
 					},
 				},
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getSlides',
+						],
+						resource: [
+							'presentation',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getSlides',
+						],
+						resource: [
+							'presentation',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
 			},
 			{
 				displayName: 'Page Object ID',
@@ -207,8 +251,120 @@ export class GoogleSlides implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Texts To Replace',
+				name: 'textUi',
+				placeholder: 'Add Text',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'presentation',
+						],
+						operation: [
+							'replaceText',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						name: 'textValues',
+						displayName: 'Text',
+						values: [
+							{
+								displayName: 'Text',
+								name: 'text',
+								type: 'string',
+								default: '',
+								description: 'The text to search for in the shape or table.',
+							},
+							{
+								displayName: 'Replace Text',
+								name: 'replaceText',
+								type: 'string',
+								default: '',
+								description: 'The text that will replace the matched text.',
+							},
+							{
+								displayName: 'Match Case',
+								name: 'matchCase',
+								type: 'boolean',
+								default: false,
+								description: 'Indicates whether the search should respect case. True : the search is case sensitive. False : the search is case insensitive.',
+							},
+							{
+								displayName: 'Page IDs',
+								name: 'pageObjectIds',
+								type: 'multiOptions',
+								default: [],
+								typeOptions: {
+									loadOptionsMethod: 'getPages',
+									loadOptionsDependsOn: [
+										'presentationId',
+									],
+								},
+								description: 'If non-empty, limits the matches to page elements only on the given pages.',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				displayOptions: {
+					show: {
+						operation: [
+							'replaceText',
+						],
+						resource: [
+							'presentation',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Revision ID',
+						name: 'revisionId',
+						type: 'string',
+						default: '',
+						description: `The revision ID of the presentation required for the write request.</br>
+						If specified and the requiredRevisionId doesn't exactly match the presentation's</br>
+						current revisionId, the request will not be processed and will return a 400 bad request error.`,
+					},
+				],
+			},
 		],
 	};
+
+	methods = {
+		loadOptions: {
+			// Get all the pages to display them to user so that he can
+			// select them easily
+			async getPages(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const presentationId = this.getCurrentNodeParameter('presentationId') as string;
+				const { slides } = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}`, {}, { fields: 'slides' });
+				for (const slide of slides) {
+					returnData.push({
+						name: slide.objectId,
+						value: slide.objectId,
+					});
+				}
+				return returnData;
+			},
+		},
+	};
+
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -235,7 +391,7 @@ export class GoogleSlides implements INodeType {
 
 					const presentationId = this.getNodeParameter('presentationId', i) as string;
 					const pageObjectId = this.getNodeParameter('pageObjectId', i) as string;
-					responseData = await googleApiRequest.call(this, 'GET', `/${presentationId}/pages/${pageObjectId}`);
+					responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}/pages/${pageObjectId}`);
 
 				} else if (operation === 'getThumbnail') {
 
@@ -245,7 +401,7 @@ export class GoogleSlides implements INodeType {
 
 					const presentationId = this.getNodeParameter('presentationId', i) as string;
 					const pageObjectId = this.getNodeParameter('pageObjectId', i) as string;
-					responseData = await googleApiRequest.call(this, 'GET', `/${presentationId}/pages/${pageObjectId}/thumbnail`);
+					responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}/pages/${pageObjectId}/thumbnail`);
 
 				}
 
@@ -265,28 +421,63 @@ export class GoogleSlides implements INodeType {
 						title: this.getNodeParameter('title', i) as string,
 					};
 
-					responseData = await googleApiRequest.call(this, 'POST', '', body);
+					responseData = await googleApiRequest.call(this, 'POST', '/presentations', body);
 
-		 		} else if (operation === 'get') {
+				} else if (operation === 'get') {
 
 					// ----------------------------------
 					//         presentation: get
 					// ----------------------------------
 
 					const presentationId = this.getNodeParameter('presentationId', i) as string;
-					responseData = await googleApiRequest.call(this, 'GET', `/${presentationId}`);
+					responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}`);
 
 				} else if (operation === 'getSlides') {
 
 					// ----------------------------------
 					//      presentation: getSlides
 					// ----------------------------------
-
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 					const presentationId = this.getNodeParameter('presentationId', i) as string;
-					responseData = await googleApiRequest.call(this, 'GET', `/${presentationId}`, {}, { fields: 'slides' });
+					responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}`, {}, { fields: 'slides' });
+					responseData = responseData.slides;
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.slice(0, limit);
+					}
+				} else if (operation === 'replaceText') {
 
+					// ----------------------------------
+					//      presentation: replaceText
+					// ----------------------------------
+					const presentationId = this.getNodeParameter('presentationId', i) as string;
+					const texts = this.getNodeParameter('textUi.textValues', i, []) as IDataObject[];
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const requests = texts.map((text => {
+						return {
+							replaceAllText: {
+								replaceText: text.replaceText,
+								pageObjectIds: text.pageObjectIds || [],
+								containsText: {
+									text: text.text,
+									matchCase: text.matchCase,
+								},
+							},
+						};
+					}));
+
+					const body: IDataObject = {
+						requests,
+					};
+
+					if (options.revisionId) {
+						body['writeControl'] = {
+							requiredRevisionId: options.revisionId as string,
+						};
+					}
+
+					responseData = await googleApiRequest.call(this, 'POST', `/presentations/${presentationId}:batchUpdate`, { requests });
 				}
-
 			}
 
 			Array.isArray(responseData)

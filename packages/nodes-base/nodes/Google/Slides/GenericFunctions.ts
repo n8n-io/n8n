@@ -4,7 +4,6 @@ import {
 
 import {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
@@ -17,7 +16,7 @@ import * as moment from 'moment-timezone';
 import * as jwt from 'jsonwebtoken';
 
 export async function googleApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 	body: IDataObject = {},
@@ -31,7 +30,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		uri: `https://slides.googleapis.com/v1/presentations${resource}`,
+		uri: `https://slides.googleapis.com/v1${resource}`,
 		json: true,
 	};
 
@@ -44,38 +43,31 @@ export async function googleApiRequest(
 	}
 
 	try {
-
 		if (authenticationMethod === 'serviceAccount') {
-
 			const credentials = this.getCredentials('googleApi') as { access_token: string, email: string, privateKey: string };
 			const { access_token } = await getAccessToken.call(this, credentials);
 			options.headers.Authorization = `Bearer ${access_token}`;
 			return await this.helpers.request!(options);
 
 		} else {
-
 			return await this.helpers.requestOAuth2!.call(this, 'googleSlidesOAuth2Api', options);
-
 		}
-
 	} catch (error) {
 
 		if (error?.response?.body?.message) {
 			throw new Error(`Google Slides error response [${error.statusCode}]: ${error.response.body.message}`);
 		}
 		throw error;
-
 	}
 }
 
 function getAccessToken(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	{ email, privateKey }: { email: string, privateKey: string },
 ) {
 	// https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [
-		'https://www.googleapis.com/auth/drive',
 		'https://www.googleapis.com/auth/drive.file',
 		'https://www.googleapis.com/auth/presentations',
 	];
