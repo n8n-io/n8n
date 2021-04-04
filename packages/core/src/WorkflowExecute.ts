@@ -15,6 +15,7 @@ import {
 	ITaskDataConnections,
 	IWaitingForExecution,
 	IWorkflowExecuteAdditionalData,
+	LoggerProxy as Logger,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -500,7 +501,7 @@ export class WorkflowExecute {
 		if (this.runExecutionData.startData === undefined) {
 			this.runExecutionData.startData = {};
 		}
-
+		Logger.debug(`Workflow execution (start)`);
 
 		let currentExecutionTry = '';
 		let lastExecutionTry = '';
@@ -557,6 +558,7 @@ export class WorkflowExecute {
 					executionData = this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
 					executionNode = executionData.node;
 
+					Logger.debug(`Process node: "${executionNode.name}" (Start)`);
 					await this.executeHook('nodeExecuteBefore', [executionNode.name]);
 
 					// Get the index of the current run
@@ -654,7 +656,9 @@ export class WorkflowExecute {
 								}
 							}
 
+							Logger.debug(`Process node: "${executionNode.name}" (before: runNode)`);
 							nodeSuccessData = await workflow.runNode(executionData.node, executionData.data, this.runExecutionData, runIndex, this.additionalData, NodeExecuteFunctions, this.mode);
+							Logger.debug(`Process node: "${executionNode.name}" (after: runNode - success)`);
 
 							if (nodeSuccessData === undefined) {
 								// Node did not get executed
@@ -689,6 +693,8 @@ export class WorkflowExecute {
 								message: error.message,
 								stack: error.stack,
 							};
+
+							Logger.debug(`Process node: "${executionNode.name}" (after: runNode - error)`);
 						}
 					}
 
@@ -819,8 +825,10 @@ export class WorkflowExecute {
 		const fullRunData = this.getFullRunData(startedAt);
 
 		if (executionError !== undefined) {
+			Logger.debug(`Workflow execution (end: error)`, { error: executionError });
 			fullRunData.data.resultData.error = executionError;
 		} else {
+			Logger.debug(`Workflow execution (end: success)`);
 			fullRunData.finished = true;
 		}
 

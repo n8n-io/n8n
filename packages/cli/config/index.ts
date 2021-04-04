@@ -576,7 +576,7 @@ const config = convict({
 			env: 'N8N_LOG_LEVEL',
 		},
 		output: {
-			doc: 'Where to output logs. Options are: console, file.',
+			doc: 'Where to output logs. Options are: console, file. Multiple can be separated by comma (",")',
 			format: String,
 			default: 'console',
 			env: 'N8N_LOG_OUTPUT',

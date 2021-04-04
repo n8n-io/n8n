@@ -17,25 +17,30 @@ import {
 
 import {
 	IDataObject,
-	IExecuteData,
 	IExecuteWorkflowInfo,
 	IExecutionError,
+	ILogger,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeData,
 	IRun,
-	IRunExecutionData,
 	ITaskData,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecuteHooks,
+	LoggerProxy,
 	Workflow,
 	WorkflowHooks,
 } from 'n8n-workflow';
+
+import {
+	getLogger,
+} from '../src/Logger';
 
 import * as config from '../config';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
+	logger: ILogger;
 	startedAt = new Date();
 	workflow: Workflow | undefined;
 	workflowExecute: WorkflowExecute | undefined;
@@ -52,6 +57,10 @@ export class WorkflowRunnerProcess {
 	async runWorkflow(inputData: IWorkflowExecutionDataProcessWithExecution): Promise<IRun> {
 		process.on('SIGTERM', WorkflowRunnerProcess.stopProcess);
 		process.on('SIGINT', WorkflowRunnerProcess.stopProcess);
+
+		const logger = this.logger = getLogger();
+		LoggerProxy.init(logger);
+		logger.info('Initializing n8n sub-process', { pid: process.pid });
 
 		this.data = inputData;
 		let className: string;
@@ -126,10 +135,10 @@ export class WorkflowRunnerProcess {
 				result = await executeWorkflowFunction(workflowInfo, additionalData, inputData, executionId, workflowData, runData);
 			} catch (e) {
 				await sendToParentProcess('finishExecution', { executionId });
-				// Throw same error we had 
-				throw e;	
+				// Throw same error we had
+				throw e;
 			}
-			
+
 			await sendToParentProcess('finishExecution', { executionId, result });
 
 			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(result);
@@ -167,12 +176,7 @@ export class WorkflowRunnerProcess {
 				parameters,
 			});
 		} catch (error) {
-			// TODO: Add proper logging
-			console.error(`There was a problem sending hook: "${hook}"`);
-			console.error('Parameters:');
-			console.error(parameters);
-			console.error('Error:');
-			console.error(error);
+			this.logger.error(`There was a problem sending hook: "${hook}"`, { parameters, error});
 		}
 	}
 

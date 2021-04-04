@@ -289,7 +289,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 					// For busy machines, we may get "Database is locked" errors.
 
 					// We do this to prevent crashes and executions ending in `unknown` state.
-					console.log(`Failed saving execution progress to database for execution ID ${this.executionId}`, err);
+					Logger.error(`Failed saving execution progress to database for execution ID ${this.executionId}`, err);
 				}
 
 			},
@@ -325,8 +325,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						try {
 							await WorkflowHelpers.saveStaticDataById(this.workflowData.id as string, newStaticData);
 						} catch (e) {
-							// TODO: Add proper logging!
-							console.error(`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: ${e.message}`);
+							Logger.error(`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: ${e.message}`);
 						}
 					}
 
@@ -424,8 +423,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						try {
 							await WorkflowHelpers.saveStaticDataById(this.workflowData.id as string, newStaticData);
 						} catch (e) {
-							// TODO: Add proper logging!
-							console.error(`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: ${e.message}`);
+							Logger.error(`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: ${e.message}`);
 						}
 					}
 
