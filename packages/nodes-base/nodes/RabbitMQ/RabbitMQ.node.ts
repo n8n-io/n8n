@@ -209,6 +209,37 @@ export class RabbitMQ implements INodeType {
 						],
 					},
 					{
+						displayName: 'Headers',
+						name: 'headers',
+						placeholder: 'Add Header',
+						description: 'Headers to add.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'header',
+								displayName: 'Header',
+								values: [
+									{
+										displayName: 'Key',
+										name: 'key',
+										type: 'string',
+										default: '',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+									},
+								],
+							},
+						],
+					},
+					{
 						displayName: 'Auto Delete',
 						name: 'autoDelete',
 						type: 'boolean',
@@ -322,6 +353,15 @@ export class RabbitMQ implements INodeType {
 
 				const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
+				let headers : IDataObject = {};
+				if (options.headers && ((options.headers as IDataObject).header! as IDataObject[]).length) {
+					const additionalHeaders: IDataObject = {};
+					((options.headers as IDataObject).header as IDataObject[]).forEach((header: IDataObject) => {
+						additionalHeaders[header.key as string] = header.value;
+					});
+					headers = additionalHeaders;
+				}
+
 				channel = await rabbitmqConnectExchange.call(this, exchange, type, options);
 
 				const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
@@ -336,7 +376,7 @@ export class RabbitMQ implements INodeType {
 						message = this.getNodeParameter('message', i) as string;
 					}
 
-					exchangePromises.push(channel.publish(exchange, routingKey, Buffer.from(message)));
+					exchangePromises.push(channel.publish(exchange, routingKey, Buffer.from(message), {headers}));
 				}
 
 				// @ts-ignore
