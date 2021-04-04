@@ -163,7 +163,12 @@ export function getDefaultFields(sobject: string) {
 export function getQuery(options: IDataObject, sobject: string, returnAll: boolean, limit = 0) {
 	const fields: string[] = [];
 	if (options.fields) {
-		fields.push.apply(fields, options.fields as string[]);
+		// options.fields is comma separated in standard Salesforce objects and array in custom Salesforce objects -- handle both cases
+		if (typeof options.fields === 'string') {
+			fields.push.apply(fields, options.fields.split(','));
+		} else {
+			fields.push.apply(fields, options.fields as string[]);
+		}
 	} else {
 		fields.push.apply(fields, (getDefaultFields(sobject) as string || 'id').split(','));
 	}
