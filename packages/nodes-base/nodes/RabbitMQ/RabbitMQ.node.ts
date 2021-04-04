@@ -315,7 +315,7 @@ export class RabbitMQ implements INodeType {
 
 					let headers: IDataObject = {};
 					if (options.headers && ((options.headers as IDataObject).header! as IDataObject[]).length) {
-						let itemOptions = this.getNodeParameter('options', i, {}) as IDataObject;
+						const itemOptions = this.getNodeParameter('options', i, {}) as IDataObject;
 						const additionalHeaders: IDataObject = {};
 						((itemOptions.headers as IDataObject).header as IDataObject[]).forEach((header: IDataObject) => {
 							additionalHeaders[header.key as string] = header.value;
@@ -379,7 +379,7 @@ export class RabbitMQ implements INodeType {
 
 					let headers: IDataObject = {};
 					if (options.headers && ((options.headers as IDataObject).header! as IDataObject[]).length) {
-						let itemOptions = this.getNodeParameter('options', i, {}) as IDataObject;
+						const itemOptions = this.getNodeParameter('options', i, {}) as IDataObject;
 						const additionalHeaders: IDataObject = {};
 						((itemOptions.headers as IDataObject).header as IDataObject[]).forEach((header: IDataObject) => {
 							additionalHeaders[header.key as string] = header.value;
