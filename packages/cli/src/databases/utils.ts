@@ -1,7 +1,7 @@
 import {
 	DatabaseType,
-	GenericHelpers,
-} from '../';
+} from '../index';
+import { getConfigValueSync } from '../../src/GenericHelpers'
 
 /**
  * Resolves the data type for the used database type
@@ -11,7 +11,7 @@ import {
  * @returns {string}
  */
 export function resolveDataType(dataType: string) {
-	const dbType = GenericHelpers.getConfigValueSync('database.type') as DatabaseType;
+	const dbType = getConfigValueSync('database.type') as DatabaseType;
 
 	const typeMap: { [key in DatabaseType]: { [key: string]: string } } = {
 		sqlite: {

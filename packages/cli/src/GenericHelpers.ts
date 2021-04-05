@@ -83,36 +83,25 @@ export async function getVersions(): Promise<IPackageVersions> {
 }
 
 /**
- * Retrieves configuration values from env
+ * Extracts configuration schema for key
  *
  * @param {string} configKey
- * @param {IDataObject} currentSchema
- * @returns {string | boolean | number | undefined | void}
+ * @param {IDataObject} configSchema
+ * @returns {IDataObject} schema of the configKey
  */
-function getConfigFromEnv(configKey: string, currentSchema: IDataObject): string | boolean | number | undefined | void {
+function extractSchemaForKey(configKey: string, configSchema: IDataObject): IDataObject {
 	const configKeyParts = configKey.split('.');
 
 	for (const key of configKeyParts) {
-		if (currentSchema[key] === undefined) {
+		if (configSchema[key] === undefined) {
 			throw new Error(`Key "${key}" of ConfigKey "${configKey}" does not exist`);
-		} else if ((currentSchema[key]! as IDataObject).properties === undefined) {
-			currentSchema = currentSchema[key] as IDataObject;
+		} else if ((configSchema[key]! as IDataObject).properties === undefined) {
+			configSchema = configSchema[key] as IDataObject;
 		} else {
-			currentSchema = (currentSchema[key] as IDataObject).properties as IDataObject;
+			configSchema = (configSchema[key] as IDataObject).properties as IDataObject;
 		}
 	}
-
-	// Check if environment variable is defined for config key
-	if (currentSchema.env === undefined) {
-		// No environment variable defined, so return value from config
-		return config.get(configKey);
-	}
-
-	// Check if special file enviroment variable exists
-	if (process.env[currentSchema.env + '_FILE'] === undefined) {
-		// Does not exist, so return value from config
-		return config.get(configKey);
-	}
+	return configSchema;
 }
 
 /**
@@ -125,18 +114,26 @@ function getConfigFromEnv(configKey: string, currentSchema: IDataObject): string
 export async function getConfigValue(configKey: string): Promise<string | boolean | number | undefined> {
 	// Get the environment variable
 	const configSchema = config.getSchema();
-	const currentSchema = configSchema.properties as IDataObject;
-	const envConfig = getConfigFromEnv(configKey, currentSchema);
-	if (envConfig) {
-		return envConfig;
+	const currentSchema = extractSchemaForKey(configKey, configSchema.properties as IDataObject);
+	// Check if environment variable is defined for config key
+	if (currentSchema.env === undefined) {
+		// No environment variable defined, so return value from config
+		return config.get(configKey);
+	}
+
+	// Check if special file enviroment variable exists
+	const fileEnvironmentVariable = process.env[currentSchema.env + '_FILE'];
+	if (fileEnvironmentVariable === undefined) {
+		// Does not exist, so return value from config
+		return config.get(configKey);
 	}
 
 	let data;
 	try {
-		data = await fsReadFileAsync(process.env[currentSchema.env + '_FILE']!, 'utf8') as string;
+		data = await fsReadFileAsync(fileEnvironmentVariable, 'utf8') as string;
 	} catch (error) {
 		if (error.code === 'ENOENT') {
-			throw new Error(`The file "${process.env[currentSchema.env + '_FILE']}" could not be found.`);
+			throw new Error(`The file "${fileEnvironmentVariable}" could not be found.`);
 		}
 
 		throw error;
@@ -155,18 +152,26 @@ export async function getConfigValue(configKey: string): Promise<string | boolea
 export function getConfigValueSync(configKey: string): string | boolean | number | undefined {
 	// Get the environment variable
 	const configSchema = config.getSchema();
-	const currentSchema = configSchema.properties as IDataObject;
-	const envConfig = getConfigFromEnv(configKey, currentSchema);
-	if (envConfig) {
-		return envConfig;
+	const currentSchema = extractSchemaForKey(configKey, configSchema.properties as IDataObject);
+	// Check if environment variable is defined for config key
+	if (currentSchema.env === undefined) {
+		// No environment variable defined, so return value from config
+		return config.get(configKey);
+	}
+
+	// Check if special file enviroment variable exists
+	const fileEnvironmentVariable = process.env[currentSchema.env + '_FILE'];
+	if (fileEnvironmentVariable === undefined) {
+		// Does not exist, so return value from config
+		return config.get(configKey);
 	}
 
 	let data;
 	try {
-		data = fsReadFileSync(process.env[currentSchema.env + '_FILE']!, 'utf8') as string;
+		data = fsReadFileSync(fileEnvironmentVariable, 'utf8') as string;
 	} catch (error) {
 		if (error.code === 'ENOENT') {
-			throw new Error(`The file "${process.env[currentSchema.env + '_FILE']}" could not be found.`);
+			throw new Error(`The file "${fileEnvironmentVariable}" could not be found.`);
 		}
 
 		throw error;
