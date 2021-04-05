@@ -509,7 +509,7 @@ export class GoogleSlides implements INodeType {
 						const limit = this.getNodeParameter('limit', i) as number;
 						responseData = responseData.slice(0, limit);
 					}
-					returnData.push(...this.helpers.returnJsonArray(responseData))
+					returnData.push(...this.helpers.returnJsonArray(responseData));
 
 				} else if (operation === 'replaceText') {
 
