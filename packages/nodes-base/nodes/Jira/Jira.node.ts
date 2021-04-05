@@ -188,31 +188,14 @@ export class Jira implements INodeType {
 			async getIssueTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const projectId = this.getCurrentNodeParameter('project');
 				const returnData: INodePropertyOptions[] = [];
-
-				const issueTypes = await jiraSoftwareCloudApiRequest.call(this, '/api/2/issuetype', 'GET');
-				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
-				if (jiraVersion === 'server') {
-					for (const issueType of issueTypes) {
-						const issueTypeName = issueType.name;
-						const issueTypeId = issueType.id;
-
-						returnData.push({
-							name: issueTypeName,
-							value: issueTypeId,
-						});
-					}
-				} else {
-					for (const issueType of issueTypes) {
-						if (issueType.scope !== undefined && issueType.scope.project.id === projectId) {
-							const issueTypeName = issueType.name;
-							const issueTypeId = issueType.id;
-
-							returnData.push({
-								name: issueTypeName,
-								value: issueTypeId,
-							});
-						}
-					}
+				const { issueTypes } = await jiraSoftwareCloudApiRequest.call(this, `/api/2/project/${projectId}`, 'GET');
+				for (const issueType of issueTypes) {
+					const issueTypeName = issueType.name;
+					const issueTypeId = issueType.id;
+					returnData.push({
+						name: issueTypeName,
+						value: issueTypeId,
+					});
 				}
 
 				returnData.sort((a, b) => {
@@ -382,7 +365,6 @@ export class Jira implements INodeType {
 					const { fields: { project: { id } } } = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'GET', {}, {});
 					projectId = id;
 				}
-
 				const fields = await jiraSoftwareCloudApiRequest.call(this, `/api/2/field`, 'GET');
 				for (const field of fields) {
 					if (field.custom === true && field.scope && field.scope.project && field.scope.project.id === projectId) {
