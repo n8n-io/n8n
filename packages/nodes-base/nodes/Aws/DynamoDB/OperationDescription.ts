@@ -19,7 +19,7 @@ export const operationFields = [
 	},
 
 	// ----------------------------------
-	//           createUpdate
+	//           upsert
 	// ----------------------------------
 	{
 		displayName: 'Expression Attribute Values',
@@ -36,7 +36,7 @@ export const operationFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'createUpdate',
+					'upsert',
 				],
 			},
 		},
@@ -97,8 +97,8 @@ export const operationFields = [
 	//              delete
 	// ----------------------------------
 	{
-		displayName: 'Enable JSON',
-		name: 'jsonEnabled',
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
 		description: 'Enable specifying the item to delete as JSON.',
@@ -111,36 +111,102 @@ export const operationFields = [
 		},
 	},
 	{
-		displayName: 'Item as JSON',
-		name: 'jsonItem',
-		type: 'json',
-		required: true,
-		default: '',
+		displayName: 'Keys',
+		name: 'keysUi',
+		type: 'fixedCollection',
+		placeholder: 'Add Key',
+		default: {},
 		typeOptions: {
-			alwaysOpenEditWindow: true,
+			multipleValues: true,
 		},
-		description: 'Item to delete specified as JSON.<br>Example: <code>{ "id": {"S": "1"} }</code>',
 		displayOptions: {
 			show: {
+				// resource: [
+				// 	'item',
+				// ],
 				operation: [
 					'delete',
 				],
-				jsonEnabled: [
+				jsonParameters: [
+					false,
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Key',
+				name: 'keyValues',
+				values: [
+					{
+						displayName: 'Key',
+						name: 'key',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						options: [
+							{
+								name: 'Binary',
+								value: 'b',
+							},
+							{
+								name: 'Number',
+								value: 'n',
+							},
+							{
+								name: 'String',
+								value: 's',
+							},
+						],
+						default: 's',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+		description: `For the primary key, you must provide all of the attributes. For example, with a simple primary key,</br>
+		you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.`,
+	},
+	{
+		displayName: 'Keys (JSON)',
+		name: 'keysJson',
+		type: 'json',
+		required: true,
+		displayOptions: {
+			show: {
+				// resource: [
+				// 	'item',
+				// ],
+				operation: [
+					'delete',
+				],
+				jsonParameters: [
 					true,
 				],
 			},
 		},
+		default: '',
+		description: 'Specify the Item you want to operate on',
 	},
 	{
-		displayName: 'Partition Key',
-		name: 'partitionKey',
-		description: 'Partition key of the item to delete.',
-		placeholder: 'Add Property',
-		type: 'fixedCollection',
-		required: true,
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
+				// resource: [
+				// 	'item',
+				// ],
 				operation: [
 					'delete',
 				],
@@ -148,43 +214,204 @@ export const operationFields = [
 		},
 		options: [
 			{
-				displayName: 'Details',
-				name: 'details',
-				values: [
-					{
-						displayName: 'Name',
-						name: 'name',
-						description: 'Name of the partition key of the item to delete.',
-						type: 'string',
-						default: 'id',
+				displayName: 'Expression Attribute Values',
+				name: 'expressionAttributeValuesUi',
+				type: 'fixedCollection',
+				placeholder: 'Add Attribute Value',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				displayOptions: {
+					show: {
+						// resource: [
+						// 	'item',
+						// ],
+						'/jsonParameters': [
+							false,
+						],
 					},
+				},
+				options: [
 					{
-						displayName: 'Type',
-						name: 'type',
-						description: 'Type of the partition key of the item to delete.',
-						type: 'options',
-						options: [
+						displayName: 'Expression Attribute Value',
+						name: 'expressionAttributeValuesValues',
+						values: [
 							{
-								name: 'Binary',
-								value: 'B',
+								displayName: 'Key',
+								name: 'key',
+								type: 'string',
+								default: '',
 							},
 							{
-								name: 'Number',
-								value: 'N',
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								options: [
+									{
+										name: 'Binary',
+										value: 'b',
+									},
+									{
+										name: 'Boolean',
+										value: 'bool',
+									},
+									{
+										name: 'Binary Set',
+										value: 'bs',
+									},
+									{
+										name: 'List',
+										value: 'l',
+									},
+									{
+										name: 'Map',
+										value: 'm',
+									},
+									{
+										name: 'Number',
+										value: 'n',
+									},
+									{
+										name: 'Number Set',
+										value: 'ns',
+									},
+									{
+										name: 'Null',
+										value: 'null',
+									},
+									{
+										name: 'String',
+										value: 's',
+									},
+									{
+										name: 'String Set',
+										value: 'ss',
+									},
+								],
+								default: 's',
 							},
 							{
-								name: 'String',
-								value: 'S',
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
 							},
 						],
-						default: 'S',
+					},
+				],
+				description: `For the primary key, you must provide all of the attributes. For example, with a simple primary key,</br>
+		you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.`,
+			},
+			{
+				displayName: 'Expression Attribute Values (JSON)',
+				name: 'expressionAttributeValueJson',
+				type: 'json',
+				required: true,
+				displayOptions: {
+					show: {
+						// resource: [
+						// 	'item',
+						// ],
+						'/jsonParameters': [
+							true,
+						],
+					},
+				},
+				default: '',
+				description: 'Specify the Item you want to operate on',
+			},
+			{
+				displayName: 'Condition Expression',
+				name: 'ConditionExpression',
+				type: 'string',
+				default: '',
+				description: `A condition that must be satisfied in order for a conditional DeleteItem to succeed.`,
+			},
+			{
+				displayName: 'Return Consumed Capacity',
+				name: 'ReturnConsumedCapacity',
+				type: 'options',
+				options: [
+					{
+						name: 'Indexes',
+						value: 'INDEXES',
 					},
 					{
-						displayName: 'Value',
-						name: 'value',
-						description: 'Value of the partition key of the item to delete.',
-						type: 'string',
-						default: '',
+						name: 'Total',
+						value: 'TOTAL',
+					},
+					{
+						name: 'None',
+						value: 'NONE',
+					},
+				],
+				default: '',
+				description: `Determines the level of detail about provisioned throughput consumption that is returned in the response:`,
+			},
+			{
+				displayName: 'Return Collection Metrics',
+				name: 'ReturnItemCollectionMetrics',
+				type: 'options',
+				options: [
+					{
+						name: 'Size',
+						value: 'SIZE',
+					},
+					{
+						name: 'None',
+						value: 'NONE',
+					},
+				],
+				default: 'NONE',
+				description: `Determines whether item collection metrics are returned. If set to SIZE, the response includes statistics about item collections, if any, that were modified during the operation are returned in the response. If set to NONE (the default), no statistics are returned.`,
+			},
+			{
+				displayName: 'Return Values',
+				name: 'ReturnValues',
+				type: 'options',
+				options: [
+					{
+						name: 'All Old',
+						value: 'ALL_OLD',
+					},
+					{
+						name: 'None',
+						value: 'NONE',
+					},
+				],
+				default: 'NONE',
+				description: `Use ReturnValues if you want to get the item attributes as they appeared before they were deleted. For DeleteItem, the valid values are:</br>
+				NONE - If ReturnValues is not specified, or if its value is NONE, then nothing is returned. (This setting is the default for ReturnValues.)</br>
+				ALL_OLD - The content of the old item is returned.`,
+			},
+			{
+				displayName: 'Expression Attribute Names',
+				name: 'expressionAttributeNamesUi',
+				placeholder: 'Add Expression',
+				type: 'fixedCollection',
+				default: '',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'expressionAttributeNamesValues',
+						displayName: 'Expression',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
 					},
 				],
 			},
@@ -195,13 +422,16 @@ export const operationFields = [
 	//              get
 	// ----------------------------------
 	{
-		displayName: 'Enable JSON',
-		name: 'jsonEnabled',
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: 'Enable specifying the item to retrieve as JSON.',
+		description: '',
 		displayOptions: {
 			show: {
+				// resource: [
+				// 	'item',
+				// ],
 				operation: [
 					'get',
 				],
@@ -209,101 +439,107 @@ export const operationFields = [
 		},
 	},
 	{
-		displayName: 'Simple',
-		name: 'simple',
-		type: 'boolean',
-		default: true,
-		description: 'Simplify the response instead of returning the raw data.',
-		displayOptions: {
-			show: {
-				operation: [
-					'get',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Item as JSON',
-		name: 'jsonItem',
-		type: 'json',
-		required: true,
-		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		description: 'Item to retrieve specified as JSON.<br>Example: <code>{ "id": {"S": "1"} }</code>',
-		displayOptions: {
-			show: {
-				operation: [
-					'get',
-				],
-				jsonEnabled: [
-					true,
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Partition Key',
-		name: 'partitionKey',
-		description: 'Partition key of the item to retrieve.',
-		placeholder: 'Add Property',
+		displayName: 'Keys',
+		name: 'keysUi',
 		type: 'fixedCollection',
-		required: true,
+		placeholder: 'Add Key',
 		default: {},
+		typeOptions: {
+			multipleValues: true,
+		},
 		displayOptions: {
 			show: {
+				// resource: [
+				// 	'item',
+				// ],
 				operation: [
 					'get',
 				],
-				jsonEnabled: [
+				jsonParameters: [
 					false,
 				],
 			},
 		},
 		options: [
 			{
-				displayName: 'Details',
-				name: 'details',
+				displayName: 'Key',
+				name: 'keyValues',
 				values: [
 					{
-						displayName: 'Name',
-						name: 'name',
-						description: 'Name of the partition key of the item to retrieve.',
+						displayName: 'Key',
+						name: 'key',
 						type: 'string',
-						default: 'id',
+						default: '',
 					},
 					{
 						displayName: 'Type',
 						name: 'type',
-						description: 'Type of the partition key of the item to retrieve.',
 						type: 'options',
 						options: [
 							{
 								name: 'Binary',
-								value: 'B',
+								value: 'b',
 							},
 							{
 								name: 'Number',
-								value: 'N',
+								value: 'n',
 							},
 							{
 								name: 'String',
-								value: 'S',
+								value: 's',
 							},
 						],
-						default: 'S',
+						default: 's',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
-						description: 'Value of the partition key of the item to retrieve.',
 						type: 'string',
 						default: '',
 					},
 				],
 			},
 		],
+		description: `For the primary key, you must provide all of the attributes. For example, with a simple primary key,</br>
+		you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.`,
+	},
+	{
+		displayName: 'Keys (JSON)',
+		name: 'keysJson',
+		type: 'json',
+		required: true,
+		displayOptions: {
+			show: {
+				// resource: [
+				// 	'item',
+				// ],
+				operation: [
+					'get',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'Specify the Item you want to operate on',
+	},
+	{
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				// resource: [
+				// 	'item',
+				// ],
+				operation: [
+					'get',
+				],
+			},
+		},
+		default: true,
+		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -313,6 +549,9 @@ export const operationFields = [
 		default: {},
 		displayOptions: {
 			show: {
+				// resource: [
+				// 	'item',
+				// ],
 				operation: [
 					'get',
 				],
@@ -320,19 +559,68 @@ export const operationFields = [
 		},
 		options: [
 			{
-				displayName: 'Read Consistency Model',
-				name: 'readConsistencyModel',
+				displayName: 'Consistent Read',
+				name: 'ConsistentRead',
+				type: 'boolean',
+				default: false,
+				description: `Determines the read consistency model: If set to true, then the operation uses strongly consistent reads; otherwise, the operation uses eventually consistent reads.`,
+			},
+			{
+				displayName: 'Projection Expression',
+				name: 'ProjectionExpression',
+				type: 'string',
+				placeholder: 'id, name',
+				default: '',
+				description: 'Attributes to select',
+			},
+			{
+				displayName: 'Return Consumed Capacity',
+				name: 'ReturnConsumedCapacity',
 				type: 'options',
-				default: 'stronglyConsistent',
-				description: 'Select the <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html">read consistency model</a>.',
 				options: [
 					{
-						name: 'Eventually Consistent',
-						value: 'eventuallyConsistent',
+						name: 'Indexes',
+						value: 'INDEXES',
 					},
 					{
-						name: 'Strongly Consistent',
-						value: 'stronglyConsistent',
+						name: 'Total',
+						value: 'TOTAL',
+					},
+					{
+						name: 'None',
+						value: 'NONE',
+					},
+				],
+				default: '',
+				description: `Determines the level of detail about provisioned throughput consumption that is returned in the response:`,
+			},
+			{
+				displayName: 'Expression Attribute Names',
+				name: 'ExpressionAttributeNames',
+				placeholder: 'Add Expression',
+				type: 'fixedCollection',
+				default: '',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'ExpressionAttributeNamesValues',
+						displayName: 'Expression',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
 					},
 				],
 			},

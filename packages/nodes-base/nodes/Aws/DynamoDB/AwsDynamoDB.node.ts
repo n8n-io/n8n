@@ -9,6 +9,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { addAdditionalFields } from '../../Telegram/GenericFunctions';
 
 import {
 	awsApiRequestREST,
@@ -25,10 +26,56 @@ import {
 
 import {
 	adjustExpressionAttributeValues,
-	populatePartitionKey,
+	copyInputItem,
 	simplify,
 	validateJSON,
+	mapToAttributeValues,
 } from './utils';
+
+enum EAttributeValueType {
+	S = 'S', SS = 'SS', M = 'M', L = 'L', NS = 'NS', N = 'N', BOOL = 'BOOL', B = 'B', BS = 'BS', NULL = 'NULL',
+}
+
+interface IAttributeValueValue {
+	[type: string]: string | string[] | IAttributeValue[];
+}
+
+interface IAttributeValue {
+	[attribute: string]: IAttributeValueValue;
+}
+
+interface IExpressionAttributeValue {
+	attribute: string;
+	type: EAttributeValueType;
+	value: string;
+}
+
+function decodeItem(item: IAttributeValue): IDataObject {
+	const _item: IDataObject = {};
+	for (const entry of Object.entries(item)) {
+		const [attribute, value]: [string, object] = entry;
+		const [type, content]: [string, object] = Object.entries(value)[0];
+		_item[attribute] = decodeAttribute(type as EAttributeValueType, content as IAttributeValue);
+	}
+
+	return _item;
+}
+
+function decodeAttribute(type: EAttributeValueType, attribute: IAttributeValue) {
+	switch (type) {
+		case 'S':
+			return String(attribute);
+		case 'SS':
+		case 'NS':
+			return attribute;
+		case 'N':
+			return Number(attribute);
+		case 'BOOL':
+			return Boolean(attribute);
+		default:
+			return null;
+	}
+}
 
 export class AwsDynamoDB implements INodeType {
 	description: INodeTypeDescription = {
@@ -61,7 +108,7 @@ export class AwsDynamoDB implements INodeType {
 				options: [
 					{
 						name: 'Create/Update',
-						value: 'createUpdate',
+						value: 'upsert',
 						description: 'Create or update an item in a table.',
 					},
 					{
@@ -153,24 +200,74 @@ export class AwsDynamoDB implements INodeType {
 
 				const body: IRequestBody = {
 					TableName: this.getNodeParameter('tableName', i) as string,
+					Key: {},
+					ExpressionAttributeValues: {},
+					ExpressionAttributeNames: {},
 				};
 
-				const jsonEnabled = this.getNodeParameter('jsonEnabled', 0) as boolean;
+				const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
+				const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 
-				if (jsonEnabled) {
-					const jsonItem = this.getNodeParameter('jsonItem', i) as string;
-					body.Key = validateJSON(jsonItem);
+				Object.assign(body, additionalFields);
+
+				if (jsonParameters) {
+					let json;
+					const itemsJson = this.getNodeParameter('keysJson', i) as string;
+					json = validateJSON(itemsJson);
+					if (json === undefined) {
+						throw new Error('Items must be a valid JSON');
+					}
+					body.Key = json;
+
+					const expressionAttributeValueJson = this.getNodeParameter('expressionAttributeValueJson', i) as string;
+					json = validateJSON(expressionAttributeValueJson);
+					if (json === undefined) {
+						throw new Error('Items must be a valid JSON');
+					}
+					//@ts-ignore
+					body.ExpressionAttributeValues = json;
+
 				} else {
-					body.Key = populatePartitionKey.call(this, i);
+					const items = this.getNodeParameter('keysUi.keyValues', i, []) as IDataObject[];
+					for (const item of items) {
+						//@ts-ignore
+						body.Key![item.key as string] = { [(item.type as string).toUpperCase()]: item.value };
+					}
+
+					delete body.keysUi;
+
+					if (additionalFields.expressionAttributeValuesUi) {
+						const attributeValues = (additionalFields.expressionAttributeValuesUi as IDataObject || {}).expressionAttributeValuesValues as IDataObject[] || [];
+						for (const attributeValue of attributeValues) {
+							//@ts-ignore
+							body.ExpressionAttributeValues![attributeValue.key as string] = { [(attributeValue.type as string).toUpperCase()]: attributeValue.value };
+						}
+						
+						delete body.expressionAttributeValuesUi;
+
+						//body.ExpressionAttributeValues = mapToAttributeValues(copyInputItem(items[i], attributeValues)) as unknown as IAttributeValue;
+					}
+
+					if (additionalFields.expressionAttributeNamesUi) {
+						const data = (additionalFields.expressionAttributeNamesUi as IDataObject || {}).expressionAttributeNamesValues as IDataObject[];
+						body.ExpressionAttributeNames = data.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {});
+						delete body.expressionAttributeNamesUi;
+					}
 				}
+
+
+				
+
 
 				const headers = {
 					'Content-Type': 'application/x-amz-json-1.0',
 					'X-Amz-Target': 'DynamoDB_20120810.DeleteItem',
 				};
 
+				console.log(body);
+
 				responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers);
-				responseData = { success: true };
+				//responseData = { success: true };
 
 			} else if (operation === 'get') {
 
@@ -180,42 +277,50 @@ export class AwsDynamoDB implements INodeType {
 
 				// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_GetItem.html
 
+				const tableName = this.getNodeParameter('tableName', 0) as string;
+				const simple = this.getNodeParameter('simple', 0) as boolean;
+				const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
+				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
 				const body: IRequestBody = {
-					TableName: this.getNodeParameter('tableName', i) as string,
+					TableName: tableName,
+					Key: {},
 				};
 
-				const jsonEnabled = this.getNodeParameter('jsonEnabled', 0) as boolean;
+				Object.assign(body, additionalFields);
 
-				if (jsonEnabled) {
-					const jsonItem = this.getNodeParameter('jsonItem', i) as string;
-					body.Key = validateJSON(jsonItem);
-				} else {
-					body.Key = populatePartitionKey.call(this, i);
+				if (body.ExpressionAttributeNames) {
+					const values = this.getNodeParameter('additionalFields.ExpressionAttributeNames.ExpressionAttributeNamesValues', i, []) as IDataObject[];
+					body.ExpressionAttributeNames = values.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) as { [key: string]: string };
 				}
 
-				const { readConsistencyModel } = this.getNodeParameter('additionalFields', i) as {
-					readConsistencyModel: 'eventuallyConsistent' | 'stronglyConsistent';
-				};
+				if (jsonParameters) {
+					const itemsJson = this.getNodeParameter('keysJson', i) as string;
+					const json = validateJSON(itemsJson);
+					if (json === undefined) {
+						throw new Error('Items must be a valid JSON');
+					}
+					body.Key = json;
 
-				if (readConsistencyModel) {
-					body.ConsistentRead = readConsistencyModel === 'stronglyConsistent';
+				} else {
+					const items = this.getNodeParameter('keysUi.keyValues', i, []) as IDataObject[];
+					for (const item of items) {
+						//@ts-ignore
+						body.Key![item.key as string] = { [(item.type as string).toUpperCase()]: item.value };
+					}
 				}
 
 				const headers = {
-					'Content-Type': 'application/x-amz-json-1.0',
 					'X-Amz-Target': 'DynamoDB_20120810.GetItem',
+					'Content-Type': 'application/x-amz-json-1.0',
 				};
 
 				responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers);
 
-				if (!responseData.Item) {
-					responseData = [];
-				}
-
-				const simple = this.getNodeParameter('simple', 0) as boolean;
+				responseData = responseData.Item;
 
 				if (simple) {
-					responseData = simplify(responseData.Item);
+					responseData = decodeItem(responseData);
 				}
 
 			} else if (operation === 'query') {

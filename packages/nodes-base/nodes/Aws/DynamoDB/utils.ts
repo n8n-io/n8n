@@ -1,6 +1,7 @@
 import {
 	IDataObject,
 	IExecuteFunctions,
+	INodeExecutionData,
 } from 'n8n-workflow';
 
 import {
@@ -67,22 +68,35 @@ export function validateJSON(input: any): object {
 	}
 }
 
-export function populatePartitionKey(this: IExecuteFunctions, i: number) {
-	const partitionKey = this.getNodeParameter('partitionKey', i) as PartitionKey;
+// export function populatePartitionKey(this: IExecuteFunctions, i: number) {
+// 	const keys = this.getNodeParameter('keyUi.keyValues', i) as IDataObject[];;
 
-	if (!partitionKey.details) {
-		throw new Error('Please specify name, type and value of the partition key for the item to retrieve.');
+// 	return {
+// 		[name]: {
+// 			[type]: value,
+// 		},
+// 	};
+// }
+
+export function copyInputItem(item: INodeExecutionData, properties: string[]): IDataObject {
+	// Prepare the data to insert and copy it to be returned
+	let newItem: IDataObject;
+		newItem = {};
+	for (const property of properties) {
+		if (item.json[property] === undefined) {
+			newItem[property] = null;
+		} else {
+			newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
+		}
 	}
+	return newItem;
+}
 
-	const { name, type, value } = partitionKey.details;
-
-	if ([name, type, value].some(property => property === undefined)) {
-		throw new Error('Please specify name, type and value of the partition key for the item to retrieve.');
+export function mapToAttributeValues(item: IDataObject): void {
+	for (const key of Object.keys(item)) {
+		if (!key.startsWith(':')) {
+			item[`:${key}`] = item[key];
+			delete item[key];
+		}
 	}
-
-	return {
-		[name]: {
-			[type]: value,
-		},
-	};
 }
