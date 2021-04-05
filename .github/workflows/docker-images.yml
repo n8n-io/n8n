@@ -19,20 +19,27 @@ jobs:
     - name: Log in to Docker registry
       run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
 
+    - name: Set up Docker Buildx
+      uses: crazy-max/ghaction-docker-buildx@v3
+      with:
+        buildx-version: latest
+        qemu-version: latest
+
     - name: Build the Docker image of version
-      run: docker build --build-arg N8N_VERSION=${{steps.vars.outputs.tag}} -t n8nio/n8n:${{steps.vars.outputs.tag}} docker/images/n8n
-    - name: Push Docker image of version
-      run: docker push n8nio/n8n:${{steps.vars.outputs.tag}}
-    - name: Tag Docker image with latest
-      run: docker tag n8nio/n8n:${{steps.vars.outputs.tag}} n8nio/n8n:latest
-    - name: Push docker images of latest
-      run: docker push n8nio/n8n:latest
+      if: success()
+      run: |
+        docker buildx build \
+          --platform linux/amd64,linux/arm64,linux/arm/v7 \
+          --build-arg N8N_VERSION=${{steps.vars.outputs.tag}} \
+          -t ${{ secrets.DOCKER_USERNAME }}/n8n:${{steps.vars.outputs.tag}} \
+          -t ${{ secrets.DOCKER_USERNAME }}/n8n:latest \
+          --output type=image,push=true docker/images/n8n
 
     - name: Build the Docker image of version (Debian)
-      run: docker build --build-arg N8N_VERSION=${{steps.vars.outputs.tag}} -t n8nio/n8n:${{steps.vars.outputs.tag}}-debian docker/images/n8n-debian
-    - name: Push Docker image of version (Debian)
-      run: docker push n8nio/n8n:${{steps.vars.outputs.tag}}-debian
-    - name: Tag Docker image with latest (Debian)
-      run: docker tag n8nio/n8n:${{steps.vars.outputs.tag}}-debian n8nio/n8n:latest-debian
-    - name: Push docker images of latest (Debian)
-      run: docker push n8nio/n8n:latest-debian
+      run: |
+        docker buildx build \
+          --platform linux/amd64 \
+          --build-arg N8N_VERSION=${{steps.vars.outputs.tag}} \
+          -t ${{ secrets.DOCKER_USERNAME }}/n8n:${{steps.vars.outputs.tag}}-debian \
+          -t ${{ secrets.DOCKER_USERNAME }}/n8n:latest-debian \
+          --output type=image,push=true docker/images/n8n-debian
