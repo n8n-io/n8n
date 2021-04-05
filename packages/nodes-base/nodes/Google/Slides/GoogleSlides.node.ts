@@ -276,20 +276,6 @@ export class GoogleSlides implements INodeType {
 						displayName: 'Text',
 						values: [
 							{
-								displayName: 'Text',
-								name: 'text',
-								type: 'string',
-								default: '',
-								description: 'The text to search for in the shape or table.',
-							},
-							{
-								displayName: 'Replace Text',
-								name: 'replaceText',
-								type: 'string',
-								default: '',
-								description: 'The text that will replace the matched text.',
-							},
-							{
 								displayName: 'Match Case',
 								name: 'matchCase',
 								type: 'boolean',
@@ -308,6 +294,20 @@ export class GoogleSlides implements INodeType {
 									],
 								},
 								description: 'If non-empty, limits the matches to page elements only on the given pages.',
+							},
+							{
+								displayName: 'Replace Text',
+								name: 'replaceText',
+								type: 'string',
+								default: '',
+								description: 'The text that will replace the matched text.',
+							},
+							{
+								displayName: 'Text',
+								name: 'text',
+								type: 'string',
+								default: '',
+								description: 'The text to search for in the shape or table.',
 							},
 						],
 					},
@@ -341,6 +341,45 @@ export class GoogleSlides implements INodeType {
 					},
 				],
 			},
+
+			{
+				displayName: 'Download',
+				name: 'download',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						resource: [
+							'page',
+						],
+						operation: [
+							'getThumbnail',
+						],
+					},
+				},
+				description: 'Name of the binary property to which to<br />write the data of the read page.',
+			},
+			{
+				displayName: 'Binary Property',
+				name: 'binaryProperty',
+				type: 'string',
+				required: true,
+				default: 'data',
+				description: 'Name of the binary property to which to write to.',
+				displayOptions: {
+					show: {
+						resource: [
+							'page',
+						],
+						operation: [
+							'getThumbnail',
+						],
+						download: [
+							true,
+						],
+					},
+				},
+			},
 		],
 	};
 
@@ -373,7 +412,7 @@ export class GoogleSlides implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let responseData;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
 
@@ -392,6 +431,7 @@ export class GoogleSlides implements INodeType {
 					const presentationId = this.getNodeParameter('presentationId', i) as string;
 					const pageObjectId = this.getNodeParameter('pageObjectId', i) as string;
 					responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}/pages/${pageObjectId}`);
+					returnData.push({ json: responseData });
 
 				} else if (operation === 'getThumbnail') {
 
@@ -403,6 +443,28 @@ export class GoogleSlides implements INodeType {
 					const pageObjectId = this.getNodeParameter('pageObjectId', i) as string;
 					responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}/pages/${pageObjectId}/thumbnail`);
 
+					const download = this.getNodeParameter('download', 0) as boolean;
+					if (download === true) {
+						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+
+						const data = await this.helpers.request({
+							uri: responseData.contentUrl,
+							method: 'GET',
+							json: false,
+							encoding: null,
+						});
+
+						const fileName = pageObjectId + '.png';
+						const binaryData = await this.helpers.prepareBinaryData(data, fileName || fileName);
+						returnData.push({
+							json: responseData,
+							binary: {
+								[binaryProperty]: binaryData,
+							},
+						});
+					} else {
+						returnData.push({ json: responseData });
+					}
 				}
 
 			} else if (resource === 'presentation') {
@@ -422,6 +484,7 @@ export class GoogleSlides implements INodeType {
 					};
 
 					responseData = await googleApiRequest.call(this, 'POST', '/presentations', body);
+					returnData.push({ json: responseData });
 
 				} else if (operation === 'get') {
 
@@ -431,6 +494,7 @@ export class GoogleSlides implements INodeType {
 
 					const presentationId = this.getNodeParameter('presentationId', i) as string;
 					responseData = await googleApiRequest.call(this, 'GET', `/presentations/${presentationId}`);
+					returnData.push({ json: responseData });
 
 				} else if (operation === 'getSlides') {
 
@@ -445,6 +509,8 @@ export class GoogleSlides implements INodeType {
 						const limit = this.getNodeParameter('limit', i) as number;
 						responseData = responseData.slice(0, limit);
 					}
+					returnData.push(...this.helpers.returnJsonArray(responseData))
+
 				} else if (operation === 'replaceText') {
 
 					// ----------------------------------
@@ -477,14 +543,12 @@ export class GoogleSlides implements INodeType {
 					}
 
 					responseData = await googleApiRequest.call(this, 'POST', `/presentations/${presentationId}:batchUpdate`, { requests });
+					returnData.push({ json: responseData });
+
 				}
 			}
-
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
-
 		}
-		return [this.helpers.returnJsonArray(responseData)];
+
+		return [returnData];
 	}
 }
