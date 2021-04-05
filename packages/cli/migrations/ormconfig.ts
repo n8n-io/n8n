@@ -1,12 +1,14 @@
-import { SQLite, MySQLDb, PostgresDb} from '../src/databases/index';
+import * as path from 'path';
+import { UserSettings } from 'n8n-core';
+import { entities } from '../src/databases/entities';
 
 module.exports = [
     {
         "name": "sqlite",
         "type": "sqlite",
         "logging": true,
-        "entities": Object.values(SQLite),
-        "database": "./packages/cli/database.sqlite",
+        "entities": Object.values(entities),
+        "database": path.join(UserSettings.getUserN8nFolderPath(), 'database.sqlite'),
         "migrations": [
            "./src/databases/sqlite/migrations/*.ts"
         ],
@@ -14,7 +16,7 @@ module.exports = [
             "./src/databases/sqlite/subscribers/*.ts"
         ],
         "cli": {
-           "entitiesDir": "./src/databases/sqlite",
+           "entitiesDir": "./src/databases/entities",
            "migrationsDir": "./src/databases/sqlite/migrations",
            "subscribersDir": "./src/databases/sqlite/subscribers"
         }
@@ -29,7 +31,7 @@ module.exports = [
         "port": 5432,
         "database": "n8n",
         "schema": "public",
-        "entities": Object.values(PostgresDb),
+        "entities": Object.values(entities),
         "migrations": [
            "./src/databases/postgresdb/migrations/*.ts"
         ],
@@ -37,7 +39,7 @@ module.exports = [
            "src/subscriber/**/*.ts"
         ],
         "cli": {
-           "entitiesDir": "./src/databases/postgresdb",
+           "entitiesDir": "./src/databases/entities",
            "migrationsDir": "./src/databases/postgresdb/migrations",
            "subscribersDir": "./src/databases/postgresdb/subscribers"
         }
@@ -51,7 +53,7 @@ module.exports = [
         "host": "localhost",
         "port": "3306",
         "logging": false,
-        "entities": Object.values(MySQLDb),
+        "entities": Object.values(entities),
         "migrations": [
            "./src/databases/mysqldb/migrations/*.ts"
         ],
@@ -59,7 +61,7 @@ module.exports = [
            "src/subscriber/**/*.ts"
         ],
         "cli": {
-           "entitiesDir": "./src/databases/mysqldb",
+           "entitiesDir": "./src/databases/entities",
            "migrationsDir": "./src/databases/mysqldb/migrations",
            "subscribersDir": "./src/databases/mysqldb/Subscribers"
         }
@@ -73,7 +75,7 @@ module.exports = [
         "host": "localhost",
         "port": "3306",
         "logging": false,
-        "entities": Object.values(MySQLDb),
+        "entities": Object.values(entities),
         "migrations": [
            "./src/databases/mysqldb/migrations/*.ts"
         ],
@@ -81,7 +83,7 @@ module.exports = [
            "src/subscriber/**/*.ts"
         ],
         "cli": {
-           "entitiesDir": "./src/databases/mysqldb",
+           "entitiesDir": "./src/databases/entities",
            "migrationsDir": "./src/databases/mysqldb/migrations",
            "subscribersDir": "./src/databases/mysqldb/Subscribers"
         }

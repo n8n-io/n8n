@@ -59,6 +59,7 @@ export interface IDatabaseCollections {
 	Execution: Repository<IExecutionFlattedDb> | null;
 	Workflow: Repository<IWorkflowDb> | null;
 	Webhook: Repository<IWebhookDb> | null;
+	Tag: Repository<ITagDb> | null;
 }
 
 export interface IWebhookDb {

@@ -25,6 +25,7 @@ export let collections: IDatabaseCollections = {
 	Execution: null,
 	Workflow: null,
 	Webhook: null,
+	Tag: null,
 };
 
 import { postgresMigrations } from './databases/postgresdb/migrations';
@@ -94,7 +95,7 @@ export async function init(): Promise<IDatabaseCollections> {
 		case 'sqlite':
 			connectionOptions = {
 				type: 'sqlite',
-				database:  path.join(n8nFolder, 'database.sqlite'),
+				database: path.join(n8nFolder, 'database.sqlite'),
 				entityPrefix,
 				migrations: sqliteMigrations,
 				migrationsRun: false, // migrations for sqlite will be ran manually for now; see below
@@ -104,7 +105,7 @@ export async function init(): Promise<IDatabaseCollections> {
 
 		default:
 			throw new Error(`The database "${dbType}" is currently not supported!`);
-	}
+		}
 
 	Object.assign(connectionOptions, {
 		entities: Object.values(entities),
@@ -141,6 +142,7 @@ export async function init(): Promise<IDatabaseCollections> {
 	collections.Execution = getRepository(entities.ExecutionEntity);
 	collections.Workflow = getRepository(entities.WorkflowEntity);
 	collections.Webhook = getRepository(entities.WebhookEntity);
+	collections.Tag = getRepository(entities.TagEntity);
 
 	return collections;
 }

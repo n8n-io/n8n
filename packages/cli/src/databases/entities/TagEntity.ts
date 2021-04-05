@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, Index, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 import { ITagDb } from '../../Interfaces';
 import { WorkflowEntity } from './WorkflowEntity';
@@ -9,7 +9,8 @@ export class TagEntity implements ITagDb {
 	@PrimaryGeneratedColumn()
 	id: number;
 
-	@Column({ unique: true, length: 24 })
+	@Index({ unique: true })
+	@Column({ length: 24 })
 	name: string;
 
 	@Column()
@@ -18,6 +19,6 @@ export class TagEntity implements ITagDb {
 	@Column()
 	updatedAt: Date;
 
-	@ManyToMany(() => WorkflowEntity, workflowEntity => workflowEntity.tags)
+	@ManyToMany(() => WorkflowEntity, workflow => workflow.tags)
 	workflows: WorkflowEntity[];
 }
