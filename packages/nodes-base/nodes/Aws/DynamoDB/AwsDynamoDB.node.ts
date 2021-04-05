@@ -9,11 +9,11 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { addAdditionalFields } from '../../Telegram/GenericFunctions';
 
 import {
 	awsApiRequestREST,
-} from '../GenericFunctions';
+	awsApiRequestSOAPAllItems,
+} from './GenericFunctions';
 
 import {
 	operationFields,
@@ -119,17 +119,12 @@ export class AwsDynamoDB implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Retrieve an item from a table.',
+						description: 'Get an item from a table.',
 					},
 					{
-						name: 'Query',
-						value: 'query',
-						description: 'Retrieve items based on a partition key.',
-					},
-					{
-						name: 'Scan',
-						value: 'scan',
-						description: 'Retrieve items based on any property.',
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get items from a table ',
 					},
 				],
 			},
@@ -323,31 +318,41 @@ export class AwsDynamoDB implements INodeType {
 					responseData = decodeItem(responseData);
 				}
 
-			} else if (operation === 'query') {
+			} else if (operation === 'getAll') {
 
 				// ----------------------------------
-				//             query
+				//             getAll
 				// ----------------------------------
 
 				// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html
 
-				const eavUi = this.getNodeParameter('expressionAttributeValues.details', i) as IAttributeValueUi[];
+				const eavUi = this.getNodeParameter('expressionAttributeUi.expressionAttributeValues', i, []) as IAttributeValueUi[];
+				const simple = this.getNodeParameter('simple', 0) as boolean;
+				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
 				const body: IRequestBody = {
 					TableName: this.getNodeParameter('tableName', i) as string,
 					KeyConditionExpression: this.getNodeParameter('keyConditionExpression', i) as string,
 					ExpressionAttributeValues: adjustExpressionAttributeValues(eavUi),
+					ExpressionAttributeNames: {},
 				};
 
 				const {
 					indexName,
 					projectionExpression,
 					readConsistencyModel,
-				} = this.getNodeParameter('additionalFields', i) as {
+					expressionAttributeNamesUi,
+				} = this.getNodeParameter('options', i) as {
 					indexName: string;
 					projectionExpression: string;
 					readConsistencyModel: 'eventuallyConsistent' | 'stronglyConsistent';
+					expressionAttributeNamesUi: IDataObject;
 				};
+
+				if (expressionAttributeNamesUi) {
+					const values = expressionAttributeNamesUi.expressionAttributeNamesValues as IDataObject[] || [];
+					body.ExpressionAttributeNames = values.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {}) as { [key: string]: string };
+				}
 
 				if (indexName) {
 					body.IndexName = indexName;
@@ -366,9 +371,23 @@ export class AwsDynamoDB implements INodeType {
 					'X-Amz-Target': 'DynamoDB_20120810.Query',
 				};
 
-				responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers);
 
-				if (responseData.Items) {
+				delete body.ExpressionAttributeNames;
+
+				console.log(body);
+
+				if (returnAll === true) {
+					body.Limit = 1;
+					responseData = await awsApiRequestSOAPAllItems.call(this, 'dynamodb', 'POST', '/', body, headers);
+
+				} else {
+					body.Limit = this.getNodeParameter('limit', 0) as number;
+					responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', body, headers);
+				}
+
+				console.log(responseData);
+
+				if (simple === true) {
 					responseData = responseData.Items.map(simplify);
 				}
 

@@ -1,5 +1,5 @@
 export interface IRequestBody {
-	[key: string]: string | IAttributeValue | undefined | boolean | object;
+	[key: string]: string | IAttributeValue | undefined | boolean | object| number;
 	TableName: string;
 	Key?: object;
 	IndexName?: string;
@@ -8,6 +8,8 @@ export interface IRequestBody {
 	ExpressionAttributeValues?: IAttributeValue;
 	ConsistentRead?: boolean;
 	FilterExpression?: string;
+	Limit?: number;
+	ExclusiveStartKey?: IAttributeValue;
 }
 
 export interface IAttributeValue {
