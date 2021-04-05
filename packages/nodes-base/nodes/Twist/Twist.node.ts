@@ -37,7 +37,7 @@ import {
 	commentOperations
 } from './CommentDescription';
 import uuid = require('uuid');
-import moment = require('moment')
+import moment = require('moment');
 export class Twist implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Twist',
@@ -341,10 +341,10 @@ export class Twist implements INodeType {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
 					if(qs.older_than_ts){
-						qs.older_than_ts = moment(qs.older_than_ts as string).unix()
+						qs.older_than_ts = moment(qs.older_than_ts as string).unix();
 					}
 					if(qs.newer_than_ts){
-						qs.newer_than_ts = moment(qs.newer_than_ts as string).unix()
+						qs.newer_than_ts = moment(qs.newer_than_ts as string).unix();
 					}
 
 					responseData = await twistApiRequest.call(this, 'GET', '/comments/get', {}, qs);
@@ -685,10 +685,10 @@ export class Twist implements INodeType {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
 					if(qs.older_than_ts){
-						qs.older_than_ts = moment(qs.older_than_ts as string).unix()
+						qs.older_than_ts = moment(qs.older_than_ts as string).unix();
 					}
 					if(qs.newer_than_ts){
-						qs.newer_than_ts = moment(qs.newer_than_ts as string).unix()
+						qs.newer_than_ts = moment(qs.newer_than_ts as string).unix();
 					}
 
 					responseData = await twistApiRequest.call(this, 'GET', '/threads/get', {}, qs);

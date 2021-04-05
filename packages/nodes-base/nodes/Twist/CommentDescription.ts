@@ -50,7 +50,7 @@ export const commentFields = [
 	/*-------------------------------------------------------------------------- */
 	/*                                comment:add                                 */
 	/* ------------------------------------------------------------------------- */
-    {
+		{
 		displayName: 'Workspace ID',
 		name: 'workspaceId',
 		type: 'options',
@@ -124,7 +124,7 @@ export const commentFields = [
 			},
 		},
 		options: [
-            {
+						{
 				displayName: 'Actions',
 				name: 'actionsUi',
 				type: 'fixedCollection',
@@ -224,7 +224,7 @@ export const commentFields = [
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
-                    loadOptionsDependsOn: [
+										loadOptionsDependsOn: [
 						'workspaceId',
 					],
 				},
@@ -244,28 +244,28 @@ export const commentFields = [
 				default: [],
 				description: 'The users that will attached to the comment.',
 			},
-            {
+						{
 				displayName: 'Temporary ID',
 				name: 'temp_id',
 				type: 'number',
 				default: 0,
 				description: 'The temporary id of the comment.',
 			},
-            {
+						{
 				displayName: 'Mark thread position',
 				name: 'mark_thread_position',
 				type: 'boolean',
 				default: true,
 				description: 'By default, the position of the thread is marked..',
 			},
-            {
+						{
 				displayName: 'Send as integration',
 				name: 'send_as_integration',
 				type: 'boolean',
 				default: false,
 				description: 'Displays the integration as the comment creator.',
 			},
-            
+						
 		],
 	},
 	/* -------------------------------------------------------------------------- */
@@ -314,7 +314,7 @@ export const commentFields = [
 		required: true,
 		description: 'The ID of the workspace.',
 	},
-    {
+		{
 		displayName: 'Thread ID',
 		name: 'threadId',
 		type: 'string',
@@ -397,7 +397,7 @@ export const commentFields = [
 				default: false,
 				description: 'If enabled, only the ids of the comments are returned.',
 			},
-            {
+						{
 				displayName: 'Starting object index',
 				name: 'from_obj_index',
 				type: 'number',
@@ -411,16 +411,16 @@ export const commentFields = [
 				default: 50,
 				description: 'Limit comments ending at the specified object index.',
 			},
-            {
+						{
 				displayName: 'Order By',
 				name: 'order_by',
 				type: 'options',
-                options: [
+								options: [
 					{
 						name: 'ASC',
 						value: 'ASC',
 					},
-                    {
+										{
 						name: 'DESC',
 						value: 'DESC',
 					},
@@ -428,14 +428,14 @@ export const commentFields = [
 				default: 'ASC',
 				description: 'The order of the comments returned one of DESC or ASC.',
 			},
-            {
+						{
 				displayName: 'Newer Than',
 				name: 'newer_than_ts',
 				type: 'dateTime',
 				default: '',
 				description: 'Limits comments to those newer when the specified Unix time.',
 			},
-            {
+						{
 				displayName: 'Older Than',
 				name: 'older_than_ts',
 				type: 'dateTime',
@@ -448,7 +448,7 @@ export const commentFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                  comment:update                            */
 	/* -------------------------------------------------------------------------- */
-    {
+		{
 		displayName: 'Workspace ID',
 		name: 'workspaceId',
 		type: 'options',
@@ -469,7 +469,7 @@ export const commentFields = [
 		required: true,
 		description: 'The ID of the workspace.',
 	},
-    {
+		{
 		displayName: 'Comment ID',
 		name: 'commentId',
 		type: 'string',
@@ -504,14 +504,14 @@ export const commentFields = [
 			},
 		},
 		options: [
-            {
-                displayName: 'Content',
-                name: 'content',
-                type: 'string',
-                default: '',
-                description: 'The content of the comment.',
-            },
-            {
+						{
+								displayName: 'Content',
+								name: 'content',
+								type: 'string',
+								default: '',
+								description: 'The content of the comment.',
+						},
+						{
 				displayName: 'Actions',
 				name: 'actionsUi',
 				type: 'fixedCollection',
@@ -611,7 +611,7 @@ export const commentFields = [
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
-                    loadOptionsDependsOn: [
+										loadOptionsDependsOn: [
 						'workspaceId',
 					],
 				},
