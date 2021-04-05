@@ -31,6 +31,499 @@ jobs:
 <updated>2020-11-11T10:57:47Z</updated>
 <generator version='2.24.1/2.24.1'>gitweb</generator>
 <entry>
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+<title>mi3-sr2.supercp.com Git - home/webdoma1/repositories/n8n/.git/atom - packages/core/package.json history</title>
+<subtitle>Unnamed repository; edit this file &#39;description&#39; to name the repository.</subtitle>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=history;f=packages/core/package.json" />
+<link rel="self" type="application/atom+xml" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home%2Fwebdoma1%2Frepositories%2Fn8n%2F.git;a=atom;f=packages%2Fcore%2Fpackage.json" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git</id>
+<author><name></name></author>
+<icon>static/git-favicon.png</icon>
+<logo>static/git-logo.png</logo>
+<updated>2020-11-11T10:57:47Z</updated>
+<generator version='2.24.1/2.24.1'>gitweb</generator>
+<entry>
+<title type="html">:bookmark: Release n8n-core@0.51.0</title>
+<updated>2020-11-11T10:57:47Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-11-11T10:57:47Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=dce3e0561b1160b3a52d35130608176afce159ae" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=dce3e0561b1160b3a52d35130608176afce159ae</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:bookmark: Release n8n-core@0.51.0
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=bb7dd473aa62415918c4f87c3dc9bdf28685017f;hp=1ecd0c51a01f33d9da6cf8bf02410dea7dad8e38;hb=dce3e0561b1160b3a52d35130608176afce159ae;hpb=16caa14065a619aee34a40932bcca1d808064f88" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:arrow_up: Set n8n-workflow@0.44.0 on n8n-core</title>
+<updated>2020-11-11T10:57:23Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-11-11T10:57:23Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=16caa14065a619aee34a40932bcca1d808064f88" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=16caa14065a619aee34a40932bcca1d808064f88</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:arrow_up: Set n8n-workflow@0.44.0 on n8n-core
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=1ecd0c51a01f33d9da6cf8bf02410dea7dad8e38;hp=dad78b0bcd9cd99cc910897e19cf28db47b0fd8e;hb=16caa14065a619aee34a40932bcca1d808064f88;hpb=d03b21554cb9b85ce6937e8891d66766aa463ba2" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:bookmark: Release n8n-core@0.50.0</title>
+<updated>2020-11-04T15:19:29Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-11-04T15:19:29Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=fe6133583c59d902a6210daf2a1465b1c2ccfaa0" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=fe6133583c59d902a6210daf2a1465b1c2ccfaa0</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:bookmark: Release n8n-core@0.50.0
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=dad78b0bcd9cd99cc910897e19cf28db47b0fd8e;hp=b763e67384242ae246db805d5a2d9d995ca4c513;hb=fe6133583c59d902a6210daf2a1465b1c2ccfaa0;hpb=f9995f28c84aff19396b49eb043d8241d4d617c0" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:bookmark: Release n8n-core@0.49.0</title>
+<updated>2020-10-30T08:47:14Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-10-30T08:47:14Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=1c79ef4d9e6bb4b6212eeab4755baa901425d44e" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=1c79ef4d9e6bb4b6212eeab4755baa901425d44e</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:bookmark: Release n8n-core@0.49.0
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=b763e67384242ae246db805d5a2d9d995ca4c513;hp=0c7a3904177086243e2cb0e32ccb6ee2e4ed3b71;hb=1c79ef4d9e6bb4b6212eeab4755baa901425d44e;hpb=af9d84288ecc41a4b5ca5c5c1f7062a37da95543" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:arrow_up: Set n8n-workflow@0.43.0 on n8n-core</title>
+<updated>2020-10-30T08:46:40Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-10-30T08:46:40Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=af9d84288ecc41a4b5ca5c5c1f7062a37da95543" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=af9d84288ecc41a4b5ca5c5c1f7062a37da95543</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:arrow_up: Set n8n-workflow@0.43.0 on n8n-core
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=0c7a3904177086243e2cb0e32ccb6ee2e4ed3b71;hp=4138b503afdffc68d6008ac68c01b9ad169db03f;hb=af9d84288ecc41a4b5ca5c5c1f7062a37da95543;hpb=ca1b2d1bd57f73f0099efd8afd6c055ac693dcb3" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:zap: Add tslintfix script</title>
+<updated>2020-10-23T07:21:15Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-10-23T07:21:15Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=7addd14e361f5a8a70fa3efcb9cb9a3ba4a133d2" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=7addd14e361f5a8a70fa3efcb9cb9a3ba4a133d2</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:zap: Add tslintfix script
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=4138b503afdffc68d6008ac68c01b9ad169db03f;hp=dbfff50bf80557429b9522fb67d603a11fd3e57b;hb=7addd14e361f5a8a70fa3efcb9cb9a3ba4a133d2;hpb=d432eae6014751345e566ac454b3f8646a060bc7" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:bookmark: Release n8n-core@0.48.1</title>
+<updated>2020-10-22T13:01:42Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-10-22T13:01:42Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=b1ce92f31d0e5414f096bdff84f090899a9df1b1" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=b1ce92f31d0e5414f096bdff84f090899a9df1b1</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:bookmark: Release n8n-core@0.48.1
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=dbfff50bf80557429b9522fb67d603a11fd3e57b;hp=c08c548051ae2fbb143e89920fd38697036360c1;hb=b1ce92f31d0e5414f096bdff84f090899a9df1b1;hpb=0612ecb924e5f5784fdf7cc37b1f21ad118486c4" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:bookmark: Release n8n-core@0.48.0</title>
+<updated>2020-10-22T09:45:17Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-10-22T09:45:17Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=fe92bc03113b3e5e97bebdf2baa23a2556bc4932" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=fe92bc03113b3e5e97bebdf2baa23a2556bc4932</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:bookmark: Release n8n-core@0.48.0
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=c08c548051ae2fbb143e89920fd38697036360c1;hp=52b95cf356c00f2d823ac59ba5190c4fa3a4e76e;hb=fe92bc03113b3e5e97bebdf2baa23a2556bc4932;hpb=c4a43e0d83b9d01c400f2c276a22c62b514f3e57" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:heavy_plus_sign: Add missing oauth-1.0a dependency #986</title>
+<updated>2020-10-22T06:58:23Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-10-22T06:58:23Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=ed9fb413b447619602bc35179e9cc1c19b9631a1" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=ed9fb413b447619602bc35179e9cc1c19b9631a1</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:heavy_plus_sign: Add missing oauth-1.0a dependency #986
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=52b95cf356c00f2d823ac59ba5190c4fa3a4e76e;hp=0ebb3bbb66f3ff2449e958e47013019fe0fad27a;hb=ed9fb413b447619602bc35179e9cc1c19b9631a1;hpb=b9fc0b0ccfb76d4a57989495063d29e5f306cd1b" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:arrow_up: Upgrade crypto-js</title>
+<updated>2020-10-20T13:06:58Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-10-20T13:06:58Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=c452aaa2b8052e1330907b76637cd437e7c91ff4" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=c452aaa2b8052e1330907b76637cd437e7c91ff4</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:arrow_up: Upgrade crypto-js
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=0ebb3bbb66f3ff2449e958e47013019fe0fad27a;hp=8721a73deb4cf1737a72b98e4dfac42679e8d50e;hb=c452aaa2b8052e1330907b76637cd437e7c91ff4;hpb=a27ac0e203f616078a5b11929cde285d030efd2b" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:shirt: Fix built issue</title>
+<updated>2020-10-20T09:11:24Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-10-20T09:11:24Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=269bab679d2afaf6ca0346034d796d4460a53d8b" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=269bab679d2afaf6ca0346034d796d4460a53d8b</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:shirt: Fix built issue
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=8721a73deb4cf1737a72b98e4dfac42679e8d50e;hp=0abdc50330198492308c5522f7fff75dbbca873a;hb=269bab679d2afaf6ca0346034d796d4460a53d8b;hpb=40b898eb98a2aac7be748c8db5545bcf08c9ed98" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:bookmark: Release n8n-core@0.47.0</title>
+<updated>2020-09-23T11:24:14Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-09-23T11:24:14Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=55f4fea17e6b8ec1fd43eef4fc841fda6e6fc681" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=55f4fea17e6b8ec1fd43eef4fc841fda6e6fc681</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:bookmark: Release n8n-core@0.47.0
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=0abdc50330198492308c5522f7fff75dbbca873a;hp=f01cfc53f68617bfbf94b6e7d5a707c125864225;hb=55f4fea17e6b8ec1fd43eef4fc841fda6e6fc681;hpb=cf9fcf8736909e636108926c2507663106cfeb37" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:arrow_up: Set n8n-workflow@0.42.0 on n8n-core</title>
+<updated>2020-09-23T11:23:47Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-09-23T11:23:47Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=cf9fcf8736909e636108926c2507663106cfeb37" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=cf9fcf8736909e636108926c2507663106cfeb37</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:arrow_up: Set n8n-workflow@0.42.0 on n8n-core
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=f01cfc53f68617bfbf94b6e7d5a707c125864225;hp=1409fca9239636ed779fa58109ebbad3d18da116;hb=cf9fcf8736909e636108926c2507663106cfeb37;hpb=029581df0889b6cea64ac173c848b899811d15a9" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:bookmark: Release n8n-core@0.46.0</title>
+<updated>2020-09-18T08:00:23Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-09-18T08:00:23Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=65320fabd5d04bf673ea0c489f0f57c81732f34c" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=65320fabd5d04bf673ea0c489f0f57c81732f34c</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:bookmark: Release n8n-core@0.46.0
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=1409fca9239636ed779fa58109ebbad3d18da116;hp=7f2b9d7eb374378caed954e52f33e665e0f069fa;hb=65320fabd5d04bf673ea0c489f0f57c81732f34c;hpb=cfcfb17b06c996215bfff2e3de9fa0d1f1c7388a" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:arrow_up: Set n8n-workflow@0.41.0 on n8n-core</title>
+<updated>2020-09-18T07:59:59Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-09-18T07:59:59Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=cfcfb17b06c996215bfff2e3de9fa0d1f1c7388a" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=cfcfb17b06c996215bfff2e3de9fa0d1f1c7388a</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:arrow_up: Set n8n-workflow@0.41.0 on n8n-core
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=7f2b9d7eb374378caed954e52f33e665e0f069fa;hp=d44db659795d00d5a65adb632111c06000de90d3;hb=cfcfb17b06c996215bfff2e3de9fa0d1f1c7388a;hpb=c7f1bb51144d0c44fe9d01acd830ab7fd34d57e4" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:bookmark: Release n8n-core@0.45.0</title>
+<updated>2020-09-14T11:35:15Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-09-14T11:35:15Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=41e5ccedcea985d2094e0f030b62db829d50b594" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=41e5ccedcea985d2094e0f030b62db829d50b594</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:bookmark: Release n8n-core@0.45.0
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=d44db659795d00d5a65adb632111c06000de90d3;hp=fae3d71fc20b3a60d0d7454aeecd10e426cd841a;hb=41e5ccedcea985d2094e0f030b62db829d50b594;hpb=1b1cfc58dc9ff00ff35b811ecdd7d92e9a46ec54" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:arrow_up: Set n8n-workflow@0.40.0 on n8n-core</title>
+<updated>2020-09-14T11:34:43Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-09-14T11:34:43Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=1b1cfc58dc9ff00ff35b811ecdd7d92e9a46ec54" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=1b1cfc58dc9ff00ff35b811ecdd7d92e9a46ec54</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:arrow_up: Set n8n-workflow@0.40.0 on n8n-core
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=fae3d71fc20b3a60d0d7454aeecd10e426cd841a;hp=7e9ec7715d4e98290889b2f291926be4e597132d;hb=1b1cfc58dc9ff00ff35b811ecdd7d92e9a46ec54;hpb=653bbda78942a3786e6000d000f0955849dd8942" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:zap: Set fixed version of @types/node to fix build</title>
+<updated>2020-09-12T17:25:49Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-09-12T17:25:49Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=ac2e0040b0b016f56a8544e92bcf19083701af94" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=ac2e0040b0b016f56a8544e92bcf19083701af94</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:zap: Set fixed version of @types/node to fix build
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=7e9ec7715d4e98290889b2f291926be4e597132d;hp=247e7287ebdea58e283801b515c2e6ca425a7c65;hb=ac2e0040b0b016f56a8544e92bcf19083701af94;hpb=d48c6493294374c8a647de8f79cc98c704202398" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:arrow_up: Upgrade some dependencies</title>
+<updated>2020-09-12T12:02:33Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-09-12T12:02:33Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=d48c6493294374c8a647de8f79cc98c704202398" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=d48c6493294374c8a647de8f79cc98c704202398</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:arrow_up: Upgrade some dependencies
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=247e7287ebdea58e283801b515c2e6ca425a7c65;hp=1c8a6b67dd27a06575f19e7cf3d6373b36dbf00a;hb=d48c6493294374c8a647de8f79cc98c704202398;hpb=c8d009bced937d3015bb0bc273a0b132c9d288f1" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+<entry>
+<title type="html">:bookmark: Release n8n-core@0.44.0</title>
+<updated>2020-09-02T13:28:51Z</updated>
+<author>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</author>
+<contributor>
+  <name>Jan Oberhauser</name>
+  <email>jan.oberhauser@gmail.com</email>
+</contributor>
+<published>2020-09-02T13:28:51Z</published>
+<link rel="alternate" type="text/html" href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=21a4a568a4dedf4a2e9279cea1878a57aae30074" />
+<id>https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=commitdiff;h=21a4a568a4dedf4a2e9279cea1878a57aae30074</id>
+<content type="xhtml" xml:base="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi">
+<div xmlns="http://www.w3.org/1999/xhtml">
+<pre>
+:bookmark: Release n8n-core@0.44.0
+</pre><ul>
+<li>[<a href="https://mi3-sr2.supercp.com/cpsess0585844785/3rdparty/gitweb/gitweb.cgi?p=home/webdoma1/repositories/n8n/.git;a=blobdiff;f=packages/core/package.json;fp=packages/core/package.json;h=1c8a6b67dd27a06575f19e7cf3d6373b36dbf00a;hp=57677c1a2f080f0eeb293032508b4bd528ec68c6;hb=21a4a568a4dedf4a2e9279cea1878a57aae30074;hpb=60e31f6e8f0ac670740303d4d82757e385b8e87d" title="diff">D</a>] packages/core/package.json</li>
+</ul>
+</div>
+</content>
+</entry>
+</feed>
 <title type="html">:bookmark: Release n8n-core@0.51.0</title>
 <updated>2020-11-11T10:57:47Z</updated>
 <author>
