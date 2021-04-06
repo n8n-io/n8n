@@ -373,7 +373,8 @@ export class AwsSqs implements INodeType {
 
 			let responseData;
 			try {
-				responseData = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `${queuePath}/?Action=${operation}&` + params.join('&'));
+				const properCasedOperation = operation[0].toUpperCase() + operation.slice(1);
+				responseData = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `${queuePath}/?Version=2012-11-05&Action=${properCasedOperation}&` + params.join('&'));
 			} catch (err) {
 				throw new Error(`AWS Error: ${err}`);
 			}
