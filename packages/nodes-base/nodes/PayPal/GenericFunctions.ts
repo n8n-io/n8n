@@ -14,6 +14,7 @@ import {
 } from 'n8n-workflow';
 
 export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+
 	const credentials = this.getCredentials('payPalApi');
 	const env = getEnvironment(credentials!.env as string);
 	const tokenInfo =  await getAccessToken.call(this);
@@ -63,12 +64,7 @@ async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecut
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = error.response.body.message || error.response.body.Message;
-
-		if (errorMessage !== undefined) {
-			throw new NodeOperationError(this.getNode(), errorMessage);
-		}
-		throw new NodeOperationError(this.getNode(), error.response.body);
+		throw new NodeOperationError(this.getNode(), error);
 	}
 }
 

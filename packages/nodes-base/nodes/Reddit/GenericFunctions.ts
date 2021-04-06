@@ -47,10 +47,7 @@ export async function redditApiRequest(
 		try {
 			response = await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options);
 		} catch (error) {
-			if (error.response.body && error.response.body.message) {
-				const message = error.response.body.message;
-				throw new NodeOperationError(this.getNode(), `Reddit error response [${error.statusCode}]: ${message}`);
-			}
+			throw new NodeApiError(this.getNode(), error);
 		}
 
 		if ((response.errors && response.errors.length !== 0) || (response.json && response.json.errors && response.json.errors.length !== 0)) {

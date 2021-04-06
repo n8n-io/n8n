@@ -251,16 +251,7 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 
 		return response.response.token;
 	} catch (error) {
-		let errorMessage;
-		if (error.response) {
-			errorMessage = error.response.body.messages[0].message + '(' + error.response.body.messages[0].message + ')';
-		} else {
-			errorMessage = `${error.message} (${error.name})`;
-		}
-		if (errorMessage !== undefined) {
-			throw errorMessage;
-		}
-		throw error.message;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

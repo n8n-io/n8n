@@ -94,12 +94,7 @@ export async function taigaApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		let errorMessage = error;
-		if (error.response.body && error.response.body._error_message) {
-			errorMessage = error.response.body._error_message;
-		}
-
-		throw new NodeOperationError(this.getNode(), `Taigan error response [${error.statusCode}]: ${errorMessage}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
