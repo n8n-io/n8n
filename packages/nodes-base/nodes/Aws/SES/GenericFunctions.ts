@@ -52,16 +52,6 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = (error.response && error.response.body.message) || (error.response && error.response.body.Message) || error.message;
-
-		if (error.statusCode === 403) {
-			if (errorMessage === 'The security token included in the request is invalid.') {
-				throw new NodeOperationError(this.getNode(), 'The AWS credentials are not valid!');
-			} else if (errorMessage.startsWith('The request signature we calculated does not match the signature you provided')) {
-				throw new NodeOperationError(this.getNode(), 'The AWS credentials are not valid!');
-			}
-		}
-
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
