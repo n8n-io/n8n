@@ -184,7 +184,7 @@ export class StravaTrigger implements INodeType {
 									responseData = await stravaApiRequest.call(this, 'POST', `/push_subscriptions`, body);
 								} else {
 									throw new NodeApiError(this.getNode(), error, {
-										message: `A subscription already exist [${webhooks[0].callback_url}]. If you want to delete this subcription and create a new one with the current parameters please go to options and set delete if exist to true`,
+										message: `A subscription already exists [${webhooks[0].callback_url}]. If you want to delete this subcription and create a new one with the current parameters please go to options and set delete if exist to true`,
 										description: error.message,
 										httpCode: error.statusCode,
 									});
@@ -194,7 +194,7 @@ export class StravaTrigger implements INodeType {
 					}
 
 					if (!responseData) {
-						throw new NodeApiError(this.getNode(), error);
+						throw error;
 					}
 				}
 
