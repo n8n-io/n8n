@@ -9,7 +9,6 @@ import {
 	INodeTypeDescription,
 	IWebhookResponseData,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -162,9 +161,10 @@ export class StravaTrigger implements INodeType {
 
 				try {
 					responseData = await stravaApiRequest.call(this, 'POST', endpoint, body);
-				} catch (error) {
-					if (error.response && error.response.body && error.response.body.errors) {
-						const errors = error.response.body.errors;
+				} catch (error: NodeApiError) {
+					const apiErrorResponse = error.cause.response
+					if (apiErrorResponse?.body?.errors) {
+						const errors = apiErrorResponse.body.errors;
 						for (error of errors) {
 							// if there is a subscription already created
 							if (error.resource === 'PushSubscription' && error.code === 'already exists') {
@@ -183,11 +183,8 @@ export class StravaTrigger implements INodeType {
 
 									responseData = await stravaApiRequest.call(this, 'POST', `/push_subscriptions`, body);
 								} else {
-									throw new NodeApiError(this.getNode(), error, {
-										message: `A subscription already exists [${webhooks[0].callback_url}]. If you want to delete this subcription and create a new one with the current parameters please go to options and set delete if exist to true`,
-										description: error.message,
-										httpCode: error.statusCode,
-									});
+									error.message = `A subscription already exists [${webhooks[0].callback_url}]. If you want to delete this subcription and create a new one with the current parameters please go to options and set delete if exist to true`;
+									throw error;
 								}
 							}
 						}
