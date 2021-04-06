@@ -12,7 +12,7 @@ import {
 
 import {
 	IDataObject,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export async function webflowApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
@@ -24,10 +24,11 @@ export async function webflowApiRequest(this: IHookFunctions | IExecuteFunctions
 		method,
 		qs,
 		body,
-		uri: uri ||`https://api.webflow.com${resource}`,
+		uri: uri || `https://api.webflow.com${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
+
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
@@ -47,8 +48,35 @@ export async function webflowApiRequest(this: IHookFunctions | IExecuteFunctions
 		}
 	} catch (error) {
 		if (error.response.body.err) {
-			throw new Error(`Webflow Error: [${error.statusCode}]: ${error.response.body.err}`);
+			let errorMessage = error.response.body.err;
+			if (error.response.body.problems) {
+				errorMessage = error.response.body.problems.join('|');
+			}
+			throw new Error(`Webflow Error: [${error.statusCode}]: ${errorMessage}`);
 		}
 		return error;
 	}
 }
+
+export async function webflowApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	query.limit = 100;
+	query.offset = 0;
+
+	do {
+		responseData = await webflowApiRequest.call(this, method, endpoint, body, query);
+		if (responseData.offset !== undefined) {
+			query.offset += query.limit;
+		}
+		returnData.push.apply(returnData, responseData.items);
+	} while (
+		returnData.length < responseData.total
+	);
+
+	return returnData;
+}
+

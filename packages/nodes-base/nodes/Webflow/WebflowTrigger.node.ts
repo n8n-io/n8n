@@ -20,7 +20,7 @@ export class WebflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Webflow Trigger',
 		name: 'webflowTrigger',
-		icon: 'file:webflow.png',
+		icon: 'file:webflow.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Webflow events via webhooks',
