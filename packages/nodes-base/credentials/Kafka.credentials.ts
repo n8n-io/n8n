@@ -29,9 +29,22 @@ export class Kafka implements ICredentialType {
 			default: true,
 		},
 		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'boolean' as NodePropertyTypes,
+			default: false,
+		},
+		{
 			displayName: 'Username',
 			name: 'username',
 			type: 'string' as NodePropertyTypes,
+			displayOptions: {
+				show: {
+					authentication: [
+						true,
+					],
+				},
+			},
 			default: '',
 			description: 'Optional username if authenticated is required.',
 		},
@@ -39,11 +52,46 @@ export class Kafka implements ICredentialType {
 			displayName: 'Password',
 			name: 'password',
 			type: 'string' as NodePropertyTypes,
+			displayOptions: {
+				show: {
+					authentication: [
+						true,
+					],
+				},
+			},
 			typeOptions: {
 				password: true,
 			},
 			default: '',
 			description: 'Optional password if authenticated is required.',
+		},
+		{
+			displayName: 'SASL mechanism',
+			name: 'saslMechanism',
+			type: 'options' as NodePropertyTypes,
+			displayOptions: {
+				show: {
+					authentication: [
+						true,
+					],
+				},
+			},
+			options: [
+				{
+					name: 'plain',
+					value: 'plain',
+				},
+				{
+					name: 'scram-sha-256',
+					value: 'scram-sha-256',
+				},
+				{
+					name: 'scram-sha-512',
+					value: 'scram-sha-512',
+				},
+			],
+			default: 'plain',
+			description: 'The SASL mechanism.',
 		},
 	];
 }

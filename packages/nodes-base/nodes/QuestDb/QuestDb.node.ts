@@ -108,22 +108,6 @@ export class QuestDb implements INodeType {
 				description: 'Name of the table in which to insert data to.',
 			},
 			{
-				displayName: 'Columns',
-				name: 'columns',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: [
-							'insert',
-						],
-					},
-				},
-				default: '',
-				placeholder: 'id,name,description',
-				description:
-					'Comma separated list of the properties which should used as columns for the new rows.',
-			},
-			{
 				displayName: 'Return Fields',
 				name: 'returnFields',
 				type: 'string',
@@ -194,7 +178,7 @@ export class QuestDb implements INodeType {
 				}).join(',');
 
 				const query = `INSERT INTO ${tableName} (${columns.join(',')}) VALUES (${values});`;
-				queries.push(query);
+ 				queries.push(query);
 			});
 
 			await db.any(pgp.helpers.concat(queries));

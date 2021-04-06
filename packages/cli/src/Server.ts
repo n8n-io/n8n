@@ -23,6 +23,7 @@ import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
 import { compare } from 'bcryptjs';
+import * as promClient from 'prom-client';
 
 import {
 	ActiveExecutions,
@@ -91,9 +92,7 @@ import {
 import {
 	FindManyOptions,
 	FindOneOptions,
-	LessThan,
 	LessThanOrEqual,
-	MoreThanOrEqual,
 	Not,
 } from 'typeorm';
 
@@ -108,6 +107,7 @@ import * as parseUrl from 'parseurl';
 import * as querystring from 'querystring';
 import * as Queue from '../src/Queue';
 import { OptionsWithUrl } from 'request-promise-native';
+import { Registry } from 'prom-client';
 
 class App {
 
@@ -197,6 +197,16 @@ class App {
 
 	async config(): Promise<void> {
 
+		const enableMetrics = config.get('endpoints.metrics.enable') as boolean;
+		let register: Registry;
+
+		if (enableMetrics === true) {
+			const prefix = config.get('endpoints.metrics.prefix') as string;
+			register = new promClient.Registry();
+			register.setDefaultLabels({ prefix });
+			promClient.collectDefaultMetrics({ register });
+		}
+
 		this.versions = await GenericHelpers.getVersions();
 		this.frontendSettings.versionCli = this.versions.cli;
 
@@ -204,7 +214,7 @@ class App {
 
 		const excludeEndpoints = config.get('security.excludeEndpoints') as string;
 
-		const ignoredEndpoints = ['healthz', this.endpointWebhook, this.endpointWebhookTest, this.endpointPresetCredentials];
+		const ignoredEndpoints = ['healthz', 'metrics', this.endpointWebhook, this.endpointWebhookTest, this.endpointPresetCredentials];
 		ignoredEndpoints.push.apply(ignoredEndpoints, excludeEndpoints.split(':'));
 
 		const authIgnoreRegex = new RegExp(`^\/(${_(ignoredEndpoints).compact().join('|')})\/?.*$`);
@@ -386,7 +396,7 @@ class App {
 		this.app.use(history({
 			rewrites: [
 				{
-					from: new RegExp(`^\/(${this.restEndpoint}|healthz|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`),
+					from: new RegExp(`^\/(${this.restEndpoint}|healthz|metrics|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`),
 					to: (context) => {
 						return context.parsedUrl!.pathname!.toString();
 					},
@@ -454,7 +464,16 @@ class App {
 			ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
 		});
 
-
+		// ----------------------------------------
+		// Metrics
+		// ----------------------------------------
+		if (enableMetrics === true) {
+			this.app.get('/metrics', async (req: express.Request, res: express.Response) => {
+				const response = await register.metrics();
+				res.setHeader('Content-Type', register.contentType);
+				ResponseHelper.sendSuccessResponse(res, response, true, 200);
+			});
+		}
 
 		// ----------------------------------------
 		// Workflow
@@ -603,7 +622,7 @@ class App {
 				try {
 					await this.externalHooks.run('workflow.activate', [responseData]);
 
-					await this.activeWorkflowRunner.add(id);
+					await this.activeWorkflowRunner.add(id, isActive ? 'update' : 'activate');
 				} catch (error) {
 					// If workflow could not be activated set it again to inactive
 					newWorkflowData.active = false;
@@ -649,6 +668,7 @@ class App {
 			const startNodes: string[] | undefined = req.body.startNodes;
 			const destinationNode: string | undefined = req.body.destinationNode;
 			const executionMode = 'manual';
+			const activationMode = 'manual';
 
 			const sessionId = GenericHelpers.getSessionId(req);
 
@@ -658,7 +678,7 @@ class App {
 				const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
 				const nodeTypes = NodeTypes();
 				const workflowInstance = new Workflow({ id: workflowData.id, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: false, nodeTypes, staticData: undefined, settings: workflowData.settings });
-				const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, sessionId, destinationNode);
+				const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, activationMode, sessionId, destinationNode);
 				if (needsWebhook === true) {
 					return {
 						waitingForWebhook: true,
@@ -1728,7 +1748,7 @@ class App {
 						stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
 						finished: result.finished,
 					};
-	
+
 					return returnData;
 				}
 

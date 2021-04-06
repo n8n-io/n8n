@@ -95,10 +95,10 @@ function extractSchemaForKey(configKey: string, configSchema: IDataObject): IDat
 	for (const key of configKeyParts) {
 		if (configSchema[key] === undefined) {
 			throw new Error(`Key "${key}" of ConfigKey "${configKey}" does not exist`);
-		} else if ((configSchema[key]! as IDataObject).properties === undefined) {
+		} else if ((configSchema[key]! as IDataObject)._cvtProperties === undefined) {
 			configSchema = configSchema[key] as IDataObject;
 		} else {
-			configSchema = (configSchema[key] as IDataObject).properties as IDataObject;
+			configSchema = (configSchema[key] as IDataObject)._cvtProperties as IDataObject;
 		}
 	}
 	return configSchema;
@@ -114,7 +114,8 @@ function extractSchemaForKey(configKey: string, configSchema: IDataObject): IDat
 export async function getConfigValue(configKey: string): Promise<string | boolean | number | undefined> {
 	// Get the environment variable
 	const configSchema = config.getSchema();
-	const currentSchema = extractSchemaForKey(configKey, configSchema.properties as IDataObject);
+	// @ts-ignore
+	const currentSchema = extractSchemaForKey(configKey, configSchema._cvtProperties as IDataObject);
 	// Check if environment variable is defined for config key
 	if (currentSchema.env === undefined) {
 		// No environment variable defined, so return value from config
@@ -152,7 +153,8 @@ export async function getConfigValue(configKey: string): Promise<string | boolea
 export function getConfigValueSync(configKey: string): string | boolean | number | undefined {
 	// Get the environment variable
 	const configSchema = config.getSchema();
-	const currentSchema = extractSchemaForKey(configKey, configSchema.properties as IDataObject);
+	// @ts-ignore
+	const currentSchema = extractSchemaForKey(configKey, configSchema._cvtProperties as IDataObject);
 	// Check if environment variable is defined for config key
 	if (currentSchema.env === undefined) {
 		// No environment variable defined, so return value from config

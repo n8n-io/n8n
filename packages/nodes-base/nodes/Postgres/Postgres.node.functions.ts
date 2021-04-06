@@ -68,19 +68,22 @@ export async function pgInsert(
 	const schema = getNodeParam('schema', 0) as string;
 	let returnFields = (getNodeParam('returnFields', 0) as string).split(',') as string[];
 	const columnString = getNodeParam('columns', 0) as string;
-	const columns = columnString.split(',').map(column => column.trim());
-
-	const cs = new pgp.helpers.ColumnSet(columns);
+	const columns = columnString.split(',')
+		.map(column => column.trim().split(':'))
+		.map(([name, cast]) => ({ name, cast }));
 
 	const te = new pgp.helpers.TableName({ table, schema });
 
 	// Prepare the data to insert and copy it to be returned
-	const insertItems = getItemCopy(items, columns);
+	const columnNames = columns.map(column => column.name);
+	const insertItems = getItemCopy(items, columnNames);
+
+	const columnSet = new pgp.helpers.ColumnSet(columns);
 
 	// Generate the multi-row insert query and return the id of new row
 	returnFields = returnFields.map(value => value.trim()).filter(value => !!value);
 	const query =
-		pgp.helpers.insert(insertItems, cs, te) +
+		pgp.helpers.insert(insertItems, columnSet, te) +
 		(returnFields.length ? ` RETURNING ${returnFields.join(',')}` : '');
 
 	// Executing the query to insert the data
@@ -109,21 +112,36 @@ export async function pgUpdate(
 	const updateKey = getNodeParam('updateKey', 0) as string;
 	const columnString = getNodeParam('columns', 0) as string;
 
-	const columns = columnString.split(',').map(column => column.trim());
+	const [updateColumnName, updateColumnCast] = updateKey.split(':');
+	const updateColumn = {
+		name: updateColumnName,
+		cast: updateColumnCast,
+	};
+
+	const columns = columnString.split(',')
+		.map(column => column.trim().split(':'))
+		.map(([name, cast]) => ({ name, cast }));
 
 	const te = new pgp.helpers.TableName({ table, schema });
 
 	// Make sure that the updateKey does also get queried
-	if (!columns.includes(updateKey)) {
-		columns.unshift(updateKey);
+	const targetCol = columns.find((column) => column.name === updateColumn.name);
+	if (!targetCol) {
+		columns.unshift(updateColumn);
+	}
+	else if (!targetCol.cast) {
+		targetCol.cast = updateColumn.cast || targetCol.cast;
 	}
 
 	// Prepare the data to update and copy it to be returned
-	const updateItems = getItemCopy(items, columns);
+	const columnNames = columns.map(column => column.name);
+	const updateItems = getItemCopy(items, columnNames);
+
+	const columnSet = new pgp.helpers.ColumnSet(columns);
 
 	// Generate the multi-row update query
 	const query =
-		pgp.helpers.update(updateItems, columns, te) + ' WHERE v.' + updateKey + ' = t.' + updateKey;
+		pgp.helpers.update(updateItems, columnSet, te) + ' WHERE v.' + updateColumn.name + ' = t.' + updateColumn.name;
 
 	// Executing the query to update the data
 	await db.none(query);

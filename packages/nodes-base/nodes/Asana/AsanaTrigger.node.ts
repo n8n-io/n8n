@@ -25,7 +25,7 @@ export class AsanaTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Asana Trigger',
 		name: 'asanaTrigger',
-		icon: 'file:asana.png',
+		icon: 'file:asana.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Starts the workflow when Asana events occure.',
