@@ -170,7 +170,7 @@ tests of all packages.
 
 Learn about [using the node dev CLI](https://docs.n8n.io/nodes/creating-nodes/node-dev-cli.html) to create custom nodes for n8n.
 
-More information about that can
+More information can
 be found in the documentation of [n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev), which is a small CLI which
 helps with n8n-node-development.
 
