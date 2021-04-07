@@ -64,7 +64,7 @@ export const itemFields = [
 				],
 			},
 		},
-		description: 'Unique identifier for the Collection you are adding an Item to',
+		description: 'ID of the site containing the collection whose items to add to.',
 	},
 	{
 		displayName: 'Collection ID',
@@ -88,7 +88,7 @@ export const itemFields = [
 				],
 			},
 		},
-		description: 'Unique identifier for the Collection you are adding an Item to',
+		description: 'ID of the collection to add an item to.',
 	},
 	{
 		displayName: 'Live',
@@ -106,7 +106,7 @@ export const itemFields = [
 				],
 			},
 		},
-		description: 'Boolean string indicating if the item should be published to the live site',
+		description: 'Whether the item should be published on the live site.',
 	},
 	{
 		displayName: 'Fields',
@@ -180,7 +180,7 @@ export const itemFields = [
 				],
 			},
 		},
-		description: 'Unique identifier for the Collection you are adding an Item to',
+		description: 'ID of the site containing the collection whose items to operate on.',
 	},
 	{
 		displayName: 'Collection ID',
@@ -205,7 +205,7 @@ export const itemFields = [
 				],
 			},
 		},
-		description: 'Unique identifier for the Collection you are adding an Item to',
+		description: 'ID of the collection whose items to operate on.',
 	},
 	{
 		displayName: 'Item ID',
@@ -224,7 +224,7 @@ export const itemFields = [
 				],
 			},
 		},
-		description: 'Unique identifier for the Item you are querying',
+		description: 'ID of the item to operate on.',
 	},
 	// ----------------------------------
 	//         item: update
@@ -248,7 +248,7 @@ export const itemFields = [
 				],
 			},
 		},
-		description: 'Unique identifier for the Collection you are adding an Item to',
+		description: 'ID of the site containing the collection whose items to update.',
 	},
 	{
 		displayName: 'Collection ID',
@@ -272,7 +272,7 @@ export const itemFields = [
 				],
 			},
 		},
-		description: 'Unique identifier for the Collection you are adding an Item to',
+		description: 'ID of the collection whose items to update.',
 	},
 	{
 		displayName: 'Item ID',
@@ -290,7 +290,7 @@ export const itemFields = [
 				],
 			},
 		},
-		description: 'Unique identifier for the Item you are querying',
+		description: 'ID of the item to update.',
 	},
 	{
 		displayName: 'Live',
@@ -308,7 +308,7 @@ export const itemFields = [
 				],
 			},
 		},
-		description: 'Boolean string indicating if the item should be published to the live site',
+		description: 'Whether the item should be published on the live site.',
 	},
 	{
 		displayName: 'Fields',
@@ -345,14 +345,14 @@ export const itemFields = [
 							],
 						},
 						default: '',
-						description: 'Field to set for the item to create.',
+						description: 'Field to set for the item to update.',
 					},
 					{
 						displayName: 'Field Value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
-						description: 'Value to set for the item to create.',
+						description: 'Value to set for the item to update.',
 					},
 				],
 			},
@@ -380,7 +380,7 @@ export const itemFields = [
 				],
 			},
 		},
-		description: 'Unique identifier for the Collection you are adding an Item to',
+		description: 'ID of the site containing the collection whose items to retrieve.',
 	},
 	{
 		displayName: 'Collection ID',
@@ -404,7 +404,7 @@ export const itemFields = [
 				],
 			},
 		},
-		description: 'Unique identifier for the Collection you are adding an Item to',
+		description: 'ID of the collection whose items to retrieve.',
 	},
 	{
 		displayName: 'Return All',
