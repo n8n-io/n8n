@@ -30,10 +30,15 @@ import {
 	XYPositon,
 } from './Interface';
 
+import tags from './stores/tags';
+
 Vue.use(Vuex);
 
 export const store = new Vuex.Store({
 	strict: process.env.NODE_ENV !== 'production',
+	modules: {
+		tags
+	},
 	state: {
 		activeExecutions: [] as IExecutionsCurrentSummaryExtended[],
 		activeWorkflows: [] as string[],
