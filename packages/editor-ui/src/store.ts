@@ -601,7 +601,7 @@ export const store = new Vuex.Store({
 		},
 
 		addSidebarMenuItems (state, menuItems: IMenuItem[]) {
-			const updated = [...state.sidebarMenuItems, ...menuItems];
+			const updated = state.sidebarMenuItems.concat(menuItems);
 			Vue.set(state, 'sidebarMenuItems', updated);
 		},
 	},

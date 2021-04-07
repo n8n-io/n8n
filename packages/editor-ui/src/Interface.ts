@@ -436,10 +436,10 @@ export interface IMenuItem {
 	id: string;
 	type: MenuItemType;
 	position: MenuItemPosition;
-	properties: ILinkMinuItemProperties;
+	properties: ILinkMenuItemProperties;
 }
 
-export interface ILinkMinuItemProperties {
+export interface ILinkMenuItemProperties {
 	title: string;
 	icon: string;
 	href: string;
