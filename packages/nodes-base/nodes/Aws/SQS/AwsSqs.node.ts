@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -20,6 +19,10 @@ import {
 import {
 	awsApiRequestSOAP,
 } from '../GenericFunctions';
+
+import {
+	pascalCase,
+} from 'change-case';
 
 export class AwsSqs implements INodeType {
 	description: INodeTypeDescription = {
@@ -308,7 +311,11 @@ export class AwsSqs implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			const queueUrl = this.getNodeParameter('queue', i) as string;
 			const queuePath = new URL(queueUrl).pathname;
-			const params = [];
+
+			const params = [
+				'Version=2012-11-05',
+				`Action=${pascalCase(operation)}`,
+			];
 
 			const options = this.getNodeParameter('options', i, {}) as IDataObject;
 			const sendInputData = this.getNodeParameter('sendInputData', i) as boolean;
@@ -373,8 +380,7 @@ export class AwsSqs implements INodeType {
 
 			let responseData;
 			try {
-				const properCasedOperation = operation[0].toUpperCase() + operation.slice(1);
-				responseData = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `${queuePath}/?Version=2012-11-05&Action=${properCasedOperation}&` + params.join('&'));
+				responseData = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `${queuePath}?${params.join('&')}`);
 			} catch (err) {
 				throw new Error(`AWS Error: ${err}`);
 			}
