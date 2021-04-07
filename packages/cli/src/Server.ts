@@ -725,6 +725,35 @@ class App {
 			return await Db.collections.Tag?.find(findQuery) ?? [];
 		}));
 
+		// Creates a tag
+		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagDb> => {
+			const { tagName } = req.body as { tagName: string };
+
+			const alreadyExists = async (tagName: string) => {
+				const findQuery = { where: { name: tagName } } as FindOneOptions;
+				const result = await Db.collections.Tag!.findOne(findQuery);
+				return result !== undefined;
+			};
+
+			const hasInvalidLength = (tagName: string) => !tagName.length || tagName.length > 24;
+
+			if (await alreadyExists(tagName)) {
+				throw new ResponseHelper.ResponseError('Tag name already exists.', undefined, 400);
+			}
+
+			if (hasInvalidLength(tagName)) {
+				throw new ResponseHelper.ResponseError('Tag name must be 1 to 24 characters long.', undefined, 400);
+			}
+
+			const newTag: ITagDb = {
+				name: tagName,
+				createdAt: this.getCurrentDate(),
+				updatedAt: this.getCurrentDate(),
+			};
+
+			return await Db.collections.Tag!.save(newTag);
+		}));
+
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
 		this.app.get(`/${this.restEndpoint}/node-parameter-options`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodePropertyOptions[]> => {

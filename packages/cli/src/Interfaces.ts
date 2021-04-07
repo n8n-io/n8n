@@ -76,7 +76,7 @@ export interface IWorkflowBase extends IWorkflowBaseWorkflow {
 }
 
 export interface ITagDb {
-	id: number | string;
+	id?: number | string; // auto-generated so unneeded in POST payload
 	name: string;
 	createdAt: Date;
 	updatedAt: Date;
