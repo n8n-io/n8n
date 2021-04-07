@@ -102,6 +102,7 @@
 				<font-awesome-icon icon="trash" class="clear-execution-icon" />
 			</el-button>
 		</div>
+		<TagsManager :visible="true" />
 	</div>
 </template>
 
@@ -130,6 +131,7 @@ import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
+import TagsManager from '@/components/TagsManager.vue';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -185,6 +187,7 @@ export default mixins(
 			NodeCreator,
 			NodeSettings,
 			RunData,
+			TagsManager
 		},
 		errorCaptured: (err, vm, info) => {
 			console.error('errorCaptured'); // eslint-disable-line no-console
