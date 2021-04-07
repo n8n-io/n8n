@@ -143,7 +143,6 @@ export class Webflow implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let responseData;
-		const qs: IDataObject = {};
 		const returnData: IDataObject[] = [];
 
 		for (let i = 0; i < items.length; i++) {
@@ -216,6 +215,7 @@ export class Webflow implements INodeType {
 
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 					const collectionId = this.getNodeParameter('collectionId', i) as string;
+					const qs: IDataObject = {};
 
 					if (returnAll === true) {
 						responseData = await webflowApiRequestAllItems.call(this, 'GET', `/collections/${collectionId}/items`, {}, qs);
