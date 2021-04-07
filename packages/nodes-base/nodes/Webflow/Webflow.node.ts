@@ -127,7 +127,7 @@ export class Webflow implements INodeType {
 				const { fields } = await webflowApiRequest.call(this, 'GET', `/collections/${collectionId}`);
 				for (const field of fields) {
 					returnData.push({
-						name: `${field.name} - (${field.type})`,
+						name: `${field.name} (${field.type})`,
 						value: field.slug,
 					});
 				}
