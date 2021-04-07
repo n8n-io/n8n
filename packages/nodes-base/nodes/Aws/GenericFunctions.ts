@@ -1,7 +1,7 @@
 import { URL } from 'url';
 import { sign } from 'aws4';
 import { OptionsWithUri } from 'request';
-import { parseString } from 'xml2js';
+import { parseString as parseXml } from 'xml2js';
 
 import {
 	IExecuteFunctions,
@@ -50,7 +50,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error, { parseXml: true });
 	}
 }
 
@@ -67,7 +67,7 @@ export async function awsApiRequestSOAP(this: IHookFunctions | IExecuteFunctions
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
 		return await new Promise((resolve, reject) => {
-			parseString(response, { explicitArray: false }, (err, data) => {
+			parseXml(response, { explicitArray: false }, (err, data) => {
 				if (err) {
 					return reject(err);
 				}
