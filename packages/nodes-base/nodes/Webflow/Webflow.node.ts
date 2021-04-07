@@ -154,13 +154,15 @@ export class Webflow implements INodeType {
 				//                             item
 				// *********************************************************************
 
-				// https://developers.webflow.com/#create-new-collection-item
+				// https://developers.webflow.com/#item-model
 
 				if (operation === 'create') {
 
 					// ----------------------------------
 					//         item: create
 					// ----------------------------------
+
+					// https://developers.webflow.com/#create-new-collection-item
 
 					const collectionId = this.getNodeParameter('collectionId', i) as string;
 
@@ -186,6 +188,8 @@ export class Webflow implements INodeType {
 					//         item: delete
 					// ----------------------------------
 
+					// https://developers.webflow.com/#remove-collection-item
+
 					const collectionId = this.getNodeParameter('collectionId', i) as string;
 					const itemId = this.getNodeParameter('itemId', i) as string;
 					responseData = await webflowApiRequest.call(this, 'DELETE', `/collections/${collectionId}/items/${itemId}`, {}, {});
@@ -195,6 +199,9 @@ export class Webflow implements INodeType {
 					// ----------------------------------
 					//         item: get
 					// ----------------------------------
+
+					// https://developers.webflow.com/#get-single-item
+
 					const collectionId = this.getNodeParameter('collectionId', i) as string;
 					const itemId = this.getNodeParameter('itemId', i) as string;
 					responseData = await webflowApiRequest.call(this, 'GET', `/collections/${collectionId}/items/${itemId}`, {}, {});
@@ -205,6 +212,8 @@ export class Webflow implements INodeType {
 					// ----------------------------------
 					//         item: getAll
 					// ----------------------------------
+
+					// https://developers.webflow.com/#get-all-items-for-a-collection
 
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 					const collectionId = this.getNodeParameter('collectionId', i) as string;
@@ -222,6 +231,8 @@ export class Webflow implements INodeType {
 					// ----------------------------------
 					//         item: update
 					// ----------------------------------
+
+					// https://developers.webflow.com/#update-collection-item
 
 					const collectionId = this.getNodeParameter('collectionId', i) as string;
 
