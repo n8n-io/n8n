@@ -269,10 +269,15 @@ export class AwsSqs implements INodeType {
 		loadOptions: {
 			// Get all the available queues to display them to user so that it can be selected easily
 			async getQueues(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const params = [
+					'Version=2012-11-05',
+					`Action=ListQueues`,
+				];
+
 				let data;
 				try {
 					// loads first 1000 queues from SQS
-					data = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `?Action=ListQueues`);
+					data = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `?${params.join('&')}`);
 				} catch (err) {
 					throw new Error(`AWS Error: ${err}`);
 				}
