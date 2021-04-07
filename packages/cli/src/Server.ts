@@ -108,7 +108,9 @@ import * as querystring from 'querystring';
 import * as Queue from '../src/Queue';
 import { OptionsWithUrl } from 'request-promise-native';
 import { Registry } from 'prom-client';
-import { ITagDb } from './Interfaces';
+import { ITagBase, ITagDb, ITagResponse } from './Interfaces';
+
+import * as TagHelpers from './TagHelpers';
 
 class App {
 
@@ -727,26 +729,17 @@ class App {
 
 		// Creates a tag
 		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagDb> => {
-			const { tagName } = req.body as { tagName: string };
+			const { name } = req.body;
+			const existingName = await TagHelpers.nameExists(name);
 
-			const alreadyExists = async (tagName: string) => {
-				const findQuery = { where: { name: tagName } } as FindOneOptions;
-				const result = await Db.collections.Tag!.findOne(findQuery);
-				return result !== undefined;
-			};
-
-			const hasInvalidLength = (tagName: string) => !tagName.length || tagName.length > 24;
-
-			if (await alreadyExists(tagName)) {
+			if (existingName) {
 				throw new ResponseHelper.ResponseError('Tag name already exists.', undefined, 400);
 			}
 
-			if (hasInvalidLength(tagName)) {
-				throw new ResponseHelper.ResponseError('Tag name must be 1 to 24 characters long.', undefined, 400);
-			}
+			TagHelpers.validateLength(name);
 
-			const newTag: ITagDb = {
-				name: tagName,
+			const newTag: ITagBase = {
+				name,
 				createdAt: this.getCurrentDate(),
 				updatedAt: this.getCurrentDate(),
 			};
@@ -758,6 +751,26 @@ class App {
 		this.app.delete(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
 			await Db.collections.Tag!.delete({ id: req.params.id });
 			return true;
+		}));
+
+		// Updates an existing tag
+		this.app.patch(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagResponse> => {
+			const { name } = req.body;
+			const { id } = req.params;
+			const existingId = await TagHelpers.idExists(id);
+
+			if (!existingId) {
+				throw new ResponseHelper.ResponseError(`Tag with the ID "${id}" does not exist.`, undefined, 400);
+			}
+
+			TagHelpers.validateLength(name);
+
+			const updatedTag: Partial<ITagDb> = {
+				name,
+				updatedAt: this.getCurrentDate(),
+			};
+
+			return await Db.collections.Tag!.update(id, updatedTag);
 		}));
 
 		// Returns parameter values which normally get loaded from an external API or

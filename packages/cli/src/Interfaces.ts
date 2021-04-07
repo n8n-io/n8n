@@ -18,6 +18,9 @@ import {
 	IDeferredPromise,
 } from 'n8n-core';
 
+import {
+	UpdateResult
+} from 'typeorm';
 
 import * as PCancelable from 'p-cancelable';
 import { Repository } from 'typeorm';
@@ -75,13 +78,17 @@ export interface IWorkflowBase extends IWorkflowBaseWorkflow {
 	id?: number | string;
 }
 
-export interface ITagDb {
-	id?: number | string; // auto-generated so unneeded in POST payload
+export interface ITagBase {
 	name: string;
 	createdAt: Date;
 	updatedAt: Date;
 }
 
+export interface ITagDb extends ITagBase {
+	id: string;
+}
+
+export interface ITagResponse extends UpdateResult {}
 
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
