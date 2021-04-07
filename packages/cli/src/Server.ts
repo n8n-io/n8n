@@ -754,6 +754,12 @@ class App {
 			return await Db.collections.Tag!.save(newTag);
 		}));
 
+		// Deletes a tag
+		this.app.delete(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
+			await Db.collections.Tag!.delete({ id: req.params.id });
+			return true;
+		}));
+
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
 		this.app.get(`/${this.restEndpoint}/node-parameter-options`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodePropertyOptions[]> => {
