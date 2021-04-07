@@ -161,8 +161,8 @@ export class StravaTrigger implements INodeType {
 
 				try {
 					responseData = await stravaApiRequest.call(this, 'POST', endpoint, body);
-				} catch (error: NodeApiError) {
-					const apiErrorResponse = error.cause.response
+				} catch (error) {
+					const apiErrorResponse = error.cause.response;
 					if (apiErrorResponse?.body?.errors) {
 						const errors = apiErrorResponse.body.errors;
 						for (error of errors) {
