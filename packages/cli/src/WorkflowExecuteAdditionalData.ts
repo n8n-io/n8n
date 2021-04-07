@@ -605,6 +605,7 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	// This one already contains changes to talk to parent process
 	// and get executionID from `activeExecutions` running on main process
 	additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
+	additionalDataIntegrated.executionTimeoutTimestamp = additionalData.executionTimeoutTimestamp;
 
 
 	// Execute the workflow
@@ -642,7 +643,7 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
  * @param {INodeParameters} currentNodeParameters
  * @returns {Promise<IWorkflowExecuteAdditionalData>}
  */
-export async function getBase(credentials: IWorkflowCredentials, currentNodeParameters?: INodeParameters): Promise<IWorkflowExecuteAdditionalData> {
+export async function getBase(credentials: IWorkflowCredentials, currentNodeParameters?: INodeParameters, executionTimeoutTimestamp?: number): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
 	const timezone = config.get('generic.timezone') as string;
@@ -664,6 +665,7 @@ export async function getBase(credentials: IWorkflowCredentials, currentNodePara
 		webhookBaseUrl,
 		webhookTestBaseUrl,
 		currentNodeParameters,
+		executionTimeoutTimestamp,
 	};
 }
 

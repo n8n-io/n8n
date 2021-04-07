@@ -158,8 +158,18 @@ export class WorkflowRunner {
 
 		const nodeTypes = NodeTypes();
 
+
+		// Soft timeout to stop workflow execution after current running node
+		// Changes were made by adding the `workflowTimeout` to the `additionalData`
+		// So that the timeout will also work for executions with nested workflows.
+		let executionTimeout: NodeJS.Timeout;
+		let workflowTimeout = config.get('executions.timeout') as number > 0 && config.get('executions.timeout') as number; // initialize with default
+		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
+			workflowTimeout = data.workflowData.settings!.executionTimeout as number > 0 && data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
+		}
+
 		const workflow = new Workflow({ id: data.workflowData.id as string | undefined, name: data.workflowData.name, nodes: data.workflowData!.nodes, connections: data.workflowData!.connections, active: data.workflowData!.active, nodeTypes, staticData: data.workflowData!.staticData });
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(data.credentials);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(data.credentials, undefined, workflowTimeout === false ? undefined : Date.now() + workflowTimeout * 1000);
 
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, undefined);
@@ -184,12 +194,6 @@ export class WorkflowRunner {
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
-		// Soft timeout to stop workflow execution after current running node
-		let executionTimeout: NodeJS.Timeout;
-		let workflowTimeout = config.get('executions.timeout') as number > 0 && config.get('executions.timeout') as number; // initialize with default
-		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
-			workflowTimeout = data.workflowData.settings!.executionTimeout as number > 0 && data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
-		}
 
 		if (workflowTimeout) {
 			const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
@@ -282,7 +286,6 @@ export class WorkflowRunner {
 				 * the database.                                 *
 				*************************************************/
 				let watchDogInterval: NodeJS.Timeout | undefined;
-				let resolved = false;
 
 				const watchDog = new Promise((res) => {
 					watchDogInterval = setInterval(async () => {
@@ -303,28 +306,9 @@ export class WorkflowRunner {
 					}
 				};
 
-				await new Promise((res, rej) => {
-					jobData.then((data) => {
-						if (!resolved) {
-							resolved = true;
-							clearWatchdogInterval();
-							res(data);
-						}
-					}).catch((e) => {
-						if(!resolved) {
-							resolved = true;
-							clearWatchdogInterval();
-							rej(e);
-						}
-					});
-					watchDog.then((data) => {
-						if (!resolved) {
-							resolved = true;
-							clearWatchdogInterval();
-							res(data);
-						}
-					});
-				});
+				await Promise.race([jobData, watchDog]);
+				clearWatchdogInterval();
+
 			} else {
 				await jobData;
 			}

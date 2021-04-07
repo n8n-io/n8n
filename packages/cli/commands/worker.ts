@@ -127,11 +127,21 @@ export class Worker extends Command {
 			staticData = workflowData.staticData;
 		}
 
+		let workflowTimeout = config.get('executions.timeout') as number > 0 && config.get('executions.timeout') as number; // initialize with default
+		if (currentExecutionDb.workflowData.settings && currentExecutionDb.workflowData.settings.executionTimeout) {
+			workflowTimeout = currentExecutionDb.workflowData.settings!.executionTimeout as number > 0 && currentExecutionDb.workflowData.settings!.executionTimeout as number; // preference on workflow setting
+		}
+
+		let executionTimeoutTimestamp: number | undefined;
+		if (workflowTimeout !== false && workflowTimeout > 0) {
+			executionTimeoutTimestamp = Date.now() + workflowTimeout * 1000;
+		}
+
 		const workflow = new Workflow({ id: currentExecutionDb.workflowData.id as string, name: currentExecutionDb.workflowData.name, nodes: currentExecutionDb.workflowData!.nodes, connections: currentExecutionDb.workflowData!.connections, active: currentExecutionDb.workflowData!.active, nodeTypes, staticData, settings: currentExecutionDb.workflowData!.settings });
 
 		const credentials = await WorkflowCredentials(currentExecutionDb.workflowData.nodes);
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials, undefined, executionTimeoutTimestamp);
 		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(currentExecutionDb.mode, job.data.executionId, currentExecutionDb.workflowData, { retryOf: currentExecutionDb.retryOf as string });
 
 		let workflowExecute: WorkflowExecute;
