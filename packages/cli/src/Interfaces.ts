@@ -85,7 +85,7 @@ export interface ITagBase {
 }
 
 export interface ITagDb extends ITagBase {
-	id: string;
+	id: string | number;
 }
 
 export interface ITagResponse extends UpdateResult {}
