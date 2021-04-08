@@ -158,9 +158,7 @@ export class AwsLambda implements INodeType {
 				Qualifier: this.getNodeParameter('qualifier', i) as string,
 			};
 
-			let responseData;
-
-			responseData = await awsApiRequestREST.call(
+			const responseData = await awsApiRequestREST.call(
 				this,
 				'lambda',
 				'POST',
