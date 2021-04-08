@@ -1,27 +1,29 @@
 <template>
     <el-dialog title="Manage Tags" :visible.sync="visible">
-        <div v-if="hasTags">
-            {{tags}}
-        </div>
-        <div class="notags" v-else>
-            <div class="icon">
-            🗄️
-            </div>
-            <div>
-                <div class="headline">
-                    Ready to organize your workflows?
+        <el-row>
+            <el-col v-if="hasTags" :span="24">
+                {{tags}}
+            </el-col>
+            <el-col class="notags" :span="16" :offset="4" v-else>
+                <div class="icon">
+                🗄️
                 </div>
-                <div class="description">
-                    With workflow tags, you're free to create the perfect tagging system for your flows
+                <div>
+                    <div class="headline">
+                        Ready to organize your workflows?
+                    </div>
+                    <div class="description">
+                        With workflow tags, you're free to create the perfect tagging system for your flows
+                    </div>
                 </div>
-            </div>
-            <el-button type="success">
-                Create a tag
-            </el-button>
-        </div>
-        <div>
-            <el-button type="success" size="small" class="done">Done</el-button>
-        </div>
+                <el-button type="success">
+                    Create a tag
+                </el-button>
+            </el-col>
+        </el-row>
+        <el-row>
+            <el-button type="success" size="small">Done</el-button>
+        </el-row>
     </el-dialog>
 </template>
 
@@ -48,27 +50,22 @@ export default Vue.extend({
 
 
 <style scoped lang="scss">
+* {
+    box-sizing: border-box;
+}
+
 /deep/ .el-dialog {
-    min-height: 400px;
     max-width: 600px;
-    display: flex;
-    flex-direction: column;
+}
 
-    .el-dialog__body {
-        flex-grow: 1;
-        display: flex;
-        flex-direction: column;
-
-        :first-child {
-            flex-grow: 1;
-        }
-    }
+.el-row:first-of-type {
+    min-height: 300px;
 }
 
 .notags {
     word-break: normal;
     text-align: center;
-    padding: 32px 25% 0 25%;
+    padding-top: 32px;
 
     > * {
         margin-bottom: 32px;
@@ -91,7 +88,9 @@ export default Vue.extend({
     }
 }
 
-.done {
-    float: right;
+.el-row:last-of-type {
+    .el-button {
+        float: right;
+    }
 }
 </style>
