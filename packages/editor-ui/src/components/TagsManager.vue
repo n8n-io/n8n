@@ -3,22 +3,24 @@
         <div v-if="hasTags">
             {{tags}}
         </div>
-        <div v-else>
-            <div>
+        <div class="notags" v-else>
+            <div class="icon">
             🗄️
             </div>
             <div>
-                Ready to organize your workflows?
-            </div>
-            <div>
-                With workflow tags, you're free to create the perfect tagging system for your flows
+                <div class="headline">
+                    Ready to organize your workflows?
+                </div>
+                <div class="description">
+                    With workflow tags, you're free to create the perfect tagging system for your flows
+                </div>
             </div>
             <el-button type="success">
-            Create a tag
+                Create a tag
             </el-button>
         </div>
         <div>
-            <el-button type="success">Done</el-button>
+            <el-button type="success" size="small" class="done">Done</el-button>
         </div>
     </el-dialog>
 </template>
@@ -49,5 +51,47 @@ export default Vue.extend({
 /deep/ .el-dialog {
     min-height: 400px;
     max-width: 600px;
+    display: flex;
+    flex-direction: column;
+
+    .el-dialog__body {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+
+        :first-child {
+            flex-grow: 1;
+        }
+    }
+}
+
+.notags {
+    word-break: normal;
+    text-align: center;
+    padding: 32px 25% 0 25%;
+
+    > * {
+        margin-bottom: 32px;
+    }
+
+    .icon {
+        font-size: 36px;
+        line-height: 14px;
+    }
+
+    .headline {
+        font-size: 17.6px;
+        color: black;
+        margin-bottom: 12px;
+    }
+
+    .description {
+        font-size: 14px;
+        line-height: 21px;
+    }
+}
+
+.done {
+    float: right;
 }
 </style>
