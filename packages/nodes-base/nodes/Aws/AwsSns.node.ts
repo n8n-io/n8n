@@ -109,12 +109,7 @@ export class AwsSns implements INodeType {
 			// select them easily
 			async getTopics(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let data;
-				try {
-					data = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ListTopics');
-				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
-				}
+				const data = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ListTopics');
 
 				let topics = data.ListTopicsResponse.ListTopicsResult.Topics.member;
 
@@ -151,12 +146,8 @@ export class AwsSns implements INodeType {
 				'Message=' + this.getNodeParameter('message', i) as string,
 			];
 
-			let responseData;
-			try {
-				responseData = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=Publish&' + params.join('&'));
-			} catch (err) {
-				throw new NodeOperationError(this.getNode(), `AWS Error: ${err}`);
-			}
+
+			const	responseData = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=Publish&' + params.join('&'));
 			returnData.push({MessageId: responseData.PublishResponse.PublishResult.MessageId} as IDataObject);
 		}
 

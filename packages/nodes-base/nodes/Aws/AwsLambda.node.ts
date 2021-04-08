@@ -132,13 +132,7 @@ export class AwsLambda implements INodeType {
 		loadOptions: {
 			async getFunctions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-
-				let data;
-				try {
-					data = await awsApiRequestREST.call(this, 'lambda', 'GET', '/2015-03-31/functions/');
-				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
-				}
+				const data = await awsApiRequestREST.call(this, 'lambda', 'GET', '/2015-03-31/functions/');
 
 				for (const func of data.Functions!) {
 					returnData.push({
@@ -164,22 +158,17 @@ export class AwsLambda implements INodeType {
 				Qualifier: this.getNodeParameter('qualifier', i) as string,
 			};
 
-			let responseData;
-			try {
-				responseData = await awsApiRequestREST.call(
-					this,
-					'lambda',
-					'POST',
-					`/2015-03-31/functions/${params.FunctionName}/invocations?Qualifier=${params.Qualifier}`,
-					params.Payload,
-					{
-						'X-Amz-Invocation-Type': params.InvocationType,
-						'Content-Type': 'application/x-amz-json-1.0',
-					},
-				);
-			} catch (err) {
-				throw new NodeOperationError(this.getNode(), `AWS Error: ${err}`);
-			}
+			const responseData = await awsApiRequestREST.call(
+				this,
+				'lambda',
+				'POST',
+				`/2015-03-31/functions/${params.FunctionName}/invocations?Qualifier=${params.Qualifier}`,
+				params.Payload,
+				{
+					'X-Amz-Invocation-Type': params.InvocationType,
+					'Content-Type': 'application/x-amz-json-1.0',
+				},
+			);
 
 			if (responseData !== null && responseData.errorMessage !== undefined) {
 				let errorMessage = responseData.errorMessage;
