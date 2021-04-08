@@ -13,6 +13,7 @@ import {
 import {
 	googleApiRequest,
 	googleApiRequestAllItems,
+	validateJSON
 } from './GenericFunctions';
 
 import uuid = require('uuid');
@@ -690,6 +691,42 @@ export class GoogleDrive implements INodeType {
 				},
 				placeholder: '',
 				description: 'The text content of the file to upload.',
+			},
+			{
+				displayName: 'Properties',
+				name: 'properties',
+				type: 'json',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'upload',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				placeholder: '',
+				description: 'A JSON with arbitrary key/value.',
+			},
+			{
+				displayName: 'App properties',
+				name: 'appProperties',
+				type: 'json',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'upload',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				placeholder: '',
+				description: 'A JSON with arbitrary key/value.',
 			},
 			{
 				displayName: 'Binary Property',
@@ -1999,7 +2036,7 @@ export class GoogleDrive implements INodeType {
 					const qs = {
 						supportsAllDrives: true,
 					};
-					
+
 					const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/copy`, body, qs);
 
 					returnData.push(response as IDataObject);
@@ -2193,6 +2230,24 @@ export class GoogleDrive implements INodeType {
 						name,
 						originalFilename,
 					};
+
+					const properties = this.getNodeParameter('properties', i) as string;
+					if (properties !== '') {
+						if (validateJSON(properties) !== undefined) {
+							Object.assign(body, {'properties' : JSON.parse(properties)});
+						} else {
+							throw new Error('Properties fields must be a valid JSON');
+						}
+					}
+
+					const appProperties = this.getNodeParameter('appProperties', i) as string;
+					if (appProperties !== '') {
+						if (validateJSON(appProperties) !== undefined) {
+							Object.assign(body, {'appProperties' : JSON.parse(appProperties)});
+						} else {
+							throw new Error('App properties fields must be a valid JSON');
+						}
+					}
 
 					qs = {
 						addParents: parents.join(','),
