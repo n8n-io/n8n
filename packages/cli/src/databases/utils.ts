@@ -1,7 +1,7 @@
 import {
 	DatabaseType,
 } from '../index';
-import { getConfigValueSync } from '../../src/GenericHelpers'
+import { getConfigValueSync } from '../../src/GenericHelpers';
 
 /**
  * Resolves the data type for the used database type
