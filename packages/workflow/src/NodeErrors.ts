@@ -5,6 +5,7 @@ import { parseString } from 'xml2js';
  * Top-level properties where an error message can be found in an API response.
  */
 const ERROR_MESSAGE_PROPERTIES = [
+	'error',
 	'message',
 	'Message',
 	'msg',
@@ -25,7 +26,6 @@ const ERROR_MESSAGE_PROPERTIES = [
 	'title',
 	'text',
 	'field',
-	'error',
 	'err',
 	'type',
 ];
@@ -202,7 +202,10 @@ export class NodeApiError extends NodeError {
 
 	private setDescriptionFromXml(xml: string) {
 		parseString(xml, { explicitArray: false }, (_, result) => {
-			this.description = result;
+			if (!result) return;
+
+			const topLevelKey = Object.keys(result)[0];
+			this.description = this.findProperty(result[topLevelKey], ERROR_MESSAGE_PROPERTIES, ['Error'].concat(ERROR_NESTING_PROPERTIES));
 		});
 	}
 
