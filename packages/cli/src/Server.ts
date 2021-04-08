@@ -715,21 +715,15 @@ class App {
 
 		// Retrieves all tags
 		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagGetResponseItem[]> => {
-			const tags = await Db.collections.Tag?.find({ select: ['id', 'name'] });
-
-			if (!tags) return [];
-
-			const usageCounts: IUsageCount[] = await Db.collections.Tag?.query(`
-				SELECT
-					tagId as id,
-					COUNT(workflowId) as usageCount
-				FROM
-					workflows_tags
-				GROUP BY
-					tagId
-			`);
-
-			return TagHelpers.mergeById(tags, usageCounts);
+			return await getConnection().createQueryBuilder()
+				.select('tag_entity.id', 'id')
+				.addSelect('tag_entity.name', 'name')
+				.addSelect('COUNT(workflow_entity.id)', 'usageCount')
+				.from('workflows_tags', 'workflows_tags')
+				.leftJoin('workflow_entity', 'workflow_entity', 'workflows_tags.workflowId = workflow_entity.id')
+				.leftJoin('tag_entity', 'tag_entity', 'workflows_tags.tagId = tag_entity.id')
+				.groupBy('tag_entity.id')
+				.getRawMany<ITagGetResponseItem>();
 		}));
 
 		// Creates a tag
