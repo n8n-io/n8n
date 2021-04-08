@@ -179,7 +179,7 @@ export class NodeApiError extends NodeError {
 	constructor(
 		node: INode,
 		error: IRawErrorObject,
-		{ message, description, httpCode, parseXml }: { message?: string, description?: string, httpCode?: string, parseXml?: boolean } = { message: '' },
+		{ message, description, httpCode, parseXml }: { message?: string, description?: string, httpCode?: string, parseXml?: boolean } = {},
 	) {
 		super(node, error);
 		if (message) {
@@ -193,16 +193,15 @@ export class NodeApiError extends NodeError {
 		this.setMessage();
 
 		if (parseXml) {
-			// @ts-ignore
-			this.setDescriptionFromXml(this.cause.error);
-		} else {
-			this.description = this.findProperty(error, ERROR_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES);
+			this.setDescriptionFromXml(error.error as string);
+			return;
 		}
+
+		this.description = this.findProperty(error, ERROR_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES);
 	}
 
-	setDescriptionFromXml(xml: string) {
-		parseString(xml, { explicitArray: false }, (parsingError, result) => {
-			if (parsingError) throw new NodeOperationError(this.node, 'Failed to parse XML');
+	private setDescriptionFromXml(xml: string) {
+		parseString(xml, { explicitArray: false }, (_, result) => {
 			this.description = result;
 		});
 	}
