@@ -1,11 +1,17 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
+
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+
+import {
+	IDataObject,
+} from 'n8n-workflow';
 
 export async function clearbitApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, api: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('clearbitApi');
@@ -13,11 +19,11 @@ export async function clearbitApiRequest(this: IHookFunctions | IExecuteFunction
 		throw new Error('No credentials got returned!');
 	}
 	let options: OptionsWithUri = {
-		headers: { Authorization: `Bearer ${credentials.apiKey}`},
+		headers: { Authorization: `Bearer ${credentials.apiKey}` },
 		method,
 		qs,
 		body,
-		uri: uri ||`https://${api}-stream.clearbit.com${resource}`,
+		uri: uri || `https://${api}.clearbit.com${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

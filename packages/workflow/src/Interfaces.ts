@@ -9,6 +9,7 @@ export interface IBinaryData {
 	data: string;
 	mimeType: string;
 	fileName?: string;
+	directory?: string;
 	fileExtension?: string;
 }
 
@@ -17,6 +18,7 @@ export interface IOAuth2Options {
 	property?: string;
 	tokenType?: string;
 	keepBearer?: boolean;
+	tokenExpiredStatusCode?: number;
 }
 
 export interface IConnection {
@@ -163,11 +165,11 @@ export interface IDataObject {
 
 
 export interface IGetExecutePollFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IPollFunctions;
+	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): IPollFunctions;
 }
 
 export interface IGetExecuteTriggerFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): ITriggerFunctions;
+	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): ITriggerFunctions;
 }
 
 
@@ -182,7 +184,7 @@ export interface IGetExecuteSingleFunctions {
 
 
 export interface IGetExecuteHookFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions;
+	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions;
 }
 
 
@@ -269,6 +271,7 @@ export interface ILoadOptionsFunctions {
 export interface IHookFunctions {
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
 	getMode(): WorkflowExecuteMode;
+	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
 	getNodeWebhookUrl: (name: string) => string | undefined;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
@@ -286,6 +289,7 @@ export interface IPollFunctions {
 	__emit(data: INodeExecutionData[][]): void;
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
 	getMode(): WorkflowExecuteMode;
+	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getRestApiUrl(): string;
@@ -301,6 +305,7 @@ export interface ITriggerFunctions {
 	emit(data: INodeExecutionData[][]): void;
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
 	getMode(): WorkflowExecuteMode;
+	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getRestApiUrl(): string;
@@ -441,7 +446,7 @@ export interface INodeProperties {
 	default: NodeParameterValue | INodeParameters | INodeParameters[] | NodeParameterValue[];
 	description?: string;
 	displayOptions?: IDisplayOptions;
-	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection >;
+	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>;
 	placeholder?: string;
 	isNodeSetting?: boolean;
 	noDataExpression?: boolean;
@@ -735,7 +740,7 @@ export interface IWorkflowExecuteAdditionalData {
 	credentials: IWorkflowCredentials;
 	credentialsHelper: ICredentialsHelper;
 	encryptionKey: string;
-	executeWorkflow: (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[]) => Promise<any>; // tslint:disable-line:no-any
+	executeWorkflow: (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[], parentExecutionId?: string, loadedWorkflowData?: IWorkflowBase, loadedRunData?: any) => Promise<any>; // tslint:disable-line:no-any
 	// hooks?: IWorkflowExecuteHooks;
 	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;
@@ -744,10 +749,11 @@ export interface IWorkflowExecuteAdditionalData {
 	timezone: string;
 	webhookBaseUrl: string;
 	webhookTestBaseUrl: string;
-	currentNodeParameters? : INodeParameters;
+	currentNodeParameters?: INodeParameters;
 }
 
 export type WorkflowExecuteMode = 'cli' | 'error' | 'integrated' | 'internal' | 'manual' | 'retry' | 'trigger' | 'webhook';
+export type WorkflowActivateMode = 'init' | 'create' | 'update' | 'activate' | 'manual';
 
 export interface IWorkflowHooksOptionalParameters {
 	parentProcessMode?: string;

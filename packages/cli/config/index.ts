@@ -446,6 +446,20 @@ const config = convict({
 	},
 
 	endpoints: {
+		metrics: {
+			enable: {
+				format: 'Boolean',
+				default: false,
+				env: 'N8N_METRICS',
+				doc: 'Enable metrics endpoint',
+			},
+			prefix: {
+				format: String,
+				default: 'n8n_',
+				env: 'N8N_METRICS_PREFIX',
+				doc: 'An optional prefix for metric names. Default: n8n_',
+			},
+		},
 		rest: {
 			format: String,
 			default: 'rest',
@@ -471,7 +485,7 @@ const config = convict({
 			doc: 'Disable production webhooks from main process. This helps ensures no http traffic load to main process when using webhook-specific processes.',
 		},
 		skipWebhoooksDeregistrationOnShutdown: {
-			/** 
+			/**
 			 * Longer explanation: n8n deregisters webhooks on shutdown / deactivation
 			 * and registers on startup / activation. If we skip
 			 * deactivation on shutdown, webhooks will remain active on 3rd party services.
@@ -483,10 +497,10 @@ const config = convict({
 			 * WARNING: Trigger nodes (like Cron) will cause duplication
 			 * of work, so be aware when using.
 			 */
-			doc: 'Deregister webhooks on external services only when workflows are deactivated. Useful for blue/green deployments.',
+			doc: 'Deregister webhooks on external services only when workflows are deactivated.',
 			format: Boolean,
 			default: false,
-			env: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_STARTUP_SHUTDOWN',
+			env: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN',
 		},
 	},
 

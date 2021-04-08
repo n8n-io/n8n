@@ -742,8 +742,7 @@ export default mixins(
 						} as IRun;
 						const pushData = {
 							data: executedData,
-							executionIdActive: executionId,
-							executionIdDb: executionId,
+							executionId,
 							retryOf: execution.retryOf,
 						} as IPushDataExecutionFinished;
 						this.$store.commit('finishActiveExecution', pushData);
@@ -759,8 +758,6 @@ export default mixins(
 					} else {
 						this.$showError(error, 'Problem stopping execution', 'There was a problem stopping the execuction:');
 					}
-
-					
 				}
 				this.stopExecutionInProgress = false;
 			},
@@ -964,7 +961,7 @@ export default mixins(
 					return originalName;
 				}
 
-				const nameMatch = originalName.match(/(.*[a-zA-Z])(\d*)/);
+				const nameMatch = originalName.match(/(.*\D+)(\d*)/);
 				let ignore, baseName, nameIndex, uniqueName;
 				let index = 1;
 
@@ -2142,6 +2139,7 @@ export default mixins(
 	position: relative;
 	width: 100%;
 	height: 100%;
+	transform-origin: 0 0;
 }
 
 .node-view-background {

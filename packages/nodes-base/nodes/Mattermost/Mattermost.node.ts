@@ -25,7 +25,7 @@ export class Mattermost implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mattermost',
 		name: 'mattermost',
-		icon: 'file:mattermost.png',
+		icon: 'file:mattermost.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -55,6 +55,10 @@ export class Mattermost implements INodeType {
 					{
 						name: 'Message',
 						value: 'message',
+					},
+					{
+						name: 'Reaction',
+						value: 'reaction',
 					},
 					{
 						name: 'User',
@@ -138,8 +142,44 @@ export class Mattermost implements INodeType {
 						value: 'post',
 						description: 'Post a message into a channel',
 					},
+					{
+						name: 'Post Ephemeral',
+						value: 'postEphemeral',
+						description: 'Post an ephemeral message into a channel',
+					},
 				],
 				default: 'post',
+				description: 'The operation to perform',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Add a reaction to a post.',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Remove a reaction from a post',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all the reactions to one or more posts',
+					},
+				],
+				default: 'create',
 				description: 'The operation to perform',
 			},
 
@@ -910,6 +950,73 @@ export class Mattermost implements INodeType {
 					},
 				],
 			},
+
+			// ----------------------------------
+			//      message:post (ephemeral)
+			// ----------------------------------
+			{
+				displayName: 'User ID',
+				name: 'userId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'postEphemeral',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				description: 'ID of the user to send the ephemeral message to.',
+			},
+			{
+				displayName: 'Channel ID',
+				name: 'channelId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getChannels',
+				},
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'postEphemeral',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				description: 'ID of the channel to send the ephemeral message in.',
+			},
+			{
+				displayName: 'Message',
+				name: 'message',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'postEphemeral',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				description: 'Text to send in the ephemeral message.',
+			},
 			{
 				displayName: 'Other Options',
 				name: 'otherOptions',
@@ -937,6 +1044,188 @@ export class Mattermost implements INodeType {
 					},
 				],
 			},
+
+			// ----------------------------------
+			//             reaction
+			// ----------------------------------
+			{
+				displayName: 'User ID',
+				name: 'userId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				description: 'ID of the user sending the reaction.',
+			},
+			{
+				displayName: 'Post ID',
+				name: 'postId',
+				type: 'string',
+				default: '',
+				placeholder: '3moacfqxmbdw38r38fjprh6zsr',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				description: 'ID of the post to react to.<br>Obtainable from the post link:<br><code>https://mattermost.internal.n8n.io/[server]/pl/[postId]</code>',
+			},
+			{
+				displayName: 'Emoji Name',
+				name: 'emojiName',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				description: 'Emoji to use for this reaction.',
+			},
+			{
+				displayName: 'User ID',
+				name: 'userId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+						operation: [
+							'delete',
+						],
+					},
+				},
+				description: 'ID of the user whose reaction to delete.',
+			},
+			{
+				displayName: 'Post ID',
+				name: 'postId',
+				type: 'string',
+				default: '',
+				placeholder: '3moacfqxmbdw38r38fjprh6zsr',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+						operation: [
+							'delete',
+						],
+					},
+				},
+				description: 'ID of the post whose reaction to delete.<br>Obtainable from the post link:<br><code>https://mattermost.internal.n8n.io/[server]/pl/[postId]</code>',
+			},
+			{
+				displayName: 'Emoji Name',
+				name: 'emojiName',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+						operation: [
+							'delete',
+						],
+					},
+				},
+				description: 'Name of the emoji to delete.',
+			},
+			{
+				displayName: 'Post ID',
+				name: 'postId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				description: 'One or more (comma-separated) posts to retrieve reactions from.',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'reaction',
+						],
+					},
+				},
+				default: true,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'reaction',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+
 			// ----------------------------------
 			//              user
 			// ----------------------------------
@@ -1830,7 +2119,79 @@ export class Mattermost implements INodeType {
 					// Add all the other options to the request
 					const otherOptions = this.getNodeParameter('otherOptions', i) as IDataObject;
 					Object.assign(body, otherOptions);
+
+				} else if (operation === 'postEphemeral') {
+
+					// ----------------------------------
+					//      message:post (ephemeral)
+					// ----------------------------------
+
+					// https://api.mattermost.com/#tag/posts/paths/~1posts~1ephemeral/post
+
+					body = {
+						user_id: this.getNodeParameter('userId', i),
+						post: {
+							channel_id: this.getNodeParameter('channelId', i),
+							message: this.getNodeParameter('message', i),
+						},
+					} as IDataObject;
+
+					requestMethod = 'POST';
+					endpoint = 'posts/ephemeral';
+
 				}
+
+			} else if (resource === 'reaction') {
+
+				// ----------------------------------
+				//         reaction:create
+				// ----------------------------------
+
+				// https://api.mattermost.com/#tag/reactions/paths/~1reactions/post
+
+				if (operation === 'create') {
+
+					body = {
+						user_id: this.getNodeParameter('userId', i),
+						post_id: this.getNodeParameter('postId', i),
+						emoji_name: (this.getNodeParameter('emojiName', i) as string).replace(/:/g, ''),
+						create_at: Date.now(),
+					} as { user_id: string; post_id: string; emoji_name: string; create_at: number };
+
+					requestMethod = 'POST';
+					endpoint = 'reactions';
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------
+					//         reaction:delete
+					// ----------------------------------
+
+					// https://api.mattermost.com/#tag/reactions/paths/~1users~1{user_id}~1posts~1{post_id}~1reactions~1{emoji_name}/delete
+
+					const userId = this.getNodeParameter('userId', i) as string;
+					const postId = this.getNodeParameter('postId', i) as string;
+					const emojiName = (this.getNodeParameter('emojiName', i) as string).replace(/:/g, '');
+
+					requestMethod = 'DELETE';
+					endpoint = `users/${userId}/posts/${postId}/reactions/${emojiName}`;
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------
+					//         reaction:getAll
+					// ----------------------------------
+
+					// https://api.mattermost.com/#tag/reactions/paths/~1posts~1ids~1reactions/post
+
+					const postId = this.getNodeParameter('postId', i) as string;
+
+					requestMethod = 'GET';
+					endpoint = `posts/${postId}/reactions`;
+
+					qs.limit = this.getNodeParameter('limit', 0, 0) as number;
+				}
+
 			} else if (resource === 'user') {
 
 				if (operation === 'create') {
@@ -2006,6 +2367,9 @@ export class Mattermost implements INodeType {
 				responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 			} else {
 				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+				if (qs.limit) {
+					responseData = responseData.slice(0, qs.limit);
+				}
 				if (resource === 'channel' && operation === 'members') {
 					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
 					if (resolveData) {

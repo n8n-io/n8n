@@ -30,6 +30,11 @@ export const postOperations = [
 				value: 'getAll',
 				description: 'Get all posts from a subreddit',
 			},
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search posts in a subreddit or in all of Reddit.',
+			},
 		],
 		displayOptions: {
 			show: {
@@ -343,6 +348,168 @@ export const postFields = [
 					{
 						name: 'Rising Posts',
 						value: 'rising',
+					},
+				],
+			},
+		],
+	},
+
+	// ----------------------------------
+	//         post: search
+	// ----------------------------------
+	{
+		displayName: 'Location',
+		name: 'location',
+		type: 'options',
+		default: 'subreddit',
+		description: 'Location where to search for posts.',
+		options: [
+			{
+				name: 'All Reddit',
+				value: 'allReddit',
+				description: 'Search for posts in all of Reddit.',
+			},
+			{
+				name: 'Subreddit',
+				value: 'subreddit',
+				description: 'Search for posts in a specific subreddit.',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Subreddit',
+		name: 'subreddit',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The name of subreddit to search in.',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'search',
+				],
+				location: [
+					'subreddit',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Keyword',
+		name: 'keyword',
+		type: 'string',
+		default: '',
+		required: true,
+		description: 'The keyword for the search.',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Return all results.',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 100,
+		description: 'The number of results to return.',
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'search',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Sort',
+				name: 'sort',
+				placeholder: '',
+				type: 'options',
+				default: 'relevance',
+				description: 'The category to sort results by.',
+				options: [
+					{
+						name: 'Comments',
+						value: 'comments',
+					},
+					{
+						name: 'Hot',
+						value: 'hot',
+					},
+					{
+						name: 'New',
+						value: 'new',
+					},
+					{
+						name: 'Top',
+						value: 'top',
+					},
+					{
+						name: 'Relevance',
+						value: 'relevance',
 					},
 				],
 			},

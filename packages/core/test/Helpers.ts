@@ -596,7 +596,7 @@ class NodeTypesClass implements INodeTypes {
 					let item: INodeExecutionData;
 					let keepOnlySet: boolean;
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-						keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, []) as boolean;
+						keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, false) as boolean;
 						item = items[itemIndex];
 						const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 

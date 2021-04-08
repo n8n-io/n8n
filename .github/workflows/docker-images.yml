@@ -32,3 +32,7 @@ jobs:
       run: docker build --build-arg N8N_VERSION=${{steps.vars.outputs.tag}} -t n8nio/n8n:${{steps.vars.outputs.tag}}-debian docker/images/n8n-debian
     - name: Push Docker image of version (Debian)
       run: docker push n8nio/n8n:${{steps.vars.outputs.tag}}-debian
+    - name: Tag Docker image with latest (Debian)
+      run: docker tag n8nio/n8n:${{steps.vars.outputs.tag}}-debian n8nio/n8n:latest-debian
+    - name: Push docker images of latest (Debian)
+      run: docker push n8nio/n8n:latest-debian

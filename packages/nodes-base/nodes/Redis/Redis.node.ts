@@ -16,7 +16,7 @@ export class Redis implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Redis',
 		name: 'redis',
-		icon: 'file:redis.png',
+		icon: 'file:redis.svg',
 		group: ['input'],
 		version: 1,
 		description: 'Get, send and update data in Redis.',
@@ -445,6 +445,7 @@ export class Redis implements INodeType {
 			const operation = this.getNodeParameter('operation', 0) as string;
 
 			client.on('error', (err: Error) => {
+				client.quit();
 				reject(err);
 			});
 
@@ -518,6 +519,7 @@ export class Redis implements INodeType {
 						}
 					}
 
+					client.quit();
 					resolve(this.prepareOutputData(returnItems));
 				}
 			});
