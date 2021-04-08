@@ -715,7 +715,6 @@ class App {
 
 		// Retrieves all tags
 		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagDb[]> => {
-
 			const findQuery = {
 				select: ['id', 'name'],
 			} as FindManyOptions;
@@ -729,13 +728,10 @@ class App {
 
 		// Creates a tag
 		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagDb> => {
+			TagHelpers.validateRequestBody(req.body);
+
 			const { name } = req.body;
-			const existingName = await TagHelpers.nameExists(name);
-
-			if (existingName) {
-				throw new ResponseHelper.ResponseError('Tag name already exists.', undefined, 400);
-			}
-
+			await TagHelpers.validateName(name);
 			TagHelpers.validateLength(name);
 
 			const newTag: ITagBase = {
@@ -755,15 +751,13 @@ class App {
 
 		// Updates an existing tag
 		this.app.patch(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagResponse> => {
+			TagHelpers.validateRequestBody(req.body);
+
 			const { name } = req.body;
-			const { id } = req.params;
-			const existingId = await TagHelpers.idExists(id);
-
-			if (!existingId) {
-				throw new ResponseHelper.ResponseError(`Tag with the ID "${id}" does not exist.`, undefined, 400);
-			}
-
 			TagHelpers.validateLength(name);
+
+			const { id } = req.params;
+			await TagHelpers.validateId(id);
 
 			const updatedTag: Partial<ITagDb> = {
 				name,
