@@ -146,12 +146,8 @@ export class AwsSns implements INodeType {
 				'Message=' + this.getNodeParameter('message', i) as string,
 			];
 
-			let responseData;
-			try {
-				responseData = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=Publish&' + params.join('&'));
-			} catch (err) {
-				throw new NodeOperationError(this.getNode(), `AWS Error: ${err}`);
-			}
+
+			const	responseData = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=Publish&' + params.join('&'));
 			returnData.push({MessageId: responseData.PublishResponse.PublishResult.MessageId} as IDataObject);
 		}
 
