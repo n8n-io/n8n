@@ -1,66 +1,70 @@
 
 import {
-    ITag
+	ITag,
 } from '../Interface';
 
+export interface ITagsState {
+	tags: ITag[];
+}
+
 const MOCK_TAGS = [{
-    id: '123',
-    name: 'mytag',
-    usageCount: 3
+	id: '123',
+	name: 'mytag',
+	usageCount: 3,
 }, {
-    id: '124',
-    name: 'abc',
-    usageCount: 0
+	id: '124',
+	name: 'abc',
+	usageCount: 0,
 },
 {
-    id: '124',
-    name: 'wwwwwwwwwwwwwwwwwwwwwwwwww',
-    usageCount: 0
+	id: '124',
+	name: 'wwwwwwwwwwwwwwwwwwwwwwwwww',
+	usageCount: 0,
 },
 {
-    id: '124',
-    name: 'abc',
-    usageCount: 0
+	id: '124',
+	name: 'abc',
+	usageCount: 0,
 },
 {
-    id: '124',
-    name: 'abc',
-    usageCount: 0
+	id: '124',
+	name: 'abc',
+	usageCount: 0,
 },
 {
-    id: '124',
-    name: 'abc',
-    usageCount: 0
+	id: '124',
+	name: 'abc',
+	usageCount: 0,
 },
 {
-    id: '124',
-    name: 'abc',
-    usageCount: 0
+	id: '124',
+	name: 'abc',
+	usageCount: 0,
 },
 {
-    id: '124',
-    name: 'abc',
-    usageCount: 0
+	id: '124',
+	name: 'abc',
+	usageCount: 0,
 },
 {
-    id: '124',
-    name: 'abc',
-    usageCount: 0
+	id: '124',
+	name: 'abc',
+	usageCount: 0,
 }];
 
 const module = {
-    namespaced: true,
+	namespaced: true,
 	state: {
-        tags: MOCK_TAGS as ITag[]
-    },
-    mutations: {
+		tags: [],
+	} as ITagsState,
+	mutations: {
 
-    },
-    getters: {
-        allTags: (state: any): ITag[] => {
+	},
+	getters: {
+		allTags: (state: ITagsState): ITag[] => {
 			return state.tags;
 		},
-    },
+	},
 };
 
 export default module;

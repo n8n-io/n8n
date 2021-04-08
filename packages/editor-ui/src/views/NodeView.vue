@@ -187,7 +187,7 @@ export default mixins(
 			NodeCreator,
 			NodeSettings,
 			RunData,
-			TagsManager
+			TagsManager,
 		},
 		errorCaptured: (err, vm, info) => {
 			console.error('errorCaptured'); // eslint-disable-line no-console
