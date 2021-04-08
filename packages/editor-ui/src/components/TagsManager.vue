@@ -1,9 +1,19 @@
 <template>
     <el-dialog title="Manage Tags" :visible.sync="visible">
-        <el-row>
-            <el-col v-if="hasTags" :span="24">
-                {{tags}}
-            </el-col>
+        <el-row class="content">
+            <el-row v-if="hasTags">
+                <el-row class="tags-header">
+                    <el-col :span="10">
+                        <el-input placeholder="Search tags" ref="inputFieldFilter" v-model="searchText">
+                            <i slot="prefix" class="el-input__icon el-icon-search"></i>
+                        </el-input>
+                    </el-col>
+                    <el-col :span="14">
+                        <el-button plain>Create new</el-button>
+                    </el-col>
+                </el-row>
+                <TagsTable :tags="tags" :search="searchText"/>
+            </el-row>
             <el-col class="notags" :span="16" :offset="4" v-else>
                 <div class="icon">
                 🗄️
@@ -16,13 +26,13 @@
                         With workflow tags, you're free to create the perfect tagging system for your flows
                     </div>
                 </div>
-                <el-button type="success">
+                <el-button>
                     Create a tag
                 </el-button>
             </el-col>
         </el-row>
-        <el-row>
-            <el-button type="success" size="small">Done</el-button>
+        <el-row class="footer">
+            <el-button size="small">Done</el-button>
         </el-row>
     </el-dialog>
 </template>
@@ -31,12 +41,22 @@
 import { ITag } from '@/Interface';
 import Vue from 'vue';
 
+import TagsTable from '@/components/TagsManagerTagsTable.vue';
+
 export default Vue.extend({
 	name: 'TagsManager',
 	props: [
         'visible'
 	],
+    components: {
+        TagsTable
+    },
 	computed: {
+        data () {
+            return {
+                searchText: ''
+            };
+        },
         tags(): ITag[] {
             return this.$store.getters['tags/allTags']
         },
@@ -58,8 +78,16 @@ export default Vue.extend({
     max-width: 600px;
 }
 
-.el-row:first-of-type {
+.content {
     min-height: 300px;
+}
+
+.tags-header {
+    margin-bottom: 15px;
+
+    .el-button {
+        float: right;
+    }
 }
 
 .notags {
@@ -88,7 +116,9 @@ export default Vue.extend({
     }
 }
 
-.el-row:last-of-type {
+.footer {
+    padding-top: 15px;
+
     .el-button {
         float: right;
     }

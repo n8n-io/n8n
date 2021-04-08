@@ -384,7 +384,11 @@ h1, h2, h3, h4, h5, h6 {
 	border-color: #555;
 	color: $--custom-input-font-disabled;
 }
-
+.el-button.is-plain,.el-button.is-plain:hover {
+	color: $--color-primary;
+	border: 1px solid $--color-primary;
+	background-color: #fff;
+}
 
 // Textarea
 .ql-editor,
