@@ -1,14 +1,14 @@
 import { FindOneOptions } from "typeorm";
-import { Db, ResponseHelper } from ".";
+import { Db, ITagDb, ITagGetResponseItem, IUsageCount, ResponseHelper } from ".";
 
 /**
  * Validate whether a tag name exists so that it cannot be used for a create operation.
  */
 export async function validateName(name: string): Promise<void> | never {
 	const findQuery = { where: { name } } as FindOneOptions;
-	const result = await Db.collections.Tag!.findOne(findQuery);
+	const tag = await Db.collections.Tag!.findOne(findQuery);
 
-	if (result) {
+	if (tag) {
 		throw new ResponseHelper.ResponseError('Tag name already exists.', undefined, 400);
 	}
 }
@@ -18,9 +18,9 @@ export async function validateName(name: string): Promise<void> | never {
  */
 export async function validateId(id: string): Promise<void> | never {
 	const findQuery = { where: { id } } as FindOneOptions;
-	const result = await Db.collections.Tag!.findOne(findQuery);
+	const tag = await Db.collections.Tag!.findOne(findQuery);
 
-	if (!result) {
+	if (!tag) {
 		throw new ResponseHelper.ResponseError(`Tag with ID ${id} does not exist.`, undefined, 400);
 	}
 }
@@ -41,4 +41,17 @@ export function validateRequestBody({ name }: { name: string }): void | never {
 	if (!name) {
 		throw new ResponseHelper.ResponseError(`Property 'name' missing from request body.`, undefined, 400);
 	}
+}
+
+/**
+ * Merge tags and usage counts by ID.
+ */
+export function mergeById(
+	tags: ITagDb[],
+	usageCounts: IUsageCount[]
+): ITagGetResponseItem[] {
+	return tags.map(tag => {
+		const count = usageCounts.find(count => count.id === tag.id) || { usageCount: 0 };
+		return { ...tag, ...count };
+	});
 }

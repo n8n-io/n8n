@@ -108,7 +108,7 @@ import * as querystring from 'querystring';
 import * as Queue from '../src/Queue';
 import { OptionsWithUrl } from 'request-promise-native';
 import { Registry } from 'prom-client';
-import { ITagBase, ITagDb, ITagResponse } from './Interfaces';
+import { ITagBase, ITagDb, ITagGetResponseItem, ITagUpdateResponse, IUsageCount } from './Interfaces';
 
 import * as TagHelpers from './TagHelpers';
 
@@ -714,16 +714,22 @@ class App {
 
 
 		// Retrieves all tags
-		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagDb[]> => {
-			const findQuery = {
-				select: ['id', 'name'],
-			} as FindManyOptions;
+		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagGetResponseItem[]> => {
+			const tags = await Db.collections.Tag?.find({ select: ['id', 'name'] });
 
-			if (req.query.filter) {
-				findQuery.where = JSON.parse(req.query.filter as string);
-			}
+			if (!tags) return [];
 
-			return await Db.collections.Tag?.find(findQuery) ?? [];
+			const usageCounts: IUsageCount[] = await Db.collections.Tag?.query(`
+				SELECT
+					tagId as id,
+					COUNT(workflowId) as usageCount
+				FROM
+					workflows_tags
+				GROUP BY
+					tagId
+			`);
+
+			return TagHelpers.mergeById(tags, usageCounts);
 		}));
 
 		// Creates a tag
@@ -745,12 +751,12 @@ class App {
 
 		// Deletes a tag
 		this.app.delete(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
-			await Db.collections.Tag!.delete({ id: req.params.id });
+			await Db.collections.Tag!.delete({ id: Number(req.params.id) });
 			return true;
 		}));
 
 		// Updates an existing tag
-		this.app.patch(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagResponse> => {
+		this.app.patch(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagUpdateResponse> => {
 			TagHelpers.validateRequestBody(req.body);
 
 			const { name } = req.body;
