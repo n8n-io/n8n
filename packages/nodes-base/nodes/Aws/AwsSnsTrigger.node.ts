@@ -70,9 +70,7 @@ export class AwsSnsTrigger implements INodeType {
 			// select them easily
 			async getTopics(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let data;
-
-				data = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ListTopics');
+				const data = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ListTopics');
 
 				let topics = data.ListTopicsResponse.ListTopicsResult.Topics.member;
 

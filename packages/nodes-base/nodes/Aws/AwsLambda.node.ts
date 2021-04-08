@@ -132,10 +132,7 @@ export class AwsLambda implements INodeType {
 		loadOptions: {
 			async getFunctions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-
-				let data;
-
-				data = await awsApiRequestREST.call(this, 'lambda', 'GET', '/2015-03-31/functions/');
+				const data = await awsApiRequestREST.call(this, 'lambda', 'GET', '/2015-03-31/functions/');
 
 				for (const func of data.Functions!) {
 					returnData.push({
