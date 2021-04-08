@@ -17,6 +17,8 @@ import './n8n-theme.scss';
 import App from '@/App.vue';
 import router from './router';
 
+import i18n from "./i18n/i18n";
+
 import { runExternalHook } from './components/mixins/externalHooks';
 
 import { library } from '@fortawesome/fontawesome-svg-core';
@@ -183,6 +185,7 @@ router.afterEach((to, from) => {
 new Vue({
 	router,
 	store,
+	i18n,
 	render: h => h(App),
 }).$mount('#app');
 

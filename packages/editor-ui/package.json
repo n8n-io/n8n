@@ -22,7 +22,8 @@
     "tslint": "tslint -p tsconfig.json -c tslint.json",
     "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json",
     "test:e2e": "vue-cli-service test:e2e",
-    "test:unit": "vue-cli-service test:unit"
+    "test:unit": "vue-cli-service test:unit",
+    "i18n:report": "vue-cli-service i18n:report --src './src/**/*.?(js|vue)' --locales './src/i18n/locales/**/*.json'"
   },
   "dependencies": {},
   "devDependencies": {
@@ -78,7 +79,9 @@
     "typescript": "~3.9.7",
     "uuid": "^8.1.0",
     "vue": "^2.6.9",
+    "vue-cli-plugin-i18n": "^2.1.0",
     "vue-cli-plugin-webpack-bundle-analyzer": "^2.0.0",
+    "vue-i18n": "^8.24.2",
     "vue-json-pretty": "^1.7.1",
     "vue-prism-editor": "^0.3.0",
     "vue-router": "^3.0.6",

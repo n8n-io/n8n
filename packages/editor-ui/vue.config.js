@@ -10,6 +10,13 @@ module.exports = {
 		webpackBundleAnalyzer: {
 			openAnalyzer: false,
 		},
+		i18n: {
+			locale: "en",
+			fallbackLocale: "en",
+			localeDir: "./src/i18n/locales",
+			enableInSFC: false,
+			enableLegacy: false,
+		},
 	},
 	configureWebpack: {
 		plugins: [
