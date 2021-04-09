@@ -1,51 +1,67 @@
 <template>
-	<el-table :data="rows" stripe max-height="450" :span-method="getSpan">
-		<el-table-column label="Name">
-			<template slot-scope="scope">
-				<div class="name">
-					<el-input v-if="scope.row.create"></el-input>
-					<el-input v-else-if="isEditEnabled(scope.row)" :value="scope.row.tag.name"></el-input>
-					<span v-else-if="isDeleteEnabled(scope.row)">Are you sure you want to delete this tag?</span>
-					<span v-else :class="isDisabled(scope.row)? 'disabled': ''">
-						{{scope.row.tag.name}}
-					</span>
-				</div>
-			</template>
-		</el-table-column>
-		<el-table-column label="Usage">
+	<el-row>
+		<el-row class="tags-header">
+			<el-col :span="10">
+				<el-input placeholder="Search tags" v-model="search" :disabled="isDisabled()">
+					<i slot="prefix" class="el-input__icon el-icon-search"></i>
+				</el-input>
+			</el-col>
+			<el-col :span="14">
+				<el-button @click="createNew" :disabled="isDisabled()" plain>
+					<font-awesome-icon icon="plus" />
+					<div class="next-icon-text">
+						Add new
+					</div>
+				</el-button>
+			</el-col>
+		</el-row>
+		<el-table :data="rows" stripe max-height="450" :span-method="getSpan" ref="table">
+			<el-table-column label="Name">
 				<template slot-scope="scope">
-					<div v-if="!scope.row.create && !isDeleteEnabled(scope.row)" :class="isDisabled(scope.row)? 'disabled': ''">
-						{{scope.row.usage}}
+					<div class="name">
+						<el-input v-if="scope.row.create"></el-input>
+						<el-input v-else-if="isEditEnabled(scope.row)" :value="scope.row.tag.name"></el-input>
+						<span v-else-if="isDeleteEnabled(scope.row)">Are you sure you want to delete this tag?</span>
+						<span v-else :class="isRowDisabled(scope.row)? 'disabled': ''">
+							{{scope.row.tag.name}}
+						</span>
 					</div>
 				</template>
-		</el-table-column>
-		<el-table-column
-			width="200">
-			<template slot-scope="scope">
-				<div class="ops" v-if="scope.row.create">
-					<el-button title="Cancel" @click.stop="cancelCreate()" size="small" plain>Cancel</el-button>
-					<el-button title="Create Tag" @click.stop="createTag()" size="small">Create tag</el-button>
-				</div>
-				<div class="ops" v-else-if="isEditEnabled(scope.row)">
-					<el-button title="Cancel" @click.stop="cancelEdit()" size="small" plain>Cancel</el-button>
-					<el-button title="Save Tag" @click.stop="saveTag()" size="small">Save changes</el-button>
-				</div>
-				<div class="ops" v-else-if="isDeleteEnabled(scope.row)">
-					<el-button title="Cancel" @click.stop="cancelDelete()" size="small" plain>Cancel</el-button>
-					<el-button title="Delete Tag" @click.stop="deleteTag(scope.row)" size="small">Delete tag</el-button>
-				</div>
-				<div class="ops main" v-else-if="!isDisabled(scope.row)">
-					<el-button title="Delete Tag" @click.stop="deleteTag(scope.row)" icon="el-icon-delete" circle></el-button>
-					<el-button title="Edit Tag" @click.stop="editTag(scope.row)" icon="el-icon-edit" circle></el-button>
-				</div>
-			</template>
-		</el-table-column>
-	</el-table>
+			</el-table-column>
+			<el-table-column label="Usage">
+					<template slot-scope="scope">
+						<div v-if="!scope.row.create && !isDeleteEnabled(scope.row)" :class="isRowDisabled(scope.row)? 'disabled': ''">
+							{{scope.row.usage}}
+						</div>
+					</template>
+			</el-table-column>
+			<el-table-column
+				width="200">
+				<template slot-scope="scope">
+					<div class="ops" v-if="scope.row.create">
+						<el-button title="Cancel" @click.stop="cancelCreate()" size="small" plain>Cancel</el-button>
+						<el-button title="Create Tag" @click.stop="createTag()" size="small">Create tag</el-button>
+					</div>
+					<div class="ops" v-else-if="isEditEnabled(scope.row)">
+						<el-button title="Cancel" @click.stop="cancelEdit()" size="small" plain>Cancel</el-button>
+						<el-button title="Save Tag" @click.stop="saveTag()" size="small">Save changes</el-button>
+					</div>
+					<div class="ops" v-else-if="isDeleteEnabled(scope.row)">
+						<el-button title="Cancel" @click.stop="cancelDelete()" size="small" plain>Cancel</el-button>
+						<el-button title="Delete Tag" @click.stop="deleteTag(scope.row)" size="small">Delete tag</el-button>
+					</div>
+					<div class="ops main" v-else-if="!isRowDisabled(scope.row)">
+						<el-button title="Delete Tag" @click.stop="deleteTag(scope.row)" icon="el-icon-delete" circle></el-button>
+						<el-button title="Edit Tag" @click.stop="editTag(scope.row)" icon="el-icon-edit" circle></el-button>
+					</div>
+				</template>
+			</el-table-column>
+		</el-table>
+	</el-row>
 </template>
 
 <script lang="ts">
 import { ITag } from '@/Interface';
-import { ElTableColumn } from 'element-ui/types/table-column';
 import Vue from 'vue';
 
 interface ITagRow {
@@ -58,8 +74,7 @@ export default Vue.extend({
 	name: 'TagsTable',
 	props: [
 		'tags',
-		'search',
-		'create'
+		'isCreateEnabled'
 	],
 	data() {
 		const tagRows = [...this.$store.getters['tags/allTags']]
@@ -72,13 +87,17 @@ export default Vue.extend({
 
 		return {
 			tagRows,
+			search: '',
 			deleteId: '',
 			editId: ''
 		};
 	},
 	computed: {
 		rows: function() {
-			return this.$props.create ? [{create: true}].concat(this.$data.tagRows) : this.$data.tagRows;
+			const tagRows = this.$data.tagRows
+				.filter((row: ITagRow) => row.tag && row.tag.name.toLowerCase().trim().includes(this.$data.search.toLowerCase().trim() || ''));
+
+			return this.$props.isCreateEnabled ? [{create: true}].concat(tagRows) : tagRows;
 		}
 	},
 	methods: {
@@ -93,12 +112,12 @@ export default Vue.extend({
 			return 1;
 		},
 		isEditEnabled(row: ITagRow): boolean {
-			return this.$data.editId && row.tag && row.tag.id === this.$data.editId;
+			return !this.$props.isCreateEnabled && this.$data.editId && row.tag && row.tag.id === this.$data.editId;
 		},
 		isDeleteEnabled(row: ITagRow): boolean {
-			return this.$data.deleteId && row.tag && row.tag.id === this.$data.deleteId;
+			return !this.$props.isCreateEnabled && this.$data.deleteId && row.tag && row.tag.id === this.$data.deleteId;
 		},
-		isDisabled(row: ITagRow): boolean {
+		isRowDisabled(row: ITagRow): boolean {
 			if (this.$data.editId && row.tag && row.tag.id !== this.$data.editId) {
 				return true;
 			}
@@ -107,40 +126,50 @@ export default Vue.extend({
 				return true;
 			}
 
-			return this.$props.create;
+			return this.$props.isCreateEnabled;
+		},
+		isDisabled(): boolean {
+			return !!(this.$props.isCreateEnabled || this.$data.editId || this.$data.deleteId);
 		},
 		editTag(row: ITagRow): void {
 			this.editId = (row.tag && row.tag.id) || '';
-			this.$emit('cancelCreate');
 		},
 		cancelEdit(): void {
 			this.editId = '';
 		},
 		cancelDelete(): void {
 			this.deleteId = '';
-			this.$emit('cancelCreate');
 		},
 		deleteTag(row: ITagRow): void {
 			this.deleteId = (row.tag && row.tag.id) || '';
 		},
+		createNew(): void {
+			this.$emit('createNew');
+			((this.$refs.table as Vue).$refs.bodyWrapper as Element).scrollTop = 0;
+		},
 		cancelCreate(): void {
 			this.$emit('cancelCreate');
+		}
+	},
+	watch: {
+		isCreateEnabled() {
+			this.$data.deleteId = '';
+			this.$data.editId = '';
 		}
 	}
 });
 </script>
 
 <style lang="scss" scoped>
-/deep/ .el-input {
-	input {
-		border: 1px solid $--color-primary;
-	}
-}
-
 .name {
 	min-height: 45px;
 	display: flex;
 	align-items: center;
+
+	/deep/ input {
+		border: 1px solid $--color-primary;
+		background: white;
+	}
 }
 
 .ops {
@@ -154,15 +183,26 @@ export default Vue.extend({
 	color: #afafaf;
 }
 
-.ops.main .el-button {
+.ops.main > .el-button {
 	display: none;
 	float: right;
 	margin-left: 5px;
 }
 
-/deep/ tr {
-	&:hover .ops:not(.disabled) .el-button {
-		display: block;
+/deep/ tr:hover .ops:not(.disabled) .el-button {
+	display: block;
+}
+
+.tags-header {
+	margin-bottom: 15px;
+
+	.el-button {
+		float: right;
 	}
 }
+
+/deep/ .el-input.is-disabled > input {
+	border: none;
+}
+
 </style>

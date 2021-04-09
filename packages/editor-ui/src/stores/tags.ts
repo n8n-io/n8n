@@ -13,7 +13,7 @@ const MOCK_TAGS = [{
 	usageCount: 3,
 }, {
 	id: '120',
-	name: 'abc',
+	name: 'sup',
 	usageCount: 0,
 },
 {
@@ -23,17 +23,17 @@ const MOCK_TAGS = [{
 },
 {
 	id: '122',
-	name: 'abc',
+	name: 'yo',
 	usageCount: 0,
 },
 {
 	id: '123',
-	name: 'abc',
+	name: 'wow',
 	usageCount: 0,
 },
 {
 	id: '124',
-	name: 'abc',
+	name: 'hello',
 	usageCount: 0,
 },
 {
@@ -43,7 +43,7 @@ const MOCK_TAGS = [{
 },
 {
 	id: '126',
-	name: 'abc',
+	name: 'world',
 	usageCount: 0,
 },
 {

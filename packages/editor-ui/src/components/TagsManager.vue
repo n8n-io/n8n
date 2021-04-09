@@ -1,29 +1,12 @@
 <template>
 	<el-dialog title="Manage Tags" :visible.sync="visible">
 		<el-row class="content">
-			<el-row v-if="hasTags || isCreateEnabled">
-				<el-row class="tags-header">
-					<el-col :span="10">
-						<el-input placeholder="Search tags" ref="inputFieldFilter" v-model="searchText">
-							<i slot="prefix" class="el-input__icon el-icon-search"></i>
-						</el-input>
-					</el-col>
-					<el-col :span="14" v-if="!isCreateEnabled">
-						<el-button @click="createNew" plain>
-							<font-awesome-icon icon="plus" />
-							<div class="next-icon-text">
-								Add new
-							</div>
-						</el-button>
-					</el-col>
-				</el-row>
-				<TagsTable
+			<TagsTable v-if="hasTags || isCreateEnabled"
 					:tags="tags"
-					:search="searchText"
-					:create="isCreateEnabled"
+					:isCreateEnabled="isCreateEnabled"
 					@cancelCreate="disableCreate"
-				/>
-			</el-row>
+					@createNew="createNew"
+			/>
 			<el-col class="notags" :span="16" :offset="4" v-else>
 				<div class="icon">
 				🗄️
@@ -60,7 +43,6 @@ export default Vue.extend({
 	],
 	data() {
 		return {
-			searchText: '',
 			isCreateEnabled: false
 		};
 	},
@@ -98,14 +80,6 @@ export default Vue.extend({
 
 .content {
 	min-height: 300px;
-}
-
-.tags-header {
-	margin-bottom: 15px;
-
-	.el-button {
-		float: right;
-	}
 }
 
 .notags {
