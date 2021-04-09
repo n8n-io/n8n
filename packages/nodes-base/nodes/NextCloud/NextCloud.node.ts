@@ -234,7 +234,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/original.txt',
-				description: 'The path of file or folder to copy.',
+				description: 'The path of file or folder to copy. The path should start with "/"',
 			},
 			{
 				displayName: 'To Path',
@@ -254,7 +254,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/copy.txt',
-				description: 'The destination path of file or folder.',
+				description: 'The destination path of file or folder. The path should start with "/"',
 			},
 
 			// ----------------------------------
@@ -277,8 +277,8 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				placeholder: 'invoices/2019/invoice_1.pdf',
-				description: 'The path to delete. Can be a single file or a whole folder.',
+				placeholder: '/invoices/2019/invoice_1.pdf',
+				description: 'The path to delete. Can be a single file or a whole folder. The path should start with "/"',
 			},
 
 			// ----------------------------------
@@ -302,7 +302,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/old_name.txt',
-				description: 'The path of file or folder to move.',
+				description: 'The path of file or folder to move. The path should start with "/"',
 			},
 			{
 				displayName: 'To Path',
@@ -322,7 +322,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/new_name.txt',
-				description: 'The new path of file or folder.',
+				description: 'The new path of file or folder. The path should start with "/"',
 			},
 
 			// ----------------------------------
@@ -344,8 +344,8 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				placeholder: 'invoices/2019/invoice_1.pdf',
-				description: 'The file path of the file to download. Has to contain the full path.',
+				placeholder: '/invoices/2019/invoice_1.pdf',
+				description: 'The file path of the file to download. Has to contain the full path. The path should start with "/"',
 			},
 			{
 				displayName: 'Binary Property',
@@ -385,8 +385,8 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				placeholder: 'invoices/2019/invoice_1.pdf',
-				description: 'The file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
+				placeholder: '/invoices/2019/invoice_1.pdf',
+				description: 'The absolute file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
 			},
 			{
 				displayName: 'Binary Data',
@@ -477,8 +477,8 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				placeholder: 'invoices/2019',
-				description: 'The folder to create. The parent folder has to exist.',
+				placeholder: '/invoices/2019',
+				description: 'The folder to create. The parent folder has to exist. The path should start with "/"',
 			},
 
 			// ----------------------------------
@@ -499,8 +499,8 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				placeholder: 'invoices/2019/',
-				description: 'The path of which to list the content.',
+				placeholder: '/invoices/2019/',
+				description: 'The path of which to list the content. The path should start with "/"',
 			},
 
 			// ----------------------------------

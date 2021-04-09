@@ -830,7 +830,7 @@ export class HttpRequest implements INodeType {
 
 			// Add Content Type if any are set
 			if (options.bodyContentCustomMimeType) {
-				if(requestOptions.headers === undefined) {
+				if (requestOptions.headers === undefined) {
 					requestOptions.headers = {};
 				}
 				requestOptions.headers['Content-Type'] = options.bodyContentCustomMimeType;
@@ -930,7 +930,7 @@ export class HttpRequest implements INodeType {
 						if (property === 'body') {
 							continue;
 						}
- 						returnItem[property] = response![property];
+						returnItem[property] = response![property];
 					}
 
 					newItem.json = returnItem;
