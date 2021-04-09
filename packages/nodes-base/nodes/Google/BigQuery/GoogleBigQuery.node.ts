@@ -151,7 +151,9 @@ export class GoogleBigQuery implements INodeType {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const rows: IDataObject[] = [];
 				const body: IDataObject = {};
+
 				for (let i = 0; i < length; i++) {
+
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					Object.assign(body, options);
 					if (body.traceId === undefined) {
@@ -168,6 +170,7 @@ export class GoogleBigQuery implements INodeType {
 					}
 					rows.push({ json: record });
 				}
+
 				body.rows = rows;
 				responseData = await googleApiRequest.call(
 					this,
@@ -176,8 +179,8 @@ export class GoogleBigQuery implements INodeType {
 					body,
 				);
 				returnData.push(responseData);
-			}
-			if (operation === 'getAll') {
+
+			} else if (operation === 'getAll') {
 
 				// ----------------------------------
 				//         record: getAll
@@ -191,6 +194,7 @@ export class GoogleBigQuery implements INodeType {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 				let fields;
+
 				if (simple === true) {
 					const { schema } = await googleApiRequest.call(
 						this,
@@ -204,11 +208,13 @@ export class GoogleBigQuery implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					Object.assign(qs, options);
+
 					if (qs.useInt64Timestamp !== undefined) {
 						qs.formatOptions = {
 							useInt64Timestamp: qs.useInt64Timestamp,
 						};
 					}
+
 					if (returnAll) {
 						responseData = await googleApiRequestAllItems.call(
 							this,
@@ -231,6 +237,7 @@ export class GoogleBigQuery implements INodeType {
 						returnData.push.apply(returnData, (simple) ? simplify(responseData.rows, fields) : responseData.rows);
 					}
 				}
+
 			}
 		}
 
