@@ -132,6 +132,7 @@ class App {
 	protocol: string;
 	sslKey: string;
 	sslCert: string;
+	payloadSizeMax: number;
 
 	presetCredentialsLoaded: boolean;
 
@@ -145,6 +146,7 @@ class App {
 		this.saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
 		this.executionTimeout = config.get('executions.timeout') as number;
 		this.maxExecutionTimeout = config.get('executions.maxTimeout') as number;
+		this.payloadSizeMax = config.get('endpoints.payloadSizeMax') as number;
 		this.timezone = config.get('generic.timezone') as string;
 		this.restEndpoint = config.get('endpoints.rest') as string;
 
@@ -369,7 +371,7 @@ class App {
 
 		// Support application/json type post data
 		this.app.use(bodyParser.json({
-			limit: '16mb', verify: (req, res, buf) => {
+			limit: this.payloadSizeMax + 'mb', verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
 			},
@@ -378,7 +380,7 @@ class App {
 		// Support application/xml type post data
 		// @ts-ignore
 		this.app.use(bodyParser.xml({
-			limit: '16mb', xmlParseOptions: {
+			limit: this.payloadSizeMax + 'mb', xmlParseOptions: {
 				normalize: true,     // Trim whitespace inside text nodes
 				normalizeTags: true, // Transform tags to lowercase
 				explicitArray: false, // Only put properties in array if length > 1
@@ -386,7 +388,7 @@ class App {
 		}));
 
 		this.app.use(bodyParser.text({
-			limit: '16mb', verify: (req, res, buf) => {
+			limit: this.payloadSizeMax + 'mb', verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
 			},
