@@ -1,5 +1,5 @@
-import { FindOneOptions } from "typeorm";
-import { Db, ITagDb, ITagGetResponseItem, IUsageCount, ResponseHelper } from ".";
+import { FindOneOptions, getConnection } from "typeorm";
+import { Db, ResponseHelper } from ".";
 
 /**
  * Validate whether a tag name exists so that it cannot be used for a create operation.
@@ -16,7 +16,7 @@ export async function validateName(name: string): Promise<void> | never {
 /**
  * Validate whether a tag ID exists so that it can be used for an update operation.
  */
-export async function validateId(id: string): Promise<void> | never {
+export async function validateId(id: number): Promise<void> | never {
 	const findQuery = { where: { id } } as FindOneOptions;
 	const tag = await Db.collections.Tag!.findOne(findQuery);
 
@@ -44,14 +44,34 @@ export function validateRequestBody({ name }: { name: string }): void | never {
 }
 
 /**
- * Merge tags and usage counts by ID.
+ * Validate that a tag and a workflow are not related so that a link can be created.
  */
-export function mergeById(
-	tags: ITagDb[],
-	usageCounts: IUsageCount[]
-): ITagGetResponseItem[] {
-	return tags.map(tag => {
-		const count = usageCounts.find(count => count.id === tag.id) || { usageCount: 0 };
-		return { ...tag, ...count };
-	});
+export async function validateNoRelation(workflowId: number, tagId: number): Promise<void> | never {
+	const result = await findRelation(workflowId, tagId);
+
+	if (result.length) {
+		throw new ResponseHelper.ResponseError(`Workflow ID ${workflowId} and tag ID ${tagId} are already related.`, undefined, 400);
+	}
+}
+
+/**
+ * Validate that a tag and a workflow are related so that their link can be deleted.
+ */
+export async function validateRelation(workflowId: number, tagId: number): Promise<void> | never {
+	const result = await findRelation(workflowId, tagId);
+
+	if (!result.length) {
+		throw new ResponseHelper.ResponseError(`Workflow ID ${workflowId} and tag ID ${tagId} are not related.`, undefined, 400);
+	}
+}
+
+/**
+ * Find a relation between a workflow and a tag, if any.
+ */
+async function findRelation(workflowId: number, tagId: number): Promise<Array<{ workflowId: number, tagId: number }>> {
+	return await getConnection().createQueryBuilder()
+		.select()
+		.from('workflows_tags', 'workflows_tags')
+		.where('workflowId = :workflowId AND tagId = :tagId', { workflowId, tagId })
+		.execute();
 }
