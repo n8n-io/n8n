@@ -204,6 +204,11 @@ export class NextCloud implements INodeType {
 						description: 'Invite a user to a NextCloud organization',
 					},
 					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a user.',
+					},
+					{
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve information about a single user.',
@@ -212,6 +217,11 @@ export class NextCloud implements INodeType {
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Retrieve a list of users.',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Edit attributes related to a user.',
 					},
 				],
 				default: 'create',
@@ -584,7 +594,7 @@ export class NextCloud implements INodeType {
 				],
 			},
 			// ----------------------------------
-			//         user:get
+			//         user:get/delete/update
 			// ----------------------------------
 			{
 				displayName: 'Username',
@@ -598,7 +608,9 @@ export class NextCloud implements INodeType {
 							'user',
 						],
 						operation: [
+							'delete',
 							'get',
+							'update',
 						],
 					},
 				},
@@ -648,6 +660,84 @@ export class NextCloud implements INodeType {
 					},
 				],
 			},
+			// ----------------------------------
+			//         user:update
+			// ----------------------------------
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'fixedCollection',
+				typeOptions:{
+					multipleValues:false,
+				},
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'update',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Options',
+						name: 'option',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								type: 'options',
+								default: 'email',
+								options:
+								[
+									{
+										name: 'Email',
+										value: 'email',
+										description: 'The new email for the user.',
+									},
+									{
+										name: 'Display Name',
+										value: 'displayname',
+										description: 'The new display name for the user.',
+									},
+									{
+										name: 'Address',
+										value: 'address',
+										description: 'The new address for the user.',
+									},
+									{
+										name: 'Website',
+										value: 'website',
+										description: 'The new website for the user.',
+									},
+									{
+										name: 'Twitter',
+										value: 'twitter',
+										description: 'The new twitter for the user.',
+									},
+									{
+										name: 'Password',
+										value: 'password',
+										description: 'The new password for the user.',
+									},
+								],
+								description: 'Key of the updated attribut.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value of the updated attribut.',
+							},
+						],
+					},
+				],
+			},
 		],
 	};
 
@@ -676,7 +766,7 @@ export class NextCloud implements INodeType {
 		let requestMethod = '';
 		let responseData: any; // tslint:disable-line:no-any
 
-		let body: string | Buffer = '';
+		let body: string | Buffer | IDataObject = '';
 		const headers: IDataObject = {};
 		let qs;
 
@@ -793,6 +883,18 @@ export class NextCloud implements INodeType {
 						body += `&displayName=${additionalFields.displayName}`;
 					}
 				}
+				if (operation === 'delete') {
+					// ----------------------------------
+					//         user:delete
+					// ----------------------------------
+					requestMethod = 'DELETE';
+
+					const userid = this.getNodeParameter('userId', i) as string;
+					endpoint = `ocs/v1.php/cloud/users/${userid}`;
+
+					headers['OCS-APIRequest'] = true;
+					headers['Content-Type'] = 'application/x-www-form-urlencoded';
+				}
 				if (operation === 'get') {
 					// ----------------------------------
 					//         user:get
@@ -817,7 +919,23 @@ export class NextCloud implements INodeType {
 					headers['OCS-APIRequest'] = true;
 					headers['Content-Type'] = 'application/x-www-form-urlencoded';
 				}
+				if (operation === 'update') {
+					// ----------------------------------
+					//         user:get
+					// ----------------------------------
+					requestMethod = 'PUT';
 
+					const userid = this.getNodeParameter('userId', i) as string;
+					endpoint = `ocs/v1.php/cloud/users/${userid}`;
+
+					body = Object.entries((this.getNodeParameter('options', i) as IDataObject).option as IDataObject).map(entry=> {
+						const [key,value] = entry;
+						return `${key}=${value}`;
+					}).join('&');
+
+					headers['OCS-APIRequest'] = true;
+					headers['Content-Type'] = 'application/x-www-form-urlencoded';
+				}
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
@@ -877,10 +995,14 @@ export class NextCloud implements INodeType {
 							}
 
 							if (data.ocs.meta.status !== 'ok') {
-								return reject(new Error(data.ocs.meta.message));
+								return reject(new Error(data.ocs.meta.message || data.ocs.meta.status));
 							}
 
-							resolve(data.ocs.data as IDataObject);
+							if (operation === 'delete' || operation === 'update'){
+								resolve(data.ocs.meta as IDataObject);
+							} else {
+								resolve(data.ocs.data as IDataObject);
+							}
 						});
 					});
 
@@ -905,7 +1027,7 @@ export class NextCloud implements INodeType {
 						});
 					});
 
-					jsonResponseData.forEach(value =>{
+					jsonResponseData.forEach(value => {
 						returnData.push( {id:value} as IDataObject);
 					});
 				}
