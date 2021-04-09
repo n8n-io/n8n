@@ -24,7 +24,7 @@ export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctio
 		headers,
 		method,
 		body,
-		qs: {},
+		qs: query ?? {},
 		uri: '',
 		json: false,
 	};
@@ -49,7 +49,7 @@ export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctio
 
 			options.uri = `${credentials.webDavUrl}/${encodeURI(endpoint)}`;
 
-			if (resource === 'user' && operation === 'create') {
+			if (resource === 'user') {
 				options.uri = options.uri.replace('/remote.php/webdav', '');
 			}
 			return await this.helpers.request(options);

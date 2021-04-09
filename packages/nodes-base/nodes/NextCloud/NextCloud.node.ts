@@ -203,6 +203,16 @@ export class NextCloud implements INodeType {
 						value: 'create',
 						description: 'Invite a user to a NextCloud organization',
 					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Retrieve information about a single user.',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Retrieve a list of users.',
+					},
 				],
 				default: 'create',
 				description: 'The operation to perform.',
@@ -573,6 +583,71 @@ export class NextCloud implements INodeType {
 					},
 				],
 			},
+			// ----------------------------------
+			//         user:get
+			// ----------------------------------
+			{
+				displayName: 'Username',
+				name: 'userId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'get',
+						],
+					},
+				},
+				placeholder: 'john',
+				description: 'Username the user will have.',
+			},
+			// ----------------------------------
+			//         user:getAll
+			// ----------------------------------
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Search',
+						name: 'search',
+						type: 'string',
+						default: '',
+						description: 'Optional search string.',
+					},
+					{
+						displayName: 'Limit',
+						name: 'limit',
+						type: 'number',
+						default: '',
+						description: 'Optional limit value.',
+					},
+					{
+						displayName: 'Offset',
+						name: 'offset',
+						type: 'number',
+						default: '',
+						description: 'Optional offset value.',
+					},
+				],
+			},
 		],
 	};
 
@@ -603,6 +678,7 @@ export class NextCloud implements INodeType {
 
 		let body: string | Buffer = '';
 		const headers: IDataObject = {};
+		let qs;
 
 		for (let i = 0; i < items.length; i++) {
 			if (resource === 'file') {
@@ -717,6 +793,30 @@ export class NextCloud implements INodeType {
 						body += `&displayName=${additionalFields.displayName}`;
 					}
 				}
+				if (operation === 'get') {
+					// ----------------------------------
+					//         user:get
+					// ----------------------------------
+					requestMethod = 'GET';
+
+					const userid = this.getNodeParameter('userId', i) as string;
+					endpoint = `ocs/v1.php/cloud/users/${userid}`;
+
+					headers['OCS-APIRequest'] = true;
+					headers['Content-Type'] = 'application/x-www-form-urlencoded';
+				}
+				if (operation === 'getAll') {
+					// ----------------------------------
+					//         user:getAll
+					// ----------------------------------
+					requestMethod = 'GET';
+
+					qs = this.getNodeParameter('options', i) as IDataObject;
+					endpoint = `ocs/v1.php/cloud/users`;
+
+					headers['OCS-APIRequest'] = true;
+					headers['Content-Type'] = 'application/x-www-form-urlencoded';
+				}
 
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
@@ -736,7 +836,7 @@ export class NextCloud implements INodeType {
 			}
 
 			try {
-				responseData = await nextCloudApiRequest.call(this, requestMethod, endpoint, body, headers, encoding);
+				responseData = await nextCloudApiRequest.call(this, requestMethod, endpoint, body, headers, encoding, qs);
 			} catch (error) {
 				if (this.continueOnFail() === true) {
 					returnData.push({ error });
@@ -766,23 +866,49 @@ export class NextCloud implements INodeType {
 
 				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);
 
-			} else if (resource === 'user' && operation === 'create') {
+			} else if (resource === 'user' ) {
 
-				const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-					parseString(responseData, { explicitArray: false }, (err, data) => {
-						if (err) {
-							return reject(err);
-						}
+				if (operation !== 'getAll'){
 
-						if (data.ocs.meta.status !== 'ok') {
-							return reject(new Error(data.ocs.meta.message));
-						}
+					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+						parseString(responseData, { explicitArray: false }, (err, data) => {
+							if (err) {
+								return reject(err);
+							}
 
-						resolve(data.ocs.data as IDataObject);
+							if (data.ocs.meta.status !== 'ok') {
+								return reject(new Error(data.ocs.meta.message));
+							}
+
+							resolve(data.ocs.data as IDataObject);
+						});
 					});
-				});
 
-				returnData.push(jsonResponseData as IDataObject);
+					returnData.push(jsonResponseData as IDataObject);
+				} else {
+
+					const jsonResponseData: IDataObject[] = await new Promise((resolve, reject) => {
+						parseString(responseData, { explicitArray: false }, (err, data) => {
+							if (err) {
+								return reject(err);
+							}
+
+							if (data.ocs.meta.status !== 'ok') {
+								return reject(new Error(data.ocs.meta.message));
+							}
+
+							if (typeof(data.ocs.data.users.element) === 'string') {
+								resolve([data.ocs.data.users.element] as IDataObject[]);
+							} else {
+								resolve(data.ocs.data.users.element as IDataObject[]);
+							}
+						});
+					});
+
+					jsonResponseData.forEach(value =>{
+						returnData.push( {id:value} as IDataObject);
+					});
+				}
 
 			} else if (resource === 'folder' && operation === 'list') {
 
