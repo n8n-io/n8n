@@ -30,7 +30,7 @@ import {
 	XYPositon,
 } from './Interface';
 
-import tags from './stores/tags';
+import tags from './modules/tags';
 
 Vue.use(Vuex);
 

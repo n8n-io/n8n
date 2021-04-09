@@ -429,8 +429,9 @@ export interface ITimeoutHMS {
 
 export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
 
+// ITagGetResponseItem
 export interface ITag {
-	id: string;
+	id: number;
 	name: string;
 	usageCount: number;
 }

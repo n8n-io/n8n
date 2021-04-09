@@ -4,8 +4,11 @@
 			<TagsTable v-if="hasTags || isCreateEnabled"
 					:tags="tags"
 					:isCreateEnabled="isCreateEnabled"
-					@cancelCreate="disableCreate"
-					@createNew="createNew"
+					@enableCreate="enableCreate"
+					@disableCreate="disableCreate"
+					@onCreate="onCreate"
+					@onUpdate="onUpdate"
+					@onDelete="onDelete"
 			/>
 			<el-col class="notags" :span="16" :offset="4" v-else>
 				<div class="icon">
@@ -19,7 +22,7 @@
 						With workflow tags, you're free to create the perfect tagging system for your flows
 					</div>
 				</div>
-				<el-button @click="createNew">
+				<el-button @click="enableCreate">
 					Create a tag
 				</el-button>
 			</el-col>
@@ -41,6 +44,9 @@ export default Vue.extend({
 	props: [
 		'visible',
 	],
+	created() {
+    	this.$store.dispatch('tags/getAll');
+	},
 	data() {
 		return {
 			isCreateEnabled: false,
@@ -56,13 +62,25 @@ export default Vue.extend({
 		hasTags(): boolean {
 			return this.$store.getters['tags/allTags'].length > 0;
 		},
+		isLoading(): boolean {
+			return this.$store.getters['tags/loading'];
+		}
 	},
 	methods: {
-		createNew() {
+		enableCreate() {
 			this.$data.isCreateEnabled = true;
 		},
 		disableCreate() {
 			this.$data.isCreateEnabled = false;
+		},
+		onCreate(name: string) {
+			this.$store.dispatch('tags/addNew', name);
+		},
+		onUpdate(id: number, name: string) {
+			this.$store.dispatch('tags/rename', {id, name});
+		},
+		onDelete(id: number) {
+			this.$store.dispatch('tags/delete', id);
 		},
 	},
 });

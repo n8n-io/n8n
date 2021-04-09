@@ -7,7 +7,7 @@
 				</el-input>
 			</el-col>
 			<el-col :span="14">
-				<el-button @click="createNew" :disabled="isDisabled()" plain>
+				<el-button @click="enableCreate" :disabled="isDisabled()" plain>
 					<font-awesome-icon icon="plus" />
 					<div class="next-icon-text">
 						Add new
@@ -19,8 +19,7 @@
 			<el-table-column label="Name">
 				<template slot-scope="scope">
 					<div class="name">
-						<el-input v-if="scope.row.create"></el-input>
-						<el-input v-else-if="isEditEnabled(scope.row)" :value="scope.row.tag.name"></el-input>
+						<el-input v-if="scope.row.create || isEditEnabled(scope.row)" :value="scope.row.tag.name"></el-input>
 						<span v-else-if="isDeleteEnabled(scope.row)">Are you sure you want to delete this tag?</span>
 						<span v-else :class="isRowDisabled(scope.row)? 'disabled': ''">
 							{{scope.row.tag.name}}
@@ -39,20 +38,20 @@
 				width="200">
 				<template slot-scope="scope">
 					<div class="ops" v-if="scope.row.create">
-						<el-button title="Cancel" @click.stop="cancelCreate()" size="small" plain>Cancel</el-button>
+						<el-button title="Cancel" @click.stop="disableCreate()" size="small" plain>Cancel</el-button>
 						<el-button title="Create Tag" @click.stop="createTag()" size="small">Create tag</el-button>
 					</div>
 					<div class="ops" v-else-if="isEditEnabled(scope.row)">
-						<el-button title="Cancel" @click.stop="cancelEdit()" size="small" plain>Cancel</el-button>
-						<el-button title="Save Tag" @click.stop="saveTag()" size="small">Save changes</el-button>
+						<el-button title="Cancel" @click.stop="disableEdit()" size="small" plain>Cancel</el-button>
+						<el-button title="Save Tag" @click.stop="updateTag()" size="small">Save changes</el-button>
 					</div>
 					<div class="ops" v-else-if="isDeleteEnabled(scope.row)">
-						<el-button title="Cancel" @click.stop="cancelDelete()" size="small" plain>Cancel</el-button>
+						<el-button title="Cancel" @click.stop="disableDelete()" size="small" plain>Cancel</el-button>
 						<el-button title="Delete Tag" @click.stop="deleteTag(scope.row)" size="small">Delete tag</el-button>
 					</div>
 					<div class="ops main" v-else-if="!isRowDisabled(scope.row)">
-						<el-button title="Delete Tag" @click.stop="deleteTag(scope.row)" icon="el-icon-delete" circle></el-button>
-						<el-button title="Edit Tag" @click.stop="editTag(scope.row)" icon="el-icon-edit" circle></el-button>
+						<el-button title="Delete Tag" @click.stop="enableDelete(scope.row)" icon="el-icon-delete" circle></el-button>
+						<el-button title="Edit Tag" @click.stop="enableEdit(scope.row)" icon="el-icon-edit" circle></el-button>
 					</div>
 				</template>
 			</el-table-column>
@@ -97,7 +96,7 @@ export default Vue.extend({
 			const tagRows = this.$data.tagRows
 				.filter((row: ITagRow) => row.tag && row.tag.name.toLowerCase().trim().includes(this.$data.search.toLowerCase().trim() || ''));
 
-			return this.$props.isCreateEnabled ? [{create: true}].concat(tagRows) : tagRows;
+			return this.$props.isCreateEnabled ? [{create: true, tag: {name: ''}}].concat(tagRows) : tagRows;
 		},
 	},
 	methods: {
@@ -131,24 +130,33 @@ export default Vue.extend({
 		isDisabled(): boolean {
 			return !!(this.$props.isCreateEnabled || this.$data.editId || this.$data.deleteId);
 		},
-		editTag(row: ITagRow): void {
-			this.editId = (row.tag && row.tag.id) || '';
+		enableEdit(row: ITagRow): void {
+			this.editId = row.tag? `${row.tag.id}` : '';
 		},
-		cancelEdit(): void {
+		disableEdit(): void {
 			this.editId = '';
 		},
-		cancelDelete(): void {
+		updateTag(row: ITagRow): void {
+			row.tag && this.$emit('onUpdate', row.tag.id, row.tag.name);
+		},
+		enableDelete(row: ITagRow): void {
+			this.deleteId = row.tag ? `${row.tag.id}` : '';
+		},
+		disableDelete(): void {
 			this.deleteId = '';
 		},
 		deleteTag(row: ITagRow): void {
-			this.deleteId = (row.tag && row.tag.id) || '';
+			row.tag && this.$emit('onDelete', row.tag.id);
 		},
-		createNew(): void {
-			this.$emit('createNew');
+		enableCreate(): void {
+			this.$emit('enableCreate');
 			((this.$refs.table as Vue).$refs.bodyWrapper as Element).scrollTop = 0;
 		},
-		cancelCreate(): void {
-			this.$emit('cancelCreate');
+		disableCreate(): void {
+			this.$emit('disableCreate');
+		},
+		createTag(row: ITagRow): void {
+			row.tag && this.$emit('onCreate', row.tag.name);
 		},
 	},
 	watch: {
