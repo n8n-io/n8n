@@ -2,7 +2,7 @@ import {MigrationInterface, QueryRunner} from "typeorm";
 import * as config from '../../../../config';
 
 export class CreateTagEntity1617213344594 implements MigrationInterface {
-	name = 'CreateTagEntity1617213344594'
+	name = 'CreateTagEntity1617213344594';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.get('database.tablePrefix');

@@ -66,15 +66,15 @@ export class WorkflowEntity implements IWorkflowDb {
 
 	@ManyToMany(() => TagEntity, tag => tag.workflows)
 	@JoinTable({
-    name: "workflows_tags", // table name for the junction table of this relation
-    joinColumn: {
-        name: "workflowId",
-        referencedColumnName: "id"
-    },
-    inverseJoinColumn: {
-        name: "tagId",
-        referencedColumnName: "id"
-    }
+		name: "workflows_tags", // table name for the junction table of this relation
+		joinColumn: {
+				name: "workflowId",
+				referencedColumnName: "id",
+		},
+		inverseJoinColumn: {
+				name: "tagId",
+				referencedColumnName: "id",
+		},
 	})
 	tags: TagEntity[];
 }

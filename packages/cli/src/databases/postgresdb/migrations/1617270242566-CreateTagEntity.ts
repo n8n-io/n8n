@@ -2,9 +2,9 @@ import {MigrationInterface, QueryRunner} from "typeorm";
 import * as config from '../../../../config';
 
 export class CreateTagEntity1617270242566 implements MigrationInterface {
-    name = 'CreateTagEntity1617270242566'
+		name = 'CreateTagEntity1617270242566';
 
-    async up(queryRunner: QueryRunner): Promise<void> {
+		async up(queryRunner: QueryRunner): Promise<void> {
 			let tablePrefix = config.get('database.tablePrefix');
 			const tablePrefixPure = tablePrefix;
 			const schema = config.get('database.postgresdb.schema');
@@ -20,9 +20,9 @@ export class CreateTagEntity1617270242566 implements MigrationInterface {
 			await queryRunner.query(`CREATE INDEX IDX_${tablePrefixPure}5e29bfe9e22c5d6567f509d4a4 ON ${tablePrefix}workflows_tags ("tagId") `);
 			await queryRunner.query(`ALTER TABLE ${tablePrefix}workflows_tags ADD CONSTRAINT "FK_${tablePrefixPure}31140eb41f019805b40d0087449" FOREIGN KEY ("workflowId") REFERENCES ${tablePrefix}workflow_entity ("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
 			await queryRunner.query(`ALTER TABLE ${tablePrefix}workflows_tags ADD CONSTRAINT "FK_${tablePrefixPure}5e29bfe9e22c5d6567f509d4a46" FOREIGN KEY ("tagId") REFERENCES ${tablePrefix}tag_entity ("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-    }
+		}
 
-    async down(queryRunner: QueryRunner): Promise<void> {
+		async down(queryRunner: QueryRunner): Promise<void> {
 			let tablePrefix = config.get('database.tablePrefix');
 			const tablePrefixPure = tablePrefix;
 			const schema = config.get('database.postgresdb.schema');
@@ -37,6 +37,6 @@ export class CreateTagEntity1617270242566 implements MigrationInterface {
 			await queryRunner.query(`DROP TABLE ${tablePrefix}workflows_tags`);
 			await queryRunner.query(`DROP INDEX IDX_${tablePrefixPure}812eb05f7451ca757fb98444ce`);
 			await queryRunner.query(`DROP TABLE ${tablePrefix}tag_entity`);
-    }
+		}
 
 }

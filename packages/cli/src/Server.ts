@@ -108,6 +108,9 @@ import * as querystring from 'querystring';
 import * as Queue from '../src/Queue';
 import { OptionsWithUrl } from 'request-promise-native';
 import { Registry } from 'prom-client';
+import { ITagBase, ITagDb, ITagGetResponseItem, ITagUpdateResponse, IUsageCount } from './Interfaces';
+
+import * as TagHelpers from './TagHelpers';
 
 class App {
 
@@ -709,6 +712,60 @@ class App {
 			};
 		}));
 
+
+		// Retrieves all tags
+		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagGetResponseItem[]> => {
+			return await getConnection().createQueryBuilder()
+				.select('tag_entity.id', 'id')
+				.addSelect('tag_entity.name', 'name')
+				.addSelect('COUNT(workflow_entity.id)', 'usageCount')
+				.from('workflows_tags', 'workflows_tags')
+				.leftJoin('workflow_entity', 'workflow_entity', 'workflows_tags.workflowId = workflow_entity.id')
+				.leftJoin('tag_entity', 'tag_entity', 'workflows_tags.tagId = tag_entity.id')
+				.groupBy('tag_entity.id')
+				.getRawMany<ITagGetResponseItem>();
+		}));
+
+		// Creates a tag
+		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagDb> => {
+			TagHelpers.validateRequestBody(req.body);
+
+			const { name } = req.body;
+			await TagHelpers.validateName(name);
+			TagHelpers.validateLength(name);
+
+			const newTag: ITagBase = {
+				name,
+				createdAt: this.getCurrentDate(),
+				updatedAt: this.getCurrentDate(),
+			};
+
+			return await Db.collections.Tag!.save(newTag);
+		}));
+
+		// Deletes a tag
+		this.app.delete(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
+			await Db.collections.Tag!.delete({ id: Number(req.params.id) });
+			return true;
+		}));
+
+		// Updates an existing tag
+		this.app.patch(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagUpdateResponse> => {
+			TagHelpers.validateRequestBody(req.body);
+
+			const { name } = req.body;
+			TagHelpers.validateLength(name);
+
+			const { id } = req.params;
+			await TagHelpers.validateId(id);
+
+			const updatedTag: Partial<ITagDb> = {
+				name,
+				updatedAt: this.getCurrentDate(),
+			};
+
+			return await Db.collections.Tag!.update(id, updatedTag);
+		}));
 
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
