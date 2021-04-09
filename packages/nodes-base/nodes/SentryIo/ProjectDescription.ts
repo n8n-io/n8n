@@ -16,6 +16,11 @@ export const projectOperations = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new project',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get project by ID',
