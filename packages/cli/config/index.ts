@@ -446,6 +446,12 @@ const config = convict({
 	},
 
 	endpoints: {
+		payloadSizeMax: {
+			format: Number,
+			default: 16,
+			env: 'N8N_PAYLOAD_SIZE_MAX',
+			doc: 'Maximum payload size in MB.',
+		},
 		metrics: {
 			enable: {
 				format: 'Boolean',
