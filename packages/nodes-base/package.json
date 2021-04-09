@@ -160,6 +160,7 @@
       "dist/credentials/MindeeInvoiceApi.credentials.js",
       "dist/credentials/MoceanApi.credentials.js",
       "dist/credentials/MondayComApi.credentials.js",
+      "dist/credentials/MondayComOAuth2Api.credentials.js",
       "dist/credentials/MongoDb.credentials.js",
       "dist/credentials/Mqtt.credentials.js",
       "dist/credentials/Msg91Api.credentials.js",
