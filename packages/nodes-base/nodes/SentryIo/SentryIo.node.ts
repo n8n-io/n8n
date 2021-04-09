@@ -519,6 +519,7 @@ export class SentryIo implements INodeType {
 					const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/`;
 
 					responseData = await sentryIoApiRequest.call(this, 'DELETE', endpoint, qs);
+					responseData = { success: true };
 				}
 			}
 			if (resource === 'release') {
