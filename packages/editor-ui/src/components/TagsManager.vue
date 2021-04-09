@@ -8,7 +8,7 @@
 							<i slot="prefix" class="el-input__icon el-icon-search"></i>
 						</el-input>
 					</el-col>
-					<el-col :span="14">
+					<el-col :span="14" v-if="!isCreateEnabled">
 						<el-button @click="createNew" plain>
 							<font-awesome-icon icon="plus" />
 							<div class="next-icon-text">
@@ -20,7 +20,7 @@
 				<TagsTable
 					:tags="tags"
 					:search="searchText"
-					:isCreateEnabled="isCreateEnabled"
+					:create="isCreateEnabled"
 					@cancelCreate="disableCreate"
 				/>
 			</el-row>
