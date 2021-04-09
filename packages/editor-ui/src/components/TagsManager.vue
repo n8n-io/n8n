@@ -1,32 +1,34 @@
 <template>
 	<el-dialog title="Manage Tags" :visible.sync="visible">
-		<el-row class="content">
-			<TagsTable v-if="hasTags || isCreateEnabled"
-					:tags="tags"
-					:isCreateEnabled="isCreateEnabled"
-					@enableCreate="enableCreate"
-					@disableCreate="disableCreate"
-					@onCreate="onCreate"
-					@onUpdate="onUpdate"
-					@onDelete="onDelete"
-			/>
-			<el-col class="notags" :span="16" :offset="4" v-else>
-				<div class="icon">
-				🗄️
-				</div>
-				<div>
-					<div class="headline">
-						Ready to organize your workflows?
+		<div class="content">
+			<el-row v-if="!isLoading">
+				<TagsTable v-if="hasTags || isCreateEnabled"
+						:tags="tags"
+						:isCreateEnabled="isCreateEnabled"
+						@enableCreate="enableCreate"
+						@disableCreate="disableCreate"
+						@onCreate="onCreate"
+						@onUpdate="onUpdate"
+						@onDelete="onDelete"
+				/>
+				<el-col class="notags" :span="16" :offset="4" v-else>
+					<div class="icon">
+						🗄️
 					</div>
-					<div class="description">
-						With workflow tags, you're free to create the perfect tagging system for your flows
+					<div>
+						<div class="headline">
+							Ready to organize your workflows?
+						</div>
+						<div class="description">
+							With workflow tags, you're free to create the perfect tagging system for your flows
+						</div>
 					</div>
-				</div>
-				<el-button @click="enableCreate">
-					Create a tag
-				</el-button>
-			</el-col>
-		</el-row>
+					<el-button @click="enableCreate">
+						Create a tag
+					</el-button>
+				</el-col>
+			</el-row>
+		</div>
 		<el-row class="footer">
 			<el-button size="small">Done</el-button>
 		</el-row>
@@ -35,11 +37,15 @@
 
 <script lang="ts">
 import { ITag } from '@/Interface';
-import Vue from 'vue';
 
+import { showMessage } from '@/components/mixins/showMessage';
 import TagsTable from '@/components/TagsManagerTagsTable.vue';
 
-export default Vue.extend({
+import mixins from 'vue-typed-mixins';
+
+export default mixins(
+	showMessage,
+).extend({
 	name: 'TagsManager',
 	props: [
 		'visible',
@@ -73,14 +79,48 @@ export default Vue.extend({
 		disableCreate() {
 			this.$data.isCreateEnabled = false;
 		},
-		onCreate(name: string) {
-			this.$store.dispatch('tags/addNew', name);
+		async onCreate(name: string) {
+			try {
+				await this.$store.dispatch('tags/addNew', name);
+
+				this.$data.isCreateEnabled = false;
+
+				this.$showMessage({
+					title: 'New tag was created',
+					message: `${name} was added to your tag collection`,
+					type: 'success',
+				});
+			} catch(error) {
+				this.$showError(error, 'New tag was not created', `A problem occurred when trying to create the "${name}" tag`);
+			}
 		},
-		onUpdate(id: number, name: string) {
-			this.$store.dispatch('tags/rename', {id, name});
+		async onUpdate(id: number, name: string, oldName: string) {
+			try {
+				await this.$store.dispatch('tags/rename', {id, name});
+
+				this.$showMessage({
+					title: 'Tag was updated',
+					message: `The "${oldName}" tag was successfully updated to "${name}"`,
+					type: 'success',
+				});
+			}
+			catch(error) {
+				this.$showError(error, 'Tag was not updated', `A problem occurred when trying to update the "${oldName}" tag`);
+			}
 		},
-		onDelete(id: number) {
-			this.$store.dispatch('tags/delete', id);
+		async onDelete(id: number, name: string) {
+			try {
+				await this.$store.dispatch('tags/delete', id);
+
+				this.$showMessage({
+					title: 'Tag was deleted',
+					message: `The "${name}" tag was successfully deleted from your tag collection`,
+					type: 'success',
+				});
+			}
+			catch(error) {
+				this.$showError(error, 'Tag was not deleted', `A problem occurred when trying to delete the "${name}" tag`);
+			}
 		},
 	},
 });

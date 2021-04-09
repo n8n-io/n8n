@@ -19,7 +19,8 @@
 			<el-table-column label="Name">
 				<template slot-scope="scope">
 					<div class="name">
-						<el-input v-if="scope.row.create || isEditEnabled(scope.row)" :value="scope.row.tag.name"></el-input>
+						<el-input v-if="scope.row.create" v-model="newTagName"></el-input>
+						<el-input v-else-if="isEditEnabled(scope.row)" v-model="editTagName"></el-input>
 						<span v-else-if="isDeleteEnabled(scope.row)">Are you sure you want to delete this tag?</span>
 						<span v-else :class="isRowDisabled(scope.row)? 'disabled': ''">
 							{{scope.row.tag.name}}
@@ -43,7 +44,7 @@
 					</div>
 					<div class="ops" v-else-if="isEditEnabled(scope.row)">
 						<el-button title="Cancel" @click.stop="disableEdit()" size="small" plain>Cancel</el-button>
-						<el-button title="Save Tag" @click.stop="updateTag()" size="small">Save changes</el-button>
+						<el-button title="Save Tag" @click.stop="updateTag(scope.row)" size="small">Save changes</el-button>
 					</div>
 					<div class="ops" v-else-if="isDeleteEnabled(scope.row)">
 						<el-button title="Cancel" @click.stop="disableDelete()" size="small" plain>Cancel</el-button>
@@ -76,27 +77,24 @@ export default Vue.extend({
 		'isCreateEnabled',
 	],
 	data() {
-		const tagRows = [...this.$store.getters['tags/allTags']]
-			.sort((a: ITag, b: ITag) => a.name.localeCompare(b.name))
-			.map((t: ITag): ITagRow => ({
-				tag: t,
-				usage: t.usageCount > 0 ? `${t.usageCount} workflow${t.usageCount > 1 ? 's' : ''}` : 'Not being used',
-			}));
-
-
 		return {
-			tagRows,
 			search: '',
 			deleteId: '',
 			editId: '',
+			newTagName: '',
+			editTagName: ''
 		};
 	},
 	computed: {
 		rows() {
-			const tagRows = this.$data.tagRows
+			const tagRows = [...this.$store.getters['tags/allTags']]
+				.map((t: ITag): ITagRow => ({
+					tag: t,
+					usage: t.usageCount > 0 ? `${t.usageCount} workflow${t.usageCount > 1 ? 's' : ''}` : 'Not being used',
+				}))
 				.filter((row: ITagRow) => row.tag && row.tag.name.toLowerCase().trim().includes(this.$data.search.toLowerCase().trim() || ''));
 
-			return this.$props.isCreateEnabled ? [{create: true, tag: {name: ''}}].concat(tagRows) : tagRows;
+			return this.$props.isCreateEnabled ? [{create: true, tag: {name: 'test'}}].concat(tagRows) : tagRows;
 		},
 	},
 	methods: {
@@ -111,10 +109,10 @@ export default Vue.extend({
 			return 1;
 		},
 		isEditEnabled(row: ITagRow): boolean {
-			return !this.$props.isCreateEnabled && !!this.$data.editId && !!row.tag && row.tag.id === this.$data.editId;
+			return !this.$props.isCreateEnabled && !!this.$data.editId && !!row.tag && `${row.tag.id}` === this.$data.editId;
 		},
 		isDeleteEnabled(row: ITagRow): boolean {
-			return !this.$props.isCreateEnabled && !!this.$data.deleteId && !!row.tag && row.tag.id === this.$data.deleteId;
+			return !this.$props.isCreateEnabled && !!this.$data.deleteId && !!row.tag && `${row.tag.id}` === this.$data.deleteId;
 		},
 		isRowDisabled(row: ITagRow): boolean {
 			if (this.$data.editId && row.tag && row.tag.id !== this.$data.editId) {
@@ -132,12 +130,14 @@ export default Vue.extend({
 		},
 		enableEdit(row: ITagRow): void {
 			this.editId = row.tag? `${row.tag.id}` : '';
+			this.editTagName = row.tag? row.tag.name : '';
 		},
 		disableEdit(): void {
 			this.editId = '';
+			this.editTagName = '';
 		},
 		updateTag(row: ITagRow): void {
-			row.tag && this.$emit('onUpdate', row.tag.id, row.tag.name);
+			row.tag && this.$emit('onUpdate', row.tag.id, this.$data.editTagName, row.tag.name);
 		},
 		enableDelete(row: ITagRow): void {
 			this.deleteId = row.tag ? `${row.tag.id}` : '';
@@ -146,7 +146,8 @@ export default Vue.extend({
 			this.deleteId = '';
 		},
 		deleteTag(row: ITagRow): void {
-			row.tag && this.$emit('onDelete', row.tag.id);
+			row.tag && this.$emit('onDelete', row.tag.id, row.tag.name);
+			this.deleteId = '';
 		},
 		enableCreate(): void {
 			this.$emit('enableCreate');
@@ -155,14 +156,16 @@ export default Vue.extend({
 		disableCreate(): void {
 			this.$emit('disableCreate');
 		},
-		createTag(row: ITagRow): void {
-			row.tag && this.$emit('onCreate', row.tag.name);
+		createTag(): void {
+			this.$emit('onCreate', this.$data.newTagName);
 		},
 	},
 	watch: {
 		isCreateEnabled() {
 			this.$data.deleteId = '';
 			this.$data.editId = '';
+			this.$data.newTagName = '';
+			this.$data.editTagName = '';
 		},
 	},
 });

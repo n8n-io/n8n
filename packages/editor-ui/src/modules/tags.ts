@@ -32,7 +32,8 @@ const module = {
 			state.isLoading = isLoading;
 		},
 		setTags: (state: ITagsState, tags: ITag[]) => {
-			state.tags = tags;
+			state.tags = tags
+				.sort((a: ITag, b: ITag) => a.name.localeCompare(b.name));
 		},
 		addTag: (state: ITagsState, tag: ITag) => {
 			state.tags = [tag].concat(state.tags);

@@ -7,11 +7,11 @@ export async function getTags(context: ActionContext<any, unknown>): Promise<ITa
 };
 
 export async function addTag(context: ActionContext<any, unknown>, params: {name: string}) {
-    return await makeRestApiRequest(context, 'POST', '/tags') 
+    return await makeRestApiRequest(context, 'POST', '/tags', params);
 }
 
 export async function updateTag(context: ActionContext<any, unknown>, id: number, params: {name: string}) {
-    return await makeRestApiRequest(context, 'PATCH', `/tags/${id}`);
+    return await makeRestApiRequest(context, 'PATCH', `/tags/${id}`, params);
 }
 
 export async function deleteTag(context: ActionContext<any, unknown>, id: number) {

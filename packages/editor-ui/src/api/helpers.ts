@@ -40,12 +40,21 @@ export class ResponseError extends Error {
 
 export default async function makeRestApiRequest(context: ActionContext<any, unknown> | Store<any>, method: Method, endpoint: string, data?: IDataObject): Promise<any> { // tslint:disable-line:no-any
     try {
+		let baseURL = context.getters.getRestUrl;
+		let sessionid = context.getters.sessionId;
+
+		if ((context as ActionContext<any, unknown>).rootGetters) {
+			const actionContext = context as ActionContext<any, unknown>;
+			baseURL = actionContext.rootGetters.getRestUrl;
+			sessionid = actionContext.rootGetters.sessionId;
+		}
+
         const options: AxiosRequestConfig = {
             method,
             url: endpoint,
-            baseURL: context.getters.getRestUrl || ((context as ActionContext<any, unknown>).rootGetters.getRestUrl),
+            baseURL: baseURL,
             headers: {
-                sessionid: context.getters.sessionId || ((context as ActionContext<any, unknown>).rootGetters.sessionId),
+                sessionid,
             },
         };
         if (['PATCH', 'POST', 'PUT'].includes(method)) {
