@@ -43,7 +43,7 @@ export default Vue.extend({
 	],
 	data() {
 		return {
-			isCreateEnabled: false
+			isCreateEnabled: false,
 		};
 	},
 	components: {
@@ -63,7 +63,7 @@ export default Vue.extend({
 		},
 		disableCreate() {
 			this.$data.isCreateEnabled = false;
-		}
+		},
 	},
 });
 </script>

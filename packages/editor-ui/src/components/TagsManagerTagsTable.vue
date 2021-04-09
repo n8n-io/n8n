@@ -68,20 +68,20 @@ interface ITagRow {
 	tag?: ITag;
 	usage?: string;
 	create?: boolean;
-};
+}
 
 export default Vue.extend({
 	name: 'TagsTable',
 	props: [
 		'tags',
-		'isCreateEnabled'
+		'isCreateEnabled',
 	],
 	data() {
 		const tagRows = [...this.$store.getters['tags/allTags']]
 			.sort((a: ITag, b: ITag) => a.name.localeCompare(b.name))
 			.map((t: ITag): ITagRow => ({
 				tag: t,
-				usage: t.usageCount > 0 ? `${t.usageCount} workflow${t.usageCount > 1 ? 's' : ''}` : 'Not being used'
+				usage: t.usageCount > 0 ? `${t.usageCount} workflow${t.usageCount > 1 ? 's' : ''}` : 'Not being used',
 			}));
 
 
@@ -89,16 +89,16 @@ export default Vue.extend({
 			tagRows,
 			search: '',
 			deleteId: '',
-			editId: ''
+			editId: '',
 		};
 	},
 	computed: {
-		rows: function() {
+		rows() {
 			const tagRows = this.$data.tagRows
 				.filter((row: ITagRow) => row.tag && row.tag.name.toLowerCase().trim().includes(this.$data.search.toLowerCase().trim() || ''));
 
 			return this.$props.isCreateEnabled ? [{create: true}].concat(tagRows) : tagRows;
-		}
+		},
 	},
 	methods: {
 		getSpan({row, columnIndex}: {row: ITagRow, columnIndex: number}) {
@@ -112,10 +112,10 @@ export default Vue.extend({
 			return 1;
 		},
 		isEditEnabled(row: ITagRow): boolean {
-			return !this.$props.isCreateEnabled && this.$data.editId && row.tag && row.tag.id === this.$data.editId;
+			return !this.$props.isCreateEnabled && !!this.$data.editId && !!row.tag && row.tag.id === this.$data.editId;
 		},
 		isDeleteEnabled(row: ITagRow): boolean {
-			return !this.$props.isCreateEnabled && this.$data.deleteId && row.tag && row.tag.id === this.$data.deleteId;
+			return !this.$props.isCreateEnabled && !!this.$data.deleteId && !!row.tag && row.tag.id === this.$data.deleteId;
 		},
 		isRowDisabled(row: ITagRow): boolean {
 			if (this.$data.editId && row.tag && row.tag.id !== this.$data.editId) {
@@ -149,14 +149,14 @@ export default Vue.extend({
 		},
 		cancelCreate(): void {
 			this.$emit('cancelCreate');
-		}
+		},
 	},
 	watch: {
 		isCreateEnabled() {
 			this.$data.deleteId = '';
 			this.$data.editId = '';
-		}
-	}
+		},
+	},
 });
 </script>
 
