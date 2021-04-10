@@ -18,8 +18,24 @@
 		],
 		"generic": [
 			{
+				"label": "2021: The Year to Automate the New You with n8n",
+				"icon": "☀️",
+				"url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/"
+			},
+			{
+				"label": "Supercharging your conference registration process with n8n",
+				"icon": "🎫",
+				"url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/"
+			},
+			{
+				"label": "Building an expense tracking app in 10 minutes",
+				"icon": "📱",
+				"url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/"
+			},
+			{
 				"label": "Automating Conference Organization Processes with n8n",
-				"url": "https://medium.com/n8n-io/automating-conference-organization-processes-with-n8n-ab8f64a7a520"
+				"icon": "🙋‍♀️",
+				"url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/"
 			}
 		]
 	}
