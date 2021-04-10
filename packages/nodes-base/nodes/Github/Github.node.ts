@@ -1104,13 +1104,6 @@ export class Github implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Name',
-						name: 'name',
-						type: 'string',
-						default: '',
-						description: 'The name of the release.',
-					},
-					{
 						displayName: 'Body',
 						name: 'body',
 						type: 'string',
@@ -1126,6 +1119,13 @@ export class Github implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'Set "true" to create a draft (unpublished) release, "false" to create a published one.',
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'The name of the release.',
 					},
 					{
 						displayName: 'Prerelease',
