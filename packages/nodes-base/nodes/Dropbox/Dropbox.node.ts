@@ -1032,6 +1032,10 @@ export class Dropbox implements INodeType {
 					'size': 'contentSize',
 					'.tag': 'type',
 					'content_hash': 'contentHash',
+					'path_lower': 'pathLower',
+					'path_display': 'pathDisplay',
+					'has_explicit_shared_members': 'hasExplicitSharedMembers',
+					'is_downloadable': 'isDownloadable',
 				};
 
 				if (returnAll === false) {
