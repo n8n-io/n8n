@@ -58,6 +58,7 @@ export class WriteBinaryFile implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
 		const items = this.getInputData();
+
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length as unknown as number;
 		let item: INodeExecutionData;

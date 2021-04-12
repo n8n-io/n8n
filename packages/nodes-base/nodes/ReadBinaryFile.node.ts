@@ -57,16 +57,21 @@ export class ReadBinaryFile implements INodeType {
 		const length = items.length as unknown as number;
 		let item: INodeExecutionData;
 
-    let data;
-    try {
-      data = await fsReadFileAsync(filePath) as Buffer;
-    } catch (error) {
-      if (error.code === 'ENOENT') {
-        throw new NodeOperationError(this.getNode(), `The file "${filePath}" could not be found.`);
-      }
+		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
+			item = items[itemIndex];
+			const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+			const filePath = this.getNodeParameter('filePath', itemIndex) as string;
 
-      throw error;
-    }
+			let data;
+			try {
+				data = await fsReadFileAsync(filePath) as Buffer;
+			} catch (error) {
+				if (error.code === 'ENOENT') {
+					throw new NodeOperationError(this.getNode(), `The file "${filePath}" could not be found.`);
+				}
+
+				throw error;
+			}
 
 			const newItem: INodeExecutionData = {
 				json: item.json,
