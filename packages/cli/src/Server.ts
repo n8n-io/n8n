@@ -562,6 +562,21 @@ class App {
 				return undefined;
 			}
 
+			result.tags = await getConnection()
+				.createQueryBuilder()
+				.select('tag_entity.id', 'id')
+				.addSelect('tag_entity.name', 'name')
+				.from('tag_entity', 'tag_entity')
+				.where(qb => {
+					return "id IN " + qb.subQuery()
+						.select('tagId')
+						.from('workflow_entity', 'workflow_entity')
+						.leftJoin('workflows_tags', 'workflows_tags', 'workflows_tags.workflowId = workflow_entity.id')
+						.where("workflow_entity.id = :id", { id: Number(req.params.id) })
+						.getQuery();
+				})
+				.getRawMany();
+
 			// Convert to response format in which the id is a string
 			(result as IWorkflowBase as IWorkflowResponse).id = result.id.toString();
 			return result as IWorkflowBase as IWorkflowResponse;
