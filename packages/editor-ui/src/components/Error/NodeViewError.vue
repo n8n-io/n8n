@@ -1,65 +1,68 @@
 <template>
-  <div>
+	<div>
 		<div class="error-header">
-  	  <div class="error-message">ERROR: {{error.message}}</div>
+			<div class="error-message">ERROR: {{error.message}}</div>
 			<div class="error-description" v-if="error.description">{{error.description}}</div>
 		</div>
-		<el-button v-if="!showFullError" @click="revealError()">Show Details</el-button>
-		<div v-if="showFullError" class="error-details">
-			<el-divider content-position="left">Error details</el-divider>
-			<div v-if="error.timestamp">
-				<el-card class="box-card" shadow="never">
-					<div slot="header" class="clearfix box-card__title">
-						<span>Time</span>
-					</div>
-					<div>
-						{{new Date(error.timestamp).toLocaleString()}}
-					</div>
-				</el-card>
+		<details>
+			<summary class="error-details__summary">
+				<font-awesome-icon class="error-details__icon" icon="angle-right" /> Details
+			</summary>
+			<div class="error-details__content">
+				<div v-if="error.timestamp">
+					<el-card class="box-card" shadow="never">
+						<div slot="header" class="clearfix box-card__title">
+							<span>Time</span>
+						</div>
+						<div>
+							{{new Date(error.timestamp).toLocaleString()}}
+						</div>
+					</el-card>
+				</div>
+				<div v-if="error.httpCode">
+					<el-card class="box-card" shadow="never">
+						<div slot="header" class="clearfix box-card__title">
+							<span>HTTP-Code</span>
+						</div>
+						<div>
+							{{error.httpCode}}
+						</div>
+					</el-card>
+				</div>
+				<div v-if="error.cause">
+					<el-card class="box-card" shadow="never">
+						<div slot="header" class="clearfix box-card__title">
+							<span>Cause</span>
+							<br>
+							<span class="box-card__subtitle">Data below may contain sensitive information. Proceed with caution when sharing.</span>
+						</div>
+						<div>
+							<el-button class="copy-button" @click="copyCause" circle type="text" title="Copy to clipboard">
+								<font-awesome-icon icon="copy" />
+							</el-button>
+							<vue-json-pretty
+								:data="error.cause"
+								:deep="3"
+								:showLength="true"
+								selectableType="single"
+								path="error"
+								class="json-data"
+							/>
+						</div>
+					</el-card>
+				</div>
+				<div v-if="error.stack">
+					<el-card class="box-card" shadow="never">
+						<div slot="header" class="clearfix box-card__title">
+							<span>Stack</span>
+						</div>
+						<div>
+							<pre><code>{{error.stack}}</code></pre>
+						</div>
+					</el-card>
+				</div>
 			</div>
-			<div v-if="error.httpCode">
-				<el-card class="box-card" shadow="never">
-					<div slot="header" class="clearfix box-card__title">
-						<span>HTTP-Code</span>
-					</div>
-					<div>
-						{{error.httpCode}}
-					</div>
-				</el-card>
-			</div>
-			<div v-if="error.stack">
-				<el-card class="box-card" shadow="never">
-					<div slot="header" class="clearfix box-card__title">
-						<span>Stack</span>
-					</div>
-					<div>
-						<pre><code>{{error.stack}}</code></pre>
-					</div>
-				</el-card>
-			</div>
-			<div v-if="error.cause">
-				<el-card class="box-card" shadow="never">
-					<div slot="header" class="clearfix box-card__title">
-						<span>Cause</span>
-						<br>
-						<span class="box-card__subtitle">Data below may contain sensitive information. Proceed with caution when sharing.</span>
-					</div>
-					<div>
-						<el-button class="copy-button" @click="copyCause" circle type="text" title="Copy to clipboard">
-							<font-awesome-icon icon="copy" />
-						</el-button>
-						<vue-json-pretty
-							:data="error.cause"
-							:deep="10"
-							:showLength="true"
-							selectableType="single"
-							path="error"
-							class="json-data"
-						/>
-					</div>
-				</el-card>
-			</div>
-		</div>
+		</details>
   </div>
 </template>
 
@@ -83,16 +86,7 @@ export default mixins(
 	components: {
 		VueJsonPretty,
 	},
-	data () {
-		return {
-			showFullError: false,
-		};
-	},
-	computed: {},
 	methods: {
-		revealError() {
-			this.showFullError = true;
-		},
 		copyCause() {
 			this.copyToClipboard(JSON.stringify(this.error.cause));
 			this.copySuccess();
@@ -111,7 +105,7 @@ export default mixins(
 <style lang="scss">
 
 .error-header {
-	margin-bottom: 50px;
+	margin-bottom: 10px;
 }
 
 .error-message {
@@ -125,8 +119,33 @@ export default mixins(
 	font-size: 1rem;
 }
 
-.error-details {
-	margin-top: 50px;
+.error-details__summary {
+	font-weight: 600;
+	font-size: 16px;
+	cursor: pointer;
+	outline:none;
+}
+
+.error-details__icon {
+	margin-right: 4px;
+}
+
+details > summary {
+    list-style-type: none;
+}
+
+details > summary::-webkit-details-marker {
+    display: none;
+}
+
+details[open] {
+  .error-details__icon {
+		transform: rotate(90deg);
+	}
+}
+
+.error-details__content {
+	margin-top: 15px;
 }
 
 .el-divider__text {

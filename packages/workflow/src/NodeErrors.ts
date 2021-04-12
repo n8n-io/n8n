@@ -150,20 +150,20 @@ export class NodeOperationError extends NodeError {
 }
 
 const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
-	'4XX': 'Your request is invalid or could not get processed by the service',
-	'400': 'Bad Request - please check the payload of your request',
-	'401': 'Authorization failed - please check your Credentials',
-	'402': 'Payment required - please check your payment details',
-	'403': 'Forbidden - please check your Credentials',
-	'404': 'The resource you are requesting has not been found',
-	'405': 'Method not allowed - please check if you are using the right HTTP-Method',
-	'429': 'Too many requests - take a break! the service is receiving too many requests from you',
+	'4XX': 'Your request is invalid or could not be processed by the service',
+	'400': 'Bad request - please check your parameters',
+	'401': 'Authorization failed - please check your credentials',
+	'402': 'Payment required - perhaps check your payment details?',
+	'403': 'Forbidden - perhaps check your credentials?',
+	'404': 'The resource you are requesting could not be found',
+	'405': 'Method not allowed - please check you are using the right HTTP method',
+	'429': 'The service is receiving too many requests from you! Perhaps take a break?',
 
-	'5XX': 'The service failed to process your request - try again later',
-	'500': 'The service was not able to process your request and returned an error',
-	'502': 'Bad Gateway- service failed to handle your request',
-	'503': 'Service unavailable - try again later',
-	'504': 'Gateway timed out - try again later',
+	'5XX': 'The service failed to process your request',
+	'500': 'The service was not able to process your request',
+	'502': 'Bad gateway - the service failed to handle your request',
+	'503': 'Service unavailable - perhaps try again later?',
+	'504': 'Gateway timed out - perhaps try again later?',
 };
 
 const UNKNOWN_ERROR_MESSAGE = 'UNKNOWN ERROR - check the detailed error for more information';
