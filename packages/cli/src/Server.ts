@@ -562,6 +562,21 @@ class App {
 				return undefined;
 			}
 
+			result.tags = await getConnection()
+				.createQueryBuilder()
+				.select('tag_entity.id', 'id')
+				.addSelect('tag_entity.name', 'name')
+				.from('tag_entity', 'tag_entity')
+				.where(qb => {
+					return "id IN " + qb.subQuery()
+						.select('tagId')
+						.from('workflow_entity', 'workflow_entity')
+						.leftJoin('workflows_tags', 'workflows_tags', 'workflows_tags.workflowId = workflow_entity.id')
+						.where("workflow_entity.id = :id", { id: Number(req.params.id) })
+						.getQuery();
+				})
+				.getRawMany();
+
 			// Convert to response format in which the id is a string
 			(result as IWorkflowBase as IWorkflowResponse).id = result.id.toString();
 			return result as IWorkflowBase as IWorkflowResponse;
@@ -745,15 +760,26 @@ class App {
 			};
 		}));
 
-		// Retrieves all tags
-		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<Array<{ id: number, name: string, usageCount: number }>> => {
-			return await getConnection().createQueryBuilder()
+		// Retrieves all tags, with or without usage count
+		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<Array<{ id: number, name: string, usageCount?: number }>> => {
+			const withUsageCount = req.query.withUsageCount === 'true';
+
+			if (withUsageCount) {
+				return await getConnection().createQueryBuilder()
 				.select('tag_entity.id', 'id')
 				.addSelect('tag_entity.name', 'name')
 				.addSelect('COUNT(workflow_entity.id)', 'usageCount')
 				.from('tag_entity', 'tag_entity')
 				.leftJoin('workflows_tags', 'workflows_tags', 'workflows_tags.tagId = tag_entity.id')
 				.leftJoin('workflow_entity', 'workflow_entity', 'workflows_tags.workflowId = workflow_entity.id')
+				.groupBy('tag_entity.id')
+				.getRawMany();
+			}
+
+			return await getConnection().createQueryBuilder()
+				.select('tag_entity.id', 'id')
+				.addSelect('tag_entity.name', 'name')
+				.from('tag_entity', 'tag_entity')
 				.groupBy('tag_entity.id')
 				.getRawMany();
 		}));
@@ -790,6 +816,7 @@ class App {
 			TagHelpers.validateRequestBody(req.body);
 
 			const { name } = req.body;
+			await TagHelpers.validateName(name);
 			TagHelpers.validateLength(name);
 
 			const id = Number(req.params.id);

@@ -2,7 +2,7 @@ import { FindOneOptions, getConnection } from "typeorm";
 import { Db, ResponseHelper } from ".";
 
 /**
- * Validate whether a tag name exists so that it cannot be used for a create operation.
+ * Validate whether a tag name exists so that it cannot be used for a create/update operation.
  */
 export async function validateName(name: string): Promise<void> | never {
 	const findQuery = { where: { name } } as FindOneOptions;
