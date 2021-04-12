@@ -107,7 +107,7 @@ export class FunctionItem implements INodeType {
 
 			// Do very basic validation of the data
 			if (jsonData === undefined) {
-				throw new Error('No data got returned. Always an object has to be returned!');
+				throw new NodeOperationError(this.getNode(), 'No data got returned. Always an object has to be returned!');
 			}
 
 			const returnItem: INodeExecutionData = {

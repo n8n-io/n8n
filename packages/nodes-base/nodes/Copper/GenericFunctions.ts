@@ -18,7 +18,6 @@ import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
