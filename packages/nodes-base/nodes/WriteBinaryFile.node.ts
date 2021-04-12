@@ -58,7 +58,7 @@ export class WriteBinaryFile implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
 		const items = this.getInputData();
-    const returnData: INodeExecutionData[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length as unknown as number;
 		let item: INodeExecutionData;
 
@@ -77,7 +77,7 @@ export class WriteBinaryFile implements INodeType {
 			if (item.binary[dataPropertyName] === undefined) {
 				throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So no file can be written!`);
 			}
-      
+
 			// Write the file to disk
 			await fsWriteFileAsync(fileName, Buffer.from(item.binary[dataPropertyName].data, BINARY_ENCODING), 'binary');
 

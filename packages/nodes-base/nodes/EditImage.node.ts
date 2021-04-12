@@ -959,7 +959,7 @@ export class EditImage implements INodeType {
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			item = items[itemIndex];
 
-      
+
 			const operation = this.getNodeParameter('operation', itemIndex) as string;
 			const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
 

@@ -129,8 +129,8 @@ export class Mailgun implements INodeType {
 			const credentials = this.getCredentials('mailgunApi');
 
 			if (credentials === undefined) {
-			  throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		  }
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+			}
 
 			const formData: IDataObject = {
 				from: fromEmail,
