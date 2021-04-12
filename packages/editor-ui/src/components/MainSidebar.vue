@@ -4,9 +4,12 @@
 		<executions-list :dialogVisible="executionsListDialogVisible" @closeDialog="closeExecutionsListOpenDialog"></executions-list>
 		<credentials-list :dialogVisible="credentialOpenDialogVisible" @closeDialog="closeCredentialOpenDialog"></credentials-list>
 		<credentials-edit :dialogVisible="credentialNewDialogVisible" @closeDialog="closeCredentialNewDialog"></credentials-edit>
+		<tags-manager 
+			:dialogVisible="tagsManagerVisible"
+			@closeDialog="closeTagsManager"
+		/>
 		<workflow-open @openWorkflow="openWorkflow" :dialogVisible="workflowOpenDialogVisible" @closeDialog="closeWorkflowOpenDialog"></workflow-open>
 		<workflow-settings :dialogVisible="workflowSettingsDialogVisible" @closeDialog="closeWorkflowSettingsDialog"></workflow-settings>
-		<tags-manager :dialogVisible="tagsDialogVisible" />
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
 		<div class="side-menu-wrapper" :class="{expanded: !isCollapsed}">
@@ -220,7 +223,7 @@ export default mixins(
 				stopExecutionInProgress: false,
 				workflowOpenDialogVisible: false,
 				workflowSettingsDialogVisible: false,
-				tagsDialogVisible: false,
+				tagsManagerVisible: false,
 			};
 		},
 		computed: {
@@ -293,6 +296,9 @@ export default mixins(
 			},
 			closeCredentialNewDialog () {
 				this.credentialNewDialogVisible = false;
+			},
+			closeTagsManager() {
+				this.tagsManagerVisible = false;
 			},
 			async stopExecution () {
 				const executionId = this.$store.getters.activeExecutionId;

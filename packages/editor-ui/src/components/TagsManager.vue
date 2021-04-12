@@ -39,7 +39,7 @@
 			</el-row>
 		</div>
 		<el-row class="footer">
-			<el-button size="small">Done</el-button>
+			<el-button size="small" @click="closeDialog">Done</el-button>
 		</el-row>
 	</el-dialog>
 </template>
@@ -158,6 +158,10 @@ export default mixins(
 				this.$showError(error, 'Tag was not deleted', `A problem occurred when trying to delete the "${name}" tag`);
 			}
 		},
+
+		closeDialog() {
+			this.$emit('closeDialog');
+		}
 	},
 });
 </script>

@@ -116,11 +116,13 @@ export default Vue.extend({
 		}
 	},
 	methods: {
-		getSpan({row, columnIndex}: {row: ITagRow, columnIndex: number}) {
-			if (columnIndex === 0 && this.isDeleteEnabled(row)) {
+		getSpan({row, columnIndex}: {row: ITagRow, columnIndex: number}): number | number[] {
+			// expand text column with delete message
+			if (columnIndex === 0 && row.tag && this.isDeleteEnabled(`${row.tag.id}`)) {
 				return [1, 2];
 			}
-			if (columnIndex === 1 && this.isDeleteEnabled(row)) {
+			// hide usage column on delete
+			if (columnIndex === 1 && row.tag && this.isDeleteEnabled(`${row.tag.id}`)) {
 				return [0, 0];
 			}
 
@@ -146,6 +148,7 @@ export default Vue.extend({
 		isHeaderDisabled(): boolean {
 			return !!(this.$props.isCreateEnabled || this.$props.updateId || this.$props.deleteId);
 		},
+
 		enableUpdate(row: ITagRow): void {
 			if (row.tag) {
 				this.$emit('enableUpdate', row.tag.id);
@@ -159,6 +162,7 @@ export default Vue.extend({
 		updateTag(row: ITagRow): void {
 			row.tag && this.$emit('onUpdate', row.tag.id, this.$data.newTagName, row.tag.name);
 		},
+
 		enableDelete(row: ITagRow): void {
 			row.tag && this.$emit('enableDelete', row.tag.id);
 		},
@@ -168,6 +172,7 @@ export default Vue.extend({
 		deleteTag(row: ITagRow): void {
 			row.tag && this.$emit('onDelete', row.tag.id, row.tag.name);
 		},
+
 		enableCreate(): void {
 			this.$emit('enableCreate');
 			((this.$refs.table as Vue).$refs.bodyWrapper as Element).scrollTop = 0;
