@@ -18,45 +18,52 @@
 		<el-table :data="rows" stripe max-height="450" :span-method="getSpan" ref="table">
 			<el-table-column label="Name">
 				<template slot-scope="scope">
-					<div class="name">
-						<el-input 
-							v-if="scope.row.create || scope.row.update"
-							v-model="newTagName"
-							:maxlength="24"
-						></el-input>
-						<span v-else-if="scope.row.delete">Are you sure you want to delete this tag?</span>
-						<span v-else :class="scope.row.disable? 'disabled': ''">
-							{{scope.row.tag.name}}
-						</span>
+					<div class="name" :key="scope.row.id">
+						<transition name="fade" mode="out-in">
+							<el-input 
+								v-if="scope.row.create || scope.row.update"
+								v-model="newTagName"
+								:maxlength="24"
+								ref="nameInput"
+							></el-input>
+							<span v-else-if="scope.row.delete">Are you sure you want to delete this tag?</span>
+							<span v-else :class="scope.row.disable? 'disabled': ''">
+								{{scope.row.tag.name}}
+							</span>
+						</transition>
 					</div>
 				</template>
 			</el-table-column>
 			<el-table-column label="Usage">
 					<template slot-scope="scope">
-						<div v-if="!scope.row.create && !scope.row.delete" :class="scope.row.disable? 'disabled': ''">
-							{{scope.row.usage}}
-						</div>
+						<transition name="fade" mode="out-in">
+							<div v-if="!scope.row.create && !scope.row.delete" :class="scope.row.disable? 'disabled': ''">
+								{{scope.row.usage}}
+							</div>
+						</transition>
 					</template>
 			</el-table-column>
 			<el-table-column
 				width="200">
 				<template slot-scope="scope">
-					<div class="ops" v-if="scope.row.create">
-						<el-button title="Cancel" @click.stop="disableCreate()" size="small" plain>Cancel</el-button>
-						<el-button title="Create Tag" @click.stop="createTag()" size="small">Create tag</el-button>
-					</div>
-					<div class="ops" v-else-if="scope.row.update">
-						<el-button title="Cancel" @click.stop="disableUpdate()" size="small" plain>Cancel</el-button>
-						<el-button title="Save Tag" @click.stop="updateTag(scope.row)" size="small">Save changes</el-button>
-					</div>
-					<div class="ops" v-else-if="scope.row.delete">
-						<el-button title="Cancel" @click.stop="disableDelete()" size="small" plain>Cancel</el-button>
-						<el-button title="Delete Tag" @click.stop="deleteTag(scope.row)" size="small">Delete tag</el-button>
-					</div>
-					<div class="ops main" v-else-if="!scope.row.disable">
-						<el-button title="Delete Tag" @click.stop="enableDelete(scope.row)" icon="el-icon-delete" circle></el-button>
-						<el-button title="Edit Tag" @click.stop="enableUpdate(scope.row)" icon="el-icon-edit" circle></el-button>
-					</div>
+					<transition name="fade" mode="out-in">
+						<div class="ops" v-if="scope.row.create">
+							<el-button title="Cancel" @click.stop="disableCreate()" size="small" plain>Cancel</el-button>
+							<el-button title="Create Tag" @click.stop="createTag()" size="small">Create tag</el-button>
+						</div>
+						<div class="ops" v-else-if="scope.row.update">
+							<el-button title="Cancel" @click.stop="disableUpdate()" size="small" plain>Cancel</el-button>
+							<el-button title="Save Tag" @click.stop="updateTag(scope.row)" size="small">Save changes</el-button>
+						</div>
+						<div class="ops" v-else-if="scope.row.delete">
+							<el-button title="Cancel" @click.stop="disableDelete()" size="small" plain>Cancel</el-button>
+							<el-button title="Delete Tag" @click.stop="deleteTag(scope.row)" size="small">Delete tag</el-button>
+						</div>
+						<div class="ops main" v-else-if="!scope.row.disable">
+							<el-button title="Delete Tag" @click.stop="enableDelete(scope.row)" icon="el-icon-delete" circle></el-button>
+							<el-button title="Edit Tag" @click.stop="enableUpdate(scope.row)" icon="el-icon-edit" circle></el-button>
+						</div>
+					</transition>
 				</template>
 			</el-table-column>
 		</el-table>
@@ -95,13 +102,13 @@ export default Vue.extend({
 		rows(): ITagRow[] {
 			const filter = this.search;
 			const tagRows = [...this.$store.getters['tags/allTags']]
-				.filter((tag: ITag) => tag && (this.stickyIds.has(tag.id) || tag.name.toLowerCase().trim().includes(filter.toLowerCase().trim() || '')))
+				.filter((tag: ITag) => this.stickyIds.has(tag.id) || tag.name.toLowerCase().trim().includes(filter.toLowerCase().trim() || ''))
 				.map((tag: ITag): ITagRow => ({
 					tag,
 					usage: tag.usageCount > 0 ? `${tag.usageCount} workflow${tag.usageCount > 1 ? 's' : ''}` : 'Not being used',
-					disable: this.isTagDisabled(`${tag.id}`),
-					update: this.isUpdateEnabled(`${tag.id}`),
-					delete: this.isDeleteEnabled(`${tag.id}`),
+					disable: this.isTagDisabled(tag.id),
+					update: this.isUpdateEnabled(tag.id),
+					delete: this.isDeleteEnabled(tag.id),
 				}));
 
 			return this.$props.isCreateEnabled ? [{create: true}, ...tagRows] : tagRows;
@@ -119,23 +126,23 @@ export default Vue.extend({
 	methods: {
 		getSpan({row, columnIndex}: {row: ITagRow, columnIndex: number}): number | number[] {
 			// expand text column with delete message
-			if (columnIndex === 0 && row.tag && this.isDeleteEnabled(`${row.tag.id}`)) {
+			if (columnIndex === 0 && row.tag && this.isDeleteEnabled(row.tag.id)) {
 				return [1, 2];
 			}
 			// hide usage column on delete
-			if (columnIndex === 1 && row.tag && this.isDeleteEnabled(`${row.tag.id}`)) {
+			if (columnIndex === 1 && row.tag && this.isDeleteEnabled(row.tag.id)) {
 				return [0, 0];
 			}
 
 			return 1;
 		},
-		isUpdateEnabled(tagId: string): boolean {
+		isUpdateEnabled(tagId: number): boolean {
 			return !this.$props.isCreateEnabled && !!this.$props.updateId && tagId === this.$props.updateId;
 		},
-		isDeleteEnabled(tagId: string): boolean {
+		isDeleteEnabled(tagId: number): boolean {
 			return !this.$props.isCreateEnabled && !!this.$props.deleteId && tagId === this.$props.deleteId;
 		},
-		isTagDisabled(tagId: string): boolean {
+		isTagDisabled(tagId: number): boolean {
 			if (this.$props.updateId && tagId !== this.$props.updateId) {
 				return true;
 			}
@@ -182,17 +189,27 @@ export default Vue.extend({
 			this.$emit('disableCreate');
 		},
 		createTag(): void {
-			this.$emit('onCreate', this.$data.newTagName.trim(), (createdId: string) => this.stickyIds.add(createdId));
+			this.$emit('onCreate', this.$data.newTagName.trim(), (createdId: number) => this.stickyIds.add(createdId));
 		},
 	},
 	watch: {
-		isCreateEnabled() {
+		isCreateEnabled(newValue) {
 			this.$data.newTagName = '';
+			if (newValue) {
+				setTimeout(() => {
+					this.$refs.nameInput && this.$refs.nameInput.focus();
+				}, 300); // transition timout
+			}
 		},
 		updateId(newValue, oldValue) {
 			// on update, keep updated items in view despite filter
 			if (!newValue && oldValue) {
 				this.stickyIds.add(oldValue);
+			}
+			else if (newValue) {
+				setTimeout(() => {
+					this.$refs.nameInput && this.$refs.nameInput.focus();
+				}, 300); // transition timout
 			}
 		}
 	},
@@ -242,6 +259,13 @@ export default Vue.extend({
 
 /deep/ .el-input.is-disabled > input {
 	border: none;
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity .2s;
+}
+.fade-enter, .fade-leave-to {
+  opacity: 0;
 }
 
 </style>

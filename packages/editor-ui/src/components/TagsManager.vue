@@ -67,8 +67,8 @@ export default mixins(
 	data() {
 		return {
 			isCreateEnabled: false,
-			updateId: '',
-			deleteId: '',
+			updateId: null,
+			deleteId: null,
 		};
 	},
 	components: {
@@ -92,7 +92,7 @@ export default mixins(
 		disableCreate() {
 			this.$data.isCreateEnabled = false;
 		},
-		async onCreate(name: string, cb: (id: string) => void) {
+		async onCreate(name: string, cb: (id: number) => void) {
 			try {
 				if (!name) {
 					throw new Error("Tag name was not set");
@@ -114,25 +114,26 @@ export default mixins(
 		},
 
 		enableUpdate(updateId: number) {
-			this.$data.updateId = `${updateId}`;
+			this.$data.updateId = updateId;
 		},
 		disableUpdate() {
-			this.$data.updateId = '';
+			this.$data.updateId = null;
 		},
 		async onUpdate(id: number, name: string, oldName: string) {
 			try {
 				if (!name) {
 					throw new Error("Tag name was not set");
 				}
+				if (name !== oldName) {
+					await this.$store.dispatch('tags/rename', {id, name});
 
-				await this.$store.dispatch('tags/rename', {id, name});
-
-				this.$showMessage({
-					title: 'Tag was updated',
-					message: `The "${oldName}" tag was successfully updated to "${name}"`,
-					type: 'success',
-				});
-				this.$data.updateId = '';
+					this.$showMessage({
+						title: 'Tag was updated',
+						message: `The "${oldName}" tag was successfully updated to "${name}"`,
+						type: 'success',
+					});
+				}
+				this.$data.updateId = null;
 			}
 			catch(error) {
 				this.$showError(error, 'Tag was not updated', `A problem occurred when trying to update the "${oldName}" tag`);
@@ -140,10 +141,10 @@ export default mixins(
 		},
 
 		enableDelete(deleteId: number) {
-			this.$data.deleteId = `${deleteId}`;
+			this.$data.deleteId = deleteId;
 		},
 		disableDelete() {
-			this.$data.deleteId = '';
+			this.$data.deleteId = null;
 		},
 		async onDelete(id: number, name: string) {
 			try {
@@ -154,7 +155,7 @@ export default mixins(
 					message: `The "${name}" tag was successfully deleted from your tag collection`,
 					type: 'success',
 				});
-				this.$data.deleteId = '';
+				this.$data.deleteId = null;
 			}
 			catch(error) {
 				this.$showError(error, 'Tag was not deleted', `A problem occurred when trying to delete the "${name}" tag`);
