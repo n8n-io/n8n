@@ -88,17 +88,6 @@ export interface ITagDb extends ITagBase {
 	id: number;
 }
 
-export interface ITagUpdateResponse extends UpdateResult {}
-
-export interface IUsageCount {
-	id: number;
-	usageCount: number;
-}
-
-export interface ITagGetResponseItem extends IUsageCount {
-	name: string;
-}
-
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
 	id: number | string;

@@ -108,7 +108,7 @@ import * as querystring from 'querystring';
 import * as Queue from '../src/Queue';
 import { OptionsWithUrl } from 'request-promise-native';
 import { Registry } from 'prom-client';
-import { ITagBase, ITagDb, ITagGetResponseItem, ITagUpdateResponse, IUsageCount } from './Interfaces';
+import { ITagBase, ITagDb, } from './Interfaces';
 
 import * as TagHelpers from './TagHelpers';
 
@@ -664,6 +664,39 @@ class App {
 			return true;
 		}));
 
+		// Adds a tag to a workflow
+		this.app.post(`/${this.restEndpoint}/workflows/:workflowId/tags/:tagId`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ workflowId: number, tagId: number }> => {
+			const workflowId = Number(req.params.workflowId);
+			const tagId = Number(req.params.tagId);
+
+			await TagHelpers.validateId(tagId);
+			await TagHelpers.validateNoRelation(workflowId, tagId);
+
+			await getConnection().createQueryBuilder()
+				.insert()
+				.into('workflows_tags')
+				.values([ { workflowId, tagId } ])
+				.execute();
+
+			return { workflowId, tagId };
+		}));
+
+		// Removes a tag from a workflow
+		this.app.delete(`/${this.restEndpoint}/workflows/:workflowId/tags/:tagId`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
+			const workflowId = Number(req.params.workflowId);
+			const tagId = Number(req.params.tagId);
+
+			await TagHelpers.validateId(tagId);
+			await TagHelpers.validateRelation(workflowId, tagId);
+
+			await getConnection().createQueryBuilder()
+				.delete()
+				.from('workflows_tags')
+				.where('workflowId = :workflowId AND tagId = :tagId', { workflowId, tagId })
+				.execute();
+
+			return true;
+		}));
 
 		this.app.post(`/${this.restEndpoint}/workflows/run`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionPushResponse> => {
 			const workflowData = req.body.workflowData;
@@ -712,22 +745,21 @@ class App {
 			};
 		}));
 
-
 		// Retrieves all tags
-		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagGetResponseItem[]> => {
+		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<Array<{ id: number, name: string, usageCount: number }>> => {
 			return await getConnection().createQueryBuilder()
 				.select('tag_entity.id', 'id')
 				.addSelect('tag_entity.name', 'name')
 				.addSelect('COUNT(workflow_entity.id)', 'usageCount')
-				.from('workflows_tags', 'workflows_tags')
+				.from('tag_entity', 'tag_entity')
+				.leftJoin('workflows_tags', 'workflows_tags', 'workflows_tags.tagId = tag_entity.id')
 				.leftJoin('workflow_entity', 'workflow_entity', 'workflows_tags.workflowId = workflow_entity.id')
-				.leftJoin('tag_entity', 'tag_entity', 'workflows_tags.tagId = tag_entity.id')
 				.groupBy('tag_entity.id')
-				.getRawMany<ITagGetResponseItem>();
+				.getRawMany();
 		}));
 
 		// Creates a tag
-		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagDb> => {
+		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ id: number, name: string }> => {
 			TagHelpers.validateRequestBody(req.body);
 
 			const { name } = req.body;
@@ -740,23 +772,27 @@ class App {
 				updatedAt: this.getCurrentDate(),
 			};
 
-			return await Db.collections.Tag!.save(newTag);
+			const { id } = await Db.collections.Tag!.save(newTag);
+
+			return { id, name };
 		}));
 
 		// Deletes a tag
 		this.app.delete(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
-			await Db.collections.Tag!.delete({ id: Number(req.params.id) });
+			const id = Number(req.params.id);
+			await TagHelpers.validateId(id);
+			await Db.collections.Tag!.delete({ id });
 			return true;
 		}));
 
 		// Updates an existing tag
-		this.app.patch(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagUpdateResponse> => {
+		this.app.patch(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ id: number, name: string }> => {
 			TagHelpers.validateRequestBody(req.body);
 
 			const { name } = req.body;
 			TagHelpers.validateLength(name);
 
-			const { id } = req.params;
+			const id = Number(req.params.id);
 			await TagHelpers.validateId(id);
 
 			const updatedTag: Partial<ITagDb> = {
@@ -764,7 +800,9 @@ class App {
 				updatedAt: this.getCurrentDate(),
 			};
 
-			return await Db.collections.Tag!.update(id, updatedTag);
+			await Db.collections.Tag!.update(id, updatedTag);
+
+			return { id, name };
 		}));
 
 		// Returns parameter values which normally get loaded from an external API or
