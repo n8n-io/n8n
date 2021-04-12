@@ -6,6 +6,7 @@
 		<credentials-edit :dialogVisible="credentialNewDialogVisible" @closeDialog="closeCredentialNewDialog"></credentials-edit>
 		<workflow-open @openWorkflow="openWorkflow" :dialogVisible="workflowOpenDialogVisible" @closeDialog="closeWorkflowOpenDialog"></workflow-open>
 		<workflow-settings :dialogVisible="workflowSettingsDialogVisible" @closeDialog="closeWorkflowSettingsDialog"></workflow-settings>
+		<tags-manager :dialogVisible="tagsDialogVisible" />
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
 		<div class="side-menu-wrapper" :class="{expanded: !isCollapsed}">
@@ -173,6 +174,7 @@ import About from '@/components/About.vue';
 import CredentialsEdit from '@/components/CredentialsEdit.vue';
 import CredentialsList from '@/components/CredentialsList.vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
+import TagsManager from '@/components/TagsManager.vue';
 import WorkflowOpen from '@/components/WorkflowOpen.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
@@ -202,6 +204,7 @@ export default mixins(
 			CredentialsEdit,
 			CredentialsList,
 			ExecutionsList,
+			TagsManager,
 			WorkflowOpen,
 			WorkflowSettings,
 		},
@@ -217,6 +220,7 @@ export default mixins(
 				stopExecutionInProgress: false,
 				workflowOpenDialogVisible: false,
 				workflowSettingsDialogVisible: false,
+				tagsDialogVisible: false,
 			};
 		},
 		computed: {

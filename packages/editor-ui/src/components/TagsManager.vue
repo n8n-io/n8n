@@ -1,5 +1,5 @@
 <template>
-	<el-dialog title="Manage Tags" :visible.sync="visible">
+	<el-dialog title="Manage Tags" :visible="dialogVisible">
 		<div class="content">
 			<el-row v-if="!isLoading">
 				<TagsTable v-if="hasTags || isCreateEnabled"
@@ -57,7 +57,7 @@ export default mixins(
 ).extend({
 	name: 'TagsManager',
 	props: [
-		'visible',
+		'dialogVisible',
 	],
 	created() {
     	this.$store.dispatch('tags/getAll');
