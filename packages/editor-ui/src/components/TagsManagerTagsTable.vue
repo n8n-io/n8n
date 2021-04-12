@@ -93,8 +93,9 @@ export default Vue.extend({
 	},
 	computed: {
 		rows(): ITagRow[] {
+			const filter = this.search;
 			const tagRows = [...this.$store.getters['tags/allTags']]
-				.filter((tag: ITag) => tag && (this.stickyIds.has(tag.id) || tag.name.toLowerCase().trim().includes(this.$data._search.toLowerCase().trim() || '')))
+				.filter((tag: ITag) => tag && (this.stickyIds.has(tag.id) || tag.name.toLowerCase().trim().includes(filter.toLowerCase().trim() || '')))
 				.map((tag: ITag): ITagRow => ({
 					tag,
 					usage: tag.usageCount > 0 ? `${tag.usageCount} workflow${tag.usageCount > 1 ? 's' : ''}` : 'Not being used',
@@ -160,7 +161,7 @@ export default Vue.extend({
 			this.newTagName = '';
 		},
 		updateTag(row: ITagRow): void {
-			row.tag && this.$emit('onUpdate', row.tag.id, this.$data.newTagName, row.tag.name);
+			row.tag && this.$emit('onUpdate', row.tag.id, this.$data.newTagName.trim(), row.tag.name);
 		},
 
 		enableDelete(row: ITagRow): void {
@@ -181,7 +182,7 @@ export default Vue.extend({
 			this.$emit('disableCreate');
 		},
 		createTag(): void {
-			this.$emit('onCreate', this.$data.newTagName, (createdId: string) => this.stickyIds.add(createdId));
+			this.$emit('onCreate', this.$data.newTagName.trim(), (createdId: string) => this.stickyIds.add(createdId));
 		},
 	},
 	watch: {
