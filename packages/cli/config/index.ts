@@ -585,7 +585,7 @@ const config = convict({
 			location: {
 				doc: 'Log file location; only used if log output is set to file.',
 				format: String,
-				default: path.join(core.UserSettings.getUserN8nFolderPath(), 'n8n.log'),
+				default: path.join(core.UserSettings.getUserN8nFolderPath(), 'logs/n8n.log'),
 				env: 'N8N_LOG_FILE_LOCATION',
 			},
 			maxFileSize: {
