@@ -39,7 +39,7 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 
 	if (Object.keys(body).length > 0) {
 		options.body = body;
-	};
+	}
 
 	try {
 		return await this.helpers.requestOAuth2.call(this, 'spotifyOAuth2Api', options);

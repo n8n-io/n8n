@@ -938,7 +938,6 @@ export class Workflow {
 			// Does get used by webhook and trigger nodes in case they throw an error that it is possible
 			// to log the error and display in Editor-UI.
 
-			// TODO: REVIEW ME
 			const error = new Error(runExecutionData.resultData.error.message);
 			error.stack = runExecutionData.resultData.error.stack;
 			throw error;
