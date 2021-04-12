@@ -816,6 +816,7 @@ class App {
 			TagHelpers.validateRequestBody(req.body);
 
 			const { name } = req.body;
+			await TagHelpers.validateName(name);
 			TagHelpers.validateLength(name);
 
 			const id = Number(req.params.id);
