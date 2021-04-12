@@ -105,7 +105,7 @@ export default mixins(
 
 				this.$showMessage({
 					title: 'New tag was created',
-					message: `${name} was added to your tag collection`,
+					message: `"${name}" was added to your tag collection`,
 					type: 'success',
 				});
 			} catch(error) {
