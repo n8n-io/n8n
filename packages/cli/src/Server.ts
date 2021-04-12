@@ -499,6 +499,22 @@ class App {
 			// Save the workflow in DB
 			const result = await Db.collections.Workflow!.save(newWorkflowData);
 
+			const { tags } = req.body as { tags: string };
+
+			if (tags) {
+				const tagIds = tags.split(',').map(Number);
+
+				for (const tagId of tagIds) {
+					await TagHelpers.validateId(tagId);
+				}
+
+				await getConnection().createQueryBuilder()
+					.insert()
+					.into('workflows_tags')
+					.values(tags.split(',').map(tagId => ({ workflowId: result.id, tagId })))
+					.execute();
+			}
+
 			// Convert to response format in which the id is a string
 			(result as IWorkflowBase as IWorkflowResponse).id = result.id.toString();
 			return result as IWorkflowBase as IWorkflowResponse;

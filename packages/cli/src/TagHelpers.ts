@@ -2,7 +2,7 @@ import { FindOneOptions, getConnection } from "typeorm";
 import { Db, ResponseHelper } from ".";
 
 /**
- * Validate whether a tag name exists so that it cannot be used for a create/update operation.
+ * Validate whether a tag name exists so that it cannot be used for a tag create or tag update operation.
  */
 export async function validateName(name: string): Promise<void> | never {
 	const findQuery = { where: { name } } as FindOneOptions;
@@ -14,7 +14,7 @@ export async function validateName(name: string): Promise<void> | never {
 }
 
 /**
- * Validate whether a tag ID exists so that it can be used for an update operation.
+ * Validate whether a tag ID exists so that it can be used for a workflow create or tag update operation.
  */
 export async function validateId(id: number): Promise<void> | never {
 	const findQuery = { where: { id } } as FindOneOptions;
