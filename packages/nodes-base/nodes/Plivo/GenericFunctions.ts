@@ -47,6 +47,6 @@ export async function plivoApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error)
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

@@ -54,7 +54,7 @@ export async function googleApiRequest(
 			return await this.helpers.requestOAuth2!.call(this, 'googleSlidesOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error)
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
