@@ -30,6 +30,7 @@ export class MongoDb implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const { database, connectionString } = validateAndResolveMongoCredentials(
+			this,
 			this.getCredentials('mongoDb'),
 		);
 
