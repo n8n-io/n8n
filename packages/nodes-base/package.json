@@ -515,6 +515,7 @@
       "dist/nodes/TheHive/TheHiveTrigger.node.js",
       "dist/nodes/TimescaleDb/TimescaleDb.node.js",
       "dist/nodes/Todoist/Todoist.node.js",
+      "dist/nodes/Toggl/Toggl.node.js",
       "dist/nodes/Toggl/TogglTrigger.node.js",
       "dist/nodes/TravisCi/TravisCi.node.js",
       "dist/nodes/Trello/Trello.node.js",
