@@ -10,17 +10,6 @@ export interface ITagsState {
 	isLoading: boolean;
 }
 
-// const MOCK_TAGS = [{
-// 	id: 119,
-// 	name: 'mytag',
-// 	usageCount: 3,
-// }, {
-// 	id: 120,
-// 	name: 'sup',
-// 	usageCount: 0,
-// },
-// }];
-
 const module = {
 	namespaced: true,
 	state: {

@@ -2,12 +2,12 @@
 	<el-row>
 		<el-row class="tags-header">
 			<el-col :span="10">
-				<el-input placeholder="Search tags" v-model="search" :disabled="isDisabled()">
+				<el-input placeholder="Search tags" v-model="search" :disabled="isHeaderDisabled()">
 					<i slot="prefix" class="el-input__icon el-icon-search"></i>
 				</el-input>
 			</el-col>
 			<el-col :span="14">
-				<el-button @click="enableCreate" :disabled="isDisabled()" plain>
+				<el-button @click="enableCreate" :disabled="isHeaderDisabled()" plain>
 					<font-awesome-icon icon="plus" />
 					<div class="next-icon-text">
 						Add new
@@ -19,10 +19,13 @@
 			<el-table-column label="Name">
 				<template slot-scope="scope">
 					<div class="name">
-						<el-input v-if="scope.row.create" v-model="newTagName"></el-input>
-						<el-input v-else-if="isEditEnabled(scope.row)" v-model="editTagName"></el-input>
-						<span v-else-if="isDeleteEnabled(scope.row)">Are you sure you want to delete this tag?</span>
-						<span v-else :class="isRowDisabled(scope.row)? 'disabled': ''">
+						<el-input 
+							v-if="scope.row.create || scope.row.update"
+							v-model="newTagName"
+							:maxlength="24"
+						></el-input>
+						<span v-else-if="scope.row.delete">Are you sure you want to delete this tag?</span>
+						<span v-else :class="scope.row.disable? 'disabled': ''">
 							{{scope.row.tag.name}}
 						</span>
 					</div>
@@ -30,7 +33,7 @@
 			</el-table-column>
 			<el-table-column label="Usage">
 					<template slot-scope="scope">
-						<div v-if="!scope.row.create && !isDeleteEnabled(scope.row)" :class="isRowDisabled(scope.row)? 'disabled': ''">
+						<div v-if="!scope.row.create && !scope.row.delete" :class="scope.row.disable? 'disabled': ''">
 							{{scope.row.usage}}
 						</div>
 					</template>
@@ -42,17 +45,17 @@
 						<el-button title="Cancel" @click.stop="disableCreate()" size="small" plain>Cancel</el-button>
 						<el-button title="Create Tag" @click.stop="createTag()" size="small">Create tag</el-button>
 					</div>
-					<div class="ops" v-else-if="isEditEnabled(scope.row)">
-						<el-button title="Cancel" @click.stop="disableEdit()" size="small" plain>Cancel</el-button>
+					<div class="ops" v-else-if="scope.row.update">
+						<el-button title="Cancel" @click.stop="disableUpdate()" size="small" plain>Cancel</el-button>
 						<el-button title="Save Tag" @click.stop="updateTag(scope.row)" size="small">Save changes</el-button>
 					</div>
-					<div class="ops" v-else-if="isDeleteEnabled(scope.row)">
+					<div class="ops" v-else-if="scope.row.delete">
 						<el-button title="Cancel" @click.stop="disableDelete()" size="small" plain>Cancel</el-button>
 						<el-button title="Delete Tag" @click.stop="deleteTag(scope.row)" size="small">Delete tag</el-button>
 					</div>
-					<div class="ops main" v-else-if="!isRowDisabled(scope.row)">
+					<div class="ops main" v-else-if="!scope.row.disable">
 						<el-button title="Delete Tag" @click.stop="enableDelete(scope.row)" icon="el-icon-delete" circle></el-button>
-						<el-button title="Edit Tag" @click.stop="enableEdit(scope.row)" icon="el-icon-edit" circle></el-button>
+						<el-button title="Edit Tag" @click.stop="enableUpdate(scope.row)" icon="el-icon-edit" circle></el-button>
 					</div>
 				</template>
 			</el-table-column>
@@ -68,6 +71,9 @@ interface ITagRow {
 	tag?: ITag;
 	usage?: string;
 	create?: boolean;
+	disable?: boolean;
+	update?: boolean;
+	delete?: boolean;
 }
 
 export default Vue.extend({
@@ -75,27 +81,39 @@ export default Vue.extend({
 	props: [
 		'tags',
 		'isCreateEnabled',
+		'deleteId',
+		'updateId',
 	],
 	data() {
 		return {
-			search: '',
-			deleteId: '',
-			editId: '',
+			_search: '',
 			newTagName: '',
-			editTagName: ''
+			stickyIds: new Set(),
 		};
 	},
 	computed: {
-		rows() {
+		rows(): ITagRow[] {
 			const tagRows = [...this.$store.getters['tags/allTags']]
-				.map((t: ITag): ITagRow => ({
-					tag: t,
-					usage: t.usageCount > 0 ? `${t.usageCount} workflow${t.usageCount > 1 ? 's' : ''}` : 'Not being used',
-				}))
-				.filter((row: ITagRow) => row.tag && row.tag.name.toLowerCase().trim().includes(this.$data.search.toLowerCase().trim() || ''));
+				.filter((tag: ITag) => tag && (this.stickyIds.has(tag.id) || tag.name.toLowerCase().trim().includes(this.$data._search.toLowerCase().trim() || '')))
+				.map((tag: ITag): ITagRow => ({
+					tag,
+					usage: tag.usageCount > 0 ? `${tag.usageCount} workflow${tag.usageCount > 1 ? 's' : ''}` : 'Not being used',
+					disable: this.isTagDisabled(`${tag.id}`),
+					update: this.isUpdateEnabled(`${tag.id}`),
+					delete: this.isDeleteEnabled(`${tag.id}`),
+				}));
 
-			return this.$props.isCreateEnabled ? [{create: true, tag: {name: 'test'}}].concat(tagRows) : tagRows;
+			return this.$props.isCreateEnabled ? [{create: true}, ...tagRows] : tagRows;
 		},
+		search: {
+			get(): string {
+				return this.$data._search;
+			},
+			set(search: string) {
+				this.stickyIds.clear();
+				this.$data._search = search;
+			}
+		}
 	},
 	methods: {
 		getSpan({row, columnIndex}: {row: ITagRow, columnIndex: number}) {
@@ -108,46 +126,47 @@ export default Vue.extend({
 
 			return 1;
 		},
-		isEditEnabled(row: ITagRow): boolean {
-			return !this.$props.isCreateEnabled && !!this.$data.editId && !!row.tag && `${row.tag.id}` === this.$data.editId;
+		isUpdateEnabled(tagId: string): boolean {
+			return !this.$props.isCreateEnabled && !!this.$props.updateId && tagId === this.$props.updateId;
 		},
-		isDeleteEnabled(row: ITagRow): boolean {
-			return !this.$props.isCreateEnabled && !!this.$data.deleteId && !!row.tag && `${row.tag.id}` === this.$data.deleteId;
+		isDeleteEnabled(tagId: string): boolean {
+			return !this.$props.isCreateEnabled && !!this.$props.deleteId && tagId === this.$props.deleteId;
 		},
-		isRowDisabled(row: ITagRow): boolean {
-			if (this.$data.editId && row.tag && row.tag.id !== this.$data.editId) {
+		isTagDisabled(tagId: string): boolean {
+			if (this.$props.updateId && tagId !== this.$props.updateId) {
 				return true;
 			}
 
-			if (this.$data.deleteId && row.tag && row.tag.id !== this.$data.deleteId) {
+			if (this.$props.deleteId && tagId !== this.$props.deleteId) {
 				return true;
 			}
 
 			return this.$props.isCreateEnabled;
 		},
-		isDisabled(): boolean {
-			return !!(this.$props.isCreateEnabled || this.$data.editId || this.$data.deleteId);
+		isHeaderDisabled(): boolean {
+			return !!(this.$props.isCreateEnabled || this.$props.updateId || this.$props.deleteId);
 		},
-		enableEdit(row: ITagRow): void {
-			this.editId = row.tag? `${row.tag.id}` : '';
-			this.editTagName = row.tag? row.tag.name : '';
+		enableUpdate(row: ITagRow): void {
+			if (row.tag) {
+				this.$emit('enableUpdate', row.tag.id);
+				this.newTagName = row.tag.name;
+			}
 		},
-		disableEdit(): void {
-			this.editId = '';
-			this.editTagName = '';
+		disableUpdate(): void {
+			this.$emit('disableUpdate');
+			this.newTagName = '';
 		},
 		updateTag(row: ITagRow): void {
-			row.tag && this.$emit('onUpdate', row.tag.id, this.$data.editTagName, row.tag.name);
+			row.tag && this.$emit('onUpdate', row.tag.id, this.$data.newTagName, row.tag.name);
 		},
 		enableDelete(row: ITagRow): void {
-			this.deleteId = row.tag ? `${row.tag.id}` : '';
+			row.tag && this.$emit('enableDelete', row.tag.id);
 		},
 		disableDelete(): void {
-			this.deleteId = '';
+			this.$emit('disableDelete');
 		},
 		deleteTag(row: ITagRow): void {
 			row.tag && this.$emit('onDelete', row.tag.id, row.tag.name);
-			this.deleteId = '';
 		},
 		enableCreate(): void {
 			this.$emit('enableCreate');
@@ -157,16 +176,19 @@ export default Vue.extend({
 			this.$emit('disableCreate');
 		},
 		createTag(): void {
-			this.$emit('onCreate', this.$data.newTagName);
+			this.$emit('onCreate', this.$data.newTagName, (createdId: string) => this.stickyIds.add(createdId));
 		},
 	},
 	watch: {
 		isCreateEnabled() {
-			this.$data.deleteId = '';
-			this.$data.editId = '';
 			this.$data.newTagName = '';
-			this.$data.editTagName = '';
 		},
+		updateId(newValue, oldValue) {
+			// on update, keep updated items in view despite filter
+			if (!newValue && oldValue) {
+				this.stickyIds.add(oldValue);
+			}
+		}
 	},
 });
 </script>

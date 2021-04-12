@@ -4,12 +4,21 @@
 			<el-row v-if="!isLoading">
 				<TagsTable v-if="hasTags || isCreateEnabled"
 						:tags="tags"
+
 						:isCreateEnabled="isCreateEnabled"
 						@enableCreate="enableCreate"
 						@disableCreate="disableCreate"
 						@onCreate="onCreate"
+
+						:updateId="updateId"
 						@onUpdate="onUpdate"
+						@enableUpdate="enableUpdate"
+						@disableUpdate="disableUpdate"
+
+						:deleteId="deleteId"
 						@onDelete="onDelete"
+						@enableDelete="enableDelete"
+						@disableDelete="disableDelete"
 				/>
 				<el-col class="notags" :span="16" :offset="4" v-else>
 					<div class="icon">
@@ -56,6 +65,8 @@ export default mixins(
 	data() {
 		return {
 			isCreateEnabled: false,
+			updateId: '',
+			deleteId: '',
 		};
 	},
 	components: {
@@ -79,10 +90,15 @@ export default mixins(
 		disableCreate() {
 			this.$data.isCreateEnabled = false;
 		},
-		async onCreate(name: string) {
+		async onCreate(name: string, cb: (id: string) => void) {
 			try {
-				await this.$store.dispatch('tags/addNew', name);
+				if (!name) {
+					throw new Error("Tag name was not set");
+				}
 
+				const newTag = await this.$store.dispatch('tags/addNew', name);
+
+				cb(newTag.id);
 				this.$data.isCreateEnabled = false;
 
 				this.$showMessage({
@@ -94,8 +110,19 @@ export default mixins(
 				this.$showError(error, 'New tag was not created', `A problem occurred when trying to create the "${name}" tag`);
 			}
 		},
+
+		enableUpdate(updateId: number) {
+			this.$data.updateId = `${updateId}`;
+		},
+		disableUpdate() {
+			this.$data.updateId = '';
+		},
 		async onUpdate(id: number, name: string, oldName: string) {
 			try {
+				if (!name) {
+					throw new Error("Tag name was not set");
+				}
+
 				await this.$store.dispatch('tags/rename', {id, name});
 
 				this.$showMessage({
@@ -103,10 +130,18 @@ export default mixins(
 					message: `The "${oldName}" tag was successfully updated to "${name}"`,
 					type: 'success',
 				});
+				this.$data.updateId = '';
 			}
 			catch(error) {
 				this.$showError(error, 'Tag was not updated', `A problem occurred when trying to update the "${oldName}" tag`);
 			}
+		},
+
+		enableDelete(deleteId: number) {
+			this.$data.deleteId = `${deleteId}`;
+		},
+		disableDelete() {
+			this.$data.deleteId = '';
 		},
 		async onDelete(id: number, name: string) {
 			try {
@@ -117,6 +152,7 @@ export default mixins(
 					message: `The "${name}" tag was successfully deleted from your tag collection`,
 					type: 'success',
 				});
+				this.$data.deleteId = '';
 			}
 			catch(error) {
 				this.$showError(error, 'Tag was not deleted', `A problem occurred when trying to delete the "${name}" tag`);
