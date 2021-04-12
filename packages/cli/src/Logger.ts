@@ -26,7 +26,7 @@ class Logger implements ILogger {
 					winston.format.colorize({ all: true }),
 					winston.format.printf(({ level, message, timestamp, metadata }) => {
 						return `${timestamp} | ${level.padEnd(18)} | ${message}` + (Object.keys(metadata).length ? ` ${JSON.stringify(metadata)}` : '');
-					}) as winston.Logform.Format,
+					}) as winston.Logform.Format
 				);
 			} else {
 				format = winston.format.printf(({ message }) => message) as winston.Logform.Format;

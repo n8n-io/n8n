@@ -17,10 +17,9 @@ import {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
-	LoggerProxy as Logger,
 	IWorkflowCredentials,
-	Workflow,
-} from 'n8n-workflow';
+	LoggerProxy as Logger,
+	Workflow,} from 'n8n-workflow';
 
 import * as config from '../config';
 
