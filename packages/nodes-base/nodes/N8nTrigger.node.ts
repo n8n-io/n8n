@@ -9,13 +9,14 @@ export class N8nTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'n8n Trigger',
 		name: 'n8nTrigger',
-		icon: 'fa:dot-circle',
+		//icon: 'fa:dot-circle',
+		icon: 'file:n8nTrigger.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Executes whenever the n8n instance is started or re-started.',
+		description: 'Triggers based on various global events, like when your instance restarts.',
 		defaults: {
-			name: 'N8n Trigger',
-			color: '#FF6D5A',
+			name: 'n8n Trigger',
+			color: '#ff6d5a',
 		},
 		inputs: [],
 		outputs: ['main'],

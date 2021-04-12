@@ -9,13 +9,13 @@ export class WorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Workflow Trigger',
 		name: 'workflowTrigger',
-		icon: 'fa:play-circle',
+		icon: 'fa:network-wired',
 		group: ['trigger'],
 		version: 1,
-		description: 'Executes whenever the workflow becomes active.',
+		description: 'Triggers based on various lifecycle events, like when a workflow is activated.',
 		defaults: {
 			name: 'Workflow Trigger',
-			color: '#00e000',
+			color: '#ff6d5a',
 		},
 		inputs: [],
 		outputs: ['main'],
