@@ -15,6 +15,9 @@ import {
 	togglApiRequest,
 } from './GenericFunctions';
 
+import * as moment from 'moment-timezone';
+import { getWorkspaces } from '../Asana/GenericFunctions';
+
 export class Toggl implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Toggl',
@@ -78,72 +81,162 @@ export class Toggl implements INodeType {
 				default: 'start',
 				description: 'The operation to perform.',
 			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				required: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'start',
+						],
+						resource: [
+							'timeEntry',
+						],
+					},
+				},
+				description: 'Time entry start',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'start',
+						],
+						resource: [
+							'timeEntry',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Tags',
+						name: 'tags',
+						type: 'string',
+						default: '',
+						description: 'Time entry tags. Multiple ones can be separated by comma.',
+					},
+					{
+						displayName: 'Project ID',
+						name: 'projectId',
+						type: 'string',
+						default: '',
+						description: 'Project ID of the time entry.',
+					},
+					{
+						displayName: 'Start Time',
+						name: 'startTime',
+						type: 'dateTime',
+						default: '',
+						description: 'Starting time of the time entry.',
+					},
+
+				],
+			},
+			//here
+			//https://github.com/toggl/toggl_api_docs/blob/master/chapters/time_entries.md#time-entries
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				required: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'timeEntry',
+						],
+					},
+				},
+				description: 'Time entry creation',
+			},
+			{
+				displayName: 'Workspace ID',
+				name: 'workspaceId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getWorkspaces',
+				},
+				default: {},
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'timeEntry',
+						],
+					},
+				},
+				description: 'Workspace ID',
+			},
+			{
+				displayName: 'Start Time',
+				name: 'startTime',
+				type: 'dateTime',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'timeEntry',
+						],
+					},
+				},
+				description: 'Start time.',
+			},
+
+			{
+				displayName: 'Duration (sec)',
+				name: 'duration',
+				type: 'number',
+				default: 1,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'timeEntry',
+						],
+					},
+				},
+				description: 'Time entry duration in seconds.',
+			},
 		],
 	};
 
-	// methods = {
-	// 	loadOptions: {
-	// 		// Get all the available projects to display them to user so that he can
-	// 		// select them easily
-	// 		async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	// 			const returnData: INodePropertyOptions[] = [];
-	// 			const projects = await todoistApiRequest.call(this, 'GET', '/projects');
-	// 			for (const project of projects) {
-	// 				const projectName = project.name;
-	// 				const projectId = project.id;
-
-	// 				returnData.push({
-	// 					name: projectName,
-	// 					value: projectId,
-	// 				});
-	// 			}
-
-	// 			return returnData;
-	// 		},
-
-	// 		// Get all the available sections in the selected project, to display them
-	// 		// to user so that he can select one easily
-	// 		async getSections(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	// 			const returnData: INodePropertyOptions[] = [];
-
-	// 			const projectId = this.getCurrentNodeParameter('project') as number;
-	// 			if (projectId) {
-	// 				const qs: IDataObject = { project_id: projectId };
-	// 				const sections = await todoistApiRequest.call(this, 'GET', '/sections', {}, qs);
-	// 				for (const section of sections) {
-	// 					const sectionName = section.name;
-	// 					const sectionId = section.id;
-
-	// 					returnData.push({
-	// 						name: sectionName,
-	// 						value: sectionId,
-	// 					});
-	// 				}
-	// 			}
-
-	// 			return returnData;
-	// 		},
-
-	// 		// Get all the available labels to display them to user so that he can
-	// 		// select them easily
-	// 		async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	// 			const returnData: INodePropertyOptions[] = [];
-	// 			const labels = await todoistApiRequest.call(this, 'GET', '/labels');
-
-	// 			for (const label of labels) {
-	// 				const labelName = label.name;
-	// 				const labelId = label.id;
-
-	// 				returnData.push({
-	// 					name: labelName,
-	// 					value: labelId,
-	// 				});
-	// 			}
-
-	// 			return returnData;
-	// 		},
-	// 	},
-	// };
+	methods = {
+		loadOptions: {
+			// Get all the available projects to display them to user so that he can
+			// select them easily
+			async getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				//GET https://api.track.toggl.com/api/v8/workspaces Get data about all the workspaces where the token owner belongs to.
+				const workspaces = await togglApiRequest.call(this, 'GET', '/workspaces');
+				for (const workspace of workspaces) {
+					returnData.push({
+						name: workspace.name,
+						value: workspace.id,
+					});
+				}
+				return returnData;
+			},
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -156,14 +249,41 @@ export class Toggl implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
+			//POST https://api.track.toggl.com/api/v8/time_entries/start
+			//{"time_entry":{"description":"Meeting with possible clients","tags":["billed"],"pid":123,"created_with":"curl"}}' \
 
 			if (resource === 'timeEntry') {
 				if (operation === 'start') {
-					const content = this.getNodeParameter('content', i) as string;
-					const projectId = this.getNodeParameter('project', i) as number;
-					const labels = this.getNodeParameter('labels', i) as number[];
-					const options = this.getNodeParameter('options', i) as IDataObject;
-					responseData = await togglApiRequest.call(this, 'POST', '/tasks', {});
+					const description = this.getNodeParameter('description', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IDataObject = {
+						time_entry: {
+							description,
+							created_with: 'n8n',
+						},
+					};
+
+					if (additionalFields.projectId) {
+						//@ts-ignore
+						body.time_entry.pid = additionalFields.projectId;
+					}
+
+					if (additionalFields.tags) {
+						//@ts-ignore
+						body.time_entry.tags = (additionalFields.tags as string).split(',');
+					}
+
+					if (additionalFields.startTime) {
+						//@ts-ignore
+						body.time_entry.start = additionalFields.startTime;
+					} else {
+						//@ts-ignore
+						body.time_entry.start = moment().utc().format();
+					}
+
+					responseData = await togglApiRequest.call(this, 'POST', '/time_entries/start', body);
+
+					responseData = responseData.data;
 				}
 			}
 			if (Array.isArray(responseData)) {
