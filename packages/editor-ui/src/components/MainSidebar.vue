@@ -25,6 +25,15 @@
 					</a>
 				</el-menu-item>
 
+				<!-- temporary -->
+				<el-menu-item index="tagsmanager">
+					<a @click="openTagManager">
+						<font-awesome-icon icon="edit"/>&nbsp;
+						<span slot="title" class="item-title-root">Tags Manager (temp)</span>
+					</a>
+				</el-menu-item>
+				<!-- temporary -->
+
 				<el-submenu index="workflow" title="Workflow">
 					<template slot="title">
 						<font-awesome-icon icon="network-wired"/>&nbsp;
@@ -296,6 +305,9 @@ export default mixins(
 			},
 			closeCredentialNewDialog () {
 				this.credentialNewDialogVisible = false;
+			},
+			openTagManager() {
+				this.tagsManagerVisible = true;
 			},
 			closeTagsManager() {
 				this.tagsManagerVisible = false;

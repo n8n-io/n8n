@@ -1,47 +1,49 @@
 <template>
-	<el-dialog title="Manage Tags" :visible="dialogVisible">
-		<div class="content">
-			<el-row v-if="!isLoading">
-				<TagsTable v-if="hasTags || isCreateEnabled"
-						:tags="tags"
+	<div v-if="dialogVisible">
+		<el-dialog title="Manage Tags" :visible="dialogVisible" append-to-body :before-close="closeDialog">
+			<div class="content" @keydown.stop>
+				<el-row v-if="!isLoading">
+					<TagsTable v-if="hasTags || isCreateEnabled"
+							:tags="tags"
 
-						:isCreateEnabled="isCreateEnabled"
-						@enableCreate="enableCreate"
-						@disableCreate="disableCreate"
-						@onCreate="onCreate"
+							:isCreateEnabled="isCreateEnabled"
+							@enableCreate="enableCreate"
+							@disableCreate="disableCreate"
+							@onCreate="onCreate"
 
-						:updateId="updateId"
-						@onUpdate="onUpdate"
-						@enableUpdate="enableUpdate"
-						@disableUpdate="disableUpdate"
+							:updateId="updateId"
+							@onUpdate="onUpdate"
+							@enableUpdate="enableUpdate"
+							@disableUpdate="disableUpdate"
 
-						:deleteId="deleteId"
-						@onDelete="onDelete"
-						@enableDelete="enableDelete"
-						@disableDelete="disableDelete"
-				/>
-				<el-col class="notags" :span="16" :offset="4" v-else>
-					<div class="icon">
-						🗄️
-					</div>
-					<div>
-						<div class="headline">
-							Ready to organize your workflows?
+							:deleteId="deleteId"
+							@onDelete="onDelete"
+							@enableDelete="enableDelete"
+							@disableDelete="disableDelete"
+					/>
+					<el-col class="notags" :span="16" :offset="4" v-else>
+						<div class="icon">
+							🗄️
 						</div>
-						<div class="description">
-							With workflow tags, you're free to create the perfect tagging system for your flows
+						<div>
+							<div class="headline">
+								Ready to organize your workflows?
+							</div>
+							<div class="description">
+								With workflow tags, you're free to create the perfect tagging system for your flows
+							</div>
 						</div>
-					</div>
-					<el-button @click="enableCreate">
-						Create a tag
-					</el-button>
-				</el-col>
+						<el-button @click="enableCreate">
+							Create a tag
+						</el-button>
+					</el-col>
+				</el-row>
+			</div>
+			<el-row class="footer">
+				<el-button size="small" @click="closeDialog">Done</el-button>
 			</el-row>
-		</div>
-		<el-row class="footer">
-			<el-button size="small" @click="closeDialog">Done</el-button>
-		</el-row>
-	</el-dialog>
+		</el-dialog>
+	</div>
 </template>
 
 <script lang="ts">
