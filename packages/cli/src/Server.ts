@@ -511,7 +511,7 @@ class App {
 				await getConnection().createQueryBuilder()
 					.insert()
 					.into('workflows_tags')
-					.values(tags.split(',').map(tagId => ({ workflowId: result.id, tagId })))
+					.values(tagIds.map(tagId => ({ workflowId: result.id, tagId })))
 					.execute();
 
 				const findQuery: FindManyOptions = {
@@ -609,7 +609,9 @@ class App {
 		// Updates an existing workflow
 		this.app.patch(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowResponse> => {
 
-			const newWorkflowData = req.body as IWorkflowBase;
+			const { tags } = req.body as { tags: string };
+			const newWorkflowData = _.omit(req.body, ['tags']) as IWorkflowBase;
+
 			const id = req.params.id;
 
 			await this.externalHooks.run('workflow.update', [newWorkflowData]);
@@ -675,6 +677,20 @@ class App {
 					// Now return the original error for UI to display
 					throw error;
 				}
+			}
+
+			if (tags) {
+				await TagHelpers.deleteAllTagsForWorkflow(id);
+
+				const tagIds = tags.split(',').map(Number);
+
+				for (const tagId of tagIds) {
+					await TagHelpers.validateId(tagId);
+				}
+
+				await TagHelpers.createTagWorkflowRelations(id, tagIds);
+
+				responseData.tags = await TagHelpers.getTagsForResponseData(tagIds);
 			}
 
 			// Convert to response format in which the id is a string
