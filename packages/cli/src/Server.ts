@@ -111,6 +111,7 @@ import { Registry } from 'prom-client';
 import { ITagBase, ITagDb, } from './Interfaces';
 
 import * as TagHelpers from './TagHelpers';
+import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 
 class App {
 
@@ -544,27 +545,16 @@ class App {
 
 		// Returns workflows
 		this.app.get(`/${this.restEndpoint}/workflows`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowShortResponse[]> => {
-			const findQuery = {} as FindManyOptions;
+			const findQuery = {
+				select: ['id', 'name', 'active', 'createdAt', 'updatedAt'],
+				relations: ['tags'],
+			} as FindManyOptions;
+
 			if (req.query.filter) {
 				findQuery.where = JSON.parse(req.query.filter as string);
 			}
 
-			// Return only the fields we need
-			findQuery.select = ['id', 'name', 'active', 'createdAt', 'updatedAt'];
-
 			const results = await Db.collections.Workflow!.find(findQuery);
-
-			const tagsPerWorkflow = await TagHelpers.getTagsByWorkflowIds(results.map(({ id }) => id.toString()));
-
-			tagsPerWorkflow.forEach(({ workflowId, id, name }) => {
-				results.forEach(result => {
-					if (result.id !== workflowId) return;
-
-					result.tags
-						? result.tags.push({ id, name })
-						: result.tags = [{ id, name }];
-				});
-			});
 
 			for (const entry of results) {
 				(entry as unknown as IWorkflowShortResponse).id = entry.id.toString();
