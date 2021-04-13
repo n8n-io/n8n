@@ -585,20 +585,7 @@ class App {
 				return undefined;
 			}
 
-			result.tags = await getConnection()
-				.createQueryBuilder()
-				.select('tag_entity.id', 'id')
-				.addSelect('tag_entity.name', 'name')
-				.from('tag_entity', 'tag_entity')
-				.where(qb => {
-					return "id IN " + qb.subQuery()
-						.select('tagId')
-						.from('workflow_entity', 'workflow_entity')
-						.leftJoin('workflows_tags', 'workflows_tags', 'workflows_tags.workflowId = workflow_entity.id')
-						.where("workflow_entity.id = :id", { id: Number(req.params.id) })
-						.getQuery();
-				})
-				.getRawMany();
+			result.tags = await TagHelpers.getWorkflowTags(req.params.id);
 
 			// Convert to response format in which the id is a string
 			(result as IWorkflowBase as IWorkflowResponse).id = result.id.toString();
@@ -718,40 +705,6 @@ class App {
 			return true;
 		}));
 
-		// Adds a tag to a workflow
-		this.app.post(`/${this.restEndpoint}/workflows/:workflowId/tags/:tagId`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ workflowId: number, tagId: number }> => {
-			const workflowId = Number(req.params.workflowId);
-			const tagId = Number(req.params.tagId);
-
-			await TagHelpers.validateId(tagId);
-			await TagHelpers.validateNoRelation(workflowId, tagId);
-
-			await getConnection().createQueryBuilder()
-				.insert()
-				.into('workflows_tags')
-				.values([ { workflowId, tagId } ])
-				.execute();
-
-			return { workflowId, tagId };
-		}));
-
-		// Removes a tag from a workflow
-		this.app.delete(`/${this.restEndpoint}/workflows/:workflowId/tags/:tagId`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
-			const workflowId = Number(req.params.workflowId);
-			const tagId = Number(req.params.tagId);
-
-			await TagHelpers.validateId(tagId);
-			await TagHelpers.validateRelation(workflowId, tagId);
-
-			await getConnection().createQueryBuilder()
-				.delete()
-				.from('workflows_tags')
-				.where('workflowId = :workflowId AND tagId = :tagId', { workflowId, tagId })
-				.execute();
-
-			return true;
-		}));
-
 		this.app.post(`/${this.restEndpoint}/workflows/run`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionPushResponse> => {
 			const workflowData = req.body.workflowData;
 			const runData: IRunData | undefined = req.body.runData;
@@ -801,26 +754,9 @@ class App {
 
 		// Retrieves all tags, with or without usage count
 		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<Array<{ id: number, name: string, usageCount?: number }>> => {
-			const withUsageCount = req.query.withUsageCount === 'true';
-
-			if (withUsageCount) {
-				return await getConnection().createQueryBuilder()
-				.select('tag_entity.id', 'id')
-				.addSelect('tag_entity.name', 'name')
-				.addSelect('COUNT(workflow_entity.id)', 'usageCount')
-				.from('tag_entity', 'tag_entity')
-				.leftJoin('workflows_tags', 'workflows_tags', 'workflows_tags.tagId = tag_entity.id')
-				.leftJoin('workflow_entity', 'workflow_entity', 'workflows_tags.workflowId = workflow_entity.id')
-				.groupBy('tag_entity.id')
-				.getRawMany();
-			}
-
-			return await getConnection().createQueryBuilder()
-				.select('tag_entity.id', 'id')
-				.addSelect('tag_entity.name', 'name')
-				.from('tag_entity', 'tag_entity')
-				.groupBy('tag_entity.id')
-				.getRawMany();
+			return req.query.withUsageCount === 'true'
+				? await TagHelpers.getAllTagsWithUsageCount()
+				: await TagHelpers.getAllTags();
 		}));
 
 		// Creates a tag
@@ -828,8 +764,8 @@ class App {
 			TagHelpers.validateRequestBody(req.body);
 
 			const { name } = req.body;
-			await TagHelpers.validateName(name);
 			TagHelpers.validateLength(name);
+			await TagHelpers.validateName(name);
 
 			const newTag: ITagBase = {
 				name,
@@ -855,8 +791,8 @@ class App {
 			TagHelpers.validateRequestBody(req.body);
 
 			const { name } = req.body;
-			await TagHelpers.validateName(name);
 			TagHelpers.validateLength(name);
+			await TagHelpers.validateName(name);
 
 			const id = Number(req.params.id);
 			await TagHelpers.validateId(id);
