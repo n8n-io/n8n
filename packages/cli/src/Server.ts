@@ -500,12 +500,15 @@ class App {
 			// Save the workflow in DB
 			const result = await Db.collections.Workflow!.save(newWorkflowData);
 
-			const { tags } = req.body as { tags: string };
+			const { tags } = req.body as { tags: string | undefined };
 
 			if (tags) {
 				const tagIds = tags.split(',');
-				await TagHelpers.createTagWorkflowRelations(result.id as string, tagIds);
-				result.tags = await TagHelpers.getTagsForResponseData(tagIds);
+				await TagHelpers.createRelations(result.id as string, tagIds);
+				result.tags = await Db.collections.Tag!.find({
+					select: ['id', 'name'],
+					where: { id: In(tagIds) },
+				});
 			}
 
 			// Convert to response format in which the id is a string
@@ -583,7 +586,7 @@ class App {
 		// Updates an existing workflow
 		this.app.patch(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowResponse> => {
 
-			const { tags } = req.body as { tags: string };
+			const { tags } = req.body as { tags: string | undefined };
 			const newWorkflowData = _.omit(req.body, ['tags']) as IWorkflowBase;
 
 			const id = req.params.id;
@@ -662,9 +665,13 @@ class App {
 					await TagHelpers.validateId(tagId);
 				}
 
-				await TagHelpers.createTagWorkflowRelations(id, tagIds);
+				await TagHelpers.createRelations(id, tagIds);
 
-				responseData.tags = await TagHelpers.getTagsForResponseData(tagIds);
+				responseData.tags = await Db.collections.Tag!.find({
+					select: ['id', 'name'],
+					where: { id: In(tagIds) },
+				});
+
 			}
 
 			// Convert to response format in which the id is a string
@@ -740,10 +747,10 @@ class App {
 		}));
 
 		// Retrieves all tags, with or without usage count
-		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<Array<{ id: number, name: string, usageCount?: number }>> => {
+		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagDb[] | Array<{ id: number, name: string, usageCount?: number }>> => {
 			return req.query.withUsageCount === 'true'
 				? await TagHelpers.getAllTagsWithUsageCount()
-				: await TagHelpers.getAllTags();
+				: await Db.collections.Tag!.find({ select: ['id', 'name'] });
 		}));
 
 		// Creates a tag
