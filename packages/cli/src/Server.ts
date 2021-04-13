@@ -749,8 +749,8 @@ class App {
 			TagHelpers.validateRequestBody(req.body);
 
 			const { name } = req.body;
-			TagHelpers.validateLength(name);
 			await TagHelpers.validateName(name);
+			TagHelpers.validateLength(name);
 
 			const newTag: ITagBase = {
 				name,
@@ -776,8 +776,8 @@ class App {
 			TagHelpers.validateRequestBody(req.body);
 
 			const { name } = req.body;
-			TagHelpers.validateLength(name);
 			await TagHelpers.validateName(name);
+			TagHelpers.validateLength(name);
 
 			const id = Number(req.params.id);
 			await TagHelpers.validateId(id);

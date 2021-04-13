@@ -17,7 +17,6 @@ import {
 import {
 	IDeferredPromise,
 } from 'n8n-core';
-
 import * as PCancelable from 'p-cancelable';
 import { Repository } from 'typeorm';
 
