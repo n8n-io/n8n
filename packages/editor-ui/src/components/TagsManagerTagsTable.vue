@@ -101,7 +101,7 @@ export default Vue.extend({
 	computed: {
 		rows(): ITagRow[] {
 			const filter = this.search;
-			const tagRows = [...this.$store.getters['tags/allTags']]
+			const tagRows = this.tags
 				.filter((tag: ITag) => this.stickyIds.has(tag.id) || tag.name.toLowerCase().trim().includes(filter.toLowerCase().trim() || ''))
 				.map((tag: ITag): ITagRow => ({
 					tag,
@@ -202,11 +202,10 @@ export default Vue.extend({
 			}
 		},
 		updateId(newValue, oldValue) {
-			// on update, keep updated items in view despite filter
-			if (!newValue && oldValue) {
-				this.stickyIds.add(oldValue);
-			}
-			else if (newValue) {
+			if (newValue) {
+				// on update, keep updated items in view despite filter
+				this.stickyIds.add(newValue);
+
 				setTimeout(() => {
 					this.$refs.nameInput && this.$refs.nameInput.focus();
 				}, 300); // transition timout
