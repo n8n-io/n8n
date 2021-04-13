@@ -89,30 +89,45 @@ export const nodeDescription: INodeTypeDescription = {
 		//         find
 		// ----------------------------------
 		{
-			displayName: 'Limit',
-			name: 'limit',
-			type: "number",
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
 			displayOptions: {
 				show: {
 					operation: ['find'],
 				},
 			},
-			default: 0,
-			required: true,
-			description: 'Use limit to specify the maximum number of documents or 0 for unlimited documents.',
-		},
-		{
-			displayName: 'Skip',
-			name: 'skip',
-			type: "number",
-			displayOptions: {
-				show: {
-					operation: ['find'],
+			default: {},
+			placeholder: 'Add options',
+			description: 'Add query options',
+			options: [
+				{
+					displayName: 'Limit',
+					name: 'limit',
+					type: "number",
+					default: 0,
+					description: 'Use limit to specify the maximum number of documents or 0 for unlimited documents.',
 				},
-			},
-			default: 0,
-			required: true,
-			description: 'The number of documents to skip in the results set.',
+				{
+					displayName: 'Skip',
+					name: 'skip',
+					type: "number",
+					default: 0,
+					description: 'The number of documents to skip in the results set.',
+				},
+				{
+					displayName: 'Sort (JSON format)',
+					name: 'sort',
+					type: 'json',
+					typeOptions: {
+						rows: 2,
+					},
+					default: '{}',
+					placeholder: '{ "field": -1 }',
+					required: true,
+					description: 'A json that defines the sort order of the result set.',
+				},
+			],
 		},
 		{
 			displayName: 'Query (JSON format)',
@@ -130,23 +145,6 @@ export const nodeDescription: INodeTypeDescription = {
 			placeholder: `{ "birth": { "$gt": "1950-01-01" } }`,
 			required: true,
 			description: 'MongoDB Find query.',
-		},
-		{
-			displayName: 'Sort (JSON format)',
-			name: 'sort',
-			type: 'json',
-			typeOptions: {
-				rows: 2,
-			},
-			displayOptions: {
-				show: {
-					operation: ['find'],
-				},
-			},
-			default: '{}',
-			placeholder: '{ field: -1 }',
-			required: true,
-			description: 'A json that defines the sort order of the result set.',
 		},
 		// ----------------------------------
 		//         insert

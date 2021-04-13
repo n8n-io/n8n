@@ -50,11 +50,12 @@ export class MongoDb implements INodeType {
 
 			let query = mdb
 				.collection(this.getNodeParameter('collection', 0) as string)
-				.find(JSON.parse(this.getNodeParameter('query', 0) as string))
+				.find(JSON.parse(this.getNodeParameter('query', 0) as string));
 
-			const limit = this.getNodeParameter('limit', 0) as number
-			const skip = this.getNodeParameter('skip', 0) as number
-			const sort = JSON.parse(this.getNodeParameter('sort', 0) as string)
+			const options = this.getNodeParameter('options', 0) as IDataObject;
+			const limit = options.limit as number;
+			const skip = options.skip as number;
+			const sort = options.sort && JSON.parse(options.sort as string);
 			if (skip > 0) {
 				query = query.skip(skip)
 			}
