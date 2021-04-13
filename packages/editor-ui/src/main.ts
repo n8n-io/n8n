@@ -17,7 +17,7 @@ import './n8n-theme.scss';
 import App from '@/App.vue';
 import router from './router';
 
-import i18n from "./i18n/i18n";
+import { i18n } from "./i18n/i18n";
 
 import { runExternalHook } from './components/mixins/externalHooks';
 

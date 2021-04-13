@@ -12,7 +12,8 @@
 				</el-row>
 				<el-row>
 					<el-col :span="8" class="info-name">
-						Source Code:
+						<!-- Source Code: -->
+						{{ $t('about.sourceCode') }}:
 					</el-col>
 					<el-col :span="16">
 						<a href="https://github.com/n8n-io/n8n" target="_blank">https://github.com/n8n-io/n8n</a>
@@ -42,6 +43,7 @@ import Vue from 'vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
+import { loadLanguageAsync } from '@/i18n/i18n';
 
 import mixins from 'vue-typed-mixins';
 

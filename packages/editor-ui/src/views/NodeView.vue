@@ -1709,7 +1709,7 @@ export default mixins(
 						node.parameters = {};
 					}
 
-					// Load the defaul parameter values because only values which differ
+					// Load the default parameter values because only values which differ
 					// from the defaults get saved
 					if (nodeType !== null) {
 						let nodeParameters = null;
