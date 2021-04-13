@@ -210,7 +210,7 @@ export default Vue.extend({
 				}, 300); // transition timout
 			}
 		},
-		updateId(newValue, oldValue) {
+		updateId(newValue) {
 			if (newValue) {
 				// on update, keep updated items in view despite filter
 				this.stickyIds.add(newValue);
