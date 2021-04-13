@@ -8,7 +8,6 @@ import {
 	resolve as pathResolve,
 } from 'path';
 import {
-	getConnection,
 	getConnectionManager,
 	In,
 } from 'typeorm';
@@ -111,7 +110,6 @@ import { Registry } from 'prom-client';
 import { ITagBase, ITagDb, } from './Interfaces';
 
 import * as TagHelpers from './TagHelpers';
-import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 
 class App {
 
