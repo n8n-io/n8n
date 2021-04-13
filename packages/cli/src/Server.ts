@@ -503,23 +503,8 @@ class App {
 
 			if (tags) {
 				const tagIds = tags.split(',').map(Number);
-
-				for (const tagId of tagIds) {
-					await TagHelpers.validateId(tagId);
-				}
-
-				await getConnection().createQueryBuilder()
-					.insert()
-					.into('workflows_tags')
-					.values(tagIds.map(tagId => ({ workflowId: result.id, tagId })))
-					.execute();
-
-				const findQuery: FindManyOptions = {
-					select: ['id', 'name'],
-					where: { id: In(tagIds) },
-				};
-
-				result.tags = await Db.collections.Tag!.find(findQuery);
+				await TagHelpers.createTagWorkflowRelations(result.id as string, tagIds);
+				result.tags = await TagHelpers.getTagsForResponseData(tagIds);
 			}
 
 			// Convert to response format in which the id is a string
