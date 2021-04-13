@@ -62,7 +62,7 @@ export default mixins(
 		'dialogVisible',
 	],
 	created() {
-    	this.$store.dispatch('tags/getAll');
+		this.$store.dispatch('tags/getAll');
 	},
 	data() {
 		return {
@@ -83,7 +83,7 @@ export default mixins(
 		},
 		isLoading(): boolean {
 			return this.$store.getters['tags/loading'];
-		}
+		},
 	},
 	methods: {
 		enableCreate() {
@@ -164,7 +164,7 @@ export default mixins(
 
 		closeDialog() {
 			this.$emit('closeDialog');
-		}
+		},
 	},
 });
 </script>

@@ -1,21 +1,18 @@
 
-import { ActionContext, Store } from 'vuex';
+import { ActionContext, Module } from 'vuex';
 import {
 	ITag,
+	ITagsState,
+	IRootState,
 } from '../Interface';
 import { addTag, deleteTag, getTags, updateTag } from '../api/tags';
 
-export interface ITagsState {
-	tags: ITag[];
-	isLoading: boolean;
-}
-
-const module = {
+const module: Module<ITagsState, IRootState> = {
 	namespaced: true,
 	state: {
 		tags: [],
-		isLoading: false
-	} as ITagsState,
+		isLoading: false,
+	},
 	mutations: {
 		setLoading: (state: ITagsState, isLoading: boolean) => {
 			state.isLoading = isLoading;
@@ -38,7 +35,7 @@ const module = {
 		},
 		deleteTag: (state: ITagsState, id: number) => {
 			state.tags = state.tags.filter((tag) => tag.id !== id);
-		}
+		},
 	},
 	getters: {
 		allTags: (state: ITagsState): ITag[] => {
@@ -49,7 +46,7 @@ const module = {
 		},
 	},
 	actions: {
-		getAll: async (context: ActionContext<any, unknown>) => {
+		getAll: async (context: ActionContext<ITagsState, IRootState>) => {
 			context.commit('setLoading', true);
 			const tags = await getTags(context);
 			context.commit('setTags', tags);
@@ -57,17 +54,17 @@ const module = {
 
 			return tags;
 		},
-		addNew: async (context: ActionContext<any, unknown>, name: string) => {
+		addNew: async (context: ActionContext<ITagsState, IRootState>, name: string) => {
 			const tag = await addTag(context, {name});
 			context.commit('addTag', tag);
 
 			return tag;
 		},
-		rename: async (context: ActionContext<any, unknown>, params: {name: string, id: number}) => {
+		rename: async (context: ActionContext<ITagsState, IRootState>, params: {name: string, id: number}) => {
 			const tag = await updateTag(context, params.id, {name: params.name});
 			context.commit('updateTag', tag);
 		}, 
-		delete: async (context: ActionContext<any, unknown>, id: number) => {
+		delete: async (context: ActionContext<ITagsState, IRootState>, id: number) => {
 			const deleted = await deleteTag(context, id);
 
 			if (deleted) {
@@ -76,7 +73,7 @@ const module = {
 
 			return deleted;
 		}, 
-	}
+	},
 };
 
 export default module;

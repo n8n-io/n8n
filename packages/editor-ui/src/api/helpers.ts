@@ -2,7 +2,11 @@ import axios, { AxiosRequestConfig, Method } from 'axios';
 import {
 	IDataObject,
 } from 'n8n-workflow';
+import {
+	IRootState,
+} from '../Interface';
 import { ActionContext, Store } from 'vuex';
+
 
 export class ResponseError extends Error {
 	// The HTTP status code of response
@@ -38,43 +42,43 @@ export class ResponseError extends Error {
 	}
 }
 
-export default async function makeRestApiRequest(context: ActionContext<any, unknown> | Store<any>, method: Method, endpoint: string, data?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-    try {
+export default async function makeRestApiRequest(context: ActionContext<any, IRootState> | Store<IRootState>, method: Method, endpoint: string, data?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+	try {
 		let baseURL = context.getters.getRestUrl;
 		let sessionid = context.getters.sessionId;
 
-		if ((context as ActionContext<any, unknown>).rootGetters) {
-			const actionContext = context as ActionContext<any, unknown>;
+		if ((context as ActionContext<any, IRootState>).rootGetters) { // tslint:disable-line:no-any
+			const actionContext = context as ActionContext<any, IRootState>; // tslint:disable-line:no-any
 			baseURL = actionContext.rootGetters.getRestUrl;
 			sessionid = actionContext.rootGetters.sessionId;
 		}
 
-        const options: AxiosRequestConfig = {
-            method,
-            url: endpoint,
-            baseURL: baseURL,
-            headers: {
-                sessionid,
-            },
-        };
-        if (['PATCH', 'POST', 'PUT'].includes(method)) {
-            options.data = data;
-        } else {
-            options.params = data;
-        }
+		const options: AxiosRequestConfig = {
+			method,
+			url: endpoint,
+			baseURL,
+			headers: {
+				sessionid,
+			},
+		};
+		if (['PATCH', 'POST', 'PUT'].includes(method)) {
+			options.data = data;
+		} else {
+			options.params = data;
+		}
 
-        const response = await axios.request(options);
-        return response.data.data;
-    } catch (error) {
-        if (error.message === 'Network Error') {
-            throw new ResponseError('API-Server can not be reached. It is probably down.');
-        }
+		const response = await axios.request(options);
+		return response.data.data;
+	} catch (error) {
+		if (error.message === 'Network Error') {
+			throw new ResponseError('API-Server can not be reached. It is probably down.');
+		}
 
-        const errorResponseData = error.response.data;
-        if (errorResponseData !== undefined && errorResponseData.message !== undefined) {
-            throw new ResponseError(errorResponseData.message, errorResponseData.code, error.response.status, errorResponseData.stack);
-        }
+		const errorResponseData = error.response.data;
+		if (errorResponseData !== undefined && errorResponseData.message !== undefined) {
+			throw new ResponseError(errorResponseData.message, errorResponseData.code, error.response.status, errorResponseData.stack);
+		}
 
-        throw error;
-    }
+		throw error;
+	}
 }

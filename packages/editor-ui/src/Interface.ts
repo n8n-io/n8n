@@ -435,3 +435,45 @@ export interface ITag {
 	name: string;
 	usageCount: number;
 }
+
+export interface IRootState {
+	activeExecutions: IExecutionsCurrentSummaryExtended[];
+	activeWorkflows: string[];
+	activeActions: string[];
+	activeNode: string | null;
+	baseUrl: string;
+	credentials: ICredentialsResponse[] | null;
+	credentialTypes: ICredentialType[] | null;
+	endpointWebhook: string;
+	endpointWebhookTest: string;
+	executionId: string | null;
+	executingNode: string | null;
+	executionWaitingForWebhook: boolean;
+	pushConnectionActive: boolean;
+	saveDataErrorExecution: string;
+	saveDataSuccessExecution: string;
+	saveManualExecutions: boolean;
+	timezone: string;
+	stateIsDirty: boolean;
+	executionTimeout: number;
+	maxExecutionTimeout: number;
+	versionCli: string;
+	oauthCallbackUrls: object;
+	n8nMetadata: object;
+	workflowExecutionData: IExecutionResponse | null;
+	lastSelectedNode: string | null;
+	lastSelectedNodeOutputIndex: number | null;
+	nodeIndex: Array<string | null>;
+	nodeTypes: INodeTypeDescription[];
+	nodeViewOffsetPosition: XYPositon;
+	nodeViewMoveInProgress: boolean;
+	selectedNodes: INodeUi[];
+	sessionId: string;
+	urlBaseWebhook: string;
+	workflow: IWorkflowDb;
+}
+
+export interface ITagsState {
+	tags: ITag[];
+	isLoading: boolean;
+}

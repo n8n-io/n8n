@@ -93,7 +93,7 @@ export default Vue.extend({
 	],
 	data() {
 		return {
-			_search: '',
+			searchValue: '',
 			newTagName: '',
 			stickyIds: new Set(),
 		};
@@ -115,13 +115,13 @@ export default Vue.extend({
 		},
 		search: {
 			get(): string {
-				return this.$data._search;
+				return this.$data.searchValue;
 			},
 			set(search: string) {
 				this.stickyIds.clear();
-				this.$data._search = search;
-			}
-		}
+				this.$data.searchValue = search;
+			},
+		},
 	},
 	methods: {
 		getSpan({row, columnIndex}: {row: ITagRow, columnIndex: number}): number | number[] {
@@ -168,17 +168,23 @@ export default Vue.extend({
 			this.newTagName = '';
 		},
 		updateTag(row: ITagRow): void {
-			row.tag && this.$emit('onUpdate', row.tag.id, this.$data.newTagName.trim(), row.tag.name);
+			if (row.tag) {
+				this.$emit('onUpdate', row.tag.id, this.$data.newTagName.trim(), row.tag.name);
+			}
 		},
 
 		enableDelete(row: ITagRow): void {
-			row.tag && this.$emit('enableDelete', row.tag.id);
+			if (row.tag) {
+				this.$emit('enableDelete', row.tag.id);
+			}
 		},
 		disableDelete(): void {
 			this.$emit('disableDelete');
 		},
 		deleteTag(row: ITagRow): void {
-			row.tag && this.$emit('onDelete', row.tag.id, row.tag.name);
+			if (row.tag) {
+				this.$emit('onDelete', row.tag.id, row.tag.name);
+			}
 		},
 
 		enableCreate(): void {
@@ -197,7 +203,10 @@ export default Vue.extend({
 			this.$data.newTagName = '';
 			if (newValue) {
 				setTimeout(() => {
-					this.$refs.nameInput && this.$refs.nameInput.focus();
+					const input = this.$refs.nameInput as any; // tslint:disable-line:no-any
+					if (input && input.focus) {
+						input.focus();
+					}
 				}, 300); // transition timout
 			}
 		},
@@ -207,10 +216,13 @@ export default Vue.extend({
 				this.stickyIds.add(newValue);
 
 				setTimeout(() => {
-					this.$refs.nameInput && this.$refs.nameInput.focus();
+					const input = this.$refs.nameInput as any; // tslint:disable-line:no-any
+					if (input && input.focus) {
+						input.focus();
+					}
 				}, 300); // transition timout
 			}
-		}
+		},
 	},
 });
 </script>
