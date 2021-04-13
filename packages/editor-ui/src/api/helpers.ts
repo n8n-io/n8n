@@ -8,7 +8,7 @@ import {
 import { ActionContext, Store } from 'vuex';
 
 
-export class ResponseError extends Error {
+class ResponseError extends Error {
 	// The HTTP status code of response
 	httpStatusCode?: number;
 
