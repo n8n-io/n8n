@@ -113,6 +113,49 @@ export class MySql implements INodeType {
 				placeholder: 'id,name,description',
 				description: 'Comma separated list of the properties which should used as columns for the new rows.',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: [
+							'insert',
+						],
+					},
+				},
+				default: {},
+				placeholder: 'Add modifiers',
+				description: 'Modifiers for INSERT statement.',
+				options: [
+					{
+						displayName: 'Ignore',
+						name: 'ignore',
+						type: 'boolean',
+						default: true,
+						description: 'Ignore any ignorable errors that occur while executing the INSERT statement.',
+					},
+					{
+						displayName: 'Priority',
+						name: 'priority',
+						type: 'options',
+						options: [
+							{
+								name: 'Low Prioirity',
+								value: 'LOW_PRIORITY',
+								description: 'Delays execution of the INSERT until no other clients are reading from the table.',
+							},
+							{
+								name: 'High Priority',
+								value: 'HIGH_PRIORITY',
+								description: 'Overrides the effect of the --low-priority-updates option if the server was started with that option. It also causes concurrent inserts not to be used.',
+							},
+						],
+						default: 'LOW_PRIORITY',
+						description: 'Ignore any ignorable errors that occur while executing the INSERT statement.',
+					},
+				],
+			},
 
 
 			// ----------------------------------
@@ -215,8 +258,13 @@ export class MySql implements INodeType {
 			const columns = columnString.split(',').map(column => column.trim());
 			const insertItems = copyInputItems(items, columns);
 			const insertPlaceholder = `(${columns.map(column => '?').join(',')})`;
-			const insertSQL = `INSERT INTO ${table}(${columnString}) VALUES ${items.map(item => insertPlaceholder).join(',')};`;
+			const options = this.getNodeParameter('options', 0) as IDataObject;
+			const insertIgnore = options.ignore as boolean;
+			const insertPriority = options.priority as string;
+
+			const insertSQL = `INSERT ${insertPriority || ''} ${insertIgnore ? 'IGNORE' : ''} INTO ${table}(${columnString}) VALUES ${items.map(item => insertPlaceholder).join(',')};`;
 			const queryItems = insertItems.reduce((collection, item) => collection.concat(Object.values(item as any)), []); // tslint:disable-line:no-any
+			
 			const queryResult = await connection.query(insertSQL, queryItems);
 
 			returnItems = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
