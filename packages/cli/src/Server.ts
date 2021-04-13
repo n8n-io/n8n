@@ -513,6 +513,13 @@ class App {
 					.into('workflows_tags')
 					.values(tags.split(',').map(tagId => ({ workflowId: result.id, tagId })))
 					.execute();
+
+				const findQuery: FindManyOptions = {
+					select: ['id', 'name'],
+					where: { id: In(tagIds) },
+				};
+
+				result.tags = await Db.collections.Tag!.find(findQuery);
 			}
 
 			// Convert to response format in which the id is a string
