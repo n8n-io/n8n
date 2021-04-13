@@ -127,18 +127,13 @@ export async function getAllTagsWithUsageCount(): Promise<Array<{
 export async function getWorkflowTags(
 	workflowId: string
 ): Promise<Array<{ id: string; name: string }>> {
-	return await getConnection().createQueryBuilder()
+	return await getConnection()
+		.createQueryBuilder()
 		.select('tag_entity.id', 'id')
 		.addSelect('tag_entity.name', 'name')
 		.from('tag_entity', 'tag_entity')
-		.where(qb => {
-			return "id IN " + qb.subQuery()
-				.select('tagId')
-				.from('workflow_entity', 'workflow_entity')
-				.leftJoin('workflows_tags', 'workflows_tags', 'workflows_tags.workflowId = workflow_entity.id')
-				.where("workflow_entity.id = :id", { id: workflowId })
-				.getQuery();
-		})
+		.leftJoin('workflows_tags', 'workflows_tags', 'workflows_tags.tagId = tag_entity.id')
+		.where('workflowId = :workflowId', { workflowId })
 		.getRawMany();
 }
 
