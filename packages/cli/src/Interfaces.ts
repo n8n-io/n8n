@@ -18,10 +18,6 @@ import {
 	IDeferredPromise,
 } from 'n8n-core';
 
-import {
-	UpdateResult
-} from 'typeorm';
-
 import * as PCancelable from 'p-cancelable';
 import { Repository } from 'typeorm';
 
