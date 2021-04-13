@@ -11,6 +11,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -271,8 +272,8 @@ export class AwsSqs implements INodeType {
 				try {
 					// loads first 1000 queues from SQS
 					data = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `?Action=ListQueues`);
-				} catch (err) {
-					throw new NodeOperationError(this.getNode(), `AWS Error: ${err}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 
 				let queues = data.ListQueuesResponse.ListQueuesResult.QueueUrl;
@@ -375,8 +376,8 @@ export class AwsSqs implements INodeType {
 			let responseData;
 			try {
 				responseData = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `${queuePath}/?Action=${operation}&` + params.join('&'));
-			} catch (err) {
-				throw new NodeOperationError(this.getNode(), `AWS Error: ${err}`);
+			} catch (error) {
+				throw new NodeApiError(this.getNode(), error);
 			}
 
 			const result = responseData.SendMessageResponse.SendMessageResult;
