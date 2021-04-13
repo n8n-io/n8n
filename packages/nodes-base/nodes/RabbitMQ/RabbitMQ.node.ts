@@ -355,6 +355,7 @@ export class RabbitMQ implements INodeType {
 				});
 
 				await channel.close();
+				await channel.connection.close();
 			}
 			else if (mode === 'exchange') {
 				const exchange = this.getNodeParameter('exchange', 0) as string;
@@ -419,6 +420,7 @@ export class RabbitMQ implements INodeType {
 				});
 
 				await channel.close();
+				await channel.connection.close();
 			} else {
 				throw new Error(`The operation "${mode}" is not known!`);
 			}
@@ -428,6 +430,7 @@ export class RabbitMQ implements INodeType {
 		catch (error) {
 			if (channel) {
 				await channel.close();
+				await channel.connection.close();
 			}
 			throw error;
 		}
