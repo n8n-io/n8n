@@ -6,6 +6,8 @@ import {
 
 import {
 	Db,
+	ITagDb,
+	IWorkflowDb,
 	ResponseHelper,
 } from ".";
 
@@ -51,9 +53,9 @@ export async function validateName(name: string): Promise<void> | never {
  * Validate that a tag and a workflow are not related so that a link can be created.
  */
 export async function validateNoRelation(workflowId: number, tagId: number): Promise<void> | never {
-	const result = await findRelations(workflowId, tagId);
+	const areRelated = await checkRelations(workflowId, tagId);
 
-	if (result.length) {
+	if (areRelated) {
 		throw new ResponseHelper.ResponseError(`Workflow ID ${workflowId} and tag ID ${tagId} are already related.`, undefined, 400);
 	}
 }
@@ -62,9 +64,9 @@ export async function validateNoRelation(workflowId: number, tagId: number): Pro
  * Validate that a tag and a workflow are related so that their link can be deleted.
  */
 export async function validateRelation(workflowId: number, tagId: number): Promise<void> | never {
-	const result = await findRelations(workflowId, tagId);
+	const areRelated = await checkRelations(workflowId, tagId);
 
-	if (!result.length) {
+	if (!areRelated) {
 		throw new ResponseHelper.ResponseError(`Workflow ID ${workflowId} and tag ID ${tagId} are not related.`, undefined, 400);
 	}
 }
@@ -121,7 +123,7 @@ export async function getAllTagsWithUsageCount(): Promise<Array<{
  */
 export async function getTagsByWorkflowIds(
 	workflowIds: string[]
-): Promise<Array<{ workflowId: number; id: string; name: string }>> {
+): Promise<Array<{ workflowId: string; id: string; name: string }>> {
 	return await getConnection().createQueryBuilder()
 		.select('workflows_tags.workflowId', 'workflowId')
 		.addSelect('tag_entity.id', 'id')
@@ -140,24 +142,28 @@ export async function getTagsByWorkflowIds(
 export async function getTagsForResponseData(
 	tagIds: string[]
 ): Promise<Array<{ id: string; name: string }>> {
-	return await Db.collections.Tag!.find({
-		select: ['id', 'name'],
-		where: { id: In(tagIds) },
-	}) as Array<{ id: string; name: string }>;
+	return await getConnection().createQueryBuilder()
+		.select('tag_entity.id', 'id')
+		.addSelect('tag_entity.name', 'name')
+		.from('tag_entity', 'tag_entity')
+		.where('tag_entity.id IN (:...tagIds)', { tagIds })
+		.getRawMany();
 }
 
 /**
  * Find if a workflow and a tag are related.
  */
-async function findRelations(
+async function checkRelations(
 	workflowId: number,
 	tagId: number
-): Promise<Array<{ workflowId: number, tagId: number }>> {
-	return await getConnection().createQueryBuilder()
+): Promise<boolean> {
+	const result = await getConnection().createQueryBuilder()
 		.select()
 		.from('workflows_tags', 'workflows_tags')
 		.where('workflowId = :workflowId AND tagId = :tagId', { workflowId, tagId })
 		.execute();
+
+	return result.length > 0;
 }
 
 /**

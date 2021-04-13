@@ -87,7 +87,7 @@ export interface ITagDb extends ITagBase {
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
 	id: number | string;
-	tags: TagEntity[] | Array<{ id: string; name: string }>; // TODO: Unify
+	tags: Array<{ id: string; name: string }>;
 }
 
 export interface IWorkflowResponse extends IWorkflowBase {

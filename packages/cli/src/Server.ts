@@ -556,14 +556,13 @@ class App {
 
 			const tagsPerWorkflow = await TagHelpers.getTagsByWorkflowIds(results.map(({ id }) => id.toString()));
 
-			// TODO: Improve
 			tagsPerWorkflow.forEach(({ workflowId, id, name }) => {
 				results.forEach(result => {
 					if (result.id !== workflowId) return;
-					// @ts-ignore
-					result.tags = result.tags
-						? [...result.tags, { id, name }]
-						: [{ id, name }];
+
+					result.tags
+						? result.tags.push({ id, name })
+						: result.tags = [{ id, name }];
 				});
 			});
 
