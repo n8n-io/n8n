@@ -40,6 +40,9 @@ export class WorkflowRunnerProcess {
 	workflow: Workflow | undefined;
 	workflowExecute: WorkflowExecute | undefined;
 	executionIdCallback: (executionId: string) => void | undefined;
+	childExecutions: {
+		[key: string]: {workflowExecute: WorkflowExecute, workflow: Workflow},
+	} = {};
 
 	static async stopProcess() {
 		setTimeout(() => {
@@ -107,8 +110,14 @@ export class WorkflowRunnerProcess {
 			await Db.init();
 		}
 
+		// Start timeout for the execution
+		let workflowTimeout = config.get('executions.timeout') as number > 0 && config.get('executions.timeout') as number; // initialize with default
+		if (this.data.workflowData.settings && this.data.workflowData.settings.executionTimeout) {
+			workflowTimeout = this.data.workflowData.settings!.executionTimeout as number > 0 && this.data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
+		}
+
 		this.workflow = new Workflow({ id: this.data.workflowData.id as string | undefined, name: this.data.workflowData.name, nodes: this.data.workflowData!.nodes, connections: this.data.workflowData!.connections, active: this.data.workflowData!.active, nodeTypes, staticData: this.data.workflowData!.staticData, settings: this.data.workflowData!.settings });
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(this.data.credentials);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(this.data.credentials, undefined, workflowTimeout === false ? undefined : Date.now() + workflowTimeout * 1000);
 		additionalData.hooks = this.getProcessForwardHooks();
 
 		const executeWorkflowFunction = additionalData.executeWorkflow;
@@ -123,15 +132,21 @@ export class WorkflowRunnerProcess {
 			});
 			let result: IRun;
 			try {
-				result = await executeWorkflowFunction(workflowInfo, additionalData, inputData, executionId, workflowData, runData);
+				const executeWorkflowFunctionOutput = await executeWorkflowFunction(workflowInfo, additionalData, inputData, executionId, workflowData, runData) as {workflowExecute: WorkflowExecute, workflow: Workflow};
+				const workflowExecute = executeWorkflowFunctionOutput.workflowExecute;
+				this.childExecutions[executionId] = executeWorkflowFunctionOutput;
+				const workflow = executeWorkflowFunctionOutput.workflow;
+				result = await workflowExecute.processRunExecutionData(workflow) as IRun;
+				await externalHooks.run('workflow.postExecute', [result, workflowData]);
+				await sendToParentProcess('finishExecution', { executionId, result });
+				delete this.childExecutions[executionId];
 			} catch (e) {
 				await sendToParentProcess('finishExecution', { executionId });
+				delete this.childExecutions[executionId];
 				// Throw same error we had 
 				throw e;	
 			}
 			
-			await sendToParentProcess('finishExecution', { executionId, result });
-
 			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(result);
 			return returnData!.data!.main;
 		};
@@ -267,6 +282,17 @@ process.on('message', async (message: IProcessMessage) => {
 			let runData: IRun;
 
 			if (workflowRunner.workflowExecute !== undefined) {
+
+				for (const executionId in workflowRunner.childExecutions) {
+					const childWorkflowExecute = workflowRunner.childExecutions[executionId];
+					runData = childWorkflowExecute.workflowExecute.getFullRunData(workflowRunner.startedAt);
+					const timeOutError = message.type === 'timeout' ? { message: 'Workflow execution timed out!' } as IExecutionError : undefined;
+
+					// If there is any data send it to parent process, if execution timedout add the error
+					await childWorkflowExecute.workflowExecute.processSuccessExecution(workflowRunner.startedAt, childWorkflowExecute.workflow, timeOutError);
+
+				}
+
 				// Workflow started already executing
 				runData = workflowRunner.workflowExecute.getFullRunData(workflowRunner.startedAt);
 

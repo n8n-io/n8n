@@ -569,7 +569,7 @@ export async function getWorkflowData(workflowInfo: IExecuteWorkflowInfo): Promi
  * @param {INodeExecutionData[]} [inputData]
  * @returns {(Promise<Array<INodeExecutionData[] | null>>)}
  */
-export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[], parentExecutionId?: string, loadedWorkflowData?: IWorkflowBase, loadedRunData?: IWorkflowExecutionDataProcess): Promise<Array<INodeExecutionData[] | null> | IRun> {
+export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[], parentExecutionId?: string, loadedWorkflowData?: IWorkflowBase, loadedRunData?: IWorkflowExecutionDataProcess): Promise<Array<INodeExecutionData[] | null> | {workflowExecute: WorkflowExecute, workflow: Workflow}> {
 	const externalHooks = ExternalHooks();
 	await externalHooks.init();
 
@@ -610,6 +610,10 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 
 	// Execute the workflow
 	const workflowExecute = new WorkflowExecute(additionalDataIntegrated, runData.executionMode, runExecutionData);
+	if (parentExecutionId !== undefined) {
+		// Must be changed to become typed
+		return {workflow, workflowExecute};
+	}
 	const data = await workflowExecute.processRunExecutionData(workflow);
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData]);
@@ -617,14 +621,9 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	if (data.finished === true) {
 		// Workflow did finish successfully
 
-		if (parentExecutionId !== undefined) {
-			return data;
-		} else {
-			await ActiveExecutions.getInstance().remove(executionId, data);
-
-			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
-			return returnData!.data!.main;
-		}
+		await ActiveExecutions.getInstance().remove(executionId, data);
+		const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
+		return returnData!.data!.main;
 	} else {
 		await ActiveExecutions.getInstance().remove(executionId, data);
 		// Workflow did fail

@@ -38,7 +38,7 @@ import {
 import * as config from '../config';
 import * as PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
-import { fork } from 'child_process';
+import { exec, fork } from 'child_process';
 
 import * as Bull from 'bull';
 import * as Queue from './Queue';
@@ -439,6 +439,10 @@ export class WorkflowRunner {
 			}, timeout);
 		}
 
+		// Create a list of child spawned executions
+		// If after the child process exits we have
+		// outstanding executions, we remove them
+		const childExecutionIds: string[] = [];
 
 		// Listen to data from the subprocess
 		subprocess.on('message', async (message: IProcessMessage) => {
@@ -460,14 +464,20 @@ export class WorkflowRunner {
 				this.processError(timeoutError, startedAt, data.executionMode, executionId);
 			} else if (message.type === 'startExecution') {
 				const executionId = await this.activeExecutions.add(message.data.runData);
+				childExecutionIds.push(executionId);
 				subprocess.send({ type: 'executionId', data: {executionId} } as IProcessMessage);
 			} else if (message.type === 'finishExecution') {
+				const executionIdIndex = childExecutionIds.indexOf(message.data.executionId);
+				if (executionIdIndex !== -1) {
+					childExecutionIds.splice(executionIdIndex, 1);
+				}
+
 				await this.activeExecutions.remove(message.data.executionId, message.data.result);
 			}
 		});
 
 		// Also get informed when the processes does exit especially when it did crash or timed out
-		subprocess.on('exit', (code, signal) => {
+		subprocess.on('exit', async (code, signal) => {
 			if (signal === 'SIGTERM'){
 				// Execution timed out and its process has been terminated
 				const timeoutError = {
@@ -483,6 +493,17 @@ export class WorkflowRunner {
 
 				this.processError(executionError, startedAt, data.executionMode, executionId);
 			}
+
+			for(const executionId in childExecutionIds) {
+				// When the child process exits, if we still have
+				// pending child executions, we mark them as finished
+				// They will display as unknown to the user
+				// Instead of pending forever as executing when it
+				// actually isn't anymore.
+				await this.activeExecutions.remove(childExecutionIds[executionId]);
+			}
+
+
 			clearTimeout(executionTimeout);
 		});
 
