@@ -17,7 +17,7 @@ import {
 /**
  * Validate whether a tag ID exists so that it can be used for a workflow create or tag update operation.
  */
-export async function validateId(id: number): Promise<void> | never {
+export async function validateId(id: string): Promise<void> | never {
 	const findQuery = { where: { id } } as FindOneOptions;
 	const tag = await Db.collections.Tag!.findOne(findQuery);
 
@@ -116,15 +116,34 @@ export async function getAllTagsWithUsageCount(): Promise<Array<{
 }
 
 /**
- * Retrieve tag IDs and names, to be used in an API response.
+ * Retrieve tag IDs and names, to be used in an API response
+ * for a workflow create/update operation.
+ */
+export async function getTagsByWorkflowIds(
+	workflowIds: string[]
+): Promise<Array<{ workflowId: number; id: string; name: string }>> {
+	return await getConnection().createQueryBuilder()
+		.select('workflows_tags.workflowId', 'workflowId')
+		.addSelect('tag_entity.id', 'id')
+		.addSelect('tag_entity.name', 'name')
+		.from('workflows_tags', 'workflows_tags')
+		.leftJoin('tag_entity', 'tag_entity', 'tag_entity.id = workflows_tags.tagId')
+		.where('workflows_tags.workflowId IN (:...workflowIds)', { workflowIds })
+		.getRawMany();
+}
+
+
+/**
+ * Retrieve tag IDs and names, to be used in an API response
+ * for a workflow create/update operation.
  */
 export async function getTagsForResponseData(
-	tagIds: number[]
-): Promise<Array<{ id: number; name: string }>> {
+	tagIds: string[]
+): Promise<Array<{ id: string; name: string }>> {
 	return await Db.collections.Tag!.find({
 		select: ['id', 'name'],
 		where: { id: In(tagIds) },
-	});
+	}) as Array<{ id: string; name: string }>;
 }
 
 /**
@@ -146,7 +165,7 @@ async function findRelations(
  */
 export async function getWorkflowTags(
 	workflowId: string
-): Promise<Array<{ id: number; name: string }>> {
+): Promise<Array<{ id: string; name: string }>> {
 	return await getConnection().createQueryBuilder()
 		.select('tag_entity.id', 'id')
 		.addSelect('tag_entity.name', 'name')
@@ -170,7 +189,7 @@ export async function getWorkflowTags(
 /**
  * Link a workflow to one or more tags.
  */
-export async function createTagWorkflowRelations(workflowId: string, tagIds: number[]) {
+export async function createTagWorkflowRelations(workflowId: string, tagIds: string[]) {
 	await getConnection().createQueryBuilder()
 		.insert()
 		.into('workflows_tags')

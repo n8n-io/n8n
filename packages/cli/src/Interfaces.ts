@@ -23,6 +23,7 @@ import { Repository } from 'typeorm';
 import { ChildProcess } from 'child_process';
 import { Url } from 'url';
 import { Request } from 'express';
+import { TagEntity } from './databases/entities/TagEntity';
 
 export interface IActivationError {
 	time: number;
@@ -80,13 +81,13 @@ export interface ITagBase {
 }
 
 export interface ITagDb extends ITagBase {
-	id: number;
+	id: string | number;
 }
 
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
 	id: number | string;
-	tags: Array<{ id: number; name: string }>;
+	tags: TagEntity[] | Array<{ id: string; name: string }>; // TODO: Unify
 }
 
 export interface IWorkflowResponse extends IWorkflowBase {

@@ -502,7 +502,7 @@ class App {
 			const { tags } = req.body as { tags: string };
 
 			if (tags) {
-				const tagIds = tags.split(',').map(Number);
+				const tagIds = tags.split(',');
 				await TagHelpers.createTagWorkflowRelations(result.id as string, tagIds);
 				result.tags = await TagHelpers.getTagsForResponseData(tagIds);
 			}
@@ -553,6 +553,19 @@ class App {
 			findQuery.select = ['id', 'name', 'active', 'createdAt', 'updatedAt'];
 
 			const results = await Db.collections.Workflow!.find(findQuery);
+
+			const tagsPerWorkflow = await TagHelpers.getTagsByWorkflowIds(results.map(({ id }) => id.toString()));
+
+			// TODO: Improve
+			tagsPerWorkflow.forEach(({ workflowId, id, name }) => {
+				results.forEach(result => {
+					if (result.id !== workflowId) return;
+					// @ts-ignore
+					result.tags = result.tags
+						? [...result.tags, { id, name }]
+						: [{ id, name }];
+				});
+			});
 
 			for (const entry of results) {
 				(entry as unknown as IWorkflowShortResponse).id = entry.id.toString();
@@ -654,7 +667,7 @@ class App {
 			if (tags) {
 				await TagHelpers.deleteAllTagsForWorkflow(id);
 
-				const tagIds = tags.split(',').map(Number);
+				const tagIds = tags.split(',');
 
 				for (const tagId of tagIds) {
 					await TagHelpers.validateId(tagId);
@@ -745,7 +758,7 @@ class App {
 		}));
 
 		// Creates a tag
-		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ id: number, name: string }> => {
+		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ id: string, name: string }> => {
 			TagHelpers.validateRequestBody(req.body);
 
 			const { name } = req.body;
@@ -758,28 +771,28 @@ class App {
 				updatedAt: this.getCurrentDate(),
 			};
 
-			const { id } = await Db.collections.Tag!.save(newTag);
+			const { id } = await Db.collections.Tag!.save(newTag) as { id: string };
 
 			return { id, name };
 		}));
 
 		// Deletes a tag
 		this.app.delete(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
-			const id = Number(req.params.id);
+			const { id } = req.params;
 			await TagHelpers.validateId(id);
 			await Db.collections.Tag!.delete({ id });
 			return true;
 		}));
 
 		// Updates an existing tag
-		this.app.patch(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ id: number, name: string }> => {
+		this.app.patch(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ id: string, name: string }> => {
 			TagHelpers.validateRequestBody(req.body);
 
 			const { name } = req.body;
 			await TagHelpers.validateName(name);
 			TagHelpers.validateLength(name);
 
-			const id = Number(req.params.id);
+			const { id } = req.params;
 			await TagHelpers.validateId(id);
 
 			const updatedTag: Partial<ITagDb> = {
