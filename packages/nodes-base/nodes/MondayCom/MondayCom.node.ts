@@ -353,7 +353,7 @@ export class MondayCom implements INodeType {
 					if (additionalFields.defaults) {
 						try {
 							JSON.parse(additionalFields.defaults as string);
-						} catch (e) {
+						} catch (error) {
 							throw new NodeOperationError(this.getNode(), 'Defauls must be a valid JSON');
 						}
 						body.variables.defaults = JSON.stringify(JSON.parse(additionalFields.defaults as string));
@@ -498,7 +498,7 @@ export class MondayCom implements INodeType {
 
 					try {
 						JSON.parse(value);
-					} catch (e) {
+					} catch (error) {
 						throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON');
 					}
 					body.variables.value = JSON.stringify(JSON.parse(value));
@@ -526,7 +526,7 @@ export class MondayCom implements INodeType {
 
 					try {
 						JSON.parse(columnValues);
-					} catch (e) {
+					} catch (error) {
 						throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON');
 					}
 					body.variables.columnValues = JSON.stringify(JSON.parse(columnValues));
@@ -557,7 +557,7 @@ export class MondayCom implements INodeType {
 					if (additionalFields.columnValues) {
 						try {
 							JSON.parse(additionalFields.columnValues as string);
-						} catch (e) {
+						} catch (error) {
 							throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON');
 						}
 						body.variables.columnValues = JSON.stringify(JSON.parse(additionalFields.columnValues as string));

@@ -1042,7 +1042,7 @@ export class EditImage implements INodeType {
 				requiredOperationParameters[operation].forEach(parameterName => {
 					try {
 						operationParameters[parameterName] = this.getNodeParameter(parameterName, itemIndex);
-					} catch (e) {}
+					} catch (error) {}
 				});
 
 				operations = [

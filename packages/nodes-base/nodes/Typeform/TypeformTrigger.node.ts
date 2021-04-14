@@ -175,7 +175,7 @@ export class TypeformTrigger implements INodeType {
 					try {
 						const body = {};
 						await apiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 					// Remove from the static workflow data so that it is clear

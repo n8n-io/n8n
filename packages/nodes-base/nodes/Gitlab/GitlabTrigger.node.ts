@@ -178,8 +178,8 @@ export class GitlabTrigger implements INodeType {
 
 				try {
 					await gitlabApiRequest.call(this, 'GET', endpoint, {});
-				} catch (e) {
-					if (e.message.includes('[404]:')) {
+				} catch (error) {
+					if (error.message.includes('[404]:')) {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
@@ -188,7 +188,7 @@ export class GitlabTrigger implements INodeType {
 					}
 
 					// Some error occured
-					throw e;
+					throw error;
 				}
 
 				// If it did not error then the webhook exists
@@ -262,7 +262,7 @@ export class GitlabTrigger implements INodeType {
 
 					try {
 						await gitlabApiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

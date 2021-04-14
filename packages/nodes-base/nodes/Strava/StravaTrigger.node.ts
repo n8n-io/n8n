@@ -211,7 +211,7 @@ export class StravaTrigger implements INodeType {
 
 					try {
 						await stravaApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

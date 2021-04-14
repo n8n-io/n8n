@@ -243,8 +243,8 @@ export class GraphQL implements INodeType {
 					if (typeof requestOptions.body.variables === 'string') {
 						try {
 							requestOptions.body.variables = JSON.parse(requestOptions.body.variables || '{}');
-						} catch (e) {
-							throw new NodeOperationError(this.getNode(), 'Using variables failed:\n' + requestOptions.body.variables + '\n\nWith error message:\n' + e);
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), 'Using variables failed:\n' + requestOptions.body.variables + '\n\nWith error message:\n' + error);
 						}
 					}
 					if (requestOptions.body.operationName === '') {

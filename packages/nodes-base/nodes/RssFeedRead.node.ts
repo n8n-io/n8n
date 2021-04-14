@@ -50,12 +50,12 @@ export class RssFeedRead implements INodeType {
 		let feed: Parser.Output<IDataObject>;
 		try {
 			feed = await parser.parseURL(url);
-		} catch (e) {
-			if (e.code === 'ECONNREFUSED') {
+		} catch (error) {
+			if (error.code === 'ECONNREFUSED') {
 				throw new NodeOperationError(this.getNode(), `It was not possible to connect to the URL. Please make sure the URL "${url}" it is valid!`);
 			}
 
-			throw e;
+			throw error;
 		}
 
 

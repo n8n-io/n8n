@@ -140,7 +140,7 @@ export class TrelloTrigger implements INodeType {
 
 					try {
 						await apiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

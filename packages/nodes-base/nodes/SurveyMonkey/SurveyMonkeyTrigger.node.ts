@@ -473,7 +473,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 
 					try {
 						await surveyMonkeyApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

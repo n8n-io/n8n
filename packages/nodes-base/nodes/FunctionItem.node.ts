@@ -101,8 +101,8 @@ export class FunctionItem implements INodeType {
 			try {
 				// Execute the function code
 				jsonData = await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname);
-			} catch (e) {
-				return Promise.reject(e);
+			} catch (error) {
+				return Promise.reject(error);
 			}
 
 			// Do very basic validation of the data

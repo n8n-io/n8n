@@ -1752,8 +1752,8 @@ export class Asana implements INodeType {
 				let taskData;
 				try {
 					taskData = await asanaApiRequest.call(this, 'GET', `/tasks/${taskId}`, {});
-				} catch (e) {
-					throw new NodeApiError(this.getNode(), e, { message: `Could not find task with id "${taskId}" so tags could not be loaded.` });
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error, { message: `Could not find task with id "${taskId}" so tags could not be loaded.` });
 				}
 
 				const workspace = taskData.data.workspace.gid;

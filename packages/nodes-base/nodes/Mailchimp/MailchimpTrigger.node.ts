@@ -238,8 +238,8 @@ export class MailchimpTrigger implements INodeType {
 				const endpoint = `/lists/${listId}/webhooks`;
 				try {
 					webhook = await mailchimpApiRequest.call(this, endpoint, 'POST', body);
-				} catch (e) {
-					throw e;
+				} catch (error) {
+					throw error;
 				}
 				if (webhook.id === undefined) {
 					return false;
@@ -258,7 +258,7 @@ export class MailchimpTrigger implements INodeType {
 					const endpoint = `/lists/${listId}/webhooks/${webhookData.webhookId}`;
 					try {
 						await mailchimpApiRequest.call(this, endpoint, 'DELETE', {});
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 					delete webhookData.webhookId;

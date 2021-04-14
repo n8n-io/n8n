@@ -208,7 +208,7 @@ export class GetResponseTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				try {
 					await getresponseApiRequest.call(this, 'DELETE', '/accounts/callbacks');
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 

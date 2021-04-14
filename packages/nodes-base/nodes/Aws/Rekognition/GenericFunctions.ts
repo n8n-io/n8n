@@ -69,7 +69,7 @@ export async function awsApiRequestREST(this: IHookFunctions | IExecuteFunctions
 	const response = await awsApiRequest.call(this, service, method, path, body, query, headers, options, region);
 	try {
 		return JSON.parse(response);
-	} catch (e) {
+	} catch (error) {
 		return response;
 	}
 }
@@ -85,8 +85,8 @@ export async function awsApiRequestSOAP(this: IHookFunctions | IExecuteFunctions
 				resolve(data);
 			});
 		});
-	} catch (e) {
-		return e;
+	} catch (error) {
+		return error;
 	}
 }
 

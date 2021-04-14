@@ -203,7 +203,7 @@ export class FacebookTrigger implements INodeType {
 
 				try {
 					await facebookApiRequest.call(this, 'DELETE', `/${appId}/subscriptions`, { object: snakeCase(object) });
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;

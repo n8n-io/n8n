@@ -129,8 +129,8 @@ export class FlowTrigger implements INodeType {
 				try {
 					webhooks = await flowApiRequest.call(this, 'GET', endpoint, {}, qs);
 					webhooks = webhooks.integration_webhooks;
-				} catch (e) {
-					throw e;
+				} catch (error) {
+					throw error;
 				}
 				for (const webhook of webhooks) {
 					// @ts-ignore
@@ -203,7 +203,7 @@ export class FlowTrigger implements INodeType {
 						const endpoint = `/integration_webhooks/${webhookId}`;
 						try {
 							await flowApiRequest.call(this, 'DELETE', endpoint, {}, qs);
-						} catch (e) {
+						} catch (error) {
 							return false;
 						}
 					}

@@ -346,7 +346,7 @@ export class HubspotTrigger implements INodeType {
 
 				try {
 					await hubspotApiRequest.call(this, 'DELETE', `/webhooks/v3/${appId}/settings`, {});
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;

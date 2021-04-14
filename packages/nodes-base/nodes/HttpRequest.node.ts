@@ -780,7 +780,7 @@ export class HttpRequest implements INodeType {
 						try {
 							// @ts-ignore
 							requestOptions[optionData.name] = JSON.parse(requestOptions[optionData.name]);
-						} catch (e) {
+						} catch (error) {
 							throw new NodeOperationError(this.getNode(), `The data in "${optionData.displayName}" is no valid JSON. Set Body Content Type to "RAW/Custom" for XML or other types of payloads`);
 						}
 					}
@@ -976,7 +976,7 @@ export class HttpRequest implements INodeType {
 					if (responseFormat === 'json' && typeof returnItem.body === 'string') {
 						try {
 							returnItem.body = JSON.parse(returnItem.body);
-						} catch (e) {
+						} catch (error) {
 							throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
 						}
 					}
@@ -986,7 +986,7 @@ export class HttpRequest implements INodeType {
 					if (responseFormat === 'json' && typeof response === 'string') {
 						try {
 							response = JSON.parse(response);
-						} catch (e) {
+						} catch (error) {
 							throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
 						}
 					}

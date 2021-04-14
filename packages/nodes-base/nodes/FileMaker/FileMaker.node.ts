@@ -782,8 +782,8 @@ export class FileMaker implements INodeType {
 		let token;
 		try {
 			token = await getToken.call(this);
-		} catch (e) {
-			throw new NodeOperationError(this.getNode(), `Login fail: ${e}`);
+		} catch (error) {
+			throw new NodeOperationError(this.getNode(), `Login fail: ${error}`);
 		}
 
 		let requestOptions: OptionsWithUri;

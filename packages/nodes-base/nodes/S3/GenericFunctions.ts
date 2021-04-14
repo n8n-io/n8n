@@ -88,7 +88,7 @@ export async function s3ApiRequestREST(this: IHookFunctions | IExecuteFunctions 
 	const response = await s3ApiRequest.call(this, bucket, method, path, body, query, headers, options, region);
 	try {
 		return JSON.parse(response);
-	} catch (e) {
+	} catch (error) {
 		return response;
 	}
 }
@@ -104,8 +104,8 @@ export async function s3ApiRequestSOAP(this: IHookFunctions | IExecuteFunctions 
 				resolve(data);
 			});
 		});
-	} catch (e) {
-		return e;
+	} catch (error) {
+		return error;
 	}
 }
 

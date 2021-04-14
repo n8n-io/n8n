@@ -190,7 +190,7 @@ export class AsanaTrigger implements INodeType {
 
 					try {
 						await asanaApiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

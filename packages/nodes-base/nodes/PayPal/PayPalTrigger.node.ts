@@ -133,8 +133,8 @@ export class PayPalTrigger implements INodeType {
 				const endpoint = '/notifications/webhooks';
 				try {
 					webhook = await payPalApiRequest.call(this, endpoint, 'POST', body);
-				} catch (e) {
-					throw e;
+				} catch (error) {
+					throw error;
 				}
 
 				if (webhook.id === undefined) {
@@ -151,7 +151,7 @@ export class PayPalTrigger implements INodeType {
 					const endpoint = `/notifications/webhooks/${webhookData.webhookId}`;
 					try {
 						await payPalApiRequest.call(this, endpoint, 'DELETE', {});
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 					delete webhookData.webhookId;
@@ -185,8 +185,8 @@ export class PayPalTrigger implements INodeType {
 			};
 			try {
 				webhook = await payPalApiRequest.call(this, endpoint, 'POST', body);
-			} catch (e) {
-				throw e;
+			} catch (error) {
+				throw error;
 			}
 			if (webhook.verification_status !== 'SUCCESS') {
 				return {};
