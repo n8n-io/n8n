@@ -127,7 +127,7 @@ export class Webflow implements INodeType {
 				const { fields } = await webflowApiRequest.call(this, 'GET', `/collections/${collectionId}`);
 				for (const field of fields) {
 					returnData.push({
-						name: `${field.name} (${field.type})`,
+						name: `${field.name} (${field.type}) ${(field.required) ? ' (required)' : ''}`,
 						value: field.slug,
 					});
 				}
@@ -141,7 +141,7 @@ export class Webflow implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-
+		const qs: IDataObject = {};
 		let responseData;
 		const returnData: IDataObject[] = [];
 
@@ -175,10 +175,9 @@ export class Webflow implements INodeType {
 
 					const body: IDataObject = {
 						fields,
-						live,
 					};
 
-					responseData = await webflowApiRequest.call(this, 'POST', `/collections/${collectionId}/items`, body);
+					responseData = await webflowApiRequest.call(this, 'POST', `/collections/${collectionId}/items`, body, { live });
 
 				} else if (operation === 'delete') {
 
@@ -247,10 +246,9 @@ export class Webflow implements INodeType {
 
 					const body: IDataObject = {
 						fields,
-						live,
 					};
 
-					responseData = await webflowApiRequest.call(this, 'PUT', `/collections/${collectionId}/items/${itemId}`, body);
+					responseData = await webflowApiRequest.call(this, 'PUT', `/collections/${collectionId}/items/${itemId}`, body, { live });
 				}
 			}
 

@@ -98,10 +98,6 @@ export class WebflowTrigger implements INodeType {
 				required: true,
 				options: [
 					{
-						name: 'Form submission',
-						value: 'form_submission',
-					},
-					{
 						name: 'Ecomm Inventory Changed',
 						value: 'ecomm_inventory_changed',
 					},
@@ -112,6 +108,10 @@ export class WebflowTrigger implements INodeType {
 					{
 						name: 'Ecomm Order Changed',
 						value: 'ecomm_order_changed',
+					},
+					{
+						name: 'Form Submission',
+						value: 'form_submission',
 					},
 					{
 						name: 'Site Publish',

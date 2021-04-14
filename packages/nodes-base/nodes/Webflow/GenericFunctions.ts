@@ -44,7 +44,6 @@ export async function webflowApiRequest(
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
-
 	try {
 		if (authenticationMethod === 'accessToken') {
 			const credentials = this.getCredentials('webflowApi');
@@ -59,14 +58,14 @@ export async function webflowApiRequest(
 			return await this.helpers.requestOAuth2!.call(this, 'webflowOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.response.body.err) {
+		if (error?.response?.body?.err) {
 			let errorMessage = error.response.body.err;
 			if (error.response.body.problems) {
 				errorMessage = error.response.body.problems.join('|');
 			}
 			throw new Error(`Webflow Error: [${error.statusCode}]: ${errorMessage}`);
 		}
-		return error;
+		throw error;
 	}
 }
 
