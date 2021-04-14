@@ -8,7 +8,6 @@ import {
 	resolve as pathResolve,
 } from 'path';
 import {
-	getConnection,
 	getConnectionManager,
 	In,
 } from 'typeorm';
@@ -501,6 +500,17 @@ class App {
 			// Save the workflow in DB
 			const result = await Db.collections.Workflow!.save(newWorkflowData);
 
+			const { tags } = req.body as { tags: string | undefined };
+
+			if (tags) {
+				const tagIds = tags.split(',');
+				await TagHelpers.createRelations(result.id as string, tagIds);
+				result.tags = await Db.collections.Tag!.find({
+					select: ['id', 'name'],
+					where: { id: In(tagIds) },
+				});
+			}
+
 			// Convert to response format in which the id is a string
 			(result as IWorkflowBase as IWorkflowResponse).id = result.id.toString();
 			return result as IWorkflowBase as IWorkflowResponse;
@@ -538,13 +548,14 @@ class App {
 
 		// Returns workflows
 		this.app.get(`/${this.restEndpoint}/workflows`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowShortResponse[]> => {
-			const findQuery = {} as FindManyOptions;
+			const findQuery = {
+				select: ['id', 'name', 'active', 'createdAt', 'updatedAt'],
+				relations: ['tags'],
+			} as FindManyOptions;
+
 			if (req.query.filter) {
 				findQuery.where = JSON.parse(req.query.filter as string);
 			}
-
-			// Return only the fields we need
-			findQuery.select = ['id', 'name', 'active', 'createdAt', 'updatedAt'];
 
 			const results = await Db.collections.Workflow!.find(findQuery);
 
@@ -564,20 +575,7 @@ class App {
 				return undefined;
 			}
 
-			result.tags = await getConnection()
-				.createQueryBuilder()
-				.select('tag_entity.id', 'id')
-				.addSelect('tag_entity.name', 'name')
-				.from('tag_entity', 'tag_entity')
-				.where(qb => {
-					return "id IN " + qb.subQuery()
-						.select('tagId')
-						.from('workflow_entity', 'workflow_entity')
-						.leftJoin('workflows_tags', 'workflows_tags', 'workflows_tags.workflowId = workflow_entity.id')
-						.where("workflow_entity.id = :id", { id: Number(req.params.id) })
-						.getQuery();
-				})
-				.getRawMany();
+			result.tags = await TagHelpers.getWorkflowTags(req.params.id);
 
 			// Convert to response format in which the id is a string
 			(result as IWorkflowBase as IWorkflowResponse).id = result.id.toString();
@@ -588,7 +586,9 @@ class App {
 		// Updates an existing workflow
 		this.app.patch(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowResponse> => {
 
-			const newWorkflowData = req.body as IWorkflowBase;
+			const { tags } = req.body as { tags: string | undefined };
+			const newWorkflowData = _.omit(req.body, ['tags']) as IWorkflowBase;
+
 			const id = req.params.id;
 
 			await this.externalHooks.run('workflow.update', [newWorkflowData]);
@@ -656,6 +656,24 @@ class App {
 				}
 			}
 
+			if (tags) {
+				await TagHelpers.deleteAllTagsForWorkflow(id);
+
+				const tagIds = tags.split(',');
+
+				for (const tagId of tagIds) {
+					await TagHelpers.validateId(tagId);
+				}
+
+				await TagHelpers.createRelations(id, tagIds);
+
+				responseData.tags = await Db.collections.Tag!.find({
+					select: ['id', 'name'],
+					where: { id: In(tagIds) },
+				});
+
+			}
+
 			// Convert to response format in which the id is a string
 			(responseData as IWorkflowBase as IWorkflowResponse).id = responseData.id.toString();
 			return responseData as IWorkflowBase as IWorkflowResponse;
@@ -677,40 +695,6 @@ class App {
 
 			await Db.collections.Workflow!.delete(id);
 			await this.externalHooks.run('workflow.afterDelete', [id]);
-
-			return true;
-		}));
-
-		// Adds a tag to a workflow
-		this.app.post(`/${this.restEndpoint}/workflows/:workflowId/tags/:tagId`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ workflowId: number, tagId: number }> => {
-			const workflowId = Number(req.params.workflowId);
-			const tagId = Number(req.params.tagId);
-
-			await TagHelpers.validateId(tagId);
-			await TagHelpers.validateNoRelation(workflowId, tagId);
-
-			await getConnection().createQueryBuilder()
-				.insert()
-				.into('workflows_tags')
-				.values([ { workflowId, tagId } ])
-				.execute();
-
-			return { workflowId, tagId };
-		}));
-
-		// Removes a tag from a workflow
-		this.app.delete(`/${this.restEndpoint}/workflows/:workflowId/tags/:tagId`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
-			const workflowId = Number(req.params.workflowId);
-			const tagId = Number(req.params.tagId);
-
-			await TagHelpers.validateId(tagId);
-			await TagHelpers.validateRelation(workflowId, tagId);
-
-			await getConnection().createQueryBuilder()
-				.delete()
-				.from('workflows_tags')
-				.where('workflowId = :workflowId AND tagId = :tagId', { workflowId, tagId })
-				.execute();
 
 			return true;
 		}));
@@ -763,31 +747,14 @@ class App {
 		}));
 
 		// Retrieves all tags, with or without usage count
-		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<Array<{ id: number, name: string, usageCount?: number }>> => {
-			const withUsageCount = req.query.withUsageCount === 'true';
-
-			if (withUsageCount) {
-				return await getConnection().createQueryBuilder()
-				.select('tag_entity.id', 'id')
-				.addSelect('tag_entity.name', 'name')
-				.addSelect('COUNT(workflow_entity.id)', 'usageCount')
-				.from('tag_entity', 'tag_entity')
-				.leftJoin('workflows_tags', 'workflows_tags', 'workflows_tags.tagId = tag_entity.id')
-				.leftJoin('workflow_entity', 'workflow_entity', 'workflows_tags.workflowId = workflow_entity.id')
-				.groupBy('tag_entity.id')
-				.getRawMany();
-			}
-
-			return await getConnection().createQueryBuilder()
-				.select('tag_entity.id', 'id')
-				.addSelect('tag_entity.name', 'name')
-				.from('tag_entity', 'tag_entity')
-				.groupBy('tag_entity.id')
-				.getRawMany();
+		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagDb[] | Array<{ id: number, name: string, usageCount?: number }>> => {
+			return req.query.withUsageCount === 'true'
+				? await TagHelpers.getAllTagsWithUsageCount()
+				: await Db.collections.Tag!.find({ select: ['id', 'name'] });
 		}));
 
 		// Creates a tag
-		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ id: number, name: string }> => {
+		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ id: string, name: string }> => {
 			TagHelpers.validateRequestBody(req.body);
 
 			const { name } = req.body;
@@ -800,28 +767,28 @@ class App {
 				updatedAt: this.getCurrentDate(),
 			};
 
-			const { id } = await Db.collections.Tag!.save(newTag);
+			const { id } = await Db.collections.Tag!.save(newTag) as { id: string };
 
 			return { id, name };
 		}));
 
 		// Deletes a tag
 		this.app.delete(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
-			const id = Number(req.params.id);
+			const { id } = req.params;
 			await TagHelpers.validateId(id);
 			await Db.collections.Tag!.delete({ id });
 			return true;
 		}));
 
 		// Updates an existing tag
-		this.app.patch(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ id: number, name: string }> => {
+		this.app.patch(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ id: string, name: string }> => {
 			TagHelpers.validateRequestBody(req.body);
 
 			const { name } = req.body;
 			await TagHelpers.validateName(name);
 			TagHelpers.validateLength(name);
 
-			const id = Number(req.params.id);
+			const { id } = req.params;
 			await TagHelpers.validateId(id);
 
 			const updatedTag: Partial<ITagDb> = {
