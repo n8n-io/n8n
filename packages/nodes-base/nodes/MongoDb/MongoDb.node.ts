@@ -57,13 +57,13 @@ export class MongoDb implements INodeType {
 			const skip = options.skip as number;
 			const sort = options.sort && JSON.parse(options.sort as string);
 			if (skip > 0) {
-				query = query.skip(skip)
+				query = query.skip(skip);
 			}
 			if (limit > 0) {
-				query = query.limit(limit)
+				query = query.limit(limit);
 			}
 			if (sort && Object.keys(sort).length !== 0 && sort.constructor === Object) {
-				query = query.sort(sort)
+				query = query.sort(sort);
 			}
 			const queryResult = await query.toArray();
 
