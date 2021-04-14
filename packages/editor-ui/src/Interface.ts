@@ -448,7 +448,7 @@ export interface ILinkMenuItemProperties {
 
 // ITagGetResponseItem
 export interface ITag {
-	id: number;
+	id: string;
 	name: string;
 	usageCount: number;
 }

@@ -67,8 +67,8 @@ export default mixins(
 	data() {
 		return {
 			isCreateEnabled: false,
-			updateId: null,
-			deleteId: null,
+			updateId: '',
+			deleteId: '',
 		};
 	},
 	components: {
@@ -92,7 +92,7 @@ export default mixins(
 		disableCreate() {
 			this.$data.isCreateEnabled = false;
 		},
-		async onCreate(name: string, cb: (id: number) => void) {
+		async onCreate(name: string, cb: (id: string) => void) {
 			try {
 				if (!name) {
 					throw new Error("Tag name was not set");
@@ -113,13 +113,13 @@ export default mixins(
 			}
 		},
 
-		enableUpdate(updateId: number) {
+		enableUpdate(updateId: string) {
 			this.$data.updateId = updateId;
 		},
 		disableUpdate() {
-			this.$data.updateId = null;
+			this.$data.updateId = '';
 		},
-		async onUpdate(id: number, name: string, oldName: string) {
+		async onUpdate(id: string, name: string, oldName: string) {
 			try {
 				if (!name) {
 					throw new Error("Tag name was not set");
@@ -133,20 +133,20 @@ export default mixins(
 						type: 'success',
 					});
 				}
-				this.$data.updateId = null;
+				this.disableUpdate();
 			}
 			catch(error) {
 				this.$showError(error, 'Tag was not updated', `A problem occurred when trying to update the "${oldName}" tag`);
 			}
 		},
 
-		enableDelete(deleteId: number) {
+		enableDelete(deleteId: string) {
 			this.$data.deleteId = deleteId;
 		},
 		disableDelete() {
-			this.$data.deleteId = null;
+			this.$data.deleteId = '';
 		},
-		async onDelete(id: number, name: string) {
+		async onDelete(id: string, name: string) {
 			try {
 				await this.$store.dispatch('tags/delete', id);
 
@@ -155,7 +155,7 @@ export default mixins(
 					message: `The "${name}" tag was successfully deleted from your tag collection`,
 					type: 'success',
 				});
-				this.$data.deleteId = null;
+				this.disableDelete();
 			}
 			catch(error) {
 				this.$showError(error, 'Tag was not deleted', `A problem occurred when trying to delete the "${name}" tag`);

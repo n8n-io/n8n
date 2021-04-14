@@ -136,13 +136,13 @@ export default Vue.extend({
 
 			return 1;
 		},
-		isUpdateEnabled(tagId: number): boolean {
+		isUpdateEnabled(tagId: string): boolean {
 			return !this.$props.isCreateEnabled && !!this.$props.updateId && tagId === this.$props.updateId;
 		},
-		isDeleteEnabled(tagId: number): boolean {
+		isDeleteEnabled(tagId: string): boolean {
 			return !this.$props.isCreateEnabled && !!this.$props.deleteId && tagId === this.$props.deleteId;
 		},
-		isTagDisabled(tagId: number): boolean {
+		isTagDisabled(tagId: string): boolean {
 			if (this.$props.updateId && tagId !== this.$props.updateId) {
 				return true;
 			}
@@ -195,7 +195,7 @@ export default Vue.extend({
 			this.$emit('disableCreate');
 		},
 		createTag(): void {
-			this.$emit('onCreate', this.$data.newTagName.trim(), (createdId: number) => this.stickyIds.add(createdId));
+			this.$emit('onCreate', this.$data.newTagName.trim(), (createdId: string) => this.stickyIds.add(createdId));
 		},
 	},
 	watch: {

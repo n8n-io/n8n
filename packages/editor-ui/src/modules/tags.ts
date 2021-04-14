@@ -33,7 +33,7 @@ const module: Module<ITagsState, IRootState> = {
 				return tag;
 			});
 		},
-		deleteTag: (state: ITagsState, id: number) => {
+		deleteTag: (state: ITagsState, id: string) => {
 			state.tags = state.tags.filter((tag) => tag.id !== id);
 		},
 	},
@@ -60,11 +60,11 @@ const module: Module<ITagsState, IRootState> = {
 
 			return tag;
 		},
-		rename: async (context: ActionContext<ITagsState, IRootState>, params: {name: string, id: number}) => {
+		rename: async (context: ActionContext<ITagsState, IRootState>, params: {name: string, id: string}) => {
 			const tag = await updateTag(context, params.id, {name: params.name});
 			context.commit('updateTag', tag);
 		}, 
-		delete: async (context: ActionContext<ITagsState, IRootState>, id: number) => {
+		delete: async (context: ActionContext<ITagsState, IRootState>, id: string) => {
 			const deleted = await deleteTag(context, id);
 
 			if (deleted) {

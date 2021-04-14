@@ -10,10 +10,10 @@ export async function addTag(context: ActionContext<ITagsState, IRootState>, par
 	return await makeRestApiRequest(context, 'POST', '/tags', params);
 }
 
-export async function updateTag(context: ActionContext<ITagsState, IRootState>, id: number, params: {name: string}) {
+export async function updateTag(context: ActionContext<ITagsState, IRootState>, id: string, params: {name: string}) {
 	return await makeRestApiRequest(context, 'PATCH', `/tags/${id}`, params);
 }
 
-export async function deleteTag(context: ActionContext<ITagsState, IRootState>, id: number) {
+export async function deleteTag(context: ActionContext<ITagsState, IRootState>, id: string) {
 	return await makeRestApiRequest(context, 'DELETE', `/tags/${id}`);
 }
