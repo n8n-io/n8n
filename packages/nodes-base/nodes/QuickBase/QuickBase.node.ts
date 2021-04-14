@@ -39,7 +39,7 @@ import {
 
 export class QuickBase implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Quick Base 2x4Lab',
+		displayName: 'Quick Base',
 		name: 'quickbase',
 		icon: 'file:quickbase.png',
 		group: ['input'],
