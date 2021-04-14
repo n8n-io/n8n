@@ -32,7 +32,7 @@ export async function validateId(id: string): Promise<void> | never {
  * Validate whether a tag name has 1 to 24 characters.
  */
 export function validateLength(name: string): void | never {
-	if (name.length < 0 || name.length > 24) {
+	if (name.length <= 0 || name.length > 24) {
 		throw new ResponseHelper.ResponseError('Tag name must be 1 to 24 characters long.', undefined, 400);
 	}
 }
