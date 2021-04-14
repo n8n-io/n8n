@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -378,8 +379,8 @@ export class Zendesk implements INodeType {
 					const ticketId = this.getNodeParameter('id', i) as string;
 					try {
 						responseData = await zendeskApiRequest.call(this, 'DELETE', `/tickets/${ticketId}`, {});
-					} catch (err) {
-						throw new NodeOperationError(this.getNode(), `Zendesk Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 			}
