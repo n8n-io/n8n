@@ -91,6 +91,47 @@ export const nodeDescription: INodeTypeDescription = {
 		//         find
 		// ----------------------------------
 		{
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
+			displayOptions: {
+				show: {
+					operation: ['find'],
+				},
+			},
+			default: {},
+			placeholder: 'Add options',
+			description: 'Add query options',
+			options: [
+				{
+					displayName: 'Limit',
+					name: 'limit',
+					type: "number",
+					default: 0,
+					description: 'Use limit to specify the maximum number of documents or 0 for unlimited documents.',
+				},
+				{
+					displayName: 'Skip',
+					name: 'skip',
+					type: "number",
+					default: 0,
+					description: 'The number of documents to skip in the results set.',
+				},
+				{
+					displayName: 'Sort (JSON format)',
+					name: 'sort',
+					type: 'json',
+					typeOptions: {
+						rows: 2,
+					},
+					default: '{}',
+					placeholder: '{ "field": -1 }',
+					required: true,
+					description: 'A json that defines the sort order of the result set.',
+				},
+			],
+		},
+		{
 			displayName: 'Query (JSON format)',
 			name: 'query',
 			type: 'json',
@@ -109,7 +150,6 @@ export const nodeDescription: INodeTypeDescription = {
 			required: true,
 			description: 'MongoDB Find query.',
 		},
-
 		// ----------------------------------
 		//         insert
 		// ----------------------------------
@@ -164,6 +204,18 @@ export const nodeDescription: INodeTypeDescription = {
 			placeholder: 'name,description',
 			description:
 				'Comma separated list of the fields to be included into the new document.',
+		},
+		{
+			displayName: 'Upsert',
+			name: 'upsert',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					operation: ['update'],
+				},
+			},
+			default: false,
+			description: `Perform an insert if no documents match the update key`,
 		},
 		{
 			displayName: 'Options',

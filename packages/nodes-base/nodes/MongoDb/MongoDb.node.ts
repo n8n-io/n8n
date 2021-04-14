@@ -60,10 +60,24 @@ export class MongoDb implements INodeType {
 			//         find
 			// ----------------------------------
 
-			const queryResult = await mdb
+			let query = mdb
 				.collection(this.getNodeParameter('collection', 0) as string)
-				.find(JSON.parse(this.getNodeParameter('query', 0) as string))
-				.toArray();
+				.find(JSON.parse(this.getNodeParameter('query', 0) as string));
+
+			const options = this.getNodeParameter('options', 0) as IDataObject;
+			const limit = options.limit as number;
+			const skip = options.skip as number;
+			const sort = options.sort && JSON.parse(options.sort as string);
+			if (skip > 0) {
+				query = query.skip(skip);
+			}
+			if (limit > 0) {
+				query = query.limit(limit);
+			}
+			if (sort && Object.keys(sort).length !== 0 && sort.constructor === Object) {
+				query = query.sort(sort);
+			}
+			const queryResult = await query.toArray();
 
 			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
 		} else if (operation === 'insert') {
@@ -112,6 +126,9 @@ export class MongoDb implements INodeType {
 			let updateKey = this.getNodeParameter('updateKey', 0) as string;
 			updateKey = updateKey.trim();
 
+			const updateOptions = (this.getNodeParameter('upsert', 0) as boolean)
+				? { upsert: true } : undefined;
+
 			if (!fields.includes(updateKey)) {
 				fields.push(updateKey);
 			}
@@ -136,7 +153,7 @@ export class MongoDb implements INodeType {
 				}
 				await mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
-					.updateOne(filter, { $set: item });
+					.updateOne(filter, { $set: item }, updateOptions);
 			}
 			returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
 		} else {
