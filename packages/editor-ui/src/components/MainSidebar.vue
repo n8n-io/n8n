@@ -1,13 +1,10 @@
 <template>
 	<div id="side-menu">
+		<Modals />
 		<about :dialogVisible="aboutDialogVisible" @closeDialog="closeAboutDialog"></about>
 		<executions-list :dialogVisible="executionsListDialogVisible" @closeDialog="closeExecutionsListOpenDialog"></executions-list>
 		<credentials-list :dialogVisible="credentialOpenDialogVisible" @closeDialog="closeCredentialOpenDialog"></credentials-list>
 		<credentials-edit :dialogVisible="credentialNewDialogVisible" @closeDialog="closeCredentialNewDialog"></credentials-edit>
-		<tags-manager 
-			:dialogVisible="tagsManagerVisible"
-			@closeDialog="closeTagsManager"
-		/>
 		<workflow-open @openWorkflow="openWorkflow" :dialogVisible="workflowOpenDialogVisible" @closeDialog="closeWorkflowOpenDialog"></workflow-open>
 		<workflow-settings :dialogVisible="workflowSettingsDialogVisible" @closeDialog="closeWorkflowSettingsDialog"></workflow-settings>
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
@@ -219,7 +216,7 @@ import About from '@/components/About.vue';
 import CredentialsEdit from '@/components/CredentialsEdit.vue';
 import CredentialsList from '@/components/CredentialsList.vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
-import TagsManager from '@/components/TagsManager.vue';
+import Modals from '@/components/Modals.vue';
 import WorkflowOpen from '@/components/WorkflowOpen.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
@@ -239,6 +236,7 @@ export default mixins(
 	restApi,
 	showMessage,
 	titleChange,
+	Modals,
 	workflowHelpers,
 	workflowRun,
 )
@@ -249,7 +247,6 @@ export default mixins(
 			CredentialsEdit,
 			CredentialsList,
 			ExecutionsList,
-			TagsManager,
 			WorkflowOpen,
 			WorkflowSettings,
 		},
@@ -265,7 +262,6 @@ export default mixins(
 				stopExecutionInProgress: false,
 				workflowOpenDialogVisible: false,
 				workflowSettingsDialogVisible: false,
-				tagsManagerVisible: false,
 			};
 		},
 		computed: {
@@ -346,10 +342,7 @@ export default mixins(
 				this.credentialNewDialogVisible = false;
 			},
 			openTagManager() {
-				this.tagsManagerVisible = true;
-			},
-			closeTagsManager() {
-				this.tagsManagerVisible = false;
+				this.$store.commit('ui/openTagsManager');
 			},
 			async stopExecution () {
 				const executionId = this.$store.getters.activeExecutionId;
@@ -422,48 +415,7 @@ export default mixins(
 						this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
 					} catch (e) {}
 				} else if (key === 'workflow-rename') {
-					const workflowName = await this.$prompt(
-						'Enter new workflow name',
-						'Rename',
-						{
-							inputValue: this.workflowName,
-							confirmButtonText: 'Rename',
-							cancelButtonText: 'Cancel',
-						},
-					)
-						.then((data) => {
-							// @ts-ignore
-							return data.value;
-						})
-						.catch(() => {
-							// User did cancel
-							return undefined;
-						});
-
-					if (workflowName === undefined || workflowName === this.workflowName) {
-						return;
-					}
-
-					const workflowId = this.$store.getters.workflowId;
-
-					const updateData = {
-						name: workflowName,
-					};
-
-					try {
-						await this.restApi().updateWorkflow(workflowId, updateData);
-					} catch (error) {
-						this.$showError(error, 'Problem renaming the workflow', 'There was a problem renaming the workflow:');
-						return;
-					}
-
-					this.$store.commit('setWorkflowName', {newName: workflowName, setStateDirty: false});
-
-					this.$showMessage({
-						title: 'Workflow renamed',
-						message: `The workflow got renamed to "${workflowName}"!`,
-						type: 'success',
-					});
+					this.$store.commit('ui/openRenameDialog');
 				} else if (key === 'workflow-delete') {
 					const deleteConfirmed = await this.confirmMessage(`Are you sure that you want to delete the workflow "${this.workflowName}"?`, 'Delete Workflow?', 'warning', 'Yes, delete!');
 
@@ -501,7 +453,7 @@ export default mixins(
 				} else if (key === 'workflow-save') {
 					this.saveCurrentWorkflow();
 				} else if (key === 'workflow-save-as') {
-					this.saveCurrentWorkflow(true);
+					this.$store.commit('ui/openSaveAsDialog');
 				} else if (key === 'help-about') {
 					this.aboutDialogVisible = true;
 				} else if (key === 'workflow-settings') {

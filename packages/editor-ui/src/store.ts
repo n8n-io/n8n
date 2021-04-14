@@ -33,6 +33,8 @@ import {
 } from './Interface';
 
 import tags from './modules/tags';
+import ui from './modules/ui';
+import workflows from './modules/workflows';
 
 Vue.use(Vuex);
 
@@ -88,6 +90,8 @@ export const store = new Vuex.Store({
 	strict: process.env.NODE_ENV !== 'production',
 	modules: {
 		tags,
+		ui,
+		workflows,
 	},
 	state,
 	mutations: {

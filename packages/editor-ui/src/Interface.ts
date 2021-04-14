@@ -495,3 +495,6 @@ export interface ITagsState {
 	tags: ITag[];
 	isLoading: boolean;
 }
+
+export interface IWorkflowsState {
+};

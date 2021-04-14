@@ -366,40 +366,20 @@ export const workflowHelpers = mixins(
 			},
 
 			// Saves the currently loaded workflow to the database.
-			async saveCurrentWorkflow (withNewName = false) {
+			// if withNewName is false, then it should attempt to save current workflow. if this is a new workflow, then it should open dialog
+			// if withNewName is true but newName is not given, it should open dialog
+			// if withNewName is true but newName is given, it should save it with new name
+			async saveCurrentWorkflow (withNewName = false, newName = '') {
 				const currentWorkflow = this.$route.params.name;
 				let workflowName: string | null | undefined = '';
-				if (currentWorkflow === undefined || withNewName === true) {
+				if (withNewName === true && !!newName) {
+					workflowName = newName;
+				}
+				else if (currentWorkflow === undefined || withNewName === true) {
 					// Currently no workflow name is set to get it from user
-					workflowName = await this.$prompt(
-						'Enter workflow name',
-						'Name',
-						{
-							confirmButtonText: 'Save',
-							cancelButtonText: 'Cancel',
-						},
-					)
-						.then((data) => {
-							// @ts-ignore
-							return data.value;
-						})
-						.catch(() => {
-							// User did cancel
-							return undefined;
-						});
+					this.$store.commit('ui/openSaveAsDialog');
 
-					if (workflowName === undefined) {
-						// User did cancel
-						return;
-					} else if (['', null].includes(workflowName)) {
-						// User did not enter a name
-						this.$showMessage({
-							title: 'Name missing',
-							message: `No name for the workflow got entered and could so not be saved!`,
-							type: 'error',
-						});
-						return;
-					}
+					return;
 				}
 
 				try {
