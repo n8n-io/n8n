@@ -327,13 +327,13 @@ export const recordFields = [
 				default: '',
 				description: 'Subset of fields to return, supports select into sub fields. Example: <code>selectedFields = "a,e.d.f"</code>.',
 			},
-			{
-				displayName: 'Use Int64 Timestamp',
-				name: 'useInt64Timestamp',
-				type: 'boolean',
-				default: false,
-				description: 'Output timestamp as usec int64.',
-			},
+			// {
+			// 	displayName: 'Use Int64 Timestamp',
+			// 	name: 'useInt64Timestamp',
+			// 	type: 'boolean',
+			// 	default: false,
+			// 	description: 'Output timestamp as usec int64.',
+			// },
 		],
 	},
 ] as INodeProperties[];

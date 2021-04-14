@@ -209,10 +209,15 @@ export class GoogleBigQuery implements INodeType {
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					Object.assign(qs, options);
 
-					if (qs.useInt64Timestamp !== undefined) {
-						qs.formatOptions = {
-							useInt64Timestamp: qs.useInt64Timestamp,
-						};
+					// if (qs.useInt64Timestamp !== undefined) {
+					// 	qs.formatOptions = {
+					// 		useInt64Timestamp: qs.useInt64Timestamp,
+					// 	};
+					// 	delete qs.useInt64Timestamp;
+					// }
+
+					if (qs.selectedFields) {
+						fields = (qs.selectedFields as string).split(',');
 					}
 
 					if (returnAll) {
@@ -237,7 +242,6 @@ export class GoogleBigQuery implements INodeType {
 						returnData.push.apply(returnData, (simple) ? simplify(responseData.rows, fields) : responseData.rows);
 					}
 				}
-
 			}
 		}
 
