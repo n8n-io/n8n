@@ -429,6 +429,23 @@ export interface ITimeoutHMS {
 
 export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
 
+export type MenuItemType = 'link';
+export type MenuItemPosition = 'top' | 'bottom';
+
+export interface IMenuItem {
+	id: string;
+	type: MenuItemType;
+	position: MenuItemPosition;
+	properties: ILinkMenuItemProperties;
+}
+
+export interface ILinkMenuItemProperties {
+	title: string;
+	icon: string;
+	href: string;
+	newWindow?: boolean;
+}
+
 // ITagGetResponseItem
 export interface ITag {
 	id: number;
@@ -471,6 +488,7 @@ export interface IRootState {
 	sessionId: string;
 	urlBaseWebhook: string;
 	workflow: IWorkflowDb;
+	sidebarMenuItems: IMenuItem[];
 }
 
 export interface ITagsState {
