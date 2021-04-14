@@ -157,7 +157,7 @@ export class KafkaTrigger implements INodeType {
 					if (options.jsonParseMessage) {
 						try {
 							value = JSON.parse(value);
-						} catch (err) { }
+						} catch (error) { }
 					}
 
 					data.message = value;

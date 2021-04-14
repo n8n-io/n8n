@@ -421,8 +421,8 @@ export class Intercom implements INodeType {
 					const id = this.getNodeParameter('id', i) as string;
 					try {
 						responseData = await intercomApiRequest.call(this, `/users/${id}`, 'DELETE');
-						} catch (err) {
-							throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(err)}`);
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`);
 						}
 				}
 			}
@@ -471,8 +471,8 @@ export class Intercom implements INodeType {
 					}
 					try {
 						responseData = await intercomApiRequest.call(this, '/companies', 'POST', body, qs);
-					} catch (err) {
-						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(err)}`);
+					} catch (error) {
+						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`);
 					}
 				}
 				if (operation === 'get') {
@@ -490,8 +490,8 @@ export class Intercom implements INodeType {
 						} else {
 							responseData = await intercomApiRequest.call(this, '/companies', 'GET', {}, qs);
 						}
-					} catch (err) {
-						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(err)}`);
+					} catch (error) {
+						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`);
 					}
 				}
 				if (operation === 'getAll') {
@@ -507,8 +507,8 @@ export class Intercom implements INodeType {
 							responseData = await intercomApiRequest.call(this, '/companies', 'GET', {}, qs);
 							responseData = responseData.companies;
 						}
-					} catch (err) {
-						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(err)}`);
+					} catch (error) {
+						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`);
 					}
 				}
 				if (operation === 'users') {
@@ -524,8 +524,8 @@ export class Intercom implements INodeType {
 							qs.type = 'users';
 							responseData = await intercomApiRequest.call(this, '/companies', 'GET', {}, qs);
 						}
-					} catch (err) {
-						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(err)}`);
+					} catch (error) {
+						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`);
 					}
 				}
 			}

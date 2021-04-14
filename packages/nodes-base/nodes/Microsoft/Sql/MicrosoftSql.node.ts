@@ -390,12 +390,12 @@ export class MicrosoftSql implements INodeType {
 				await pool.close();
 				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 			}
-		} catch (err) {
+		} catch (error) {
 			if (this.continueOnFail() === true) {
 				returnItems = items;
 			} else {
 				await pool.close();
-				throw err;
+				throw error;
 			}
 		}
 

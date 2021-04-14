@@ -182,7 +182,7 @@ export class EmailReadImap implements INodeType {
 		if (options.customEmailConfig !== undefined) {
 			try {
 				searchCriteria = JSON.parse(options.customEmailConfig as string);
-			} catch (err) {
+			} catch (error) {
 				throw new NodeOperationError(this.getNode(), `Custom email config is not valid JSON.`);
 			}
 		}

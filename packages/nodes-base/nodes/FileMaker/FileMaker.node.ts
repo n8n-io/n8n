@@ -681,8 +681,8 @@ export class FileMaker implements INodeType {
 
 				try {
 					returnData = await layoutsApiRequest.call(this);
-				} catch (err) {
-					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${err}`);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
 				}
 
 				return returnData;
@@ -697,8 +697,8 @@ export class FileMaker implements INodeType {
 				let layouts;
 				try {
 					layouts = await layoutsApiRequest.call(this);
-				} catch (err) {
-					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${err}`);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
 				}
 				for (const layout of layouts) {
 					returnData.push({
@@ -715,8 +715,8 @@ export class FileMaker implements INodeType {
 				let fields;
 				try {
 					fields = await getFields.call(this);
-				} catch (err) {
-					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${err}`);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
 				}
 				for (const field of fields) {
 					returnData.push({
@@ -733,8 +733,8 @@ export class FileMaker implements INodeType {
 				let scripts;
 				try {
 					scripts = await getScripts.call(this);
-				} catch (err) {
-					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${err}`);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
 				}
 				for (const script of scripts) {
 					if (!script.isFolder) {
@@ -753,8 +753,8 @@ export class FileMaker implements INodeType {
 				let portals;
 				try {
 					portals = await getPortals.call(this);
-				} catch (err) {
-					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${err}`);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
 				}
 				Object.keys(portals).forEach((portal) => {
 					returnData.push({
