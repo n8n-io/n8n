@@ -46,7 +46,7 @@ export async function brandfetchApiRequest(this: IHookFunctions | IExecuteFuncti
 		const response = await this.helpers.request!(options);
 
 		if (response.statusCode && response.statusCode !== 200) {
-			throw new NodeOperationError(this.getNode(), `Brandfetch error response [${response.statusCode}]: ${response.response}`);
+			throw new NodeApiError(this.getNode(), response);
 		}
 
 		return response;

@@ -95,7 +95,7 @@ export class Discord implements INodeType {
 			} while (--maxTries);
 
 			if (maxTries <= 0) {
-				throw new NodeOperationError(this.getNode(), 'Could not send message. Max. amount of rate-limit retries got reached.');
+				throw new NodeApiError(this.getNode(), {}, {message: 'Could not send message. Max. amount of rate-limit retries got reached.' });
 			}
 
 			returnData.push({success: true});

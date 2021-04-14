@@ -8,6 +8,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 import {
@@ -339,8 +340,8 @@ export class Coda implements INodeType {
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}
-				} catch (err) {
-					throw new NodeOperationError(this.getNode(), `Coda Error: ${err.message}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 
 				if (options.rawData === true) {
@@ -541,8 +542,8 @@ export class Coda implements INodeType {
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}
-				} catch (err) {
-					throw new NodeOperationError(this.getNode(), `Coda Error: ${err.message}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 
 				if (options.rawData === true) {
