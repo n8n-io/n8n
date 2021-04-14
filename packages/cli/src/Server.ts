@@ -674,10 +674,11 @@ class App {
 
 				await TagHelpers.createRelations(id, tagIds);
 
-				responseData.tags = await Db.collections.Tag!.find({
+				const foundTags = await Db.collections.Tag!.find({
 					select: ['id', 'name'],
 					where: { id: In(tagIds) },
 				});
+				responseData.tags = foundTags.map(({ id, name }) => ({ id: id.toString(), name }));
 
 			}
 
