@@ -19,8 +19,14 @@
 		],
 		"generic": [
 			{
+				"label": "Learn to Build Powerful API Endpoints Using Webhooks",
+				"icon": "🧰",
+				"url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/"
+			},
+			{
 				"label": "Creating Telegram Bots with n8n, a No-Code Platform",
-				"url": "https://medium.com/n8n-io/creating-telegram-bots-with-n8n-a-no-code-platform-fdf1f0928da7"
+				"icon": "💬",
+				"url": "https://n8n.io/blog/creating-telegram-bots-with-n8n-a-no-code-platform/"
 			}
 		]
 	}

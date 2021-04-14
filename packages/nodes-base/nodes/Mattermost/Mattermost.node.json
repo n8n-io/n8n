@@ -18,9 +18,39 @@
 		],
 		"generic": [
 			{
-				"label": "Webhooks Fun with n8n and Mattermost",
-				"icon": "🍸",
-				"url": "https://medium.com/n8n-io/webhooks-fun-with-n8n-and-mattermost-4ebf7e2b4d2a"
+				"label": "How to host virtual coffee breaks with n8n",
+				"icon": "☕️",
+				"url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/"
+			},
+			{
+				"label": "Supercharging your conference registration process with n8n",
+				"icon": "🎫",
+				"url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/"
+			},
+			{
+				"label": "Creating triggers for n8n workflows using polling",
+				"icon": "⏲",
+				"url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/"
+			},
+			{
+				"label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n",
+				"icon": "📹",
+				"url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/"
+			},
+			{
+				"label": "Creating Error Workflows in n8n",
+				"icon": "🌪",
+				"url": "https://n8n.io/blog/creating-error-workflows-in-n8n/"
+			},
+			{
+				"label": "Creating Custom Incident Response Workflows with n8n",
+				"icon": "🚨",
+				"url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/"
+			},
+			{
+				"label": "Learn how to use webhooks with Mattermost slash commands",
+				"icon": "🦄",
+				"url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/"
 			}
 		]
 	}
