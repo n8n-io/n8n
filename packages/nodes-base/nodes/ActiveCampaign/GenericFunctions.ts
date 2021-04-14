@@ -53,7 +53,7 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 		const responseData = await this.helpers.request!(options);
 
 		if (responseData.success === false) {
-			throw new NodeOperationError(this.getNode(), `ActiveCampaign error response: ${responseData.error} (${responseData.error_info})`);
+			throw new NodeApiError(this.getNode(), responseData);
 		}
 
 		if (dataKey === undefined) {

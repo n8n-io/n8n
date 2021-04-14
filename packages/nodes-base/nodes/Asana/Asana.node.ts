@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -1640,7 +1641,7 @@ export class Asana implements INodeType {
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No data got returned');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'No data got returned' });
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1675,7 +1676,7 @@ export class Asana implements INodeType {
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No data got returned');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'No data got returned' });
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1752,14 +1753,14 @@ export class Asana implements INodeType {
 				try {
 					taskData = await asanaApiRequest.call(this, 'GET', `/tasks/${taskId}`, {});
 				} catch (e) {
-					throw new NodeOperationError(this.getNode(), `Could not find task with id "${taskId}" so tags could not be loaded.`);
+					throw new NodeApiError(this.getNode(), e, { message: `Could not find task with id "${taskId}" so tags could not be loaded.` });
 				}
 
 				const workspace = taskData.data.workspace.gid;
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {}, { workspace });
 
 				if (responseData.data === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No data got returned');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'No data got returned' });
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1791,7 +1792,7 @@ export class Asana implements INodeType {
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No data got returned');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'No data got returned' });
 				}
 
 				const returnData: INodePropertyOptions[] = [];

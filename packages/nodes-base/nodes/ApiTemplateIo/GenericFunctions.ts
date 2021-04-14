@@ -6,7 +6,7 @@ import {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { NodeApiError, NodeOperationError, } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function apiTemplateIoApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -43,7 +43,7 @@ export async function apiTemplateIoApiRequest(
 	try {
 		const response = await this.helpers.request!(options);
 		if (response.status === 'error') {
-			throw new NodeOperationError(this.getNode(), response.message);
+			throw new NodeApiError(this.getNode(), response.message);
 		}
 		return response;
 	} catch (error) {
