@@ -15,7 +15,6 @@ module.exports = {
 			fallbackLocale: "en",
 			localeDir: "./src/i18n/locales",
 			enableInSFC: false,
-			enableLegacy: false,
 		},
 	},
 	configureWebpack: {
