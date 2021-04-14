@@ -40,7 +40,7 @@ export async function humanticAiApiRequest(this: IHookFunctions | IExecuteFuncti
 		const response = await this.helpers.request!(options);
 
 		if (response.data && response.data.status === 'error') {
-			throw new NodeOperationError(this.getNode(), `Humantic AI error response [400]: ${response.data.message}`);
+			throw new NodeApiError(this.getNode(), response.data);
 		}
 
 		return response;

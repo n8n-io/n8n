@@ -10,6 +10,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -281,7 +282,7 @@ export class HubspotTrigger implements INodeType {
 				try {
 					const { targetUrl } = await hubspotApiRequest.call(this, 'GET', `/webhooks/v3/${appId}/settings`, {});
 					if (targetUrl !== currentWebhookUrl) {
-						throw new NodeOperationError(this.getNode(), `The APP ID ${appId} already has a target url ${targetUrl}. Delete it or use another APP ID before executing the trigger. Due to Hubspot API limitations, you can have just one trigger per APP.`);
+						throw new NodeApiError(this.getNode(), {}, { message: `The APP ID ${appId} already has a target url ${targetUrl}. Delete it or use another APP ID before executing the trigger. Due to Hubspot API limitations, you can have just one trigger per APP.`});
 					}
 				} catch (error) {
 					if (error.statusCode === 404) {

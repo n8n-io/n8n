@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -222,9 +223,7 @@ export class Iterable implements INodeType {
 
 					if (this.continueOnFail() === false) {
 						if (responseData.code !== 'Success') {
-							throw new NodeOperationError(this.getNode(),
-								`Iterable error response [400]: ${responseData.msg}`,
-							);
+							throw new NodeApiError(this.getNode(), responseData);
 						}
 					}
 
@@ -254,8 +253,8 @@ export class Iterable implements INodeType {
 
 					if (this.continueOnFail() === false) {
 						if (Object.keys(responseData).length === 0) {
-							throw new NodeOperationError(this.getNode(),
-								`Iterable error response [404]: User not found`,
+							throw new NodeApiError(this.getNode(), responseData,
+								{ message: `Iterable error response [404]: User not found` },
 							);
 						}
 					}

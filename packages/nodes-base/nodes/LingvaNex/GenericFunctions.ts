@@ -35,7 +35,7 @@ export async function lingvaNexApiRequest(this: IHookFunctions | IExecuteFunctio
 		const response = await this.helpers.request!(options);
 
 		if (response.err !== null) {
-			throw new NodeOperationError(this.getNode(), `LingvaNex error response [400]: ${response.err}`);
+			throw new NodeApiError(this.getNode(), response);
 		}
 
 		return response;
