@@ -1,5 +1,6 @@
 import {
 	ICredentialType,
+	IDisplayOptions,
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
@@ -71,10 +72,6 @@ export class RabbitMQ implements ICredentialType {
 			typeOptions: {
 				password: true,
 			},
-			// typeOptions: {
-			// 	multipleValues: true,
-			// 	multipleValueButtonText: 'Add Certificate',
-			// },
 			displayOptions: {
 				show: {
 					ssl: [
@@ -97,11 +94,11 @@ export class RabbitMQ implements ICredentialType {
 					ssl: [
 						true,
 					],
-					// passwordless: [
-					// 	true,
-					// ],
+					passwordless: [
+						true,
+					],
 				},
-			},
+			} as IDisplayOptions,
 			default: '',
 			description: 'SSL Client Certificate to use.',
 		},
@@ -117,9 +114,9 @@ export class RabbitMQ implements ICredentialType {
 					ssl: [
 						true,
 					],
-					// passwordless: [
-					// 	true,
-					// ],
+					passwordless: [
+						true,
+					],
 				},
 			},
 			default: '',
@@ -137,9 +134,9 @@ export class RabbitMQ implements ICredentialType {
 					ssl: [
 						true,
 					],
-					// passwordless: [
-					// 	true,
-					// ],
+					passwordless: [
+						true,
+					],
 				},
 			},
 			default: '',
