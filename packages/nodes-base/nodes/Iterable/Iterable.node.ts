@@ -254,7 +254,7 @@ export class Iterable implements INodeType {
 					if (this.continueOnFail() === false) {
 						if (Object.keys(responseData).length === 0) {
 							throw new NodeApiError(this.getNode(), responseData,
-								{ message: `Iterable error response [404]: User not found` },
+								{ message: `User not found`, httpCode: '404' },
 							);
 						}
 					}
