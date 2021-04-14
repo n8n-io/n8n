@@ -26,9 +26,9 @@ export const recordOperations = [
 				description: 'Delete a record',
 			},
 			{
-				name: 'Get All',
+				name: 'Get All Test',
 				value: 'getAll',
-				description: 'Get all records',
+				description: 'Get all records test',
 			},
 			{
 				name: 'Update',
@@ -69,7 +69,7 @@ export const recordFields = [
 		description: 'The table identifier',
 	},
 	{
-		displayName: 'Columns',
+		displayName: 'Insert Fields',
 		name: 'columns',
 		type: 'string',
 		displayOptions: {
@@ -84,11 +84,30 @@ export const recordFields = [
 		},
 		default: '',
 		required: true,
-		placeholder: 'id,name,description',
+		placeholder: 'Select Fields...',
 		description: 'Comma separated list of the properties which should used as columns for the new rows.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Use Field IDs',
+		name: 'useFieldIDs',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'record',
+				],
+				operation: [
+					'create',
+					'upsert',
+					'update'
+				],
+			},
+		},
+		default: true,
+		description: 'Use Field IDs instead of Field Names in Insert Fields',
+	},
+	{
+		displayName: 'Simplified Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -122,7 +141,7 @@ export const recordFields = [
 		},
 		options: [
 			{
-				displayName: 'Fields',
+				displayName: 'Return Fields',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -134,6 +153,23 @@ export const recordFields = [
 				default: [],
 				description: `Specify an array of field ids that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested.`,
 			},
+			// {
+			// 	displayName: 'Use Field IDs for Columns',
+			// 	name: 'useFieldIDs',
+			// 	type: 'boolean',
+			// 	displayOptions: {
+			// 		show: {
+			// 			resource: [
+			// 				'record',
+			// 			],
+			// 			operation: [
+			// 				'create',
+			// 			],
+			// 		},
+			// 	},
+			// 	default: true,
+			// 	description: `Use Field IDs instead of names for columns`,
+			// },
 		],
 	},
 	/* -------------------------------------------------------------------------- */
