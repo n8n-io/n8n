@@ -8,6 +8,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 import {
@@ -555,7 +556,7 @@ export class Ftp implements INodeType {
 								await ftp!.mkdir(dirPath, true);
 								await ftp!.put(buffer, remotePath);
 							} else {
-								throw new NodeOperationError(this.getNode(), error);
+								throw new NodeApiError(this.getNode(), error);
 							}
 						}
 					} else {
@@ -569,7 +570,7 @@ export class Ftp implements INodeType {
 								await ftp!.mkdir(dirPath, true);
 								await ftp!.put(buffer, remotePath);
 							} else {
-								throw new NodeOperationError(this.getNode(), error);
+								throw new NodeApiError(this.getNode(), error);
 							}
 						}
 					}
