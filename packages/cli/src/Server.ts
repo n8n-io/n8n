@@ -779,9 +779,9 @@ class App {
 				updatedAt: this.getCurrentDate(),
 			};
 
-			const { id } = await Db.collections.Tag!.save(newTag) as { id: string };
+			const { id } = await Db.collections.Tag!.save(newTag);
 
-			return { id, name };
+			return { id: id.toString(), name };
 		}));
 
 		// Deletes a tag
