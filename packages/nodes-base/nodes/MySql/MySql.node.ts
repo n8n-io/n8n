@@ -218,7 +218,30 @@ export class MySql implements INodeType {
 			throw new Error('No credentials got returned!');
 		}
 
-		const connection = await mysql2.createConnection(credentials);
+		// Destructuring SSL configuration
+		const {
+			ssl,
+			caCertificate,
+			clientCertificate,
+			clientPrivateKey,
+			...baseCredentials
+		} = credentials;
+
+		if (ssl) {
+			baseCredentials.ssl = {};
+
+			if (caCertificate) {
+				baseCredentials.ssl.ca = caCertificate;
+			}
+
+			// client certificates might not be required
+			if (clientCertificate || clientPrivateKey) {
+				baseCredentials.ssl.cert = clientCertificate;
+				baseCredentials.ssl.key = clientPrivateKey;
+			}
+		}
+
+		const connection = await mysql2.createConnection(baseCredentials);
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
 		let returnItems = [];
