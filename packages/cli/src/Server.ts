@@ -559,6 +559,11 @@ class App {
 			}
 
 			const results = await Db.collections.Workflow!.find(findQuery);
+			results.forEach(workflow => {
+				if (workflow.tags) {
+					workflow.tags = workflow.tags.map(({ id, name }) => ({ id: id.toString(), name }));
+				}
+			});
 
 			for (const entry of results) {
 				(entry as unknown as IWorkflowShortResponse).id = entry.id.toString();
