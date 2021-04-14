@@ -23,6 +23,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -120,7 +121,7 @@ export class S3 implements INodeType {
 					try {
 						credentials = this.getCredentials('s3');
 					} catch (error) {
-						throw new NodeOperationError(this.getNode(), error);
+						throw new NodeApiError(this.getNode(), error);
 					}
 
 					const name = this.getNodeParameter('name', i) as string;

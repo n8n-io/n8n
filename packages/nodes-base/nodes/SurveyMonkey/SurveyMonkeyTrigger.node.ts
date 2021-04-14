@@ -11,6 +11,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -738,8 +739,8 @@ export class SurveyMonkeyTrigger implements INodeType {
 				});
 			});
 
-			req.on('error', (err) => {
-				throw new NodeOperationError(this.getNode(), err.message);
+			req.on('error', (error) => {
+				throw new NodeApiError(this.getNode(), { error });
 			});
 		});
 	}

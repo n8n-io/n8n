@@ -6,6 +6,7 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -39,7 +40,7 @@ export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, 
 	});
 
 	if ('100' !== response.success) {
-		throw new NodeOperationError(this.getNode(), 'Invalid sms77 credentials or API error!');
+		throw new NodeApiError(this.getNode(), response, { message: 'Invalid sms77 credentials or API error!' });
 	}
 
 	return response;

@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -160,7 +161,7 @@ export class Sendy implements INodeType {
 					if (success.includes(responseData)) {
 						responseData = { message: responseData };
 					} else {
-						throw new NodeOperationError(this.getNode(), `Sendy error response [${400}]: ${responseData}`);
+						throw new NodeApiError(this.getNode(), responseData, { httpCode: '400' });
 					}
 				}
 			}
