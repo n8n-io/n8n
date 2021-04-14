@@ -1,4 +1,6 @@
-import { INodeTypeDescription } from 'n8n-workflow';
+import {
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 /**
  * Options to be displayed
@@ -6,7 +8,7 @@ import { INodeTypeDescription } from 'n8n-workflow';
 export const nodeDescription: INodeTypeDescription = {
 	displayName: 'MongoDB',
 	name: 'mongoDb',
-	icon: 'file:mongoDb.png',
+	icon: 'file:mongodb.svg',
 	group: ['input'],
 	version: 1,
 	description: 'Find, insert and update documents in MongoDB.',
@@ -46,7 +48,7 @@ export const nodeDescription: INodeTypeDescription = {
 				{
 					name: 'Update',
 					value: 'update',
-					description: 'Updates documents.',
+					description: 'Update documents.',
 				},
 			],
 			default: 'find',
@@ -138,7 +140,9 @@ export const nodeDescription: INodeTypeDescription = {
 			},
 			displayOptions: {
 				show: {
-					operation: ['find'],
+					operation: [
+						'find',
+					],
 				},
 			},
 			default: '{}',
@@ -155,7 +159,9 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: ['insert'],
+					operation: [
+						'insert',
+					],
 				},
 			},
 			default: '',
@@ -173,7 +179,9 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: ['update'],
+					operation: [
+						'update',
+					],
 				},
 			},
 			default: 'id',
@@ -187,7 +195,9 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: ['update'],
+					operation: [
+						'update',
+					],
 				},
 			},
 			default: '',
@@ -206,6 +216,30 @@ export const nodeDescription: INodeTypeDescription = {
 			},
 			default: false,
 			description: `Perform an insert if no documents match the update key`,
+		},
+		{
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
+			displayOptions: {
+				show: {
+					operation: [
+						'update',
+						'insert',
+					],
+				},
+			},
+			placeholder: 'Add Option',
+			default: {},
+			options: [
+				{
+					displayName: 'Date Fields',
+					name: 'dateFields',
+					type: 'string',
+					default: '',
+					description: 'Comma separeted list of fields that will be parse as Mongo Date type.',
+				},
+			],
 		},
 	],
 };

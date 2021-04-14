@@ -1,14 +1,26 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription
 } from 'n8n-workflow';
-import { nodeDescription } from './mongo.node.options';
-import { MongoClient } from 'mongodb';
+
+import {
+	nodeDescription,
+} from './mongo.node.options';
+
+import {
+	MongoClient,
+	ObjectID,
+} from 'mongodb';
+
 import {
 	getItemCopy,
+	handleDateFields,
 	validateAndResolveMongoCredentials
 } from './mongo.node.utils';
 
@@ -79,7 +91,12 @@ export class MongoDb implements INodeType {
 				.map(f => f.trim())
 				.filter(f => !!f);
 
+			const options = this.getNodeParameter('options', 0) as IDataObject;
 			const insertItems = getItemCopy(items, fields);
+
+			if (options.dateFields) {
+				handleDateFields(insertItems, options.dateFields as string);
+			}
 
 			const { insertedIds } = await mdb
 				.collection(this.getNodeParameter('collection', 0) as string)
@@ -104,10 +121,12 @@ export class MongoDb implements INodeType {
 				.map(f => f.trim())
 				.filter(f => !!f);
 
+			const options = this.getNodeParameter('options', 0) as IDataObject;
+
 			let updateKey = this.getNodeParameter('updateKey', 0) as string;
 			updateKey = updateKey.trim();
 
-			const options = (this.getNodeParameter('upsert', 0) as boolean)
+			const updateOptions = (this.getNodeParameter('upsert', 0) as boolean)
 				? { upsert: true } : undefined;
 
 			if (!fields.includes(updateKey)) {
@@ -117,19 +136,25 @@ export class MongoDb implements INodeType {
 			// Prepare the data to update and copy it to be returned
 			const updateItems = getItemCopy(items, fields);
 
+			if (options.dateFields) {
+				handleDateFields(updateItems, options.dateFields as string);
+			}
+
 			for (const item of updateItems) {
 				if (item[updateKey] === undefined) {
 					continue;
 				}
 
-				const filter: { [key: string]: string } = {};
+				const filter: { [key: string]: string | ObjectID } = {};
 				filter[updateKey] = item[updateKey] as string;
-
+				if (updateKey === '_id') {
+					filter[updateKey] = new ObjectID(filter[updateKey]);
+					delete item['_id'];
+				}
 				await mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
-					.updateOne(filter, { $set: item }, options);
+					.updateOne(filter, { $set: item }, updateOptions);
 			}
-
 			returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
 		} else {
 			throw new Error(`The operation "${operation}" is not supported!`);

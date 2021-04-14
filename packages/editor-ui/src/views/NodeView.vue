@@ -961,7 +961,7 @@ export default mixins(
 					return originalName;
 				}
 
-				const nameMatch = originalName.match(/(.*[a-zA-Z])(\d*)/);
+				const nameMatch = originalName.match(/(.*\D+)(\d*)/);
 				let ignore, baseName, nameIndex, uniqueName;
 				let index = 1;
 
@@ -2139,6 +2139,7 @@ export default mixins(
 	position: relative;
 	width: 100%;
 	height: 100%;
+	transform-origin: 0 0;
 }
 
 .node-view-background {

@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -13,7 +13,7 @@ import {
 import {
 	IDataObject,
 	IOAuth2Options,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const options: OptionsWithUri = {
@@ -23,7 +23,7 @@ export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions
 		method,
 		qs,
 		body,
-		uri: uri ||`https://api.clickup.com/api/v2${resource}`,
+		uri: uri || `https://api.clickup.com/api/v2${resource}`,
 		json: true,
 	};
 
@@ -51,7 +51,7 @@ export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions
 			return await this.helpers.requestOAuth2!.call(this, 'clickUpOAuth2Api', options, oAuth2Options);
 		}
 
-	} catch(error) {
+	} catch (error) {
 		let errorMessage = error;
 		if (error.err) {
 			errorMessage = error.err;
@@ -61,7 +61,7 @@ export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions
 
 }
 
-export async function clickupApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string ,method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function clickupApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

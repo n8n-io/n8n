@@ -10,12 +10,12 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import uuid = require('uuid');
-
 import {
 	googleApiRequest,
 	googleApiRequestAllItems,
 } from './GenericFunctions';
+
+import uuid = require('uuid');
 
 export class GoogleDrive implements INodeType {
 	description: INodeTypeDescription = {
@@ -137,6 +137,11 @@ export class GoogleDrive implements INodeType {
 						description: 'Share a file',
 					},
 					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a file',
+					},
+					{
 						name: 'Upload',
 						value: 'upload',
 						description: 'Upload a file',
@@ -204,7 +209,6 @@ export class GoogleDrive implements INodeType {
 				},
 				description: 'The ID of the file to copy.',
 			},
-
 
 			// ----------------------------------
 			//         file/folder:delete
@@ -522,7 +526,7 @@ export class GoogleDrive implements INodeType {
 				name: 'permissionsUi',
 				placeholder: 'Add Permission',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: false,
 				},
@@ -710,7 +714,174 @@ export class GoogleDrive implements INodeType {
 				placeholder: '',
 				description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
 			},
-
+			// ----------------------------------
+			//         file:update
+			// ----------------------------------
+			{
+				displayName: 'ID',
+				name: 'fileId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				description: 'The ID of the file to update.',
+			},
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Keep Revision Forever',
+						name: 'keepRevisionForever',
+						type: 'boolean',
+						default: false,
+						description: `Whether to set the 'keepForever' field in the new head revision.</br>
+						his is only applicable to files with binary content in Google Drive.</br>
+						Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.`,
+					},
+					{
+						displayName: 'OCR Language',
+						name: 'ocrLanguage',
+						type: 'string',
+						default: '',
+						description: `A language hint for OCR processing during image import (ISO 639-1 code).`,
+					},
+					{
+						displayName: 'Parent ID',
+						name: 'parentId',
+						type: 'string',
+						default: '',
+						description: `The ID of the parent to set.`,
+					},
+					{
+						displayName: 'Use Content As Indexable Text',
+						name: 'useContentAsIndexableText',
+						type: 'boolean',
+						default: false,
+						description: `Whether to use the uploaded content as indexable text.`,
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'multiOptions',
+						options: [
+							{
+								name: '*',
+								value: '*',
+								description: 'All fields.',
+							},
+							{
+								name: 'explicitlyTrashed',
+								value: 'explicitlyTrashed',
+							},
+							{
+								name: 'exportLinks',
+								value: 'exportLinks',
+							},
+							{
+								name: 'iconLink',
+								value: 'iconLink',
+							},
+							{
+								name: 'hasThumbnail',
+								value: 'hasThumbnail',
+							},
+							{
+								name: 'id',
+								value: 'id',
+							},
+							{
+								name: 'kind',
+								value: 'kind',
+							},
+							{
+								name: 'name',
+								value: 'name',
+							},
+							{
+								name: 'mimeType',
+								value: 'mimeType',
+							},
+							{
+								name: 'permissions',
+								value: 'permissions',
+							},
+							{
+								name: 'shared',
+								value: 'shared',
+							},
+							{
+								name: 'spaces',
+								value: 'spaces',
+							},
+							{
+								name: 'starred',
+								value: 'starred',
+							},
+							{
+								name: 'thumbnailLink',
+								value: 'thumbnailLink',
+							},
+							{
+								name: 'trashed',
+								value: 'trashed',
+							},
+							{
+								name: 'version',
+								value: 'version',
+							},
+							{
+								name: 'webViewLink',
+								value: 'webViewLink',
+							},
+						],
+						required: true,
+						default: [],
+						description: 'The fields to return.',
+					},
+				],
+			},
 			// ----------------------------------
 			//         file:upload
 			// ----------------------------------
@@ -732,6 +903,24 @@ export class GoogleDrive implements INodeType {
 				},
 				placeholder: 'invoice_1.pdf',
 				description: 'The name the file should be saved as.',
+			},
+			// ----------------------------------
+			{
+				displayName: 'Resolve Data',
+				name: 'resolveData',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'upload',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				description: 'By default the response only contain the ID of the file.<br />If this option gets activated it will resolve the data automatically.',
 			},
 			{
 				displayName: 'Parents',
@@ -787,9 +976,16 @@ export class GoogleDrive implements INodeType {
 				placeholder: 'Add Option',
 				default: {},
 				displayOptions: {
-					hide: {
-						resource: [
-							'drive',
+					show: {
+						'/operation': [
+							'copy',
+							'list',
+							'share',
+							'create',
+						],
+						'/resource': [
+							'file',
+							'folder',
 						],
 					},
 				},
@@ -838,48 +1034,8 @@ export class GoogleDrive implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'share',
-								],
-								'/resource': [
-									'file',
-									'folder',
-								],
-							},
-						},
-						options: [
-							{
-								name: '*',
-								value: '*',
-								description: 'All fields.',
-							},
-							{
-								name: 'Email Address',
-								value: 'emailAddress',
-							},
-							{
-								name: 'Display Name',
-								value: 'displayName',
-							},
-							{
-								name: 'Deleted',
-								value: 'deleted',
-							},
-						],
-						default: [],
-						description: 'The fields to return.',
-					},
-					{
-						displayName: 'Fields',
-						name: 'fields',
-						type: 'multiOptions',
-						displayOptions: {
-							hide: {
-								'/operation': [
-									'share',
-								],
-								'/resource': [
-									'file',
-									'folder',
+									'list',
+									'copy',
 								],
 							},
 						},
@@ -1840,7 +1996,11 @@ export class GoogleDrive implements INodeType {
 						}
 					}
 
-					const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/copy`, body);
+					const qs = {
+						supportsAllDrives: true,
+					};
+					
+					const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/copy`, body, qs);
 
 					returnData.push(response as IDataObject);
 
@@ -1976,7 +2136,7 @@ export class GoogleDrive implements INodeType {
 					// ----------------------------------
 					//         upload
 					// ----------------------------------
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const resolveData = this.getNodeParameter('resolveData', 0) as boolean;
 
 					let mimeType = 'text/plain';
 					let body;
@@ -2042,7 +2202,33 @@ export class GoogleDrive implements INodeType {
 
 					response = await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${JSON.parse(response).id}`, body, qs);
 
+					if (resolveData === true) {
+						response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${response.id}`, {}, { fields: '*' });
+					}
+
 					returnData.push(response as IDataObject);
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         file:update
+					// ----------------------------------
+
+					const id = this.getNodeParameter('fileId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
+
+					const qs: IDataObject = {
+						supportsAllDrives: true,
+					};
+
+					Object.assign(qs, options);
+
+					qs.fields = queryFields;
+
+					if (updateFields.parentId && updateFields.parentId !== '') {
+						qs.addParents = updateFields.parentId;
+					}
+
+					const responseData = await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${id}`, {}, qs);
+					returnData.push(responseData as IDataObject);
 				}
 
 			} else if (resource === 'folder') {
@@ -2061,6 +2247,7 @@ export class GoogleDrive implements INodeType {
 
 					const qs = {
 						fields: queryFields,
+						supportsAllDrives: true,
 					};
 
 					const response = await googleApiRequest.call(this, 'POST', '/drive/v3/files', body, qs);
@@ -2101,10 +2288,6 @@ export class GoogleDrive implements INodeType {
 					}
 
 					Object.assign(qs, options);
-
-					if (qs.fields) {
-						qs.fields = (qs.fields as string[]).join(',');
-					}
 
 					const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/permissions`, body, qs);
 

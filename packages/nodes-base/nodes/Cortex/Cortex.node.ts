@@ -53,7 +53,7 @@ export class Cortex implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cortex',
 		name: 'cortex',
-		icon: 'file:cortex.png',
+		icon: 'file:cortex.svg',
 		group: ['transform'],
 		subtitle: '={{$parameter["resource"]+ ": " + $parameter["operation"]}}',
 		version: 1,
@@ -456,11 +456,12 @@ export class Cortex implements INodeType {
 					) as IJob;
 				}
 			}
-		}
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
+
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else if (responseData !== undefined) {
+				returnData.push(responseData as IDataObject);
+			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

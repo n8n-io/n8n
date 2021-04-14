@@ -346,7 +346,27 @@ export class WorkflowRunner {
 			// Normally also static data should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
 			hooks.executeHookFunctions('workflowExecuteAfter', [runData]);
+			try {
+				// Check if this execution data has to be removed from database
+				// based on workflow settings.
+				let saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
+				let saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
+				if (data.workflowData.settings !== undefined) {
+					saveDataErrorExecution = (data.workflowData.settings.saveDataErrorExecution as string) || saveDataErrorExecution;
+					saveDataSuccessExecution = (data.workflowData.settings.saveDataSuccessExecution as string) || saveDataSuccessExecution;
+				}
 
+				const workflowDidSucceed = !runData.data.resultData.error;
+				if (workflowDidSucceed === true && saveDataSuccessExecution === 'none' ||
+					workflowDidSucceed === false && saveDataErrorExecution === 'none'
+				) {
+					await Db.collections.Execution!.delete(executionId);
+				}
+			} catch (err) {
+				// We don't want errors here to crash n8n. Just log and proceed.
+				console.log('Error removing saved execution from database. More details: ', err);
+			}
+			
 			resolve(runData);
 		});
 
@@ -437,7 +457,7 @@ export class WorkflowRunner {
 
 
 		// Listen to data from the subprocess
-		subprocess.on('message', (message: IProcessMessage) => {
+		subprocess.on('message', async (message: IProcessMessage) => {
 			if (message.type === 'end') {
 				clearTimeout(executionTimeout);
 				this.activeExecutions.remove(executionId!, message.data.runData);
@@ -454,6 +474,11 @@ export class WorkflowRunner {
 				const timeoutError = { message: 'Workflow execution timed out!' } as IExecutionError;
 
 				this.processError(timeoutError, startedAt, data.executionMode, executionId);
+			} else if (message.type === 'startExecution') {
+				const executionId = await this.activeExecutions.add(message.data.runData);
+				subprocess.send({ type: 'executionId', data: {executionId} } as IProcessMessage);
+			} else if (message.type === 'finishExecution') {
+				await this.activeExecutions.remove(message.data.executionId, message.data.result);
 			}
 		});
 
