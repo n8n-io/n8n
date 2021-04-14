@@ -505,10 +505,11 @@ class App {
 			if (tags) {
 				const tagIds = tags.split(',');
 				await TagHelpers.createRelations(result.id as string, tagIds);
-				result.tags = await Db.collections.Tag!.find({
+				const foundTags = await Db.collections.Tag!.find({
 					select: ['id', 'name'],
 					where: { id: In(tagIds) },
 				});
+				result.tags = foundTags.map(({ id, name }) => ({ id: id.toString(), name }));
 			}
 
 			// Convert to response format in which the id is a string
@@ -558,6 +559,11 @@ class App {
 			}
 
 			const results = await Db.collections.Workflow!.find(findQuery);
+			results.forEach(workflow => {
+				if (workflow.tags) {
+					workflow.tags = workflow.tags.map(({ id, name }) => ({ id: id.toString(), name }));
+				}
+			});
 
 			for (const entry of results) {
 				(entry as unknown as IWorkflowShortResponse).id = entry.id.toString();
@@ -575,7 +581,8 @@ class App {
 				return undefined;
 			}
 
-			result.tags = await TagHelpers.getWorkflowTags(req.params.id);
+			const foundTags = await TagHelpers.getWorkflowTags(req.params.id);
+			result.tags = foundTags.map(({ id, name }) => ({ id: id.toString(), name }));
 
 			// Convert to response format in which the id is a string
 			(result as IWorkflowBase as IWorkflowResponse).id = result.id.toString();
@@ -667,10 +674,11 @@ class App {
 
 				await TagHelpers.createRelations(id, tagIds);
 
-				responseData.tags = await Db.collections.Tag!.find({
+				const foundTags = await Db.collections.Tag!.find({
 					select: ['id', 'name'],
 					where: { id: In(tagIds) },
 				});
+				responseData.tags = foundTags.map(({ id, name }) => ({ id: id.toString(), name }));
 
 			}
 
@@ -747,10 +755,14 @@ class App {
 		}));
 
 		// Retrieves all tags, with or without usage count
-		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagDb[] | Array<{ id: number, name: string, usageCount?: number }>> => {
-			return req.query.withUsageCount === 'true'
-				? await TagHelpers.getAllTagsWithUsageCount()
-				: await Db.collections.Tag!.find({ select: ['id', 'name'] });
+		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagDb[] | Array<{ id: string, name: string, usageCount?: number }>> => {
+			if (req.query.withUsageCount === 'true') {
+				const foundTags = await TagHelpers.getAllTagsWithUsageCount();
+				return foundTags.map(({ id, name, usageCount }) => ({ id: id.toString(), name, usageCount }));
+			}
+
+			const foundTags = await Db.collections.Tag!.find({ select: ['id', 'name'] });
+			return foundTags.map(({ id, name }) => ({ id: id.toString(), name }));
 		}));
 
 		// Creates a tag
@@ -767,9 +779,9 @@ class App {
 				updatedAt: this.getCurrentDate(),
 			};
 
-			const { id } = await Db.collections.Tag!.save(newTag) as { id: string };
+			const { id } = await Db.collections.Tag!.save(newTag);
 
-			return { id, name };
+			return { id: id.toString(), name };
 		}));
 
 		// Deletes a tag
