@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -334,7 +335,7 @@ export class RabbitMQ implements INodeType {
 					if (response!.status !== 'fulfilled') {
 
 						if (this.continueOnFail() !== true) {
-							throw new NodeOperationError(this.getNode(), response!.reason as string);
+							throw new NodeApiError(this.getNode(), response);
 						} else {
 							// Return the actual reason as error
 							returnItems.push(
@@ -398,7 +399,7 @@ export class RabbitMQ implements INodeType {
 					if (response!.status !== 'fulfilled') {
 
 						if (this.continueOnFail() !== true) {
-							throw new NodeOperationError(this.getNode(), response!.reason as string);
+							throw new NodeApiError(this.getNode(), response);
 						} else {
 							// Return the actual reason as error
 							returnItems.push(

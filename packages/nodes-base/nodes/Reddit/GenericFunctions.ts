@@ -42,22 +42,11 @@ export async function redditApiRequest(
 	}
 
 	if (authRequired) {
-		let response;
-
 		try {
-			response = await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options);
 		} catch (error) {
 			throw new NodeApiError(this.getNode(), error);
 		}
-
-		if ((response.errors && response.errors.length !== 0) || (response.json && response.json.errors && response.json.errors.length !== 0)) {
-			const errors = response?.errors || response?.json?.errors;
-			const errorMessage = errors.map((error: []) => error.join('-'));
-
-			throw new NodeOperationError(this.getNode(), `Reddit error response [400]: ${errorMessage.join('|')}`);
-		}
-
-		return response;
 
 	} else {
 

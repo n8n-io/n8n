@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -186,7 +187,7 @@ export class RealtimeDatabase implements INodeType {
 
 			if (responseData === null) {
 				if (operation === 'get') {
-					throw new NodeOperationError(this.getNode(), `Google Firebase error response: Requested entity was not found.`);
+					throw new NodeApiError(this.getNode(), responseData, { message: `Requested entity was not found.` });
 				} else if (method === 'DELETE') {
 					responseData = { success: true };
 				}

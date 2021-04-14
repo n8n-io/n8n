@@ -7,7 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -360,12 +360,12 @@ export class Reddit implements INodeType {
 					} else if (details === 'friends') {
 						responseData = responseData.data.children;
 						if (!responseData.length) {
-							throw new NodeOperationError(this.getNode(), 'Reddit error response [404]: Not Found');
+							throw new NodeApiError(this.getNode(), responseData);
 						}
 					} else if (details === 'karma') {
 						responseData = responseData.data;
 						if (!responseData.length) {
-							throw new NodeOperationError(this.getNode(), 'Reddit error response [404]: Not Found');
+							throw new NodeApiError(this.getNode(), responseData);
 						}
 					} else if (details === 'trophies') {
 						responseData = responseData.data.trophies.map((trophy: IDataObject) => trophy.data);
