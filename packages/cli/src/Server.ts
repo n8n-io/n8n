@@ -755,10 +755,14 @@ class App {
 		}));
 
 		// Retrieves all tags, with or without usage count
-		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagDb[] | Array<{ id: number, name: string, usageCount?: number }>> => {
-			return req.query.withUsageCount === 'true'
-				? await TagHelpers.getAllTagsWithUsageCount()
-				: await Db.collections.Tag!.find({ select: ['id', 'name'] });
+		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ITagDb[] | Array<{ id: string, name: string, usageCount?: number }>> => {
+			if (req.query.withUsageCount === 'true') {
+				const foundTags = await TagHelpers.getAllTagsWithUsageCount();
+				return foundTags.map(({ id, name, usageCount }) => ({ id: id.toString(), name, usageCount }));
+			}
+
+			const foundTags = await Db.collections.Tag!.find({ select: ['id', 'name'] });
+			return foundTags.map(({ id, name }) => ({ id: id.toString(), name }));
 		}));
 
 		// Creates a tag
