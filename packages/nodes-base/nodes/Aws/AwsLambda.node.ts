@@ -177,7 +177,7 @@ export class AwsLambda implements INodeType {
 					errorMessage += `\n\nStack trace:\n${responseData.stackTrace}`;
 				}
 
-				throw new NodeOperationError(this.getNode(), errorMessage);
+				throw new NodeApiError(this.getNode(), responseData);
 			} else {
 				returnData.push({
 					result: responseData,
