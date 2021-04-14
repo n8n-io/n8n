@@ -8,6 +8,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -425,7 +426,7 @@ export class GithubTrigger implements INodeType {
 
 				if (responseData.id === undefined || responseData.active !== true) {
 					// Required data is missing so was not successful
-					throw new NodeOperationError(this.getNode(), 'Github webhook creation response did not contain the expected data.');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'Github webhook creation response did not contain the expected data.' });
 				}
 
 				webhookData.webhookId = responseData.id as string;

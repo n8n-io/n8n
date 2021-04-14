@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -209,11 +210,7 @@ export class GoogleCalendar implements INodeType {
 					);
 
 					if (responseData.calendars[calendarId].errors) {
-						let errors = responseData.calendars[calendarId].errors;
-						errors = errors.map((e: IDataObject) => e.reason);
-						throw new NodeOperationError(this.getNode(),
-							`Google Calendar error response: ${errors.join('|')}`,
-						);
+						throw new NodeApiError(this.getNode(), responseData.calendars[calendarId]);
 					}
 
 					if (outputFormat === 'availability') {
