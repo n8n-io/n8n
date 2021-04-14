@@ -581,7 +581,8 @@ class App {
 				return undefined;
 			}
 
-			result.tags = await TagHelpers.getWorkflowTags(req.params.id);
+			const foundTags = await TagHelpers.getWorkflowTags(req.params.id);
+			result.tags = foundTags.map(({ id, name }) => ({ id: id.toString(), name }));
 
 			// Convert to response format in which the id is a string
 			(result as IWorkflowBase as IWorkflowResponse).id = result.id.toString();
