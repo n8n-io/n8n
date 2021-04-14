@@ -10,6 +10,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 import {
@@ -77,8 +78,8 @@ export class PayPalTrigger implements INodeType {
 				try {
 					const endpoint = '/notifications/webhooks-event-types';
 					events = await payPalApiRequest.call(this, endpoint, 'GET');
-				} catch (err) {
-					throw new NodeOperationError(this.getNode(), `PayPal Error: ${err}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 				for (const event of events.event_types) {
 					const eventName = upperFist(event.name);
@@ -108,13 +109,13 @@ export class PayPalTrigger implements INodeType {
 				const endpoint = `/notifications/webhooks/${webhookData.webhookId}`;
 				try {
 					await payPalApiRequest.call(this, endpoint, 'GET');
-				} catch (err) {
-					if (err.response && err.response.name === 'INVALID_RESOURCE_ID') {
+				} catch (error) {
+					if (error.response && error.response.name === 'INVALID_RESOURCE_ID') {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						return false;
 					}
-					throw new NodeOperationError(this.getNode(), `PayPal Error: ${err}`);
+					throw new NodeApiError(this.getNode(), error);
 				}
 				return true;
 			},

@@ -37,7 +37,7 @@ export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions 
 		const response = await this.helpers.request!(options);
 
 		if (!response.success) {
-			throw new NodeOperationError(this.getNode(), `Code: ${response.error.code}. Message: ${response.error.message}`);
+			throw new NodeApiError(this.getNode(), response);
 		}
 
 		return response;

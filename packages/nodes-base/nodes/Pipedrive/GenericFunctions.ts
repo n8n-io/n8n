@@ -91,7 +91,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 		}
 
 		if (responseData.success === false) {
-			throw new NodeOperationError(this.getNode(), `Pipedrive error response: ${responseData.error} (${responseData.error_info})`);
+			throw new NodeApiError(this.getNode(), responseData);
 		}
 
 		return {

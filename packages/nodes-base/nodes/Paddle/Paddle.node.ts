@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -140,7 +141,7 @@ export class Paddle implements INodeType {
 
 				// Alert user if there's no payments present to be loaded into payments property
 				if (paymentResponse.response === undefined || paymentResponse.response.length === 0) {
-					throw new NodeOperationError(this.getNode(), 'No payments on account.');
+					throw new NodeApiError(this.getNode(), paymentResponse, { message: 'No payments on account.' });
 				}
 
 				for (const payment of paymentResponse.response) {
