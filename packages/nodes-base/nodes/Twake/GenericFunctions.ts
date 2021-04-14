@@ -47,7 +47,7 @@ export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions |
 		return await this.helpers.request!(options);
 	} catch (error) {
 		if (error.error.code === 'ECONNREFUSED') {
-			throw new NodeOperationError(this.getNode(), 'Twake host is not accessible!');
+			throw new NodeApiError(this.getNode(), error, { message: 'Twake host is not accessible!' });
 		}
 		throw new NodeApiError(this.getNode(), error);
 	}
