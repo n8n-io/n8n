@@ -26,9 +26,9 @@ export const recordOperations = [
 				description: 'Delete a record',
 			},
 			{
-				name: 'Get All Test',
+				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all records test',
+				description: 'Get all records',
 			},
 			{
 				name: 'Update',
