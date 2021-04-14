@@ -9,11 +9,11 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
-	getErrors,
 	mauticApiRequest,
 	mauticApiRequestAllItems,
 	validateJSON,
@@ -266,7 +266,7 @@ export class Mautic implements INodeType {
 						qs.start = 0;
 						responseData = await mauticApiRequest.call(this, 'GET', '/companies', {}, qs);
 						if (responseData.errors) {
-							throw new NodeOperationError(this.getNode(), getErrors(responseData));
+							throw new NodeApiError(this.getNode(), responseData);
 						}
 						responseData = responseData.companies;
 						responseData = Object.values(responseData);
@@ -525,7 +525,7 @@ export class Mautic implements INodeType {
 						qs.start = 0;
 						responseData = await mauticApiRequest.call(this, 'GET', '/contacts', {}, qs);
 						if (responseData.errors) {
-							throw new NodeOperationError(this.getNode(), getErrors(responseData));
+							throw new NodeApiError(this.getNode(), responseData);
 						}
 						responseData = responseData.contacts;
 						responseData = Object.values(responseData);

@@ -10,6 +10,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -597,7 +598,7 @@ export class MicrosoftOutlook implements INodeType {
 						const uploadUrl = responseData.uploadUrl;
 
 						if (uploadUrl === undefined) {
-							throw new NodeOperationError(this.getNode(), 'Failed to get upload session');
+							throw new NodeApiError(this.getNode(), responseData, { message: 'Failed to get upload session' });
 						}
 
 						for (let bytesUploaded = 0; bytesUploaded < dataBuffer.length; bytesUploaded += chunkSize) {

@@ -9,6 +9,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -115,7 +116,7 @@ export class MicrosoftOneDrive implements INodeType {
 					const fileName = responseData.name;
 
 					if (responseData.file === undefined) {
-						throw new NodeOperationError(this.getNode(), 'The ID you provided does not belong to a file.');
+						throw new NodeApiError(this.getNode(), responseData, { message: 'The ID you provided does not belong to a file.' });
 					}
 
 					let mimeType: string | undefined;
