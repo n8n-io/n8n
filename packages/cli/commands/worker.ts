@@ -127,13 +127,14 @@ export class Worker extends Command {
 			staticData = workflowData.staticData;
 		}
 
-		let workflowTimeout = config.get('executions.timeout') as number > 0 && config.get('executions.timeout') as number; // initialize with default
+		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
 		if (currentExecutionDb.workflowData.settings && currentExecutionDb.workflowData.settings.executionTimeout) {
-			workflowTimeout = currentExecutionDb.workflowData.settings!.executionTimeout as number > 0 && currentExecutionDb.workflowData.settings!.executionTimeout as number; // preference on workflow setting
+			workflowTimeout = currentExecutionDb.workflowData.settings!.executionTimeout as number; // preference on workflow setting
 		}
 
 		let executionTimeoutTimestamp: number | undefined;
-		if (workflowTimeout !== false && workflowTimeout > 0) {
+		if (workflowTimeout > 0) {
+			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number);
 			executionTimeoutTimestamp = Date.now() + workflowTimeout * 1000;
 		}
 

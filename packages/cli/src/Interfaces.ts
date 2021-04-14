@@ -11,11 +11,12 @@ import {
 	ITaskData,
 	IWorkflowBase as IWorkflowBaseWorkflow,
 	IWorkflowCredentials,
+	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import {
-	IDeferredPromise,
+	IDeferredPromise, WorkflowExecute,
 } from 'n8n-core';
 
 
@@ -410,4 +411,9 @@ export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExe
 	credentialsTypeData: ICredentialsTypeData;
 	executionId: string;
 	nodeTypeData: ITransferNodeTypes;
+}
+
+export interface IWorkflowExecuteProcess {
+	workflow: Workflow;
+	workflowExecute: WorkflowExecute;
 }

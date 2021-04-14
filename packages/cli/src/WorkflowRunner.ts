@@ -38,7 +38,7 @@ import {
 import * as config from '../config';
 import * as PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
-import { exec, fork } from 'child_process';
+import { fork } from 'child_process';
 
 import * as Bull from 'bull';
 import * as Queue from './Queue';
@@ -163,13 +163,17 @@ export class WorkflowRunner {
 		// Changes were made by adding the `workflowTimeout` to the `additionalData`
 		// So that the timeout will also work for executions with nested workflows.
 		let executionTimeout: NodeJS.Timeout;
-		let workflowTimeout = config.get('executions.timeout') as number > 0 && config.get('executions.timeout') as number; // initialize with default
+		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
 		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
-			workflowTimeout = data.workflowData.settings!.executionTimeout as number > 0 && data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
+			workflowTimeout = data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
+		}
+
+		if (workflowTimeout > 0) {
+			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number);
 		}
 
 		const workflow = new Workflow({ id: data.workflowData.id as string | undefined, name: data.workflowData.name, nodes: data.workflowData!.nodes, connections: data.workflowData!.connections, active: data.workflowData!.active, nodeTypes, staticData: data.workflowData!.staticData });
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(data.credentials, undefined, workflowTimeout === false ? undefined : Date.now() + workflowTimeout * 1000);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(data.credentials, undefined, workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000);
 
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, undefined);
@@ -425,12 +429,12 @@ export class WorkflowRunner {
 
 		// Start timeout for the execution
 		let executionTimeout: NodeJS.Timeout;
-		let workflowTimeout = config.get('executions.timeout') as number > 0 && config.get('executions.timeout') as number; // initialize with default
+		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
 		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
-			workflowTimeout = data.workflowData.settings!.executionTimeout as number > 0 && data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
+			workflowTimeout = data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
 		}
 
-		if (workflowTimeout) {
+		if (workflowTimeout > 0) {
 			const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
 			executionTimeout = setTimeout(() => {
 				this.activeExecutions.stopExecution(executionId, 'timeout');
@@ -494,13 +498,13 @@ export class WorkflowRunner {
 				this.processError(executionError, startedAt, data.executionMode, executionId);
 			}
 
-			for(const executionId in childExecutionIds) {
+			for(const executionId of childExecutionIds) {
 				// When the child process exits, if we still have
 				// pending child executions, we mark them as finished
 				// They will display as unknown to the user
 				// Instead of pending forever as executing when it
 				// actually isn't anymore.
-				await this.activeExecutions.remove(childExecutionIds[executionId]);
+				await this.activeExecutions.remove(executionId);
 			}
 
 

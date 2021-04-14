@@ -547,8 +547,12 @@ export class WorkflowExecute {
 				executionLoop:
 				while (this.runExecutionData.executionData!.nodeExecutionStack.length !== 0) {
 
+					if (this.additionalData.executionTimeoutTimestamp !== undefined && Date.now() >= this.additionalData.executionTimeoutTimestamp) {
+						gotCancel = true;
+					}
+
 					// @ts-ignore
-					if (gotCancel === true || Date.now() >= this.additionalData.executionTimeoutTimestamp) {
+					if (gotCancel === true) {
 						return Promise.resolve();
 					}
 

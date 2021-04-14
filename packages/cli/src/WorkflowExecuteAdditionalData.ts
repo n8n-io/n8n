@@ -8,6 +8,7 @@ import {
 	IExecutionResponse,
 	IPushDataExecutionFinished,
 	IWorkflowBase,
+	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcess,
 	NodeTypes,
 	Push,
@@ -569,7 +570,7 @@ export async function getWorkflowData(workflowInfo: IExecuteWorkflowInfo): Promi
  * @param {INodeExecutionData[]} [inputData]
  * @returns {(Promise<Array<INodeExecutionData[] | null>>)}
  */
-export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[], parentExecutionId?: string, loadedWorkflowData?: IWorkflowBase, loadedRunData?: IWorkflowExecutionDataProcess): Promise<Array<INodeExecutionData[] | null> | {workflowExecute: WorkflowExecute, workflow: Workflow}> {
+export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[], parentExecutionId?: string, loadedWorkflowData?: IWorkflowBase, loadedRunData?: IWorkflowExecutionDataProcess): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
 	const externalHooks = ExternalHooks();
 	await externalHooks.init();
 
