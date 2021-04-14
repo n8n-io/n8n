@@ -505,10 +505,11 @@ class App {
 			if (tags) {
 				const tagIds = tags.split(',');
 				await TagHelpers.createRelations(result.id as string, tagIds);
-				result.tags = await Db.collections.Tag!.find({
+				const foundTags = await Db.collections.Tag!.find({
 					select: ['id', 'name'],
 					where: { id: In(tagIds) },
 				});
+				result.tags = foundTags.map(({ id, name }) => ({ id: id.toString(), name }));
 			}
 
 			// Convert to response format in which the id is a string
