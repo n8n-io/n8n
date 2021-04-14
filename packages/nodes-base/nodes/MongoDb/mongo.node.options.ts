@@ -106,14 +106,14 @@ export const nodeDescription: INodeTypeDescription = {
 				{
 					displayName: 'Limit',
 					name: 'limit',
-					type: "number",
+					type: 'number',
 					default: 0,
 					description: 'Use limit to specify the maximum number of documents or 0 for unlimited documents.',
 				},
 				{
 					displayName: 'Skip',
 					name: 'skip',
-					type: "number",
+					type: 'number',
 					default: 0,
 					description: 'The number of documents to skip in the results set.',
 				},
