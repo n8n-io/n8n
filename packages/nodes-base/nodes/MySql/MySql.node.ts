@@ -178,7 +178,7 @@ export class MySql implements INodeType {
 		// Destructuring SSL configuration
 		const {
 			ssl,
-			serverCertificate,
+			caCertificate,
 			clientCertificate,
 			clientPrivateKey,
 			...baseCredentials
@@ -187,8 +187,8 @@ export class MySql implements INodeType {
 		if (ssl) {
 			baseCredentials.ssl = {};
 
-			if (serverCertificate) {
-				baseCredentials.ssl.ca = serverCertificate;
+			if (caCertificate) {
+				baseCredentials.ssl.ca = caCertificate;
 			}
 
 			// client certificates might not be required

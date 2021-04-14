@@ -56,10 +56,11 @@ export class MySql implements ICredentialType {
 			default: false,
 		},
 		{
-			displayName: 'Server Certificate',
-			name: 'serverCertificate',
+			displayName: 'CA Certificate',
+			name: 'caCertificate',
 			typeOptions: {
 				alwaysOpenEditWindow: true,
+				password: true,
 			},
 			displayOptions: {
 				show: {
@@ -76,6 +77,7 @@ export class MySql implements ICredentialType {
 			name: 'clientPrivateKey',
 			typeOptions: {
 				alwaysOpenEditWindow: true,
+				password: true,
 			},
 			displayOptions: {
 				show: {
@@ -92,6 +94,7 @@ export class MySql implements ICredentialType {
 			name: 'clientCertificate',
 			typeOptions: {
 				alwaysOpenEditWindow: true,
+				password: true,
 			},
 			displayOptions: {
 				show: {
