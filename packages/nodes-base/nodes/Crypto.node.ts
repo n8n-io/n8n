@@ -13,7 +13,7 @@ import {
 	createHmac,
 	createSign,
 	getHashes,
-	HexBase64Latin1Encoding,
+	BinaryToTextEncoding,
  } from 'crypto';
 
 export class Crypto implements INodeType {
@@ -371,18 +371,18 @@ export class Crypto implements INodeType {
 
 			if (action === 'hash') {
 				const type = this.getNodeParameter('type', i) as string;
-				const encoding = this.getNodeParameter('encoding', i) as HexBase64Latin1Encoding;
+				const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
 				newValue = createHash(type).update(value).digest(encoding);
 			}
 			if (action === 'hmac') {
 				const type = this.getNodeParameter('type', i) as string;
 				const secret = this.getNodeParameter('secret', i) as string;
-				const encoding = this.getNodeParameter('encoding', i) as HexBase64Latin1Encoding;
+				const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
 				newValue = createHmac(type, secret).update(value).digest(encoding);
 			}
 			if (action === 'sign') {
 				const algorithm = this.getNodeParameter('algorithm', i) as string;
-				const encoding = this.getNodeParameter('encoding', i) as HexBase64Latin1Encoding;
+				const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
 				const privateKey = this.getNodeParameter('privateKey', i) as string;
 				const sign = createSign(algorithm);
 				sign.write(value as string);
