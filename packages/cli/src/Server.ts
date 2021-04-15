@@ -771,9 +771,6 @@ class App {
 		// Creates a tag
 		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ id: string, name: string }> => {
 			const { name } = req.body;
-			console.log('------------------------');
-			console.log(typeof name);
-			console.log('------------------------');
 			await TagHelpers.validateName(name);
 
 			const newTag: Partial<ITagDb> = {
