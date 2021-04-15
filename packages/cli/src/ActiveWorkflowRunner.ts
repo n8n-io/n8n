@@ -68,18 +68,18 @@ export class ActiveWorkflowRunner {
 
 			for (const workflowData of workflowsData) {
 				console.log(`   - ${workflowData.name}`);
-				Logger.debug(`Initializing active workflow ${workflowData.name} on startup.`, {workflowName: workflowData.name, workflowId: workflowData.id});
+				Logger.debug(`Initializing active workflow ${workflowData.name} (startup)`, {workflowName: workflowData.name, workflowId: workflowData.id});
 				try {
 					await this.add(workflowData.id.toString(), 'init', workflowData);
-					Logger.verbose(`Successfully started workflow ${workflowData.name}.`, {workflowName: workflowData.name, workflowId: workflowData.id});
+					Logger.verbose(`Successfully started workflow ${workflowData.name}`, {workflowName: workflowData.name, workflowId: workflowData.id});
 					console.log(`     => Started`);
 				} catch (error) {
 					console.log(`     => ERROR: Workflow could not be activated:`);
 					console.log(`               ${error.message}`);
-					Logger.error(`Unable to initialize workflow ${workflowData.name} on startup.`, {workflowName: workflowData.name, workflowId: workflowData.id});
+					Logger.error(`Unable to initialize workflow ${workflowData.name} (startup)`, {workflowName: workflowData.name, workflowId: workflowData.id});
 				}
 			}
-			Logger.verbose('Finished initializing active workflows on startup.');
+			Logger.verbose('Finished initializing active workflows (startup)');
 		}
 	}
 
@@ -95,7 +95,7 @@ export class ActiveWorkflowRunner {
 	 */
 	async removeAll(): Promise<void> {
 		const activeWorkflowId: string[] = [];
-		Logger.verbose('Call to remove all active workflows received.');
+		Logger.verbose('Call to remove all active workflows received (removeAll)');
 
 		if (this.activeWorkflows !== null) {
 			// TODO: This should be renamed!
