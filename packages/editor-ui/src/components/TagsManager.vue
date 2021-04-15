@@ -1,6 +1,6 @@
 <template>
 	<div v-if="dialogVisible">
-		<el-dialog title="Manage Tags" :visible="dialogVisible" append-to-body :before-close="closeDialog">
+		<el-dialog title="Manage Tags" :visible="dialogVisible" append-to-body :before-close="closeDialog" class="test-wrapper">
 			<div class="content" @keydown.stop>
 				<el-row v-if="!isLoading">
 					<TagsTable v-if="hasTags || isCreateEnabled"
@@ -181,6 +181,10 @@ export default mixins(
 
 /deep/ .el-dialog {
 	max-width: 600px;
+}
+
+.test-wrapper {
+	z-index: 3000 !important; // fix to top tags dropdown
 }
 
 .content {

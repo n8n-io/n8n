@@ -228,6 +228,7 @@ export interface IWorkflowDb {
 	nodes: INodeUi[];
 	connections: IConnections;
 	settings?: IWorkflowSettings;
+	tags?: ITag[];
 }
 
 // Identical to cli.Interfaces.ts
@@ -450,7 +451,7 @@ export interface ILinkMenuItemProperties {
 export interface ITag {
 	id: string;
 	name: string;
-	usageCount: number;
+	usageCount?: number;
 }
 
 export interface IRootState {

@@ -44,8 +44,17 @@ const module: Module<ITagsState, IRootState> = {
 		allTags: (state: ITagsState): ITag[] => {
 			return state.tags;
 		},
+		tags: (state: ITagsState, filter = ''): ITag[] => {
+			return state.tags.filter((tag) => tag.name.toLowerCase().includes(filter.toLowerCase()));
+		},
 		loading: (state: ITagsState): boolean => {
 			return state.isLoading;
+		},
+		hasTags: (state: ITagsState): boolean => {
+			return state.tags.length > 0;
+		},
+		currentWorkflowTags: (state: ITagsState, getters: any, rootState: IRootState): ITag[] => {
+			return rootState.workflow.tags || [];
 		},
 	},
 	actions: {

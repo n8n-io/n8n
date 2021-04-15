@@ -22,15 +22,6 @@
 					</a>
 				</el-menu-item>
 
-				<!-- temporary -->
-				<el-menu-item index="tagsmanager">
-					<a @click="openTagManager">
-						<font-awesome-icon icon="edit"/>&nbsp;
-						<span slot="title" class="item-title-root">Tags Manager (temp)</span>
-					</a>
-				</el-menu-item>
-				<!-- temporary -->
-
 				<el-menu-item
 					v-for="item in sidebarMenuTopItems"
 					:key="item.id"

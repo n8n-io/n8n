@@ -70,6 +70,7 @@ import {
 	faPlay,
 	faPlayCircle,
 	faPlus,
+	faPlusCircle,
 	faQuestion,
 	faQuestionCircle,
 	faRedo,
@@ -151,6 +152,7 @@ library.add(faPen);
 library.add(faPlay);
 library.add(faPlayCircle);
 library.add(faPlus);
+library.add(faPlusCircle);
 library.add(faQuestion);
 library.add(faQuestionCircle);
 library.add(faRedo);

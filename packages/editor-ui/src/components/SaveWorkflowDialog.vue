@@ -2,7 +2,16 @@
 	<div v-if="dialogVisible">
 		<el-dialog :visible="dialogVisible" append-to-body :before-close="closeDialog" :title="title">
 			<div class="content" @keydown.stop>
-				<el-input placeholder="Enter workflow name" v-model="name" />
+				<el-row>
+					<el-input placeholder="Enter workflow name" v-model="name" :autofocus="true" />
+				</el-row>
+				<el-row>
+					<tags-dropdown 
+						:currentTagIds="currentTagIds"
+						placeholder="Choose or create a tag"
+						@onUpdate="onUpdate"
+					/>
+				</el-row>
 			</div>
 			<el-row class="footer">
 				<el-button size="small" @click="save">Save</el-button>
@@ -13,15 +22,19 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/components/mixins/showMessage';
+import { ITag } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
+import { mapState } from 'vuex';
 import { workflowHelpers } from './mixins/workflowHelpers';
+import { showMessage } from './mixins/showMessage';
+import TagsDropdown from './TagsDropdown.vue';
 
 export default mixins(
 	showMessage,
 	workflowHelpers,
 ).extend({
+  components: { TagsDropdown },
 	name: 'SaveWorkflow',
 	props: [
 		'dialogVisible',
@@ -29,11 +42,22 @@ export default mixins(
 		'saveWorkflow',
 	],
 	data() {
+		const currentTags = this.$store.getters['tags/currentWorkflowTags'] as ITag[];
 		return {
 			name: '',
+			currentTagIds: currentTags.map(({id}) => id),
 		};
 	},
+	created() {
+		this.$store.dispatch('tags/getAll');
+	},
+	computed: mapState('tags', [
+		'isLoading',
+	]),
     methods: {
+		onUpdate(tagIds: string[]) {
+			this.currentTagIds = tagIds;
+		},
 		async save(): Promise<void> {
 			if (!this.name) {
 				this.$showMessage({
@@ -85,9 +109,11 @@ export default mixins(
 	max-width: 600px;
 }
 
-.footer {
-	padding-top: 15px;
+.content > .el-row {
+	margin-bottom: 15px;
+}
 
+.footer {
 	.el-button {
 		float: right;
 		margin-left: 5px;
