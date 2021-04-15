@@ -9,12 +9,12 @@ import {
 } from 'n8n-workflow';
 
 import {
+	BinaryToTextEncoding,
 	createHash,
 	createHmac,
 	createSign,
 	getHashes,
-	BinaryToTextEncoding,
- } from 'crypto';
+} from 'crypto';
 
 export class Crypto implements INodeType {
 	description: INodeTypeDescription = {
@@ -60,7 +60,7 @@ export class Crypto implements INodeType {
 				name: 'type',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hash',
 						],
 					},
@@ -93,7 +93,7 @@ export class Crypto implements INodeType {
 				name: 'value',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hash',
 						],
 					},
@@ -123,7 +123,7 @@ export class Crypto implements INodeType {
 				name: 'encoding',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hash',
 						],
 					},
@@ -147,7 +147,7 @@ export class Crypto implements INodeType {
 				name: 'type',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hmac',
 						],
 					},
@@ -180,7 +180,7 @@ export class Crypto implements INodeType {
 				name: 'value',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hmac',
 						],
 					},
@@ -210,7 +210,7 @@ export class Crypto implements INodeType {
 				name: 'secret',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hmac',
 						],
 					},
@@ -224,7 +224,7 @@ export class Crypto implements INodeType {
 				name: 'encoding',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hmac',
 						],
 					},
@@ -248,7 +248,7 @@ export class Crypto implements INodeType {
 				name: 'value',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'sign',
 						],
 					},
@@ -278,7 +278,7 @@ export class Crypto implements INodeType {
 				name: 'algorithm',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'sign',
 						],
 					},
@@ -295,7 +295,7 @@ export class Crypto implements INodeType {
 				name: 'encoding',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'sign',
 						],
 					},
@@ -319,7 +319,7 @@ export class Crypto implements INodeType {
 				name: 'privateKey',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'sign',
 						],
 					},
