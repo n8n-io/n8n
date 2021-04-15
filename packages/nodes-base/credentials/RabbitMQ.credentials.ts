@@ -1,5 +1,6 @@
 import {
 	ICredentialType,
+	IDisplayOptions,
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
@@ -51,8 +52,22 @@ export class RabbitMQ implements ICredentialType {
 			default: false,
 		},
 		{
-			displayName: 'Client Certificate',
-			name: 'cert',
+			displayName: 'Passwordless',
+			name: 'passwordless',
+			type: 'boolean' as NodePropertyTypes,
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+				},
+			},
+			default: false,
+			description: 'Passwordless connection with certificates (SASL mechanism EXTERNAL)',
+		},
+		{
+			displayName: 'CA Certificates',
+			name: 'ca',
 			type: 'string' as NodePropertyTypes,
 			typeOptions: {
 				password: true,
@@ -64,6 +79,26 @@ export class RabbitMQ implements ICredentialType {
 					],
 				},
 			},
+			default: '',
+			description: 'SSL CA Certificates to use.',
+		},
+		{
+			displayName: 'Client Certificate',
+			name: 'cert',
+			type: 'string' as NodePropertyTypes,
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+					passwordless: [
+						true,
+					],
+				},
+			} as IDisplayOptions,
 			default: '',
 			description: 'SSL Client Certificate to use.',
 		},
@@ -77,6 +112,9 @@ export class RabbitMQ implements ICredentialType {
 			displayOptions: {
 				show: {
 					ssl: [
+						true,
+					],
+					passwordless: [
 						true,
 					],
 				},
@@ -96,31 +134,13 @@ export class RabbitMQ implements ICredentialType {
 					ssl: [
 						true,
 					],
-				},
-			},
-			default: '',
-			description: 'SSL passphrase to use.',
-		},
-		{
-			displayName: 'CA Certificates',
-			name: 'ca',
-			type: 'string' as NodePropertyTypes,
-			typeOptions: {
-				password: true,
-			},
-			// typeOptions: {
-			// 	multipleValues: true,
-			// 	multipleValueButtonText: 'Add Certificate',
-			// },
-			displayOptions: {
-				show: {
-					ssl: [
+					passwordless: [
 						true,
 					],
 				},
 			},
 			default: '',
-			description: 'SSL CA Certificates to use.',
+			description: 'SSL passphrase to use.',
 		},
 		// {
 		// 	displayName: 'Client ID',
