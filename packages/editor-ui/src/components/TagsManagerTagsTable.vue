@@ -83,8 +83,6 @@ interface ITagRow {
 	delete?: boolean;
 }
 
-const MAX_TAG_LENGTH = 24;
-
 export default Vue.extend({
 	name: 'TagsTable',
 	props: [
@@ -99,7 +97,6 @@ export default Vue.extend({
 			searchValue: '',
 			newTagName: '',
 			stickyIds: new Set(),
-			maxLength: MAX_TAG_LENGTH,
 		};
 	},
 	computed: {
