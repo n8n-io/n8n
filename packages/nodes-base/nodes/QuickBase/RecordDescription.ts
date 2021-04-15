@@ -103,8 +103,8 @@ export const recordFields = [
 				],
 			},
 		},
-		default: true,
-		description: 'Use Field IDs instead of Field Names in Insert Fields',
+		default: false,
+		description: 'Use Field IDs instead of Field Names in Insert Fields.',
 	},
 	{
 		displayName: 'Simplified Response',
@@ -152,24 +152,7 @@ export const recordFields = [
 				},
 				default: [],
 				description: `Specify an array of field ids that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested.`,
-			},
-			// {
-			// 	displayName: 'Use Field IDs for Columns',
-			// 	name: 'useFieldIDs',
-			// 	type: 'boolean',
-			// 	displayOptions: {
-			// 		show: {
-			// 			resource: [
-			// 				'record',
-			// 			],
-			// 			operation: [
-			// 				'create',
-			// 			],
-			// 		},
-			// 	},
-			// 	default: true,
-			// 	description: `Use Field IDs instead of names for columns`,
-			// },
+			}
 		],
 	},
 	/* -------------------------------------------------------------------------- */
@@ -291,54 +274,6 @@ export const recordFields = [
 			},
 		},
 		options: [
-			// {
-			// 	displayName: 'Group By',
-			// 	name: 'groupByUi',
-			// 	placeholder: 'Add Group By',
-			// 	type: 'fixedCollection',
-			// 	typeOptions: {
-			// 		multipleValues: true,
-			// 	},
-			// 	default: {},
-			// 	options: [
-			// 		{
-			// 			name: 'groupByValues',
-			// 			displayName: 'Group By',
-			// 			values: [
-			// 				{
-			// 					displayName: 'Field ID',
-			// 					name: 'fieldId',
-			// 					type: 'options',
-			// 					typeOptions: {
-			// 						loadOptionsMethod: 'getTableFields',
-			// 					},
-			// 					default: '',
-			// 					description: 'The unique identifier of a field in a table.',
-			// 				},
-			// 				{
-			// 					displayName: 'Grouping',
-			// 					name: 'grouping',
-			// 					type: 'options',
-			// 					options: [
-			// 						{
-			// 							name: 'ASC',
-			// 							value: 'ASC',
-			// 						},
-			// 						{
-			// 							name: 'DESC',
-			// 							value: 'DESC',
-			// 						},
-			// 						{
-			// 							name: 'Equal Values',
-			// 							value: 'equal-values',
-			// 						},
-			// 					],
-			// 					default: 'ASC',
-			// 				},
-			// 			],
-			// 		},
-			// 	],
-			// },
 			{
 				displayName: 'Select',
 				name: 'select',
