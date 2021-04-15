@@ -88,6 +88,10 @@ export class NextCloud implements INodeType {
 						name: 'Folder',
 						value: 'folder',
 					},
+					{
+						name: 'User',
+						value: 'user',
+					},
 				],
 				default: 'file',
 				description: 'The resource to operate on.',
@@ -182,7 +186,27 @@ export class NextCloud implements INodeType {
 				description: 'The operation to perform.',
 			},
 
-
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Invite a user to a NextCloud organization',
+					},
+				],
+				default: 'create',
+				description: 'The operation to perform.',
+			},
 
 			// ----------------------------------
 			//         file
@@ -209,7 +233,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/original.txt',
-				description: 'The path of file or folder to copy.',
+				description: 'The path of file or folder to copy. The path should start with "/"',
 			},
 			{
 				displayName: 'To Path',
@@ -229,7 +253,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/copy.txt',
-				description: 'The destination path of file or folder.',
+				description: 'The destination path of file or folder. The path should start with "/"',
 			},
 
 			// ----------------------------------
@@ -252,8 +276,8 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				placeholder: 'invoices/2019/invoice_1.pdf',
-				description: 'The path to delete. Can be a single file or a whole folder.',
+				placeholder: '/invoices/2019/invoice_1.pdf',
+				description: 'The path to delete. Can be a single file or a whole folder. The path should start with "/"',
 			},
 
 			// ----------------------------------
@@ -277,7 +301,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/old_name.txt',
-				description: 'The path of file or folder to move.',
+				description: 'The path of file or folder to move. The path should start with "/"',
 			},
 			{
 				displayName: 'To Path',
@@ -297,7 +321,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/new_name.txt',
-				description: 'The new path of file or folder.',
+				description: 'The new path of file or folder. The path should start with "/"',
 			},
 
 			// ----------------------------------
@@ -319,8 +343,8 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				placeholder: 'invoices/2019/invoice_1.pdf',
-				description: 'The file path of the file to download. Has to contain the full path.',
+				placeholder: '/invoices/2019/invoice_1.pdf',
+				description: 'The file path of the file to download. Has to contain the full path. The path should start with "/"',
 			},
 			{
 				displayName: 'Binary Property',
@@ -360,8 +384,8 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				placeholder: 'invoices/2019/invoice_1.pdf',
-				description: 'The file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
+				placeholder: '/invoices/2019/invoice_1.pdf',
+				description: 'The absolute file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
 			},
 			{
 				displayName: 'Binary Data',
@@ -452,8 +476,8 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				placeholder: 'invoices/2019',
-				description: 'The folder to create. The parent folder has to exist.',
+				placeholder: '/invoices/2019',
+				description: 'The folder to create. The parent folder has to exist. The path should start with "/"',
 			},
 
 			// ----------------------------------
@@ -474,10 +498,81 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				placeholder: 'invoices/2019/',
-				description: 'The path of which to list the content.',
+				placeholder: '/invoices/2019/',
+				description: 'The path of which to list the content. The path should start with "/"',
 			},
 
+			// ----------------------------------
+			//         user
+			// ----------------------------------
+
+			// ----------------------------------
+			//         user:create
+			// ----------------------------------
+			{
+				displayName: 'Username',
+				name: 'userId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				placeholder: 'john',
+				description: 'Username the user will have.',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				placeholder: 'john@email.com',
+				description: 'The email of the user to invite.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Display name',
+						name: 'displayName',
+						type: 'string',
+						default: '',
+						description: 'The display name of the user to invite.',
+					},
+				],
+			},
 		],
 	};
 
@@ -598,6 +693,31 @@ export class NextCloud implements INodeType {
 					headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
 
 				}
+
+			} else if (resource === 'user') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         user:create
+					// ----------------------------------
+					requestMethod = 'POST';
+
+					endpoint = 'ocs/v1.php/cloud/users';
+
+					headers['OCS-APIRequest'] = true;
+					headers['Content-Type'] = 'application/x-www-form-urlencoded';
+
+					const userid = this.getNodeParameter('userId', i) as string;
+					const email = this.getNodeParameter('email', i) as string;
+
+					body = `userid=${userid}&email=${email}`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.displayName) {
+						body += `&displayName=${additionalFields.displayName}`;
+					}
+				}
+
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
@@ -645,6 +765,25 @@ export class NextCloud implements INodeType {
 				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
 				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);
+
+			} else if (resource === 'user' && operation === 'create') {
+
+				const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+					parseString(responseData, { explicitArray: false }, (err, data) => {
+						if (err) {
+							return reject(err);
+						}
+
+						if (data.ocs.meta.status !== 'ok') {
+							return reject(new Error(data.ocs.meta.message));
+						}
+
+						resolve(data.ocs.data as IDataObject);
+					});
+				});
+
+				returnData.push(jsonResponseData as IDataObject);
+
 			} else if (resource === 'folder' && operation === 'list') {
 
 				const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
@@ -706,7 +845,7 @@ export class NextCloud implements INodeType {
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
 			return this.prepareOutputData(items);
-		} else  {
+		} else {
 			// For all other ones does the output get replaced
 			return [this.helpers.returnJsonArray(returnData)];
 		}

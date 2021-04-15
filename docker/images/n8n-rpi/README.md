@@ -17,5 +17,6 @@ docker build --build-arg N8N_VERSION=0.43.0 -t n8nio/n8n:0.43.0-rpi .
 docker run -it --rm \
   --name n8n \
   -p 5678:5678 \
+  -v ~/.n8n:/home/node/.n8n \
   n8nio/n8n:0.70.0-rpi
 ```

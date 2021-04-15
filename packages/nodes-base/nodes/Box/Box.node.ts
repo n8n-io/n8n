@@ -310,6 +310,12 @@ export class Box implements INodeType {
 					responseData = { success: true };
 					returnData.push(responseData as IDataObject);
 				}
+				// https://developer.box.com/reference/get-folders-id/
+				if (operation === 'get') {
+					const folderId = this.getNodeParameter('folderId', i) as string;
+					responseData = await boxApiRequest.call(this, 'GET', `/folders/${folderId}`, qs);
+					returnData.push(responseData as IDataObject);
+				}
 				// https://developer.box.com/reference/get-search/
 				if (operation === 'search') {
 					const query = this.getNodeParameter('query', i) as string;

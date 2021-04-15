@@ -180,6 +180,19 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
+			// Get all the available contact fields to display them to user so that he can
+			// select them easily
+			async getContactFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const fields = await mauticApiRequestAllItems.call(this, 'fields', 'GET', '/fields/contact');
+				for (const field of fields) {
+					returnData.push({
+						name: field.label,
+						value: field.alias,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -327,6 +340,13 @@ export class Mautic implements INodeType {
 							body.twitter = socialMediaValues.twitter as string;
 						}
 					}
+					if (additionalFields.customFieldsUi) {
+						const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldValues as IDataObject[];
+						if (customFields) {
+							const data = customFields.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
+							Object.assign(body, data);
+						}
+					}
 					if (additionalFields.b2bOrb2c) {
 						body.b2b_or_b2c = additionalFields.b2bOrb2c as string;
 					}
@@ -427,6 +447,13 @@ export class Mautic implements INodeType {
 							body.linkedin = socialMediaValues.linkedIn as string;
 							body.skype = socialMediaValues.skype as string;
 							body.twitter = socialMediaValues.twitter as string;
+						}
+					}
+					if (updateFields.customFieldsUi) {
+						const customFields = (updateFields.customFieldsUi as IDataObject).customFieldValues as IDataObject[];
+						if (customFields) {
+							const data = customFields.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
+							Object.assign(body, data);
 						}
 					}
 					if (updateFields.b2bOrb2c) {

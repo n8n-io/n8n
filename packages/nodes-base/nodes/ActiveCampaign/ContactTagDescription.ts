@@ -38,7 +38,10 @@ export const contactTagFields = [
 	{
 		displayName: 'Tag ID',
 		name: 'tagId',
-		type: 'number',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTags',
+		},
 		default: '',
 		required: true,
 		displayOptions: {

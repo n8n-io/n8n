@@ -21,12 +21,13 @@ import {
 	ICredentialsResponse,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
-	IPushDataExecutionFinished,
-	IPushDataNodeExecuteAfter,
-	IWorkflowDb,
+	IMenuItem,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
+	IPushDataExecutionFinished,
+	IPushDataNodeExecuteAfter,
 	IUpdateInformation,
+	IWorkflowDb,
 	XYPositon,
 } from './Interface';
 
@@ -58,6 +59,7 @@ export const store = new Vuex.Store({
 		maxExecutionTimeout: Number.MAX_SAFE_INTEGER,
 		versionCli: '0.0.0',
 		oauthCallbackUrls: {},
+		n8nMetadata: {},
 		workflowExecutionData: null as IExecutionResponse | null,
 		lastSelectedNode: null as string | null,
 		lastSelectedNodeOutputIndex: null as number | null,
@@ -78,6 +80,7 @@ export const store = new Vuex.Store({
 			nodes: [] as INodeUi[],
 			settings: {} as IWorkflowSettings,
 		} as IWorkflowDb,
+		sidebarMenuItems: [] as IMenuItem[],
 	},
 	mutations: {
 		// Active Actions
@@ -96,10 +99,9 @@ export const store = new Vuex.Store({
 
 		// Active Executions
 		addActiveExecution (state, newActiveExecution: IExecutionsCurrentSummaryExtended) {
-			state.stateIsDirty = true;
 			// Check if the execution exists already
 			const activeExecution = state.activeExecutions.find(execution => {
-				return execution.idActive === newActiveExecution.idActive;
+				return execution.id === newActiveExecution.id;
 			});
 
 			if (activeExecution !== undefined) {
@@ -113,10 +115,9 @@ export const store = new Vuex.Store({
 			state.activeExecutions.unshift(newActiveExecution);
 		},
 		finishActiveExecution (state, finishedActiveExecution: IPushDataExecutionFinished) {
-			state.stateIsDirty = true;
 			// Find the execution to set to finished
 			const activeExecution = state.activeExecutions.find(execution => {
-				return execution.idActive === finishedActiveExecution.executionIdActive;
+				return execution.id === finishedActiveExecution.executionId;
 			});
 
 			if (activeExecution === undefined) {
@@ -124,15 +125,14 @@ export const store = new Vuex.Store({
 				return;
 			}
 
-			if (finishedActiveExecution.executionIdDb !== undefined) {
-				Vue.set(activeExecution, 'id', finishedActiveExecution.executionIdDb);
+			if (finishedActiveExecution.executionId !== undefined) {
+				Vue.set(activeExecution, 'id', finishedActiveExecution.executionId);
 			}
 
 			Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
 			Vue.set(activeExecution, 'stoppedAt', finishedActiveExecution.data.stoppedAt);
 		},
 		setActiveExecutions (state, newActiveExecutions: IExecutionsCurrentSummaryExtended[]) {
-			state.stateIsDirty = true;
 			Vue.set(state, 'activeExecutions', newActiveExecutions);
 		},
 
@@ -141,14 +141,13 @@ export const store = new Vuex.Store({
 			state.activeWorkflows = newActiveWorkflows;
 		},
 		setWorkflowActive (state, workflowId: string) {
-			state.stateIsDirty = true;
+			state.stateIsDirty = false;
 			const index = state.activeWorkflows.indexOf(workflowId);
 			if (index === -1) {
 				state.activeWorkflows.push(workflowId);
 			}
 		},
 		setWorkflowInactive (state, workflowId: string) {
-			state.stateIsDirty = true;
 			const index = state.activeWorkflows.indexOf(workflowId);
 			if (index !== -1) {
 				state.selectedNodes.splice(index, 1);
@@ -165,7 +164,6 @@ export const store = new Vuex.Store({
 			state.selectedNodes.push(node);
 		},
 		removeNodeFromSelection (state, node: INodeUi) {
-			state.stateIsDirty = true;
 			let index;
 			for (index in state.selectedNodes) {
 				if (state.selectedNodes[index].name === node.name) {
@@ -377,7 +375,6 @@ export const store = new Vuex.Store({
 
 				// Set/Overwrite the value
 				Vue.set(node.issues!, nodeIssueData.type, nodeIssueData.value);
-				state.stateIsDirty = true;
 			}
 
 			return true;
@@ -466,7 +463,6 @@ export const store = new Vuex.Store({
 			state.nodeIndex.push(nodeName);
 		},
 		setNodeIndex (state, newData: { index: number, name: string | null}) {
-			state.stateIsDirty = true;
 			state.nodeIndex[newData.index] = newData.name;
 		},
 		resetNodeIndex (state) {
@@ -478,9 +474,6 @@ export const store = new Vuex.Store({
 			state.nodeViewMoveInProgress = value;
 		},
 		setNodeViewOffsetPosition (state, data) {
-			if (data.setStateDirty === true) {
-				state.stateIsDirty = true;
-			}
 			state.nodeViewOffsetPosition = data.newOffset;
 		},
 
@@ -540,17 +533,9 @@ export const store = new Vuex.Store({
 		setOauthCallbackUrls(state, urls: IDataObject) {
 			Vue.set(state, 'oauthCallbackUrls', urls);
 		},
-
-		addNodeType (state, typeData: INodeTypeDescription) {
-			if (!typeData.hasOwnProperty('name')) {
-				// All node-types have to have a name
-				// TODO: Check if there is an error or whatever that is supposed to be returned
-				return;
-			}
-			state.stateIsDirty = true;
-			state.nodeTypes.push(typeData);
+		setN8nMetadata(state, metadata: IDataObject) {
+			Vue.set(state, 'n8nMetadata', metadata);
 		},
-
 		setActiveNode (state, nodeName: string) {
 			state.activeNode = nodeName;
 		},
@@ -573,7 +558,6 @@ export const store = new Vuex.Store({
 			if (state.workflowExecutionData.data.resultData.runData[pushData.nodeName] === undefined) {
 				Vue.set(state.workflowExecutionData.data.resultData.runData, pushData.nodeName, []);
 			}
-			state.stateIsDirty = true;
 			state.workflowExecutionData.data.resultData.runData[pushData.nodeName].push(pushData.data);
 		},
 
@@ -614,6 +598,11 @@ export const store = new Vuex.Store({
 			const updatedNodes = [...oldNodesNotChanged, ...nodeTypes];
 			Vue.set(state, 'nodeTypes', updatedNodes);
 			state.nodeTypes = updatedNodes;
+		},
+
+		addSidebarMenuItems (state, menuItems: IMenuItem[]) {
+			const updated = state.sidebarMenuItems.concat(menuItems);
+			Vue.set(state, 'sidebarMenuItems', updated);
 		},
 	},
 	getters: {
@@ -673,6 +662,9 @@ export const store = new Vuex.Store({
 		},
 		oauthCallbackUrls: (state): object => {
 			return state.oauthCallbackUrls;
+		},
+		n8nMetadata: (state): object => {
+			return state.n8nMetadata;
 		},
 
 		// Push Connection
@@ -849,6 +841,9 @@ export const store = new Vuex.Store({
 			return workflowRunData[nodeName];
 		},
 
+		sidebarMenuItems: (state): IMenuItem[] => {
+			return state.sidebarMenuItems;
+		},
 	},
 
 });

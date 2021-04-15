@@ -82,6 +82,44 @@ export const draftFields = [
 		description: 'The message subject.',
 	},
 	{
+		displayName: 'HTML',
+		name: 'includeHtml',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'draft',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: false,
+		description: 'Switch ON if the message should also be included as HTML.',
+	},
+	{
+		displayName: 'HTML Message',
+		name: 'htmlMessage',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				includeHtml: [
+					true,
+				],
+				resource: [
+					'draft',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		description: 'The HTML message body.',
+	},
+	{
 		displayName: 'Message',
 		name: 'message',
 		type: 'string',
@@ -98,7 +136,7 @@ export const draftFields = [
 			},
 		},
 		placeholder: 'Hello World!',
-		description: 'The message body. This can be in HTML.',
+		description:  'The message body. If HTML formatted, then you have to add and activate the option "HTML content" in the "Additional Options" section.',
 	},
 	{
 		displayName: 'Additional Fields',

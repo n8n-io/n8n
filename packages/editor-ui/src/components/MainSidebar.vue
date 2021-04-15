@@ -21,6 +21,22 @@
 					</a>
 				</el-menu-item>
 
+				<el-menu-item
+					v-for="item in sidebarMenuTopItems"
+					:key="item.id"
+					:index="item.id"
+				>
+					<a
+						v-if="item.type === 'link'"
+						:href="item.properties.href"
+						:target="item.properties.newWindow ? '_blank' : '_self'"
+						class="primary-item"
+					>
+						<font-awesome-icon :icon="item.properties.icon" />
+						<span slot="title" class="item-title-root">{{ item.properties.title }}</span>
+					</a>
+				</el-menu-item>
+
 				<el-submenu index="workflow" title="Workflow">
 					<template slot="title">
 						<font-awesome-icon icon="network-wired"/>&nbsp;
@@ -152,6 +168,22 @@
 					</el-menu-item>
 				</el-submenu>
 
+				<el-menu-item
+					v-for="item in sidebarMenuBottomItems"
+					:key="item.id"
+					:index="item.id"
+				>
+					<a
+						v-if="item.type === 'link'"
+						:href="item.properties.href"
+						:target="item.properties.newWindow ? '_blank' : '_self'"
+						class="primary-item"
+					>
+						<font-awesome-icon :icon="item.properties.icon" />
+						<span slot="title" class="item-title-root">{{ item.properties.title }}</span>
+					</a>
+				</el-menu-item>
+
 			</el-menu>
 
 		</div>
@@ -167,6 +199,7 @@ import {
 	IExecutionResponse,
 	IExecutionsStopData,
 	IWorkflowDataUpdate,
+	IMenuItem,
 } from '../Interface';
 
 import About from '@/components/About.vue';
@@ -181,7 +214,6 @@ import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { workflowSave } from '@/components/mixins/workflowSave';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
 import { saveAs } from 'file-saver';
@@ -195,7 +227,6 @@ export default mixins(
 	titleChange,
 	workflowHelpers,
 	workflowRun,
-	workflowSave,
 )
 	.extend({
 		name: 'MainHeader',
@@ -267,6 +298,12 @@ export default mixins(
 			},
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
+			},
+			sidebarMenuTopItems(): IMenuItem[] {
+				return this.$store.getters.sidebarMenuItems.filter((item: IMenuItem) => item.position === 'top');
+			},
+			sidebarMenuBottomItems(): IMenuItem[] {
+				return this.$store.getters.sidebarMenuItems.filter((item: IMenuItem) => item.position === 'bottom');
 			},
 		},
 		methods: {
@@ -470,6 +507,7 @@ export default mixins(
 							type: 'success',
 						});
 					}
+					this.$titleReset();
 				} else if (key === 'credentials-open') {
 					this.credentialOpenDialogVisible = true;
 				} else if (key === 'credentials-new') {
@@ -534,6 +572,11 @@ export default mixins(
 .el-menu-item {
 	a {
 		color: #666;
+
+		&.primary-item {
+			color: $--color-primary;
+			vertical-align: baseline;
+		}
 	}
 
 	&.logo-item {

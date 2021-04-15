@@ -1,4 +1,4 @@
-FROM arm32v7/node:12.19
+FROM arm32v7/node:14.15
 
 ARG N8N_VERSION
 
@@ -15,6 +15,7 @@ ENV NODE_ENV production
 
 WORKDIR /data
 
-USER node
+USER root
 
-CMD n8n
+CMD chown -R node:node /home/node/.n8n \
+&& gosu node n8n

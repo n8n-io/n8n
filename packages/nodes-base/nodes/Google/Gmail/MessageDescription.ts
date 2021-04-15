@@ -126,6 +126,46 @@ export const messageFields = [
 		description: 'The message subject.',
 	},
 	{
+		displayName: 'HTML',
+		name: 'includeHtml',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'send',
+					'reply',
+				],
+			},
+		},
+		default: false,
+		description: 'Switch ON if the message should also be included as HTML.',
+	},
+	{
+		displayName: 'HTML Message',
+		name: 'htmlMessage',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				includeHtml: [
+					true,
+				],
+				resource: [
+					'message',
+				],
+				operation: [
+					'reply',
+					'send',
+				],
+			},
+		},
+		description: 'The HTML message body.',
+	},
+	{
 		displayName: 'Message',
 		name: 'message',
 		type: 'string',
@@ -142,8 +182,7 @@ export const messageFields = [
 				],
 			},
 		},
-		placeholder: 'Hello World!',
-		description: 'The message body. This can be in HTML.',
+		description: 'Plain text message body.',
 	},
 	{
 		displayName: 'To Email',

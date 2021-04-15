@@ -52,6 +52,7 @@ export interface IEmail {
 	reference?: string;
 	subject: string;
 	body: string;
+	htmlBody?: string;
 	attachments?: IDataObject[];
 }
 
@@ -65,24 +66,58 @@ export class Gmail implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gmail',
 		name: 'gmail',
-		icon: 'file:gmail.png',
+		icon: 'file:gmail.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the Gmail API',
 		defaults: {
 			name: 'Gmail',
-			color: '#d93025',
+			color: '#4285F4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
+				name: 'googleApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'serviceAccount',
+						],
+					},
+				},
+			},
+			{
 				name: 'gmailOAuth2',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'oAuth2',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -325,11 +360,15 @@ export class Gmail implements INodeType {
 						attachments: attachmentsList,
 					};
 
+					if (this.getNodeParameter('includeHtml', i, false) as boolean === true) {
+						email.htmlBody = this.getNodeParameter('htmlMessage', i) as string;
+					}
+
 					endpoint = '/gmail/v1/users/me/messages/send';
 					method = 'POST';
 
 					body = {
-						raw: encodeEmail(email),
+						raw: await encodeEmail(email),
 					};
 
 					responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
@@ -420,6 +459,10 @@ export class Gmail implements INodeType {
 						attachments: attachmentsList,
 					};
 
+					if (this.getNodeParameter('includeHtml', i, false) as boolean === true) {
+						email.htmlBody = this.getNodeParameter('htmlMessage', i) as string;
+					}
+
 					endpoint = '/gmail/v1/users/me/messages/send';
 					method = 'POST';
 
@@ -427,7 +470,7 @@ export class Gmail implements INodeType {
 					email.reference = id;
 
 					body = {
-						raw: encodeEmail(email),
+						raw: await encodeEmail(email),
 						threadId: this.getNodeParameter('threadId', i) as string,
 					};
 
@@ -620,12 +663,16 @@ export class Gmail implements INodeType {
 						attachments: attachmentsList,
 					};
 
+					if (this.getNodeParameter('includeHtml', i, false) as boolean === true) {
+						email.htmlBody = this.getNodeParameter('htmlMessage', i) as string;
+					}
+
 					endpoint = '/gmail/v1/users/me/drafts';
 					method = 'POST';
 
 					body = {
 						message: {
-							raw: encodeEmail(email),
+							raw: await encodeEmail(email),
 						},
 					};
 

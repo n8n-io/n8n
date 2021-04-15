@@ -4,6 +4,7 @@ import {
 
 import {
 	ICredentialDataDecryptedObject,
+	ICredentialsExpressionResolveValues,
 	ICredentialsHelper,
 	INode,
 	INodeParameters,
@@ -13,6 +14,7 @@ import {
 	INodeTypes,
 	NodeHelpers,
 	Workflow,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import {
@@ -100,7 +102,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @returns {ICredentialDataDecryptedObject}
 	 * @memberof CredentialsHelper
 	 */
-	getDecrypted(name: string, type: string, raw?: boolean): ICredentialDataDecryptedObject {
+	getDecrypted(name: string, type: string, mode: WorkflowExecuteMode, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): ICredentialDataDecryptedObject {
 		const credentials = this.getCredentials(name, type);
 
 		const decryptedDataOriginal = credentials.getData(this.encryptionKey);
@@ -109,7 +111,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return decryptedDataOriginal;
 		}
 
-		return this.applyDefaultsAndOverwrites(decryptedDataOriginal, type);
+		return this.applyDefaultsAndOverwrites(decryptedDataOriginal, type, mode, expressionResolveValues);
 	}
 
 
@@ -121,7 +123,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @returns {ICredentialDataDecryptedObject}
 	 * @memberof CredentialsHelper
 	 */
-	applyDefaultsAndOverwrites(decryptedDataOriginal: ICredentialDataDecryptedObject, type: string): ICredentialDataDecryptedObject {
+	applyDefaultsAndOverwrites(decryptedDataOriginal: ICredentialDataDecryptedObject, type: string, mode: WorkflowExecuteMode, expressionResolveValues?: ICredentialsExpressionResolveValues): ICredentialDataDecryptedObject {
 		const credentialsProperties = this.getCredentialsProperties(type);
 
 		// Add the default credential values
@@ -133,17 +135,28 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
 		}
 
-		const mockNode: INode = {
-			name: '',
-			typeVersion: 1,
-			type: 'mock',
-			position: [0, 0],
-			parameters: decryptedData as INodeParameters,
-		};
+		if (expressionResolveValues) {
+			try {
+				const workflow = new Workflow({ nodes: Object.values(expressionResolveValues.workflow.nodes), connections: expressionResolveValues.workflow.connectionsBySourceNode, active: false, nodeTypes: expressionResolveValues.workflow.nodeTypes });
+				decryptedData = workflow.expression.getParameterValue(decryptedData as INodeParameters, expressionResolveValues.runExecutionData, expressionResolveValues.runIndex, expressionResolveValues.itemIndex, expressionResolveValues.node.name, expressionResolveValues.connectionInputData, mode, false, decryptedData) as ICredentialDataDecryptedObject;
+			} catch (e) {
+				e.message += ' [Error resolving credentials]';
+				throw e;
+			}
+		} else {
+			const node = {
+				name: '',
+				typeVersion: 1,
+				type: 'mock',
+				position: [0, 0],
+				parameters: {} as INodeParameters,
+			} as INode;
 
-		const workflow = new Workflow({ nodes: [mockNode], connections: {}, active: false, nodeTypes: mockNodeTypes});
-		// Resolve expressions if any are set
-		decryptedData = workflow.expression.getComplexParameterValue(mockNode, decryptedData as INodeParameters, undefined) as ICredentialDataDecryptedObject;
+			const workflow = new Workflow({ nodes: [node!], connections: {}, active: false, nodeTypes: mockNodeTypes });
+
+			// Resolve expressions if any are set
+			decryptedData = workflow.expression.getComplexParameterValue(node!, decryptedData as INodeParameters, mode, undefined, decryptedData) as ICredentialDataDecryptedObject;
+		}
 
 		// Load and apply the credentials overwrites if any exist
 		const credentialsOverwrites = CredentialsOverwrites();

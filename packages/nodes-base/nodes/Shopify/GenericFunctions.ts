@@ -24,7 +24,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		throw new Error('No credentials got returned!');
 	}
 	const headerWithAuthentication = Object.assign({},
-		{ Authorization: ` Basic ${Buffer.from(`${credentials.apiKey}:${credentials.password}`).toString(BINARY_ENCODING)}` });
+		{ Authorization: `Basic ${Buffer.from(`${credentials.apiKey}:${credentials.password}`).toString(BINARY_ENCODING)}` });
 
 	const options: OptionsWithUri = {
 		headers: headerWithAuthentication,

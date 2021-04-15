@@ -1,6 +1,7 @@
 import {
 	Column,
 	Entity,
+	Index,
 	PrimaryColumn,
 } from 'typeorm';
 
@@ -9,6 +10,7 @@ import {
  } from '../../';
 
 @Entity()
+@Index(['webhookId', 'method', 'pathLength'])
 export class WebhookEntity implements IWebhookDb {
 
 	@Column()
@@ -22,4 +24,10 @@ export class WebhookEntity implements IWebhookDb {
 
 	@Column()
 	node: string;
+
+	@Column({ nullable: true })
+	webhookId: string;
+
+	@Column({ nullable: true })
+	pathLength: number;
 }

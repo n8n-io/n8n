@@ -34,6 +34,16 @@ export const listOperations = [
 				description: 'Get the data of a list',
 			},
 			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all the lists',
+			},
+			{
+				name: 'Get Cards',
+				value: 'getCards',
+				description: 'Get all the cards in a list',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a list',
@@ -160,6 +170,89 @@ export const listFields = [
 	},
 
 	// ----------------------------------
+	//         list:getCards
+	// ----------------------------------
+	{
+		displayName: 'List ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'getCards',
+				],
+				resource: [
+					'list',
+				],
+			},
+		},
+		description: 'The ID of the list to get cards.',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'list',
+				],
+				operation: [
+					'getCards',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 20,
+		displayOptions: {
+			show: {
+				resource: [
+					'list',
+				],
+				operation: [
+					'getCards',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'getCards',
+				],
+				resource: [
+					'list',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				default: 'all',
+				description: 'Fields to return. Either "all" or a comma-separated list of fields.',
+			},
+		],
+	},
+	// ----------------------------------
 	//         list:get
 	// ----------------------------------
 	{
@@ -189,6 +282,90 @@ export const listFields = [
 			show: {
 				operation: [
 					'get',
+				],
+				resource: [
+					'list',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				default: 'all',
+				description: 'Fields to return. Either "all" or a comma-separated list of fields.',
+			},
+		],
+	},
+
+	// ----------------------------------
+	//         list:getAll
+	// ----------------------------------
+	{
+		displayName: 'Board ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'list',
+				],
+			},
+		},
+		description: 'The ID of the board',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'list',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 20,
+		displayOptions: {
+			show: {
+				resource: [
+					'list',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
 				],
 				resource: [
 					'list',

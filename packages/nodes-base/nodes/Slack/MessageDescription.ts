@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const messageOperations = [
 	{
@@ -14,14 +16,29 @@ export const messageOperations = [
 		},
 		options: [
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Deletes a message',
+			},
+			{
+				name: 'Get Permalink',
+				value: 'getPermalink',
+				description: 'Get Permanent Link of a message',
+			},
+			{
 				name: 'Post',
 				value: 'post',
 				description: 'Post a message into a channel',
 			},
 			{
+				name: 'Post (Ephemeral)',
+				value: 'postEphemeral',
+				description: 'Post an ephemeral message to a user in channel',
+			},
+			{
 				name: 'Update',
 				value: 'update',
-				description: 'Updates a message.',
+				description: 'Updates a message',
 			},
 		],
 		default: 'post',
@@ -31,9 +48,52 @@ export const messageOperations = [
 
 export const messageFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                message:post                                */
-/* -------------------------------------------------------------------------- */
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:getPermalink
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Channel',
+		name: 'channelId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getPermalink',
+				],
+			},
+		},
+		description: 'Channel containing the message.',
+	},
+	{
+		displayName: 'Timestamp',
+		name: 'timestamp',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getPermalink',
+				],
+			},
+		},
+		description: `Timestamp of the message to get permanent link.`,
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                          message:post/postEphemeral                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channel',
@@ -44,6 +104,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -52,6 +113,25 @@ export const messageFields = [
 		},
 		required: true,
 		description: 'The channel to send the message to.',
+	},
+	{
+		displayName: 'User',
+		name: 'user',
+		type: 'string',
+		default: '',
+		placeholder: 'User ID',
+		displayOptions: {
+			show: {
+				operation: [
+					'postEphemeral',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		required: true,
+		description: 'The user ID to send the message to.',
 	},
 	{
 		displayName: 'Text',
@@ -65,6 +145,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -72,46 +153,6 @@ export const messageFields = [
 			},
 		},
 		description: 'The text to send.',
-	},
-	{
-		displayName: 'As User',
-		name: 'as_user',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				authentication: [
-					'accessToken',
-				],
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		description: 'Post the message as authenticated user instead of bot. Works only with user token.',
-	},
-	{
-		displayName: 'User Name',
-		name: 'username',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				as_user: [
-					false,
-				],
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		description: 'Set the bot\'s user name. This field will be ignored if you are using a user token.',
 	},
 	{
 		displayName: 'JSON parameters',
@@ -122,6 +163,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -141,6 +183,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -332,6 +375,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -346,19 +390,6 @@ export const messageFields = [
 				displayName: 'Icon Emoji',
 				name: 'icon_emoji',
 				type: 'string',
-				displayOptions: {
-					show: {
-						'/as_user': [
-							false,
-						],
-						'/operation': [
-							'post',
-						],
-						'/resource': [
-							'message',
-						],
-					},
-				},
 				default: '',
 				description: 'Emoji to use as the icon for this message. Overrides icon_url.',
 			},
@@ -366,21 +397,15 @@ export const messageFields = [
 				displayName: 'Icon URL',
 				name: 'icon_url',
 				type: 'string',
-				displayOptions: {
-					show: {
-						'/as_user': [
-							false,
-						],
-						'/operation': [
-							'post',
-						],
-						'/resource': [
-							'message',
-						],
-					},
-				},
 				default: '',
 				description: 'URL to an image to use as the icon for this message.',
+			},
+			{
+				displayName: 'Link Names',
+				name: 'link_names',
+				type: 'boolean',
+				default: false,
+				description: 'Find and link channel names and usernames.',
 			},
 			{
 				displayName: 'Make Reply',
@@ -388,20 +413,6 @@ export const messageFields = [
 				type: 'string',
 				default: '',
 				description: 'Provide another message\'s ts value to make this message a reply.',
-			},
-			{
-				displayName: 'Unfurl Links',
-				name: 'unfurl_links',
-				type: 'boolean',
-				default: false,
-				description: 'Pass true to enable unfurling of primarily text-based content.',
-			},
-			{
-				displayName: 'Unfurl Media',
-				name: 'unfurl_media',
-				type: 'boolean',
-				default: true,
-				description: 'Pass false to disable unfurling of media content.',
 			},
 			{
 				displayName: 'Markdown',
@@ -418,17 +429,39 @@ export const messageFields = [
 				description: 'Used in conjunction with thread_ts and indicates whether reply should be made visible to everyone in the channel or conversation.',
 			},
 			{
-				displayName: 'Link Names',
-				name: 'link_names',
+				displayName: 'Unfurl Links',
+				name: 'unfurl_links',
 				type: 'boolean',
 				default: false,
-				description: 'Find and link channel names and usernames.',
+				description: 'Pass true to enable unfurling of primarily text-based content.',
+			},
+			{
+				displayName: 'Unfurl Media',
+				name: 'unfurl_media',
+				type: 'boolean',
+				default: true,
+				description: 'Pass false to disable unfurling of media content.',
+			},
+			{
+				displayName: 'Send as User',
+				name: 'sendAsUser',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/authentication': [
+							'accessToken',
+						],
+					},
+				},
+				default: '',
+				description: 'The message will be sent from this username (i.e. as if this individual sent the message).',
 			},
 		],
 	},
-/* ----------------------------------------------------------------------- */
-/*                                 message:update                          */
-/* ----------------------------------------------------------------------- */
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:update                          */
+	/* ----------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -485,26 +518,6 @@ export const messageFields = [
 			},
 		},
 		description: `Timestamp of the message to be updated.`,
-	},
-	{
-		displayName: 'As User',
-		name: 'as_user',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				authentication: [
-					'accessToken',
-				],
-				operation: [
-					'update',
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		description: 'Pass true to update the message as the authed user. Works only with user token.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -1670,5 +1683,48 @@ export const messageFields = [
 				],
 			},
 		],
+	},
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:delete
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Channel',
+		name: 'channelId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		description: 'Channel containing the message to be deleted.',
+	},
+	{
+		displayName: 'Timestamp',
+		name: 'timestamp',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		description: `Timestamp of the message to be deleted.`,
 	},
 ] as INodeProperties[];

@@ -1,0 +1,37 @@
+{
+	"node": "n8n-nodes-base.gmail",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Communication"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/google"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.gmail/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Why business process automation with n8n can change your daily life",
+				"icon": "🧬",
+				"url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/"
+			},
+			{
+				"label": "Supercharging your conference registration process with n8n",
+				"icon": "🎫",
+				"url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/"
+			},
+			{
+				"label": "Using Automation to Boost Productivity in the Workplace",
+				"icon": "💪",
+				"url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/"
+			}
+		]
+	}
+}

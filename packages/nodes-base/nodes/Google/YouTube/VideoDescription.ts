@@ -210,7 +210,7 @@ export const videoFields = [
 					},
 					{
 						name: 'Unlisted',
-						value: 'unlistef',
+						value: 'unlisted',
 					},
 				],
 				default: '',
