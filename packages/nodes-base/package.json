@@ -84,6 +84,7 @@
       "dist/credentials/FileMaker.credentials.js",
       "dist/credentials/FlowApi.credentials.js",
       "dist/credentials/FormstackApi.credentials.js",
+      "dist/credentials/FormstackOAuth2Api.credentials.js",
       "dist/credentials/Ftp.credentials.js",
       "dist/credentials/GetResponseApi.credentials.js",
       "dist/credentials/GetResponseOAuth2Api.credentials.js",

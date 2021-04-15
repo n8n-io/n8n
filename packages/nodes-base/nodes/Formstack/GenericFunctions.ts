@@ -49,6 +49,8 @@ export interface ITypeformAnswerField {
  * @returns {Promise<any>}
  */
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object | string, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
+
 	const options: OptionsWithUri = {
 		headers: {},
 		method,
@@ -64,14 +66,18 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	query = query || {};
 
 	try {
-		const credentials = this.getCredentials('formstackApi');
+		if (authenticationMethod === 'accessToken') {
+			const credentials = this.getCredentials('formstackApi');
 
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
+			return await this.helpers.request!(options);
+		} else {
+			return await this.helpers.requestOAuth2!.call(this, 'formstackOAuth2Api', options);
 		}
-
-		options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
-		return await this.helpers.request!(options);
 	} catch (error) {
 		if (error.statusCode === 401) {
 			// Return a clear error
