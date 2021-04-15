@@ -6,6 +6,9 @@ import {
 	LogTypes,
 } from 'n8n-workflow';
 
+import * as callsites from 'callsites';
+import { basename } from 'path';
+
 class Logger implements ILogger {
 	private logger: winston.Logger;
 
@@ -57,29 +60,37 @@ class Logger implements ILogger {
 	}
 
 	log(type: LogTypes, message: string, meta: object = {}) {
-		this.logger.log(type, message, meta);
+		const callsite = callsites();
+		// We are using the third array element as the structure is as follows:
+		// [0]: this file
+		// [1]: Should be LoggerProxy
+		// [2]: Should point to the caller.
+		// Note: getting line number is useless because at this point
+		// We are in runtime, so it means we are looking at compiled js files
+		const logDetails = callsite[2] === undefined ? {} : {file: basename(callsite[2].getFileName() || '')};
+		this.logger.log(type, message, {...meta, ...logDetails});
 	}
 
 	// Convenience methods below
 
 	debug(message: string, meta: object = {}) {
-		this.logger.log('debug', message, meta);
+		this.log('debug', message, meta);
 	}
 
 	info(message: string, meta: object = {}) {
-		this.logger.log('info', message, meta);
+		this.log('info', message, meta);
 	}
 
 	error(message: string, meta: object = {}) {
-		this.logger.log('error', message, meta);
+		this.log('error', message, meta);
 	}
 
 	verbose(message: string, meta: object = {}) {
-		this.logger.log('verbose', message, meta);
+		this.log('verbose', message, meta);
 	}
 
 	warn(message: string, meta: object = {}) {
-		this.logger.log('warn', message, meta);
+		this.log('warn', message, meta);
 	}
 
 }
