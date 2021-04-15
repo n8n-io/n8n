@@ -7,11 +7,14 @@ import {
 } from '../Interface';
 import { addTag, deleteTag, getTags, updateTag } from '../api/tags';
 
+const MAX_TAG_LENGTH = 24;
+
 const module: Module<ITagsState, IRootState> = {
 	namespaced: true,
 	state: {
 		tags: [],
 		isLoading: false,
+		maxLength: MAX_TAG_LENGTH,
 	},
 	mutations: {
 		setLoading: (state: ITagsState, isLoading: boolean) => {

@@ -20,6 +20,8 @@
 							@onDelete="onDelete"
 							@enableDelete="enableDelete"
 							@disableDelete="disableDelete"
+
+							:maxLength="maxLength"
 					/>
 					<el-col class="notags" :span="16" :offset="4" v-else>
 						<div class="icon">
@@ -53,6 +55,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 import TagsTable from '@/components/TagsManagerTagsTable.vue';
 
 import mixins from 'vue-typed-mixins';
+import { mapState } from 'vuex';
 
 export default mixins(
 	showMessage,
@@ -79,11 +82,12 @@ export default mixins(
 			return this.$store.getters['tags/allTags'];
 		},
 		hasTags(): boolean {
-			return this.$store.getters['tags/allTags'].length > 0;
+			return this.tags.length > 0;
 		},
-		isLoading(): boolean {
-			return this.$store.getters['tags/loading'];
-		},
+		...mapState('tags', [
+			'isLoading',
+			'maxLength'
+		])
 	},
 	methods: {
 		enableCreate() {

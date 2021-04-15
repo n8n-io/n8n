@@ -494,6 +494,7 @@ export interface IRootState {
 export interface ITagsState {
 	tags: ITag[];
 	isLoading: boolean;
+	maxLength: number;
 }
 
 export interface IWorkflowsState {
