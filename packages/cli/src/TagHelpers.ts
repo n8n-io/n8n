@@ -18,7 +18,7 @@ const TAG_NAME_LENGTH_LIMIT = 24;
  * Type guard for string array.
  */
 function isStringArray(tags: unknown[]): tags is string[] {
-	return Array.isArray(tags) && !tags.some((value) => typeof value !== 'string');
+	return Array.isArray(tags) && tags.every((value) => typeof value === 'string');
 }
 
 /**
