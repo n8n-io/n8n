@@ -1292,7 +1292,7 @@ export class Gitlab implements INodeType {
 					const id = this.getNodeParameter('projectId', i) as string;
 
 					qs = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
-	
+
 					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
 					if (returnAll === false) {
@@ -1316,7 +1316,7 @@ export class Gitlab implements INodeType {
 					if(body.milestones){
 						body.milestones = (body.milestones as string).split(',');
 					}
-					
+
 					endpoint = `/projects/${id}/releases/${tagName}`;
 				}
 			} else if (resource === 'repository') {
