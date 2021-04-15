@@ -51,7 +51,7 @@ import { createHmac } from 'crypto';
 import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
 
-const requestPromiseWithDefaults:requestPromise.RequestPromiseAPI = requestPromise.defaults({
+const requestPromiseWithDefaults = requestPromise.defaults({
 	timeout: 300000, // 5 minutes
 });
 
