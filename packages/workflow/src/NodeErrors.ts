@@ -1,9 +1,11 @@
 import { INode, IRawErrorObject, IStatusCodeMessages} from '.';
+import { parseString } from 'xml2js';
 
 /**
  * Top-level properties where an error message can be found in an API response.
  */
 const ERROR_MESSAGE_PROPERTIES = [
+	'error',
 	'message',
 	'Message',
 	'msg',
@@ -24,7 +26,6 @@ const ERROR_MESSAGE_PROPERTIES = [
 	'title',
 	'text',
 	'field',
-	'error',
 	'err',
 	'type',
 ];
@@ -178,8 +179,8 @@ export class NodeApiError extends NodeError {
 	constructor(
 		node: INode,
 		error: IRawErrorObject,
-		{message, description, httpCode}: {message: string, description?: string, httpCode?: string} = {message: ''},
-	){
+		{ message, description, httpCode, parseXml }: { message?: string, description?: string, httpCode?: string, parseXml?: boolean } = {},
+	) {
 		super(node, error);
 		if (message) {
 			this.message = message;
@@ -191,7 +192,21 @@ export class NodeApiError extends NodeError {
 		this.httpCode = this.findProperty(error, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES);
 		this.setMessage();
 
+		if (parseXml) {
+			this.setDescriptionFromXml(error.error as string);
+			return;
+		}
+
 		this.description = this.findProperty(error, ERROR_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES);
+	}
+
+	private setDescriptionFromXml(xml: string) {
+		parseString(xml, { explicitArray: false }, (_, result) => {
+			if (!result) return;
+
+			const topLevelKey = Object.keys(result)[0];
+			this.description = this.findProperty(result[topLevelKey], ERROR_MESSAGE_PROPERTIES, ['Error'].concat(ERROR_NESTING_PROPERTIES));
+		});
 	}
 
 	/**

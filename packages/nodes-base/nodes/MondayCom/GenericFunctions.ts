@@ -10,7 +10,9 @@ import {
 import {
 	IDataObject,
 	IHookFunctions,
-	IWebhookFunctions
+	IWebhookFunctions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -22,7 +24,7 @@ export async function mondayComApiRequest(this: IExecuteFunctions | IWebhookFunc
 	const credentials = this.getCredentials('mondayComApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const endpoint = 'https://api.monday.com/v2/';
@@ -41,11 +43,7 @@ export async function mondayComApiRequest(this: IExecuteFunctions | IWebhookFunc
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.response) {
-			const errorMessage = error.response.body.error_message;
-			throw new Error(`Monday error response [${error.statusCode}]: ${errorMessage}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

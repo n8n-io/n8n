@@ -10,6 +10,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -708,7 +709,7 @@ export class Keap implements INodeType {
 						&& (attachmentsUi.attachmentsBinary as IDataObject).length) {
 
 							if (items[i].binary === undefined) {
-								throw new Error('No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 							}
 
 							for (const { property } of attachmentsUi.attachmentsBinary as IDataObject[]) {
@@ -716,7 +717,7 @@ export class Keap implements INodeType {
 								const item = items[i].binary as IBinaryKeyData;
 
 								if (item[property as string] === undefined) {
-									throw new Error(`Binary data property "${property}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `Binary data property "${property}" does not exists on item!`);
 								}
 
 								attachments.push({
@@ -779,13 +780,13 @@ export class Keap implements INodeType {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
 						if (items[i].binary === undefined) {
-							throw new Error('No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
 
 						const item = items[i].binary as IBinaryKeyData;
 
 						if (item[binaryPropertyName as string] === undefined) {
-							throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 						}
 
 						body.file_data = item[binaryPropertyName as string].data;

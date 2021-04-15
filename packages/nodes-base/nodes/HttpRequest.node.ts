@@ -8,6 +8,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
@@ -713,19 +715,19 @@ export class HttpRequest implements INodeType {
 							if (!contentTypesAllowed.includes(options.bodyContentType as string)) {
 								// As n8n-workflow.NodeHelpers.getParamterResolveOrder can not be changed
 								// easily to handle parameters in dot.notation simply error for now.
-								throw new Error('Sending binary data is only supported when option "Body Content Type" is set to "RAW/CUSTOM" or "FORM-DATA/MULTIPART"!');
+								throw new NodeOperationError(this.getNode(), 'Sending binary data is only supported when option "Body Content Type" is set to "RAW/CUSTOM" or "FORM-DATA/MULTIPART"!');
 							}
 
 							const item = items[itemIndex];
 
 							if (item.binary === undefined) {
-								throw new Error('No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 							}
 
 							if (options.bodyContentType === 'raw') {
 								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
 								if (item.binary[binaryPropertyName] === undefined) {
-									throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 								}
 								const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
 								requestOptions.body = Buffer.from(binaryProperty.data, BINARY_ENCODING);
@@ -742,11 +744,11 @@ export class HttpRequest implements INodeType {
 										propertyName = propertyDataParts[0];
 										binaryPropertyName = propertyDataParts[1];
 									} else if (binaryPropertyNames.length > 1) {
-										throw new Error('If more than one property should be send it is needed to define the in the format: "sendKey1:binaryProperty1,sendKey2:binaryProperty2"');
+										throw new NodeOperationError(this.getNode(), 'If more than one property should be send it is needed to define the in the format: "sendKey1:binaryProperty1,sendKey2:binaryProperty2"');
 									}
 
 									if (item.binary[binaryPropertyName] === undefined) {
-										throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+										throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 									}
 
 									const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
@@ -778,8 +780,8 @@ export class HttpRequest implements INodeType {
 						try {
 							// @ts-ignore
 							requestOptions[optionData.name] = JSON.parse(requestOptions[optionData.name]);
-						} catch (e) {
-							throw new Error(`The data in "${optionData.displayName}" is no valid JSON. Set Body Content Type to "RAW/Custom" for XML or other types of payloads`);
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), `The data in "${optionData.displayName}" is no valid JSON. Set Body Content Type to "RAW/Custom" for XML or other types of payloads`);
 						}
 					}
 				}
@@ -884,7 +886,7 @@ export class HttpRequest implements INodeType {
 			if (response!.status !== 'fulfilled') {
 				if (this.continueOnFail() !== true) {
 					// throw error;
-					throw new Error(response!.reason);
+					throw new NodeApiError(this.getNode(), response);
 				} else {
 					// Return the actual reason as error
 					returnItems.push(
@@ -974,8 +976,8 @@ export class HttpRequest implements INodeType {
 					if (responseFormat === 'json' && typeof returnItem.body === 'string') {
 						try {
 							returnItem.body = JSON.parse(returnItem.body);
-						} catch (e) {
-							throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
 						}
 					}
 
@@ -984,8 +986,8 @@ export class HttpRequest implements INodeType {
 					if (responseFormat === 'json' && typeof response === 'string') {
 						try {
 							response = JSON.parse(response);
-						} catch (e) {
-							throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
 						}
 					}
 

@@ -6,12 +6,12 @@ import {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
 export async function salesmateApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('salesmateApi');
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const options: OptionsWithUri = {
@@ -32,7 +32,7 @@ export async function salesmateApiRequest(this: IHookFunctions | IExecuteFunctio
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new Error('Salesmate Error: ' + error);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

@@ -9,10 +9,11 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
-	getErrors,
 	mauticApiRequest,
 	mauticApiRequestAllItems,
 	validateJSON,
@@ -265,7 +266,7 @@ export class Mautic implements INodeType {
 						qs.start = 0;
 						responseData = await mauticApiRequest.call(this, 'GET', '/companies', {}, qs);
 						if (responseData.errors) {
-							throw new Error(getErrors(responseData));
+							throw new NodeApiError(this.getNode(), responseData);
 						}
 						responseData = responseData.companies;
 						responseData = Object.values(responseData);
@@ -306,7 +307,7 @@ export class Mautic implements INodeType {
 						if (json !== undefined) {
 							body = { ...json };
 						} else {
-							throw new Error('Invalid JSON');
+							throw new NodeOperationError(this.getNode(), 'Invalid JSON');
 						}
 					}
 					if (additionalFields.ipAddress) {
@@ -415,7 +416,7 @@ export class Mautic implements INodeType {
 						if (json !== undefined) {
 							body = { ...json };
 						} else {
-							throw new Error('Invalid JSON');
+							throw new NodeOperationError(this.getNode(), 'Invalid JSON');
 						}
 					}
 					if (updateFields.ipAddress) {
@@ -524,7 +525,7 @@ export class Mautic implements INodeType {
 						qs.start = 0;
 						responseData = await mauticApiRequest.call(this, 'GET', '/contacts', {}, qs);
 						if (responseData.errors) {
-							throw new Error(getErrors(responseData));
+							throw new NodeApiError(this.getNode(), responseData);
 						}
 						responseData = responseData.contacts;
 						responseData = Object.values(responseData);

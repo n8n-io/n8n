@@ -8,7 +8,8 @@ import {
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
-	INodeTypeDescription
+	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -184,7 +185,7 @@ export class Tapfiliate implements INodeType {
 					const affiliateId = this.getNodeParameter('affiliateId', i) as string;
 					const metadata = (this.getNodeParameter('metadataUi', i) as IDataObject || {}).metadataValues as IDataObject[] || [];
 					if (metadata.length === 0) {
-						throw new Error('Metadata cannot be empty.');
+						throw new NodeOperationError(this.getNode(), 'Metadata cannot be empty.');
 					}
 					for (const { key, value } of metadata) {
 						await tapfiliateApiRequest.call(this, 'PUT', `/affiliates/${affiliateId}/meta-data/${key}/`, { value });
