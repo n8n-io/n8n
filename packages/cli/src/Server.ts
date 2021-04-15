@@ -598,6 +598,14 @@ class App {
 		// Updates an existing workflow
 		this.app.patch(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: IWorkflowRequest, res: express.Response): Promise<IWorkflowResponse> => {
 			const { tags } = req.body;
+
+			const tagIds = tags;
+
+			if (tagIds) {
+				await TagHelpers.validateTags(tagIds);
+				await TagHelpers.validateNotRelated(req.params.id, tagIds);
+			}
+
 			const newWorkflowData = _.omit(req.body, ['tags']) as IWorkflowBase;
 
 			const id = req.params.id;
@@ -667,15 +675,9 @@ class App {
 				}
 			}
 
-			const workflowId = id;
-			const tagIds = tags;
-
 			if (tagIds) {
-				await TagHelpers.validateTags(tagIds);
-				await TagHelpers.validateNotRelated(workflowId, tagIds);
-
-				await TagHelpers.removeRelations(workflowId);
-				await TagHelpers.createRelations(workflowId, tagIds);
+				await TagHelpers.removeRelations(req.params.id);
+				await TagHelpers.createRelations(req.params.id, tagIds);
 
 				const found = await Db.collections.Tag!.find({
 					select: ['id', 'name'],
