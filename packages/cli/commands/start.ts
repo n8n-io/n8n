@@ -144,7 +144,7 @@ export class Start extends Command {
 
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch((error: Error) => {
-					logger.error(`There was an error initializing DB: ${error.message}`);
+					logger.error(`There was an error initializing DB: "${error.message}"`);
 
 					processExistCode = 1;
 					// @ts-ignore

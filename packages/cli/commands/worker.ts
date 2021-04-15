@@ -183,7 +183,7 @@ export class Worker extends Command {
 
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch(error => {
-					logger.error(`There was an error initializing DB: ${error.message}`);
+					logger.error(`There was an error initializing DB: "${error.message}"`);
 
 					Worker.processExistCode = 1;
 					// @ts-ignore
@@ -269,7 +269,7 @@ export class Worker extends Command {
 					}
 				});
 			} catch (error) {
-				logger.error(`Worker process cannot continue. ${error.message}`);
+				logger.error(`Worker process cannot continue. "${error.message}"`);
 
 				Worker.processExistCode = 1;
 				// @ts-ignore

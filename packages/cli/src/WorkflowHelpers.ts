@@ -153,7 +153,7 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 		const workflowRunner = new WorkflowRunner();
 		await workflowRunner.run(runData);
 	} catch (error) {
-		Logger.error(`Calling Error Workflow for "${workflowErrorData.workflow.id}": ${error.message}`, { workflowId: workflowErrorData.workflow.id });
+		Logger.error(`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`, { workflowId: workflowErrorData.workflow.id });
 	}
 }
 
@@ -315,7 +315,7 @@ export async function saveStaticData(workflow: Workflow): Promise <void> {
 				await saveStaticDataById(workflow.id!, workflow.staticData);
 				workflow.staticData.__dataChanged = false;
 			} catch (e) {
-				Logger.error(`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: ${e.message}`, { workflowId: workflow.id });
+				Logger.error(`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${e.message}"`, { workflowId: workflow.id });
 			}
 		}
 	}

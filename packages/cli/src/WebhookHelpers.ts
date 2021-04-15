@@ -286,7 +286,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 		const workflowRunner = new WorkflowRunner();
 		const executionId = await workflowRunner.run(runData, true, !didSendResponse);
 
-		Logger.verbose(`Started execution of workflow ${workflow.name} from webhook with execution ID ${executionId}`);
+		Logger.verbose(`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`, { executionId });
 
 		// Get a promise which resolves when the workflow did execute and send then response
 		const executePromise = activeExecutions.getPostExecutePromise(executionId) as Promise<IExecutionDb | undefined>;

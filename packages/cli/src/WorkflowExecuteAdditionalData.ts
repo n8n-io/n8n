@@ -132,7 +132,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				if (this.sessionId === undefined) {
 					return;
 				}
-				Logger.verbose(`Executing hook on node ${nodeName} (nodeExecuteBefore, hookFunctionsPush)`, {executionId: this.executionId});
+				Logger.verbose(`Executing hook on node "${nodeName}" (nodeExecuteBefore, hookFunctionsPush)`, {executionId: this.executionId});
 
 				const pushInstance = Push.getInstance();
 				pushInstance.send('nodeExecuteBefore', {
@@ -147,7 +147,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				if (this.sessionId === undefined) {
 					return;
 				}
-				Logger.verbose(`Executing hook on node ${nodeName} (nodeExecuteAfter, hookFunctionsPush)`, {executionId: this.executionId});
+				Logger.verbose(`Executing hook on node "${nodeName}" (nodeExecuteAfter, hookFunctionsPush)`, {executionId: this.executionId});
 
 				const pushInstance = Push.getInstance();
 				pushInstance.send('nodeExecuteAfter', {
@@ -289,7 +289,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 					// For busy machines, we may get "Database is locked" errors.
 
 					// We do this to prevent crashes and executions ending in `unknown` state.
-					Logger.error(`Failed saving execution progress to database for execution ID ${this.executionId} (hookFunctionsPreExecute, nodeExecuteAfter)`, err);
+					Logger.error(`Failed saving execution progress to database for execution ID ${this.executionId} (hookFunctionsPreExecute, nodeExecuteAfter)`, {...err, executionId: this.executionId});
 				}
 
 			},
@@ -325,7 +325,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						try {
 							await WorkflowHelpers.saveStaticDataById(this.workflowData.id as string, newStaticData);
 						} catch (e) {
-							Logger.error(`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: ${e.message} (hookFunctionsSave, workflowExecuteAfter)`);
+							Logger.error(`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (hookFunctionsSave, workflowExecuteAfter)`);
 						}
 					}
 
@@ -423,7 +423,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						try {
 							await WorkflowHelpers.saveStaticDataById(this.workflowData.id as string, newStaticData);
 						} catch (e) {
-							Logger.error(`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: ${e.message} (hookFunctionsSaveWorker, workflowExecuteAfter)`);
+							Logger.error(`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (hookFunctionsSaveWorker, workflowExecuteAfter)`);
 						}
 					}
 

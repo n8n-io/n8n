@@ -126,7 +126,7 @@ export class Webhook extends Command {
 			try {
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch(error => {
-					logger.error(`There was an error initializing DB: ${error.message}`);
+					logger.error(`There was an error initializing DB: "${error.message}"`);
 
 					processExistCode = 1;
 					// @ts-ignore
@@ -224,7 +224,7 @@ export class Webhook extends Command {
 
 			} catch (error) {
 				console.error('Exiting due to error. See log message for details.');
-				logger.error(`Webhook process cannot continue. ${error.message}`);
+				logger.error(`Webhook process cannot continue. "${error.message}"`);
 
 				processExistCode = 1;
 				// @ts-ignore
