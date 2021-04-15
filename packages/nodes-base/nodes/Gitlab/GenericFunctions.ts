@@ -18,7 +18,7 @@ import { OptionsWithUri } from 'request';
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
+export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const options : OptionsWithUri = {
 		method,
 		headers: {},
@@ -28,6 +28,9 @@ export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions,
 		json: true,
 	};
 
+	if (Object.keys(option).length !== 0) {
+		Object.assign(options, option);
+	}
 	if (query === undefined) {
 		delete options.qs;
 	}
@@ -70,4 +73,23 @@ export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions,
 		// If that data does not exist for some reason return the actual error
 		throw error;
 	}
+}
+
+export async function gitlabApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	query.per_page = 100;
+	query.page = 1;
+
+	do {
+		responseData = await gitlabApiRequest.call(this, method, endpoint, body, query, { resolveWithFullResponse: true });
+		query.page++;
+		returnData.push.apply(returnData, responseData.body);		
+	} while (
+		responseData.headers.link && responseData.headers.link.includes('next')
+	);
+	return returnData;
 }
