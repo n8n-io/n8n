@@ -19,7 +19,7 @@ import { OptionsWithUri } from 'request';
  * @returns {Promise<any>}
  */
 export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const options : OptionsWithUri = {
+	const options: OptionsWithUri = {
 		method,
 		headers: {},
 		body,
@@ -87,7 +87,7 @@ export async function gitlabApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	do {
 		responseData = await gitlabApiRequest.call(this, method, endpoint, body, query, { resolveWithFullResponse: true });
 		query.page++;
-		returnData.push.apply(returnData, responseData.body);		
+		returnData.push.apply(returnData, responseData.body);
 	} while (
 		responseData.headers.link && responseData.headers.link.includes('next')
 	);
