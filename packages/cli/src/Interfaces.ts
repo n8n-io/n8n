@@ -74,20 +74,23 @@ export interface IWorkflowBase extends IWorkflowBaseWorkflow {
 	id?: number | string;
 }
 
-export interface ITagBase {
-	name: string;
-	createdAt: Date;
-	updatedAt: Date;
+export interface IWorkflowRequest extends Request {
+	body: {
+		tags?: string[];
+	};
 }
 
-export interface ITagDb extends ITagBase {
+export interface ITagDb {
 	id: string | number;
+	name: string;
+	createdAt?: Date;
+	updatedAt?: Date;
 }
 
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
 	id: number | string;
-	tags: Array<{ id: string | number; name: string }>;
+	tags: ITagDb[];
 }
 
 export interface IWorkflowResponse extends IWorkflowBase {

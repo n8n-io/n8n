@@ -107,7 +107,7 @@ import * as querystring from 'querystring';
 import * as Queue from '../src/Queue';
 import { OptionsWithUrl } from 'request-promise-native';
 import { Registry } from 'prom-client';
-import { ITagBase, ITagDb, } from './Interfaces';
+import { ITagDb, IWorkflowRequest } from './Interfaces';
 
 import * as TagHelpers from './TagHelpers';
 
@@ -485,7 +485,7 @@ class App {
 
 
 		// Creates a new workflow
-		this.app.post(`/${this.restEndpoint}/workflows`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowResponse> => {
+		this.app.post(`/${this.restEndpoint}/workflows`, ResponseHelper.send(async (req: IWorkflowRequest, res: express.Response): Promise<IWorkflowResponse> => {
 
 			const newWorkflowData = req.body as IWorkflowBase;
 
@@ -500,16 +500,21 @@ class App {
 			// Save the workflow in DB
 			const result = await Db.collections.Workflow!.save(newWorkflowData);
 
-			const { tags } = req.body as { tags: string | undefined };
+			const { tags } = req.body;
 
-			if (tags) {
-				const tagIds = tags.split(',');
-				await TagHelpers.createRelations(result.id as string, tagIds);
-				const foundTags = await Db.collections.Tag!.find({
+			const tagIds = tags;
+			const workflowId = result.id as string;
+
+			if (tagIds) {
+				await TagHelpers.validateTags(tagIds);
+				await TagHelpers.createRelations(workflowId, tagIds);
+
+				const found = await Db.collections.Tag!.find({
 					select: ['id', 'name'],
 					where: { id: In(tagIds) },
 				});
-				result.tags = foundTags.map(({ id, name }) => ({ id: id.toString(), name }));
+
+				result.tags = TagHelpers.stringifyId(found);
 			}
 
 			// Convert to response format in which the id is a string
@@ -561,7 +566,7 @@ class App {
 			const results = await Db.collections.Workflow!.find(findQuery);
 			results.forEach(workflow => {
 				if (workflow.tags) {
-					workflow.tags = workflow.tags.map(({ id, name }) => ({ id: id.toString(), name }));
+					workflow.tags = TagHelpers.stringifyId(workflow.tags);
 				}
 			});
 
@@ -591,9 +596,8 @@ class App {
 
 
 		// Updates an existing workflow
-		this.app.patch(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowResponse> => {
-
-			const { tags } = req.body as { tags: string | undefined };
+		this.app.patch(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: IWorkflowRequest, res: express.Response): Promise<IWorkflowResponse> => {
+			const { tags } = req.body;
 			const newWorkflowData = _.omit(req.body, ['tags']) as IWorkflowBase;
 
 			const id = req.params.id;
@@ -663,23 +667,22 @@ class App {
 				}
 			}
 
-			if (tags) {
-				await TagHelpers.deleteAllTagsForWorkflow(id);
+			const workflowId = id;
+			const tagIds = tags;
 
-				const tagIds = tags.split(',');
+			if (tagIds) {
+				await TagHelpers.validateTags(tagIds);
+				await TagHelpers.validateNotRelated(workflowId, tagIds);
 
-				for (const tagId of tagIds) {
-					await TagHelpers.validateId(tagId);
-				}
+				await TagHelpers.removeRelations(workflowId);
+				await TagHelpers.createRelations(workflowId, tagIds);
 
-				await TagHelpers.createRelations(id, tagIds);
-
-				const foundTags = await Db.collections.Tag!.find({
+				const found = await Db.collections.Tag!.find({
 					select: ['id', 'name'],
 					where: { id: In(tagIds) },
 				});
-				responseData.tags = foundTags.map(({ id, name }) => ({ id: id.toString(), name }));
 
+				responseData.tags = TagHelpers.stringifyId(found);
 			}
 
 			// Convert to response format in which the id is a string
@@ -767,13 +770,13 @@ class App {
 
 		// Creates a tag
 		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ id: string, name: string }> => {
-			TagHelpers.validateRequestBody(req.body);
-
 			const { name } = req.body;
+			console.log('------------------------');
+			console.log(typeof name);
+			console.log('------------------------');
 			await TagHelpers.validateName(name);
-			TagHelpers.validateLength(name);
 
-			const newTag: ITagBase = {
+			const newTag: Partial<ITagDb> = {
 				name,
 				createdAt: this.getCurrentDate(),
 				updatedAt: this.getCurrentDate(),
@@ -787,21 +790,18 @@ class App {
 		// Deletes a tag
 		this.app.delete(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
 			const { id } = req.params;
-			await TagHelpers.validateId(id);
+			await TagHelpers.exists(id);
 			await Db.collections.Tag!.delete({ id });
 			return true;
 		}));
 
-		// Updates an existing tag
+		// Updates a tag
 		this.app.patch(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ id: string, name: string }> => {
-			TagHelpers.validateRequestBody(req.body);
-
 			const { name } = req.body;
 			await TagHelpers.validateName(name);
-			TagHelpers.validateLength(name);
 
 			const { id } = req.params;
-			await TagHelpers.validateId(id);
+			await TagHelpers.exists(id);
 
 			const updatedTag: Partial<ITagDb> = {
 				name,
