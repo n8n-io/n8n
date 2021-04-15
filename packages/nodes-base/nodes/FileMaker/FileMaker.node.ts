@@ -905,6 +905,11 @@ export class FileMaker implements INodeType {
 			}
 		} catch (error) {
 			await logout.call(this, token);
+
+			if (error.node) {
+				throw error;
+			}
+
 			throw new NodeOperationError(this.getNode(), `The action "${error.message}" is not implemented yet!`);
 		}
 

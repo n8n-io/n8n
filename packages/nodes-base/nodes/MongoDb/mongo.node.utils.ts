@@ -72,7 +72,7 @@ export function validateAndResolveMongoCredentials(
 	credentials?: ICredentialDataDecryptedObject,
 ): IMongoCredentials {
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(self.getNode(), 'No credentials got returned!');
 	} else {
 		return buildMongoConnectionParams(
 			self,

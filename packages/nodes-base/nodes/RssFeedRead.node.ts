@@ -55,7 +55,7 @@ export class RssFeedRead implements INodeType {
 				throw new NodeOperationError(this.getNode(), `It was not possible to connect to the URL. Please make sure the URL "${url}" it is valid!`);
 			}
 
-			throw error;
+			throw new NodeOperationError(this.getNode(), error);
 		}
 
 

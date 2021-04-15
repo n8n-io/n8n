@@ -740,7 +740,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 			});
 
 			req.on('error', (error) => {
-				throw new NodeApiError(this.getNode(), { error });
+				throw new NodeOperationError(this.getNode(), error);
 			});
 		});
 	}
