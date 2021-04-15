@@ -365,6 +365,7 @@
       "dist/nodes/Freshdesk/Freshdesk.node.js",
       "dist/nodes/Flow/Flow.node.js",
       "dist/nodes/Flow/FlowTrigger.node.js",
+      "dist/nodes/Formstack/Formstack.node.js",
       "dist/nodes/Function.node.js",
       "dist/nodes/FunctionItem.node.js",
       "dist/nodes/GetResponse/GetResponse.node.js",
