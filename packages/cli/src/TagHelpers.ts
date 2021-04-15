@@ -8,6 +8,8 @@ import {
 	ResponseHelper,
 } from ".";
 
+const TAG_NAME_LENGTH_LIMIT = 24;
+
 // ----------------------------------
 //              utils
 // ----------------------------------
@@ -90,7 +92,7 @@ export async function validateName(name: unknown): Promise<void> | never {
 		throw new ResponseHelper.ResponseError(`Property 'name' must be a string.`, undefined, 400);
 	}
 
-	if (name.length <= 0 || name.length > 24) {
+	if (name.length <= 0 || name.length > TAG_NAME_LENGTH_LIMIT) {
 		throw new ResponseHelper.ResponseError('Tag name must be 1 to 24 characters long.', undefined, 400);
 	}
 
