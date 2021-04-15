@@ -18,19 +18,13 @@ import {
 } from 'lodash';
 
 export async function mondayComApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, body: any = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
-	const credentials = this.getCredentials('mondayComApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
 	const endpoint = 'https://api.monday.com/v2/';
 
 	let options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
-			'Authorization': credentials.apiToken,
 		},
 		method: 'POST',
 		body,
@@ -39,7 +33,16 @@ export async function mondayComApiRequest(this: IExecuteFunctions | IWebhookFunc
 	};
 	options = Object.assign({}, options, option);
 	try {
-		return await this.helpers.request!(options);
+		if (authenticationMethod === 'accessToken') {
+			const credentials = this.getCredentials('mondayComApi') as IDataObject;
+
+			options.headers = { Authorization: `Bearer ${credentials.apiToken}` };
+
+			return await this.helpers.request!(options);
+		} else {
+
+			return await this.helpers.requestOAuth2!.call(this, 'mondayComOAuth2Api', options);
+		}
 	} catch (error) {
 		if (error.response) {
 			const errorMessage = error.response.body.error_message;
