@@ -566,7 +566,7 @@
     "@types/mongodb": "^3.5.4",
     "@types/mqtt": "^2.5.0",
     "@types/mssql": "^6.0.2",
-    "@types/node": "14.0.27",
+    "@types/node": "^14.14.40",
     "@types/nodemailer": "^6.4.0",
     "@types/redis": "^2.8.11",
     "@types/request-promise-native": "~1.0.15",
