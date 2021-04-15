@@ -514,7 +514,7 @@ class App {
 					where: { id: In(tagIds) },
 				});
 
-				result.tags = TagHelpers.stringifyId(found);
+				result.tags = TagHelpers.getTagsResponse(found);
 			}
 
 			// Convert to response format in which the id is a string
@@ -566,7 +566,7 @@ class App {
 			const results = await Db.collections.Workflow!.find(findQuery);
 			results.forEach(workflow => {
 				if (workflow.tags) {
-					workflow.tags = TagHelpers.stringifyId(workflow.tags);
+					workflow.tags = TagHelpers.getTagsResponse(workflow.tags);
 				}
 			});
 
@@ -682,7 +682,7 @@ class App {
 					where: { id: In(tagIds) },
 				});
 
-				responseData.tags = TagHelpers.stringifyId(found);
+				responseData.tags = TagHelpers.getTagsResponse(found);
 			}
 
 			// Convert to response format in which the id is a string

@@ -25,7 +25,7 @@ function isStringArray(tags: unknown[]): tags is string[] {
  * Stringify the ID in every `ITagDb` in an array.
  * Side effect: Remove `createdAt` and `updatedAt` for a slimmer response.
  */
-export function stringifyId(tags: ITagDb[]) {
+export function getTagsResponse(tags: ITagDb[]) {
 	return tags.map(({ id, name }) => ({ id: id.toString(), name }));
 }
 
