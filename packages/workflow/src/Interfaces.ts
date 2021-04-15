@@ -14,7 +14,6 @@ export interface IBinaryData {
 }
 
 export interface IOAuth2Options {
-	includeCredentialsOnRefreshOnBody?: boolean;
 	property?: string;
 	tokenType?: string;
 	keepBearer?: boolean;

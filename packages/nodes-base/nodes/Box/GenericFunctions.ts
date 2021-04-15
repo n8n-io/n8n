@@ -33,12 +33,8 @@ export async function boxApiRequest(this: IExecuteFunctions | IExecuteSingleFunc
 			delete options.body;
 		}
 
-		const oAuth2Options: IOAuth2Options = {
-			includeCredentialsOnRefreshOnBody: true,
-		};
-
 		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'boxOAuth2Api', options, oAuth2Options);
+		return await this.helpers.requestOAuth2.call(this, 'boxOAuth2Api', options);
 
 	} catch (error) {
 

@@ -171,8 +171,7 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 				// Token is probably not valid anymore. So try refresh it.
 
 				const tokenRefreshOptions: IDataObject = {};
-
-				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
+				if (credentials.authentication === 'body') {
 					const body: IDataObject = {
 						client_id: credentials.clientId as string,
 						client_secret: credentials.clientSecret as string,
