@@ -23,7 +23,7 @@
 							<el-input 
 								v-if="scope.row.create || scope.row.update"
 								v-model="newTagName"
-								:maxlength="24"
+								:maxlength="maxLength"
 								ref="nameInput"
 							></el-input>
 							<span v-else-if="scope.row.delete">Are you sure you want to delete this tag?</span>
@@ -83,6 +83,8 @@ interface ITagRow {
 	delete?: boolean;
 }
 
+const MAX_TAG_LENGTH = 24;
+
 export default Vue.extend({
 	name: 'TagsTable',
 	props: [
@@ -96,6 +98,7 @@ export default Vue.extend({
 			searchValue: '',
 			newTagName: '',
 			stickyIds: new Set(),
+			maxLength: MAX_TAG_LENGTH,
 		};
 	},
 	computed: {
