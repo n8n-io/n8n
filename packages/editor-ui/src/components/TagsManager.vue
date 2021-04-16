@@ -5,7 +5,6 @@
 			:visible="dialogVisible"
 			append-to-body
 			:before-close="closeDialog"
-			class="test-wrapper"
 		>
 			<div class="content" @keydown.stop>
 				<el-row v-if="!isLoading">
@@ -182,10 +181,6 @@ export default mixins(showMessage).extend({
 
 /deep/ .el-dialog {
 	max-width: 600px;
-}
-
-.test-wrapper {
-	z-index: 3000 !important; // fix to top tags dropdown
 }
 
 .content {

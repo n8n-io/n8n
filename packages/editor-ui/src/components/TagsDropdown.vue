@@ -1,43 +1,46 @@
 <template>
-	<el-select
-		filterable
-		multiple
-		popper-class="tags-dropdown"
-		:value="appliedTags"
-		:loading="isLoading"
-		:placeholder="placeholder"
-		:filter-method="filterOptions"
-		@change="tagsUpdated"
-	>
-		<el-option
-			v-if="options.length === 0 && filter"
-			:key="CREATE_KEY"
-			:value="CREATE_KEY"
-			class="ops"
-			ref="create"
+	<div class="tags-container">
+		<el-select
+			filterable
+			multiple
+			:popperAppendToBody="false"
+			popper-class="tags-dropdown"
+			:value="appliedTags"
+			:loading="isLoading"
+			:placeholder="placeholder"
+			:filter-method="filterOptions"
+			@change="tagsUpdated"
 		>
-			<font-awesome-icon icon="plus-circle" />
-			<span>Create tag "{{ filter }}"</span>
-		</el-option>
-		<el-option v-else-if="options.length === 0" value="message" disabled>
-			<span>Type to create a tag</span>
-		</el-option>
+			<el-option
+				v-if="options.length === 0 && filter"
+				:key="CREATE_KEY"
+				:value="CREATE_KEY"
+				class="ops"
+				ref="create"
+			>
+				<font-awesome-icon icon="plus-circle" />
+				<span>Create tag "{{ filter }}"</span>
+			</el-option>
+			<el-option v-else-if="options.length === 0" value="message" disabled>
+				<span>Type to create a tag</span>
+			</el-option>
 
-		<!-- key is id+index for keyboard navigation to work well with filter -->
-		<el-option
-			v-for="(tag, i) in options"
-			:value="tag.id"
-			:key="tag.id + i"
-			:label="tag.name"
-			class="tag"
-			ref="tag"
-		/>
+			<!-- key is id+index for keyboard navigation to work well with filter -->
+			<el-option
+				v-for="(tag, i) in options"
+				:value="tag.id"
+				:key="tag.id + i"
+				:label="tag.name"
+				class="tag"
+				ref="tag"
+			/>
 
-		<el-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops">
-			<font-awesome-icon icon="cog" />
-			<span>Manage Tags</span>
-		</el-option>
-	</el-select>
+			<el-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops">
+				<font-awesome-icon icon="cog" />
+				<span>Manage Tags</span>
+			</el-option>
+		</el-select>
+	</div>
 </template>
 
 <script lang="ts">
@@ -121,8 +124,8 @@ export default mixins(showMessage).extend({
 				(value) => value === MANAGE_KEY || value === CREATE_KEY,
 			);
 			if (ops === MANAGE_KEY) {
-				this.$store.commit("ui/openTagsManager");
 				this.$data.filter = "";
+				this.$store.commit("ui/openTagsManager");
 			} else if (ops === CREATE_KEY) {
 				// @ts-ignore
 				this.onCreate();

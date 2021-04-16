@@ -493,3 +493,25 @@ h1, h2, h3, h4, h5, h6 {
 		border-radius: 6px;
 	}
 }
+
+.tags-container {
+	.el-tag {
+		color: #3D3F46;
+		font-size: 12px;
+		background-color: #DCE1E9;
+		border-radius: 12px;
+
+		.el-icon-close {
+			color: #DCE1E9;
+			background-color: #717782 !important;
+			max-height: 15px;
+			max-width: 15px;
+			margin-right: 6px;
+
+			&:hover {
+				background-color: #3D3F46 !important;
+			}
+		}
+	}
+}
+
