@@ -212,6 +212,21 @@ export class DateTime implements INodeType {
 				],
 			},
 			{
+				displayName: 'Date Value',
+				name: 'dateValue',
+				displayOptions: {
+					show: {
+						action: [
+							'calculate',
+						],
+					},
+				},
+				type: 'string',
+				default: '',
+				description: 'The date string or timestamp from which you want to add/subtract time.',
+				required: true,
+			},
+			{
 				displayName: 'Operation',
 				name: 'operation',
 				displayOptions: {
@@ -235,12 +250,11 @@ export class DateTime implements INodeType {
 					},
 				],
 				default: '',
-				description: `A date string or timestamp for the date you'd like to add a duration to.`,
 				required: true,
 			},
 			{
-				displayName: 'Date Value',
-				name: 'dateValue',
+				displayName: 'Duration',
+				name: 'duration',
 				displayOptions: {
 					show: {
 						action: [
@@ -248,10 +262,13 @@ export class DateTime implements INodeType {
 						],
 					},
 				},
-				type: 'string',
-				default: '',
-				description: 'The date string or timestamp from which you want to add/subtract time.',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+				},
+				default: 0,
 				required: true,
+				description: 'E.g. enter “10” then select “Days” if you want to add 10 days to Date Value.',
 			},
 			{
 				displayName: 'Time Unit',
@@ -305,24 +322,6 @@ export class DateTime implements INodeType {
 				],
 				default: '',
 				required: true,
-			},
-			{
-				displayName: 'Duration',
-				name: 'duration',
-				displayOptions: {
-					show: {
-						action: [
-							'calculate',
-						],
-					},
-				},
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-				},
-				default: 0,
-				required: true,
-				description: 'E.g. enter “10” then select “Days” if you want to add 10 days to Time Value.',
 			},
 			{
 				displayName: 'Property Name',
