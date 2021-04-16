@@ -40,8 +40,8 @@ export class DateTime implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Calculate a date',
-						description: 'Add time to or subtract time from a date',
+						name: 'Calculate a Date',
+						description: 'Add or subtract time from a date',
 						value: 'calculate',
 					},
 					{
@@ -226,10 +226,12 @@ export class DateTime implements INodeType {
 					{
 						name: 'Add',
 						value: 'add',
+						description: 'Add time to Date Value',
 					},
 					{
 						name: 'Subtract',
 						value: 'subtract',
+						description: 'Subtract time from Date Value',
 					},
 				],
 				default: '',
@@ -237,8 +239,8 @@ export class DateTime implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Value',
-				name: 'value',
+				displayName: 'Date Value',
+				name: 'dateValue',
 				displayOptions: {
 					show: {
 						action: [
@@ -248,12 +250,13 @@ export class DateTime implements INodeType {
 				},
 				type: 'string',
 				default: '',
-				description: `A date string or timestamp for the date you'd like to add/subtract a duration to.`,
+				description: 'The date string or timestamp from which you want to add/subtract time.',
 				required: true,
 			},
 			{
 				displayName: 'Time Unit',
 				name: 'timeUnit',
+				description: 'Time unit for Duration parameter above.',
 				displayOptions: {
 					show: {
 						action: [
@@ -319,6 +322,7 @@ export class DateTime implements INodeType {
 				},
 				default: 0,
 				required: true,
+				description: 'E.g. enter “10” then select “Days” if you want to add 10 days to Time Value.',
 			},
 			{
 				displayName: 'Property Name',
@@ -333,7 +337,7 @@ export class DateTime implements INodeType {
 						],
 					},
 				},
-				description: 'Name of the property to which to write the converted date.',
+				description: 'Name of the output property to which to write the converted date.',
 			},
 			{
 				displayName: 'Options',
@@ -458,7 +462,7 @@ export class DateTime implements INodeType {
 
 			if (action === 'calculate') {
 
-				const value = this.getNodeParameter('value', i) as string;
+				const dateValue = this.getNodeParameter('dateValue', i) as string;
 				const operation = this.getNodeParameter('operation', i) as 'add' | 'subtract';
 				const duration = this.getNodeParameter('duration', i) as number;
 				const timeUnit = this.getNodeParameter('timeUnit', i) as moment.DurationInputArg2;
@@ -466,8 +470,8 @@ export class DateTime implements INodeType {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
 
 				const newDate = fromFormat
-					? parseDateByFormat(value, fromFormat)
-					: parseDateByDefault(value);
+					? parseDateByFormat(dateValue, fromFormat)
+					: parseDateByDefault(dateValue);
 
 				operation === 'add'
 					? newDate.add(duration, timeUnit).utc().format()
