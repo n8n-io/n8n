@@ -48,6 +48,63 @@ export class MySql implements ICredentialType {
 			type: 'number' as NodePropertyTypes,
 			default: 10000,
 			description: 'The milliseconds before a timeout occurs during the initial connection to the MySQL server.',
-		},	
+		},
+		{
+			displayName: 'SSL',
+			name: 'ssl',
+			type: 'boolean' as NodePropertyTypes,
+			default: false,
+		},
+		{
+			displayName: 'CA Certificate',
+			name: 'caCertificate',
+			typeOptions: {
+				alwaysOpenEditWindow: true,
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+				},
+			},
+			type: 'string' as NodePropertyTypes,
+			default: '',
+		},
+		{
+			displayName: 'Client Private Key',
+			name: 'clientPrivateKey',
+			typeOptions: {
+				alwaysOpenEditWindow: true,
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+				},
+			},
+			type: 'string' as NodePropertyTypes,
+			default: '',
+		},
+		{
+			displayName: 'Client Certificate',
+			name: 'clientCertificate',
+			typeOptions: {
+				alwaysOpenEditWindow: true,
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+				},
+			},
+			type: 'string' as NodePropertyTypes,
+			default: '',
+		},
 	];
 }

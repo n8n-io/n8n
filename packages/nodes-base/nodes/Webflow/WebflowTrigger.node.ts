@@ -155,7 +155,7 @@ export class WebflowTrigger implements INodeType {
 				const endpoint = `/sites/${siteId}/webhooks/${webhookData.webhookId}`;
 				try {
 					await webflowApiRequest.call(this, 'GET', endpoint);
-				} catch (err) {
+				} catch (error) {
 					return false;
 				}
 				return true;

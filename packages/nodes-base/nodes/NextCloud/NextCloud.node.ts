@@ -8,6 +8,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -233,7 +234,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/original.txt',
-				description: 'The path of file or folder to copy.',
+				description: 'The path of file or folder to copy. The path should start with "/"',
 			},
 			{
 				displayName: 'To Path',
@@ -253,7 +254,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/copy.txt',
-				description: 'The destination path of file or folder.',
+				description: 'The destination path of file or folder. The path should start with "/"',
 			},
 
 			// ----------------------------------
@@ -276,8 +277,8 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				placeholder: 'invoices/2019/invoice_1.pdf',
-				description: 'The path to delete. Can be a single file or a whole folder.',
+				placeholder: '/invoices/2019/invoice_1.pdf',
+				description: 'The path to delete. Can be a single file or a whole folder. The path should start with "/"',
 			},
 
 			// ----------------------------------
@@ -301,7 +302,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/old_name.txt',
-				description: 'The path of file or folder to move.',
+				description: 'The path of file or folder to move. The path should start with "/"',
 			},
 			{
 				displayName: 'To Path',
@@ -321,7 +322,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '/invoices/new_name.txt',
-				description: 'The new path of file or folder.',
+				description: 'The new path of file or folder. The path should start with "/"',
 			},
 
 			// ----------------------------------
@@ -343,8 +344,8 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				placeholder: 'invoices/2019/invoice_1.pdf',
-				description: 'The file path of the file to download. Has to contain the full path.',
+				placeholder: '/invoices/2019/invoice_1.pdf',
+				description: 'The file path of the file to download. Has to contain the full path. The path should start with "/"',
 			},
 			{
 				displayName: 'Binary Property',
@@ -384,8 +385,8 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				placeholder: 'invoices/2019/invoice_1.pdf',
-				description: 'The file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
+				placeholder: '/invoices/2019/invoice_1.pdf',
+				description: 'The absolute file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
 			},
 			{
 				displayName: 'Binary Data',
@@ -476,8 +477,8 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				placeholder: 'invoices/2019',
-				description: 'The folder to create. The parent folder has to exist.',
+				placeholder: '/invoices/2019',
+				description: 'The folder to create. The parent folder has to exist. The path should start with "/"',
 			},
 
 			// ----------------------------------
@@ -498,8 +499,8 @@ export class NextCloud implements INodeType {
 						],
 					},
 				},
-				placeholder: 'invoices/2019/',
-				description: 'The path of which to list the content.',
+				placeholder: '/invoices/2019/',
+				description: 'The path of which to list the content. The path should start with "/"',
 			},
 
 			// ----------------------------------
@@ -591,7 +592,7 @@ export class NextCloud implements INodeType {
 		}
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -627,14 +628,14 @@ export class NextCloud implements INodeType {
 						const item = items[i];
 
 						if (item.binary === undefined) {
-							throw new Error('No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
 
 						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
 
 						if (item.binary[propertyNameUpload] === undefined) {
-							throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
 						}
 
 						body = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING);
@@ -719,7 +720,7 @@ export class NextCloud implements INodeType {
 				}
 
 			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 			}
 
 			// Make sure that the webdav URL does never have a trailing slash because

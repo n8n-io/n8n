@@ -7,7 +7,9 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
-	INodeTypeDescription
+	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 import {
 	basename,
@@ -338,7 +340,7 @@ export class Ftp implements INodeType {
 		}
 
 		if (credentials === undefined) {
-			throw new Error('Failed to get credentials!');
+			throw new NodeOperationError(this.getNode(), 'Failed to get credentials!');
 		}
 
 		let ftp : ftpClient;
@@ -446,13 +448,13 @@ export class Ftp implements INodeType {
 						const item = items[i];
 
 						if (item.binary === undefined) {
-							throw new Error('No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
 
 						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
 						if (item.binary[propertyNameUpload] === undefined) {
-							throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
 						}
 
 						const buffer = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING) as Buffer;
@@ -535,13 +537,13 @@ export class Ftp implements INodeType {
 						const item = items[i];
 
 						if (item.binary === undefined) {
-							throw new Error('No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
 
 						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
 						if (item.binary[propertyNameUpload] === undefined) {
-							throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
 						}
 
 						const buffer = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING) as Buffer;
@@ -554,7 +556,7 @@ export class Ftp implements INodeType {
 								await ftp!.mkdir(dirPath, true);
 								await ftp!.put(buffer, remotePath);
 							} else {
-								throw new Error(error);
+								throw new NodeApiError(this.getNode(), error);
 							}
 						}
 					} else {
@@ -568,7 +570,7 @@ export class Ftp implements INodeType {
 								await ftp!.mkdir(dirPath, true);
 								await ftp!.put(buffer, remotePath);
 							} else {
-								throw new Error(error);
+								throw new NodeApiError(this.getNode(), error);
 							}
 						}
 					}

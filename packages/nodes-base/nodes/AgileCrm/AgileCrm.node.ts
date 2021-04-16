@@ -3,7 +3,8 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
-	INodeTypeDescription
+	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -149,7 +150,7 @@ export class AgileCrm implements INodeType {
 								Object.assign(body, JSON.parse(additionalFieldsJson));
 
 							} else {
-								throw new Error('Additional fields must be a valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
 							}
 						}
 
@@ -305,7 +306,7 @@ export class AgileCrm implements INodeType {
 								Object.assign(body, JSON.parse(additionalFieldsJson));
 
 							} else {
-								throw new Error('Additional fields must be a valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
 							}
 						}
 					} else {
@@ -483,7 +484,7 @@ export class AgileCrm implements INodeType {
 							if (validateJSON(additionalFieldsJson) !== undefined) {
 								Object.assign(body, JSON.parse(additionalFieldsJson));
 							} else {
-								throw new Error('Additional fields must be a valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
 							}
 						}
 
@@ -525,7 +526,7 @@ export class AgileCrm implements INodeType {
 								Object.assign(body, JSON.parse(additionalFieldsJson));
 
 							} else {
-								throw new Error('Additional fields must be valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Additional fields must be valid JSON');
 							}
 						}
 

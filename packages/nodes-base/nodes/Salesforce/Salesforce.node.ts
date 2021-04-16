@@ -9,6 +9,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -950,7 +952,7 @@ export class Salesforce implements INodeType {
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: ILead = {};
 					if (!Object.keys(updateFields).length) {
-						throw new Error('You must add at least one update field');
+						throw new NodeOperationError(this.getNode(), 'You must add at least one update field');
 					}
 					if (updateFields.lastname !== undefined) {
 						body.LastName = updateFields.lastname as string;
@@ -1053,8 +1055,8 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, 'Lead', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch (err) {
-						throw new Error(`Salesforce Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Lead/delete-lead-id
@@ -1062,8 +1064,8 @@ export class Salesforce implements INodeType {
 					const leadId = this.getNodeParameter('leadId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/lead/${leadId}`);
-					} catch (err) {
-						throw new Error(`Salesforce Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Lead/get-lead
@@ -1220,7 +1222,7 @@ export class Salesforce implements INodeType {
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: IContact = {};
 					if (!Object.keys(updateFields).length) {
-						throw new Error('You must add at least one update field');
+						throw new NodeOperationError(this.getNode(), 'You must add at least one update field');
 					}
 					if (updateFields.fax !== undefined) {
 						body.Fax = updateFields.fax as string;
@@ -1341,8 +1343,8 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, 'Contact', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch (err) {
-						throw new Error(`Salesforce Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Contact/delete-contact-id
@@ -1350,8 +1352,8 @@ export class Salesforce implements INodeType {
 					const contactId = this.getNodeParameter('contactId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/contact/${contactId}`);
-					} catch (err) {
-						throw new Error(`Salesforce Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Contact/get-contact
@@ -1443,8 +1445,8 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, customObject, returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch (err) {
-						throw new Error(`Salesforce Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				if (operation === 'delete') {
@@ -1452,8 +1454,8 @@ export class Salesforce implements INodeType {
 					const recordId = this.getNodeParameter('recordId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/${customObject}/${recordId}`);
-					} catch (err) {
-						throw new Error(`Salesforce Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 			}
@@ -1589,8 +1591,8 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, 'Opportunity', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch (err) {
-						throw new Error(`Salesforce Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/delete-opportunity-id
@@ -1598,8 +1600,8 @@ export class Salesforce implements INodeType {
 					const opportunityId = this.getNodeParameter('opportunityId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/opportunity/${opportunityId}`);
-					} catch (err) {
-						throw new Error(`Salesforce Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/get-opportunity
@@ -1827,8 +1829,8 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, 'Account', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch (err) {
-						throw new Error(`Salesforce Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Account/delete-account-id
@@ -1836,8 +1838,8 @@ export class Salesforce implements INodeType {
 					const accountId = this.getNodeParameter('accountId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/account/${accountId}`);
-					} catch (err) {
-						throw new Error(`Salesforce Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Account/get-account
@@ -1987,8 +1989,8 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, 'Case', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch (err) {
-						throw new Error(`Salesforce Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Case/delete-case-id
@@ -1996,8 +1998,8 @@ export class Salesforce implements INodeType {
 					const caseId = this.getNodeParameter('caseId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/case/${caseId}`);
-					} catch (err) {
-						throw new Error(`Salesforce Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Case/get-case
@@ -2214,8 +2216,8 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, 'Task', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch (err) {
-						throw new Error(`Salesforce Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Task/delete-task-id
@@ -2223,8 +2225,8 @@ export class Salesforce implements INodeType {
 					const taskId = this.getNodeParameter('taskId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/task/${taskId}`);
-					} catch (err) {
-						throw new Error(`Salesforce Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Task/get-task
@@ -2247,7 +2249,7 @@ export class Salesforce implements INodeType {
 						body.Body = items[i].binary![binaryPropertyName].data;
 						body.ContentType = items[i].binary![binaryPropertyName].mimeType;
 					} else {
-						throw new Error(`The property ${binaryPropertyName} does not exist`);
+						throw new NodeOperationError(this.getNode(), `The property ${binaryPropertyName} does not exist`);
 					}
 					if (additionalFields.description !== undefined) {
 						body.Description = additionalFields.description as string;
@@ -2271,7 +2273,7 @@ export class Salesforce implements INodeType {
 							body.Body = items[i].binary![binaryPropertyName].data;
 							body.ContentType = items[i].binary![binaryPropertyName].mimeType;
 						} else {
-							throw new Error(`The property ${binaryPropertyName} does not exist`);
+							throw new NodeOperationError(this.getNode(), `The property ${binaryPropertyName} does not exist`);
 						}
 					}
 					if (updateFields.name !== undefined) {
@@ -2306,8 +2308,8 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, 'Attachment', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch (err) {
-						throw new Error(`Salesforce Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Attachment/delete-attachment-id
@@ -2315,8 +2317,8 @@ export class Salesforce implements INodeType {
 					const attachmentId = this.getNodeParameter('attachmentId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/attachment/${attachmentId}`);
-					} catch (err) {
-						throw new Error(`Salesforce Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Attachment/get-attachment-id
@@ -2343,8 +2345,8 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, 'User', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch (err) {
-						throw new Error(`Salesforce Error: ${err}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 			}

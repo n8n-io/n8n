@@ -144,7 +144,7 @@ export class MauticTrigger implements INodeType {
 				const endpoint = `/hooks/${webhookData.webhookId}`;
 				try {
 					await mauticApiRequest.call(this, 'GET', endpoint, {});
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;
