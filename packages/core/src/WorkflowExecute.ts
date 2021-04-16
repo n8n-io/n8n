@@ -1,10 +1,10 @@
 import * as PCancelable from 'p-cancelable';
 
 import {
+	ExecutionError,
 	IConnection,
 	IDataObject,
 	IExecuteData,
-	IExecutionError,
 	INode,
 	INodeConnections,
 	INodeExecutionData,
@@ -17,6 +17,7 @@ import {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 	WorkflowExecuteMode,
+	WorkflowOperationError,
 } from 'n8n-workflow';
 import {
 	NodeExecuteFunctions,
@@ -490,7 +491,7 @@ export class WorkflowExecute {
 
 		// Variables which hold temporary data for each node-execution
 		let executionData: IExecuteData;
-		let executionError: IExecutionError | undefined;
+		let executionError: ExecutionError | undefined;
 		let executionNode: INode;
 		let nodeSuccessData: INodeExecutionData[][] | null | undefined;
 		let runIndex: number;
@@ -517,8 +518,10 @@ export class WorkflowExecute {
 				try {
 					await this.executeHook('workflowExecuteBefore', [workflow]);
 				} catch (error) {
+
 					// Set the error that it can be saved correctly
 					executionError = {
+						...error,
 						message: error.message,
 						stack: error.stack,
 					};
@@ -683,9 +686,11 @@ export class WorkflowExecute {
 
 							break;
 						} catch (error) {
+
 							this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
 
 							executionError = {
+								...error,
 								message: error.message,
 								stack: error.stack,
 							};
@@ -784,7 +789,7 @@ export class WorkflowExecute {
 			})()
 			.then(async () => {
 				if (gotCancel && executionError === undefined) {
-					return this.processSuccessExecution(startedAt, workflow, { message: 'Workflow has been canceled!' } as IExecutionError);
+					return this.processSuccessExecution(startedAt, workflow, new WorkflowOperationError('Workflow has been canceled!'));
 				}
 				return this.processSuccessExecution(startedAt, workflow, executionError);
 			})
@@ -792,6 +797,7 @@ export class WorkflowExecute {
 				const fullRunData = this.getFullRunData(startedAt);
 
 				fullRunData.data.resultData.error = {
+					...error,
 					message: error.message,
 					stack: error.stack,
 				};
@@ -815,7 +821,7 @@ export class WorkflowExecute {
 
 
 	// @ts-ignore
-	async processSuccessExecution(startedAt: Date, workflow: Workflow, executionError?: IExecutionError): PCancelable<IRun> {
+	async processSuccessExecution(startedAt: Date, workflow: Workflow, executionError?: ExecutionError): PCancelable<IRun> {
 		const fullRunData = this.getFullRunData(startedAt);
 
 		if (executionError !== undefined) {

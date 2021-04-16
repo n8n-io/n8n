@@ -6,6 +6,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 import {
 	flowApiRequest,
@@ -64,7 +66,7 @@ export class Flow implements INodeType {
 		const credentials = this.getCredentials('flowApi');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		const items = this.getInputData();
@@ -135,8 +137,8 @@ export class Flow implements INodeType {
 					try {
 						responseData = await flowApiRequest.call(this, 'POST', '/tasks', body);
 						responseData = responseData.task;
-					} catch (err) {
-						throw new Error(`Flow Error: ${err.message}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developer.getflow.com/api/#tasks_update-a-task
@@ -203,8 +205,8 @@ export class Flow implements INodeType {
 					try {
 						responseData = await flowApiRequest.call(this, 'PUT', `/tasks/${taskId}`, body);
 						responseData = responseData.task;
-					} catch (err) {
-						throw new Error(`Flow Error: ${err.message}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developer.getflow.com/api/#tasks_get-task
@@ -217,8 +219,8 @@ export class Flow implements INodeType {
 					}
 					try {
 						responseData = await flowApiRequest.call(this,'GET', `/tasks/${taskId}`, {}, qs);
-					} catch (err) {
-						throw new Error(`Flow Error: ${err.message}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 				//https://developer.getflow.com/api/#tasks_get-tasks
@@ -261,8 +263,8 @@ export class Flow implements INodeType {
 							responseData = await flowApiRequest.call(this, 'GET', '/tasks', {}, qs);
 							responseData = responseData.tasks;
 						}
-					} catch (err) {
-						throw new Error(`Flow Error: ${err.message}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
 					}
 				}
 			}

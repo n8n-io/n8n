@@ -11,7 +11,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
  } from 'n8n-workflow';
 
 export async function webflowApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -36,7 +36,7 @@ export async function webflowApiRequest(this: IHookFunctions | IExecuteFunctions
 		if (authenticationMethod === 'accessToken') {
 			const credentials = this.getCredentials('webflowApi');
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			options.headers!['authorization'] = `Bearer ${credentials.accessToken}`;
@@ -46,9 +46,6 @@ export async function webflowApiRequest(this: IHookFunctions | IExecuteFunctions
 			return await this.helpers.requestOAuth2!.call(this, 'webflowOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.response.body.err) {
-			throw new Error(`Webflow Error: [${error.statusCode}]: ${error.response.body.err}`);
-		}
-		return error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
