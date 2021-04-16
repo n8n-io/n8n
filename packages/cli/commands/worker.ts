@@ -79,7 +79,7 @@ export class Worker extends Command {
 	 * get removed.
 	 */
 	static async stopProcess() {
-		LoggerProxy.info(`\nStopping n8n...`);
+		LoggerProxy.info(`Stopping n8n...`);
 
 		// Stop accepting new jobs
 		Worker.jobQueue.pause(true);
