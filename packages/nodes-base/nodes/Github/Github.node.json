@@ -21,6 +21,11 @@
 				"label": "Automatically pulling and visualizing data with n8n",
 				"icon": "📈",
 				"url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/"
+			},
+			{
+				"label": "5 workflow automations for Mattermost that we love at n8n",
+				"icon": "🤖",
+				"url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/"
 			}
 		]
 	}
