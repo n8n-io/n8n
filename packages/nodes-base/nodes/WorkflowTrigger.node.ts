@@ -12,7 +12,7 @@ export class WorkflowTrigger implements INodeType {
 		icon: 'fa:network-wired',
 		group: ['trigger'],
 		version: 1,
-		description: 'Triggers based on various lifecycle events, like when a workflow is activated.',
+		description: 'Triggers based on various lifecycle events, like when a workflow is activated',
 		defaults: {
 			name: 'Workflow Trigger',
 			color: '#ff6d5a',
@@ -28,17 +28,17 @@ export class WorkflowTrigger implements INodeType {
 				default: [],
 				description: 'Specifies under which conditions an execution should happen:<br />' +
 					'- <b>Workflow Activated</b>: Triggers when this workflow is activated<br />' +
-					'- <b>Workflow Saved</b>: Triggers when this workflow is saved<br>',
+					'- <b>Active Workflow Updated</b>: Triggers when this workflow is updated<br>',
 				options: [
 					{
 						name: 'Workflow Activated',
 						value: 'activate',
-						description: 'Triggers when this workflow is activated.',
+						description: 'Triggers when this workflow is activated',
 					},
 					{
-						name: 'Workflow Saved',
+						name: 'Active Workflow Updated',
 						value: 'update',
-						description: 'Triggers when this workflow is saved.',
+						description: 'Triggers when this workflow is updated',
 					},
 				],
 			},
@@ -57,18 +57,18 @@ export class WorkflowTrigger implements INodeType {
 				event = 'Workflow activated';
 			}
 			if (activationMode === 'update') {
-				event = 'Workflow saved';
+				event = 'Workflow updated';
 			}
 			this.emit([
 				this.helpers.returnJsonArray([
-					{ event, workflow_id: this.getWorkflow().id, },
+					{ event, timestamp: (new Date()).toISOString(), workflow_id: this.getWorkflow().id },
 				]),
 			]);
 		}
 
 		const self = this;
 		async function manualTriggerFunction() {
-			self.emit([self.helpers.returnJsonArray([{ event: 'Manual execution', workflow_id: self.getWorkflow().id }])]);
+			self.emit([self.helpers.returnJsonArray([{ event: 'Manual execution', timestamp: (new Date()).toISOString(), workflow_id: self.getWorkflow().id }])]);
 		}
 
 		return {

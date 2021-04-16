@@ -13,7 +13,7 @@ export class N8nTrigger implements INodeType {
 		icon: 'file:n8nTrigger.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Triggers based on various global events, like when your instance restarts.',
+		description: 'Handle events from your n8n instance',
 		defaults: {
 			name: 'n8n Trigger',
 			color: '#ff6d5a',
@@ -33,7 +33,7 @@ export class N8nTrigger implements INodeType {
 					{
 						name: 'Instance started',
 						value: 'init',
-						description: 'Triggers when this n8n instance is started or re-started.',
+						description: 'Triggers when this n8n instance is started or re-started',
 					},
 				],
 			},
@@ -53,14 +53,14 @@ export class N8nTrigger implements INodeType {
 			}
 			this.emit([
 				this.helpers.returnJsonArray([
-					{ event, timestamp: new Date().toISOString(), },
+					{ event, timestamp: (new Date()).toISOString(), workflow_id: this.getWorkflow().id },
 				]),
 			]);
 		}
 
 		const self = this;
 		async function manualTriggerFunction() {
-			self.emit([self.helpers.returnJsonArray([{ event: 'Manual execution', timestamp: (new Date()).toISOString() }])]);
+			self.emit([self.helpers.returnJsonArray([{ event: 'Manual execution', timestamp: (new Date()).toISOString(), workflow_id: self.getWorkflow().id }])]);
 		}
 
 		return {
