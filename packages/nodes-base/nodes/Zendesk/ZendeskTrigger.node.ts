@@ -441,11 +441,11 @@ export class ZendeskTrigger implements INodeType {
 				const conditionsAll = conditions.all as [IDataObject];
 
 				let endpoint = '';
-				const aux: IDataObject = {};
 				const resultAll = [], resultAny = [];
 
 				if (conditionsAll) {
 					for (const conditionAll of conditionsAll) {
+						const aux: IDataObject = {};
 						aux.field = conditionAll.field;
 						aux.operator = conditionAll.operation;
 						if (conditionAll.operation !== 'changed'
@@ -461,6 +461,7 @@ export class ZendeskTrigger implements INodeType {
 				const conditionsAny = conditions.any as [IDataObject];
 				if (conditionsAny) {
 					for (const conditionAny of conditionsAny) {
+						const aux: IDataObject = {};
 						aux.field = conditionAny.field;
 						aux.operator = conditionAny.operation;
 						if (conditionAny.operation !== 'changed'
@@ -509,7 +510,6 @@ export class ZendeskTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const service = this.getNodeParameter('service') as string;
 				if (service === 'support') {
-					const aux: IDataObject = {};
 					const message: IDataObject = {};
 					const resultAll = [], resultAny = [];
 					const conditions = this.getNodeParameter('conditions') as IDataObject;
@@ -529,6 +529,7 @@ export class ZendeskTrigger implements INodeType {
 					const conditionsAll = conditions.all as [IDataObject];
 					if (conditionsAll) {
 						for (const conditionAll of conditionsAll) {
+							const aux: IDataObject = {};
 							aux.field = conditionAll.field;
 							aux.operator = conditionAll.operation;
 							if (conditionAll.operation !== 'changed'
@@ -543,6 +544,7 @@ export class ZendeskTrigger implements INodeType {
 					const conditionsAny = conditions.any as [IDataObject];
 					if (conditionsAny) {
 						for (const conditionAny of conditionsAny) {
+							const aux: IDataObject = {};
 							aux.field = conditionAny.field;
 							aux.operator = conditionAny.operation;
 							if (conditionAny.operation !== 'changed'
