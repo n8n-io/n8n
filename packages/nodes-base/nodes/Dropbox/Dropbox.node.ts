@@ -13,6 +13,7 @@ import {
 import {
 	dropboxApiRequest,
 	dropboxpiRequestAllItems,
+	getCredentials,
 	getRootDirectory,
 	simplify,
 } from './GenericFunctions';
@@ -793,15 +794,20 @@ export class Dropbox implements INodeType {
 		let headers: IDataObject = {};
 		let simple = false;
 
-		// get the root directory to set it as the default search folder
-		const { root_info: { root_namespace_id } } = await getRootDirectory.call(this);
 
-		headers = {
-			'dropbox-api-path-root': JSON.stringify({
-				'.tag': 'root',
-				'root': root_namespace_id,
-			}),
-		};
+		const { accessType } = getCredentials.call(this);
+
+		if (accessType === 'full') {
+			// get the root directory to set it as the default for all operations
+			const { root_info: { root_namespace_id } } = await getRootDirectory.call(this);
+
+			headers = {
+				'dropbox-api-path-root': JSON.stringify({
+					'.tag': 'root',
+					'root': root_namespace_id,
+				}),
+			};
+		}
 
 		for (let i = 0; i < items.length; i++) {
 			body = {};
@@ -1026,6 +1032,10 @@ export class Dropbox implements INodeType {
 					'size': 'contentSize',
 					'.tag': 'type',
 					'content_hash': 'contentHash',
+					'path_lower': 'pathLower',
+					'path_display': 'pathDisplay',
+					'has_explicit_shared_members': 'hasExplicitSharedMembers',
+					'is_downloadable': 'isDownloadable',
 				};
 
 				if (returnAll === false) {

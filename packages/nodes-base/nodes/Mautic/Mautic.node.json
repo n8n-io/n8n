@@ -16,6 +16,13 @@
 			{
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.mautic/"
 			}
+		],
+		"generic": [
+			{
+				"label": "How a digital strategist uses n8n for online marketing",
+				"icon": "💻",
+				"url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/"
+			}
 		]
 	}
 }
