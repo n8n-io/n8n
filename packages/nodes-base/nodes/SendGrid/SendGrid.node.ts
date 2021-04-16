@@ -362,10 +362,9 @@ export class SendGrid implements INodeType {
 						};
 
 						if (fields) {
+							body.personalizations[0].dynamic_template_data = {};
 							fields.forEach(field => {
-								body.personalizations[0].dynamic_template_data = {
-									[field.key]: field.value,
-								};
+								body.personalizations[0].dynamic_template_data![field.key] = field.value;
 							});
 						}
 

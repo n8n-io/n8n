@@ -56,6 +56,7 @@ import {
 	faFilePdf,
 	faFolderOpen,
 	faHdd,
+	faHome,
 	faHourglass,
 	faImage,
 	faInbox,
@@ -136,6 +137,7 @@ library.add(faFileImport);
 library.add(faFilePdf);
 library.add(faFolderOpen);
 library.add(faHdd);
+library.add(faHome);
 library.add(faHourglass);
 library.add(faImage);
 library.add(faInbox);
