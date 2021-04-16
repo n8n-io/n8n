@@ -627,9 +627,11 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	} else {
 		await ActiveExecutions.getInstance().remove(executionId, data);
 		// Workflow did fail
-		const error = new Error(data.data.resultData.error!.message);
-		error.stack = data.data.resultData.error!.stack;
-		throw error;
+		const { error } = data.data.resultData;
+		throw {
+			...error,
+			stack: error!.stack,
+		};
 	}
 }
 

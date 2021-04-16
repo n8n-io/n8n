@@ -8,6 +8,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -176,8 +178,8 @@ export class GitlabTrigger implements INodeType {
 
 				try {
 					await gitlabApiRequest.call(this, 'GET', endpoint, {});
-				} catch (e) {
-					if (e.message.includes('[404]:')) {
+				} catch (error) {
+					if (error.message.includes('[404]:')) {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
@@ -186,7 +188,7 @@ export class GitlabTrigger implements INodeType {
 					}
 
 					// Some error occured
-					throw e;
+					throw error;
 				}
 
 				// If it did not error then the webhook exists
@@ -231,13 +233,13 @@ export class GitlabTrigger implements INodeType {
 				let responseData;
 				try {
 					responseData = await gitlabApiRequest.call(this, 'POST', endpoint, body);
-				} catch (e) {
-					throw e;
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 
 				if (responseData.id === undefined) {
 					// Required data is missing so was not successful
-					throw new Error('GitLab webhook creation response did not contain the expected data.');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'GitLab webhook creation response did not contain the expected data.' });
 				}
 
 				const webhookData = this.getWorkflowStaticData('node');
@@ -260,7 +262,7 @@ export class GitlabTrigger implements INodeType {
 
 					try {
 						await gitlabApiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

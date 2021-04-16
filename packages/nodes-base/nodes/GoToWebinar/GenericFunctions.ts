@@ -7,6 +7,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -71,19 +72,7 @@ export async function goToWebinarApiRequest(
 		// https://stackoverflow.com/questions/62190724/getting-gotowebinar-registrant
 		return losslessJSON.parse(response, convertLosslessNumber);
 	} catch (error) {
-
-		if (error?.response?.body) {
-			let errorMessage;
-			const body = JSON.parse(error.response.body);
-			if (Array.isArray(body.validationErrorCodes)) {
-				errorMessage = (body.validationErrorCodes as IDataObject[]).map((e) => e.description).join('|');
-			} else {
-				errorMessage = body.description;
-			}
-			throw new Error(`Go To Webinar error response [${error.statusCode}]: ${errorMessage}`);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

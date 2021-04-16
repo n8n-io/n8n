@@ -16,10 +16,9 @@ import {
 } from 'n8n-core';
 
 import {
+	ExecutionError,
 	IDataObject,
-	IExecuteData,
 	IExecuteWorkflowInfo,
-	IExecutionError,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeData,
@@ -30,6 +29,7 @@ import {
 	IWorkflowExecuteHooks,
 	Workflow,
 	WorkflowHooks,
+	WorkflowOperationError,
 } from 'n8n-workflow';
 
 import * as config from '../config';
@@ -270,7 +270,7 @@ process.on('message', async (message: IProcessMessage) => {
 				// Workflow started already executing
 				runData = workflowRunner.workflowExecute.getFullRunData(workflowRunner.startedAt);
 
-				const timeOutError = message.type === 'timeout' ? { message: 'Workflow execution timed out!' } as IExecutionError : undefined;
+				const timeOutError = message.type === 'timeout' ? new WorkflowOperationError('Workflow execution timed out!') : undefined;
 
 				// If there is any data send it to parent process, if execution timedout add the error
 				await workflowRunner.workflowExecute.processSuccessExecution(workflowRunner.startedAt, workflowRunner.workflow!, timeOutError);
@@ -301,11 +301,14 @@ process.on('message', async (message: IProcessMessage) => {
 			workflowRunner.executionIdCallback(message.data.executionId);
 		}
 	} catch (error) {
+
 		// Catch all uncaught errors and forward them to parent process
 		const executionError = {
-			message: error.message,
-			stack: error.stack,
-		} as IExecutionError;
+			...error,
+			name: error!.name || 'Error',
+			message: error!.message,
+			stack: error!.stack,
+		} as ExecutionError;
 
 		await sendToParentProcess('processError', {
 			executionError,

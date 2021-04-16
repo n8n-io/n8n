@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -1103,17 +1104,17 @@ export class Gitlab implements INodeType {
 				credentials = this.getCredentials('gitlabApi');
 
 				if (credentials === undefined) {
-					throw new Error('No credentials got returned!');
+					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 				}
 			} else {
 				credentials = this.getCredentials('gitlabOAuth2Api');
 
 				if (credentials === undefined) {
-					throw new Error('No credentials got returned!');
+					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 				}
 			}
 		} catch (error) {
-			throw new Error(error);
+			throw new NodeOperationError(this.getNode(), error);
 		}
 
 		// Operations which overwrite the returned data
@@ -1350,7 +1351,7 @@ export class Gitlab implements INodeType {
 					endpoint = `/users/${owner}/projects`;
 				}
 			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 			}
 
 			if (returnAll === true) {

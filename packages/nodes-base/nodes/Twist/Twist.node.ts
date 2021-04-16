@@ -12,6 +12,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -237,7 +238,7 @@ export class Twist implements INodeType {
 							const binaryData = item[binaryProperty] as IBinaryData;
 
 							if (binaryData === undefined) {
-								throw new Error(`No binary data property "${binaryProperty}" does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
 							}
 
 							attachments.push(await twistApiRequest.call(

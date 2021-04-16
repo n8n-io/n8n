@@ -7,6 +7,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -168,7 +169,7 @@ export class EmailReadImap implements INodeType {
 		const credentials = this.getCredentials('imap');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		const mailbox = this.getNodeParameter('mailbox') as string;
@@ -181,8 +182,8 @@ export class EmailReadImap implements INodeType {
 		if (options.customEmailConfig !== undefined) {
 			try {
 				searchCriteria = JSON.parse(options.customEmailConfig as string);
-			} catch (err) {
-				throw new Error(`Custom email config is not valid JSON.`);
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), `Custom email config is not valid JSON.`);
 			}
 		}
 
@@ -279,7 +280,7 @@ export class EmailReadImap implements INodeType {
 					const part = lodash.find(message.parts, { which: '' });
 
 					if (part === undefined) {
-						throw new Error('Email part could not be parsed.');
+						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
 					}
 					const parsedEmail = await parseRawEmail.call(this, part.body, dataPropertyAttachmentsPrefixName);
 
@@ -337,7 +338,7 @@ export class EmailReadImap implements INodeType {
 					const part = lodash.find(message.parts, { which: 'TEXT' });
 
 					if (part === undefined) {
-						throw new Error('Email part could not be parsed.');
+						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
 					}
 					// Return base64 string
 					newEmail = {

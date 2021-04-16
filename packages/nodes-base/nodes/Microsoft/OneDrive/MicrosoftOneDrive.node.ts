@@ -9,6 +9,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -114,7 +116,7 @@ export class MicrosoftOneDrive implements INodeType {
 					const fileName = responseData.name;
 
 					if (responseData.file === undefined) {
-						throw new Error('The ID you provided does not belong to a file.');
+						throw new NodeApiError(this.getNode(), responseData, { message: 'The ID you provided does not belong to a file.' });
 					}
 
 					let mimeType: string | undefined;
@@ -181,11 +183,11 @@ export class MicrosoftOneDrive implements INodeType {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
 
 						if (items[i].binary === undefined) {
-							throw new Error('No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
 						//@ts-ignore
 						if (items[i].binary[binaryPropertyName] === undefined) {
-							throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 						}
 
 						const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
@@ -197,7 +199,7 @@ export class MicrosoftOneDrive implements INodeType {
 					} else {
 						const body = this.getNodeParameter('fileContent', i) as string;
 						if (fileName === '') {
-							throw new Error('File name must be set!');
+							throw new NodeOperationError(this.getNode(), 'File name must be set!');
 						}
 						responseData = await microsoftApiRequest.call(this, 'PUT', `/drive/items/${parentId}:/${fileName}:/content`,  body , {}, undefined, { 'Content-Type': 'text/plain' } );
 						returnData.push(responseData as IDataObject);

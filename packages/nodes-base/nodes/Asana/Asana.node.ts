@@ -9,6 +9,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -1639,7 +1641,7 @@ export class Asana implements INodeType {
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'No data got returned' });
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1674,7 +1676,7 @@ export class Asana implements INodeType {
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'No data got returned' });
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1711,7 +1713,7 @@ export class Asana implements INodeType {
 				// to retrieve the teams from an organization just work with workspaces that are an organization
 
 				if (workspace.is_organization === false) {
-					throw Error('To filter by team, the workspace selected has to be an organization');
+					throw new NodeOperationError(this.getNode(), 'To filter by team, the workspace selected has to be an organization');
 				}
 
 				const endpoint = `/organizations/${workspaceId}/teams`;
@@ -1750,15 +1752,15 @@ export class Asana implements INodeType {
 				let taskData;
 				try {
 					taskData = await asanaApiRequest.call(this, 'GET', `/tasks/${taskId}`, {});
-				} catch (e) {
-					throw new Error(`Could not find task with id "${taskId}" so tags could not be loaded.`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error, { message: `Could not find task with id "${taskId}" so tags could not be loaded.` });
 				}
 
 				const workspace = taskData.data.workspace.gid;
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {}, { workspace });
 
 				if (responseData.data === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'No data got returned' });
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1790,7 +1792,7 @@ export class Asana implements INodeType {
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'No data got returned' });
 				}
 
 				const returnData: INodePropertyOptions[] = [];
