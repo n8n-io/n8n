@@ -8,6 +8,8 @@ import {
 	ResponseHelper,
 } from ".";
 
+const TAG_NAME_LENGTH_LIMIT = 24;
+
 // ----------------------------------
 //              utils
 // ----------------------------------
@@ -16,14 +18,14 @@ import {
  * Type guard for string array.
  */
 function isStringArray(tags: unknown[]): tags is string[] {
-	return Array.isArray(tags) && !tags.some((value) => typeof value !== 'string');
+	return Array.isArray(tags) && tags.every((value) => typeof value === 'string');
 }
 
 /**
  * Stringify the ID in every `ITagDb` in an array.
  * Side effect: Remove `createdAt` and `updatedAt` for a slimmer response.
  */
-export function stringifyId(tags: ITagDb[]) {
+export function getTagsResponse(tags: ITagDb[]) {
 	return tags.map(({ id, name }) => ({ id: id.toString(), name }));
 }
 
@@ -90,7 +92,7 @@ export async function validateName(name: unknown): Promise<void> | never {
 		throw new ResponseHelper.ResponseError(`Property 'name' must be a string.`, undefined, 400);
 	}
 
-	if (name.length <= 0 || name.length > 24) {
+	if (name.length <= 0 || name.length > TAG_NAME_LENGTH_LIMIT) {
 		throw new ResponseHelper.ResponseError('Tag name must be 1 to 24 characters long.', undefined, 400);
 	}
 

@@ -514,7 +514,7 @@ class App {
 					where: { id: In(tagIds) },
 				});
 
-				result.tags = TagHelpers.stringifyId(found);
+				result.tags = TagHelpers.getTagsResponse(found);
 			}
 
 			// Convert to response format in which the id is a string
@@ -566,7 +566,7 @@ class App {
 			const results = await Db.collections.Workflow!.find(findQuery);
 			results.forEach(workflow => {
 				if (workflow.tags) {
-					workflow.tags = TagHelpers.stringifyId(workflow.tags);
+					workflow.tags = TagHelpers.getTagsResponse(workflow.tags);
 				}
 			});
 
@@ -598,6 +598,14 @@ class App {
 		// Updates an existing workflow
 		this.app.patch(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: IWorkflowRequest, res: express.Response): Promise<IWorkflowResponse> => {
 			const { tags } = req.body;
+
+			const tagIds = tags;
+
+			if (tagIds) {
+				await TagHelpers.validateTags(tagIds);
+				await TagHelpers.validateNotRelated(req.params.id, tagIds);
+			}
+
 			const newWorkflowData = _.omit(req.body, ['tags']) as IWorkflowBase;
 
 			const id = req.params.id;
@@ -667,22 +675,16 @@ class App {
 				}
 			}
 
-			const workflowId = id;
-			const tagIds = tags;
-
 			if (tagIds) {
-				await TagHelpers.validateTags(tagIds);
-				await TagHelpers.validateNotRelated(workflowId, tagIds);
-
-				await TagHelpers.removeRelations(workflowId);
-				await TagHelpers.createRelations(workflowId, tagIds);
+				await TagHelpers.removeRelations(req.params.id);
+				await TagHelpers.createRelations(req.params.id, tagIds);
 
 				const found = await Db.collections.Tag!.find({
 					select: ['id', 'name'],
 					where: { id: In(tagIds) },
 				});
 
-				responseData.tags = TagHelpers.stringifyId(found);
+				responseData.tags = TagHelpers.getTagsResponse(found);
 			}
 
 			// Convert to response format in which the id is a string
@@ -771,9 +773,6 @@ class App {
 		// Creates a tag
 		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ id: string, name: string }> => {
 			const { name } = req.body;
-			console.log('------------------------');
-			console.log(typeof name);
-			console.log('------------------------');
 			await TagHelpers.validateName(name);
 
 			const newTag: Partial<ITagDb> = {
