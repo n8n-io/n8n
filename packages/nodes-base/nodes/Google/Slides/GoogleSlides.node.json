@@ -1,9 +1,9 @@
 {
-	"node": "n8n-nodes-base.googleBooks",
+	"node": "n8n-nodes-base.googleSlides",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [
-		"Miscellaneous"
+		"Marketing & Content"
 	],
 	"resources": {
 		"credentialDocumentation": [
@@ -13,7 +13,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.googleBooks/"
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.googleSlides/"
 			}
 		]
 	}
