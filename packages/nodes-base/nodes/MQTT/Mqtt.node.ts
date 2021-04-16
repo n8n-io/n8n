@@ -19,10 +19,9 @@ export class Mqtt implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MQTT',
 		name: 'mqtt',
-		icon: 'file:mqtt.png',
+		icon: 'file:mqtt.svg',
 		group: ['input'],
 		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Push messages to MQTT',
 		defaults: {
 			name: 'MQTT',
@@ -104,7 +103,7 @@ export class Mqtt implements INodeType {
 		const host = credentials.host as string;
 		const brokerUrl = `${protocol}://${host}`;
 		const port = credentials.port as number || 1883;
-		const clientId = credentials.clientId as string;
+		const clientId = credentials.clientId as string || `mqttjs_${Math.random().toString(16).substr(2, 8)}`;
 		const clean = credentials.clean as boolean;
 
 		const clientOptions: IClientOptions = {
@@ -112,10 +111,6 @@ export class Mqtt implements INodeType {
 			clean,
 			clientId,
 		};
-		
-		if (clientOptions.clean === true) {
-			delete clientOptions.clientId;
-		}
 
 		if (credentials.username && credentials.password) {
 			clientOptions.username = credentials.username as string;
@@ -138,14 +133,16 @@ export class Mqtt implements INodeType {
 					} catch (e) {
 						reject(e);
 					}
-
 				}
-				client.end();	
-				resolve([items]);	
-			});
-	
-			client.on('error', (e: string | undefined) => {
-				reject(e);
+				//wait for the in-flight messages to be acked.
+				// needed for messages with QoS 1 & 2
+				client.end(false, {}, () => {
+					resolve([items]);
+				});
+
+				client.on('error', (e: string | undefined) => {
+					reject(e);
+				});
 			});
 		});
 

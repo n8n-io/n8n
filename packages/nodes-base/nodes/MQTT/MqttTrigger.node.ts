@@ -12,14 +12,14 @@ import {
 import * as mqtt from 'mqtt';
 
 import {
-	IClientOptions,
+	IClientOptions, ISubscriptionMap,
 } from 'mqtt';
 
 export class MqttTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MQTT Trigger',
 		name: 'mqttTrigger',
-		icon: 'file:mqtt.png',
+		icon: 'file:mqtt.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Listens to MQTT events',
@@ -61,8 +61,8 @@ export class MqttTrigger implements INodeType {
 						description: 'Returns only the message property.',
 					},
 					{
-						displayName: 'JSON Parse Message',
-						name: 'jsonParseMessage',
+						displayName: 'JSON Parse Body',
+						name: 'jsonParseBody',
 						type: 'boolean',
 						default: false,
 						description: 'Try to parse the message to an object.',
@@ -86,10 +86,8 @@ export class MqttTrigger implements INodeType {
 
 		for (const data of topics) {
 			const [topic, qos] = data.split(':');
-			topicsQoS[topic] = (qos) ? { qos: parseInt(qos, 10) } : { qos: 0 }; 
+			topicsQoS[topic] = (qos) ? { qos: parseInt(qos, 10) } : { qos: 0 };
 		}
-
-		console.log(topicsQoS);
 
 		const options = this.getNodeParameter('options') as IDataObject;
 
@@ -101,7 +99,7 @@ export class MqttTrigger implements INodeType {
 		const host = credentials.host as string;
 		const brokerUrl = `${protocol}://${host}`;
 		const port = credentials.port as number || 1883;
-		const clientId = credentials.clientId as string;
+		const clientId = credentials.clientId as string || `mqttjs_${Math.random().toString(16).substr(2, 8)}`;
 		const clean = credentials.clean as boolean;
 
 		const clientOptions: IClientOptions = {
@@ -109,10 +107,6 @@ export class MqttTrigger implements INodeType {
 			clean,
 			clientId,
 		};
-
-		if (clientOptions.clean === true) {
-			delete clientOptions.clientId;
-		}
 
 		if (credentials.username && credentials.password) {
 			clientOptions.username = credentials.username as string;
@@ -126,18 +120,16 @@ export class MqttTrigger implements INodeType {
 		async function manualTriggerFunction() {
 			await new Promise((resolve, reject) => {
 				client.on('connect', () => {
-					//@ts-ignore
-					client.subscribe(topicsQoS, (err, granted) => {
+					client.subscribe(topicsQoS as ISubscriptionMap, (err, granted) => {
 						if (err) {
 							reject(err);
 						}
 						client.on('message', (topic: string, message: Buffer | string) => { // tslint:disable-line:no-any
-
-							let result: IDataObject = {};
+							let result: IDataObject | string = {};
 
 							message = message.toString() as string;
 
-							if (options.jsonParseMessage) {
+							if (options.jsonParseBody) {
 								try {
 									message = JSON.parse(message.toString());
 								} catch (err) { }
@@ -147,11 +139,10 @@ export class MqttTrigger implements INodeType {
 							result.topic = topic;
 
 							if (options.onlyMessage) {
-								//@ts-ignore
-								result = message;
+								result = message as string;
 							}
 
-							self.emit([self.helpers.returnJsonArray([result])]);
+							self.emit([self.helpers.returnJsonArray([result as any])]);
 							resolve(true);
 						});
 					});
@@ -163,7 +154,9 @@ export class MqttTrigger implements INodeType {
 			});
 		}
 
-		manualTriggerFunction();
+		if (this.getMode() === 'trigger') {
+			manualTriggerFunction();
+		}
 
 		async function closeFunction() {
 			client.end();

@@ -3,15 +3,11 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-
 export class Mqtt implements ICredentialType {
 	name = 'mqtt';
 	displayName = 'MQTT';
 	documentationUrl = 'mqtt';
 	properties = [
-		// The credentials to get from user and save encrypted.
-		// Properties can be defined exactly in the same way
-		// as node properties.
 		{
 			displayName: 'Protocol',
 			name: 'protocol',
@@ -67,6 +63,7 @@ export class Mqtt implements ICredentialType {
 			name: 'clientId',
 			type: 'string' as NodePropertyTypes,
 			default: '',
+			description: 'Client ID. If left empty, one is autogenrated for you',
 		},
 	];
 }
