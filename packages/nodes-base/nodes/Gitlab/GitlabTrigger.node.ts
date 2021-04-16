@@ -170,7 +170,7 @@ export class GitlabTrigger implements INodeType {
 				const owner = this.getNodeParameter('owner') as string;
 				const repository = this.getNodeParameter('repository') as string;
 
-				const path = (`${owner}/${repository}`).replace(/\//g,'%2F');
+				const path = (`${owner}/${repository}`).replace(/\//g, '%2F');
 
 				const endpoint = `/projects/${path}/hooks/${webhookData.webhookId}`;
 
@@ -207,7 +207,7 @@ export class GitlabTrigger implements INodeType {
 					eventsArray = ['note', 'issues', 'job', 'merge_requests', 'pipeline', 'push', 'tag_push', 'wiki_page'];
 				}
 
-				const events: { [key: string]: boolean } = { };
+				const events: { [key: string]: boolean } = {};
 				for (const e of eventsArray) {
 					events[`${e}_events`] = true;
 				}
@@ -218,7 +218,7 @@ export class GitlabTrigger implements INodeType {
 					events['push_events'] = false;
 				}
 
-				const path = (`${owner}/${repository}`).replace(/\//g,'%2F');
+				const path = (`${owner}/${repository}`).replace(/\//g, '%2F');
 
 				const endpoint = `/projects/${path}/hooks`;
 
@@ -253,7 +253,7 @@ export class GitlabTrigger implements INodeType {
 					const owner = this.getNodeParameter('owner') as string;
 					const repository = this.getNodeParameter('repository') as string;
 
-					const path = (`${owner}/${repository}`).replace(/\//g,'%2F');
+					const path = (`${owner}/${repository}`).replace(/\//g, '%2F');
 
 					const endpoint = `/projects/${path}/hooks/${webhookData.webhookId}`;
 					const body = {};
