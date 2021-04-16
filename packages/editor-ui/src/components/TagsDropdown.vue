@@ -3,7 +3,7 @@
         filterable
         multiple
         popper-class="tags-dropdown"
-        :value="currentTagIds"
+        :value="appliedTags"
         :loading="isLoading"
         :placeholder="placeholder"
         :filter-method="filterOptions"
@@ -62,17 +62,15 @@ export default mixins(
 	},
 	computed: {
         options() {
-            const tags = this.$store.getters['tags/allTags'];
-            return tags.filter(({name}: ITag) => name.toLowerCase().includes(this.$data.filter.toLowerCase()))
+            return this.tags.filter(({name}: ITag) => name.toLowerCase().includes(this.$data.filter.toLowerCase()))
         },
         appliedTags() {
-            const tags = this.$store.getters['tags/allTags'];
-            return this.currentTagIds.filter((id: string) => tags.find((tag: ITag) => tag.id === id));
+            return this.$props.currentTagIds.filter((id: string) => this.tags.find((tag: ITag) => tag.id === id));
         },
-        ...mapState('tags', [
-            'tags',
-            'isLoading',
-        ]),
+        ...mapState('tags', {
+            tags: 'tags',
+            isLoading: 'isLoading',
+        }),
         ...mapGetters('tags', [
             'hasTags'
         ]),

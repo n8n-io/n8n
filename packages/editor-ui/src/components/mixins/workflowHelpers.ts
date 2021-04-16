@@ -369,7 +369,7 @@ export const workflowHelpers = mixins(
 			// if withNewName is false, then it should attempt to save current workflow. if this is a new workflow, then it should open dialog
 			// if withNewName is true but newName is not given, it should open dialog
 			// if withNewName is true but newName is given, it should save it with new name
-			async saveCurrentWorkflow (withNewName = false, newName = '') {
+			async saveCurrentWorkflow (withNewName = false, newName?: string, tags?: string[]) {
 				const currentWorkflow = this.$route.params.name;
 				let workflowName: string | null | undefined = '';
 				if (withNewName === true && !!newName) {
@@ -385,20 +385,25 @@ export const workflowHelpers = mixins(
 				try {
 					this.$store.commit('addActiveAction', 'workflowSaving');
 
-					let workflowData: IWorkflowData = await this.getWorkflowDataToSave();
+					let workflowDataRequest: IWorkflowDataUpdate = await this.getWorkflowDataToSave();
+					let workflowData: IWorkflowDb;
+
+					if (tags) {
+						workflowDataRequest.tags = tags;
+					}
 
 					if (currentWorkflow === undefined || withNewName === true) {
 						// Workflow is new or is supposed to get saved under a new name
 						// so create a new entry in database
-						workflowData.name = workflowName!.trim() as string;
+						workflowDataRequest.name = workflowName!.trim() as string;
 
 						if (withNewName === true) {
 							// If an existing workflow gets resaved with a new name
 							// make sure that the new ones is not active
-							workflowData.active = false;
+							workflowDataRequest.active = false;
 						}
 
-						workflowData = await this.restApi().createNewWorkflow(workflowData);
+						workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
 
 						this.$store.commit('setActive', workflowData.active || false);
 						this.$store.commit('setWorkflowId', workflowData.id);
@@ -407,7 +412,7 @@ export const workflowHelpers = mixins(
 						this.$store.commit('setStateDirty', false);
 					} else {
 						// Workflow exists already so update it
-						await this.restApi().updateWorkflow(currentWorkflow, workflowData);
+						workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest);
 					}
 
 					if (this.$route.params.name !== workflowData.id) {

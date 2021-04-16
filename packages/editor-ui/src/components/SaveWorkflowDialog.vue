@@ -71,7 +71,7 @@ export default mixins(
 
 			if (this.$props.saveWorkflow) {
 				// save entire workflow
-				await this.saveCurrentWorkflow(true, this.name);
+				await this.saveCurrentWorkflow(true, this.name, this.currentTagIds);
 				
 				this.$emit('closeDialog');
 			}

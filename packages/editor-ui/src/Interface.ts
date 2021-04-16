@@ -134,7 +134,7 @@ export interface IRestApi {
 	getNodeParameterOptions(nodeType: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
-	createNewWorkflow(sendData: IWorkflowData): Promise<IWorkflowDb>;
+	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
 	updateWorkflow(id: string, data: IWorkflowDataUpdate): Promise<IWorkflowDb>;
 	deleteWorkflow(name: string): Promise<void>;
 	getWorkflow(id: string): Promise<IWorkflowDb>;
@@ -211,11 +211,13 @@ export interface IWorkflowData {
 }
 
 export interface IWorkflowDataUpdate {
+	id?: string;
 	name?: string;
 	nodes?: INode[];
 	connections?: IConnections;
 	settings?: IWorkflowSettings;
 	active?: boolean;
+	tags?: string[] | ITag[];
 }
 
 // Almost identical to cli.Interfaces.ts
