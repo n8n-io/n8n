@@ -61,6 +61,12 @@ export interface IDatabaseCollections {
 	Tag: Repository<ITagDb> | null;
 }
 
+type NonNullable<T> = T extends null | undefined ? never : T;
+
+export type ExactDatabaseCollections = {
+	[P in keyof IDatabaseCollections]: NonNullable<IDatabaseCollections[P]>
+};
+
 export interface IWebhookDb {
 	workflowId: number | string;
 	webhookPath: string;
