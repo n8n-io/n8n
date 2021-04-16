@@ -628,6 +628,9 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 
 				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, fallbackValue);
 			},
+			getNodeWebhookUrl: (name: string): string | undefined => {
+				return getNodeWebhookUrl(name, workflow, node, additionalData, mode);
+			},
 			getRestApiUrl: (): string => {
 				return additionalData.restApiUrl;
 			},
