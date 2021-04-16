@@ -67,6 +67,7 @@
       "dist/credentials/CrateDb.credentials.js",
       "dist/credentials/DeepLApi.credentials.js",
       "dist/credentials/DemioApi.credentials.js",
+      "dist/credentials/DiscordOAuth2Api.credentials.js",
       "dist/credentials/DiscourseApi.credentials.js",
       "dist/credentials/DisqusApi.credentials.js",
       "dist/credentials/DriftApi.credentials.js",
@@ -574,6 +575,7 @@
     "@types/ssh2-sftp-client": "^5.1.0",
     "@types/tmp": "^0.2.0",
     "@types/uuid": "^3.4.6",
+    "@types/ws": "^7.4.0",
     "@types/xml2js": "^0.4.3",
     "gulp": "^4.0.0",
     "jest": "^26.4.2",
@@ -629,6 +631,7 @@
     "tmp-promise": "^3.0.2",
     "uuid": "^3.4.0",
     "vm2": "^3.6.10",
+    "ws": "^7.4.3",
     "xlsx": "^0.16.7",
     "xml2js": "^0.4.22"
   },
