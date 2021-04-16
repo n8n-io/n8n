@@ -33,6 +33,7 @@ import { mysqlMigrations } from './databases/mysqldb/migrations';
 import { sqliteMigrations } from './databases/sqlite/migrations';
 
 import * as path from 'path';
+import { ExactDatabaseCollections } from './Interfaces';
 
 export async function init(): Promise<IDatabaseCollections> {
 	const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
@@ -145,4 +146,8 @@ export async function init(): Promise<IDatabaseCollections> {
 	collections.Tag = getRepository(entities.TagEntity);
 
 	return collections;
+}
+
+export function hasNonNullableContents(collections: IDatabaseCollections): collections is ExactDatabaseCollections {
+	return Object.values(collections).every(value => value !== null && value !== undefined);
 }
