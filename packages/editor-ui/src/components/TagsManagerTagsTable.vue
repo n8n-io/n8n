@@ -90,7 +90,7 @@ export default Vue.extend({
 		'isCreateEnabled',
 		'deleteId',
 		'updateId',
-		'maxLength'
+		'maxLength',
 	],
 	data() {
 		return {
@@ -106,7 +106,7 @@ export default Vue.extend({
 				.filter((tag: ITag) => this.stickyIds.has(tag.id) || tag.name.toLowerCase().trim().includes(filter.toLowerCase().trim() || ''))
 				.map((tag: ITag): ITagRow => ({
 					tag,
-					usage: tag.usageCount > 0 ? `${tag.usageCount} workflow${tag.usageCount > 1 ? 's' : ''}` : 'Not being used',
+					usage: tag.usageCount && tag.usageCount > 0 ? `${tag.usageCount} workflow${tag.usageCount > 1 ? 's' : ''}` : 'Not being used',
 					disable: this.isTagDisabled(tag.id),
 					update: this.isUpdateEnabled(tag.id),
 					delete: this.isDeleteEnabled(tag.id),

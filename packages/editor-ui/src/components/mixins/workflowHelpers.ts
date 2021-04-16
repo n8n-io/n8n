@@ -385,7 +385,7 @@ export const workflowHelpers = mixins(
 				try {
 					this.$store.commit('addActiveAction', 'workflowSaving');
 
-					let workflowDataRequest: IWorkflowDataUpdate = await this.getWorkflowDataToSave();
+					const workflowDataRequest: IWorkflowDataUpdate = await this.getWorkflowDataToSave();
 					let workflowData: IWorkflowDb;
 
 					if (tags) {

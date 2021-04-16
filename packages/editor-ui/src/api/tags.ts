@@ -6,11 +6,11 @@ export async function getTags(context: ActionContext<ITagsState, IRootState>): P
 	return await makeRestApiRequest(context, 'GET', '/tags');
 }
 
-export async function addTag(context: ActionContext<ITagsState, IRootState>, params: {name: string}) {
+export async function addTag(context: ActionContext<ITagsState, IRootState>, params: { name: string }) {
 	return await makeRestApiRequest(context, 'POST', '/tags', params);
 }
 
-export async function updateTag(context: ActionContext<ITagsState, IRootState>, id: string, params: {name: string}) {
+export async function updateTag(context: ActionContext<ITagsState, IRootState>, id: string, params: { name: string }) {
 	return await makeRestApiRequest(context, 'PATCH', `/tags/${id}`, params);
 }
 

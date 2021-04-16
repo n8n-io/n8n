@@ -1,43 +1,41 @@
 <template>
 	<div v-if="dialogVisible">
-		<el-dialog title="Manage Tags" :visible="dialogVisible" append-to-body :before-close="closeDialog" class="test-wrapper">
+		<el-dialog
+			title="Manage Tags"
+			:visible="dialogVisible"
+			append-to-body
+			:before-close="closeDialog"
+			class="test-wrapper"
+		>
 			<div class="content" @keydown.stop>
 				<el-row v-if="!isLoading">
-					<TagsTable v-if="hasTags || isCreateEnabled"
-							:tags="tags"
-
-							:isCreateEnabled="isCreateEnabled"
-							@enableCreate="enableCreate"
-							@disableCreate="disableCreate"
-							@onCreate="onCreate"
-
-							:updateId="updateId"
-							@onUpdate="onUpdate"
-							@enableUpdate="enableUpdate"
-							@disableUpdate="disableUpdate"
-
-							:deleteId="deleteId"
-							@onDelete="onDelete"
-							@enableDelete="enableDelete"
-							@disableDelete="disableDelete"
-
-							:maxLength="maxLength"
+					<TagsTable
+						v-if="hasTags || isCreateEnabled"
+						:tags="tags"
+						:isCreateEnabled="isCreateEnabled"
+						@enableCreate="enableCreate"
+						@disableCreate="disableCreate"
+						@onCreate="onCreate"
+						:updateId="updateId"
+						@onUpdate="onUpdate"
+						@enableUpdate="enableUpdate"
+						@disableUpdate="disableUpdate"
+						:deleteId="deleteId"
+						@onDelete="onDelete"
+						@enableDelete="enableDelete"
+						@disableDelete="disableDelete"
+						:maxLength="maxLength"
 					/>
 					<el-col class="notags" :span="16" :offset="4" v-else>
-						<div class="icon">
-							🗄️
-						</div>
+						<div class="icon">🗄️</div>
 						<div>
-							<div class="headline">
-								Ready to organize your workflows?
-							</div>
+							<div class="headline">Ready to organize your workflows?</div>
 							<div class="description">
-								With workflow tags, you're free to create the perfect tagging system for your flows
+								With workflow tags, you're free to create the perfect tagging
+								system for your flows
 							</div>
 						</div>
-						<el-button @click="enableCreate">
-							Create a tag
-						</el-button>
+						<el-button @click="enableCreate"> Create a tag </el-button>
 					</el-col>
 				</el-row>
 			</div>
@@ -49,29 +47,25 @@
 </template>
 
 <script lang="ts">
-import { ITag } from '@/Interface';
+import { ITag } from "@/Interface";
 
-import { showMessage } from '@/components/mixins/showMessage';
-import TagsTable from '@/components/TagsManagerTagsTable.vue';
+import { showMessage } from "@/components/mixins/showMessage";
+import TagsTable from "@/components/TagsManagerTagsTable.vue";
 
-import mixins from 'vue-typed-mixins';
-import { mapState } from 'vuex';
+import mixins from "vue-typed-mixins";
+import { mapState } from "vuex";
 
-export default mixins(
-	showMessage,
-).extend({
-	name: 'TagsManager',
-	props: [
-		'dialogVisible',
-	],
+export default mixins(showMessage).extend({
+	name: "TagsManager",
+	props: ["dialogVisible"],
 	created() {
-		this.$store.dispatch('tags/getAll');
+		this.$store.dispatch("tags/getAll");
 	},
 	data() {
 		return {
 			isCreateEnabled: false,
-			updateId: '',
-			deleteId: '',
+			updateId: "",
+			deleteId: "",
 		};
 	},
 	components: {
@@ -79,15 +73,12 @@ export default mixins(
 	},
 	computed: {
 		tags(): ITag[] {
-			return this.$store.getters['tags/allTags'];
+			return this.$store.getters["tags/allTags"];
 		},
 		hasTags(): boolean {
 			return this.tags.length > 0;
 		},
-		...mapState('tags', [
-			'isLoading',
-			'maxLength'
-		])
+		...mapState("tags", ["isLoading", "maxLength"]),
 	},
 	methods: {
 		enableCreate() {
@@ -102,18 +93,22 @@ export default mixins(
 					throw new Error("Tag name was not set");
 				}
 
-				const newTag = await this.$store.dispatch('tags/addNew', name);
+				const newTag = await this.$store.dispatch("tags/addNew", name);
 
 				cb(newTag.id);
 				this.$data.isCreateEnabled = false;
 
 				this.$showMessage({
-					title: 'New tag was created',
+					title: "New tag was created",
 					message: `"${name}" was added to your tag collection`,
-					type: 'success',
+					type: "success",
 				});
-			} catch(error) {
-				this.$showError(error, 'New tag was not created', `A problem occurred when trying to create the "${name}" tag`);
+			} catch (error) {
+				this.$showError(
+					error,
+					"New tag was not created",
+					`A problem occurred when trying to create the "${name}" tag`,
+				);
 			}
 		},
 
@@ -121,7 +116,7 @@ export default mixins(
 			this.$data.updateId = updateId;
 		},
 		disableUpdate() {
-			this.$data.updateId = '';
+			this.$data.updateId = "";
 		},
 		async onUpdate(id: string, name: string, oldName: string) {
 			try {
@@ -129,18 +124,21 @@ export default mixins(
 					throw new Error("Tag name was not set");
 				}
 				if (name !== oldName) {
-					await this.$store.dispatch('tags/rename', {id, name});
+					await this.$store.dispatch("tags/rename", { id, name });
 
 					this.$showMessage({
-						title: 'Tag was updated',
+						title: "Tag was updated",
 						message: `The "${oldName}" tag was successfully updated to "${name}"`,
-						type: 'success',
+						type: "success",
 					});
 				}
 				this.disableUpdate();
-			}
-			catch(error) {
-				this.$showError(error, 'Tag was not updated', `A problem occurred when trying to update the "${oldName}" tag`);
+			} catch (error) {
+				this.$showError(
+					error,
+					"Tag was not updated",
+					`A problem occurred when trying to update the "${oldName}" tag`,
+				);
 			}
 		},
 
@@ -148,26 +146,29 @@ export default mixins(
 			this.$data.deleteId = deleteId;
 		},
 		disableDelete() {
-			this.$data.deleteId = '';
+			this.$data.deleteId = "";
 		},
 		async onDelete(id: string, name: string) {
 			try {
-				await this.$store.dispatch('tags/delete', id);
+				await this.$store.dispatch("tags/delete", id);
 
 				this.$showMessage({
-					title: 'Tag was deleted',
+					title: "Tag was deleted",
 					message: `The "${name}" tag was successfully deleted from your tag collection`,
-					type: 'success',
+					type: "success",
 				});
 				this.disableDelete();
-			}
-			catch(error) {
-				this.$showError(error, 'Tag was not deleted', `A problem occurred when trying to delete the "${name}" tag`);
+			} catch (error) {
+				this.$showError(
+					error,
+					"Tag was not deleted",
+					`A problem occurred when trying to delete the "${name}" tag`,
+				);
 			}
 		},
 
 		closeDialog() {
-			this.$emit('closeDialog');
+			this.$emit("closeDialog");
 		},
 	},
 });

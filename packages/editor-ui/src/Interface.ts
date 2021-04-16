@@ -501,4 +501,10 @@ export interface ITagsState {
 }
 
 export interface IWorkflowsState {
-};
+}
+
+export interface IUiState {
+	saveAsDialogOpen: boolean;
+	renameDialogOpen: boolean;
+	tagsManagerOpen: boolean;
+}

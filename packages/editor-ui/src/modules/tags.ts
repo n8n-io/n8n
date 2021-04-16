@@ -1,5 +1,5 @@
 
-import { ActionContext, Module } from 'vuex';
+import { ActionContext, GetterTree, Module } from 'vuex';
 import {
 	ITag,
 	ITagsState,
@@ -53,7 +53,7 @@ const module: Module<ITagsState, IRootState> = {
 		hasTags: (state: ITagsState): boolean => {
 			return state.tags.length > 0;
 		},
-		currentWorkflowTags: (state: ITagsState, getters: any, rootState: IRootState): ITag[] => {
+		currentWorkflowTags: (state: ITagsState, getters: GetterTree<ITagsState, IRootState>, rootState: IRootState): ITag[] => {
 			return rootState.workflow.tags || [];
 		},
 	},
