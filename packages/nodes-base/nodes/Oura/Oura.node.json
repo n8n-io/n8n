@@ -1,19 +1,19 @@
 {
-	"node": "n8n-nodes-base.philipsHue",
+	"node": "n8n-nodes-base.oura",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [
-		"Miscellaneous"
+		"Productivity"
 	],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/philipsHue"
+				"url": "https://docs.n8n.io/credentials/oura"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.philipsHue/"
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.oura/"
 			}
 		]
 	}

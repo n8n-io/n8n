@@ -48,6 +48,11 @@
 				"url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/"
 			},
 			{
+				"label": "5 workflow automations for Mattermost that we love at n8n",
+				"icon": "🤖",
+				"url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/"
+			},
+			{
 				"label": "Learn to Build Powerful API Endpoints Using Webhooks",
 				"icon": "🧰",
 				"url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/"
