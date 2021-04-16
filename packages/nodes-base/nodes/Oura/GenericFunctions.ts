@@ -11,6 +11,8 @@ import {
 
 import {
 	IDataObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 export async function ouraApiRequest(
@@ -25,7 +27,7 @@ export async function ouraApiRequest(
 
 	const credentials = this.getCredentials('ouraApi');
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 	let options: OptionsWithUri = {
 		headers: {
@@ -51,13 +53,6 @@ export async function ouraApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
-		const errorMessage = error?.response?.body?.message;
-
-		if (errorMessage) {
-			throw new Error(`Oura error response [${error.statusCode}]: ${errorMessage}`);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

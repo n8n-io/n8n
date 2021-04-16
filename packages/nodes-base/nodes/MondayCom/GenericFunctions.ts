@@ -10,7 +10,9 @@ import {
 import {
 	IDataObject,
 	IHookFunctions,
-	IWebhookFunctions
+	IWebhookFunctions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -18,6 +20,7 @@ import {
 } from 'lodash';
 
 export async function mondayComApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, body: any = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
 	const endpoint = 'https://api.monday.com/v2/';
@@ -44,11 +47,7 @@ export async function mondayComApiRequest(this: IExecuteFunctions | IWebhookFunc
 			return await this.helpers.requestOAuth2!.call(this, 'mondayComOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.response) {
-			const errorMessage = error.response.body.error_message;
-			throw new Error(`Monday error response [${error.statusCode}]: ${errorMessage}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

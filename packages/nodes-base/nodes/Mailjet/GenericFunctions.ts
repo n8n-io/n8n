@@ -4,7 +4,7 @@ import {
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IDataObject, IHookFunctions } from 'n8n-workflow';
+import { IDataObject, IHookFunctions, NodeApiError } from 'n8n-workflow';
 
 export async function mailjetApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const emailApiCredentials = this.getCredentials('mailjetEmailApi');
@@ -35,10 +35,7 @@ export async function mailjetApiRequest(this: IExecuteFunctions | IExecuteSingle
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.response.body || error.response.body.ErrorMessage) {
-			throw new Error(`Mailjet Error: response [${error.statusCode}]: ${error.response.body.ErrorMessage}`);
-		}
-		throw new Error(error);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

@@ -105,7 +105,7 @@ export class PushcutTrigger implements INodeType {
 
 					try {
 						await pushcutApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

@@ -4,6 +4,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
@@ -241,8 +243,8 @@ export class GraphQL implements INodeType {
 					if (typeof requestOptions.body.variables === 'string') {
 						try {
 							requestOptions.body.variables = JSON.parse(requestOptions.body.variables || '{}');
-						} catch (e) {
-							throw new Error('Using variables failed:\n' + requestOptions.body.variables + '\n\nWith error message:\n' + e);
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), 'Using variables failed:\n' + requestOptions.body.variables + '\n\nWith error message:\n' + error);
 						}
 					}
 					if (requestOptions.body.operationName === '') {
@@ -267,8 +269,8 @@ export class GraphQL implements INodeType {
 				if (typeof response === 'string') {
 					try {
 						returnItems.push({ json: JSON.parse(response) });
-					} catch (e) {
-						throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+					} catch (error) {
+						throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
 					}
 				} else {
 					returnItems.push({ json: response });

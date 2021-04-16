@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function quickbaseApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -18,15 +18,15 @@ export async function quickbaseApiRequest(this: IExecuteFunctions | ILoadOptions
 	const credentials = this.getCredentials('quickbaseApi') as IDataObject;
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	if (!credentials.hostname) {
-		throw new Error('Hostname must be defined');
+		throw new NodeOperationError(this.getNode(), 'Hostname must be defined');
 	}
 
 	if (!credentials.userToken) {
-		throw new Error('User Token must be defined');
+		throw new NodeOperationError(this.getNode(), 'User Token must be defined');
 	}
 
 	try {
@@ -57,17 +57,7 @@ export async function quickbaseApiRequest(this: IExecuteFunctions | ILoadOptions
 		//@ts-ignore
 		return await this.helpers?.request(options);
 	} catch (error) {
-
-		if (error.response && error.response.body && error.response.body.description) {
-
-			const message = error.response.body.description;
-
-			// Try to return the error prettier
-			throw new Error(
-				`Quickbase error response [${error.statusCode}]: ${message} (qb-api-ray=${error.response.headers['qb-api-ray']})`,
-			);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

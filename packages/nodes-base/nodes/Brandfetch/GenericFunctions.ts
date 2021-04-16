@@ -10,14 +10,14 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function brandfetchApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	try {
 		const credentials = this.getCredentials('brandfetchApi');
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 		let options: OptionsWithUri = {
 			headers: {
@@ -46,20 +46,12 @@ export async function brandfetchApiRequest(this: IHookFunctions | IExecuteFuncti
 		const response = await this.helpers.request!(options);
 
 		if (response.statusCode && response.statusCode !== 200) {
-			throw new Error(`Brandfetch error response [${response.statusCode}]: ${response.response}`);
+			throw new NodeApiError(this.getNode(), response);
 		}
 
 		return response;
 
 	} catch (error) {
-
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			const errorBody = error.response.body;
-			throw new Error(`Brandfetch error response [${error.statusCode}]: ${errorBody.message}`);
-		}
-
-		// Expected error data did not get returned so throw the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
