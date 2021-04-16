@@ -20,9 +20,9 @@
 		<div class="header">
 			<div class="title-text">
 				<strong v-if="dataCount < maxDisplayItems">
-					Results: {{ dataCount }}
+					Items: {{ dataCount }}
 				</strong>
-				<strong v-else>Results:
+				<strong v-else>Items:
 					<el-select v-model="maxDisplayItems" @click.stop>
 						<el-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
 					</el-select>&nbsp;/
@@ -156,6 +156,10 @@
 											<div v-if="binaryData.fileName">
 												<div class="label">File Name: </div>
 												<div class="value">{{binaryData.fileName}}</div>
+											</div>
+											<div v-if="binaryData.directory">
+												<div class="label">Directory: </div>
+												<div class="value">{{binaryData.directory}}</div>
 											</div>
 											<div v-if="binaryData.fileExtension">
 												<div class="label">File Extension:</div>

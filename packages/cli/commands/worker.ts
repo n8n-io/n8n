@@ -35,7 +35,7 @@ import {
 	ResponseHelper,
 	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
-} from "../src";
+} from '../src';
 
 import * as config from '../config';
 import * as Bull from 'bull';
@@ -132,7 +132,7 @@ export class Worker extends Command {
 		const credentials = await WorkflowCredentials(currentExecutionDb.workflowData.nodes);
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
-		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksIntegrated(currentExecutionDb.mode, job.data.executionId, currentExecutionDb.workflowData, { retryOf: currentExecutionDb.retryOf as string });
+		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(currentExecutionDb.mode, job.data.executionId, currentExecutionDb.workflowData, { retryOf: currentExecutionDb.retryOf as string });
 
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
@@ -241,7 +241,7 @@ export class Worker extends Command {
 							cumulativeTimeout += now - lastTimer;
 							lastTimer = now;
 							if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-								console.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + ". Exiting process.");
+								console.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + '. Exiting process.');
 								process.exit(1);
 							}
 						}

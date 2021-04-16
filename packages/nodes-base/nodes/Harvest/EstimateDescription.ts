@@ -1,6 +1,10 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-const resource = ['estimate'];
+const resource = [
+	'estimate',
+];
 
 export const estimateOperations = [
 	{
@@ -48,7 +52,7 @@ export const estimateOperations = [
 export const estimateFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                estimate:getAll                            */
+	/*                                estimate:getAll                             */
 	/* -------------------------------------------------------------------------- */
 
 	{
@@ -152,7 +156,7 @@ export const estimateFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                estimate:get                            */
+	/*                                estimate:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Estimate Id',
@@ -172,7 +176,7 @@ export const estimateFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                estimate:delete                            */
+	/*                                estimate:delete                             */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Estimate Id',
@@ -192,7 +196,7 @@ export const estimateFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                estimate:create                           */
+	/*                                estimate:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Client Id',
@@ -292,7 +296,7 @@ export const estimateFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                estimate:update                           */
+	/*                                estimate:update                             */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Invoice Id',

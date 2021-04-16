@@ -1,4 +1,6 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,

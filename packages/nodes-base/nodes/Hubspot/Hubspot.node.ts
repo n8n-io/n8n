@@ -1924,6 +1924,12 @@ export class Hubspot implements INodeType {
 								value: additionalFields.pipeline as string,
 							});
 						}
+						if (additionalFields.description) {
+							body.properties.push({
+								name: 'description',
+								value: additionalFields.description as string,
+							});
+						}
 						if (additionalFields.customPropertiesUi) {
 							const customProperties = (additionalFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
 							if (customProperties) {
@@ -1978,6 +1984,12 @@ export class Hubspot implements INodeType {
 							body.properties.push({
 								name: 'pipeline',
 								value: updateFields.pipeline as string,
+							});
+						}
+						if (updateFields.description) {
+							body.properties.push({
+								name: 'description',
+								value: updateFields.description as string,
 							});
 						}
 						if (updateFields.customPropertiesUi) {
