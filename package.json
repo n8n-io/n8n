@@ -12,7 +12,8 @@
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "lerna run test",
     "tslint": "lerna exec npm run tslint",
-    "watch": "lerna run --parallel watch"
+    "watch": "lerna run --parallel watch",
+    "optimize-svg": "find ./packages -name '*.svg' -print0 | xargs -0 -P16 -L20 npx svgo"
   },
   "devDependencies": {
     "lerna": "^3.13.1",
