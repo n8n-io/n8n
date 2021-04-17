@@ -42,7 +42,7 @@ export class WorkflowRunnerProcess {
 	workflowExecute: WorkflowExecute | undefined;
 	executionIdCallback: (executionId: string) => void | undefined;
 	childExecutions: {
-		[key: string]: {workflowExecute: WorkflowExecute, workflow: Workflow},
+		[key: string]: IWorkflowExecuteProcess,
 	} = {};
 
 	static async stopProcess() {
@@ -148,10 +148,10 @@ export class WorkflowRunnerProcess {
 			} catch (e) {
 				await sendToParentProcess('finishExecution', { executionId });
 				delete this.childExecutions[executionId];
-				// Throw same error we had 
-				throw e;	
+				// Throw same error we had
+				throw e;
 			}
-			
+
 			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(result);
 			return returnData!.data!.main;
 		};
@@ -274,6 +274,8 @@ const workflowRunner = new WorkflowRunnerProcess();
 process.on('message', async (message: IProcessMessage) => {
 	try {
 		if (message.type === 'startWorkflow') {
+			await sendToParentProcess('start', {});
+
 			const runData = await workflowRunner.runWorkflow(message.data);
 
 			await sendToParentProcess('end', {
@@ -292,11 +294,11 @@ process.on('message', async (message: IProcessMessage) => {
 
 				for (const executionId of executionIds) {
 					const childWorkflowExecute = workflowRunner.childExecutions[executionId];
-					runData = childWorkflowExecute.workflowExecute.getFullRunData(workflowRunner.startedAt);
-					const timeOutError = message.type === 'timeout' ? { message: 'Workflow execution timed out!' } as IExecutionError : undefined;
+					runData = childWorkflowExecute.workflowExecute.getFullRunData(workflowRunner.childExecutions[executionId].startedAt);
+					const timeOutError = message.type === 'timeout' ? new WorkflowOperationError('Workflow execution timed out!') : undefined;
 
 					// If there is any data send it to parent process, if execution timedout add the error
-					await childWorkflowExecute.workflowExecute.processSuccessExecution(workflowRunner.startedAt, childWorkflowExecute.workflow, timeOutError);
+					await childWorkflowExecute.workflowExecute.processSuccessExecution(workflowRunner.childExecutions[executionId].startedAt, childWorkflowExecute.workflow, timeOutError);
 				}
 
 				// Workflow started already executing

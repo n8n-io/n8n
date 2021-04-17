@@ -352,7 +352,7 @@ export class WorkflowRunner {
 				// We don't want errors here to crash n8n. Just log and proceed.
 				console.log('Error removing saved execution from database. More details: ', err);
 			}
-			
+
 			resolve(runData);
 		});
 
@@ -371,7 +371,7 @@ export class WorkflowRunner {
 	 * @memberof WorkflowRunner
 	 */
 	async runSubprocess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
-		const startedAt = new Date();
+		let startedAt = new Date();
 		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
 
 		if (loadStaticData === true && data.workflowData.id) {
@@ -414,7 +414,6 @@ export class WorkflowRunner {
 			}
 		}
 
-
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).nodeTypeData = nodeTypeData;
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite = credentialsOverwrites;
@@ -432,13 +431,17 @@ export class WorkflowRunner {
 			workflowTimeout = data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
 		}
 
-		if (workflowTimeout > 0) {
-			const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
-			executionTimeout = setTimeout(() => {
-				this.activeExecutions.stopExecution(executionId, 'timeout');
+		const processTimeoutFunction = (timeout: number) => {
+			this.activeExecutions.stopExecution(executionId, 'timeout');
+			executionTimeout = setTimeout(() => subprocess.kill(), Math.max(timeout * 0.2, 5000)); // minimum 5 seconds
+		}
 
-				executionTimeout = setTimeout(() => subprocess.kill(), Math.max(timeout * 0.2, 5000)); // minimum 5 seconds
-			}, timeout);
+		if (workflowTimeout > 0) {
+			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
+			// Start timeout already now but give process at least 5 seconds to start.
+			// Without it could would it be possible that the workflow executions times out before it even got started if
+			// the timeout time is very short as the process start time can be quite long.
+			executionTimeout = setTimeout(processTimeoutFunction, Math.max(5000, workflowTimeout), workflowTimeout);
 		}
 
 		// Create a list of child spawned executions
@@ -448,7 +451,15 @@ export class WorkflowRunner {
 
 		// Listen to data from the subprocess
 		subprocess.on('message', async (message: IProcessMessage) => {
-			if (message.type === 'end') {
+			if (message.type === 'start') {
+				// Now that the execution actually started set the timeout again so that does not time out to early.
+				startedAt = new Date();
+				if (workflowTimeout > 0) {
+					clearTimeout(executionTimeout);
+					executionTimeout = setTimeout(processTimeoutFunction, workflowTimeout, workflowTimeout);
+				}
+
+			} else if (message.type === 'end') {
 				clearTimeout(executionTimeout);
 				this.activeExecutions.remove(executionId!, message.data.runData);
 

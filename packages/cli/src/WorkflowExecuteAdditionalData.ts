@@ -613,7 +613,11 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	const workflowExecute = new WorkflowExecute(additionalDataIntegrated, runData.executionMode, runExecutionData);
 	if (parentExecutionId !== undefined) {
 		// Must be changed to become typed
-		return {workflow, workflowExecute};
+		return {
+			startedAt: new Date(),
+			workflow,
+			workflowExecute,
+		};
 	}
 	const data = await workflowExecute.processRunExecutionData(workflow);
 
