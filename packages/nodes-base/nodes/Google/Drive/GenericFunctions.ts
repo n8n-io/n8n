@@ -50,6 +50,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			return await this.helpers.request!(options);
 		} else {
+			console.log(options);
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'googleDriveOAuth2Api', options);
 		}
@@ -185,7 +186,7 @@ export async function createWebhook(this: ITriggerFunctions): Promise<boolean> {
 	const webhookData = this.getWorkflowStaticData('node');
 	webhookData.webhookId = response.id; // Google Drive channel ID
 	webhookData.resourceId = response.resourceId;
-	console.log("WEBHOOK CREATED");
+	console.log('WEBHOOK CREATED');
 	return true;
 }
 
@@ -210,6 +211,15 @@ export async function deleteWebhook(this: ITriggerFunctions): Promise<boolean> {
 
 	delete webhookData.webhookId;
 	delete webhookData.webhookEvents;
-	console.log("WEBHOOK DELETED");
+	console.log('WEBHOOK DELETED');
 	return true;
+}
+
+export function changeTypeExist(selectedChangeTypes: string[], currentChangeTypes: string) {
+	for (const selectedChangeType of selectedChangeTypes) {
+		if (currentChangeTypes.includes(selectedChangeType)) {
+			return true;
+		}
+	}
+	return false;
 }

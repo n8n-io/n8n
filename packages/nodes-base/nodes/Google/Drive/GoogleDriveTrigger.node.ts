@@ -13,6 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	changeTypeExist,
 	createWebhook,
 	deleteWebhook,
 	googleApiRequest,
@@ -22,7 +23,7 @@ export class GoogleDriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Drive Trigger',
 		name: 'googleDriveTrigger',
-		icon: 'file:googleDrive.png',
+		icon: 'file:googleDrive.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Starts the workflow when a file on Google Drive got changed.',
@@ -82,7 +83,98 @@ export class GoogleDriveTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Resolve data',
+				displayName: 'Event Type',
+				name: 'eventType',
+				type: 'options',
+				default: 'update',
+				options: [
+					//This two events are in the docs but I have been able to trigger them
+					////https://stackoverflow.com/questions/26529765/google-drive-watching-for-new-files
+
+					// {
+					// 	name: 'Add or Share',
+					// 	value: 'add',
+					// 	description: 'File created or shared',
+					// },
+					// {
+					// 	name: 'Delete or Unshare',
+					// 	value: 'remove',
+					// 	description: 'File deleted or unshared',
+					// },
+					{
+						name: 'Trash',
+						value: 'trash',
+						description: 'File moved to trash',
+					},
+					{
+						name: 'Untrash',
+						value: 'untrash',
+						description: 'File restored from trash',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'One or more properties (metadata) of a file have been updated.',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: [
+							'files',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Change Type',
+				name: 'changeType',
+				type: 'multiOptions',
+				default: [],
+				options: [
+					{
+						name: 'All',
+						value: '*',
+						description: 'Any change',
+					},
+					{
+						name: 'Content',
+						value: 'content',
+						description: 'The content of the resource has been updated.',
+					},
+					{
+						name: 'Properties',
+						value: 'properties',
+						description: 'One or more properties of the resource have been updated.',
+					},
+					{
+						name: 'Parents',
+						value: 'parents',
+						description: 'One or more parents of the resource have been added or removed.',
+					},
+					{
+						name: 'Children',
+						value: 'children',
+						description: 'One or more children of the resource have been added or removed.',
+					},
+					{
+						name: 'Permissions',
+						value: 'permissions',
+						description: 'The permissions of the resource have been updated.',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: [
+							'files',
+						],
+						eventType: [
+							'update',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Resolve Data',
 				name: 'resolveData',
 				type: 'boolean',
 				default: false,
@@ -91,129 +183,7 @@ export class GoogleDriveTrigger implements INodeType {
 					show: {
 						resource: [
 							'changes',
-						],
-					},
-				},
-			},
-			{
-				displayName: 'Filter by file type',
-				name: 'filterByFileType',
-				type: 'boolean',
-				default: false,
-				description: 'Filter resolved data by file type',
-				displayOptions: {
-					show: {
-						resource: [
-							'changes',
-						],
-						resolveData: [
-							true,
-						],
-					},
-				},
-			},
-			{
-				displayName: 'File type',
-				name: 'fileType',
-				type: 'options',
-				default: 'application/vnd.google-apps.folder',
-				options: [
-					{
-						name: 'Directory',
-						value: 'application/vnd.google-apps.folder',
-					},
-					{
-						name: 'Google Docs file',
-						value: 'application/vnd.google-apps.document',
-					},
-					{
-						name: 'Google Forms file',
-						value: 'application/vnd.google-apps.form',
-					},
-					{
-						name: 'Google Sheets file',
-						value: 'application/vnd.google-apps.spreadsheet',
-					},
-					{
-						name: 'Google Slides file',
-						value: 'application/vnd.google-apps.presentation',
-					},
-					{
-						name: 'PDF file',
-						value: 'application/pdf',
-					},
-					{
-						name: 'ZIP file',
-						value: 'application/zip',
-					},
-				],
-				displayOptions: {
-					show: {
-						resource: [
-							'changes',
-						],
-						resolveData: [
-							true,
-						],
-						filterByFileType: [
-							true,
-						],
-					},
-				},
-			},
-			{
-				displayName: 'Filter by event type',
-				name: 'filterByEventType',
-				type: 'boolean',
-				default: false,
-				description: 'Filter webhook calls by event type',
-				displayOptions: {
-					show: {
-						resource: [
 							'files',
-						],
-					},
-				},
-			},
-			{
-				displayName: 'Event type',
-				name: 'eventType',
-				type: 'options',
-				default: 'update',
-				options: [
-					{
-						name: 'Add or share',
-						value: 'add',
-						description: 'File added or shared',
-					},
-					{
-						name: 'Delete or unshare',
-						value: 'remove',
-						description: 'File deleted or unshared',
-					},
-					{
-						name: 'Trash',
-						value: 'trash',
-						description: 'File moved to trash',
-					},
-					{
-						name: 'Trash',
-						value: 'untrash',
-						description: 'File restored from trash',
-					},
-					{
-						name: 'Update',
-						value: 'update',
-						description: 'File properties updated',
-					},
-				],
-				displayOptions: {
-					show: {
-						resource: [
-							'files',
-						],
-						filterByEventType: [
-							true,
 						],
 					},
 				},
@@ -225,14 +195,6 @@ export class GoogleDriveTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				// const webhookData = this.getWorkflowStaticData('node');
-
-				// // Google Drive API does not have an endpoint to list all webhooks
-				// if (webhookData.webhookId === undefined) {
-				// 	return false;
-				// }
-
-				// return true;
 				return false;
 			},
 			create: createWebhook,
@@ -241,77 +203,65 @@ export class GoogleDriveTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const headerData = this.getHeaderData() as IDataObject;
-		console.log("------------------------------------------");
+		const headerData = this.getHeaderData() as { [key: string]: string };
+		console.log('------------------------------------------');
 		console.log('WEBHOOK CALL RECEIVED');
 
 		// ignore sync message
 		if (headerData['x-goog-resource-state'] === 'sync') {
-			return {}
-		}
-
-		console.log('este es el evento')
-		console.log(headerData);
-
-		const resource = this.getNodeParameter('resource', 0);
-		const resolveData = this.getNodeParameter('resolveData', 0);
-
-		if (resource === 'changes' && resolveData) {
-			const { changes } = await googleApiRequest.call(this, 'GET', '', {}, {}, headerData['x-goog-resource-uri'] as string);
-			console.log(changes);
-
-			const filterByFileType = this.getNodeParameter('filterByFileType', 0);
-			if (filterByFileType) {
-				const fileType = this.getNodeParameter('fileType', 0);
-				if (changes[0].file.mimeType !== fileType) {
-					return {
-						webhookResponse: 'OK',
-					};
-				} else {
-					return {
-						workflowData: [
-							this.helpers.returnJsonArray(changes),
-						],
-					};
-				}
-			}
-		}
-
-		const filterByEventType = this.getNodeParameter('filterByEventType', 0);
-
-		if (resource === 'files' && filterByEventType) {
-			const eventType = this.getNodeParameter('eventType', 0);
-			if (headerData["x-goog-resource-state"] !== eventType) {
-				return {
-					webhookResponse: 'OK',
-				};
-			}
+			return {};
 		}
 
 		console.log(headerData);
+
+		const resource = this.getNodeParameter('resource');
+		const resolveData = this.getNodeParameter('resolveData');
+		const eventType = this.getNodeParameter('eventType', '') as string;
+		const changeType = this.getNodeParameter('changeType', '') as string[];
+
+		let data;
+		data = headerData;
+
+		//https://developers.google.com/drive/api/v3/push
+		if (resource === 'files') {
+			if (eventType && headerData['x-goog-resource-state'] !== eventType) {
+				return {};
+			}
+
+			if (changeType && !changeType.includes('*')
+				&& !changeTypeExist(changeType, headerData['x-goog-changed'])) {
+				return {};
+			}
+		}
+
+		if (resolveData) {
+			data = await googleApiRequest.call(this, 'GET', '', {}, { fields: '*' }, headerData['x-goog-resource-uri'] as string);
+			if (data.changes) {
+				data = data.changes;
+			}
+			data['x-goog-changed'] = headerData['x-goog-changed'];
+			data['x-goog-resource-state'] = headerData['x-goog-resource-state'];
+		}
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray({
-					headers: headerData,
-				}),
+				this.helpers.returnJsonArray(data),
 			],
 		};
 	}
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		console.log('calling triggerf function')
 		const executeTrigger = async () => {
-			console.log("------------------ RENEWAL START ------------------");
+			console.log('------------------ RENEWAL START ------------------');
 			await deleteWebhook.call(this);
 			await createWebhook.call(this);
-			console.log("------------------ RENEWAL END ------------------");
+			console.log('------------------ RENEWAL END ------------------');
 		};
 
 		const resource = this.getNodeParameter('resource', 0);
 		const intervals = {
-			changes: 6 * 24 * 60 * 60 * 1000, 						// 6 days 23 hours 59 minutes in ms
-			files: 23 * 60 * 60 * 1000 + 59 * 60 * 1000, 	// 23 hours 59 minutes in ms
+			changes: 6 * 24 * 60 * 60 * 1000, // 6 days 23 hours 59 minutes in ms
+			files: 23 * 60 * 60 * 1000 + 59 * 60 * 1000, // 23 hours 59 minutes in ms
 		};
 
 		// const intervalTime = intervals[resource];
