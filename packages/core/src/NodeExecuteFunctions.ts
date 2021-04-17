@@ -52,6 +52,9 @@ import { createHmac } from 'crypto';
 import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
 
+const requestPromiseWithDefaults = requestPromise.defaults({
+	timeout: 300000, // 5 minutes
+});
 
 /**
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
@@ -577,7 +580,7 @@ export function getExecutePollFunctions(workflow: Workflow, node: INode, additio
 			},
 			helpers: {
 				prepareBinaryData,
-				request: requestPromise,
+				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
@@ -643,7 +646,7 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 			},
 			helpers: {
 				prepareBinaryData,
-				request: requestPromise,
+				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
@@ -739,7 +742,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			prepareOutputData: NodeHelpers.prepareOutputData,
 			helpers: {
 				prepareBinaryData,
-				request: requestPromise,
+				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
@@ -837,7 +840,7 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 			},
 			helpers: {
 				prepareBinaryData,
-				request: requestPromise,
+				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
@@ -893,7 +896,7 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, additio
 				return additionalData.restApiUrl;
 			},
 			helpers: {
-				request: requestPromise,
+				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
@@ -963,7 +966,7 @@ export function getExecuteHookFunctions(workflow: Workflow, node: INode, additio
 				return workflow.getStaticData(type, node);
 			},
 			helpers: {
-				request: requestPromise,
+				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
@@ -1063,7 +1066,7 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 			prepareOutputData: NodeHelpers.prepareOutputData,
 			helpers: {
 				prepareBinaryData,
-				request: requestPromise,
+				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
