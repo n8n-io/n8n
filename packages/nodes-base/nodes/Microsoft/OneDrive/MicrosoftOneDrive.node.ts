@@ -222,6 +222,13 @@ export class MicrosoftOneDrive implements INodeType {
 					responseData = await microsoftApiRequest.call(this, 'POST', endpoint, body);
 					returnData.push(responseData);
 				}
+				//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_delete?view=odsp-graph-online
+				if (operation === 'delete') {
+					const folderId = this.getNodeParameter('folderId', i) as string;
+					responseData = await microsoftApiRequest.call(this, 'DELETE', `/drive/items/${folderId}`);
+					responseData = { success: true };
+					returnData.push(responseData as IDataObject);
+				}
 				//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_list_children?view=odsp-graph-online
 				if (operation === 'getChildren') {
 					const folderId = this.getNodeParameter('folderId', i) as string;
