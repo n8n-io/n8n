@@ -54,7 +54,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	const options: OptionsWithUri = {
 		headers: {},
 		method,
-		qs: query,
+		qs: query || {},
 		uri: `https://www.formstack.com/api/v2/${endpoint}`,
 		json: true,
 	};
@@ -63,7 +63,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		options.body = body;
 	}
 
-	query = query || {};
+	console.log(options);
 
 	try {
 		if (authenticationMethod === 'accessToken') {
@@ -127,6 +127,9 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 		query.page += 1;
 
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
+		console.log({
+			responseData,
+		});
 
 		returnData.items.push.apply(returnData.items, responseData[dataKey]);
 	} while (
