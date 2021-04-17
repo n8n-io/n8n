@@ -530,6 +530,7 @@
       "dist/nodes/UProc/UProc.node.js",
       "dist/nodes/Vero/Vero.node.js",
       "dist/nodes/Vonage/Vonage.node.js",
+      "dist/nodes/Webflow/Webflow.node.js",
       "dist/nodes/Webflow/WebflowTrigger.node.js",
       "dist/nodes/Webhook.node.js",
       "dist/nodes/Wekan/Wekan.node.js",
