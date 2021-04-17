@@ -16,31 +16,8 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-// Interface in Typeform
-export interface ITypeformDefinition {
-	fields: ITypeformDefinitionField[];
-}
-
-export interface ITypeformDefinitionField {
-	id: string;
-	title: string;
-}
-
-export interface ITypeformAnswer {
-	field: ITypeformAnswerField;
-	type: string;
-	[key: string]: string | ITypeformAnswerField | object;
-}
-
-export interface ITypeformAnswerField {
-	id: string;
-	type: string;
-	ref: string;
-	[key: string]: string | object;
-}
-
 /**
- * Make an API request to Typeform
+ * Make an API request to Formstack
  *
  * @param {IHookFunctions} this
  * @param {string} method
@@ -97,7 +74,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 
 
 /**
- * Make an API request to paginated Typeform endpoint
+ * Make an API request to paginated Formstack endpoint
  * and return all results
  *
  * @export

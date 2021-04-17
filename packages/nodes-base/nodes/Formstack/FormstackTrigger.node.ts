@@ -128,7 +128,7 @@ export class FormstackTrigger implements INodeType {
 
 				const endpoint = `form/${formId}/webhook.json`;
 
-				// TODO: Add HMAC-validation once either the JSON data can be used for it or there is a way to access the binary-payload-data
+				// TODO: Add handshake key support
 				const body = {
 					url: webhookUrl,
 					standardize_field_values: true,
@@ -166,4 +166,10 @@ export class FormstackTrigger implements INodeType {
 			},
 		},
 	};
+
+	// @ts-ignore
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const bodyData = this.getBodyData();
+		console.log({bodyData});
+	}
 }
