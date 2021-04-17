@@ -214,7 +214,7 @@ export class DateTime implements INodeType {
 			},
 			{
 				displayName: 'Date Value',
-				name: 'dateValue',
+				name: 'value',
 				displayOptions: {
 					show: {
 						action: [
@@ -462,7 +462,7 @@ export class DateTime implements INodeType {
 
 			if (action === 'calculate') {
 
-				const dateValue = this.getNodeParameter('dateValue', i) as string;
+				const dateValue = this.getNodeParameter('value', i) as string;
 				const operation = this.getNodeParameter('operation', i) as 'add' | 'subtract';
 				const duration = this.getNodeParameter('duration', i) as number;
 				const timeUnit = this.getNodeParameter('timeUnit', i) as moment.DurationInputArg2;
