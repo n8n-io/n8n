@@ -7,12 +7,13 @@ import {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
+import { NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
 export async function rocketchatApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, resource: string, method: string, operation: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('rocketchatApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const headerWithAuthentication = Object.assign({}, headers,
@@ -35,15 +36,7 @@ export async function rocketchatApiRequest(this: IExecuteFunctions | ILoadOption
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error) {
-
-			const errorMessage = error.response.body.error;
-			// Try to return the error prettier
-			throw new Error(
-				`Rocketchat error response [${error.statusCode}]: ${errorMessage}`,
-			);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

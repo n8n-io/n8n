@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -328,7 +329,7 @@ export class HackerNews implements INodeType {
 					endpoint = 'search?';
 
 				} else {
-					throw new Error(`The operation '${operation}' is unknown!`);
+					throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
 				}
 			} else if (resource === 'article') {
 
@@ -339,7 +340,7 @@ export class HackerNews implements INodeType {
 					includeComments = additionalFields.includeComments as boolean;
 
 				} else {
-					throw new Error(`The operation '${operation}' is unknown!`);
+					throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
 				}
 
 			} else if (resource === 'user') {
@@ -348,11 +349,11 @@ export class HackerNews implements INodeType {
 					endpoint = `users/${this.getNodeParameter('username', i)}`;
 
 				} else {
-					throw new Error(`The operation '${operation}' is unknown!`);
+					throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
 				}
 
 			} else {
-				throw new Error(`The resource '${resource}' is unknown!`);
+				throw new NodeOperationError(this.getNode(), `The resource '${resource}' is unknown!`);
 			}
 
 

@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -1098,7 +1099,7 @@ export class AwsSes implements INodeType {
 					if (toAddresses.length) {
 						setParameter(params, 'Destination.ToAddresses.member', toAddresses);
 					} else {
-						throw new Error('At least one "To Address" has to be added!');
+						throw new NodeOperationError(this.getNode(), 'At least one "To Address" has to be added!');
 					}
 
 					if (additionalFields.configurationSetName) {
@@ -1151,7 +1152,7 @@ export class AwsSes implements INodeType {
 					if (toAddresses.length) {
 						setParameter(params, 'Destination.ToAddresses.member', toAddresses);
 					} else {
-						throw new Error('At least one "To Address" has to be added!');
+						throw new NodeOperationError(this.getNode(), 'At least one "To Address" has to be added!');
 					}
 
 					if (additionalFields.configurationSetName) {

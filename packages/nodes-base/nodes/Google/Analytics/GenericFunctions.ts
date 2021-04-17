@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string,
@@ -36,25 +36,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		return await this.helpers.requestOAuth2.call(this, 'googleAnalyticsOAuth2', options);
 
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error) {
-
-			let errorMessages;
-
-			if (error.response.body.error.errors) {
-				// Try to return the error prettier
-				errorMessages = error.response.body.error.errors;
-
-				errorMessages = errorMessages.map((errorItem: IDataObject) => errorItem.message);
-
-				errorMessages = errorMessages.join('|');
-
-			} else if (error.response.body.error.message) {
-				errorMessages = error.response.body.error.message;
-			}
-
-			throw new Error(`Google Analytics error response [${error.statusCode}]: ${errorMessages}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

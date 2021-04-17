@@ -1,5 +1,7 @@
 import { Workflow } from './Workflow';
 import { WorkflowHooks } from './WorkflowHooks';
+import { WorkflowOperationError } from './WorkflowErrors';
+import { NodeApiError, NodeOperationError } from './NodeErrors';
 import * as express from 'express';
 
 export type IAllExecuteFunctions = IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions | IPollFunctions | ITriggerFunctions | IWebhookFunctions;
@@ -32,11 +34,7 @@ export interface IConnection {
 	index: number;
 }
 
-export interface IExecutionError {
-	message: string;
-	node?: string;
-	stack?: string;
-}
+export type ExecutionError = WorkflowOperationError | NodeOperationError | NodeApiError;
 
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
@@ -660,7 +658,7 @@ export interface IRunExecutionData {
 		runNodeFilter?: string[];
 	};
 	resultData: {
-		error?: IExecutionError;
+		error?: ExecutionError;
 		runData: IRunData;
 		lastNodeExecuted?: string;
 	};
@@ -683,7 +681,7 @@ export interface ITaskData {
 	startTime: number;
 	executionTime: number;
 	data?: ITaskDataConnections;
-	error?: IExecutionError;
+	error?: ExecutionError;
 }
 
 
@@ -761,7 +759,14 @@ export interface IWorkflowHooksOptionalParameters {
 	sessionId?: string;
 }
 
-
 export interface IWorkflowSettings {
 	[key: string]: IDataObject | string | number | boolean | undefined;
+}
+
+export interface IRawErrorObject {
+	[key: string]: string | object | number | boolean | undefined | null | string[] | object[] | number[] | boolean[];
+}
+
+export interface IStatusCodeMessages {
+	[key: string]: string;
 }

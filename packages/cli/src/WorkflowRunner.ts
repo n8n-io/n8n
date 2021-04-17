@@ -27,12 +27,12 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
-	IExecutionError,
+	ExecutionError,
 	IRun,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
+	WorkflowOperationError,
 } from 'n8n-workflow';
 
 import * as config from '../config';
@@ -78,13 +78,13 @@ export class WorkflowRunner {
 	/**
 	 * The process did error
 	 *
-	 * @param {IExecutionError} error
+	 * @param {ExecutionError} error
 	 * @param {Date} startedAt
 	 * @param {WorkflowExecuteMode} executionMode
 	 * @param {string} executionId
 	 * @memberof WorkflowRunner
 	 */
-	processError(error: IExecutionError, startedAt: Date, executionMode: WorkflowExecuteMode, executionId: string) {
+	processError(error: ExecutionError, startedAt: Date, executionMode: WorkflowExecuteMode, executionId: string) {
 		const fullRunData: IRun = {
 			data: {
 				resultData: {
@@ -250,9 +250,7 @@ export class WorkflowRunner {
 				const fullRunData :IRun = {
 					data: {
 						resultData: {
-							error: {
-								message: 'Workflow has been canceled!',
-							} as IExecutionError,
+							error: new WorkflowOperationError('Workflow has been canceled!'),
 							runData: {},
 						},
 					},
@@ -464,14 +462,14 @@ export class WorkflowRunner {
 
 			} else if (message.type === 'processError') {
 				clearTimeout(executionTimeout);
-				const executionError = message.data.executionError as IExecutionError;
+				const executionError = message.data.executionError as ExecutionError;
 				this.processError(executionError, startedAt, data.executionMode, executionId);
 
 			} else if (message.type === 'processHook') {
 				this.processHookMessage(workflowHooks, message.data as IProcessMessageDataHook);
 			} else if (message.type === 'timeout') {
 				// Execution timed out and its process has been terminated
-				const timeoutError = { message: 'Workflow execution timed out!' } as IExecutionError;
+				const timeoutError = new WorkflowOperationError('Workflow execution timed out!');
 
 				this.processError(timeoutError, startedAt, data.executionMode, executionId);
 			} else if (message.type === 'startExecution') {
@@ -486,16 +484,12 @@ export class WorkflowRunner {
 		subprocess.on('exit', (code, signal) => {
 			if (signal === 'SIGTERM'){
 				// Execution timed out and its process has been terminated
-				const timeoutError = {
-					message: 'Workflow execution timed out!',
-				} as IExecutionError;
+				const timeoutError = new WorkflowOperationError('Workflow execution timed out!');
 
 				this.processError(timeoutError, startedAt, data.executionMode, executionId);
 			} else if (code !== 0) {
 				// Process did exit with error code, so something went wrong.
-				const executionError = {
-					message: 'Workflow execution process did crash for an unknown reason!',
-				} as IExecutionError;
+				const executionError = new WorkflowOperationError('Workflow execution process did crash for an unknown reason!');
 
 				this.processError(executionError, startedAt, data.executionMode, executionId);
 			}

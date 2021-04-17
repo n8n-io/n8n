@@ -280,7 +280,7 @@ export class BitbucketTrigger implements INodeType {
 				}
 				try {
 					await bitbucketApiRequest.call(this, 'GET', endpoint);
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;

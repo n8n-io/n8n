@@ -10,6 +10,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -406,7 +407,7 @@ export class DateTime implements INodeType {
 					continue;
 				}
 				if (options.fromFormat === undefined && !moment(currentDate as string | number).isValid()) {
-					throw new Error('The date input format could not be recognized. Please set the "From Format" field');
+					throw new NodeOperationError(this.getNode(), 'The date input format could not be recognized. Please set the "From Format" field');
 				}
 
 				if (Number.isInteger(currentDate as unknown as number)) {
