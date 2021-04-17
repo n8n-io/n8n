@@ -690,6 +690,8 @@ export class HttpRequest implements INodeType {
 			}
 			if (options.timeout !== undefined) {
 				requestOptions.timeout = options.timeout as number;
+			} else {
+				requestOptions.timeout = 3600000; // 1 hour
 			}
 
 			if (options.useQueryString === true) {
