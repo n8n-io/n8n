@@ -7,13 +7,13 @@
     "build": "lerna exec npm run build",
     "dev": "lerna exec npm run dev --parallel",
     "clean:dist": "lerna exec -- rimraf ./dist",
+    "optimize-svg": "find ./packages -name '*.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
     "start": "run-script-os",
     "start:default": "cd packages/cli/bin && ./n8n",
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "lerna run test",
     "tslint": "lerna exec npm run tslint",
-    "watch": "lerna run --parallel watch",
-    "optimize-svg": "find ./packages -name '*.svg' -print0 | xargs -0 -P16 -L20 npx svgo"
+    "watch": "lerna run --parallel watch"
   },
   "devDependencies": {
     "lerna": "^3.13.1",
