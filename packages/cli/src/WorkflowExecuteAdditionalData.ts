@@ -8,6 +8,7 @@ import {
 	IExecutionResponse,
 	IPushDataExecutionFinished,
 	IWorkflowBase,
+	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcess,
 	NodeTypes,
 	Push,
@@ -569,7 +570,7 @@ export async function getWorkflowData(workflowInfo: IExecuteWorkflowInfo): Promi
  * @param {INodeExecutionData[]} [inputData]
  * @returns {(Promise<Array<INodeExecutionData[] | null>>)}
  */
-export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[], parentExecutionId?: string, loadedWorkflowData?: IWorkflowBase, loadedRunData?: IWorkflowExecutionDataProcess): Promise<Array<INodeExecutionData[] | null> | IRun> {
+export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[], parentExecutionId?: string, loadedWorkflowData?: IWorkflowBase, loadedRunData?: IWorkflowExecutionDataProcess): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
 	const externalHooks = ExternalHooks();
 	await externalHooks.init();
 
@@ -605,10 +606,19 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	// This one already contains changes to talk to parent process
 	// and get executionID from `activeExecutions` running on main process
 	additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
+	additionalDataIntegrated.executionTimeoutTimestamp = additionalData.executionTimeoutTimestamp;
 
 
 	// Execute the workflow
 	const workflowExecute = new WorkflowExecute(additionalDataIntegrated, runData.executionMode, runExecutionData);
+	if (parentExecutionId !== undefined) {
+		// Must be changed to become typed
+		return {
+			startedAt: new Date(),
+			workflow,
+			workflowExecute,
+		};
+	}
 	const data = await workflowExecute.processRunExecutionData(workflow);
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData]);
@@ -616,14 +626,9 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	if (data.finished === true) {
 		// Workflow did finish successfully
 
-		if (parentExecutionId !== undefined) {
-			return data;
-		} else {
-			await ActiveExecutions.getInstance().remove(executionId, data);
-
-			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
-			return returnData!.data!.main;
-		}
+		await ActiveExecutions.getInstance().remove(executionId, data);
+		const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
+		return returnData!.data!.main;
 	} else {
 		await ActiveExecutions.getInstance().remove(executionId, data);
 		// Workflow did fail
@@ -644,7 +649,7 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
  * @param {INodeParameters} currentNodeParameters
  * @returns {Promise<IWorkflowExecuteAdditionalData>}
  */
-export async function getBase(credentials: IWorkflowCredentials, currentNodeParameters?: INodeParameters): Promise<IWorkflowExecuteAdditionalData> {
+export async function getBase(credentials: IWorkflowCredentials, currentNodeParameters?: INodeParameters, executionTimeoutTimestamp?: number): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
 	const timezone = config.get('generic.timezone') as string;
@@ -666,6 +671,7 @@ export async function getBase(credentials: IWorkflowCredentials, currentNodePara
 		webhookBaseUrl,
 		webhookTestBaseUrl,
 		currentNodeParameters,
+		executionTimeoutTimestamp,
 	};
 }
 
