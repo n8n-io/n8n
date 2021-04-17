@@ -748,6 +748,7 @@ export interface IWorkflowExecuteAdditionalData {
 	webhookBaseUrl: string;
 	webhookTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
+	executionTimeoutTimestamp?: number;
 }
 
 export type WorkflowExecuteMode = 'cli' | 'error' | 'integrated' | 'internal' | 'manual' | 'retry' | 'trigger' | 'webhook';
