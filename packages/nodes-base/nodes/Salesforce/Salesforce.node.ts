@@ -322,10 +322,11 @@ export class Salesforce implements INodeType {
 			},
 			// Get all the lead custom fields to display them to user so that he can
 			// select them easily
-			async getLeadCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getCustomFields(this: ILoadOptionsFunctions): Promise < INodePropertyOptions[] > {
 				const returnData: INodePropertyOptions[] = [];
+				const resource = this.getNodeParameter('resource', 0) as string;
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
-				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/lead/describe');
+				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/${resource}/describe`);
 
 				for (const field of fields) {
 					if (field.custom === true) {
