@@ -413,7 +413,7 @@ export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExe
 }
 
 export interface IWorkflowExecuteProcess {
-	startedAt: Date,
+	startedAt: Date;
 	workflow: Workflow;
 	workflowExecute: WorkflowExecute;
 }

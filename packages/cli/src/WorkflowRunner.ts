@@ -434,7 +434,7 @@ export class WorkflowRunner {
 		const processTimeoutFunction = (timeout: number) => {
 			this.activeExecutions.stopExecution(executionId, 'timeout');
 			executionTimeout = setTimeout(() => subprocess.kill(), Math.max(timeout * 0.2, 5000)); // minimum 5 seconds
-		}
+		};
 
 		if (workflowTimeout > 0) {
 			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
