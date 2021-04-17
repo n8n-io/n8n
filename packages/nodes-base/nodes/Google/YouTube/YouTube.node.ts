@@ -10,6 +10,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -414,11 +415,11 @@ export class YouTube implements INodeType {
 					const item = items[i];
 
 					if (item.binary === undefined) {
-						throw new Error('No binary data exists on item!');
+						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 					}
 
 					if (item.binary[binaryProperty] === undefined) {
-						throw new Error(`No binary data property "${binaryProperty}" does not exists on item!`);
+						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
 					}
 
 					if (item.binary[binaryProperty].mimeType) {
@@ -827,7 +828,7 @@ export class YouTube implements INodeType {
 					}
 
 					if (qs.relatedToVideoId && qs.forDeveloper !== undefined) {
-						throw new Error(`When using the parameter 'related to video' the parameter 'for developer' cannot be set`);
+						throw new NodeOperationError(this.getNode(), `When using the parameter 'related to video' the parameter 'for developer' cannot be set`);
 					}
 
 					if (returnAll) {
@@ -901,11 +902,11 @@ export class YouTube implements INodeType {
 					const item = items[i];
 
 					if (item.binary === undefined) {
-						throw new Error('No binary data exists on item!');
+						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 					}
 
 					if (item.binary[binaryProperty] === undefined) {
-						throw new Error(`No binary data property "${binaryProperty}" does not exists on item!`);
+						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
 					}
 
 					if (item.binary[binaryProperty].mimeType) {

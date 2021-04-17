@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { createTransport } from 'nodemailer';
@@ -148,7 +149,7 @@ export class EmailSend implements INodeType {
 			const credentials = this.getCredentials('smtp');
 
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			const connectionOptions: SMTPTransport.Options = {

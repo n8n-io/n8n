@@ -9,13 +9,13 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('wordpressApi');
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	let options: OptionsWithUri = {
@@ -40,12 +40,7 @@ export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSing
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		let errorMessage = error.message;
-		if (error.response && error.response.body) {
-			errorMessage = error.response.body.message || error.response.body.Message || error.message;
-		}
-
-		throw new Error('Wordpress Error: ' + errorMessage);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

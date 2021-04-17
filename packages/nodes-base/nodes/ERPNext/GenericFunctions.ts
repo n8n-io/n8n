@@ -10,7 +10,9 @@ import {
 import {
 	IDataObject,
 	IHookFunctions,
-	IWebhookFunctions
+	IWebhookFunctions,
+	NodeApiError,
+	NodeOperationError
 } from 'n8n-workflow';
 
 export async function erpNextApiRequest(
@@ -26,7 +28,7 @@ export async function erpNextApiRequest(
 	const credentials = this.getCredentials('erpNextApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	let options: OptionsWithUri = {
@@ -56,27 +58,15 @@ export async function erpNextApiRequest(
 	} catch (error) {
 
 		if (error.statusCode === 403) {
-			throw new Error(
-				`ERPNext error response [${error.statusCode}]: DocType unavailable.`,
-			);
+			throw new NodeApiError(this.getNode(), { message: `DocType unavailable.` });
 		}
 
 		if (error.statusCode === 307) {
-			throw new Error(
-				`ERPNext error response [${error.statusCode}]: Please ensure the subdomain is correct.`,
-			);
+			throw new NodeApiError(this.getNode(), { message:`Please ensure the subdomain is correct.` });
 		}
 
-		let errorMessages;
-		if (error?.response?.body?._server_messages) {
-			const errors = JSON.parse(error.response.body._server_messages);
-			errorMessages = errors.map((e: string) => JSON.parse(e).message);
-			throw new Error(
-				`ARPNext error response [${error.statusCode}]: ${errorMessages.join('|')}`,
-			);
-		}
+		throw new NodeApiError(this.getNode(), error);
 
-		throw error;
 	}
 }
 

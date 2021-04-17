@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -22,7 +22,7 @@ import * as querystring from 'querystring';
 export async function travisciApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('travisCiApi');
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 	let options: OptionsWithUri = {
 		headers: {
@@ -43,14 +43,8 @@ export async function travisciApiRequest(this: IHookFunctions | IExecuteFunction
 	}
 	try {
 		return await this.helpers.request!(options);
-	} catch (err) {
-		if (err.response && err.response.body && err.response.body.error_message) {
-			// Try to return the error prettier
-			throw new Error(`TravisCI error response [${err.statusCode}]: ${err.response.body.error_message}`);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw err;
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

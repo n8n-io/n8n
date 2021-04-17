@@ -6,7 +6,7 @@ import {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
 
 export async function acuitySchedulingApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
@@ -27,7 +27,7 @@ export async function acuitySchedulingApiRequest(this: IHookFunctions | IExecute
 		if (authenticationMethod === 'apiKey') {
 			const credentials = this.getCredentials('acuitySchedulingApi');
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			options.auth = {
@@ -42,6 +42,6 @@ export async function acuitySchedulingApiRequest(this: IHookFunctions | IExecute
 			return await this.helpers.requestOAuth2!.call(this, 'acuitySchedulingOAuth2Api', options, true);
 		}
 	} catch (error) {
-		throw new Error('Acuity Scheduling Error: ' + error.message);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
