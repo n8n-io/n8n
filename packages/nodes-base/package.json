@@ -611,7 +611,7 @@
     "lodash.unset": "^4.5.2",
     "lossless-json": "^1.0.4",
     "mailparser": "^3.2.0",
-    "moment": "2.28.0",
+    "moment": "2.29.1",
     "moment-timezone": "^0.5.28",
     "mongodb": "3.6.3",
     "mqtt": "4.2.1",
