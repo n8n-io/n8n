@@ -62,7 +62,7 @@ export class RabbitMQ implements ICredentialType {
 					],
 				},
 			},
-			default: false,
+			default: true,
 			description: 'Passwordless connection with certificates (SASL mechanism EXTERNAL)',
 		},
 		{
