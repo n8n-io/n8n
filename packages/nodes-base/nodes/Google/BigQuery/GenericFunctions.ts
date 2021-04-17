@@ -30,7 +30,6 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		console.log(options);
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'googleBigQueryOAuth2Api', options);
 	} catch (error) {
