@@ -250,7 +250,7 @@ export class DateTime implements INodeType {
 						description: 'Subtract time from Date Value',
 					},
 				],
-				default: '',
+				default: 'add',
 				required: true,
 			},
 			{
@@ -321,7 +321,7 @@ export class DateTime implements INodeType {
 						value: 'milliseconds',
 					},
 				],
-				default: '',
+				default: 'days',
 				required: true,
 			},
 			{
