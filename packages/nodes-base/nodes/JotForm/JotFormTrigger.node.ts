@@ -123,7 +123,7 @@ export class JotFormTrigger implements INodeType {
 
 					const webhookIds = Object.keys(responseData.content);
 					webhookData.webhookId = webhookIds[webhookUrls.indexOf(webhookUrl)];
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;

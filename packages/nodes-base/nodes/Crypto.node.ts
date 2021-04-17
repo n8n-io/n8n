@@ -9,12 +9,12 @@ import {
 } from 'n8n-workflow';
 
 import {
+	BinaryToTextEncoding,
 	createHash,
 	createHmac,
 	createSign,
 	getHashes,
-	HexBase64Latin1Encoding,
- } from 'crypto';
+} from 'crypto';
 
 export class Crypto implements INodeType {
 	description: INodeTypeDescription = {
@@ -60,7 +60,7 @@ export class Crypto implements INodeType {
 				name: 'type',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hash',
 						],
 					},
@@ -93,7 +93,7 @@ export class Crypto implements INodeType {
 				name: 'value',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hash',
 						],
 					},
@@ -123,7 +123,7 @@ export class Crypto implements INodeType {
 				name: 'encoding',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hash',
 						],
 					},
@@ -147,7 +147,7 @@ export class Crypto implements INodeType {
 				name: 'type',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hmac',
 						],
 					},
@@ -180,7 +180,7 @@ export class Crypto implements INodeType {
 				name: 'value',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hmac',
 						],
 					},
@@ -210,7 +210,7 @@ export class Crypto implements INodeType {
 				name: 'secret',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hmac',
 						],
 					},
@@ -224,7 +224,7 @@ export class Crypto implements INodeType {
 				name: 'encoding',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'hmac',
 						],
 					},
@@ -248,7 +248,7 @@ export class Crypto implements INodeType {
 				name: 'value',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'sign',
 						],
 					},
@@ -278,7 +278,7 @@ export class Crypto implements INodeType {
 				name: 'algorithm',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'sign',
 						],
 					},
@@ -295,7 +295,7 @@ export class Crypto implements INodeType {
 				name: 'encoding',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'sign',
 						],
 					},
@@ -319,7 +319,7 @@ export class Crypto implements INodeType {
 				name: 'privateKey',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'sign',
 						],
 					},
@@ -371,18 +371,18 @@ export class Crypto implements INodeType {
 
 			if (action === 'hash') {
 				const type = this.getNodeParameter('type', i) as string;
-				const encoding = this.getNodeParameter('encoding', i) as HexBase64Latin1Encoding;
+				const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
 				newValue = createHash(type).update(value).digest(encoding);
 			}
 			if (action === 'hmac') {
 				const type = this.getNodeParameter('type', i) as string;
 				const secret = this.getNodeParameter('secret', i) as string;
-				const encoding = this.getNodeParameter('encoding', i) as HexBase64Latin1Encoding;
+				const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
 				newValue = createHmac(type, secret).update(value).digest(encoding);
 			}
 			if (action === 'sign') {
 				const algorithm = this.getNodeParameter('algorithm', i) as string;
-				const encoding = this.getNodeParameter('encoding', i) as HexBase64Latin1Encoding;
+				const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
 				const privateKey = this.getNodeParameter('privateKey', i) as string;
 				const sign = createSign(algorithm);
 				sign.write(value as string);

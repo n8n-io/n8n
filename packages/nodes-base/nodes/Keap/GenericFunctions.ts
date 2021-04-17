@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject
+	IDataObject, NodeApiError
 } from 'n8n-workflow';
 
 import {
@@ -39,11 +39,7 @@ export async function keapApiRequest(this: IWebhookFunctions | IHookFunctions | 
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'keapOAuth2Api', options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			throw new Error(`Infusionsoft error response [${error.statusCode}]: ${error.response.body.message}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

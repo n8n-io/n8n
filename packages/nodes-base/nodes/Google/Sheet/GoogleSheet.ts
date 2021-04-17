@@ -1,5 +1,5 @@
 import {
-	IDataObject,
+	IDataObject, NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -283,7 +283,7 @@ export class GoogleSheet {
 		const rangeEndSplit = rangeEnd.match(/([a-zA-Z]{1,10})([0-9]{0,10})/);
 
 		if (rangeStartSplit === null || rangeStartSplit.length !== 3 || rangeEndSplit === null || rangeEndSplit.length !== 3) {
-			throw new Error(`The range "${range}" is not valid.`);
+			throw new NodeOperationError(this.executeFunctions.getNode(), `The range "${range}" is not valid.`);
 		}
 
 		const keyRowRange = `${sheet ? sheet + '!' : ''}${rangeStartSplit[1]}${dataStartRowIndex}:${rangeEndSplit[1]}${dataStartRowIndex}`;
@@ -291,7 +291,7 @@ export class GoogleSheet {
 		const sheetDatakeyRow = await this.getData(this.encodeRange(keyRowRange), valueRenderMode);
 
 		if (sheetDatakeyRow === undefined) {
-			throw new Error('Could not retrieve the key row!');
+			throw new NodeOperationError(this.executeFunctions.getNode(), 'Could not retrieve the key row!');
 		}
 
 		const keyColumnOrder = sheetDatakeyRow[0];
@@ -299,7 +299,7 @@ export class GoogleSheet {
 		const keyIndex = keyColumnOrder.indexOf(indexKey);
 
 		if (keyIndex === -1) {
-			throw new Error(`Could not find column for key "${indexKey}"!`);
+			throw new NodeOperationError(this.executeFunctions.getNode(), `Could not find column for key "${indexKey}"!`);
 		}
 
 		const startRowIndex = rangeStartSplit[2] || '';
@@ -311,7 +311,7 @@ export class GoogleSheet {
 		const sheetDataKeyColumn = await this.getData(this.encodeRange(keyColumnRange), valueRenderMode);
 
 		if (sheetDataKeyColumn === undefined) {
-			throw new Error('Could not retrieve the key column!');
+			throw new NodeOperationError(this.executeFunctions.getNode(), 'Could not retrieve the key column!');
 		}
 
 		// TODO: The data till here can be cached optionally. Maybe add an option which can
@@ -397,7 +397,7 @@ export class GoogleSheet {
 
 		if (keyRowIndex < 0 || dataStartRowIndex < keyRowIndex || keyRowIndex >= inputData.length) {
 			// The key row does not exist so it is not possible to look up the data
-			throw new Error(`The key row does not exist!`);
+			throw new NodeOperationError(this.executeFunctions.getNode(), `The key row does not exist!`);
 		}
 
 		// Create the keys array
@@ -417,7 +417,7 @@ export class GoogleSheet {
 			returnColumnIndex = keys.indexOf(lookupValue.lookupColumn);
 
 			if (returnColumnIndex === -1) {
-				throw new Error(`The column "${lookupValue.lookupColumn}" could not be found!`);
+				throw new NodeOperationError(this.executeFunctions.getNode(), `The column "${lookupValue.lookupColumn}" could not be found!`);
 			}
 
 			// Loop over all the items and find the one with the matching value
@@ -460,7 +460,7 @@ export class GoogleSheet {
 		const keyColumnData = await this.getData(getRange, 'UNFORMATTED_VALUE');
 
 		if (keyColumnData === undefined) {
-			throw new Error('Could not retrieve the column data!');
+			throw new NodeOperationError(this.executeFunctions.getNode(), 'Could not retrieve the column data!');
 		}
 
 		const keyColumnOrder = keyColumnData[0];
