@@ -1,18 +1,13 @@
-import {
-	IExecuteFunctions, IHookFunctions, IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions, } from 'n8n-core';
 
+import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData, } from 'n8n-workflow';
 import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription, IWebhookResponseData,
-} from 'n8n-workflow';
-
-import {
-	OptionsWithUri,
-} from 'request';
-import { apiRequest, getForms } from './GenericFunctions';
+	apiRequest,
+	FormstackFieldFormat, getFields,
+	getForms,
+	getSubmission,
+	IFormstackWebhookResponseBody
+} from './GenericFunctions';
 
 export class FormstackTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -90,6 +85,27 @@ export class FormstackTrigger implements INodeType {
 				default: '',
 				required: true,
 				description: 'Form which should trigger workflow on submission.',
+			},
+			{
+				displayName: 'Field Format',
+				name: 'fieldFormat',
+				type: 'options',
+				options: [
+					{
+						name: 'ID',
+						value: FormstackFieldFormat.ID,
+					},
+					{
+						name: 'Label',
+						value: FormstackFieldFormat.Label,
+					},
+					{
+						name: 'Name',
+						value: FormstackFieldFormat.Name,
+					},
+				],
+				default: 'id',
+				description: 'Whether to use the ID, Name or Label as the field key / column header.',
 			},
 		],
 	};
@@ -169,7 +185,28 @@ export class FormstackTrigger implements INodeType {
 
 	// @ts-ignore
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const bodyData = this.getBodyData();
-		console.log({bodyData});
+		const bodyData = (this.getBodyData() as unknown) as IFormstackWebhookResponseBody;
+		const fieldFormat = this.getNodeParameter('fieldFormat') as FormstackFieldFormat;
+
+		const submission = await getSubmission.call(this, bodyData.UniqueID);
+
+		const data: IDataObject = {};
+
+		if (fieldFormat === FormstackFieldFormat.ID) {
+			submission.forEach(formField => {
+				data[formField.field] = formField.value;
+			});
+		} else {
+			const fields = await getFields.call(this, bodyData.FormID);
+			submission.forEach(formField => {
+				data[fields[formField.field][fieldFormat]] = formField.value;
+			});
+		}
+
+		return {
+			workflowData: [
+				this.helpers.returnJsonArray([data]),
+			],
+		};
 	}
 }
