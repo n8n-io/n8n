@@ -57,7 +57,7 @@ import {
 import {
 	companyFields,
 	companyOperations,
- } from './CompanyDescription';
+} from './CompanyDescription';
 
 import {
 	IAddress,
@@ -78,9 +78,9 @@ import {
 } from './ContactNoteInterface';
 
 import {
-	 IEcommerceOrder,
-	 IItem,
-	 IShippingAddress,
+	IEcommerceOrder,
+	IItem,
+	IShippingAddress,
 } from './EcommerceOrderInterface';
 
 import {
@@ -310,9 +310,9 @@ export class Keap implements INodeType {
 					keysToSnakeCase(additionalFields);
 					Object.assign(body, additionalFields);
 					if (addresses) {
-						body.address = keysToSnakeCase(addresses)[0] ;
-					 }
-					 if (faxes) {
+						body.address = keysToSnakeCase(addresses)[0];
+					}
+					if (faxes) {
 						body.fax_number = faxes[0];
 					}
 					if (phones) {
@@ -407,13 +407,16 @@ export class Keap implements INodeType {
 					if (additionalFields.companyId) {
 						body.company = { id: additionalFields.companyId as number };
 					}
+					if (additionalFields.optInReason) {
+						body.opt_in_reason = additionalFields.optInReason as string;
+					}
 					if (addresses) {
 						body.addresses = keysToSnakeCase(addresses) as IAddress[];
-					 }
-					 if (emails) {
-						 body.email_addresses = emails as IEmailContact[];
-					 }
-					 if (faxes) {
+					}
+					if (emails) {
+						body.email_addresses = emails as IEmailContact[];
+					}
+					if (faxes) {
 						body.fax_numbers = faxes as IFax[];
 					}
 					if (socialAccounts) {
@@ -706,7 +709,7 @@ export class Keap implements INodeType {
 							attachments = attachmentsUi.attachmentsValues as IAttachment[];
 						}
 						if (attachmentsUi.attachmentsBinary
-						&& (attachmentsUi.attachmentsBinary as IDataObject).length) {
+							&& (attachmentsUi.attachmentsBinary as IDataObject).length) {
 
 							if (items[i].binary === undefined) {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
