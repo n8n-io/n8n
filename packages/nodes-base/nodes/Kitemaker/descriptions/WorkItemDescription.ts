@@ -168,6 +168,7 @@ export const workItemFields = [
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 					multipleValues: true,
+					multipleValueButtonText: 'Add User',
 				},
 				default: [],
 				description: 'ID of the user to assign to the item to create.',
