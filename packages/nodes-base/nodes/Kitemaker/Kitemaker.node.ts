@@ -229,9 +229,13 @@ export class Kitemaker implements INodeType {
 					// ----------------------------------
 
 					const input = {
-						title: this.getNodeParameter('title', i),
-						statusId: this.getNodeParameter('statusId', i),
+						title: this.getNodeParameter('title', i) as string,
+						statusId: this.getNodeParameter('statusId', i) as string[],
 					};
+
+					if (!input.statusId.length) {
+						throw new Error('Please enter a status to set for the work item to create.');
+					}
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
