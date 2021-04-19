@@ -566,6 +566,14 @@ export class Xero implements INodeType {
 					}
 
 				}
+				if (operation === 'find') {
+					const organizationId = this.getNodeParameter('organizationId', i) as string;
+					const lookupField = this.getNodeParameter('contactLookupField', i) as string;
+					const lookupValue = this.getNodeParameter('contactLookupValue', i) as string;
+					const where = `${lookupField}="${lookupValue}"`;
+					responseData = await xeroApiRequest.call(this, 'GET', `/Contacts`, { organizationId }, { where });
+					responseData = responseData.Contacts;
+				}
 				if (operation === 'update') {
 					const organizationId = this.getNodeParameter('organizationId', i) as string;
 					const contactId = this.getNodeParameter('contactId', i) as string;

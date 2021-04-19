@@ -31,6 +31,11 @@ export const contactOperations = [
 				description: 'Get all contacts',
 			},
 			{
+				name: 'Find',
+				value: 'find',
+				description: 'Find contacts based on query.',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a contact',
@@ -392,6 +397,76 @@ export const contactFields = [
 			},
 		},
 		required: true,
+	},
+/* -------------------------------------------------------------------------- */
+/*                                 contact:find                                */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Organization ID',
+		name: 'organizationId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTenants',
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'find',
+				],
+			},
+		},
+		required: true,
+	},
+	{
+		displayName: 'Lookup Field',
+		name: 'contactLookupField',
+		type: 'options',
+		default: 'EmailAddress',
+		options: [
+			{
+				name: 'Name',
+				value: 'Name',
+			},
+			{
+				name: 'Email Address',
+				value: 'EmailAddress',
+			},
+			{
+				name: 'Account Number',
+				value: 'AccountNumber',
+			},
+		],
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'find',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Lookup Value',
+		name: 'contactLookupValue',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'find',
+				],
+			},
+		},
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   contact:getAll                           */
