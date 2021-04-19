@@ -47,7 +47,7 @@ export class N8nTrigger implements INodeType {
 		const activationMode = this.getActivationMode();
 
 		if (events.includes(activationMode)) {
-			let event;
+			let event: eventType;
 			if (activationMode === 'init') {
 				event = 'Instance started';
 			}
@@ -68,3 +68,5 @@ export class N8nTrigger implements INodeType {
 		};
 	}
 }
+
+type eventType = 'Instance started' | undefined;

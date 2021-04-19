@@ -47,12 +47,12 @@ export class WorkflowTrigger implements INodeType {
 
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const events = this.getNodeParameter('events', []) as string[];
+		const events = this.getNodeParameter('events', []) as activationType[];
 
-		const activationMode = this.getActivationMode();
+		const activationMode = this.getActivationMode() as activationType;
 
 		if (events.includes(activationMode)) {
-			let event;
+			let event: eventType;
 			if (activationMode === 'activate') {
 				event = 'Workflow activated';
 			}
@@ -76,3 +76,6 @@ export class WorkflowTrigger implements INodeType {
 		};
 	}
 }
+
+type eventType = 'Workflow activated' | 'Workflow updated' | undefined;
+type activationType = 'activate' | 'update';

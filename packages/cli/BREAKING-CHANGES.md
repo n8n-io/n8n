@@ -2,6 +2,23 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.117.0
+
+### What changed?
+Removed the "Activation triger" node. This node was replaced by two other nodes.
+
+The "Activation trigger" node was added on version 0.113.0 but was not fully compliant to UX, so we decided to refactor and change it ASAP so it affects the least possible users.
+
+The new nodes are "n8n trigger" and "Workflow trigger". Behavior-wise, the nodes do the same, we just split the functionality to make it more intuitive to users.
+
+### When is action necessary?
+
+If you use the "Activation trigger" in any of your workflows, please replace it by the new nodes.
+
+### How to upgrade:
+
+Simply remove the previous node and add the new ones according to your workflows.
+
 ## 0.113.0
 
 ### What changed?
