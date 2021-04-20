@@ -73,6 +73,7 @@ export default mixins(externalHooks).extend({
 				return (textA < textB) ? -1 : (textA > textB) ? 1 : 0;
 			});
 
+			this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', { nodeFilter: this.nodeFilter, result: returnData, selectedType: this.selectedType });
 			return returnData;
 		},
 	},
@@ -80,7 +81,7 @@ export default mixins(externalHooks).extend({
 		nodeFilter (newVal, oldVal) {
 			// Reset the index whenver the filter-value changes
 			this.activeNodeTypeIndex = 0;
-			this.$externalHooks().run('nodeCreateList.nodeFilterChanged', { oldVal, newVal });
+			this.$externalHooks().run('nodeCreateList.nodeFilterChanged', { oldVal, newVal, selectedType: this.selectedType });
 		},
 		selectedType (newVal, oldVal) {
 			this.$externalHooks().run('nodeCreateList.selectedTypeChanged', { oldVal, newVal });
