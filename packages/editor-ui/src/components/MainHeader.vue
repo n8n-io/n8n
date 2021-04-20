@@ -4,10 +4,10 @@
 			<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
 			<div class="top-menu">
-				<div class="center-item">
-					<span v-if="isExecutionPage">
+				<div class="center-item" v-if="isExecutionPage">
+					<span>
 						Execution Id:
-						<span v-if="isExecutionPage" class="execution-name">
+						<span class="execution-name">
 							<strong>{{executionId}}</strong>&nbsp;
 							<font-awesome-icon icon="check" class="execution-icon success" v-if="executionFinished" title="Execution was successful" />
 							<font-awesome-icon icon="times" class="execution-icon error" v-else title="Execution did fail" />
@@ -18,16 +18,28 @@
 						</span>
 						workflow
 					</span>
-					<span index="workflow-name" class="current-workflow" v-if="!isReadOnly">
-						<span v-if="currentWorkflow">Workflow: <span class="workflow-name">{{workflowName}}<span v-if="isDirty">*</span></span></span>
-						<span v-else class="workflow-not-saved">Workflow was not saved!</span>
+				</div>
+				<div class="workflow-details" v-else>
+					<span index="workflow-name" class="current-workflow">
+						<div>
+							<div>
+								WORKFLOW
+							</div>
+							<div class="workflow-name">
+								<span v-if="currentWorkflow" ><font-awesome-icon icon="edit" />&nbsp;&nbsp;{{workflowName}}<span v-if="isDirty">*</span></span>
+								<span v-else><font-awesome-icon icon="edit" />&nbsp;&nbsp;Unsaved workflow</span>
+							</div>
+						</div>
 					</span>
+
+					<div class="divider" v-if="currentWorkflowTags.length > 0"></div>
+
+					<TagContainer :tags="currentWorkflowTags" />
 
 					<span class="saving-workflow" v-if="isWorkflowSaving">
 						<font-awesome-icon icon="spinner" spin />
 						Saving...
 					</span>
-
 				</div>
 
 				<div class="push-connection-lost" v-if="!isPushConnectionActive">
@@ -90,6 +102,11 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { saveAs } from 'file-saver';
 
 import mixins from 'vue-typed-mixins';
+import TagContainer from './TagContainer.vue';
+import { mapGetters } from 'vuex';
+
+const WORKFLOW_NAME_LIMIT = 25;
+const WORKFLOW_NAME_END_COUNT_TO_KEEP = 4;
 
 export default mixins(
 	genericHelpers,
@@ -103,8 +120,12 @@ export default mixins(
 		name: 'MainHeader',
 		components: {
 			WorkflowActivator,
+			TagContainer,
 		},
 		computed: {
+			...mapGetters('tags', [
+				'currentWorkflowTags'
+			]),
 			executionId (): string | undefined {
 				return this.$route.params.id;
 			},
@@ -149,7 +170,16 @@ export default mixins(
 				return this.$store.getters.getWorkflowExecution;
 			},
 			workflowName (): string {
-				return this.$store.getters.workflowName;
+				const name = this.$store.getters.workflowName;
+
+				if (name.length <= WORKFLOW_NAME_LIMIT) {
+					return name;
+				}
+
+				const first = name.slice(0, WORKFLOW_NAME_LIMIT - WORKFLOW_NAME_END_COUNT_TO_KEEP);
+				const last = name.slice(name.length - WORKFLOW_NAME_END_COUNT_TO_KEEP, name.length);
+
+				return `${first}...${last}`
 			},
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
@@ -206,26 +236,18 @@ export default mixins(
 }
 
 .top-menu {
+	display: flex;
+	align-items: center;
 	position: relative;
 	font-size: 0.9em;
 	width: 100%;
+	height: 65px; // same as logo in sidebar
 	font-weight: 400;
 
 	.center-item {
 		margin: 0 auto;
 		text-align: center;
 		line-height: 65px;
-
-		.saving-workflow {
-			display: inline-block;
-			margin-left: 2em;
-			padding: 0 15px;
-			color: $--color-primary;
-			background-color: $--color-primary-light;
-			line-height: 30px;
-			height: 30px;
-			border-radius: 15px;
-		}
 	}
 
 	.read-only {
@@ -262,27 +284,41 @@ export default mixins(
 </style>
 
 <style scoped lang="scss">
+* {
+	box-sizing: border-box;
+}
+
+.workflow-details {
+	display: flex;
+	align-items: center;
+	margin-left: 80px; // logo width + 16px margin
+
+	> * {
+		margin-right: 16px;
+	}
+
+	.divider {
+		border-right: 1px solid #D8DCE6;
+		min-height: 40px;
+	}
+
+	.saving-workflow {
+		display: inline-block;
+		padding: 0 15px;
+		color: $--color-primary;
+		background-color: $--color-primary-light;
+		line-height: 30px;
+		height: 30px;
+		border-radius: 15px;
+	}
+}
 
 .current-execution,
 .current-workflow {
 	vertical-align: top;
 }
 
-.execution-icon.error,
-.workflow-not-saved {
-	color: #FF2244;
-}
-
 .execution-icon.success {
 	color: #22FF44;
 }
-
-.menu-separator-bottom {
-	border-bottom: 1px solid #707070;
-}
-
-.menu-separator-top {
-	border-top: 1px solid #707070;
-}
-
 </style>

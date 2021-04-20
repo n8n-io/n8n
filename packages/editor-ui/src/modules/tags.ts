@@ -60,8 +60,8 @@ const module: Module<ITagsState, IRootState> = {
 		allTags: (state: ITagsState): ITag[] => {
 			return state.tags;
 		},
-		tags: (state: ITagsState, filter = ''): ITag[] => {
-			return state.tags.filter((tag) => tag.name.toLowerCase().includes(filter.toLowerCase()));
+		tags: (state: ITagsState, filter): ITag[] => {
+			return state.tags.filter((tag) => tag.name.toLowerCase().includes((filter || '').toLowerCase()));
 		},
 		loading: (state: ITagsState): boolean => {
 			return state.isLoading;
@@ -69,8 +69,13 @@ const module: Module<ITagsState, IRootState> = {
 		hasTags: (state: ITagsState): boolean => {
 			return state.tags.length > 0;
 		},
-		currentWorkflowTags: (state: ITagsState, getters: GetterTree<ITagsState, IRootState>, rootState: IRootState): string[] => {
+		currentWorkflowTagIds: (state: ITagsState, getters: GetterTree<ITagsState, IRootState>, rootState: IRootState): string[] => {
 			return (rootState.workflow.tags || []) as string[];
+		},
+		currentWorkflowTags: (state: ITagsState, getters: GetterTree<ITagsState, IRootState>, rootState: IRootState): ITag[] => {
+			const tagIds = (rootState.workflow.tags || []) as string[];
+
+			return tagIds.map((tagId) => state.tags.find((tag: ITag) => tag.id === tagId)) as ITag[];
 		},
 	},
 	actions: {
