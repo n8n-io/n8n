@@ -22,7 +22,7 @@ export class TypeformTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Typeform Trigger',
 		name: 'typeformTrigger',
-		icon: 'file:typeform.png',
+		icon: 'file:typeform.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '=Form ID: {{$parameter["formId"]}}',
@@ -133,10 +133,10 @@ export class TypeformTrigger implements INodeType {
 
 				for (const item of items) {
 					if (item.form_id === formId
-					 && item.url === webhookUrl) {
+						&& item.url === webhookUrl) {
 						webhookData.webhookId = item.tag;
 						return true;
-					 }
+					}
 				}
 
 				return false;

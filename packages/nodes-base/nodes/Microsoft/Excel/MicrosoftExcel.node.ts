@@ -36,7 +36,7 @@ export class MicrosoftExcel implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft Excel',
 		name: 'microsoftExcel',
-		icon: 'file:excel.png',
+		icon: 'file:excel.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

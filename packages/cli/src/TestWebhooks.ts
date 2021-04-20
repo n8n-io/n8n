@@ -17,6 +17,7 @@ import {
 	IWorkflowExecuteAdditionalData,
 	WebhookHttpMethod,
 	Workflow,
+	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -54,6 +55,14 @@ export class TestWebhooks {
 	 * @memberof TestWebhooks
 	 */
 	async callTestWebhook(httpMethod: WebhookHttpMethod, path: string, request: express.Request, response: express.Response): Promise<IResponseCallbackData> {
+		// Reset request parameters
+		request.params = {};
+
+		// Remove trailing slash
+		if (path.endsWith('/')) {
+			path = path.slice(0, -1);
+		}
+
 		let webhookData: IWebhookData | undefined = this.activeWebhooks!.get(httpMethod, path);
 
 		// check if path is dynamic
@@ -65,6 +74,7 @@ export class TestWebhooks {
 				// The requested webhook is not registered
 				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 			}
+
 			path = webhookData.path;
 			// extracting params from path
 			path.split('/').forEach((ele, index) => {
@@ -152,7 +162,7 @@ export class TestWebhooks {
 	 * @returns {(Promise<IExecutionDb | undefined>)}
 	 * @memberof TestWebhooks
 	 */
-	async needsWebhookData(workflowData: IWorkflowDb, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, sessionId?: string, destinationNode?: string): Promise<boolean> {
+	async needsWebhookData(workflowData: IWorkflowDb, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode, sessionId?: string, destinationNode?: string): Promise<boolean> {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, destinationNode);
 
 		if (webhooks.length === 0) {
@@ -184,7 +194,7 @@ export class TestWebhooks {
 			};
 
 			try {
-				await this.activeWebhooks!.add(workflow, webhookData, mode);
+				await this.activeWebhooks!.add(workflow, webhookData, mode, activation);
 			} catch (error) {
 				activatedKey.forEach(deleteKey => delete this.testWebhookData[deleteKey] );
 				await this.activeWebhooks!.removeWorkflow(workflow);

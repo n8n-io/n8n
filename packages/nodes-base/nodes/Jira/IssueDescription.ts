@@ -1,4 +1,4 @@
-import { 
+import {
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -16,14 +16,19 @@ export const issueOperations = [
 		},
 		options: [
 			{
+				name: 'Changelog',
+				value: 'changelog',
+				description: 'Get issue changelog',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new issue',
 			},
 			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update an issue',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete an issue',
 			},
 			{
 				name: 'Get',
@@ -36,11 +41,6 @@ export const issueOperations = [
 				description: 'Get all issues',
 			},
 			{
-				name: 'Changelog',
-				value: 'changelog',
-				description: 'Get issue changelog',
-			},
-			{
 				name: 'Notify',
 				value: 'notify',
 				description: 'Create an email notification for an issue and add it to the mail queue',
@@ -51,9 +51,9 @@ export const issueOperations = [
 				description: `Return either all transitions or a transition that can be performed by the user on an issue, based on the issue's status`,
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete an issue',
+				name: 'Update',
+				value: 'update',
+				description: 'Update an issue',
 			},
 		],
 		default: 'create',
@@ -63,9 +63,9 @@ export const issueOperations = [
 
 export const issueFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                issue:create                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                issue:create                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Project',
 		name: 'project',
@@ -155,7 +155,6 @@ export const issueFields = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				required : false,
 				description: 'Assignee',
 			},
 			{
@@ -163,8 +162,45 @@ export const issueFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				required : false,
 				description: 'Description',
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: '',
+				placeholder: 'Add Custom Field',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getCustomFields',
+									loadOptionsDependsOn: [
+										'project',
+									],
+								},
+								description: 'ID of the field to set.',
+								default: '',
+							},
+							{
+								displayName: 'Field Value',
+								name: 'fieldValue',
+								type: 'string',
+								description: 'Value of the field to set.',
+								default: '',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Labels',
@@ -174,9 +210,8 @@ export const issueFields = [
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				required : false,
 				description: 'Labels',
-					displayOptions: {
+				displayOptions: {
 					show: {
 						'/jiraVersion': [
 							'cloud',
@@ -189,9 +224,8 @@ export const issueFields = [
 				name: 'serverLabels',
 				type: 'string',
 				default: [],
-				required : false,
 				description: 'Labels',
-					displayOptions: {
+				displayOptions: {
 					show: {
 						'/jiraVersion': [
 							'server',
@@ -206,7 +240,6 @@ export const issueFields = [
 				displayName: 'Parent Issue Key',
 				name: 'parentIssueKey',
 				type: 'string',
-				required: false,
 				default: '',
 				description: 'Parent Issue Key',
 			},
@@ -218,24 +251,32 @@ export const issueFields = [
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
-				required : false,
 				description: 'Priority',
+			},
+			{
+				displayName: 'Reporter',
+				name: 'reporter',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				default: '',
+				description: 'Reporter',
 			},
 			{
 				displayName: 'Update History',
 				name: 'updateHistory',
 				type: 'boolean',
 				default: false,
-				required : false,
 				description: `Whether the project in which the issue is created is added to the user's<br/>
 				Recently viewed project list, as shown under Projects in Jira.`,
 			},
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                issue:update                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                issue:update                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue Key',
 		name: 'issueKey',
@@ -279,7 +320,6 @@ export const issueFields = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				required : false,
 				description: 'Assignee',
 			},
 			{
@@ -287,17 +327,50 @@ export const issueFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				required : false,
 				description: 'Description',
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: '',
+				placeholder: 'Add Custom Field',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getCustomFields',
+									loadOptionsDependsOn: [
+										'issueKey',
+									],
+								},
+								description: 'ID of the field to set.',
+								default: '',
+							},
+							{
+								displayName: 'Field Value',
+								name: 'fieldValue',
+								type: 'string',
+								description: 'Value of the field to set.',
+								default: '',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Issue Type',
 				name: 'issueType',
-				type: 'options',
-				required: false,
-				typeOptions: {
-					loadOptionsMethod: 'getIssueTypes',
-				},
+				type: 'string',
 				default: '',
 				description: 'Issue Types',
 			},
@@ -309,9 +382,8 @@ export const issueFields = [
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				required : false,
 				description: 'Labels',
-					displayOptions: {
+				displayOptions: {
 					show: {
 						'/jiraVersion': [
 							'cloud',
@@ -324,9 +396,8 @@ export const issueFields = [
 				name: 'serverLabels',
 				type: 'string',
 				default: [],
-				required : false,
 				description: 'Labels',
-					displayOptions: {
+				displayOptions: {
 					show: {
 						'/jiraVersion': [
 							'server',
@@ -341,7 +412,6 @@ export const issueFields = [
 				displayName: 'Parent Issue Key',
 				name: 'parentIssueKey',
 				type: 'string',
-				required: false,
 				default: '',
 				description: 'Parent Issue Key',
 			},
@@ -353,14 +423,22 @@ export const issueFields = [
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
-				required : false,
 				description: 'Priority',
+			},
+			{
+				displayName: 'Reporter',
+				name: 'reporter',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				default: '',
+				description: 'Reporter',
 			},
 			{
 				displayName: 'Summary',
 				name: 'summary',
 				type: 'string',
-				required: false,
 				default: '',
 				description: 'Summary',
 			},
@@ -371,16 +449,15 @@ export const issueFields = [
 				typeOptions: {
 					loadOptionsMethod: 'getTransitions',
 				},
-				required: false,
 				default: '',
 				description: 'The ID of the issue status.',
 			},
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                issue:delete                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                issue:delete                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue Key',
 		name: 'issueKey',
@@ -418,9 +495,9 @@ export const issueFields = [
 		description: 'Delete Subtasks',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                  issue:get                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  issue:get                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue Key',
 		name: 'issueKey',
@@ -460,7 +537,6 @@ export const issueFields = [
 				displayName: 'Expand',
 				name: 'expand',
 				type: 'string',
-				required: false,
 				default: '',
 				description: `Use expand to include additional information about the issues in the response.<br/>
 				This parameter accepts a comma-separated list. Expand options include:<br/>
@@ -477,7 +553,6 @@ export const issueFields = [
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
-				required: false,
 				default: '',
 				description: `A list of fields to return for the issue.<br/>
 				This parameter accepts a comma-separated list.<br/>
@@ -490,7 +565,6 @@ export const issueFields = [
 				displayName: 'Fields By Key',
 				name: 'fieldsByKey',
 				type: 'boolean',
-				required: false,
 				default: false,
 				description: `Indicates whether fields in fields are referenced by keys rather than IDs.<br/>
 				This parameter is useful where fields have been added by a connect app and a field's key<br/>
@@ -500,7 +574,6 @@ export const issueFields = [
 				displayName: 'Properties',
 				name: 'properties',
 				type: 'string',
-				required: false,
 				default: '',
 				description: `A list of issue properties to return for the issue.<br/>
 				This parameter accepts a comma-separated list. Allowed values:<br/>
@@ -516,7 +589,6 @@ export const issueFields = [
 				displayName: 'Update History',
 				name: 'updateHistory',
 				type: 'boolean',
-				required: false,
 				default: false,
 				description: `Whether the project in which the issue is created is added to the user's
 				Recently viewed project list, as shown under Projects in Jira. This also populates the
@@ -525,9 +597,9 @@ export const issueFields = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                  issue:getAll                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  issue:getAll                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -649,7 +721,6 @@ export const issueFields = [
 				displayName: 'Fields By Key',
 				name: 'fieldsByKey',
 				type: 'boolean',
-				required: false,
 				default: false,
 				description: `Indicates whether fields in fields are referenced by keys rather than IDs.<br/>
 				This parameter is useful where fields have been added by a connect app and a field's key<br/>
@@ -667,9 +738,9 @@ export const issueFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                               issue:changelog                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                               issue:changelog                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue Key',
 		name: 'issueKey',
@@ -729,9 +800,9 @@ export const issueFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                issue:notify                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                issue:notify                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue Key',
 		name: 'issueKey',
@@ -791,7 +862,6 @@ export const issueFields = [
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				required: false,
 				default: '',
 				description: 'The HTML body of the email notification for the issue.',
 			},
@@ -799,7 +869,6 @@ export const issueFields = [
 				displayName: 'Subject',
 				name: 'subject',
 				type: 'string',
-				required: false,
 				default: '',
 				description: `The subject of the email notification for the issue. If this is not specified,
 				then the subject is set to the issue key and summary.`,
@@ -811,7 +880,6 @@ export const issueFields = [
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				required: false,
 				default: '',
 				description: `The subject of the email notification for the issue.
 				If this is not specified, then the subject is set to the issue key and summary.`,
@@ -906,7 +974,6 @@ export const issueFields = [
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -983,7 +1050,6 @@ export const issueFields = [
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		required: false,
 		displayOptions: {
 			show: {
 				resource: [
@@ -1001,9 +1067,9 @@ export const issueFields = [
 		description: 'Restricts the notifications to users with the specified permissions.',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                              issue:transitions                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                              issue:transitions                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue Key',
 		name: 'issueKey',
@@ -1043,7 +1109,6 @@ export const issueFields = [
 				displayName: 'Expand',
 				name: 'expand',
 				type: 'string',
-				required: false,
 				default: '',
 				description: `Use expand to include additional information about transitions in the response.<br/>
 				 This parameter accepts transitions.fields, which returns information about the fields in the<br/>
@@ -1054,7 +1119,6 @@ export const issueFields = [
 				displayName: 'Transition ID',
 				name: 'transitionId',
 				type: 'string',
-				required: false,
 				default: '',
 				description: 'The ID of the transition.',
 			},
@@ -1062,7 +1126,6 @@ export const issueFields = [
 				displayName: 'Skip Remote Only Condition',
 				name: 'skipRemoteOnlyCondition',
 				type: 'boolean',
-				required: false,
 				default: false,
 				description: `Indicates whether transitions with the condition Hide<br/>
 				From User Condition are included in the response.`,

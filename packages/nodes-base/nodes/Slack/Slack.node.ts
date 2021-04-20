@@ -741,7 +741,7 @@ export class Slack implements INodeType {
 						}
 
 					} else {
-						const attachmentsJson = this.getNodeParameter('attachmentsJson', i, []) as string;
+						const attachmentsJson = this.getNodeParameter('attachmentsJson', i, '') as string;
 						const blocksJson = this.getNodeParameter('blocksJson', i, []) as string;
 						if (attachmentsJson !== '' && validateJSON(attachmentsJson) === undefined) {
 							throw new Error('Attachments it is not a valid json');
@@ -794,6 +794,17 @@ export class Slack implements INodeType {
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					Object.assign(body, updateFields);
 					responseData = await slackApiRequest.call(this, 'POST', '/chat.update', body, qs);
+				}
+				//https://api.slack.com/methods/chat.delete
+				if (operation === 'delete') {
+					const channel = this.getNodeParameter('channelId', i) as string;
+					const timestamp = this.getNodeParameter('timestamp', i) as string;
+					const body: IDataObject = {
+						channel,
+						ts: timestamp,
+					};
+					// Add all the other options to the request
+					responseData = await slackApiRequest.call(this, 'POST', '/chat.delete', body, qs);
 				}
 				//https://api.slack.com/methods/chat.getPermalink
 				if (operation === 'getPermalink') {

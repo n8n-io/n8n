@@ -21,12 +21,13 @@ import {
 	ICredentialsResponse,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
-	IPushDataExecutionFinished,
-	IPushDataNodeExecuteAfter,
-	IWorkflowDb,
+	IMenuItem,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
+	IPushDataExecutionFinished,
+	IPushDataNodeExecuteAfter,
 	IUpdateInformation,
+	IWorkflowDb,
 	XYPositon,
 } from './Interface';
 
@@ -79,6 +80,7 @@ export const store = new Vuex.Store({
 			nodes: [] as INodeUi[],
 			settings: {} as IWorkflowSettings,
 		} as IWorkflowDb,
+		sidebarMenuItems: [] as IMenuItem[],
 	},
 	mutations: {
 		// Active Actions
@@ -99,7 +101,7 @@ export const store = new Vuex.Store({
 		addActiveExecution (state, newActiveExecution: IExecutionsCurrentSummaryExtended) {
 			// Check if the execution exists already
 			const activeExecution = state.activeExecutions.find(execution => {
-				return execution.idActive === newActiveExecution.idActive;
+				return execution.id === newActiveExecution.id;
 			});
 
 			if (activeExecution !== undefined) {
@@ -115,7 +117,7 @@ export const store = new Vuex.Store({
 		finishActiveExecution (state, finishedActiveExecution: IPushDataExecutionFinished) {
 			// Find the execution to set to finished
 			const activeExecution = state.activeExecutions.find(execution => {
-				return execution.idActive === finishedActiveExecution.executionIdActive;
+				return execution.id === finishedActiveExecution.executionId;
 			});
 
 			if (activeExecution === undefined) {
@@ -123,8 +125,8 @@ export const store = new Vuex.Store({
 				return;
 			}
 
-			if (finishedActiveExecution.executionIdDb !== undefined) {
-				Vue.set(activeExecution, 'id', finishedActiveExecution.executionIdDb);
+			if (finishedActiveExecution.executionId !== undefined) {
+				Vue.set(activeExecution, 'id', finishedActiveExecution.executionId);
 			}
 
 			Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
@@ -597,6 +599,11 @@ export const store = new Vuex.Store({
 			Vue.set(state, 'nodeTypes', updatedNodes);
 			state.nodeTypes = updatedNodes;
 		},
+
+		addSidebarMenuItems (state, menuItems: IMenuItem[]) {
+			const updated = state.sidebarMenuItems.concat(menuItems);
+			Vue.set(state, 'sidebarMenuItems', updated);
+		},
 	},
 	getters: {
 
@@ -834,6 +841,9 @@ export const store = new Vuex.Store({
 			return workflowRunData[nodeName];
 		},
 
+		sidebarMenuItems: (state): IMenuItem[] => {
+			return state.sidebarMenuItems;
+		},
 	},
 
 });

@@ -1,4 +1,6 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -11,7 +13,9 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-import { get } from 'lodash';
+import {
+	get,
+} from 'lodash';
 
 export async function invoiceNinjaApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('invoiceNinjaApi');

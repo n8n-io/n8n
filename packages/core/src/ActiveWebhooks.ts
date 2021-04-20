@@ -2,6 +2,7 @@ import {
 	IWebhookData,
 	WebhookHttpMethod,
 	Workflow,
+	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -30,9 +31,12 @@ export class ActiveWebhooks {
 	 * @returns {Promise<void>}
 	 * @memberof ActiveWebhooks
 	 */
-	async add(workflow: Workflow, webhookData: IWebhookData, mode: WorkflowExecuteMode): Promise<void> {
+	async add(workflow: Workflow, webhookData: IWebhookData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): Promise<void> {
 		if (workflow.id === undefined) {
 			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
+		}
+		if (webhookData.path.endsWith('/')) {
+			webhookData.path = webhookData.path.slice(0, -1);
 		}
 
 		const webhookKey = this.getWebhookKey(webhookData.httpMethod, webhookData.path, webhookData.webhookId);
@@ -54,10 +58,10 @@ export class ActiveWebhooks {
 		this.webhookUrls[webhookKey].push(webhookData);
 
 		try {
-			const webhookExists = await workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
+			const webhookExists = await workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, activation, this.testWebhooks);
 			if (webhookExists !== true) {
 				// If webhook does not exist yet create it
-				await workflow.runWebhookMethod('create', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
+				await workflow.runWebhookMethod('create', webhookData, NodeExecuteFunctions, mode, activation, this.testWebhooks);
 
 			}
 		} catch (error) {
@@ -89,27 +93,24 @@ export class ActiveWebhooks {
 			return undefined;
 		}
 
-		// set webhook to the first webhook result
-		// if more results have been returned choose the one with the most route-matches
-		let webhook = this.webhookUrls[webhookKey][0];
-		if (this.webhookUrls[webhookKey].length > 1) {
-			let maxMatches = 0;
-			const pathElementsSet = new Set(path.split('/'));
-			this.webhookUrls[webhookKey].forEach(dynamicWebhook => {
-				const intersection =
-					dynamicWebhook.path
-					.split('/')
-					.reduce((acc, element) => pathElementsSet.has(element) ? acc += 1 : acc, 0);
+		let webhook: IWebhookData | undefined;
+		let maxMatches = 0;
+		const pathElementsSet = new Set(path.split('/'));
+		// check if static elements match in path
+		// if more results have been returned choose the one with the most static-route matches
+		this.webhookUrls[webhookKey].forEach(dynamicWebhook => {
+			const staticElements = dynamicWebhook.path.split('/').filter(ele => !ele.startsWith(':'));
+			const allStaticExist = staticElements.every(staticEle => pathElementsSet.has(staticEle));
 
-				if (intersection > maxMatches) {
-					maxMatches = intersection;
-					webhook = dynamicWebhook;
-				}
-			});
-			if (maxMatches === 0) {
-				return undefined;
+			if (allStaticExist && staticElements.length > maxMatches) {
+				maxMatches = staticElements.length;
+				webhook = dynamicWebhook;
 			}
-		}
+			// handle routes with no static elements
+			else if (staticElements.length === 0 && !webhook) {
+				webhook = dynamicWebhook;
+			}
+		});
 
 		return webhook;
 	}
@@ -183,7 +184,7 @@ export class ActiveWebhooks {
 
 		// Go through all the registered webhooks of the workflow and remove them
 		for (const webhookData of webhooks) {
-			await workflow.runWebhookMethod('delete', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
+			await workflow.runWebhookMethod('delete', webhookData, NodeExecuteFunctions, mode, 'update', this.testWebhooks);
 
 			delete this.webhookUrls[this.getWebhookKey(webhookData.httpMethod, webhookData.path, webhookData.webhookId)];
 		}

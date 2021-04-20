@@ -39,6 +39,7 @@ export class RenameKeys implements INodeType {
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
+					sortable: true,
 				},
 				default: {},
 				options: [

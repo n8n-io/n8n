@@ -7,17 +7,22 @@ import {
 } from 'n8n-core';
 
 import {
+	Db,
 	IExecutingWorkflowData,
+	IExecutionDb,
+	IExecutionFlattedDb,
 	IExecutionsCurrentSummary,
 	IWorkflowExecutionDataProcess,
+	ResponseHelper,
+	WorkflowHelpers,
 } from '.';
 
 import { ChildProcess } from 'child_process';
 import * as PCancelable from 'p-cancelable';
+import { ObjectID } from 'typeorm';
 
 
 export class ActiveExecutions {
-	private nextId = 1;
 	private activeExecutions: {
 		[index: string]: IExecutingWorkflowData;
 	} = {};
@@ -31,8 +36,30 @@ export class ActiveExecutions {
 	 * @returns {string}
 	 * @memberof ActiveExecutions
 	 */
-	add(executionData: IWorkflowExecutionDataProcess, process?: ChildProcess): string {
-		const executionId = this.nextId++;
+	async add(executionData: IWorkflowExecutionDataProcess, process?: ChildProcess): Promise<string> {
+
+		const fullExecutionData: IExecutionDb = {
+			data: executionData.executionData!,
+			mode: executionData.executionMode,
+			finished: false,
+			startedAt: new Date(),
+			workflowData: executionData.workflowData,
+		};
+
+		if (executionData.retryOf !== undefined) {
+			fullExecutionData.retryOf = executionData.retryOf.toString();
+		}
+
+		if (executionData.workflowData.id !== undefined && WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString()) === true) {
+			fullExecutionData.workflowId = executionData.workflowData.id.toString();
+		}
+		
+		const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
+
+		// Save the Execution in DB
+		const executionResult = await Db.collections.Execution!.save(execution as IExecutionFlattedDb);
+
+		const executionId = typeof executionResult.id === "object" ? executionResult.id.toString() : executionResult.id + "";
 
 		this.activeExecutions[executionId] = {
 			executionData,
@@ -41,7 +68,7 @@ export class ActiveExecutions {
 			postExecutePromises: [],
 		};
 
-		return executionId.toString();
+		return executionId;
 	}
 
 
