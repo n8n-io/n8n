@@ -4,7 +4,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import * as glob from 'glob-promise';
+import * as fg from 'fast-glob';
 import * as path from 'path';
 
 import {
@@ -55,7 +55,7 @@ export class ReadBinaryFiles implements INodeType {
 		const fileSelector = this.getNodeParameter('fileSelector', 0) as string;
 		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
 
-		const files = await glob(fileSelector);
+		const files = await fg(fileSelector);
 
 		const items: INodeExecutionData[] = [];
 		let item: INodeExecutionData;

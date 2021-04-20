@@ -15,7 +15,7 @@ import {
 	readFile as fsReadFile,
 	stat as fsStat,
  } from 'fs';
-import * as glob from 'glob-promise';
+import * as fg from 'fast-glob';
 import * as path from 'path';
 import { promisify } from 'util';
 
@@ -202,7 +202,7 @@ class LoadNodesAndCredentialsClass {
 	 * @memberof N8nPackagesInformationClass
 	 */
 	async loadDataFromDirectory(setPackageName: string, directory: string): Promise<void> {
-		const files = await glob(path.join(directory, '**/*\.@(node|credentials)\.js'));
+		const files = await fg(path.join(directory, '**/*\.@(node|credentials)\.js'));
 
 		let fileName: string;
 		let type: string;
