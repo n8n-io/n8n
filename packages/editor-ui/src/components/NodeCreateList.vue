@@ -81,6 +81,9 @@ export default mixins(externalHooks).extend({
 			// Reset the index whenver the filter-value changes
 			this.activeNodeTypeIndex = 0;
 		},
+		selectedType (newVal, oldVal) {
+			this.$externalHooks().run('nodeCreateList.selectedTypeChanged', { oldVal, newVal });
+		},
 	},
 	methods: {
 		nodeFilterKeyDown (e: KeyboardEvent) {
