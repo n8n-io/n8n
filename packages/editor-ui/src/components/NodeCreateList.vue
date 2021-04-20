@@ -24,10 +24,13 @@
 <script lang="ts">
 
 import Vue from 'vue';
+import { externalHooks } from "@/components/mixins/externalHooks";
 import { INodeTypeDescription } from 'n8n-workflow';
 import NodeCreateItem from '@/components/NodeCreateItem.vue';
 
-export default Vue.extend({
+import mixins from "vue-typed-mixins";
+
+export default mixins(externalHooks).extend({
 	name: 'NodeCreateList',
 	components: {
 		NodeCreateItem,
@@ -104,6 +107,9 @@ export default Vue.extend({
 		nodeTypeSelected (nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
+	},
+	async mounted() {
+		this.$externalHooks().run('nodeCreateList.mounted');
 	},
 });
 </script>
