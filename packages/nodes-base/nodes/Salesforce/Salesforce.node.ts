@@ -298,6 +298,70 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
+			// Get all the users and case queues to display them to user so that he can
+			// select them easily
+			async getCaseOwners(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const qsQueues = {
+					q: "SELECT Queue.Id, Queue.Name FROM QueuesObject where Queue.Type='Queue' and SobjectType = 'Case'",
+				};
+				const queues = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qsQueues);
+				for (const queue of queues) {
+					const queueName = queue.Queue.Name;
+					const queueId = queue.Queue.Id;
+					returnData.push({
+						name: `Queue: ${queueName}`,
+						value: queueId,
+					});
+				}
+				const qsUsers = {
+					q: 'SELECT id, Name FROM User',
+				};
+				const users = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qsUsers);
+				const userPrefix = returnData.length > 0 ? 'User: ' : '';
+				for (const user of users) {
+					const userName = user.Name;
+					const userId = user.Id;
+					returnData.push({
+						name: userPrefix + userName,
+						value: userId,
+					});
+				}
+				sortOptions(returnData);
+				return returnData;
+			},
+			// Get all the users and lead queues to display them to user so that he can
+			// select them easily
+			async getLeadOwners(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const qsQueues = {
+					q: "SELECT Queue.Id, Queue.Name FROM QueuesObject where Queue.Type='Queue' and SobjectType = 'Lead'",
+				};
+				const queues = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qsQueues);
+				for (const queue of queues) {
+					const queueName = queue.Queue.Name;
+					const queueId = queue.Queue.Id;
+					returnData.push({
+						name: `Queue: ${queueName}`,
+						value: queueId,
+					});
+				}
+				const qsUsers = {
+					q: 'SELECT id, Name FROM User',
+				};
+				const users = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qsUsers);
+				const userPrefix = returnData.length > 0 ? 'User: ' : '';
+				for (const user of users) {
+					const userName = user.Name;
+					const userId = user.Id;
+					returnData.push({
+						name: userPrefix + userName,
+						value: userId,
+					});
+				}
+				sortOptions(returnData);
+				return returnData;
+			},
 			// Get all the lead sources to display them to user so that he can
 			// select them easily
 			async getLeadSources(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
