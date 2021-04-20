@@ -38,6 +38,10 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" scoped>
+    .tags-container {
+        display: inline-block;
+    }
+
     .tags-container .el-tag {
         margin-right: 4px;
     }

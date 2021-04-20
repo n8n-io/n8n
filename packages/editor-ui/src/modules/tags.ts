@@ -60,7 +60,7 @@ const module: Module<ITagsState, IRootState> = {
 		allTags: (state: ITagsState): ITag[] => {
 			return state.tags;
 		},
-		tags: (state: ITagsState, filter): ITag[] => {
+		tags: (state: ITagsState, filter: string): ITag[] => {
 			return state.tags.filter((tag) => tag.name.toLowerCase().includes((filter || '').toLowerCase()));
 		},
 		loading: (state: ITagsState): boolean => {

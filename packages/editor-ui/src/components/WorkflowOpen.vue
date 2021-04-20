@@ -6,6 +6,10 @@
 				Select a workflow to open:
 			</div>
 
+			<TagsDropdown 
+				placeholder="Filter by tags..."
+				:currentTagIds="filterTags"
+			/>
 			<div class="search-wrapper ignore-key-press">
 				<el-input placeholder="Workflow filter..." ref="inputFieldFilter" v-model="filterText">
 					<i slot="prefix" class="el-input__icon el-icon-search"></i>
@@ -13,7 +17,13 @@
 			</div>
 
 			<el-table class="search-table" :data="filteredWorkflows" stripe @cell-click="openWorkflow" :default-sort = "{prop: 'updatedAt', order: 'descending'}" v-loading="isDataLoading">
-				<el-table-column property="name" label="Name" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="name" label="Name" class-name="clickable" sortable>
+					<template slot-scope="scope">
+						<div class="name" :key="scope.row.id">
+							<span>{{scope.row.name}}</span> <TagContainer :tags="scope.row.tags"/>
+						</div>
+					</template>
+				</el-table-column>
 				<el-table-column property="createdAt" label="Created" class-name="clickable" width="225" sortable></el-table-column>
 				<el-table-column property="updatedAt" label="Updated" class-name="clickable" width="225" sortable></el-table-column>
 				<el-table-column label="Active" width="90">
@@ -36,9 +46,11 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
-import { IWorkflowShortResponse } from '@/Interface';
+import { ITag, IWorkflowShortResponse } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
+import TagContainer from './TagContainer.vue';
+import TagsDropdown from './TagsDropdown.vue';
 
 export default mixins(
 	genericHelpers,
@@ -52,22 +64,39 @@ export default mixins(
 	],
 	components: {
 		WorkflowActivator,
+		TagContainer,
+TagsDropdown,
+	},
+	created() {
+		this.$store.dispatch("tags/getAll");
 	},
 	data () {
 		return {
 			filterText: '',
 			isDataLoading: false,
 			workflows: [] as IWorkflowShortResponse[],
+			filterTags: [] as ITag[],
 		};
 	},
 	computed: {
 		filteredWorkflows (): IWorkflowShortResponse[] {
-			return this.workflows.filter((workflow: IWorkflowShortResponse) => {
-				if (this.filterText === '' || workflow.name.toLowerCase().indexOf(this.filterText.toLowerCase()) !== -1) {
-					return true;
-				}
-				return false;
-			});
+			const tags = this.$store.getters['tags/allTags'];
+
+			return this.workflows
+				.filter((workflow: IWorkflowShortResponse) => {
+					if (this.filterText === '' || workflow.name.toLowerCase().indexOf(this.filterText.toLowerCase()) !== -1) {
+						return true;
+					}
+					return false;
+				})
+				.map((workflow): IWorkflowShortResponse => {
+					workflow.tags = (workflow.tags || []).map((tag) => {
+						return tags.find(({id}: ITag) => id === tag.id);
+					})
+					.filter((tag) => !!tag);
+
+					return workflow;
+				});
 		},
 	},
 	watch: {
@@ -155,15 +184,12 @@ export default mixins(
 
 <style scoped lang="scss">
 
-.search-wrapper {
-	position: absolute;
-	right: 20px;
-	top: 20px;
-	width: 200px;
-}
-
 .search-table {
 	margin-top: 2em;
+}
+
+.name span {
+	margin-right: 10px;
 }
 
 </style>

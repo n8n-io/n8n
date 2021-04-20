@@ -240,6 +240,7 @@ export interface IWorkflowShortResponse {
 	active: boolean;
 	createdAt: number | string;
 	updatedAt: number | string;
+	tags?: ITag[];
 }
 
 
