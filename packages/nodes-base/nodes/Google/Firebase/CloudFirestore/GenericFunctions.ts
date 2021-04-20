@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
@@ -35,25 +35,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'googleFirebaseCloudFirestoreOAuth2Api', options);
 	} catch (error) {
-		let errors;
-
-		if (error.response && error.response.body) {
-
-			if (Array.isArray(error.response.body)) {
-
-				errors = error.response.body;
-
-				errors = errors.map((e: { error: { message: string } }) => e.error.message).join('|');
-			} else {
-				errors = error.response.body.error.message;
-			}
-
-			// Try to return the error prettier
-			throw new Error(
-				`Google Firebase error response [${error.statusCode}]: ${errors}`,
-			);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

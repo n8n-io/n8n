@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
  } from 'n8n-workflow';
 
 export async function bitlyApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -32,7 +32,7 @@ export async function bitlyApiRequest(this: IHookFunctions | IExecuteFunctions |
 		if (authenticationMethod === 'accessToken') {
 			const credentials = this.getCredentials('bitlyApi');
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 			options.headers = { Authorization: `Bearer ${credentials.accessToken}`};
 
@@ -42,15 +42,7 @@ export async function bitlyApiRequest(this: IHookFunctions | IExecuteFunctions |
 			return await this.helpers.requestOAuth2!.call(this, 'bitlyOAuth2Api', options, { tokenType: 'Bearer' });
 		}
 	} catch(error) {
-
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			const errorBody = error.response.body;
-			throw new Error(`Bitly error response [${error.statusCode}]: ${errorBody.message}`);
-		}
-
-		// Expected error data did not get returned so throw the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

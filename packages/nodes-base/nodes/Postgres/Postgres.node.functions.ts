@@ -120,7 +120,12 @@ export async function pgInsert(
 ): Promise<IDataObject[]> {
 	const table = getNodeParam('table', 0) as string;
 	const schema = getNodeParam('schema', 0) as string;
-	const columns = (getNodeParam('columns', 0) as string).split(',').map(column => column.trim());
+	const columnString = getNodeParam('columns', 0) as string;
+	const columns = columnString.split(',')
+		.map(column => column.trim().split(':'))
+		.map(([name, cast]) => ({ name, cast }));
+	const columnNames = columns.map(column => column.name);
+
 	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
 	
 	const additionalFields = getNodeParam('additionalFields', 0) as IDataObject;
@@ -128,13 +133,13 @@ export async function pgInsert(
 	
 	const returning = generateReturning(pgp, getNodeParam('returnFields', 0) as string);
 	if(mode === 'multiple') {
-		const query = pgp.helpers.insert(getItemsCopy(items, columns), cs) + returning;
+		const query = pgp.helpers.insert(getItemsCopy(items, columnNames), cs) + returning;
 		return db.any(query);
 	} else if(mode === 'transaction') {
 		return db.tx(async t => {
 			const result:IDataObject[] = [];
 			for (let i = 0; i < items.length; i++) {
-				const itemCopy = getItemCopy(items[i], columns);
+				const itemCopy = getItemCopy(items[i], columnNames);
 				try {
 					result.push(await t.one(pgp.helpers.insert(itemCopy, cs) + returning));
 				} catch(err) {
@@ -149,7 +154,7 @@ export async function pgInsert(
 		return db.task(async t => {
 			const result:IDataObject[] = [];
 			for (let i = 0; i < items.length; i++) {
-				const itemCopy = getItemCopy(items[i], columns);
+				const itemCopy = getItemCopy(items[i], columnNames);
 				try {
 					const insertResult = await t.oneOrNone(pgp.helpers.insert(itemCopy, cs) + returning);
 					if (insertResult !== null) {
@@ -187,38 +192,51 @@ export async function pgUpdate(
 ): Promise<IDataObject[]> {
 	const table = getNodeParam('table', 0) as string;
 	const schema = getNodeParam('schema', 0) as string;
-	const updateKeys = (getNodeParam('updateKey', 0) as string).split(',').map(column => column.trim());
-	const columns = (getNodeParam('columns', 0) as string).split(',').map(column => column.trim());
-	const additionalFields = getNodeParam('additionalFields', 0) as IDataObject;
-	const mode = additionalFields.mode ?? 'multiple' as string;
-	const queryColumns = columns.slice();
-	
-	updateKeys.forEach(updateKey => {
-		if (!queryColumns.includes(updateKey)) {
-			columns.unshift(updateKey);
-			queryColumns.unshift('?' + updateKey);
+	const updateKey = getNodeParam('updateKey', 0) as string;
+	const columnString = getNodeParam('columns', 0) as string;
+	const columns = columnString.split(',')
+		.map(column => column.trim().split(':'))
+		.map(([name, cast]) => ({ name, cast }));
+
+	const updateKeys = updateKey.split(',').map(key => {
+		const [name, cast] = key.trim().split(':');
+		const updateColumn = { name, cast };
+		const targetCol = columns.find((column) => column.name === name);
+		if (!targetCol) {
+			columns.unshift(updateColumn);
 		}
+		else if (!targetCol.cast) {
+			targetCol.cast = updateColumn.cast || targetCol.cast;
+		}
+		return updateColumn;
 	});
 
-	const cs = new pgp.helpers.ColumnSet(queryColumns, { table: { table, schema } });
+	const additionalFields = getNodeParam('additionalFields', 0) as IDataObject;
+	const mode = additionalFields.mode ?? 'multiple' as string;
+
+	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
+
+	// Prepare the data to update and copy it to be returned
+	const columnNames = columns.map(column => column.name);
+	const updateItems = getItemsCopy(items, columnNames);
 	
 	const returning = generateReturning(pgp, getNodeParam('returnFields', 0) as string);
 	if(mode === 'multiple') {
 		const query =
-			pgp.helpers.update(getItemsCopy(items, columns), cs)
+			pgp.helpers.update(updateItems, cs)
 			+ ' WHERE ' + updateKeys.map(updateKey => {
-				updateKey = pgp.as.name(updateKey);
-				return 'v.' + updateKey + ' = t.' + updateKey;
+				const key = pgp.as.name(updateKey.name);
+				return 'v.' + key + ' = t.' + key;
 			}).join(' AND ')
 			+ returning;
 		return await db.any(query);
 	} else {
-		const where = ' WHERE ' + updateKeys.map(updateKey => pgp.as.name(updateKey) + ' = ${' + updateKey + '}').join(' AND ');
+		const where = ' WHERE ' + updateKeys.map(updateKey => pgp.as.name(updateKey.name) + ' = ${' + updateKey.name + '}').join(' AND ');
 		if(mode === 'transaction') {
 			return db.tx(async t => {
 				const result:IDataObject[] = [];
 				for (let i = 0; i < items.length; i++) {
-					const itemCopy = getItemCopy(items[i], columns);
+					const itemCopy = getItemCopy(items[i], columnNames);
 					try {
 						Array.prototype.push.apply(result, await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning));
 					} catch(err) {
@@ -233,7 +251,7 @@ export async function pgUpdate(
 			return db.task(async t => {
 				const result:IDataObject[] = [];
 				for (let i = 0; i < items.length; i++) {
-					const itemCopy = getItemCopy(items[i], columns);
+					const itemCopy = getItemCopy(items[i], columnNames);
 					try {
 						Array.prototype.push.apply(result, await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning));
 					} catch(err) {

@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -10,12 +10,12 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject
+	IDataObject, NodeApiError
 } from 'n8n-workflow';
 
 import {
 	snakeCase,
- } from 'change-case';
+} from 'change-case';
 
 export async function keapApiRequest(this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	let options: OptionsWithUri = {
@@ -39,15 +39,11 @@ export async function keapApiRequest(this: IWebhookFunctions | IHookFunctions | 
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'keapOAuth2Api', options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			throw new Error(`Infusionsoft error response [${error.statusCode}]: ${error.response.body.message}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function keapApiRequestAllItems(this: IHookFunctions| IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function keapApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -66,7 +62,7 @@ export async function keapApiRequestAllItems(this: IHookFunctions| IExecuteFunct
 	return returnData;
 }
 
-export function keysToSnakeCase(elements: IDataObject[] | IDataObject) : IDataObject[] {
+export function keysToSnakeCase(elements: IDataObject[] | IDataObject): IDataObject[] {
 	if (!Array.isArray(elements)) {
 		elements = [elements];
 	}

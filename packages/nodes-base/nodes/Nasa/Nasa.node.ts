@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -981,7 +982,7 @@ export class Nasa implements INodeType {
 					endpoint = `/neo/rest/v1/neo/${asteroidId}`;
 
 				} else {
-					throw new Error(`The operation '${operation}' is unknown!`);
+					throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
 				}
 
 			}
@@ -1000,7 +1001,7 @@ export class Nasa implements INodeType {
 					endpoint = `/neo/rest/v1/neo/browse`;
 
 				} else {
-					throw new Error(`The operation '${operation}' is unknown!`);
+					throw new NodeOperationError(this.getNode(), `The operation '${operation}' is unknown!`);
 				}
 
 			}

@@ -300,7 +300,7 @@ export class PipedriveTrigger implements INodeType {
 
 					try {
 						await pipedriveApiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

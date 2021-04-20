@@ -4,6 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -242,7 +243,7 @@ export class CrateDb implements INodeType {
 		const credentials = this.getCredentials('crateDb');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		const pgp = pgPromise();
@@ -317,6 +318,10 @@ export class CrateDb implements INodeType {
 				const cs = new pgp.helpers.ColumnSet(queryColumns, { table: { table, schema } });
 
 				const where = ' WHERE ' + updateKeys.map(updateKey => pgp.as.name(updateKey) + ' = ${' + updateKey + '}').join(' AND ');
+				// updateKeyValue = item.json[updateKey] as string | number;
+				// if (updateKeyValue === undefined) {
+				// 	throw new NodeOperationError(this.getNode(), 'No value found for update key!');
+				// }
 				
 				const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
 				const queries:string[] = [];
@@ -329,7 +334,7 @@ export class CrateDb implements INodeType {
 			}
 		} else {
 			await pgp.end();
-			throw new Error(`The operation "${operation}" is not supported!`);
+			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 		}
 
 		// Close the connection

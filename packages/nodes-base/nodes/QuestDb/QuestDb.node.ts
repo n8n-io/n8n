@@ -4,6 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as pgPromise from 'pg-promise';
@@ -110,22 +111,6 @@ export class QuestDb implements INodeType {
 				description: 'Name of the table in which to insert data to.',
 			},
 			{
-				displayName: 'Columns',
-				name: 'columns',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: [
-							'insert',
-						],
-					},
-				},
-				default: '',
-				placeholder: 'id,name,description',
-				description:
-					'Comma separated list of the properties which should used as columns for the new rows.',
-			},
-			{
 				displayName: 'Return Fields',
 				name: 'returnFields',
 				type: 'string',
@@ -184,7 +169,7 @@ export class QuestDb implements INodeType {
 		const credentials = this.getCredentials('questDb');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		const pgp = pgPromise();
@@ -234,7 +219,7 @@ export class QuestDb implements INodeType {
 			returnItems = this.helpers.returnJsonArray(insertData);
 		} else {
 			await pgp.end();
-			throw new Error(`The operation "${operation}" is not supported!`);
+			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 		}
 
 		// Close the connection

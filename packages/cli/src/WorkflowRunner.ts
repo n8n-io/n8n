@@ -27,12 +27,12 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
-	IExecutionError,
+	ExecutionError,
 	IRun,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
+	WorkflowOperationError,
 } from 'n8n-workflow';
 
 import * as config from '../config';
@@ -78,13 +78,13 @@ export class WorkflowRunner {
 	/**
 	 * The process did error
 	 *
-	 * @param {IExecutionError} error
+	 * @param {ExecutionError} error
 	 * @param {Date} startedAt
 	 * @param {WorkflowExecuteMode} executionMode
 	 * @param {string} executionId
 	 * @memberof WorkflowRunner
 	 */
-	processError(error: IExecutionError, startedAt: Date, executionMode: WorkflowExecuteMode, executionId: string) {
+	processError(error: ExecutionError, startedAt: Date, executionMode: WorkflowExecuteMode, executionId: string) {
 		const fullRunData: IRun = {
 			data: {
 				resultData: {
@@ -158,8 +158,22 @@ export class WorkflowRunner {
 
 		const nodeTypes = NodeTypes();
 
+
+		// Soft timeout to stop workflow execution after current running node
+		// Changes were made by adding the `workflowTimeout` to the `additionalData`
+		// So that the timeout will also work for executions with nested workflows.
+		let executionTimeout: NodeJS.Timeout;
+		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
+		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
+			workflowTimeout = data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
+		}
+
+		if (workflowTimeout > 0) {
+			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number);
+		}
+
 		const workflow = new Workflow({ id: data.workflowData.id as string | undefined, name: data.workflowData.name, nodes: data.workflowData!.nodes, connections: data.workflowData!.connections, active: data.workflowData!.active, nodeTypes, staticData: data.workflowData!.staticData });
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(data.credentials);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(data.credentials, undefined, workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000);
 
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, undefined);
@@ -184,12 +198,6 @@ export class WorkflowRunner {
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
-		// Soft timeout to stop workflow execution after current running node
-		let executionTimeout: NodeJS.Timeout;
-		let workflowTimeout = config.get('executions.timeout') as number > 0 && config.get('executions.timeout') as number; // initialize with default
-		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
-			workflowTimeout = data.workflowData.settings!.executionTimeout as number > 0 && data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
-		}
 
 		if (workflowTimeout) {
 			const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
@@ -250,9 +258,7 @@ export class WorkflowRunner {
 				const fullRunData :IRun = {
 					data: {
 						resultData: {
-							error: {
-								message: 'Workflow has been canceled!',
-							} as IExecutionError,
+							error: new WorkflowOperationError('Workflow has been canceled!'),
 							runData: {},
 						},
 					},
@@ -282,7 +288,6 @@ export class WorkflowRunner {
 				 * the database.                                 *
 				*************************************************/
 				let watchDogInterval: NodeJS.Timeout | undefined;
-				let resolved = false;
 
 				const watchDog = new Promise((res) => {
 					watchDogInterval = setInterval(async () => {
@@ -303,28 +308,9 @@ export class WorkflowRunner {
 					}
 				};
 
-				await new Promise((res, rej) => {
-					jobData.then((data) => {
-						if (!resolved) {
-							resolved = true;
-							clearWatchdogInterval();
-							res(data);
-						}
-					}).catch((e) => {
-						if(!resolved) {
-							resolved = true;
-							clearWatchdogInterval();
-							rej(e);
-						}
-					});
-					watchDog.then((data) => {
-						if (!resolved) {
-							resolved = true;
-							clearWatchdogInterval();
-							res(data);
-						}
-					});
-				});
+				await Promise.race([jobData, watchDog]);
+				clearWatchdogInterval();
+
 			} else {
 				await jobData;
 			}
@@ -366,7 +352,7 @@ export class WorkflowRunner {
 				// We don't want errors here to crash n8n. Just log and proceed.
 				console.log('Error removing saved execution from database. More details: ', err);
 			}
-			
+
 			resolve(runData);
 		});
 
@@ -385,7 +371,7 @@ export class WorkflowRunner {
 	 * @memberof WorkflowRunner
 	 */
 	async runSubprocess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
-		const startedAt = new Date();
+		let startedAt = new Date();
 		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
 
 		if (loadStaticData === true && data.workflowData.id) {
@@ -428,7 +414,6 @@ export class WorkflowRunner {
 			}
 		}
 
-
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).nodeTypeData = nodeTypeData;
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite = credentialsOverwrites;
@@ -441,64 +426,93 @@ export class WorkflowRunner {
 
 		// Start timeout for the execution
 		let executionTimeout: NodeJS.Timeout;
-		let workflowTimeout = config.get('executions.timeout') as number > 0 && config.get('executions.timeout') as number; // initialize with default
+		let workflowTimeout = config.get('executions.timeout') as number; // initialize with default
 		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
-			workflowTimeout = data.workflowData.settings!.executionTimeout as number > 0 && data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
+			workflowTimeout = data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
 		}
 
-		if (workflowTimeout) {
-			const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
-			executionTimeout = setTimeout(() => {
-				this.activeExecutions.stopExecution(executionId, 'timeout');
+		const processTimeoutFunction = (timeout: number) => {
+			this.activeExecutions.stopExecution(executionId, 'timeout');
+			executionTimeout = setTimeout(() => subprocess.kill(), Math.max(timeout * 0.2, 5000)); // minimum 5 seconds
+		};
 
-				executionTimeout = setTimeout(() => subprocess.kill(), Math.max(timeout * 0.2, 5000)); // minimum 5 seconds
-			}, timeout);
+		if (workflowTimeout > 0) {
+			workflowTimeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
+			// Start timeout already now but give process at least 5 seconds to start.
+			// Without it could would it be possible that the workflow executions times out before it even got started if
+			// the timeout time is very short as the process start time can be quite long.
+			executionTimeout = setTimeout(processTimeoutFunction, Math.max(5000, workflowTimeout), workflowTimeout);
 		}
 
+		// Create a list of child spawned executions
+		// If after the child process exits we have
+		// outstanding executions, we remove them
+		const childExecutionIds: string[] = [];
 
 		// Listen to data from the subprocess
 		subprocess.on('message', async (message: IProcessMessage) => {
-			if (message.type === 'end') {
+			if (message.type === 'start') {
+				// Now that the execution actually started set the timeout again so that does not time out to early.
+				startedAt = new Date();
+				if (workflowTimeout > 0) {
+					clearTimeout(executionTimeout);
+					executionTimeout = setTimeout(processTimeoutFunction, workflowTimeout, workflowTimeout);
+				}
+
+			} else if (message.type === 'end') {
 				clearTimeout(executionTimeout);
 				this.activeExecutions.remove(executionId!, message.data.runData);
 
 			} else if (message.type === 'processError') {
 				clearTimeout(executionTimeout);
-				const executionError = message.data.executionError as IExecutionError;
+				const executionError = message.data.executionError as ExecutionError;
 				this.processError(executionError, startedAt, data.executionMode, executionId);
 
 			} else if (message.type === 'processHook') {
 				this.processHookMessage(workflowHooks, message.data as IProcessMessageDataHook);
 			} else if (message.type === 'timeout') {
 				// Execution timed out and its process has been terminated
-				const timeoutError = { message: 'Workflow execution timed out!' } as IExecutionError;
+				const timeoutError = new WorkflowOperationError('Workflow execution timed out!');
 
 				this.processError(timeoutError, startedAt, data.executionMode, executionId);
 			} else if (message.type === 'startExecution') {
 				const executionId = await this.activeExecutions.add(message.data.runData);
+				childExecutionIds.push(executionId);
 				subprocess.send({ type: 'executionId', data: {executionId} } as IProcessMessage);
 			} else if (message.type === 'finishExecution') {
+				const executionIdIndex = childExecutionIds.indexOf(message.data.executionId);
+				if (executionIdIndex !== -1) {
+					childExecutionIds.splice(executionIdIndex, 1);
+				}
+
 				await this.activeExecutions.remove(message.data.executionId, message.data.result);
 			}
 		});
 
 		// Also get informed when the processes does exit especially when it did crash or timed out
-		subprocess.on('exit', (code, signal) => {
+		subprocess.on('exit', async (code, signal) => {
 			if (signal === 'SIGTERM'){
 				// Execution timed out and its process has been terminated
-				const timeoutError = {
-					message: 'Workflow execution timed out!',
-				} as IExecutionError;
+				const timeoutError = new WorkflowOperationError('Workflow execution timed out!');
 
 				this.processError(timeoutError, startedAt, data.executionMode, executionId);
 			} else if (code !== 0) {
 				// Process did exit with error code, so something went wrong.
-				const executionError = {
-					message: 'Workflow execution process did crash for an unknown reason!',
-				} as IExecutionError;
+				const executionError = new WorkflowOperationError('Workflow execution process did crash for an unknown reason!');
 
 				this.processError(executionError, startedAt, data.executionMode, executionId);
 			}
+
+			for(const executionId of childExecutionIds) {
+				// When the child process exits, if we still have
+				// pending child executions, we mark them as finished
+				// They will display as unknown to the user
+				// Instead of pending forever as executing when it
+				// actually isn't anymore.
+				await this.activeExecutions.remove(executionId);
+			}
+
+
 			clearTimeout(executionTimeout);
 		});
 

@@ -22,7 +22,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import { URL } from 'url';
@@ -34,11 +34,11 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 	credentials = this.getCredentials('s3');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	if (!(credentials.endpoint as string).startsWith('http')) {
-		throw new Error('HTTP(S) Scheme is required in endpoint definition');
+		throw new NodeOperationError(this.getNode(), 'HTTP(S) Scheme is required in endpoint definition');
 	}
 
 	const endpoint = new URL(credentials.endpoint as string);
@@ -80,17 +80,7 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = error.response?.body.message || error.response?.body.Message || error.message;
-
-		if (error.statusCode === 403) {
-			if (errorMessage === 'The security token included in the request is invalid.') {
-				throw new Error('The S3 credentials are not valid!');
-			} else if (errorMessage.startsWith('The request signature we calculated does not match the signature you provided')) {
-				throw new Error('The S3 credentials are not valid!');
-			}
-		}
-
-		throw new Error(`S3 error response [${error.statusCode}]: ${errorMessage}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -98,7 +88,7 @@ export async function s3ApiRequestREST(this: IHookFunctions | IExecuteFunctions 
 	const response = await s3ApiRequest.call(this, bucket, method, path, body, query, headers, options, region);
 	try {
 		return JSON.parse(response);
-	} catch (e) {
+	} catch (error) {
 		return response;
 	}
 }
@@ -114,8 +104,8 @@ export async function s3ApiRequestSOAP(this: IHookFunctions | IExecuteFunctions 
 				resolve(data);
 			});
 		});
-	} catch (e) {
-		return e;
+	} catch (error) {
+		return error;
 	}
 }
 
