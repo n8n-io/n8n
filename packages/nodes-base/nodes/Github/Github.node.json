@@ -18,9 +18,14 @@
 		],
 		"generic": [
 			{
-				"label": "Dashing Through The Data: Visualizing Metrics with n8n",
+				"label": "Automatically pulling and visualizing data with n8n",
 				"icon": "📈",
-				"url": "https://medium.com/n8n-io/dashing-through-the-data-visualizing-metrics-with-n8n-78f3f0309da5"
+				"url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/"
+			},
+			{
+				"label": "5 workflow automations for Mattermost that we love at n8n",
+				"icon": "🤖",
+				"url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/"
 			}
 		]
 	}

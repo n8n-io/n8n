@@ -26,11 +26,13 @@ export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunction
 	if (credentials.ssl === true) {
 		credentialData.protocol = 'amqps';
 
-		optsData.cert = credentials.cert === '' ? undefined : Buffer.from(credentials.cert as string);
-		optsData.key = credentials.key === '' ? undefined : Buffer.from(credentials.key as string);
-		optsData.passphrase = credentials.passphrase === '' ? undefined : credentials.passphrase;
 		optsData.ca = credentials.ca === '' ? undefined : [Buffer.from(credentials.ca as string)];
-		optsData.credentials = amqplib.credentials.external();
+		if (credentials.passwordless === true) {
+			optsData.cert = credentials.cert === '' ? undefined : Buffer.from(credentials.cert as string);
+			optsData.key = credentials.key === '' ? undefined : Buffer.from(credentials.key as string);
+			optsData.passphrase = credentials.passphrase === '' ? undefined : credentials.passphrase;
+			optsData.credentials = amqplib.credentials.external();
+		}
 	}
 
 

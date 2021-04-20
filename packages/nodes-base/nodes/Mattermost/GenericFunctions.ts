@@ -9,7 +9,7 @@ import {
 } from 'request';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export interface IAttachment {
@@ -34,7 +34,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	const credentials = this.getCredentials('mattermostApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	query = query || {};
@@ -54,20 +54,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Mattermost credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			const errorBody = error.response.body;
-			throw new Error(`Mattermost error response: ${errorBody.message}`);
-		}
-
-		// Expected error data did not get returned so throw the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

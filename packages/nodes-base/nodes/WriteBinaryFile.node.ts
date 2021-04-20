@@ -8,6 +8,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -71,11 +72,11 @@ export class WriteBinaryFile implements INodeType {
 			item = items[itemIndex];
 
 			if (item.binary === undefined) {
-				throw new Error('No binary data set. So file can not be written!');
+				throw new NodeOperationError(this.getNode(), 'No binary data set. So file can not be written!');
 			}
 
 			if (item.binary[dataPropertyName] === undefined) {
-				throw new Error(`The binary property "${dataPropertyName}" does not exist. So no file can be written!`);
+				throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So no file can be written!`);
 			}
 
 			// Write the file to disk

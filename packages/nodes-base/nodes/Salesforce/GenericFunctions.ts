@@ -11,6 +11,7 @@ import {
 import {
 	IDataObject,
 	INodePropertyOptions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import * as moment from 'moment-timezone';
@@ -41,11 +42,7 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 			return await this.helpers.requestOAuth2.call(this, credentialsType, options);
 		}
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body[0] && error.response.body[0].message) {
-			// Try to return the error prettier
-			throw new Error(`Salesforce error response [${error.statusCode}]: ${error.response.body[0].message}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -163,7 +160,12 @@ export function getDefaultFields(sobject: string) {
 export function getQuery(options: IDataObject, sobject: string, returnAll: boolean, limit = 0) {
 	const fields: string[] = [];
 	if (options.fields) {
-		fields.push.apply(fields, options.fields as string[]);
+		// options.fields is comma separated in standard Salesforce objects and array in custom Salesforce objects -- handle both cases
+		if (typeof options.fields === 'string') {
+			fields.push.apply(fields, options.fields.split(','));
+		} else {
+			fields.push.apply(fields, options.fields as string[]);
+		}
 	} else {
 		fields.push.apply(fields, (getDefaultFields(sobject) as string || 'id').split(','));
 	}
