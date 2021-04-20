@@ -46,6 +46,7 @@
 <script lang="ts">
 
 import Vue from 'vue';
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
@@ -62,7 +63,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 
 import mixins from 'vue-typed-mixins';
 
-export default mixins(nodeBase, workflowHelpers).extend({
+export default mixins(nodeBase, workflowHelpers, externalHooks).extend({
 	name: 'Node',
 	components: {
 		NodeIcon,
@@ -202,6 +203,7 @@ export default mixins(nodeBase, workflowHelpers).extend({
 		},
 		setNodeActive () {
 			this.$store.commit('setActiveNode', this.data.name);
+			this.$externalHooks().run('nodeView.activeNodeChanged', { source: 'node' });
 		},
 		touchStart () {
 			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {

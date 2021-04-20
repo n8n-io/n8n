@@ -509,6 +509,7 @@ export default mixins(
 
 					if (lastSelectedNode !== null) {
 						this.$store.commit('setActiveNode', lastSelectedNode.name);
+						this.$externalHooks().run('nodeView.activeNodeChanged', { source: 'node_view_enter_key' });
 					}
 				} else if (e.key === 'ArrowRight' && e.shiftKey === true) {
 					// Select all downstream nodes
@@ -901,6 +902,7 @@ export default mixins(
 
 				if (setActive === true) {
 					this.$store.commit('setActiveNode', node.name);
+					this.$externalHooks().run('nodeView.activeNodeChanged', { source: 'node_view' });
 				}
 			},
 
