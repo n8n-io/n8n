@@ -77,10 +77,10 @@ export default mixins(showMessage).extend({
 				this.tags.find((tag: ITag) => tag.id === id),
 			);
 		},
-		...mapState("tags", {
-			tags: "tags",
-			isLoading: "isLoading",
-		}),
+		...mapState("tags", [
+			"tags",
+			"isLoading",
+		]),
 		...mapGetters("tags", ["hasTags"]),
 	},
 	methods: {

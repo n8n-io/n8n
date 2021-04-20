@@ -9,32 +9,48 @@ import { addTag, deleteTag, getTags, updateTag } from '../api/tags';
 
 const MAX_TAG_LENGTH = 24;
 
+const replace = (tags: ITag[], updated: ITag): ITag[]  => {
+	return tags.map((tag: ITag) => {
+		if (tag.id === updated.id) {
+			return updated;
+		}
+
+		return tag;
+	});
+};
+
 const module: Module<ITagsState, IRootState> = {
 	namespaced: true,
 	state: {
 		tags: [],
 		isLoading: false,
 		maxLength: MAX_TAG_LENGTH,
+		fetchedAll: false,
 	},
 	mutations: {
 		setLoading: (state: ITagsState, isLoading: boolean) => {
 			state.isLoading = isLoading;
 		},
-		setTags: (state: ITagsState, tags: ITag[]) => {
+		setAllTags: (state: ITagsState, tags: ITag[]) => {
 			state.tags = tags
 				.sort((a: ITag, b: ITag) => a.name.localeCompare(b.name));
+			state.fetchedAll = true;
 		},
 		addTag: (state: ITagsState, tag: ITag) => {
 			state.tags = [tag].concat(state.tags);
 		},
 		updateTag: (state: ITagsState, updated: ITag) => {
-			state.tags = state.tags.map((tag) => {
-				if (tag.id === updated.id) {
-					return updated;
-				}
+			state.tags = replace(state.tags, updated);
+		},
+		upsertTags(state: ITagsState, tags: ITag[]) {
+			state.tags = state.tags.map((curr) => {
+				const found = tags.find((tag) => curr.id === tag.id);
 
-				return tag;
+				return found ? found : curr;
 			});
+
+			const toAdd = tags.filter((newTag) => !state.tags.find((currTag) => currTag.id === newTag.id));
+			state.tags = toAdd.concat(state.tags);
 		},
 		deleteTag: (state: ITagsState, id: string) => {
 			state.tags = state.tags.filter((tag) => tag.id !== id);
@@ -53,15 +69,19 @@ const module: Module<ITagsState, IRootState> = {
 		hasTags: (state: ITagsState): boolean => {
 			return state.tags.length > 0;
 		},
-		currentWorkflowTags: (state: ITagsState, getters: GetterTree<ITagsState, IRootState>, rootState: IRootState): ITag[] => {
-			return rootState.workflow.tags || [];
+		currentWorkflowTags: (state: ITagsState, getters: GetterTree<ITagsState, IRootState>, rootState: IRootState): string[] => {
+			return (rootState.workflow.tags || []) as string[];
 		},
 	},
 	actions: {
 		getAll: async (context: ActionContext<ITagsState, IRootState>) => {
+			if (context.state.fetchedAll) {
+				return context.state.tags;
+			}
+
 			context.commit('setLoading', true);
 			const tags = await getTags(context);
-			context.commit('setTags', tags);
+			context.commit('setAllTags', tags);
 			context.commit('setLoading', false);
 
 			return tags;

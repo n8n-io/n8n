@@ -25,6 +25,7 @@ import {
 	IWorkflowDb,
 	IWorkflowDataUpdate,
 	XYPositon,
+	ITag,
 } from '../../Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -410,6 +411,10 @@ export const workflowHelpers = mixins(
 						this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
 						this.$store.commit('setWorkflowSettings', workflowData.settings || {});
 						this.$store.commit('setStateDirty', false);
+
+						const tags = (workflowData.tags || []) as ITag[];
+						const tagIds = tags.map((tag: ITag): string => tag.id);
+						this.$store.commit('setWorkflowTagIds', tagIds || []);
 					} else {
 						// Workflow exists already so update it
 						workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest);

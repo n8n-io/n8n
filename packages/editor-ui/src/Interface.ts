@@ -230,7 +230,7 @@ export interface IWorkflowDb {
 	nodes: INodeUi[];
 	connections: IConnections;
 	settings?: IWorkflowSettings;
-	tags?: ITag[];
+	tags?: ITag[] | string[];
 }
 
 // Identical to cli.Interfaces.ts
@@ -498,6 +498,7 @@ export interface ITagsState {
 	tags: ITag[];
 	isLoading: boolean;
 	maxLength: number;
+	fetchedAll: boolean;
 }
 
 export interface IWorkflowsState {

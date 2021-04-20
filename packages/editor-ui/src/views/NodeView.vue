@@ -163,6 +163,7 @@ import {
 	IWorkflowDataUpdate,
 	XYPositon,
 	IPushDataExecutionFinished,
+  ITag,
 } from '../Interface';
 
 export default mixins(
@@ -374,6 +375,12 @@ export default mixins(
 				this.$store.commit('setWorkflowId', workflowId);
 				this.$store.commit('setWorkflowName', {newName: data.name, setStateDirty: false});
 				this.$store.commit('setWorkflowSettings', data.settings || {});
+
+				const tags = (data.tags || []) as ITag[];
+				this.$store.commit('tags/upsertTags', tags);
+
+				const tagIds = tags.map((tag: ITag): string => tag.id);
+				this.$store.commit('setWorkflowTagIds', tagIds || []);
 
 				await this.addNodes(data.nodes, data.connections);
 
@@ -1982,6 +1989,7 @@ export default mixins(
 				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				this.$store.commit('setWorkflowName', {newName: '', setStateDirty: false});
 				this.$store.commit('setWorkflowSettings', {});
+				this.$store.commit('setWorkflowTagIds', []);
 
 				this.$store.commit('setActiveExecutionId', null);
 				this.$store.commit('setExecutingNode', null);

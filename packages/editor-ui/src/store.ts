@@ -30,6 +30,7 @@ import {
 	IUpdateInformation,
 	IWorkflowDb,
 	XYPositon,
+	ITag,
 } from './Interface';
 
 import tags from './modules/tags';
@@ -82,6 +83,7 @@ const state: IRootState = {
 		connections: {},
 		nodes: [],
 		settings: {},
+		tags: [],
 	},
 	sidebarMenuItems: [],
 };
@@ -577,6 +579,10 @@ export const store = new Vuex.Store({
 			Vue.set(state.workflow, 'settings', workflowSettings);
 		},
 
+		setWorkflowTagIds (state, tags: string[]) {
+			Vue.set(state.workflow, 'tags', tags);
+		},
+
 		// Workflow
 		setWorkflow (state, workflow: IWorkflowDb) {
 			Vue.set(state, 'workflow', workflow);
@@ -856,6 +862,5 @@ export const store = new Vuex.Store({
 		sidebarMenuItems: (state): IMenuItem[] => {
 			return state.sidebarMenuItems;
 		},
-	},
-
+	}
 });

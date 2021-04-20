@@ -15,7 +15,7 @@
 					/>
 				</el-row>
 				<el-row>
-					<tags-dropdown
+					<TagsDropdown
 						:currentTagIds="currentTagIds"
 						placeholder="Choose or create a tag"
 						@onUpdate="onUpdate"
@@ -42,14 +42,20 @@ import TagsDropdown from "./TagsDropdown.vue";
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { TagsDropdown },
 	name: "SaveWorkflow",
-	props: ["dialogVisible", "title", "saveWorkflow"],
+	props: ["dialogVisible", "title", "renameOnly"],
 	data() {
-		const currentTags = this.$store.getters[
+		const currentTagIds = this.$store.getters[
 			"tags/currentWorkflowTags"
-		] as ITag[];
+		] as string[];
+		const currentWorkflowName  = this.$store.getters["workflowName"];
+		let name = '';
+		if (currentWorkflowName) {
+			name = this.renameOnly ? currentWorkflowName : `${currentWorkflowName} copy`;
+		}
+
 		return {
-			name: "",
-			currentTagIds: currentTags.map(({ id }) => id),
+			name,
+			currentTagIds,
 		};
 	},
 	created() {
@@ -71,15 +77,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 				return;
 			}
 
-			if (this.$props.saveWorkflow) {
-				// save entire workflow
-				await this.saveCurrentWorkflow(true, this.name, this.currentTagIds);
-
-				this.$emit("closeDialog");
-			} else {
-				//  just rename
+			if (this.$props.renameOnly) {
 				try {
-					await this.$store.dispatch("workflows/renameCurrent", this.name);
+					await this.$store.dispatch("workflows/renameCurrent", {name: this.name, tags: this.currentTagIds});
 
 					this.$showMessage({
 						title: "Workflow renamed",
@@ -95,6 +95,11 @@ export default mixins(showMessage, workflowHelpers).extend({
 						"There was a problem renaming the workflow:",
 					);
 				}
+			}
+			else {
+				await this.saveCurrentWorkflow(true, this.name, this.currentTagIds);
+
+				this.$emit("closeDialog");
 			}
 		},
 		closeDialog(): void {

@@ -1,17 +1,20 @@
 <template>
 	<div>
-		<save-workflow-dialog
+		<SaveWorkflowDialog
+			v-if="saveAsDialogOpen"
 			title="Save new workflow"
 			:dialogVisible="saveAsDialogOpen"
-			:saveWorkflow="true"
 			@closeDialog="closeSaveAsDialog"
 		/>
-		<save-workflow-dialog
+		<SaveWorkflowDialog
+			v-if="renameDialogOpen"
 			title="Rename workflow"
 			:dialogVisible="renameDialogOpen"
+			:renameOnly="true"
 			@closeDialog="closeRenameDialog"
 		/>
-		<tags-manager
+		<TagsManager
+			v-if="tagsManagerOpen"
 			:dialogVisible="tagsManagerOpen"
 			@closeDialog="closeTagsManager"
 		/>
@@ -36,12 +39,10 @@ export default Vue.extend({
 		"saveAsDialogOpen",
 		"renameDialogOpen",
 	]),
-	methods: {
-		...mapMutations("ui", [
-			"closeSaveAsDialog",
-			"closeRenameDialog",
-			"closeTagsManager",
-		]),
-	},
+	methods: mapMutations("ui", [
+		"closeSaveAsDialog",
+		"closeRenameDialog",
+		"closeTagsManager",
+	]),
 });
 </script>
