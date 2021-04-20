@@ -1918,6 +1918,15 @@ export class Salesforce implements INodeType {
 					if (additionalFields.suppliedCompany !== undefined) {
 						body.SuppliedCompany = additionalFields.suppliedCompany as string;
 					}
+					if (additionalFields.customFieldsUi) {
+						const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						if (customFields) {
+							for (const customField of customFields) {
+								//@ts-ignore
+								body[customField.fieldId] = customField.value;
+							}
+						}
+					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/case', body);
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Case/patch-case-id
@@ -1969,6 +1978,15 @@ export class Salesforce implements INodeType {
 					}
 					if (updateFields.suppliedCompany !== undefined) {
 						body.SuppliedCompany = updateFields.suppliedCompany as string;
+					}
+					if (updateFields.customFieldsUi) {
+						const customFields = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						if (customFields) {
+							for (const customField of customFields) {
+								//@ts-ignore
+								body[customField.fieldId] = customField.value;
+							}
+						}
 					}
 					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/case/${caseId}`, body);
 				}
