@@ -8,6 +8,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -350,8 +352,8 @@ export class GithubTrigger implements INodeType {
 
 				try {
 					await githubApiRequest.call(this, 'GET', endpoint, {});
-				} catch (e) {
-					if (e.message.includes('[404]:')) {
+				} catch (error) {
+					if (error.message.includes('[404]:')) {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
@@ -360,7 +362,7 @@ export class GithubTrigger implements INodeType {
 					}
 
 					// Some error occured
-					throw e;
+					throw error;
 				}
 
 				// If it did not error then the webhook exists
@@ -370,7 +372,7 @@ export class GithubTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				if (webhookUrl.includes('//localhost')) {
-					throw new Error('The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!');
+					throw new NodeOperationError(this.getNode(), 'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!');
 				}
 
 				const owner = this.getNodeParameter('owner') as string;
@@ -396,8 +398,8 @@ export class GithubTrigger implements INodeType {
 				let responseData;
 				try {
 					responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
-				} catch (e) {
-					if (e.message.includes('[422]:')) {
+				} catch (error) {
+					if (error.message.includes('[422]:')) {
 						// Webhook exists already
 
 						// Get the data of the already registered webhook
@@ -416,15 +418,15 @@ export class GithubTrigger implements INodeType {
 							}
 						}
 
-						throw new Error('A webhook with the identical URL probably exists already. Please delete it manually on Github!');
+						throw new NodeOperationError(this.getNode(), 'A webhook with the identical URL probably exists already. Please delete it manually on Github!');
 					}
 
-					throw e;
+					throw error;
 				}
 
 				if (responseData.id === undefined || responseData.active !== true) {
 					// Required data is missing so was not successful
-					throw new Error('Github webhook creation response did not contain the expected data.');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'Github webhook creation response did not contain the expected data.' });
 				}
 
 				webhookData.webhookId = responseData.id as string;
@@ -443,7 +445,7 @@ export class GithubTrigger implements INodeType {
 
 					try {
 						await githubApiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

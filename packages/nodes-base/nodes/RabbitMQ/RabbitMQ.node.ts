@@ -7,6 +7,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -333,7 +335,7 @@ export class RabbitMQ implements INodeType {
 					if (response!.status !== 'fulfilled') {
 
 						if (this.continueOnFail() !== true) {
-							throw new Error(response!.reason as string);
+							throw new NodeApiError(this.getNode(), response);
 						} else {
 							// Return the actual reason as error
 							returnItems.push(
@@ -398,7 +400,7 @@ export class RabbitMQ implements INodeType {
 					if (response!.status !== 'fulfilled') {
 
 						if (this.continueOnFail() !== true) {
-							throw new Error(response!.reason as string);
+							throw new NodeApiError(this.getNode(), response);
 						} else {
 							// Return the actual reason as error
 							returnItems.push(
@@ -422,7 +424,7 @@ export class RabbitMQ implements INodeType {
 				await channel.close();
 				await channel.connection.close();
 			} else {
-				throw new Error(`The operation "${mode}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
 			}
 
 			return this.prepareOutputData(returnItems);

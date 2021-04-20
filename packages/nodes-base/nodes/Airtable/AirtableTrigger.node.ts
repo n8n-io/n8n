@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -170,7 +171,7 @@ export class AirtableTrigger implements INodeType {
 
 		if (Array.isArray(records) && records.length) {
 			if (this.getMode() === 'manual' && records[0].fields[triggerField] === undefined) {
-				throw new Error(`The Field "${triggerField}" does not exist.`);
+				throw new NodeOperationError(this.getNode(), `The Field "${triggerField}" does not exist.`);
 			}
 
 			if (downloadAttachments === true) {

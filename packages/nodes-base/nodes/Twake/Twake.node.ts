@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -176,7 +177,7 @@ export class Twake implements INodeType {
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const responseData = await twakeApiRequest.call(this, 'POST', '/channel', {});
 				if (responseData === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeOperationError(this.getNode(), 'No data got returned');
 				}
 
 				const returnData: INodePropertyOptions[] = [];
