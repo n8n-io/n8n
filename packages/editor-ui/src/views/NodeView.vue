@@ -354,6 +354,8 @@ export default mixins(
 				this.$store.commit('setWorkflowExecutionData', data);
 
 				await this.addNodes(JSON.parse(JSON.stringify(data.workflowData.nodes)), JSON.parse(JSON.stringify(data.workflowData.connections)));
+
+				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
 			},
 			async openWorkflow (workflowId: string) {
 				this.resetWorkspace();
