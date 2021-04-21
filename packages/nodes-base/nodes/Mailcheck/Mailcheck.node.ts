@@ -10,93 +10,103 @@ import {
 } from 'n8n-workflow';
 
 import {
-	OptionsWithUri,
-} from 'request';
+	mailCheckApiRequest,
+} from './GenericFunctions';
 
 export class Mailcheck implements INodeType {
 	description: INodeTypeDescription = {
-			displayName: 'Mailcheck',
-			name: 'mailcheck',
-			icon: 'file:mailcheck.svg',
-			group: ['transform'],
-			version: 1,
-			description: 'Verifies email address',
-			defaults: {
-					name: 'Mailcheck',
-					color: '#1A82e2',
+		displayName: 'Mailcheck',
+		name: 'mailcheck',
+		icon: 'file:mailcheck.svg',
+		group: ['transform'],
+		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		description: 'Consume Mailcheck API',
+		defaults: {
+			name: 'Mailcheck',
+			color: '#4f44d7',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
+			{
+				name: 'mailcheckApi',
+				required: true,
 			},
-			inputs: ['main'],
-			outputs: ['main'],
-			credentials: [
-				{
-					name: 'mailcheckApi',
-					required: true,
-				},
-			],
-			properties: [
-					// Node properties which the user gets displayed and
-					// can change on the node.
+		],
+		properties: [
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
 					{
-						displayName: 'Email',
-						name: 'email',
-						type: 'string',
-						required: true,
-						default: '',
-						description: 'Email address',
+						name: 'Email',
+						value: 'email',
 					},
-			],
+				],
+				default: 'email',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'email',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Check',
+						value: 'check',
+					},
+				],
+				default: 'check',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'email',
+						],
+						operation: [
+							'check',
+						],
+					},
+				},
+				default: '',
+				description: 'Email address to check.',
+			},
+		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-			const items = this.getInputData();
-			const credentials = this.getCredentials('mailcheckApi') as IDataObject;
+		const items = this.getInputData();
+		const returnData: IDataObject[] = [];
+		const length = items.length as unknown as number;
+		let responseData;
 
-			const returnData = [];
-
-			for (let i = 0; i < items.length; i++) {
-				const email = this.getNodeParameter('email', i) as string;
-
-				const options: OptionsWithUri = {
-					headers: {
-						'Accept': 'application/json',
-						'Authorization': `Bearer ${credentials.apiKey}`,
-					},
-					method: 'POST',
-					body: { email },
-					uri: 'https://api.mailcheck.co/v1/singleEmail:check',
-					json: true,
-				};
-
-				const responseData = await this.helpers.request(options);
-
-				const trustRate = responseData.trustRate;
-				const status = getEmailStatus(trustRate);
-
-				returnData.push({ trustRate, status });
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+		for (let i = 0; i < length; i++) {
+			if (resource === 'email') {
+				if (operation === 'check') {
+					const email = this.getNodeParameter('email', i) as string;
+					responseData = await mailCheckApiRequest.call(this, 'POST', '/singleEmail:check', { email });
+				}
 			}
-
-			return [this.helpers.returnJsonArray(returnData)];
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else {
+				returnData.push(responseData as IDataObject);
+			}
+		}
+		return [this.helpers.returnJsonArray(returnData)];
 	}
-}
-
-enum EmailStatus {
-	Valid = 'Valid',
-	Risky = 'Risky',
-	Invalid = 'Invalid',
-}
-
-function getEmailStatus(trustRate: number): EmailStatus {
-	if (trustRate < 0 || trustRate > 100) {
-		throw new Error('Wrong email trust rate.');
-	}
-
-	if (trustRate < 50) {
-		return EmailStatus.Invalid;
-	}
-
-	if (trustRate < 80) {
-		return EmailStatus.Risky;
-	}
-
-	return EmailStatus.Valid;
 }

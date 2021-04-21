@@ -8,11 +8,11 @@ export class MailcheckApi implements ICredentialType {
 	displayName = 'Mailcheck API';
 	documentationUrl = 'mailcheck';
 	properties = [
-			{
-					displayName: 'API Key',
-					name: 'apiKey',
-					type: 'string' as NodePropertyTypes,
-					default: '',
-			},
+		{
+			displayName: 'API Key',
+			name: 'apiKey',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+		},
 	];
 }
