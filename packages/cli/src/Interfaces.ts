@@ -87,6 +87,11 @@ export interface ITagDb {
 	updatedAt?: Date;
 }
 
+export interface ITagResponseItem {
+	id: string;
+	name: string;
+}
+
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
 	id: number | string;

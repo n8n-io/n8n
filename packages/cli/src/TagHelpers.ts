@@ -5,6 +5,7 @@ import {
 import {
 	Db,
 	ITagDb,
+	ITagResponseItem,
 	ResponseHelper,
 } from ".";
 
@@ -22,11 +23,21 @@ function isStringArray(tags: unknown[]): tags is string[] {
 }
 
 /**
- * Stringify the ID in every `ITagDb` in an array.
- * Side effect: Remove `createdAt` and `updatedAt` for a slimmer response.
+ * Format a tags response by stringifying the ID in every `ITagDb` in an array
+ * and removing `createdAt` and `updatedAt` to slim down the payload.
  */
-export function getTagsResponse(tags: ITagDb[]) {
+export function formatTagsResponse(tags: ITagDb[]): ITagResponseItem[] {
 	return tags.map(({ id, name }) => ({ id: id.toString(), name }));
+}
+
+/**
+ * Sort a tags response by the order of the tag IDs in the incoming request.
+ */
+export function sortByRequestOrder(
+	tagsResponse: ITagResponseItem[],
+	tagIds: string[]
+) {
+	return tagsResponse.sort((a, b) => tagIds.indexOf(a.id) - tagIds.indexOf(b.id));
 }
 
 /**
