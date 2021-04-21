@@ -1,20 +1,24 @@
 <template>
 	<span>
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" title="Open Workflow" :before-close="closeDialog" top="5vh">
-
-			<div class="text-very-light">
-				Select a workflow to open:
-			</div>
-
-			<TagsDropdown 
-				placeholder="Filter by tags..."
-				:currentTagIds="filterTags"
-			/>
-			<div class="search-wrapper ignore-key-press">
-				<el-input placeholder="Workflow filter..." ref="inputFieldFilter" v-model="filterText">
-					<i slot="prefix" class="el-input__icon el-icon-search"></i>
-				</el-input>
-			</div>
+		<el-dialog :visible="dialogVisible" append-to-body width="80%" :before-close="closeDialog" top="5vh">
+			<el-row class="workflows-header">
+				<el-col :span="9">
+					<h1>Open Workflow</h1>
+				</el-col>
+				<el-col :span="6" :offset="5" class="tags-filter">
+					<TagsDropdown 
+						placeholder="Filter by tags..."
+						:currentTagIds="filterTagIds"
+						:createEnabled="false"
+						@onUpdate="updateTagsFilter"
+					/>
+				</el-col>
+				<el-col class="ignore-key-press" :span="4">
+					<el-input placeholder="Workflow filter..." ref="inputFieldFilter" v-model="filterText">
+						<i slot="prefix" class="el-input__icon el-icon-search"></i>
+					</el-input>
+				</el-col>
+			</el-row>
 
 			<el-table class="search-table" :data="filteredWorkflows" stripe @cell-click="openWorkflow" :default-sort = "{prop: 'updatedAt', order: 'descending'}" v-loading="isDataLoading">
 				<el-table-column property="name" label="Name" class-name="clickable" sortable>
@@ -75,7 +79,7 @@ TagsDropdown,
 			filterText: '',
 			isDataLoading: false,
 			workflows: [] as IWorkflowShortResponse[],
-			filterTags: [] as ITag[],
+			filterTagIds: [] as string[],
 		};
 	},
 	computed: {
@@ -84,10 +88,21 @@ TagsDropdown,
 
 			return this.workflows
 				.filter((workflow: IWorkflowShortResponse) => {
-					if (this.filterText === '' || workflow.name.toLowerCase().indexOf(this.filterText.toLowerCase()) !== -1) {
+					if (this.filterText && workflow.name.toLowerCase().indexOf(this.filterText.toLowerCase()) === -1) {
+						return false;
+					}
+
+					if (this.filterTagIds.length === 0) {
 						return true;
 					}
-					return false;
+
+					if (!workflow.tags || workflow.tags.length === 0) {
+						return false;
+					}
+
+					return workflow.tags.reduce((accu: boolean, tag: ITag) => {
+						return accu && this.filterTagIds.indexOf(tag.id) > -1;
+					}, true);
 				})
 				.map((workflow): IWorkflowShortResponse => {
 					workflow.tags = (workflow.tags || []).map((tag) => {
@@ -113,6 +128,9 @@ TagsDropdown,
 		},
 	},
 	methods: {
+		updateTagsFilter(tags: string[]) {
+			this.filterTagIds = tags;
+		},
 		closeDialog () {
 			// Handle the close externally as the visible parameter is an external prop
 			// and is so not allowed to be changed here.
@@ -183,13 +201,33 @@ TagsDropdown,
 </script>
 
 <style scoped lang="scss">
+/deep/ .el-dialog  {
+	.el-dialog__header {
+		padding: 0;
+	}
+	.el-dialog__body {
+		padding-top: 20px;
+	}
+}
+
+.workflows-header {
+	h1 {
+		margin-top: 0;
+		font-weight: 600;
+		line-height: 24px;
+		font-size: 18px;
+	}
+
+	.tags-filter {
+		padding-right: 10px;
+	}
+}
 
 .search-table {
 	margin-top: 2em;
-}
 
-.name span {
-	margin-right: 10px;
+	.name span {
+		margin-right: 10px;
+	}
 }
-
 </style>

@@ -17,6 +17,7 @@
 				<el-row>
 					<TagsDropdown
 						:currentTagIds="currentTagIds"
+						:createEnabled="true"
 						placeholder="Choose or create a tag"
 						@onUpdate="onUpdate"
 					/>

@@ -1,5 +1,5 @@
 <template>
-	<div class="tags-container">
+	<div class="tags-container" @keydown.stop>
 		<el-select
 			filterable
 			multiple
@@ -12,7 +12,7 @@
 			@change="tagsUpdated"
 		>
 			<el-option
-				v-if="options.length === 0 && filter"
+				v-if="options.length === 0 && filter && createEnabled"
 				:key="CREATE_KEY"
 				:value="CREATE_KEY"
 				class="ops"
@@ -22,7 +22,8 @@
 				<span>Create tag "{{ filter }}"</span>
 			</el-option>
 			<el-option v-else-if="options.length === 0" value="message" disabled>
-				<span>Type to create a tag</span>
+				<span v-if="createEnabled">Type to create a tag</span>
+				<span v-else>No matching tags exist</span>
 			</el-option>
 
 			<!-- key is id+index for keyboard navigation to work well with filter -->
@@ -55,7 +56,7 @@ const CREATE_KEY = "__create";
 
 export default mixins(showMessage).extend({
 	name: "TagsDropdown",
-	props: ["placeholder", "currentTagIds"],
+	props: ["placeholder", "currentTagIds", "createEnabled"],
 	data() {
 		return {
 			filter: "",
