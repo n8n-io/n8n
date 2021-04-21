@@ -606,7 +606,7 @@ class App {
 
 			if (tagIds) {
 				await TagHelpers.validateTags(tagIds);
-				await TagHelpers.validateNotRelated(req.params.id, tagIds);
+				await TagHelpers.validateRelations(req.params.id, tagIds);
 			}
 
 			const newWorkflowData = _.omit(req.body, ['tags']) as IWorkflowBase;

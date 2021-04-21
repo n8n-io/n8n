@@ -115,18 +115,18 @@ export async function validateName(name: unknown): Promise<void> | never {
 }
 
 /**
- * Validate that the provided tags are related to a workflow.
+ * Validate that the provided tags are not related to a workflow.
  *
- * Used for relating the tags and the workflow.
+ * Used before creating a relation before the provided tags and workflow.
  */
-export async function validateNotRelated(workflowId: string, tags: string[]): Promise<void> | never {
-	tags.forEach(async tagId => {
+export async function validateRelations(workflowId: string, tagIds: string[]): Promise<void> | never {
+	for (const tagId of tagIds) {
 		const areRelated = await checkRelated(workflowId, tagId);
 
 		if (areRelated) {
 			throw new ResponseHelper.ResponseError(`Workflow ID ${workflowId} and tag ID ${tagId} are already related.`, undefined, 400);
 		}
-	});
+	}
 }
 
 // ----------------------------------
