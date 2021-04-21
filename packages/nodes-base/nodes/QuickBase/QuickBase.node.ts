@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -386,7 +387,7 @@ export class QuickBase implements INodeType {
 					}
 
 					if (items[i].json[updateKey] === undefined) {
-						throw new Error(`The update key ${updateKey} could not be found in the input`);
+						throw new NodeOperationError(this.getNode(), `The update key ${updateKey} could not be found in the input`);
 					}
 
 					record[fieldsLabelKey['Record ID#']] = { value: items[i].json[updateKey] };
@@ -457,7 +458,7 @@ export class QuickBase implements INodeType {
 					}
 
 					if (items[i].json[updateKey] === undefined) {
-						throw new Error(`The update key ${updateKey} could not be found in the input`);
+						throw new NodeOperationError(this.getNode(), `The update key ${updateKey} could not be found in the input`);
 					}
 
 					record[mergeFieldId] = { value: items[i].json[updateKey] };

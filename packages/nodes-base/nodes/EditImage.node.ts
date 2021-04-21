@@ -10,6 +10,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 import * as gm from 'gm';
 import { file } from 'tmp-promise';
@@ -1041,7 +1042,7 @@ export class EditImage implements INodeType {
 				requiredOperationParameters[operation].forEach(parameterName => {
 					try {
 						operationParameters[parameterName] = this.getNodeParameter(parameterName, itemIndex);
-					} catch (e) {}
+					} catch (error) {}
 				});
 
 				operations = [
@@ -1055,11 +1056,11 @@ export class EditImage implements INodeType {
 			if (operations[0].operation !== 'create') {
 				// "create" generates a new image so does not require any incoming data.
 				if (item.binary === undefined) {
-					throw new Error('Item does not contain any binary data.');
+					throw new NodeOperationError(this.getNode(), 'Item does not contain any binary data.');
 				}
 
 				if (item.binary[dataPropertyName as string] === undefined) {
-					throw new Error(`Item does not contain any binary data with the name "${dataPropertyName}".`);
+					throw new NodeOperationError(this.getNode(), `Item does not contain any binary data with the name "${dataPropertyName}".`);
 				}
 
 				gmInstance = gm(Buffer.from(item.binary![dataPropertyName as string].data, BINARY_ENCODING));
@@ -1095,7 +1096,7 @@ export class EditImage implements INodeType {
 					const geometryString = (positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
 
 					if (item.binary![operationData.dataPropertyNameComposite as string] === undefined) {
-						throw new Error(`Item does not contain any binary data with the name "${operationData.dataPropertyNameComposite}".`);
+						throw new NodeOperationError(this.getNode(), `Item does not contain any binary data with the name "${operationData.dataPropertyNameComposite}".`);
 					}
 
 					const { fd, path, cleanup } = await file();

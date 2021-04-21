@@ -177,10 +177,11 @@ export class Execute extends Command {
 				logger.info('====================================');
 				logger.info(JSON.stringify(data, null, 2));
 
-				// console.log(data.data.resultData.error);
-				const error = new Error(data.data.resultData.error.message);
-				error.stack = data.data.resultData.error.stack;
-				throw error;
+				const { error } = data.data.resultData;
+				throw {
+					...error,
+					stack: error.stack,
+				};
 			}
 
 			console.info('Execution was successful:');
@@ -193,7 +194,6 @@ export class Execute extends Command {
 			logger.error(e.message);
 			logger.error(e.stack);
 			this.exit(1);
-			return;
 		}
 
 		this.exit();

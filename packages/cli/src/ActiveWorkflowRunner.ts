@@ -20,7 +20,6 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
 	IExecuteData,
 	IGetExecutePollFunctions,
 	IGetExecuteTriggerFunctions,
@@ -291,23 +290,11 @@ export class ActiveWorkflowRunner {
 			const node = workflow.getNode(webhookData.node) as INode;
 			node.name = webhookData.node;
 
-			path = node.parameters.path as string;
-
-			if (node.parameters.path === undefined) {
-				path = workflow.expression.getSimpleParameterValue(node, webhookData.webhookDescription['path'], mode) as string | undefined;
-
-				if (path === undefined) {
-					// TODO: Use a proper logger
-					console.error(`No webhook path could be found for node "${node.name}" in workflow "${workflow.id}".`);
-					continue;
-				}
-			}
-
-			const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookData.webhookDescription['isFullPath'], mode, false) as boolean;
+			path = webhookData.path;
 
 			const webhook = {
 				workflowId: webhookData.workflowId,
-				webhookPath: NodeHelpers.getNodeWebhookPath(workflow.id as string, node, path, isFullPath),
+				webhookPath: path,
 				node: node.name,
 				method: webhookData.httpMethod,
 			} as IWebhookDb;
@@ -325,7 +312,6 @@ export class ActiveWorkflowRunner {
 			}
 
 			try {
-
 				await Db.collections.Webhook?.insert(webhook);
 
 				const webhookExists = await workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, activation, false);

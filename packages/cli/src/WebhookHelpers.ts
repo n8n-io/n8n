@@ -145,7 +145,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 
 		try {
 			webhookResultData = await workflow.runWebhook(webhookData, workflowStartNode, additionalData, NodeExecuteFunctions, executionMode);
-		} catch (e) {
+		} catch (err) {
 			// Send error response to webhook caller
 			const errorMessage = 'Workflow Webhook Error: Workflow could not be started!';
 			responseCallback(new Error(errorMessage), {});
@@ -157,8 +157,9 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 					runData: {},
 					lastNodeExecuted: workflowStartNode.name,
 					error: {
-						message: e.message,
-						stack: e.stack,
+						...err,
+						message: err.message,
+						stack: err.stack,
 					},
 				},
 			};
