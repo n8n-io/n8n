@@ -26,7 +26,7 @@
 								</svg>
 
 							<div v-if="showDocumentHelp && nodeType" class="text">
-								Need help? <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="documentationUrl" target="_blank">Open {{nodeType.displayName}} documentation</a>
+								Need help? <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">Open {{nodeType.displayName}} documentation</a>
 							</div>
 					</div>
 				</transition>
@@ -49,10 +49,13 @@ import {
 	IUpdateInformation,
 } from '../Interface';
 
+import { externalHooks } from '@/components/mixins/externalHooks';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-export default Vue.extend({
+import mixins from 'vue-typed-mixins';
+
+export default mixins(externalHooks).extend({
 	name: 'DataDisplay',
 	components: {
 		NodeSettings,
@@ -101,6 +104,9 @@ export default Vue.extend({
 				this.showDocumentHelp = false;
 				this.$store.commit('setActiveNode', null);
 			}
+		},
+		onDocumentationUrlClick () {
+			this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', { nodeType: this.nodeType, documentationUrl: this.documentationUrl });
 		},
 	},
 });
