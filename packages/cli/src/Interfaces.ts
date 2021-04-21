@@ -1,22 +1,24 @@
 import {
+	ExecutionError,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
-	IExecutionError,
 	IRun,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
 	IWorkflowBase as IWorkflowBaseWorkflow,
 	IWorkflowCredentials,
+	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import {
-	IDeferredPromise,
+	IDeferredPromise, WorkflowExecute,
 } from 'n8n-core';
+
 import * as PCancelable from 'p-cancelable';
 import { Repository } from 'typeorm';
 
@@ -391,10 +393,10 @@ export interface ITransferNodeTypes {
 
 
 export interface IWorkflowErrorData {
-	[key: string]: IDataObject | string | number | IExecutionError;
+	[key: string]: IDataObject | string | number | ExecutionError;
 	execution: {
 		id?: string;
-		error: IExecutionError;
+		error: ExecutionError;
 		lastNodeExecuted: string;
 		mode: WorkflowExecuteMode;
 	};
@@ -427,4 +429,10 @@ export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExe
 	credentialsTypeData: ICredentialsTypeData;
 	executionId: string;
 	nodeTypeData: ITransferNodeTypes;
+}
+
+export interface IWorkflowExecuteProcess {
+	startedAt: Date;
+	workflow: Workflow;
+	workflowExecute: WorkflowExecute;
 }

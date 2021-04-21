@@ -38,6 +38,11 @@
 				"url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/"
 			},
 			{
+				"label": "5 workflow automations for Mattermost that we love at n8n",
+				"icon": "🤖",
+				"url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/"
+			},
+			{
 				"label": "Creating Error Workflows in n8n",
 				"icon": "🌪",
 				"url": "https://n8n.io/blog/creating-error-workflows-in-n8n/"

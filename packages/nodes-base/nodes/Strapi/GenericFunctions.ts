@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -36,19 +36,7 @@ export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFun
 		//@ts-ignore
 		return await this.helpers?.request(options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.message) {
-
-			let messages = error.response.body.message;
-
-			if (Array.isArray(error.response.body.message)) {
-				messages = messages[0].messages.map((e: IDataObject) => e.message).join('|');
-			}
-			// Try to return the error prettier
-			throw new Error(
-				`Strapi error response [${error.statusCode}]: ${messages}`,
-			);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

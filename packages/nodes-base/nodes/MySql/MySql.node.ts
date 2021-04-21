@@ -4,6 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 // @ts-ignore
 import * as mysql2 from 'mysql2/promise';
@@ -215,10 +216,33 @@ export class MySql implements INodeType {
 		const credentials = this.getCredentials('mySql');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
-		const connection = await mysql2.createConnection(credentials);
+		// Destructuring SSL configuration
+		const {
+			ssl,
+			caCertificate,
+			clientCertificate,
+			clientPrivateKey,
+			...baseCredentials
+		} = credentials;
+
+		if (ssl) {
+			baseCredentials.ssl = {};
+
+			if (caCertificate) {
+				baseCredentials.ssl.ca = caCertificate;
+			}
+
+			// client certificates might not be required
+			if (clientCertificate || clientPrivateKey) {
+				baseCredentials.ssl.cert = clientCertificate;
+				baseCredentials.ssl.key = clientPrivateKey;
+			}
+		}
+
+		const connection = await mysql2.createConnection(baseCredentials);
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
 		let returnItems = [];
@@ -291,7 +315,7 @@ export class MySql implements INodeType {
 
 		} else {
 			await connection.end();
-			throw new Error(`The operation "${operation}" is not supported!`);
+			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 		}
 
 		await connection.end();
