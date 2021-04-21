@@ -107,13 +107,15 @@ import * as querystring from 'querystring';
 import * as Queue from '../src/Queue';
 import { OptionsWithUrl } from 'request-promise-native';
 import { Registry } from 'prom-client';
-import { ITagDb, IWorkflowRequest } from './Interfaces';
+import { ExactDatabaseCollections, ITagDb, IWorkflowRequest } from './Interfaces';
 
 import * as TagHelpers from './TagHelpers';
+import { hasNonNullableContents } from './Db';
 
 class App {
 
 	app: express.Application;
+	dbCollections: ExactDatabaseCollections;
 	activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
 	testWebhooks: TestWebhooks.TestWebhooks;
 	endpointWebhook: string;
@@ -429,12 +431,13 @@ class App {
 
 
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-			if (Db.collections.Workflow === null) {
+			if (hasNonNullableContents(Db.collections)) {
+				this.dbCollections = Db.collections;
+				next();
+			} else {
 				const error = new ResponseHelper.ResponseError('Database is not ready!', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
-
-			next();
 		});
 
 
@@ -498,7 +501,7 @@ class App {
 			await this.externalHooks.run('workflow.create', [newWorkflowData]);
 
 			// Save the workflow in DB
-			const result = await Db.collections.Workflow!.save(newWorkflowData);
+			const result = await this.dbCollections.Workflow.save(newWorkflowData);
 
 			const { tags } = req.body;
 
@@ -509,14 +512,12 @@ class App {
 				await TagHelpers.validateTags(tagIds);
 				await TagHelpers.createRelations(workflowId, tagIds);
 
-				const found = await Db.collections.Tag!.find({
+				const found = await this.dbCollections.Tag.find({
 					select: ['id', 'name'],
 					where: { id: In(tagIds) },
 				});
 
-				const tagsResponse = TagHelpers.formatTagsResponse(found);
-
-				result.tags = TagHelpers.sortByRequestOrder(tagsResponse, tagIds);
+				result.tags = TagHelpers.formatTagsResponse(found);
 			}
 
 			// Convert to response format in which the id is a string
@@ -565,7 +566,7 @@ class App {
 				findQuery.where = JSON.parse(req.query.filter as string);
 			}
 
-			const results = await Db.collections.Workflow!.find(findQuery);
+			const results = await this.dbCollections.Workflow.find(findQuery);
 			results.forEach(workflow => {
 				if (workflow.tags) {
 					workflow.tags = TagHelpers.formatTagsResponse(workflow.tags);
@@ -582,14 +583,13 @@ class App {
 
 		// Returns a specific workflow
 		this.app.get(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowResponse | undefined> => {
-			const result = await Db.collections.Workflow!.findOne(req.params.id);
+			const result = await this.dbCollections.Workflow.findOne(req.params.id);
 
 			if (result === undefined) {
 				return undefined;
 			}
 
 			const foundTags = await TagHelpers.getWorkflowTags(req.params.id);
-			console.log(foundTags);
 			result.tags = foundTags.map(({ id, name }) => ({ id: id.toString(), name }));
 
 			// Convert to response format in which the id is a string
@@ -648,12 +648,12 @@ class App {
 
 			newWorkflowData.updatedAt = this.getCurrentDate();
 
-			await Db.collections.Workflow!.update(id, newWorkflowData);
+			await this.dbCollections.Workflow.update(id, newWorkflowData);
 			await this.externalHooks.run('workflow.afterUpdate', [newWorkflowData]);
 
 			// We sadly get nothing back from "update". Neither if it updated a record
 			// nor the new value. So query now the hopefully updated entry.
-			const responseData = await Db.collections.Workflow!.findOne(id);
+			const responseData = await this.dbCollections.Workflow.findOne(id);
 
 			if (responseData === undefined) {
 				throw new ResponseHelper.ResponseError(`Workflow with id "${id}" could not be found to be updated.`, undefined, 400);
@@ -668,7 +668,7 @@ class App {
 				} catch (error) {
 					// If workflow could not be activated set it again to inactive
 					newWorkflowData.active = false;
-					await Db.collections.Workflow!.update(id, newWorkflowData);
+					await this.dbCollections.Workflow.update(id, newWorkflowData);
 
 					// Also set it in the returned data
 					responseData.active = false;
@@ -682,14 +682,12 @@ class App {
 				await TagHelpers.removeRelations(req.params.id);
 				await TagHelpers.createRelations(req.params.id, tagIds);
 
-				const found = await Db.collections.Tag!.find({
+				const found = await this.dbCollections.Tag.find({
 					select: ['id', 'name'],
 					where: { id: In(tagIds) },
 				});
 
-				const tagsResponse = TagHelpers.formatTagsResponse(found);
-
-				responseData.tags = TagHelpers.sortByRequestOrder(tagsResponse, tagIds);
+				responseData.tags = TagHelpers.formatTagsResponse(found);
 			}
 
 			// Convert to response format in which the id is a string
@@ -711,7 +709,7 @@ class App {
 				await this.activeWorkflowRunner.remove(id);
 			}
 
-			await Db.collections.Workflow!.delete(id);
+			await this.dbCollections.Workflow.delete(id);
 			await this.externalHooks.run('workflow.afterDelete', [id]);
 
 			return true;
@@ -771,7 +769,7 @@ class App {
 				return foundTags.map(({ id, name, usageCount }) => ({ id: id.toString(), name, usageCount }));
 			}
 
-			const foundTags = await Db.collections.Tag!.find({ select: ['id', 'name'] });
+			const foundTags = await this.dbCollections.Tag.find({ select: ['id', 'name'] });
 			return foundTags.map(({ id, name }) => ({ id: id.toString(), name }));
 		}));
 
@@ -786,7 +784,7 @@ class App {
 				updatedAt: this.getCurrentDate(),
 			};
 
-			const { id } = await Db.collections.Tag!.save(newTag);
+			const { id } = await this.dbCollections.Tag.save(newTag);
 
 			return { id: id.toString(), name };
 		}));
@@ -795,7 +793,7 @@ class App {
 		this.app.delete(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
 			const { id } = req.params;
 			await TagHelpers.exists(id);
-			await Db.collections.Tag!.delete({ id });
+			await this.dbCollections.Tag.delete({ id });
 			return true;
 		}));
 
@@ -812,7 +810,7 @@ class App {
 				updatedAt: this.getCurrentDate(),
 			};
 
-			await Db.collections.Tag!.update(id, updatedTag);
+			await this.dbCollections.Tag.update(id, updatedTag);
 
 			return { id, name };
 		}));
@@ -946,7 +944,7 @@ class App {
 
 			await this.externalHooks.run('credentials.delete', [id]);
 
-			await Db.collections.Credentials!.delete({ id });
+			await this.dbCollections.Credentials.delete({ id });
 
 			return true;
 		}));
@@ -981,7 +979,7 @@ class App {
 				},
 			} as FindOneOptions;
 
-			const checkResult = await Db.collections.Credentials!.findOne(findQuery);
+			const checkResult = await this.dbCollections.Credentials.findOne(findQuery);
 			if (checkResult !== undefined) {
 				throw new ResponseHelper.ResponseError(`Credentials with the same type and name exist already.`, undefined, 400);
 			}
@@ -1000,7 +998,7 @@ class App {
 			// TODO: also add user automatically depending on who is logged in, if anybody is logged in
 
 			// Save the credentials in DB
-			const result = await Db.collections.Credentials!.save(newCredentialsData);
+			const result = await this.dbCollections.Credentials.save(newCredentialsData);
 			result.data = incomingData.data;
 
 			// Convert to response format in which the id is a string
@@ -1035,7 +1033,7 @@ class App {
 				},
 			} as FindOneOptions;
 
-			const checkResult = await Db.collections.Credentials!.findOne(findQuery);
+			const checkResult = await this.dbCollections.Credentials.findOne(findQuery);
 			if (checkResult !== undefined) {
 				throw new ResponseHelper.ResponseError(`Credentials with the same type and name exist already.`, undefined, 400);
 			}
@@ -1046,7 +1044,7 @@ class App {
 			}
 
 			// Load the currently saved credentials to be able to persist some of the data if
-			const result = await Db.collections.Credentials!.findOne(id);
+			const result = await this.dbCollections.Credentials.findOne(id);
 			if (result === undefined) {
 				throw new ResponseHelper.ResponseError(`Credentials with the id "${id}" do not exist.`, undefined, 400);
 			}
@@ -1071,11 +1069,11 @@ class App {
 			await this.externalHooks.run('credentials.update', [newCredentialsData]);
 
 			// Update the credentials in DB
-			await Db.collections.Credentials!.update(id, newCredentialsData);
+			await this.dbCollections.Credentials.update(id, newCredentialsData);
 
 			// We sadly get nothing back from "update". Neither if it updated a record
 			// nor the new value. So query now the hopefully updated entry.
-			const responseData = await Db.collections.Credentials!.findOne(id);
+			const responseData = await this.dbCollections.Credentials.findOne(id);
 
 			if (responseData === undefined) {
 				throw new ResponseHelper.ResponseError(`Credentials with id "${id}" could not be found to be updated.`, undefined, 400);
@@ -1102,7 +1100,7 @@ class App {
 				findQuery.select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
 			}
 
-			const result = await Db.collections.Credentials!.findOne(req.params.id);
+			const result = await this.dbCollections.Credentials.findOne(req.params.id);
 
 			if (result === undefined) {
 				return result;
@@ -1140,7 +1138,7 @@ class App {
 
 			findQuery.select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
 
-			const results = await Db.collections.Credentials!.find(findQuery) as unknown as ICredentialsResponse[];
+			const results = await this.dbCollections.Credentials.find(findQuery) as unknown as ICredentialsResponse[];
 
 			let encryptionKey = undefined;
 
@@ -1192,7 +1190,7 @@ class App {
 				return '';
 			}
 
-			const result = await Db.collections.Credentials!.findOne(req.query.id as string);
+			const result = await this.dbCollections.Credentials.findOne(req.query.id as string);
 			if (result === undefined) {
 				res.status(404).send('The credential is not known.');
 				return '';
@@ -1269,7 +1267,7 @@ class App {
 			newCredentialsData.updatedAt = this.getCurrentDate();
 
 			// Update the credentials in DB
-			await Db.collections.Credentials!.update(req.query.id as string, newCredentialsData);
+			await this.dbCollections.Credentials.update(req.query.id as string, newCredentialsData);
 
 			return returnUri;
 		}));
@@ -1283,7 +1281,7 @@ class App {
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
-			const result = await Db.collections.Credentials!.findOne(cid as any); // tslint:disable-line:no-any
+			const result = await this.dbCollections.Credentials.findOne(cid as any); // tslint:disable-line:no-any
 			if (result === undefined) {
 				const errorResponse = new ResponseHelper.ResponseError('The credential is not known.', undefined, 404);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
@@ -1337,7 +1335,7 @@ class App {
 			// Add special database related data
 			newCredentialsData.updatedAt = this.getCurrentDate();
 			// Save the credentials in DB
-			await Db.collections.Credentials!.update(cid as any, newCredentialsData); // tslint:disable-line:no-any
+			await this.dbCollections.Credentials.update(cid as any, newCredentialsData); // tslint:disable-line:no-any
 
 			res.sendFile(pathResolve(__dirname, '../../templates/oauth-callback.html'));
 		});
@@ -1355,7 +1353,7 @@ class App {
 				return '';
 			}
 
-			const result = await Db.collections.Credentials!.findOne(req.query.id as string);
+			const result = await this.dbCollections.Credentials.findOne(req.query.id as string);
 			if (result === undefined) {
 				res.status(404).send('The credential is not known.');
 				return '';
@@ -1413,7 +1411,7 @@ class App {
 			newCredentialsData.updatedAt = this.getCurrentDate();
 
 			// Update the credentials in DB
-			await Db.collections.Credentials!.update(req.query.id as string, newCredentialsData);
+			await this.dbCollections.Credentials.update(req.query.id as string, newCredentialsData);
 
 			const authQueryParameters = _.get(oauthCredentials, 'authQueryParameters', '') as string;
 			let returnUri = oAuthObj.code.getUri();
@@ -1455,7 +1453,7 @@ class App {
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
-			const result = await Db.collections.Credentials!.findOne(state.cid);
+			const result = await this.dbCollections.Credentials.findOne(state.cid);
 			if (result === undefined) {
 				const errorResponse = new ResponseHelper.ResponseError('The credential is not known.', undefined, 404);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
@@ -1540,7 +1538,7 @@ class App {
 			// Add special database related data
 			newCredentialsData.updatedAt = this.getCurrentDate();
 			// Save the credentials in DB
-			await Db.collections.Credentials!.update(state.cid, newCredentialsData);
+			await this.dbCollections.Credentials.update(state.cid, newCredentialsData);
 
 			res.sendFile(pathResolve(__dirname, '../../templates/oauth-callback.html'));
 		});
@@ -1607,7 +1605,7 @@ class App {
 
 			const resultsPromise = resultsQuery.getMany();
 
-			const countPromise = Db.collections.Execution!.count(countFilter);
+			const countPromise = this.dbCollections.Execution.count(countFilter);
 
 			const results: IExecutionFlattedDb[] = await resultsPromise;
 			const count = await countPromise;
@@ -1637,7 +1635,7 @@ class App {
 
 		// Returns a specific execution
 		this.app.get(`/${this.restEndpoint}/executions/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> => {
-			const result = await Db.collections.Execution!.findOne(req.params.id);
+			const result = await this.dbCollections.Execution.findOne(req.params.id);
 
 			if (result === undefined) {
 				return undefined;
@@ -1657,7 +1655,7 @@ class App {
 		// Retries a failed execution
 		this.app.post(`/${this.restEndpoint}/executions/:id/retry`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
 			// Get the data to execute
-			const fullExecutionDataFlatted = await Db.collections.Execution!.findOne(req.params.id);
+			const fullExecutionDataFlatted = await this.dbCollections.Execution.findOne(req.params.id);
 
 			if (fullExecutionDataFlatted === undefined) {
 				throw new ResponseHelper.ResponseError(`The execution with the id "${req.params.id}" does not exist.`, 404, 404);
@@ -1702,7 +1700,7 @@ class App {
 				// Loads the currently saved workflow to execute instead of the
 				// one saved at the time of the execution.
 				const workflowId = fullExecutionData.workflowData.id;
-				const workflowData = await Db.collections.Workflow!.findOne(workflowId) as IWorkflowBase;
+				const workflowData = await this.dbCollections.Workflow.findOne(workflowId) as IWorkflowBase;
 
 				if (workflowData === undefined) {
 					throw new Error(`The workflow with the ID "${workflowId}" could not be found and so the data not be loaded for the retry.`);
@@ -1752,10 +1750,10 @@ class App {
 					Object.assign(filters, deleteData.filters);
 				}
 
-				await Db.collections.Execution!.delete(filters);
+				await this.dbCollections.Execution.delete(filters);
 			} else if (deleteData.ids !== undefined) {
 				// Deletes all executions with the given ids
-				await Db.collections.Execution!.delete(deleteData.ids);
+				await this.dbCollections.Execution.delete(deleteData.ids);
 			} else {
 				throw new Error('Required body-data "ids" or "deleteBefore" is missing!');
 			}
@@ -1783,7 +1781,7 @@ class App {
 					return [];
 				}
 
-				const resultsQuery = await Db.collections.Execution!
+				const resultsQuery = await this.dbCollections.Execution
 					.createQueryBuilder("execution")
 					.select([
 						'execution.id',
