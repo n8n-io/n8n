@@ -10,6 +10,7 @@ import {
 import {
 	generateReturning,
 	getItemCopy,
+	getItemsCopy,
 	pgInsert,
 	pgQuery,
 	pgUpdate,
@@ -140,7 +141,7 @@ export class CrateDb implements INodeType {
 						operation: ['update'],
 					},
 				},
-				default: 'public',
+				default: 'doc',
 				required: true,
 				description: 'Name of the schema the table belongs to',
 			},
@@ -329,8 +330,8 @@ export class CrateDb implements INodeType {
 					const itemCopy = getItemCopy(items[i], columns);
 					queries.push(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning);
 				}
-				const updateItems = (await db.multi(pgp.helpers.concat(queries))).flat(1);
-				returnItems = this.helpers.returnJsonArray(updateItems);
+				const updateItems = await db.multi(pgp.helpers.concat(queries));
+				returnItems = this.helpers.returnJsonArray(getItemsCopy(items, columns) as IDataObject[]);
 			}
 		} else {
 			await pgp.end();

@@ -111,6 +111,20 @@ export class QuestDb implements INodeType {
 				description: 'Name of the table in which to insert data to.',
 			},
 			{
+				displayName: 'Columns',
+				name: 'columns',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['insert'],
+					},
+				},
+				default: '',
+				placeholder: 'id,name,description',
+				description:
+					'Comma separated list of the properties which should used as columns for the new rows.',
+			},
+			{
 				displayName: 'Return Fields',
 				name: 'returnFields',
 				type: 'string',
@@ -131,6 +145,13 @@ export class QuestDb implements INodeType {
 				type: 'collection',
 				placeholder: 'Add Field',
 				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'executeQuery',
+						],
+					},
+				},
 				options: [
 					{
 						displayName: 'Mode',
@@ -143,17 +164,12 @@ export class QuestDb implements INodeType {
 								description: 'Execute each query independently',
 							},
 							{
-								name: 'Multiple queries',
-								value: 'multiple',
-								description: '<b>Default</b>. Sends multiple queries at once to database.',
-							},
-							{
 								name: 'Transaction',
 								value: 'transaction',
 								description: 'Executes all queries in a single transaction',
 							},
 						],
-						default: 'multiple',
+						default: 'independently',
 						description: [
 							'The way queries should be sent to database.',
 							'Can be used in conjunction with <b>Continue on Fail</b>.',
@@ -161,6 +177,19 @@ export class QuestDb implements INodeType {
 						].join('<br>'),
 					},
 				],
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'hidden',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'insert',
+						],
+					},
+				},
 			},
 		],
 	};
@@ -191,22 +220,25 @@ export class QuestDb implements INodeType {
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
-		const mode = additionalFields.mode ?? 'multiple' as string;
-
 		if (operation === 'executeQuery') {
 			// ----------------------------------
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, this.continueOnFail());
+			const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+			const mode = (additionalFields.mode || 'independently') as string;
+
+			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, this.continueOnFail(), mode);
 
 			returnItems = this.helpers.returnJsonArray(queryResult);
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
 			// ----------------------------------
-			await pgInsert(this.getNodeParameter, pgp, db, items, this.continueOnFail());
+
+			// Transaction and multiple won't work properly with QuestDB.
+			// So we send queries independently.
+			await pgInsert(this.getNodeParameter, pgp, db, items, this.continueOnFail(), 'independently');
 			
 			const returnFields = this.getNodeParameter('returnFields', 0) as string;
 			const table = this.getNodeParameter('table', 0) as string;
