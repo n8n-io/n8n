@@ -58,7 +58,7 @@ async function checkRelated(workflowId: string, tagId: string): Promise<boolean>
  *
  * Used for creating a workflow or updating a tag.
  */
-export async function exists(id: string): Promise<void> | never {
+export async function exists(id: string) {
 	const tag = await Db.collections.Tag!.findOne({ where: { id }});
 
 	if (!tag) {
@@ -77,7 +77,7 @@ export async function exists(id: string): Promise<void> | never {
  *
  * Used for creating a workflow or updating a tag.
  */
-export async function validateTags(tagIds: unknown[]): Promise<void> | never {
+export async function validateTags(tagIds: unknown[]) {
 	if (!isStringArray(tagIds)) {
 		throw new ResponseHelper.ResponseError(`The tags property is not an array of strings.`, undefined, 400);
 	}
@@ -94,7 +94,7 @@ export async function validateTags(tagIds: unknown[]): Promise<void> | never {
  *
  * Used for creating or updating a tag.
  */
-export async function validateName(name: unknown): Promise<void> | never {
+export async function validateName(name: unknown) {
 	if (name === undefined) {
 		throw new ResponseHelper.ResponseError(`Property 'name' missing from request body.`, undefined, 400);
 	}
@@ -106,12 +106,6 @@ export async function validateName(name: unknown): Promise<void> | never {
 	if (name.length <= 0 || name.length > TAG_NAME_LENGTH_LIMIT) {
 		throw new ResponseHelper.ResponseError('Tag name must be 1 to 24 characters long.', undefined, 400);
 	}
-
-	const tag = await Db.collections.Tag!.findOne({ where: { name } });
-
-	if (tag) {
-		throw new ResponseHelper.ResponseError('Tag name already exists.', undefined, 400);
-	}
 }
 
 /**
@@ -119,7 +113,7 @@ export async function validateName(name: unknown): Promise<void> | never {
  *
  * Used before creating a relation between the provided tags and workflow.
  */
-export async function validateRelations(workflowId: string, tagIds: string[]): Promise<void> | never {
+export async function validateRelations(workflowId: string, tagIds: string[]) {
 	for (const tagId of tagIds) {
 		const areRelated = await checkRelated(workflowId, tagId);
 
