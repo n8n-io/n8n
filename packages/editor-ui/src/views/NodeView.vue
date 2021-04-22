@@ -1057,6 +1057,8 @@ export default mixins(
 
 				this.$store.commit('setStateDirty', true);
 
+				this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
+
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
 				this.deselectAllNodes();
