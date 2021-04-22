@@ -71,18 +71,18 @@ export async function exists(id: string): Promise<void> | never {
 // ----------------------------------
 
 /**
- * Validate whether every tag ID is a string array and exists in the `tag_entity` table.
+ * Validate whether
+ * - the provided property is a string array, and
+ * - each array item exists in the `tag_entity` table.
  *
  * Used for creating a workflow or updating a tag.
  */
-export async function validateTags(tags: unknown[]): Promise<void> | never {
-	if (!isStringArray(tags)) {
+export async function validateTags(tagIds: unknown[]): Promise<void> | never {
+	if (!isStringArray(tagIds)) {
 		throw new ResponseHelper.ResponseError(`The tags property is not an array of strings.`, undefined, 400);
 	}
 
-	for (const tagId of tags) {
-		await exists(tagId);
-	}
+	await Promise.all(tagIds.map(exists));
 }
 
 /**
