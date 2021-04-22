@@ -500,9 +500,7 @@ class App {
 			// Save the workflow in DB
 			const result = await Db.collections.Workflow!.save(newWorkflowData);
 
-			const { tags } = req.body;
-
-			const tagIds = tags;
+			const { tags: tagIds } = req.body;
 			const workflowId = result.id as string;
 
 			if (tagIds) {
