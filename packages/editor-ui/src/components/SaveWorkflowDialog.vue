@@ -1,32 +1,34 @@
 <template>
-	<div v-if="dialogVisible">
+	<div v-if="dialogVisible"
+	>
 		<el-dialog
-			:visible="dialogVisible"
 			append-to-body
+			class="dialog-wrapper"
+			:visible="dialogVisible"
 			:before-close="closeDialog"
 			:title="title"
-			class="dialog-wrapper"
+			ref="dialog"
 		>
-			<div class="content" @keydown.stop>
+			<div class="content" @keydown.stop @keydown.enter="save">
 				<el-row>
 					<el-input
+						ref="nameInput"
 						placeholder="Enter workflow name"
 						v-model="name"
-						:autofocus="true"
 					/>
 				</el-row>
 				<el-row>
 					<TagsDropdown
+						placeholder="Choose or create a tag"
 						:currentTagIds="currentTagIds"
 						:createEnabled="true"
-						placeholder="Choose or create a tag"
 						@onUpdate="onUpdate"
 					/>
 				</el-row>
 			</div>
 			<el-row class="footer">
-				<el-button size="small" @click="save">Save</el-button>
-				<el-button size="small" @click="closeDialog">Cancel</el-button>
+				<el-button size="small" @click="save" :loading="isSaving">Save</el-button>
+				<el-button size="small" @click="closeDialog" :disabled="isSaving">Cancel</el-button>
 			</el-row>
 		</el-dialog>
 	</div>
@@ -56,13 +58,33 @@ export default mixins(showMessage, workflowHelpers).extend({
 		return {
 			name,
 			currentTagIds,
+			isSaving: false,
 		};
 	},
 	created() {
 		this.$store.dispatch("tags/fetchAll");
 	},
+	mounted() {
+		// console.log(this.$refs.dialog.$refs);
+		window.addEventListener('keydown', this.onWindowKeydown);
+
+		this.$nextTick(() => {
+			const input = this.$refs.nameInput as any; // tslint:disable-line:no-any
+			if (input && input.focus) {
+				input.focus();
+			}
+		});
+	},
+	beforeDestroy() {
+		window.removeEventListener('keydown', this.onWindowKeydown);
+	},
 	computed: mapState("tags", ["isLoading"]),
 	methods: {
+		onWindowKeydown(event) {
+			if (event && event.keyCode === 13) {
+				this.save();
+			}
+		},
 		onUpdate(tagIds: string[]) {
 			this.currentTagIds = tagIds;
 		},
@@ -77,6 +99,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 				return;
 			}
 
+			this.$data.isSaving = true;
 			if (this.$props.renameOnly) {
 				try {
 					await this.$store.dispatch("workflows/renameCurrent", {name: this.name, tags: this.currentTagIds});
@@ -101,6 +124,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 				this.$emit("closeDialog");
 			}
+			this.$data.isSaving = false;
 		},
 		closeDialog(): void {
 			this.$emit("closeDialog");

@@ -3,7 +3,6 @@
 		@keyup.enter="applyOperation()"
 		@keyup.esc="cancelOperation()"
 	>
-		<input ref="deleteHiddenInput" class="hidden"/>
 		<el-row class="tags-header">
 			<el-col :span="10">
 				<el-input placeholder="Search tags" v-model="search" :disabled="isHeaderDisabled()" :clearable="true" :maxlength="maxLength">
@@ -82,6 +81,7 @@
 				</template>
 			</el-table-column>
 		</el-table>
+		<input ref="deleteHiddenInput" class="hidden"/>
 	</div>
 </template>
 
