@@ -13,7 +13,9 @@ export const issueOperationFields = [
 		displayOptions: {
 			show: {
 				resource: [
+					'userstory',
 					'issue',
+					'task',
 				],
 				operation: [
 					'create',
@@ -27,13 +29,32 @@ export const issueOperationFields = [
 		required: true,
 	},
 	{
+		displayName: 'User story ID',
+		name: 'user_story',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		required: false,
+	},
+	{
 		displayName: 'Subject',
 		name: 'subject',
 		type: 'string',
 		displayOptions: {
 			show: {
 				resource: [
+					'userstory',
 					'issue',
+					'task',
 				],
 				operation: [
 					'create',
@@ -53,6 +74,8 @@ export const issueOperationFields = [
 			show: {
 				resource: [
 					'issue',
+					'userstory',
+					'task',
 				],
 				operation: [
 					'create',
@@ -166,13 +189,15 @@ export const issueOperationFields = [
 		],
 	},
 	{
-		displayName: 'Issue ID',
-		name: 'issueId',
+		displayName: 'Item ID',
+		name: 'itemId',
 		type: 'string',
 		displayOptions: {
 			show: {
 				resource: [
 					'issue',
+					'userstory',
+					'task',
 				],
 				operation: [
 					'update',
@@ -194,6 +219,8 @@ export const issueOperationFields = [
 			show: {
 				resource: [
 					'issue',
+					'userstory',
+					'task',
 				],
 				operation: [
 					'update',
@@ -291,6 +318,12 @@ export const issueOperationFields = [
 				default: '',
 			},
 			{
+				displayName: 'Swimlane',
+				name: 'swimlane',
+				type: 'number',
+				default: '',
+			},
+			{
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
@@ -323,6 +356,8 @@ export const issueOperationFields = [
 				],
 				resource: [
 					'issue',
+					'userstory',
+					'task',
 				],
 			},
 		},
@@ -340,6 +375,8 @@ export const issueOperationFields = [
 				],
 				resource: [
 					'issue',
+					'userstory',
+					'task',
 				],
 				returnAll: [
 					false,

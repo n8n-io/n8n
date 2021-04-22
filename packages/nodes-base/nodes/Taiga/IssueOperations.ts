@@ -11,27 +11,27 @@ export const issueOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create an issue',
+				description: 'Create an item',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete an issue',
+				description: 'Delete an item',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get an issue',
+				description: 'Get an item',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all issues',
+				description: 'Get all items',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an issue',
+				description: 'Update an item',
 			},
 		],
 		default: 'create',
