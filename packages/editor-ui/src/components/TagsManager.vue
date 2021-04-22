@@ -1,11 +1,13 @@
 <template>
 	<div v-if="dialogVisible">
 		<el-dialog
-			title="Manage Tags"
 			:visible="dialogVisible"
 			append-to-body
 			:before-close="closeDialog"
 		>
+			<template slot="title">
+				<span>Manage Tags&nbsp;&nbsp;</span><font-awesome-icon icon="spinner" class="spinner" spin v-if="isLoading"/>
+			</template>
 			<div class="content" @keydown.stop>
 				<el-row v-if="!isLoading">
 					<TagsTable
@@ -192,6 +194,10 @@ export default mixins(showMessage).extend({
 
 .content {
 	min-height: 300px;
+}
+
+.spinner {
+	color: $--custom-dialog-text-color;
 }
 
 .notags {

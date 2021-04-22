@@ -11,6 +11,7 @@
 			:placeholder="placeholder"
 			:filter-method="filterOptions"
 			@change="tagsUpdated"
+			loading-text="..."
 		>
 			<el-option
 				v-if="options.length === 0 && filter && createEnabled"
