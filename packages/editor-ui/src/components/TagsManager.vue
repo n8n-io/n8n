@@ -53,18 +53,20 @@ import TagsTable from "@/components/TagsManagerTagsTable.vue";
 
 import mixins from "vue-typed-mixins";
 import { mapState } from "vuex";
+import { MAX_TAG_NAME_LENGTH } from "@/constants";
 
 export default mixins(showMessage).extend({
 	name: "TagsManager",
 	props: ["dialogVisible"],
 	created() {
-		this.$store.dispatch("tags/getAll");
+		this.$store.dispatch("tags/fetchAll", {force: true, withUsageCount: true});
 	},
 	data() {
 		return {
 			isCreateEnabled: false,
 			updateId: "",
 			deleteId: "",
+			maxLength: MAX_TAG_NAME_LENGTH
 		};
 	},
 	components: {
@@ -77,7 +79,7 @@ export default mixins(showMessage).extend({
 		hasTags(): boolean {
 			return this.tags.length > 0;
 		},
-		...mapState("tags", ["isLoading", "maxLength"]),
+		...mapState("tags", ["isLoading"]),
 	},
 	methods: {
 		enableCreate() {
@@ -86,7 +88,7 @@ export default mixins(showMessage).extend({
 		disableCreate() {
 			this.$data.isCreateEnabled = false;
 		},
-		async onCreate(name: string, cb: (id: string) => void) {
+		async onCreate(name: string, cb: (id: string | null, error?: any) => void) {
 			try {
 				if (!name) {
 					throw new Error("Tag name was not set");
@@ -108,6 +110,7 @@ export default mixins(showMessage).extend({
 					"New tag was not created",
 					`A problem occurred when trying to create the "${name}" tag`,
 				);
+				cb(null, error);
 			}
 		},
 
@@ -117,7 +120,7 @@ export default mixins(showMessage).extend({
 		disableUpdate() {
 			this.$data.updateId = "";
 		},
-		async onUpdate(id: string, name: string, oldName: string) {
+		async onUpdate(id: string, name: string, oldName: string, cb: (id: string | null, error?: any) => void) {
 			try {
 				if (!name) {
 					throw new Error("Tag name was not set");
@@ -132,12 +135,14 @@ export default mixins(showMessage).extend({
 					});
 				}
 				this.disableUpdate();
+				cb(null);
 			} catch (error) {
 				this.$showError(
 					error,
 					"Tag was not updated",
 					`A problem occurred when trying to update the "${oldName}" tag`,
 				);
+				cb(null, error);
 			}
 		},
 
@@ -147,7 +152,7 @@ export default mixins(showMessage).extend({
 		disableDelete() {
 			this.$data.deleteId = "";
 		},
-		async onDelete(id: string, name: string) {
+		async onDelete(id: string, name: string, cb: (id: string | null, error?: any) => void) {
 			try {
 				await this.$store.dispatch("tags/delete", id);
 
@@ -157,12 +162,14 @@ export default mixins(showMessage).extend({
 					type: "success",
 				});
 				this.disableDelete();
+				cb(null);
 			} catch (error) {
 				this.$showError(
 					error,
 					"Tag was not deleted",
 					`A problem occurred when trying to delete the "${name}" tag`,
 				);
+				cb(null, error);
 			}
 		},
 

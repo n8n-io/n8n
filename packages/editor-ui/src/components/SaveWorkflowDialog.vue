@@ -5,6 +5,7 @@
 			append-to-body
 			:before-close="closeDialog"
 			:title="title"
+			class="dialog-wrapper"
 		>
 			<div class="content" @keydown.stop>
 				<el-row>
@@ -32,8 +33,6 @@
 </template>
 
 <script lang="ts">
-import { ITag } from "@/Interface";
-
 import mixins from "vue-typed-mixins";
 import { mapState } from "vuex";
 import { workflowHelpers } from "./mixins/workflowHelpers";
@@ -60,7 +59,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 		};
 	},
 	created() {
-		this.$store.dispatch("tags/getAll");
+		this.$store.dispatch("tags/fetchAll");
 	},
 	computed: mapState("tags", ["isLoading"]),
 	methods: {
@@ -112,22 +111,23 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 
 <style lang="scss" scoped>
-* {
-	box-sizing: border-box;
+@import "../styles/mixins";
+
+.dialog-wrapper {
+	@include flex-center;
+
+	/deep/ .el-dialog {
+		max-width: 600px;
+	}
 }
 
-/deep/ .el-dialog {
-	max-width: 600px;
-}
 
 .content > .el-row {
 	margin-bottom: 15px;
 }
 
-.footer {
-	.el-button {
-		float: right;
-		margin-left: 5px;
-	}
+.footer > .el-button {
+	float: right;
+	margin-left: 5px;
 }
 </style>

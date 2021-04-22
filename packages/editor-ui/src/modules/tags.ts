@@ -7,8 +7,6 @@ import {
 } from '../Interface';
 import { addTag, deleteTag, getTags, updateTag } from '../api/tags';
 
-const MAX_TAG_LENGTH = 24;
-
 const replace = (tags: ITag[], updated: ITag): ITag[]  => {
 	return tags.map((tag: ITag) => {
 		if (tag.id === updated.id) {
@@ -24,8 +22,8 @@ const module: Module<ITagsState, IRootState> = {
 	state: {
 		tags: [],
 		isLoading: false,
-		maxLength: MAX_TAG_LENGTH,
 		fetchedAll: false,
+		fetchedUsageCount: false,
 	},
 	mutations: {
 		setLoading: (state: ITagsState, isLoading: boolean) => {
@@ -79,13 +77,14 @@ const module: Module<ITagsState, IRootState> = {
 		},
 	},
 	actions: {
-		getAll: async (context: ActionContext<ITagsState, IRootState>) => {
-			if (context.state.fetchedAll) {
+		fetchAll: async (context: ActionContext<ITagsState, IRootState>, params: {force?: boolean, withUsageCount?: boolean}) => {
+			const {force, withUsageCount} = params || {};
+			if (!force && context.state.fetchedAll && context.state.fetchedUsageCount === withUsageCount) {
 				return context.state.tags;
 			}
 
 			context.commit('setLoading', true);
-			const tags = await getTags(context);
+			const tags = await getTags(context, !!withUsageCount);
 			context.commit('setAllTags', tags);
 			context.commit('setLoading', false);
 

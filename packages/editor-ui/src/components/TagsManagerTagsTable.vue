@@ -1,8 +1,12 @@
 <template>
-	<el-row>
+	<div
+		@keyup.enter="applyOperation()"
+		@keyup.esc="cancelOperation()"
+	>
+		<input ref="deleteHiddenInput" class="hidden"/>
 		<el-row class="tags-header">
 			<el-col :span="10">
-				<el-input placeholder="Search tags" v-model="search" :disabled="isHeaderDisabled()">
+				<el-input placeholder="Search tags" v-model="search" :disabled="isHeaderDisabled()" :clearable="true" :maxlength="maxLength">
 					<i slot="prefix" class="el-input__icon el-icon-search"></i>
 				</el-input>
 			</el-col>
@@ -15,7 +19,15 @@
 				</el-button>
 			</el-col>
 		</el-row>
-		<el-table :data="rows" stripe max-height="450" :span-method="getSpan" ref="table">
+		<el-table 
+			stripe
+			max-height="450"
+			ref="table"
+			empty-text="No matching tags exist"
+			:data="rows"
+			:span-method="getSpan"
+			:row-class-name="getRowClasses"
+		>
 			<el-table-column label="Name">
 				<template slot-scope="scope">
 					<div class="name" :key="scope.row.id">
@@ -48,16 +60,19 @@
 				<template slot-scope="scope">
 					<transition name="fade" mode="out-in">
 						<div class="ops" v-if="scope.row.create">
-							<el-button title="Cancel" @click.stop="disableCreate()" size="small" plain>Cancel</el-button>
-							<el-button title="Create Tag" @click.stop="createTag()" size="small">Create tag</el-button>
+							<el-button title="Cancel" @click.stop="disableCreate()" size="small" plain :disabled="isLoading">Cancel</el-button>
+							<el-button title="Create Tag" @click.stop="createTag()" size="small" :loading="isLoading">
+								Create tag
+							</el-button>
+							
 						</div>
 						<div class="ops" v-else-if="scope.row.update">
-							<el-button title="Cancel" @click.stop="disableUpdate()" size="small" plain>Cancel</el-button>
-							<el-button title="Save Tag" @click.stop="updateTag(scope.row)" size="small">Save changes</el-button>
+							<el-button title="Cancel" @click.stop="disableUpdate()" size="small" plain :disabled="isLoading">Cancel</el-button>
+							<el-button title="Save Tag" @click.stop="updateTag(scope.row)" size="small" :loading="isLoading">Save changes</el-button>
 						</div>
 						<div class="ops" v-else-if="scope.row.delete">
-							<el-button title="Cancel" @click.stop="disableDelete()" size="small" plain>Cancel</el-button>
-							<el-button title="Delete Tag" @click.stop="deleteTag(scope.row)" size="small">Delete tag</el-button>
+							<el-button title="Cancel" @click.stop="disableDelete()" size="small" plain :disabled="isLoading">Cancel</el-button>
+							<el-button title="Delete Tag" @click.stop="deleteTag(scope.row)" size="small" :loading="isLoading">Delete tag</el-button>
 						</div>
 						<div class="ops main" v-else-if="!scope.row.disable">
 							<el-button title="Delete Tag" @click.stop="enableDelete(scope.row)" icon="el-icon-delete" circle></el-button>
@@ -67,10 +82,11 @@
 				</template>
 			</el-table-column>
 		</el-table>
-	</el-row>
+	</div>
 </template>
 
 <script lang="ts">
+import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import { ITag } from '@/Interface';
 import Vue from 'vue';
 
@@ -90,13 +106,14 @@ export default Vue.extend({
 		'isCreateEnabled',
 		'deleteId',
 		'updateId',
-		'maxLength',
 	],
 	data() {
 		return {
 			searchValue: '',
 			newTagName: '',
 			stickyIds: new Set(),
+			maxLength: MAX_TAG_NAME_LENGTH,
+			isLoading: false,
 		};
 	},
 	computed: {
@@ -125,6 +142,9 @@ export default Vue.extend({
 		},
 	},
 	methods: {
+		getRowClasses: ({row}: {row: ITagRow}): string => {
+			return row.disable ? 'disabled' : '';
+		},
 		getSpan({row, columnIndex}: {row: ITagRow, columnIndex: number}): number | number[] {
 			// expand text column with delete message
 			if (columnIndex === 0 && row.tag && this.isDeleteEnabled(row.tag.id)) {
@@ -170,7 +190,10 @@ export default Vue.extend({
 		},
 		updateTag(row: ITagRow): void {
 			if (row.tag) {
-				this.$emit('onUpdate', row.tag.id, this.$data.newTagName.trim(), row.tag.name);
+				this.$data.isLoading = true;
+				this.$emit('onUpdate', row.tag.id, this.$data.newTagName.trim(), row.tag.name, () => {
+					this.$data.isLoading = false;
+				});
 			}
 		},
 
@@ -184,7 +207,10 @@ export default Vue.extend({
 		},
 		deleteTag(row: ITagRow): void {
 			if (row.tag) {
-				this.$emit('onDelete', row.tag.id, row.tag.name);
+				this.$data.isLoading = true;
+				this.$emit('onDelete', row.tag.id, row.tag.name, () => {
+					this.$data.isLoading = false;
+				});
 			}
 		},
 
@@ -196,7 +222,68 @@ export default Vue.extend({
 			this.$emit('disableCreate');
 		},
 		createTag(): void {
-			this.$emit('onCreate', this.$data.newTagName.trim(), (createdId: string) => this.stickyIds.add(createdId));
+			this.$data.isLoading = true;
+			this.$emit('onCreate', this.$data.newTagName.trim(), (createdId: string) => {
+				if (createdId) {
+					this.stickyIds.add(createdId)
+				}
+				this.$data.isLoading = false;
+			});
+		},
+
+		applyOperation(): void {
+			if (this.$data.isLoading) {
+				return;
+			}
+
+			if (this.$props.isCreateEnabled) {
+				this.createTag();
+
+				return;
+			}
+
+			if (this.$props.updateId) {
+				const row = this.rows.find((row) => row.tag && row.tag.id === this.$props.updateId);
+
+				if (row) {
+					this.updateTag(row);
+				}
+
+				return;
+			}
+
+			if (this.$props.deleteId) {
+				const row = this.rows.find((row) => row.tag && row.tag.id === this.$props.deleteId);
+
+				if (row) {
+					this.deleteTag(row);
+				}
+
+				return;
+			}
+		},
+		cancelOperation(): void {
+			if (this.$data.isLoading) {
+				return;
+			}
+
+			if (this.$props.isCreateEnabled) {
+				this.disableCreate();
+
+				return;
+			}
+
+			if (this.$props.updateId) {
+				this.disableUpdate();
+
+				return;
+			}
+
+			if (this.$props.deleteId) {
+				this.disableDelete();
+
+				return;
+			}
 		},
 	},
 	watch: {
@@ -222,6 +309,16 @@ export default Vue.extend({
 						input.focus();
 					}
 				}, 300); // transition timout
+			}
+		},
+		deleteId(newValue) {
+			if (newValue) {
+				setTimeout(() => {
+					const input = this.$refs.deleteHiddenInput as any; // tslint:disable-line:no-any
+					if (input && input.focus) {
+						input.focus();
+					}
+				}, 100); // transition timout
 			}
 		},
 	},
@@ -251,10 +348,21 @@ export default Vue.extend({
 	color: #afafaf;
 }
 
+.hidden {
+	position:absolute;
+	z-index:0;
+	opacity:0;
+	filter:alpha(opacity=0);
+}
+
 .ops.main > .el-button {
 	display: none;
 	float: right;
 	margin-left: 5px;
+}
+
+/deep/ tr.disabled {
+	pointer-events: none;
 }
 
 /deep/ tr:hover .ops:not(.disabled) .el-button {

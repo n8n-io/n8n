@@ -498,8 +498,8 @@ export interface IRootState {
 export interface ITagsState {
 	tags: ITag[];
 	isLoading: boolean;
-	maxLength: number;
 	fetchedAll: boolean;
+	fetchedUsageCount: boolean;
 }
 
 export interface IWorkflowsState {

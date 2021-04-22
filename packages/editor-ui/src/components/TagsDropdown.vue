@@ -3,8 +3,9 @@
 		<el-select
 			filterable
 			multiple
-			:popperAppendToBody="false"
+			ref="select"
 			popper-class="tags-dropdown"
+			:popperAppendToBody="false"
 			:value="appliedTags"
 			:loading="isLoading"
 			:placeholder="placeholder"
@@ -23,7 +24,8 @@
 			</el-option>
 			<el-option v-else-if="options.length === 0" value="message" disabled>
 				<span v-if="createEnabled">Type to create a tag</span>
-				<span v-else>No matching tags exist</span>
+				<span v-else-if="tags.length > 0">No matching tags exist</span>
+				<span v-else>No tags exist</span>
 			</el-option>
 
 			<!-- key is id+index for keyboard navigation to work well with filter -->
@@ -36,7 +38,7 @@
 				ref="tag"
 			/>
 
-			<el-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops">
+			<el-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
 				<font-awesome-icon icon="cog" />
 				<span>Manage Tags</span>
 			</el-option>
@@ -50,6 +52,7 @@ import { ITag } from "@/Interface";
 import { showMessage } from "@/components/mixins/showMessage";
 
 import mixins from "vue-typed-mixins";
+import { MAX_TAG_NAME_LENGTH } from "@/constants";
 
 const MANAGE_KEY = "__manage";
 const CREATE_KEY = "__create";
@@ -65,7 +68,16 @@ export default mixins(showMessage).extend({
 		};
 	},
 	created() {
-		this.$store.dispatch("tags/getAll");
+		this.$store.dispatch("tags/fetchAll");
+	},
+	mounted() {
+		const select = this.$refs.select as (Vue | undefined);
+		if (select) {
+			const input = select.$refs.input as (Element | undefined);
+			if (input) {
+				input.setAttribute('maxlength', `${MAX_TAG_NAME_LENGTH}`);
+			}
+		}
 	},
 	computed: {
 		options() {
@@ -138,17 +150,59 @@ export default mixins(showMessage).extend({
 });
 </script>
 
+<style lang="scss" scoped>
+$--max-input-height: 60px;
+
+/deep/ .el-select {
+	.el-select__tags {
+		max-height: $--max-input-height;
+		overflow-y: auto;
+		border-radius: 20px;
+	}
+
+	.el-input.is-focus {
+		border: 1px solid #ff6d5a;
+		border-radius: 20px;
+	}
+
+	input {
+		max-height: $--max-input-height + 4;
+	}
+}
+</style>
+
 <style lang="scss">
 .tags-dropdown {
-	min-width: 224px !important;
+	$--dropdown-length: 224px;
+	$--item-height: 32px;
+
+	min-width: $--dropdown-length !important;
+
+	* {
+		box-sizing: border-box;
+	}
+
+	.el-scrollbar {
+		position: relative;
+		max-height: $--dropdown-length;
+
+		ul {
+			padding: 0;
+			max-height: $--dropdown-length - $--item-height;
+		}
+
+		&:after {
+			content: " ";
+			display: block;
+			height: $--item-height;
+			width: 100%;
+		}
+	}
 
 	li {
+		height: $--item-height; 
 		padding: 6px 20px;
 		margin: 0;
-
-		:hover {
-			background-color: #f5f7fa;
-		}
 
 		&.is-disabled {
 			color: $--custom-font-light;
@@ -166,6 +220,12 @@ export default mixins(showMessage).extend({
 
 		&.tag {
 			border-top: none;
+		}
+
+		&.manage-tags {
+			position: absolute;
+			bottom: 0;
+			min-width: $--dropdown-length;
 		}
 	}
 }

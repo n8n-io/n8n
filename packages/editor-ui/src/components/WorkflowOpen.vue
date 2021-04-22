@@ -72,7 +72,7 @@ export default mixins(
 TagsDropdown,
 	},
 	created() {
-		this.$store.dispatch("tags/getAll");
+		this.$store.dispatch("tags/fetchAll");
 	},
 	data () {
 		return {
@@ -100,8 +100,10 @@ TagsDropdown,
 						return false;
 					}
 
-					return workflow.tags.reduce((accu: boolean, tag: ITag) => {
-						return accu && this.filterTagIds.indexOf(tag.id) > -1;
+					return this.filterTagIds.reduce((accu: boolean, id: string) => {
+						const tagIds = (workflow.tags || []).map(({id}: ITag): string => id);
+
+						return accu && tagIds.indexOf(id) > -1;
 					}, true);
 				})
 				.map((workflow): IWorkflowShortResponse => {
@@ -118,6 +120,7 @@ TagsDropdown,
 		dialogVisible (newValue, oldValue) {
 			if (newValue) {
 				this.filterText = '';
+				this.filterTagIds = [];
 				this.openDialog();
 
 				Vue.nextTick(() => {
