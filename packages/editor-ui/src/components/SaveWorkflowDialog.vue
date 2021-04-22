@@ -89,7 +89,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.currentTagIds = tagIds;
 		},
 		async save(): Promise<void> {
-			if (!this.name) {
+			const name = this.name.trim();
+			if (!name) {
 				this.$showMessage({
 					title: "Name missing",
 					message: `No name for the workflow got entered and could so not be saved!`,
@@ -102,11 +103,11 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$data.isSaving = true;
 			if (this.$props.renameOnly) {
 				try {
-					await this.$store.dispatch("workflows/renameCurrent", {name: this.name, tags: this.currentTagIds});
+					await this.$store.dispatch("workflows/renameCurrent", {name, tags: this.currentTagIds});
 
 					this.$showMessage({
 						title: "Workflow renamed",
-						message: `The workflow got renamed to "${this.name}"!`,
+						message: `The workflow got renamed to "${name}"!`,
 						type: "success",
 					});
 
@@ -120,7 +121,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 				}
 			}
 			else {
-				await this.saveCurrentWorkflow(true, this.name, this.currentTagIds);
+				await this.saveCurrentWorkflow(true, name, this.currentTagIds);
 
 				this.$emit("closeDialog");
 			}
