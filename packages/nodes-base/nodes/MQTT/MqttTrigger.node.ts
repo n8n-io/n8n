@@ -7,6 +7,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as mqtt from 'mqtt';
@@ -75,7 +76,7 @@ export class MqttTrigger implements INodeType {
 		const credentials = this.getCredentials('mqtt');
 
 		if (!credentials) {
-			throw new Error('Credentials are mandatory!');
+			throw new NodeOperationError(this.getNode(), 'Credentials are mandatory!');
 		}
 
 		const topics = (this.getNodeParameter('topics') as string).split(',');
@@ -83,7 +84,7 @@ export class MqttTrigger implements INodeType {
 		const options = this.getNodeParameter('options') as IDataObject;
 
 		if (!topics) {
-			throw new Error('Topics are mandatory!');
+			throw new NodeOperationError(this.getNode(), 'Topics are mandatory!');
 		}
 
 		const protocol = credentials.protocol as string || 'mqtt';
@@ -120,7 +121,7 @@ export class MqttTrigger implements INodeType {
 							if (options.jsonParseMessage) {
 								try {
 									message = JSON.parse(message.toString());
-								} catch (err) { }
+								} catch (error) { }
 							}
 
 							result.message = message;

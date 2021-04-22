@@ -8,7 +8,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function nasaApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, qs: IDataObject, option: IDataObject = {}, uri?: string | undefined): Promise<any> { // tslint:disable-line:no-any
@@ -32,18 +32,7 @@ export async function nasaApiRequest(this: IHookFunctions | IExecuteFunctions, m
 		return await this.helpers.request(options);
 
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The NASA credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.msg) {
-			// Try to return the error prettier
-			throw new Error(`NASA error response [${error.statusCode}]: ${error.response.body.msg}`);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

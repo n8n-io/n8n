@@ -5,6 +5,7 @@ import {
 import {
 	Db,
 	ITagDb,
+	ITagResponseItem,
 	ResponseHelper,
 } from ".";
 
@@ -22,11 +23,21 @@ function isStringArray(tags: unknown[]): tags is string[] {
 }
 
 /**
- * Stringify the ID in every `ITagDb` in an array.
- * Side effect: Remove `createdAt` and `updatedAt` for a slimmer response.
+ * Format a tags response by stringifying the ID in every `ITagDb` in an array
+ * and removing `createdAt` and `updatedAt` to slim down the payload.
  */
-export function getTagsResponse(tags: ITagDb[]) {
+export function formatTagsResponse(tags: ITagDb[]): ITagResponseItem[] {
 	return tags.map(({ id, name }) => ({ id: id.toString(), name }));
+}
+
+/**
+ * Sort a tags response by the order of the tag IDs in the incoming request.
+ */
+export function sortByRequestOrder(
+	tagsResponse: ITagResponseItem[],
+	tagIds: string[]
+) {
+	return tagsResponse.sort((a, b) => tagIds.indexOf(a.id) - tagIds.indexOf(b.id));
 }
 
 /**
@@ -104,18 +115,18 @@ export async function validateName(name: unknown): Promise<void> | never {
 }
 
 /**
- * Validate that the provided tags are related to a workflow.
+ * Validate that the provided tags are not related to a workflow.
  *
- * Used for relating the tags and the workflow.
+ * Used before creating a relation before the provided tags and workflow.
  */
-export async function validateNotRelated(workflowId: string, tags: string[]): Promise<void> | never {
-	tags.forEach(async tagId => {
+export async function validateRelations(workflowId: string, tagIds: string[]): Promise<void> | never {
+	for (const tagId of tagIds) {
 		const areRelated = await checkRelated(workflowId, tagId);
 
 		if (areRelated) {
 			throw new ResponseHelper.ResponseError(`Workflow ID ${workflowId} and tag ID ${tagId} are already related.`, undefined, 400);
 		}
-	});
+	}
 }
 
 // ----------------------------------

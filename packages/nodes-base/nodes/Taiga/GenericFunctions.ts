@@ -13,6 +13,8 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -24,7 +26,7 @@ export async function getAuthorization(
 	credentials?: ICredentialDataDecryptedObject,
 ): Promise<string> {
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const { password, username } = credentials;
@@ -45,7 +47,7 @@ export async function getAuthorization(
 
 		return response.auth_token;
 	} catch (error) {
-		throw new Error('Taiga Error: ' + error.err || error);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -92,12 +94,7 @@ export async function taigaApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		let errorMessage = error;
-		if (error.response.body && error.response.body._error_message) {
-			errorMessage = error.response.body._error_message;
-		}
-
-		throw new Error(`Taigan error response [${error.statusCode}]: ${errorMessage}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

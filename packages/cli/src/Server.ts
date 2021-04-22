@@ -514,7 +514,9 @@ class App {
 					where: { id: In(tagIds) },
 				});
 
-				result.tags = TagHelpers.getTagsResponse(found);
+				const tagsResponse = TagHelpers.formatTagsResponse(found);
+
+				result.tags = TagHelpers.sortByRequestOrder(tagsResponse, tagIds);
 			}
 
 			// Convert to response format in which the id is a string
@@ -566,7 +568,7 @@ class App {
 			const results = await Db.collections.Workflow!.find(findQuery);
 			results.forEach(workflow => {
 				if (workflow.tags) {
-					workflow.tags = TagHelpers.getTagsResponse(workflow.tags);
+					workflow.tags = TagHelpers.formatTagsResponse(workflow.tags);
 				}
 			});
 
@@ -587,6 +589,7 @@ class App {
 			}
 
 			const foundTags = await TagHelpers.getWorkflowTags(req.params.id);
+			console.log(foundTags);
 			result.tags = foundTags.map(({ id, name }) => ({ id: id.toString(), name }));
 
 			// Convert to response format in which the id is a string
@@ -603,7 +606,7 @@ class App {
 
 			if (tagIds) {
 				await TagHelpers.validateTags(tagIds);
-				await TagHelpers.validateNotRelated(req.params.id, tagIds);
+				await TagHelpers.validateRelations(req.params.id, tagIds);
 			}
 
 			const newWorkflowData = _.omit(req.body, ['tags']) as IWorkflowBase;
@@ -684,7 +687,9 @@ class App {
 					where: { id: In(tagIds) },
 				});
 
-				responseData.tags = TagHelpers.getTagsResponse(found);
+				const tagsResponse = TagHelpers.formatTagsResponse(found);
+
+				responseData.tags = TagHelpers.sortByRequestOrder(tagsResponse, tagIds);
 			}
 
 			// Convert to response format in which the id is a string
