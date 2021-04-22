@@ -3,7 +3,7 @@
 		<div class="header-side-menu">
 			<span v-if="node">
 				<display-with-change :key-name="'name'" @valueChanged="valueChanged"></display-with-change>
-				<a v-if="nodeType" :href="'http://n8n.io/nodes/' + nodeType.name" target="_blank" class="node-info" @click="onDocumentationUrlClick('http://n8n.io/nodes/' + nodeType.name)">
+				<a v-if="nodeType" :href="'http://n8n.io/nodes/' + nodeType.name" target="_blank" class="node-info">
 					<el-tooltip class="clickable" placement="top" effect="light">
 						<div slot="content" v-html="'<strong>Node Description:</strong><br />' + nodeTypeDescription + '<br /><br /><strong>Click the \'?\' icon to open this node on n8n.io </strong>'"></div>
 						<font-awesome-icon icon="question-circle" />
@@ -59,14 +59,12 @@ import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
-	externalHooks,
 	genericHelpers,
 	nodeHelpers,
 )
@@ -499,9 +497,6 @@ export default mixins(
 				} else {
 					this.nodeValid = false;
 				}
-			},
-			onDocumentationUrlClick (documentationUrl: string) {
-				this.$externalHooks().run('nodeSettings.onDocumentationUrlClick', { nodeType: this.nodeType, documentationUrl });
 			},
 		},
 		mounted () {
