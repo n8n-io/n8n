@@ -178,6 +178,7 @@ $--max-input-height: 60px;
 	$--item-height: 32px;
 
 	min-width: $--dropdown-length !important;
+	max-width: $--dropdown-length;
 
 	* {
 		box-sizing: border-box;

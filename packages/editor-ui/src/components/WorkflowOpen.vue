@@ -8,7 +8,7 @@
 				<el-col :span="6" :offset="5" class="tags-filter">
 					<TagsDropdown 
 						placeholder="Filter by tags..."
-						:currentTagIds="filterTagIds"
+						:currentTagIds="appliedFilterTagIds"
 						:createEnabled="false"
 						@onUpdate="updateTagsFilter"
 					/>
@@ -83,8 +83,15 @@ export default mixins(
 		};
 	},
 	computed: {
+		appliedFilterTagIds (): string[] {
+			const tags = this.$store.getters['tags/allTags'];
+			const allTagIds = tags.map(({id}: ITag) => id);
+
+			return this.filterTagIds.filter((id) => allTagIds.indexOf(id) >= 0);
+		},
 		filteredWorkflows (): IWorkflowShortResponse[] {
 			const tags = this.$store.getters['tags/allTags'];
+			const filterTagIds = this.appliedFilterTagIds;
 
 			return this.workflows
 				.filter((workflow: IWorkflowShortResponse) => {
@@ -92,7 +99,7 @@ export default mixins(
 						return false;
 					}
 
-					if (this.filterTagIds.length === 0) {
+					if (filterTagIds.length === 0) {
 						return true;
 					}
 
@@ -100,7 +107,7 @@ export default mixins(
 						return false;
 					}
 
-					return this.filterTagIds.reduce((accu: boolean, id: string) => {
+					return filterTagIds.reduce((accu: boolean, id: string) => {
 						const tagIds = (workflow.tags || []).map(({id}: ITag): string => id);
 
 						return accu && tagIds.indexOf(id) > -1;
