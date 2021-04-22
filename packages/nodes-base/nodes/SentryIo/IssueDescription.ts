@@ -248,7 +248,7 @@ export const issueFields = [
 				name: 'assignedTo',
 				type: 'string',
 				default: '',
-				description: 'The actor id (or username) of the user or team that should be assigned to this issue.',
+				description: 'The actor ID (or username) of the user or team that should be assigned to this issue.',
 			},
 			{
 				displayName: 'Has Seen',

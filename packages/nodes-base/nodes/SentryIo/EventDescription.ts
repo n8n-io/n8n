@@ -199,6 +199,6 @@ export const eventFields = [
 			},
 		},
 		required: true,
-		description: 'The id of the event to retrieve (either the numeric primary-key or the hexadecimal id as reported by the raven client).',
+		description: 'The ID of the event to retrieve (either the numeric primary-key or the hexadecimal ID as reported by the raven client).',
 	},
 ] as INodeProperties[];
