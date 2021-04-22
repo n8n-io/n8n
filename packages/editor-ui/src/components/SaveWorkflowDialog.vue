@@ -80,7 +80,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 	},
 	computed: mapState("tags", ["isLoading"]),
 	methods: {
-		onWindowKeydown(event) {
+		onWindowKeydown(event: KeyboardEvent) {
 			if (event && event.keyCode === 13) {
 				this.save();
 			}

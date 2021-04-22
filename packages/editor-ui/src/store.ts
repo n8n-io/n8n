@@ -862,5 +862,5 @@ export const store = new Vuex.Store({
 		sidebarMenuItems: (state): IMenuItem[] => {
 			return state.sidebarMenuItems;
 		},
-	}
+	},
 });

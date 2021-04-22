@@ -68,7 +68,7 @@ export default mixins(showMessage).extend({
 			isCreateEnabled: false,
 			updateId: "",
 			deleteId: "",
-			maxLength: MAX_TAG_NAME_LENGTH
+			maxLength: MAX_TAG_NAME_LENGTH,
 		};
 	},
 	components: {
@@ -90,7 +90,7 @@ export default mixins(showMessage).extend({
 		disableCreate() {
 			this.$data.isCreateEnabled = false;
 		},
-		async onCreate(name: string, cb: (id: string | null, error?: any) => void) {
+		async onCreate(name: string, cb: (id: string | null, error?: Error) => void) {
 			try {
 				if (!name) {
 					throw new Error("Tag name was not set");
@@ -122,7 +122,7 @@ export default mixins(showMessage).extend({
 		disableUpdate() {
 			this.$data.updateId = "";
 		},
-		async onUpdate(id: string, name: string, oldName: string, cb: (id: string | null, error?: any) => void) {
+		async onUpdate(id: string, name: string, oldName: string, cb: (id: string | null, error?: Error) => void) {
 			try {
 				if (!name) {
 					throw new Error("Tag name was not set");
@@ -154,7 +154,7 @@ export default mixins(showMessage).extend({
 		disableDelete() {
 			this.$data.deleteId = "";
 		},
-		async onDelete(id: string, name: string, cb: (id: string | null, error?: any) => void) {
+		async onDelete(id: string, name: string, cb: (id: string | null, error?: Error) => void) {
 			try {
 				await this.$store.dispatch("tags/delete", id);
 

@@ -163,7 +163,7 @@ import {
 	IWorkflowDataUpdate,
 	XYPositon,
 	IPushDataExecutionFinished,
-  ITag,
+	ITag,
 } from '../Interface';
 
 export default mixins(

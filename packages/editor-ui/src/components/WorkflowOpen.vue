@@ -69,7 +69,7 @@ export default mixins(
 	components: {
 		WorkflowActivator,
 		TagContainer,
-TagsDropdown,
+		TagsDropdown,
 	},
 	created() {
 		this.$store.dispatch("tags/fetchAll");
@@ -110,7 +110,7 @@ TagsDropdown,
 					workflow.tags = (workflow.tags || []).map((tag) => {
 						return tags.find(({id}: ITag) => id === tag.id);
 					})
-					.filter((tag) => !!tag);
+						.filter((tag) => !!tag);
 
 					return workflow;
 				});
