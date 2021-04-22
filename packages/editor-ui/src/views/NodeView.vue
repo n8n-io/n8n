@@ -332,6 +332,7 @@ export default mixins(
 			},
 			openNodeCreator () {
 				this.createNodeActive = true;
+				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'add_node_button' });
 			},
 			async openExecution (executionId: string) {
 				this.resetWorkspace();
@@ -1178,6 +1179,7 @@ export default mixins(
 
 					// Display the node-creator
 					this.createNodeActive = true;
+					this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'node_connection_drop' });
 				});
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
