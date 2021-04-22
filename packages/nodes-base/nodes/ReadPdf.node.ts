@@ -46,19 +46,28 @@ export class ReadPdf implements INodeType {
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 
-			item = items[itemIndex];
-			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
+			try{
 
-			if (item.binary === undefined) {
-				item.binary = {};
+				item = items[itemIndex];
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
+
+				if (item.binary === undefined) {
+					item.binary = {};
+				}
+
+				const binaryData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+				returnData.push({
+					binary: item.binary,
+					json: await pdf(binaryData),
+				});
+
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({json:{ error: error.message }});
+					continue;
+				}
+				throw error;
 			}
-
-			const binaryData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
-			returnData.push({
-				binary: item.binary,
-				json: await pdf(binaryData),
-			});
-
 		}
 		return this.prepareOutputData(returnData);
 	}
