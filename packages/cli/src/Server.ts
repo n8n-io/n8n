@@ -503,7 +503,7 @@ class App {
 			const { tags: tagIds } = req.body;
 			const workflowId = result.id as string;
 
-			if (tagIds) {
+			if (tagIds?.length) {
 				await TagHelpers.validateTags(tagIds);
 				await TagHelpers.createRelations(workflowId, tagIds);
 
