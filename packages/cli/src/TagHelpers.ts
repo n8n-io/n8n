@@ -34,10 +34,14 @@ export function formatTagsResponse(tags: ITagDb[]): ITagResponseItem[] {
  * Sort a tags response by the order of the tag IDs in the incoming request.
  */
 export function sortByRequestOrder(
-	tagsResponse: ITagResponseItem[],
+	tagsResponse: ITagDb[],
 	tagIds: string[]
 ) {
-	return tagsResponse.sort((a, b) => tagIds.indexOf(a.id) - tagIds.indexOf(b.id));
+	const tagMap = tagsResponse.reduce((acc, tag) => {
+		acc[tag.id.toString()] = tag;
+		return acc;
+	}, {} as { [key: string]: ITagDb });
+	return tagIds.map(tagId => tagMap[tagId]);
 }
 
 /**
@@ -69,21 +73,6 @@ export async function exists(id: string) {
 // ----------------------------------
 //           validators
 // ----------------------------------
-
-/**
- * Validate whether
- * - the provided property is a string array, and
- * - each array item exists in the `tag_entity` table.
- *
- * Used for creating a workflow or updating a tag.
- */
-export async function validateTags(tagIds: unknown[]) {
-	if (!isStringArray(tagIds)) {
-		throw new ResponseHelper.ResponseError(`The tags property is not an array of strings.`, undefined, 400);
-	}
-
-	await Promise.all(tagIds.map(exists));
-}
 
 /**
  * Validate whether a tag name

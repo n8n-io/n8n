@@ -107,7 +107,7 @@ import * as querystring from 'querystring';
 import * as Queue from '../src/Queue';
 import { OptionsWithUrl } from 'request-promise-native';
 import { Registry } from 'prom-client';
-import { ITagDb, IWorkflowRequest } from './Interfaces';
+import { ITagDb, IWorkflowDb } from './Interfaces';
 
 import * as TagHelpers from './TagHelpers';
 
@@ -485,7 +485,7 @@ class App {
 
 
 		// Creates a new workflow
-		this.app.post(`/${this.restEndpoint}/workflows`, ResponseHelper.send(async (req: IWorkflowRequest, res: express.Response): Promise<IWorkflowResponse> => {
+		this.app.post(`/${this.restEndpoint}/workflows`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowResponse> => {
 
 			const newWorkflowData = req.body as IWorkflowBase;
 
@@ -497,30 +497,14 @@ class App {
 
 			await this.externalHooks.run('workflow.create', [newWorkflowData]);
 
-			// Save the workflow in DB
-			const result = await Db.collections.Workflow!.save(newWorkflowData);
-
-			const { tags: tagIds } = req.body;
-			const workflowId = result.id as string;
-
-			if (tagIds?.length) {
-				await TagHelpers.validateTags(tagIds);
-				await TagHelpers.createRelations(workflowId, tagIds);
-
-				const found = await Db.collections.Tag!.find({
-					select: ['id', 'name'],
-					where: { id: In(tagIds) },
-				});
-
-				const tagsResponse = TagHelpers.formatTagsResponse(found);
-
-				result.tags = TagHelpers.sortByRequestOrder(tagsResponse, tagIds);
+			const tagOrder = newWorkflowData.tags.slice() as string[];
+			if (req.body.tags?.length) {
+				newWorkflowData.tags = await Db.collections.Tag!.findByIds(newWorkflowData.tags, { select: ['id', 'name'] });
 			}
+			const result = await Db.collections.Workflow!.save(newWorkflowData);
+			result.tags = TagHelpers.sortByRequestOrder(result.tags as ITagDb[], tagOrder);
 
-			// Convert to response format in which the id is a string
-			(result as IWorkflowBase as IWorkflowResponse).id = result.id.toString();
-			return result as IWorkflowBase as IWorkflowResponse;
-
+			return { id: result.id.toString(), ..._.omit(result, 'id') };
 		}));
 
 
@@ -566,7 +550,7 @@ class App {
 			const results = await Db.collections.Workflow!.find(findQuery);
 			results.forEach(workflow => {
 				if (workflow.tags) {
-					workflow.tags = TagHelpers.formatTagsResponse(workflow.tags);
+					workflow.tags = TagHelpers.formatTagsResponse(workflow.tags as ITagDb[]);
 				}
 			});
 
@@ -597,13 +581,13 @@ class App {
 
 
 		// Updates an existing workflow
-		this.app.patch(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: IWorkflowRequest, res: express.Response): Promise<IWorkflowResponse> => {
+		this.app.patch(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowResponse> => {
 			const { tags } = req.body;
 
 			const tagIds = tags;
 
 			if (tagIds) {
-				await TagHelpers.validateTags(tagIds);
+				// await TagHelpers.validateTags(tagIds);
 				await TagHelpers.validateRelations(req.params.id, tagIds);
 			}
 
@@ -646,7 +630,7 @@ class App {
 
 			newWorkflowData.updatedAt = this.getCurrentDate();
 
-			await Db.collections.Workflow!.update(id, newWorkflowData);
+			await Db.collections.Workflow!.update(id, newWorkflowData as IWorkflowDb);
 			await this.externalHooks.run('workflow.afterUpdate', [newWorkflowData]);
 
 			// We sadly get nothing back from "update". Neither if it updated a record

@@ -74,12 +74,7 @@ export interface IWebhookDb {
 
 export interface IWorkflowBase extends IWorkflowBaseWorkflow {
 	id?: number | string;
-}
-
-export interface IWorkflowRequest extends Request {
-	body: {
-		tags?: string[];
-	};
+	tags: string[] | ITagDb[];
 }
 
 export interface ITagDb {
@@ -97,7 +92,6 @@ export interface ITagResponseItem {
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
 	id: number | string;
-	tags: ITagDb[];
 }
 
 export interface IWorkflowResponse extends IWorkflowBase {
