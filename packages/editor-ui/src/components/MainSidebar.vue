@@ -10,7 +10,7 @@
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
 		<div class="side-menu-wrapper" :class="{expanded: !isCollapsed}">
-			<div id="collapse-change-button" class="clickable" @click="isCollapsed=!isCollapsed">
+			<div id="collapse-change-button" class="clickable" @click="toggleCollapse">
 				<font-awesome-icon icon="angle-right" class="icon" />
 			</div>
 			<el-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
@@ -221,6 +221,7 @@ import { workflowRun } from '@/components/mixins/workflowRun';
 import { saveAs } from 'file-saver';
 
 import mixins from 'vue-typed-mixins';
+import { mapState } from 'vuex';
 
 export default mixins(
 	genericHelpers,
@@ -246,7 +247,6 @@ export default mixins(
 				aboutDialogVisible: false,
 				// @ts-ignore
 				basePath: this.$store.getters.getBaseUrl,
-				isCollapsed: true,
 				credentialNewDialogVisible: false,
 				credentialOpenDialogVisible: false,
 				executionsListDialogVisible: false,
@@ -256,6 +256,9 @@ export default mixins(
 			};
 		},
 		computed: {
+			...mapState('ui', {
+				isCollapsed: 'sidebarMenuCollapsed',
+			}),
 			exeuctionId (): string | undefined {
 				return this.$route.params.id;
 			},
@@ -310,6 +313,9 @@ export default mixins(
 			},
 		},
 		methods: {
+			toggleCollapse () {
+				this.$store.commit('ui/toggleSidebarMenuCollapse');
+			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
@@ -588,10 +594,10 @@ a.logo {
 
 .side-menu-wrapper {
 	height: 100%;
-	width: 65px;
+	width: $--sidebar-width;
 
 	&.expanded {
-		width: 200px;
+		width: $--sidebar-expanded-width;
 	}
 }
 

@@ -509,4 +509,5 @@ export interface IUiState {
 	saveAsDialogOpen: boolean;
 	renameDialogOpen: boolean;
 	tagsManagerOpen: boolean;
+	sidebarMenuCollapsed: boolean;
 }

@@ -11,6 +11,7 @@ const module: Module<IUiState, IRootState> = {
 		saveAsDialogOpen: false,
 		renameDialogOpen: false,
 		tagsManagerOpen: false,
+		sidebarMenuCollapsed: true,
 	},
 	mutations: {
 		openSaveAsDialog: (state: IUiState) => {
@@ -30,6 +31,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		closeTagsManager: (state: IUiState) => {
 			state.tagsManagerOpen = false;
+		},
+		toggleSidebarMenuCollapse: (state: IUiState) => {
+			state.sidebarMenuCollapsed = !state.sidebarMenuCollapsed;
 		},
 	},
 };

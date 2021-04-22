@@ -38,7 +38,7 @@
 			@nodeTypeSelected="nodeTypeSelected"
 			@closeNodeCreator="closeNodeCreator"
 			></node-creator>
-		<div class="zoom-menu">
+		<div :class="{'zoom-menu': true, expanded: !sidebarMenuCollapsed}">
 			<button @click="setZoom('in')" class="button-white" title="Zoom In">
 				<font-awesome-icon icon="search-plus"/>
 			</button>
@@ -165,6 +165,7 @@ import {
 	IPushDataExecutionFinished,
 	ITag,
 } from '../Interface';
+import { mapState } from 'vuex';
 
 export default mixins(
 	copyPaste,
@@ -235,6 +236,9 @@ export default mixins(
 			}
 		},
 		computed: {
+			...mapState('ui', [
+				'sidebarMenuCollapsed',
+			]),
 			activeNode (): INodeUi | null {
 				return this.$store.getters.activeNode;
 			},
@@ -2099,14 +2103,20 @@ export default mixins(
 <style scoped lang="scss">
 
 .zoom-menu {
+	$--zoom-menu-margin: 5;
+
 	position: fixed;
-	left: 70px;
+	left: $--sidebar-width + $--zoom-menu-margin;
 	width: 200px;
 	bottom: 45px;
 	line-height: 25px;
 	z-index: 18;
 	color: #444;
 	padding-right: 5px;
+
+	&.expanded {
+		left: $--sidebar-expanded-width + $--zoom-menu-margin;
+	}
 }
 
 .node-creator-button {

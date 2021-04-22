@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<div class="main-header">
+		<div :class="{'main-header': true, expanded: !sidebarMenuCollapsed}">
 			<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
 			<div class="top-menu">
@@ -103,7 +103,7 @@ import { saveAs } from 'file-saver';
 
 import mixins from 'vue-typed-mixins';
 import TagContainer from './TagContainer.vue';
-import { mapGetters } from 'vuex';
+import { mapGetters, mapState } from 'vuex';
 
 const WORKFLOW_NAME_LIMIT = 25;
 const WORKFLOW_NAME_END_COUNT_TO_KEEP = 4;
@@ -125,6 +125,9 @@ export default mixins(
 		computed: {
 			...mapGetters('tags', [
 				'currentWorkflowTags',
+			]),
+			...mapState('ui', [
+				'sidebarMenuCollapsed',
 			]),
 			executionId (): string | undefined {
 				return this.$route.params.id;
@@ -233,6 +236,12 @@ export default mixins(
 	background-color: #fff;
 	height: 65px;
 	width: 100%;
+
+	padding-left: $--sidebar-width;
+
+	&.expanded {
+		padding-left: $--sidebar-expanded-width;
+	}
 }
 
 .top-menu {
@@ -291,7 +300,7 @@ export default mixins(
 .workflow-details {
 	display: flex;
 	align-items: center;
-	margin-left: 80px; // logo width + 16px margin
+	margin-left: 16px;
 
 	> * {
 		margin-right: 16px;

@@ -9,7 +9,7 @@
 			:title="title"
 			ref="dialog"
 		>
-			<div class="content" @keydown.stop @keydown.enter="save">
+			<div class="content" @keydown.stop @keydown.enter="save" @keydown.esc="closeDialog">
 				<el-row>
 					<el-input
 						ref="nameInput"
