@@ -117,7 +117,7 @@ export async function validateName(name: unknown): Promise<void> | never {
 /**
  * Validate that the provided tags are not related to a workflow.
  *
- * Used before creating a relation before the provided tags and workflow.
+ * Used before creating a relation between the provided tags and workflow.
  */
 export async function validateRelations(workflowId: string, tagIds: string[]): Promise<void> | never {
 	for (const tagId of tagIds) {
