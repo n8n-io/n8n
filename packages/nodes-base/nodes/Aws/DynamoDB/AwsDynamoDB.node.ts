@@ -309,17 +309,22 @@ export class AwsDynamoDB implements INodeType {
 					body.ConsistentRead = readConsistencyModel === 'stronglyConsistent';
 				}
 
-				const headers = {
-					'X-Amz-Target': 'DynamoDB_20120810.Scan',
-					'Content-Type': 'application/x-amz-json-1.0',
-				};
+				const dbItems = [];
 
-				responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers);
+				do {
+					// always reset headers, otherwise we run into a
+					// 'com.amazon.coral.service#SerializationException' Exception on amazons side
+					const headers = {'X-Amz-Target': 'DynamoDB_20120810.Scan', 'Content-Type': 'application/x-amz-json-1.0',};
+					const response = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers);
 
-				if (responseData.Items) {
-					responseData = responseData.Items.map(simplify);
-				}
+					if (response.Items) {
+						dbItems.push(...response.Items);
+					}
 
+					body.ExclusiveStartKey = response.LastEvaluatedKey;
+				} while (typeof body.ExclusiveStartKey === 'object')
+
+				responseData = dbItems.map(simplify);
 			}
 
 			Array.isArray(responseData)
