@@ -621,6 +621,47 @@ export class NextCloud implements INodeType {
 			//         user:getAll
 			// ----------------------------------
 			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'How many results to return.',
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -643,13 +684,6 @@ export class NextCloud implements INodeType {
 						type: 'string',
 						default: '',
 						description: 'Optional search string.',
-					},
-					{
-						displayName: 'Limit',
-						name: 'limit',
-						type: 'number',
-						default: '',
-						description: 'Optional limit value.',
 					},
 					{
 						displayName: 'Offset',
@@ -912,8 +946,11 @@ export class NextCloud implements INodeType {
 					//         user:getAll
 					// ----------------------------------
 					requestMethod = 'GET';
-
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					qs = this.getNodeParameter('options', i) as IDataObject;
+					if (!returnAll) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
 					endpoint = `ocs/v1.php/cloud/users`;
 
 					headers['OCS-APIRequest'] = true;
