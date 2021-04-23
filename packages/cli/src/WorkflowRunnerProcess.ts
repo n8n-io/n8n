@@ -33,6 +33,8 @@ import {
 	WorkflowOperationError,
 } from 'n8n-workflow';
 
+import * as PCancelable from 'p-cancelable';
+
 import * as config from '../config';
 
 export class WorkflowRunnerProcess {
@@ -141,7 +143,17 @@ export class WorkflowRunnerProcess {
 				const workflowExecute = executeWorkflowFunctionOutput.workflowExecute;
 				this.childExecutions[executionId] = executeWorkflowFunctionOutput;
 				const workflow = executeWorkflowFunctionOutput.workflow;
-				result = await workflowExecute.processRunExecutionData(workflow) as IRun;
+				const execution = workflowExecute.processRunExecutionData(workflow) as PCancelable<IRun>;
+				let executionTimeout: NodeJS.Timeout | undefined;
+				if (workflow.settings?.executionTimeout !== undefined) {
+					executionTimeout = setTimeout(() => {
+						execution.cancel();
+					}, workflow.settings?.executionTimeout as number * 1000);
+				}
+				result = await execution;
+				if (executionTimeout !== undefined) {
+					clearTimeout(executionTimeout);
+				}
 				await externalHooks.run('workflow.postExecute', [result, workflowData]);
 				await sendToParentProcess('finishExecution', { executionId, result });
 				delete this.childExecutions[executionId];
@@ -150,6 +162,13 @@ export class WorkflowRunnerProcess {
 				delete this.childExecutions[executionId];
 				// Throw same error we had
 				throw e;
+			}
+
+			if (result.data.resultData.error !== undefined) {
+				// If the workflow timed out, for example, 
+				// we have result data because it gets canceled
+				// but we also have error.
+				throw result.data.resultData.error;
 			}
 
 			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(result);

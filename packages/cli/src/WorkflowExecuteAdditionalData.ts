@@ -579,16 +579,16 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	const workflowData = loadedWorkflowData !== undefined ? loadedWorkflowData : await getWorkflowData(workflowInfo);
 
 	const workflowName = workflowData ? workflowData.name : undefined;
-	const workflow = new Workflow({ id: workflowInfo.id, name: workflowName, nodes: workflowData!.nodes, connections: workflowData!.connections, active: workflowData!.active, nodeTypes, staticData: workflowData!.staticData });
+	const workflow = new Workflow({ id: workflowInfo.id, name: workflowName, nodes: workflowData!.nodes, connections: workflowData!.connections, active: workflowData!.active, nodeTypes, staticData: workflowData!.staticData, settings: workflowData.settings });
 
 	const runData = loadedRunData !== undefined ? loadedRunData : await getRunData(workflowData, inputData);
 
-	let executionId;
+	let executionId: string;
 
 	if (parentExecutionId !== undefined) {
 		executionId = parentExecutionId;
 	} else {
-		executionId = parentExecutionId !== undefined ? parentExecutionId : await ActiveExecutions.getInstance().add(runData);
+		executionId = await ActiveExecutions.getInstance().add(runData);
 	}
 
 	const runExecutionData = runData.executionData as IRunExecutionData;
@@ -617,9 +617,24 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 			startedAt: new Date(),
 			workflow,
 			workflowExecute,
-		};
+		} as IWorkflowExecuteProcess;
 	}
-	const data = await workflowExecute.processRunExecutionData(workflow);
+
+
+	const workflowExecution = workflowExecute.processRunExecutionData(workflow);
+	let workflowExecutionTimeout: NodeJS.Timeout | undefined;
+
+	if (workflowData.settings?.executionTimeout !== undefined && workflowData.settings.executionTimeout > 0) {
+		workflowExecutionTimeout = setTimeout(() => {
+			workflowExecution.cancel();
+		}, workflowData.settings.executionTimeout as number * 1000);
+	}
+
+	const data = await workflowExecution;
+
+	if (workflowExecutionTimeout !== undefined) {
+		clearTimeout(workflowExecutionTimeout);
+	}
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData]);
 
