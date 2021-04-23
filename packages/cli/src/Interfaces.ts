@@ -20,12 +20,11 @@ import {
 } from 'n8n-core';
 
 import * as PCancelable from 'p-cancelable';
-import { Repository } from 'typeorm';
+import { ObjectID, Repository } from 'typeorm';
 
 import { ChildProcess } from 'child_process';
 import { Url } from 'url';
 import { Request } from 'express';
-import { TagEntity } from './databases/entities/TagEntity';
 
 export interface IActivationError {
 	time: number;
@@ -72,30 +71,47 @@ export interface IWebhookDb {
 	pathLength?: number;
 }
 
-export interface IWorkflowBase extends IWorkflowBaseWorkflow {
-	id?: number | string;
-	tags: string[] | ITagDb[];
-}
+// ----------------------------------
+//               tags
+// ----------------------------------
 
 export interface ITagDb {
-	id: string | number;
+	id: number;
 	name: string;
-	createdAt?: Date;
-	updatedAt?: Date;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
-export interface ITagResponseItem {
+export interface ITagRes {
 	id: string;
 	name: string;
+}
+
+type UsageCount = {
+	usageCount: number
+};
+
+export type ITagWithCountDb = ITagDb & UsageCount;
+
+export type ITagWithCountRes = ITagRes & UsageCount;
+
+// ----------------------------------
+//            workflows
+// ----------------------------------
+
+export interface IWorkflowBase extends IWorkflowBaseWorkflow {
+	id?: number | string | ObjectID;
 }
 
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
-	id: number | string;
+	id: number | string | ObjectID;
+	tags: ITagDb[];
 }
 
 export interface IWorkflowResponse extends IWorkflowBase {
 	id: string;
+	tags: ITagRes[];
 }
 
 export interface IWorkflowShortResponse {
@@ -105,6 +121,79 @@ export interface IWorkflowShortResponse {
 	createdAt: Date;
 	updatedAt: Date;
 }
+
+// export interface IWorkflowDb {
+// 	id: number;
+// 	name: string;
+// 	active: boolean;
+// 	connections: IConnections;
+// 	nodes: INode[];
+// 	createdAt: Date;
+// 	updatedAt: Date;
+// 	settings?: IWorkflowSettings;
+// 	staticData?: IDataObject;
+// 	tags: ITagDb[];
+// }
+
+// export interface IWorkflowRes {
+// 	id: string;
+// 	name: string;
+// 	active: boolean;
+// 	connections: IConnections;
+// 	nodes: INode[];
+// 	createdAt: Date;
+// 	updatedAt: Date;
+// 	settings?: IWorkflowSettings;
+// 	staticData?: IDataObject;
+// 	tags?: ITagRes[];
+// }
+
+export interface IGetWorkflowsRequest extends Request {
+	query: {
+		filter: string;
+	};
+}
+
+// export interface ICreateWorkflowRequest extends Request {
+// 	body: IWorkflowBase & { tags: string[] }
+	// body: {
+	// 	id?: number;
+	// 	name: string;
+	// 	active: boolean;
+	// 	connections: IConnections;
+	// 	nodes: INode[];
+	// 	createdAt: Date;
+	// 	updatedAt: Date;
+	// 	settings?: IWorkflowSettings;
+	// 	staticData?: IDataObject;
+	// 	tags: string[];
+	// };
+// }
+
+// export interface IUpdateWorkflowRequest extends Request {
+// 	body: {
+// 		id: number;
+// 		name: string;
+// 		active: boolean;
+// 		connections: IConnections;
+// 		nodes: INode[];
+// 		createdAt: Date;
+// 		updatedAt: Date;
+// 		settings?: IWorkflowSettings;
+// 		staticData?: IDataObject;
+// 		tags: string[];
+// 	};
+// }
+
+// export interface ICreateTagRequest {
+// 	body: {
+// 		name: string;
+// 	};
+// }
+
+// ----------------------------------
+//            credentials
+// ----------------------------------
 
 export interface ICredentialsBase {
 	createdAt: Date;
