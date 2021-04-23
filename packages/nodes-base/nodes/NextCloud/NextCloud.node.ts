@@ -204,6 +204,26 @@ export class NextCloud implements INodeType {
 						value: 'create',
 						description: 'Invite a user to a NextCloud organization',
 					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a user.',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Retrieve information about a single user.',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Retrieve a list of users.',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Edit attributes related to a user.',
+					},
 				],
 				default: 'create',
 				description: 'The operation to perform.',
@@ -574,6 +594,185 @@ export class NextCloud implements INodeType {
 					},
 				],
 			},
+			// ----------------------------------
+			//         user:get/delete/update
+			// ----------------------------------
+			{
+				displayName: 'Username',
+				name: 'userId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'delete',
+							'get',
+							'update',
+						],
+					},
+				},
+				placeholder: 'john',
+				description: 'Username the user will have.',
+			},
+			// ----------------------------------
+			//         user:getAll
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'How many results to return.',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Search',
+						name: 'search',
+						type: 'string',
+						default: '',
+						description: 'Optional search string.',
+					},
+					{
+						displayName: 'Offset',
+						name: 'offset',
+						type: 'number',
+						default: '',
+						description: 'Optional offset value.',
+					},
+				],
+			},
+			// ----------------------------------
+			//         user:update
+			// ----------------------------------
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'fixedCollection',
+				typeOptions:{
+					multipleValues:false,
+				},
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'update',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Options',
+						name: 'option',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								type: 'options',
+								default: 'email',
+								options:
+								[
+									{
+										name: 'Email',
+										value: 'email',
+										description: 'The new email for the user.',
+									},
+									{
+										name: 'Display Name',
+										value: 'displayname',
+										description: 'The new display name for the user.',
+									},
+									{
+										name: 'Address',
+										value: 'address',
+										description: 'The new address for the user.',
+									},
+									{
+										name: 'Website',
+										value: 'website',
+										description: 'The new website for the user.',
+									},
+									{
+										name: 'Twitter',
+										value: 'twitter',
+										description: 'The new twitter for the user.',
+									},
+									{
+										name: 'Password',
+										value: 'password',
+										description: 'The new password for the user.',
+									},
+								],
+								description: 'Key of the updated attribut.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value of the updated attribut.',
+							},
+						],
+					},
+				],
+			},
 		],
 	};
 
@@ -602,8 +801,9 @@ export class NextCloud implements INodeType {
 		let requestMethod = '';
 		let responseData: any; // tslint:disable-line:no-any
 
-		let body: string | Buffer = '';
+		let body: string | Buffer | IDataObject = '';
 		const headers: IDataObject = {};
+		let qs;
 
 		for (let i = 0; i < items.length; i++) {
 			if (resource === 'file') {
@@ -718,7 +918,62 @@ export class NextCloud implements INodeType {
 						body += `&displayName=${additionalFields.displayName}`;
 					}
 				}
+				if (operation === 'delete') {
+					// ----------------------------------
+					//         user:delete
+					// ----------------------------------
+					requestMethod = 'DELETE';
 
+					const userid = this.getNodeParameter('userId', i) as string;
+					endpoint = `ocs/v1.php/cloud/users/${userid}`;
+
+					headers['OCS-APIRequest'] = true;
+					headers['Content-Type'] = 'application/x-www-form-urlencoded';
+				}
+				if (operation === 'get') {
+					// ----------------------------------
+					//         user:get
+					// ----------------------------------
+					requestMethod = 'GET';
+
+					const userid = this.getNodeParameter('userId', i) as string;
+					endpoint = `ocs/v1.php/cloud/users/${userid}`;
+
+					headers['OCS-APIRequest'] = true;
+					headers['Content-Type'] = 'application/x-www-form-urlencoded';
+				}
+				if (operation === 'getAll') {
+					// ----------------------------------
+					//         user:getAll
+					// ----------------------------------
+					requestMethod = 'GET';
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					qs = this.getNodeParameter('options', i) as IDataObject;
+					if (!returnAll) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+					endpoint = `ocs/v1.php/cloud/users`;
+
+					headers['OCS-APIRequest'] = true;
+					headers['Content-Type'] = 'application/x-www-form-urlencoded';
+				}
+				if (operation === 'update') {
+					// ----------------------------------
+					//         user:get
+					// ----------------------------------
+					requestMethod = 'PUT';
+
+					const userid = this.getNodeParameter('userId', i) as string;
+					endpoint = `ocs/v1.php/cloud/users/${userid}`;
+
+					body = Object.entries((this.getNodeParameter('options', i) as IDataObject).option as IDataObject).map(entry=> {
+						const [key,value] = entry;
+						return `${key}=${value}`;
+					}).join('&');
+
+					headers['OCS-APIRequest'] = true;
+					headers['Content-Type'] = 'application/x-www-form-urlencoded';
+				}
 			} else {
 				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 			}
@@ -737,7 +992,7 @@ export class NextCloud implements INodeType {
 			}
 
 			try {
-				responseData = await nextCloudApiRequest.call(this, requestMethod, endpoint, body, headers, encoding);
+				responseData = await nextCloudApiRequest.call(this, requestMethod, endpoint, body, headers, encoding, qs);
 			} catch (error) {
 				if (this.continueOnFail() === true) {
 					returnData.push({ error });
@@ -767,23 +1022,53 @@ export class NextCloud implements INodeType {
 
 				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);
 
-			} else if (resource === 'user' && operation === 'create') {
+			} else if (resource === 'user' ) {
 
-				const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-					parseString(responseData, { explicitArray: false }, (err, data) => {
-						if (err) {
-							return reject(err);
-						}
+				if (operation !== 'getAll'){
 
-						if (data.ocs.meta.status !== 'ok') {
-							return reject(new Error(data.ocs.meta.message));
-						}
+					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+						parseString(responseData, { explicitArray: false }, (err, data) => {
+							if (err) {
+								return reject(err);
+							}
 
-						resolve(data.ocs.data as IDataObject);
+							if (data.ocs.meta.status !== 'ok') {
+								return reject(new Error(data.ocs.meta.message || data.ocs.meta.status));
+							}
+
+							if (operation === 'delete' || operation === 'update'){
+								resolve(data.ocs.meta as IDataObject);
+							} else {
+								resolve(data.ocs.data as IDataObject);
+							}
+						});
 					});
-				});
 
-				returnData.push(jsonResponseData as IDataObject);
+					returnData.push(jsonResponseData as IDataObject);
+				} else {
+
+					const jsonResponseData: IDataObject[] = await new Promise((resolve, reject) => {
+						parseString(responseData, { explicitArray: false }, (err, data) => {
+							if (err) {
+								return reject(err);
+							}
+
+							if (data.ocs.meta.status !== 'ok') {
+								return reject(new Error(data.ocs.meta.message));
+							}
+
+							if (typeof(data.ocs.data.users.element) === 'string') {
+								resolve([data.ocs.data.users.element] as IDataObject[]);
+							} else {
+								resolve(data.ocs.data.users.element as IDataObject[]);
+							}
+						});
+					});
+
+					jsonResponseData.forEach(value => {
+						returnData.push( {id:value} as IDataObject);
+					});
+				}
 
 			} else if (resource === 'folder' && operation === 'list') {
 
