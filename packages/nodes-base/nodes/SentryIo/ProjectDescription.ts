@@ -16,6 +16,11 @@ export const projectOperations = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new project',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get project by ID',
@@ -24,6 +29,16 @@ export const projectOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all projects',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a project',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a project',
 			},
 		],
 		default: 'get',
@@ -51,13 +66,11 @@ export const projectFields = [
 				operation: [
 					'create',
 					'get',
-					'update',
-					'delete',
 				],
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the events belong to',
+		description: 'The slug of the organization the events belong to.',
 	},
 	{
 		displayName: 'Project Slug',
@@ -81,12 +94,18 @@ export const projectFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project to retrieve',
+		description: 'The slug of the project to retrieve.',
 	},
 	{
 		displayName: 'Team Slug',
 		name: 'teamSlug',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTeams',
+			loadOptionsDependsOn: [
+				'organizationSlug',
+			],
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -95,13 +114,11 @@ export const projectFields = [
 				],
 				operation: [
 					'create',
-					'update',
-					'delete',
 				],
 			},
 		},
 		required: true,
-		description: 'The slug of the team to create a new project for',
+		description: 'The slug of the team to create a new project for.',
 	},
 	{
 		displayName: 'Name',
@@ -119,7 +136,7 @@ export const projectFields = [
 			},
 		},
 		required: true,
-		description: 'The name for the new project',
+		description: 'The name for the new project.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -143,7 +160,7 @@ export const projectFields = [
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: 'Optionally a slug for the new project. If it’s not provided a slug is generated from the name',
+				description: 'Optionally a slug for the new project. If it’s not provided a slug is generated from the name.',
 			},
 		],
 	},
@@ -165,7 +182,7 @@ export const projectFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -189,6 +206,170 @@ export const projectFields = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return',
+		description: 'How many results to return.',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                project:update                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Organization Slug',
+		name: 'organizationSlug',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getOrganizations',
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'project',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		required: true,
+		description: 'The slug of the organization the project belong to.',
+	},
+	{
+		displayName: 'Project Slug',
+		name: 'projectSlug',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getProjects',
+			loadOptionsDependsOn: [
+				'organizationSlug',
+			],
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'project',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		required: true,
+		description: 'The slug of the project to update.',
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'project',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Team',
+				name: 'team',
+				type: 'string',
+				default: '',
+				description: 'The new team name.',
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'The new name for the updated project.',
+			},
+			{
+				displayName: 'Slug',
+				name: 'slug',
+				type: 'string',
+				default: '',
+				description: 'The new slug for the updated project.',
+			},
+			{
+				displayName: 'Platform',
+				name: 'platform',
+				type: 'string',
+				default: '',
+				description: 'The new platform for the updated project.',
+			},
+			{
+				displayName: 'Bookmarked',
+				name: 'isBookmarked',
+				type: 'boolean',
+				default: false,
+				description: 'The new platform for the updated project.',
+			},
+			{
+				displayName: 'Digests Minimun Delay',
+				name: 'digestsMinDelay',
+				type: 'number',
+				default: 60,
+				description: 'Minium interval to digest alerts.',
+			},
+			{
+				displayName: 'Digests Maximum Delay',
+				name: 'digestsMaxDelay',
+				type: 'number',
+				default: 1800,
+				description: 'Maximum interval to digest alerts.',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                project:delete                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Organization Slug',
+		name: 'organizationSlug',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getOrganizations',
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'project',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		required: true,
+		description: 'The slug of the organization the project belong to.',
+	},
+	{
+		displayName: 'Project Slug',
+		name: 'projectSlug',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getProjects',
+			loadOptionsDependsOn: [
+				'organizationSlug',
+			],
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'project',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		required: true,
+		description: 'The slug of the project to delete.',
 	},
 ] as INodeProperties[];
