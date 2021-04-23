@@ -21,6 +21,11 @@ export const teamOperations = [
 				description: 'Create a new team',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a team',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get team by slug',
@@ -35,11 +40,6 @@ export const teamOperations = [
 				value: 'update',
 				description: 'Update a team',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a team',
-			},
 		],
 		default: 'get',
 		description: 'The operation to perform',
@@ -47,9 +47,9 @@ export const teamOperations = [
 ] as INodeProperties[];
 
 export const teamFields = [
-/* -------------------------------------------------------------------------- */
-/*                                team:getAll                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                team:getAll                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
@@ -112,9 +112,10 @@ export const teamFields = [
 		default: 100,
 		description: 'How many results to return.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                team:get                                   */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                team:get                                   */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
@@ -160,9 +161,10 @@ export const teamFields = [
 		required: true,
 		description: 'The slug of the team to get.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                team:create                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                team:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
@@ -228,9 +230,10 @@ export const teamFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                team:update                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                team:update                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
@@ -277,24 +280,6 @@ export const teamFields = [
 		description: 'The slug of the team to update.',
 	},
 	{
-		displayName: 'Name',
-		name: 'name',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-		required: true,
-		description: 'The new name of the team.',
-	},
-	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -312,6 +297,13 @@ export const teamFields = [
 		},
 		options: [
 			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'The new name of the team.',
+			},
+			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
@@ -320,9 +312,10 @@ export const teamFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                team:delete                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                team:delete                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',

@@ -21,6 +21,11 @@ export const releaseOperations = [
 				description: 'Create a release',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a release',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get release by version identifier',
@@ -34,11 +39,6 @@ export const releaseOperations = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update a release',
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a release',
 			},
 		],
 		default: 'get',
@@ -138,6 +138,7 @@ export const releaseFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                release:get/delete                          */
 	/* -------------------------------------------------------------------------- */
@@ -182,6 +183,7 @@ export const releaseFields = [
 		required: true,
 		description: 'The version identifier of the release.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                release:create                               */
 	/* -------------------------------------------------------------------------- */
@@ -438,6 +440,7 @@ export const releaseFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                release:update                              */
 	/* -------------------------------------------------------------------------- */
@@ -497,27 +500,6 @@ export const releaseFields = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Ref',
-				name: 'ref',
-				type: 'string',
-				default: '',
-				description: 'A URL that points to the release. This can be the path to an online interface to the sourcecode for instance.',
-			},
-			{
-				displayName: 'URL',
-				name: 'url',
-				type: 'string',
-				default: '',
-				description: 'A URL that points to the release. This can be the path to an online interface to the sourcecode for instance.',
-			},
-			{
-				displayName: 'Date released',
-				name: 'dateReleased',
-				type: 'dateTime',
-				default: '',
-				description: 'an optional date that indicates when the release went live. If not provided the current time is assumed.',
-			},
 			{
 				displayName: 'Commits',
 				name: 'commits',
@@ -627,6 +609,20 @@ export const releaseFields = [
 				],
 			},
 			{
+				displayName: 'Date released',
+				name: 'dateReleased',
+				type: 'dateTime',
+				default: '',
+				description: 'an optional date that indicates when the release went live. If not provided the current time is assumed.',
+			},
+			{
+				displayName: 'Ref',
+				name: 'ref',
+				type: 'string',
+				default: '',
+				description: 'A URL that points to the release. This can be the path to an online interface to the sourcecode for instance.',
+			},
+			{
 				displayName: 'Refs',
 				name: 'refs',
 				description: 'An optional way to indicate the start and end commits for each repository included in a release.',
@@ -666,6 +662,13 @@ export const releaseFields = [
 						],
 					},
 				],
+			},
+			{
+				displayName: 'URL',
+				name: 'url',
+				type: 'string',
+				default: '',
+				description: 'A URL that points to the release. This can be the path to an online interface to the sourcecode for instance.',
 			},
 		],
 	},
