@@ -160,8 +160,10 @@ export const getWorkItem = `
 `;
 
 export const getAllWorkItems = `
-	query($spaceId: ID!) {
-		workItems(spaceId: $spaceId) {
+	query($spaceId: ID!, $cursor: String) {
+		workItems(spaceId: $spaceId, cursor: $cursor) {
+			hasMore,
+			cursor,
 			workItems {
 				id
 				title

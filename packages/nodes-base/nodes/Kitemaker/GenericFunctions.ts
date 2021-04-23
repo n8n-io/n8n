@@ -4,13 +4,14 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	IHookFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
 
 export async function kitemakerRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-	body: object = {},
+	body: IDataObject = {},
 ) {
 	const { personalAccessToken } = this.getCredentials('kitemakerApi') as { personalAccessToken: string };
 
@@ -31,6 +32,46 @@ export async function kitemakerRequest(
 	}
 
 	return responseData;
+}
+
+export async function kitemakerRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	body: { query: string; variables: { [key: string]: string } },
+) {
+	const resource = this.getNodeParameter('resource', 0) as 'space' | 'user' | 'workItem';
+	const [group, items] = getGroupAndItems(resource);
+
+	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
+	const limit = this.getNodeParameter('limit', 0, 0) as number;
+
+	const returnData: IDataObject[] = [];
+	let responseData;
+
+	do {
+		responseData = await kitemakerRequest.call(this, body);
+		body.variables.cursor = responseData.data[group].cursor;
+		returnData.push(...responseData.data[group][items]);
+
+		if (!returnAll && returnData.length > limit) {
+			return returnData.slice(0, limit);
+		}
+
+	} while (responseData.data[group].hasMore);
+
+	return returnData;
+}
+
+function getGroupAndItems(resource: 'space' | 'user' | 'workItem') {
+	const map: { [key: string]: { [key: string]: string } } = {
+		space: { group: 'organization', items: 'spaces' },
+		user: { group: 'organization', items: 'users' },
+		workItem: { group: 'workItems', items: 'workItems' },
+	};
+
+	return [
+		map[resource]['group'],
+		map[resource]['items'],
+	];
 }
 
 export function createLoadOptions(

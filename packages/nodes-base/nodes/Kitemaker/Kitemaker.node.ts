@@ -12,7 +12,9 @@ import {
 
 import {
 	organizationOperations,
+	spaceFields,
 	spaceOperations,
+	userFields,
 	userOperations,
 	workItemFields,
 	workItemOperations,
@@ -21,6 +23,7 @@ import {
 import {
 	createLoadOptions,
 	kitemakerRequest,
+	kitemakerRequestAllItems,
 } from './GenericFunctions';
 
 import {
@@ -91,7 +94,9 @@ export class Kitemaker implements INodeType {
 			},
 			...organizationOperations,
 			...spaceOperations,
+			...spaceFields,
 			...userOperations,
+			...userFields,
 			...workItemOperations,
 			...workItemFields,
 		],
@@ -188,11 +193,12 @@ export class Kitemaker implements INodeType {
 					//          space: getAll
 					// ----------------------------------
 
-					responseData = await kitemakerRequest.call(this, {
+					const allItems = await kitemakerRequestAllItems.call(this, {
 						query: getAllSpaces,
+						variables: {},
 					});
 
-					returnData.push(...responseData.data.organization.spaces);
+					returnData.push(...allItems);
 
 				}
 
@@ -208,11 +214,12 @@ export class Kitemaker implements INodeType {
 					//          user: getAll
 					// ----------------------------------
 
-					responseData = await kitemakerRequest.call(this, {
+					const allItems = await kitemakerRequestAllItems.call(this, {
 						query: getAllUsers,
+						variables: {},
 					});
 
-					returnData.push(...responseData.data.organization.users);
+					returnData.push(...allItems);
 
 				}
 
@@ -271,14 +278,14 @@ export class Kitemaker implements INodeType {
 					//         workItem: getAll
 					// ----------------------------------
 
-					responseData = await kitemakerRequest.call(this, {
+					const allItems = await kitemakerRequestAllItems.call(this, {
 						query: getAllWorkItems,
 						variables: {
-							spaceId: this.getNodeParameter('spaceId', i),
+							spaceId: this.getNodeParameter('spaceId', i) as string,
 						},
 					});
 
-					returnData.push(...responseData.data.workItems.workItems);
+					returnData.push(...allItems);
 
 				} else if (operation === 'update') {
 
