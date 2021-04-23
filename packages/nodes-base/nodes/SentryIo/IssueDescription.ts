@@ -227,7 +227,7 @@ export const issueFields = [
 		description: 'ID of issue to get.',
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Update Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',

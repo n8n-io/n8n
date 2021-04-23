@@ -481,8 +481,8 @@ export const releaseFields = [
 		description: 'A version identifier for this release. Can be a version number, a commit hash etc.',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},

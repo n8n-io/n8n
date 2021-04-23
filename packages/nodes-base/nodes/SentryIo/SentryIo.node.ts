@@ -477,13 +477,13 @@ export class SentryIo implements INodeType {
 				if (operation === 'update') {
 					const name = this.getNodeParameter('name', i) as string;
 					const organizationSlug = this.getNodeParameter('organization_slug', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const endpoint = `/api/0/organizations/${organizationSlug}/`;
 
 					const body = {name};
 
-					if (additionalFields.slug) {
-						Object.assign(body, additionalFields.slug as string); 
+					if (updateFields.slug) {
+						Object.assign(body, updateFields.slug as string);
 					}
 
 					responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
@@ -531,7 +531,7 @@ export class SentryIo implements INodeType {
 					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
 					const projectSlug = this.getNodeParameter('projectSlug', i) as string;
 					const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/`;
-					const body = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body = this.getNodeParameter('updateFields', i) as IDataObject;
 
 					responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
 				}
@@ -648,15 +648,15 @@ export class SentryIo implements INodeType {
 					const version = this.getNodeParameter('version', i) as string;
 					const endpoint = `/api/0/organizations/${organizationSlug}/releases/${version}/`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-					const body = {...additionalFields};
+					const body = {...updateFields};
 
-					if (additionalFields.commits) {
+					if (updateFields.commits) {
 						const commits: ICommit[] = [];
 						//@ts-ignore
 						// tslint:disable-next-line: no-any
-						additionalFields.commits.commitProperties.map((commit: any) => {
+						updateFields.commits.commitProperties.map((commit: any) => {
 							const commitObject: ICommit = { id: commit.id };
 
 							if (commit.repository) {
@@ -685,10 +685,10 @@ export class SentryIo implements INodeType {
 
 						body.commits = commits;
 					}
-					if (additionalFields.refs) {
+					if (updateFields.refs) {
 						const refs: IRef[] = [];
 						//@ts-ignore
-						additionalFields.refs.refProperties.map((ref: IRef) => {
+						updateFields.refs.refProperties.map((ref: IRef) => {
 							refs.push(ref);
 						});
 
@@ -745,12 +745,12 @@ export class SentryIo implements INodeType {
 					const name = this.getNodeParameter('name', i) as string;
 					const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 					const body={name};
 
-					if (additionalFields.slug) {
-						Object.assign(body, additionalFields);
+					if (updateFields.slug) {
+						Object.assign(body, updateFields);
 					}
 					
 					responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
