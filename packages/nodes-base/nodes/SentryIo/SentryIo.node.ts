@@ -475,16 +475,10 @@ export class SentryIo implements INodeType {
 					responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, qs);
 				}
 				if (operation === 'update') {
-					const name = this.getNodeParameter('name', i) as string;
 					const organizationSlug = this.getNodeParameter('organization_slug', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const endpoint = `/api/0/organizations/${organizationSlug}/`;
 
-					const body = {name};
-
-					if (updateFields.slug) {
-						Object.assign(body, updateFields.slug as string);
-					}
+					const body = this.getNodeParameter('updateFields', i) as IDataObject;
 
 					responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
 				}
@@ -650,7 +644,7 @@ export class SentryIo implements INodeType {
 
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-					const body = {...updateFields};
+					const body = { ...updateFields };
 
 					if (updateFields.commits) {
 						const commits: ICommit[] = [];
@@ -694,7 +688,7 @@ export class SentryIo implements INodeType {
 
 						body.refs = refs;
 					}
-					
+
 					responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
 				}
 			}
@@ -742,17 +736,10 @@ export class SentryIo implements INodeType {
 				if (operation === 'update') {
 					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
 					const teamSlug = this.getNodeParameter('teamSlug', i) as string;
-					const name = this.getNodeParameter('name', i) as string;
 					const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/`;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const body = this.getNodeParameter('updateFields', i) as IDataObject;
 
-					const body={name};
-
-					if (updateFields.slug) {
-						Object.assign(body, updateFields);
-					}
-					
 					responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
 				}
 				if (operation === 'delete') {

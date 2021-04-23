@@ -21,6 +21,11 @@ export const projectOperations = [
 				description: 'Create a new project',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a project',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get project by ID',
@@ -34,11 +39,6 @@ export const projectOperations = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update a project',
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a project',
 			},
 		],
 		default: 'get',
@@ -164,6 +164,7 @@ export const projectFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                project:getAll                              */
 	/* -------------------------------------------------------------------------- */
@@ -208,6 +209,7 @@ export const projectFields = [
 		default: 100,
 		description: 'How many results to return.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                project:update                              */
 	/* -------------------------------------------------------------------------- */
@@ -274,11 +276,25 @@ export const projectFields = [
 		},
 		options: [
 			{
-				displayName: 'Team',
-				name: 'team',
-				type: 'string',
-				default: '',
-				description: 'The new team name.',
+				displayName: 'Bookmarked',
+				name: 'isBookmarked',
+				type: 'boolean',
+				default: false,
+				description: 'The new platform for the updated project.',
+			},
+			{
+				displayName: 'Digests Maximum Delay',
+				name: 'digestsMaxDelay',
+				type: 'number',
+				default: 1800,
+				description: 'Maximum interval to digest alerts.',
+			},
+			{
+				displayName: 'Digests Minimun Delay',
+				name: 'digestsMinDelay',
+				type: 'number',
+				default: 60,
+				description: 'Minium interval to digest alerts.',
 			},
 			{
 				displayName: 'Name',
@@ -295,35 +311,22 @@ export const projectFields = [
 				description: 'The new slug for the updated project.',
 			},
 			{
+				displayName: 'Team',
+				name: 'team',
+				type: 'string',
+				default: '',
+				description: 'The new team name.',
+			},
+			{
 				displayName: 'Platform',
 				name: 'platform',
 				type: 'string',
 				default: '',
 				description: 'The new platform for the updated project.',
 			},
-			{
-				displayName: 'Bookmarked',
-				name: 'isBookmarked',
-				type: 'boolean',
-				default: false,
-				description: 'The new platform for the updated project.',
-			},
-			{
-				displayName: 'Digests Minimun Delay',
-				name: 'digestsMinDelay',
-				type: 'number',
-				default: 60,
-				description: 'Minium interval to digest alerts.',
-			},
-			{
-				displayName: 'Digests Maximum Delay',
-				name: 'digestsMaxDelay',
-				type: 'number',
-				default: 1800,
-				description: 'Maximum interval to digest alerts.',
-			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                project:delete                              */
 	/* -------------------------------------------------------------------------- */

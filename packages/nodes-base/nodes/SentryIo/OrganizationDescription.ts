@@ -119,6 +119,7 @@ export const organizationFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                organization:get                            */
 	/* -------------------------------------------------------------------------- */
@@ -143,6 +144,7 @@ export const organizationFields = [
 		required: true,
 		description: 'The slug of the organization the team should be created for.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                organization:create                         */
 	/* -------------------------------------------------------------------------- */
@@ -207,6 +209,7 @@ export const organizationFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                organization:update                         */
 	/* -------------------------------------------------------------------------- */
@@ -231,24 +234,6 @@ export const organizationFields = [
 		description: 'The slug of the organization to update.',
 	},
 	{
-		displayName: 'Name',
-		name: 'name',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'organization',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-		required: true,
-		description: 'The name of the organization.',
-	},
-	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -266,11 +251,18 @@ export const organizationFields = [
 		},
 		options: [
 			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'The new name of the organization.',
+			},
+			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: 'The updated URL slug for this organization.',
+				description: 'The new URL slug for this organization.',
 			},
 		],
 	},
