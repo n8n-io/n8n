@@ -26,8 +26,16 @@
 								WORKFLOW
 							</div>
 							<div class="workflow-name">
-								<span v-if="currentWorkflow" ><font-awesome-icon icon="edit" />&nbsp;&nbsp;{{workflowName}}<span v-if="isDirty">*</span></span>
-								<span v-else><font-awesome-icon icon="edit" />&nbsp;&nbsp;Unsaved workflow</span>
+								<span v-if="currentWorkflow">
+									<a @click="openRenameDialog">
+										<font-awesome-icon icon="edit" />&nbsp;&nbsp;{{workflowName}}<span v-if="isDirty">*</span>
+									</a>
+								</span>
+								<span v-else>
+									<a @click="openSaveDialog">
+										<font-awesome-icon icon="edit" />&nbsp;&nbsp;Unsaved workflow
+									</a>
+								</span>
 							</div>
 						</div>
 					</span>
@@ -192,6 +200,12 @@ export default mixins(
 			},
 		},
 		methods: {
+			openSaveDialog() {
+				this.$store.commit('ui/openSaveAsDialog');
+			},
+			openRenameDialog() {
+				this.$store.commit('ui/openRenameDialog');
+			},
 			async openWorkflow (workflowId: string) {
 				this.$titleSet(this.workflowName, 'IDLE');
 				// Change to other workflow
@@ -287,6 +301,7 @@ export default mixins(
 
 	.workflow-name {
 		color: $--color-primary;
+		cursor: pointer;
 	}
 }
 

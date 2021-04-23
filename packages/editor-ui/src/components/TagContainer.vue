@@ -3,6 +3,7 @@
 		<el-tag 
 			v-for="tag in toDisplay" 
 			:key="tag.id"
+			:title="tag.title || tag.name"
 			type="info"
 			size="small"
 		>
@@ -12,6 +13,7 @@
 </template>
 
 <script lang="ts">
+import { ITag } from '@/Interface';
 import Vue from 'vue';
 
 export default Vue.extend({
@@ -20,14 +22,20 @@ export default Vue.extend({
 		"tags",
 	],
 	computed: {
-		toDisplay() {
+		toDisplay(): {id: string, name: string, title?: string} {
 			const tags = this.$props.tags || []; 
 
 			const toDisplay = tags.slice(0, 2);
 			if (tags.length > 2) {
+				const hidden = tags.slice(2);
+				const title = hidden.reduce((accu: string, tag: ITag) => {
+					return accu ? `${accu}, ${tag.name}` : tag.name;
+				}, '');
+
 				toDisplay.push({
 					id: 'count',
 					name: `+${tags.length - 2}`,
+					title,
 				});
 			}
 
