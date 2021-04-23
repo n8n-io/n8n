@@ -120,13 +120,13 @@ export async function validateName(name: unknown): Promise<void> | never {
  * Used before creating a relation before the provided tags and workflow.
  */
 export async function validateRelations(workflowId: string, tagIds: string[]): Promise<void> | never {
-	for (const tagId of tagIds) {
-		const areRelated = await checkRelated(workflowId, tagId);
+	// for (const tagId of tagIds) {
+	// 	const areRelated = await checkRelated(workflowId, tagId);
 
-		if (areRelated) {
-			throw new ResponseHelper.ResponseError(`Workflow ID ${workflowId} and tag ID ${tagId} are already related.`, undefined, 400);
-		}
-	}
+	// 	if (areRelated) {
+	// 		throw new ResponseHelper.ResponseError(`Workflow ID ${workflowId} and tag ID ${tagId} are already related.`, undefined, 400);
+	// 	}
+	// }
 }
 
 // ----------------------------------
