@@ -699,11 +699,11 @@ export class NextCloud implements INodeType {
 			//         user:update
 			// ----------------------------------
 			{
-				displayName: 'Options',
-				name: 'options',
+				displayName: 'Update Fields',
+				name: 'updateFields',
 				type: 'fixedCollection',
-				typeOptions:{
-					multipleValues:false,
+				typeOptions: {
+					multipleValues: false,
 				},
 				placeholder: 'Add Option',
 				default: {},
@@ -719,8 +719,8 @@ export class NextCloud implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Options',
-						name: 'option',
+						displayName: 'Fields',
+						name: 'field',
 						values: [
 							{
 								displayName: 'Key',
@@ -728,46 +728,46 @@ export class NextCloud implements INodeType {
 								type: 'options',
 								default: 'email',
 								options:
-								[
-									{
-										name: 'Email',
-										value: 'email',
-										description: 'The new email for the user.',
-									},
-									{
-										name: 'Display Name',
-										value: 'displayname',
-										description: 'The new display name for the user.',
-									},
-									{
-										name: 'Address',
-										value: 'address',
-										description: 'The new address for the user.',
-									},
-									{
-										name: 'Website',
-										value: 'website',
-										description: 'The new website for the user.',
-									},
-									{
-										name: 'Twitter',
-										value: 'twitter',
-										description: 'The new twitter for the user.',
-									},
-									{
-										name: 'Password',
-										value: 'password',
-										description: 'The new password for the user.',
-									},
-								],
-								description: 'Key of the updated attribut.',
+									[
+										{
+											name: 'Address',
+											value: 'address',
+											description: 'The new address for the user.',
+										},
+										{
+											name: 'Display Name',
+											value: 'displayname',
+											description: 'The new display name for the user.',
+										},
+										{
+											name: 'Email',
+											value: 'email',
+											description: 'The new email for the user.',
+										},
+										{
+											name: 'Password',
+											value: 'password',
+											description: 'The new password for the user.',
+										},
+										{
+											name: 'Twitter',
+											value: 'twitter',
+											description: 'The new twitter handle for the user.',
+										},
+										{
+											name: 'Website',
+											value: 'website',
+											description: 'The new website for the user.',
+										},
+									],
+								description: 'Key of the updated attribute.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the updated attribut.',
+								description: 'Value of the updated attribute.',
 							},
 						],
 					},
@@ -900,6 +900,7 @@ export class NextCloud implements INodeType {
 					// ----------------------------------
 					//         user:create
 					// ----------------------------------
+
 					requestMethod = 'POST';
 
 					endpoint = 'ocs/v1.php/cloud/users';
@@ -922,6 +923,7 @@ export class NextCloud implements INodeType {
 					// ----------------------------------
 					//         user:delete
 					// ----------------------------------
+
 					requestMethod = 'DELETE';
 
 					const userid = this.getNodeParameter('userId', i) as string;
@@ -934,6 +936,7 @@ export class NextCloud implements INodeType {
 					// ----------------------------------
 					//         user:get
 					// ----------------------------------
+
 					requestMethod = 'GET';
 
 					const userid = this.getNodeParameter('userId', i) as string;
@@ -946,6 +949,7 @@ export class NextCloud implements INodeType {
 					// ----------------------------------
 					//         user:getAll
 					// ----------------------------------
+
 					requestMethod = 'GET';
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					qs = this.getNodeParameter('options', i) as IDataObject;
@@ -959,15 +963,16 @@ export class NextCloud implements INodeType {
 				}
 				if (operation === 'update') {
 					// ----------------------------------
-					//         user:get
+					//         user:update
 					// ----------------------------------
+
 					requestMethod = 'PUT';
 
 					const userid = this.getNodeParameter('userId', i) as string;
 					endpoint = `ocs/v1.php/cloud/users/${userid}`;
 
-					body = Object.entries((this.getNodeParameter('options', i) as IDataObject).option as IDataObject).map(entry=> {
-						const [key,value] = entry;
+					body = Object.entries((this.getNodeParameter('updateFields', i) as IDataObject).field as IDataObject).map(entry => {
+						const [key, value] = entry;
 						return `${key}=${value}`;
 					}).join('&');
 
@@ -1022,9 +1027,9 @@ export class NextCloud implements INodeType {
 
 				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);
 
-			} else if (resource === 'user' ) {
+			} else if (resource === 'user') {
 
-				if (operation !== 'getAll'){
+				if (operation !== 'getAll') {
 
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 						parseString(responseData, { explicitArray: false }, (err, data) => {
@@ -1036,7 +1041,7 @@ export class NextCloud implements INodeType {
 								return reject(new Error(data.ocs.meta.message || data.ocs.meta.status));
 							}
 
-							if (operation === 'delete' || operation === 'update'){
+							if (operation === 'delete' || operation === 'update') {
 								resolve(data.ocs.meta as IDataObject);
 							} else {
 								resolve(data.ocs.data as IDataObject);
@@ -1057,7 +1062,7 @@ export class NextCloud implements INodeType {
 								return reject(new Error(data.ocs.meta.message));
 							}
 
-							if (typeof(data.ocs.data.users.element) === 'string') {
+							if (typeof (data.ocs.data.users.element) === 'string') {
 								resolve([data.ocs.data.users.element] as IDataObject[]);
 							} else {
 								resolve(data.ocs.data.users.element as IDataObject[]);
@@ -1066,7 +1071,7 @@ export class NextCloud implements INodeType {
 					});
 
 					jsonResponseData.forEach(value => {
-						returnData.push( {id:value} as IDataObject);
+						returnData.push({ id: value } as IDataObject);
 					});
 				}
 
