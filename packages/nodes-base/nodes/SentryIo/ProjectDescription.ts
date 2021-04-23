@@ -99,7 +99,13 @@ export const projectFields = [
 	{
 		displayName: 'Team Slug',
 		name: 'teamSlug',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTeams',
+			loadOptionsDependsOn: [
+				'organizationSlug',
+			],
+		},
 		default: '',
 		displayOptions: {
 			show: {

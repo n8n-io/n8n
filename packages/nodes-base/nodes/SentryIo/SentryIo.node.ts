@@ -281,6 +281,28 @@ export class SentryIo implements INodeType {
 
 				return returnData;
 			},
+			// Get an organization teams
+			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const organizationSlug = this.getNodeParameter('organizationSlug') as string;
+				const teams = await sentryApiRequestAllItems.call(this, 'GET', `/api/0/organizations/${organizationSlug}/teams/`, {});
+
+				for (const team of teams) {
+					returnData.push({
+						name: team.slug,
+						value: team.slug,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
 		},
 	};
 
