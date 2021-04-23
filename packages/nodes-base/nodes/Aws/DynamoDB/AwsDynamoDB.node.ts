@@ -274,14 +274,10 @@ export class AwsDynamoDB implements INodeType {
 				// ----------------------------------
 
 				// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html
+				const body: IRequestBody = {TableName: this.getNodeParameter('tableName', i) as string};
 
-				const eavUi = this.getNodeParameter('expressionAttributeValues.details', i) as IAttributeValueUi[];
-
-				const body: IRequestBody = {
-					TableName: this.getNodeParameter('tableName', i) as string,
-					FilterExpression: this.getNodeParameter('filterExpression', i) as string,
-					ExpressionAttributeValues: adjustExpressionAttributeValues(eavUi),
-				};
+				const ExpressionAttributeValues = this.getNodeParameter('expressionAttributeValues.details', i, null) as IAttributeValueUi[];
+				const FilterExpression = this.getNodeParameter('filterExpression', i) as string
 
 				const {
 					indexName,
@@ -292,6 +288,14 @@ export class AwsDynamoDB implements INodeType {
 					projectionExpression: string;
 					readConsistencyModel: 'eventuallyConsistent' | 'stronglyConsistent';
 				};
+
+				if (ExpressionAttributeValues) {
+					body.ExpressionAttributeValues = adjustExpressionAttributeValues(ExpressionAttributeValues);
+				}
+
+				if (FilterExpression) {
+					body.FilterExpression = FilterExpression;
+				}
 
 				if (indexName) {
 					body.IndexName = indexName;
