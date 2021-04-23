@@ -22,7 +22,7 @@
 				<div class="workflow-details" v-else>
 					<span index="workflow-name" class="current-workflow">
 						<div>
-							<div>
+							<div class="workflow-title">
 								WORKFLOW
 							</div>
 							<div class="workflow-name">
@@ -334,6 +334,13 @@ export default mixins(
 		line-height: 30px;
 		height: 30px;
 		border-radius: 15px;
+	}
+
+	.workflow-title {
+		font-size: 9px;
+		font-weight: 600;
+		letter-spacing: 0.75px;
+		color: #5A5E66;
 	}
 }
 
