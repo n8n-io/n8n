@@ -127,14 +127,52 @@ export class Taiga implements INodeType {
 				return returnData;
 			},
 
-			// Get all the available statuses to display them to user so that we can
+			// Get all the available issue statuses to display them to user so that we can
 			// select them easily
-			async getStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getIssueStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
 				const projectId = this.getCurrentNodeParameter('projectId') as string;
 
 				const statuses = await taigaApiRequest.call(this, 'GET', '/issue-statuses', {}, { project: projectId });
+				for (const status of statuses) {
+					const statusName = status.name;
+					const statusId = status.id;
+					returnData.push({
+						name: statusName,
+						value: statusId,
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the available userstory statuses to display them to user so that we can
+			// select them easily
+			async getUserstoryStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const projectId = this.getCurrentNodeParameter('projectId') as string;
+
+				const statuses = await taigaApiRequest.call(this, 'GET', '/userstory-statuses', {}, { project: projectId });
+				for (const status of statuses) {
+					const statusName = status.name;
+					const statusId = status.id;
+					returnData.push({
+						name: statusName,
+						value: statusId,
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the available userstory statuses to display them to user so that we can
+			// select them easily
+			async getTaskStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const projectId = this.getCurrentNodeParameter('projectId') as string;
+
+				const statuses = await taigaApiRequest.call(this, 'GET', '/task-statuses', {}, { project: projectId });
 				for (const status of statuses) {
 					const statusName = status.name;
 					const statusId = status.id;
