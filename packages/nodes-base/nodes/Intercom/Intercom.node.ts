@@ -512,13 +512,13 @@ export class Intercom implements INodeType {
 					}
 				}
 				if (operation === 'users') {
-					const filterBy = this.getNodeParameter('filterBy', 0) as string;
+					const listBy = this.getNodeParameter('listBy', 0) as string;
 					const value = this.getNodeParameter('value', i) as string;
-					if (filterBy === 'companyId') {
+					if (listBy === 'companyId') {
 						qs.company_id = value;
 					}
 					try {
-						if (filterBy === 'id') {
+						if (listBy === 'id') {
 							responseData = await intercomApiRequest.call(this, `/companies/${value}/users`, 'GET', {}, qs);
 						} else {
 							qs.type = 'users';
