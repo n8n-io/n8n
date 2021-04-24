@@ -303,7 +303,7 @@ export class Salesforce implements INodeType {
 			async getCaseOwners(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const qsQueues = {
-					q: "SELECT Queue.Id, Queue.Name FROM QueuesObject where Queue.Type='Queue' and SobjectType = 'Case'",
+					q: 'SELECT Queue.Id, Queue.Name FROM QueuesObject where Queue.Type=\'Queue\' and SobjectType = \'Case\'',
 				};
 				const queues = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qsQueues);
 				for (const queue of queues) {
@@ -335,7 +335,7 @@ export class Salesforce implements INodeType {
 			async getLeadOwners(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const qsQueues = {
-					q: "SELECT Queue.Id, Queue.Name FROM QueuesObject where Queue.Type='Queue' and SobjectType = 'Lead'",
+					q: 'SELECT Queue.Id, Queue.Name FROM QueuesObject where Queue.Type=\'Queue\' and SobjectType = \'Lead\'',
 				};
 				const queues = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qsQueues);
 				for (const queue of queues) {
