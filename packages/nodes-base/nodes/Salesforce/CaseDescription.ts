@@ -140,7 +140,7 @@ export const caseFields = [
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getUsers',
+					loadOptionsMethod: 'getCaseOwners',
 				},
 				default: '',
 				description: 'The owner of the case.',
@@ -303,7 +303,7 @@ export const caseFields = [
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getUsers',
+					loadOptionsMethod: 'getCaseOwners',
 				},
 				default: '',
 				description: 'The owner of the case.',
