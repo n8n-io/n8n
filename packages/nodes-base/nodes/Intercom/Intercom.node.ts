@@ -514,15 +514,32 @@ export class Intercom implements INodeType {
 				if (operation === 'users') {
 					const listBy = this.getNodeParameter('listBy', 0) as string;
 					const value = this.getNodeParameter('value', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
 					if (listBy === 'companyId') {
 						qs.company_id = value;
 					}
+
 					try {
 						if (listBy === 'id') {
-							responseData = await intercomApiRequest.call(this, `/companies/${value}/users`, 'GET', {}, qs);
+							if (returnAll === true) {
+								responseData = await intercomApiRequestAllItems.call(this, 'users', `/companies/${value}/users`, 'GET', {}, qs);
+							} else {
+								qs.per_page = this.getNodeParameter('limit', i) as number;
+								responseData = await intercomApiRequest.call(this, `/companies/${value}/users`, 'GET', {}, qs);
+								responseData = responseData.users;
+							}
+
 						} else {
 							qs.type = 'users';
-							responseData = await intercomApiRequest.call(this, '/companies', 'GET', {}, qs);
+
+							if (returnAll === true) {
+								responseData = await intercomApiRequestAllItems.call(this, 'users', '/companies', 'GET', {}, qs);
+							} else {
+								qs.per_page = this.getNodeParameter('limit', i) as number;
+								responseData = await intercomApiRequest.call(this, '/companies', 'GET', {}, qs);
+								responseData = responseData.users;
+							}
 						}
 					} catch (error) {
 						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`);
