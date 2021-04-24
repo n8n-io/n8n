@@ -5,6 +5,21 @@ This list shows all the versions which include breaking changes and how to upgra
 ## 0.117.0
 
 ### What changed?
+Removed the "Activation Trigger" node. This node was replaced by two other nodes.
+
+The "Activation Trigger" node was added on version 0.113.0 but was not fully compliant to UX, so we decided to refactor and change it ASAP so it affects the least possible users.
+
+The new nodes are "n8n Trigger" and "Workflow Trigger". Behavior-wise, the nodes do the same, we just split the functionality to make it more intuitive to users.
+
+### When is action necessary?
+
+If you use the "Activation Trigger" in any of your workflows, please replace it by the new nodes.
+
+### How to upgrade:
+
+Remove the previous node and add the new ones according to your workflows.
+
+----------------------------
 
 Changed the behavior for nodes that use Postgres Wire Protocol: Postgres, QuestDB, CrateDB and TimescaleDB.
 
@@ -21,6 +36,7 @@ If you rely on the output returned by `insert` operations for any of the mention
 By default, all `insert` operations will have `Return fields: *` as the default, setting, returning all information inserted.
 
 Previously, the node would return all information it received, without taking into account what actually happened in the database.
+
 
 ## 0.113.0
 
