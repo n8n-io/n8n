@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -719,14 +720,14 @@ export class ClickUp implements INodeType {
 					};
 					if (type === 'number' || type === 'currency') {
 						if (!additionalFields.unit) {
-							throw new Error('Unit field must be set');
+							throw new NodeOperationError(this.getNode(), 'Unit field must be set');
 						}
 					}
 					if (type === 'number' || type === 'percentaje'
 						|| type === 'automatic' || type === 'currency') {
 						if (additionalFields.stepsStart === undefined
 							|| !additionalFields.stepsEnd === undefined) {
-							throw new Error('Steps start and steps end fields must be set');
+							throw new NodeOperationError(this.getNode(), 'Steps start and steps end fields must be set');
 						}
 					}
 					if (additionalFields.unit) {
@@ -845,7 +846,7 @@ export class ClickUp implements INodeType {
 					if (additionalFields.customFieldsJson) {
 						const customFields = validateJSON(additionalFields.customFieldsJson as string);
 						if (customFields === undefined) {
-							throw new Error('Custom Fields: Invalid JSON');
+							throw new NodeOperationError(this.getNode(), 'Custom Fields: Invalid JSON');
 						}
 						body.custom_fields = customFields;
 					}
@@ -1042,7 +1043,7 @@ export class ClickUp implements INodeType {
 					if (jsonParse === true) {
 						body.value = validateJSON(body.value);
 						if (body.value === undefined) {
-							throw new Error('Value is invalid JSON!');
+							throw new NodeOperationError(this.getNode(), 'Value is invalid JSON!');
 						}
 					} else {
 						//@ts-ignore
@@ -1213,7 +1214,7 @@ export class ClickUp implements INodeType {
 					if (responseData.data) {
 						responseData = responseData.data;
 					} else {
-						throw new Error('There seems to be nothing to stop.');
+						throw new NodeOperationError(this.getNode(), 'There seems to be nothing to stop.');
 					}
 				}
 				if (operation === 'delete') {
@@ -1233,7 +1234,7 @@ export class ClickUp implements INodeType {
 					if (tagsUi) {
 						const tags = (tagsUi as IDataObject).tagsValues as IDataObject[];
 						if (tags === undefined) {
-							throw new Error('At least one tag must be set');
+							throw new NodeOperationError(this.getNode(), 'At least one tag must be set');
 						}
 						body.tags = tags;
 					}

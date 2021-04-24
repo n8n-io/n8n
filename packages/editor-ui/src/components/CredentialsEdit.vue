@@ -30,7 +30,7 @@
 						Credential type:
 					</el-col>
 					<el-col :span="18">
-						<el-select v-model="credentialType" filterable placeholder="Select Type" size="small">
+						<el-select v-model="credentialType" filterable placeholder="Select Type" size="small" ref="credentialsDropdown">
 							<el-option
 								v-for="item in credentialTypes"
 								:key="item.name"
@@ -198,6 +198,9 @@ export default mixins(
 
 					this.credentialData = currentCredentials;
 				} else {
+					Vue.nextTick(() => {
+						(this.$refs.credentialsDropdown as HTMLDivElement).focus();
+					});
 					if (this.credentialType || this.setCredentialType) {
 						const credentialType = this.$store.getters.credentialType(this.credentialType || this.setCredentialType);
 						if (credentialType === null) {

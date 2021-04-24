@@ -9,6 +9,7 @@ import {
 
 import {
 	IDataObject,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import * as moment from 'moment-timezone';
@@ -53,11 +54,7 @@ export async function googleApiRequest(
 			return await this.helpers.requestOAuth2!.call(this, 'googleSlidesOAuth2Api', options);
 		}
 	} catch (error) {
-
-		if (error?.response?.body?.message) {
-			throw new Error(`Google Slides error response [${error.statusCode}]: ${error.response.body.message}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

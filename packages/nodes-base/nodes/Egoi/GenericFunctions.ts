@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 interface IContact {
@@ -58,20 +58,7 @@ export async function egoiApiRequest(this: IHookFunctions | IExecuteFunctions | 
 		return await this.helpers.request!(options);
 
 	} catch (error) {
-		let errorMessage;
-
-		if (error.response && error.response.body) {
-
-			if (Array.isArray(error.response.body.errors)) {
-				const errors = error.response.body.errors;
-				errorMessage = errors.map((e: IDataObject) => e.detail);
-			} else {
-				errorMessage = error.response.body.detail;
-			}
-
-			throw new Error(`e-goi Error response [${error.statusCode}]: ${errorMessage}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
