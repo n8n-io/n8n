@@ -24,7 +24,7 @@ import {
 	IAvatar,
 	ILead,
 	ILeadCompany,
- } from './LeadInterface';
+} from './LeadInterface';
 import {
 	userFields,
 	userOpeations,
@@ -179,7 +179,7 @@ export class Intercom implements INodeType {
 					if (additionalFields.companies) {
 						const companies: ILeadCompany[] = [];
 						// @ts-ignore
-						additionalFields.companies.forEach( o => {
+						additionalFields.companies.forEach(o => {
 							const company: ILeadCompany = {};
 							company.company_id = o;
 							companies.push(company);
@@ -270,9 +270,9 @@ export class Intercom implements INodeType {
 							qs.user_id = value;
 							responseData = await intercomApiRequest.call(this, '/contacts', 'DELETE', {}, qs);
 						}
-						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
-						}
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
+					}
 				}
 			}
 			//https://developers.intercom.com/intercom-api-reference/reference#users
@@ -337,7 +337,7 @@ export class Intercom implements INodeType {
 					if (additionalFields.companies) {
 						const companies: IUserCompany[] = [];
 						// @ts-ignore
-						additionalFields.companies.forEach( o => {
+						additionalFields.companies.forEach(o => {
 							const company: IUserCompany = {};
 							company.company_id = o;
 							companies.push(company);
@@ -421,9 +421,9 @@ export class Intercom implements INodeType {
 					const id = this.getNodeParameter('id', i) as string;
 					try {
 						responseData = await intercomApiRequest.call(this, `/users/${id}`, 'DELETE');
-						} catch (error) {
-							throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`);
-						}
+					} catch (error) {
+						throw new NodeOperationError(this.getNode(), `Intercom Error: ${JSON.stringify(error)}`);
+					}
 				}
 			}
 			//https://developers.intercom.com/intercom-api-reference/reference#companies
