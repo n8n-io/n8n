@@ -49,7 +49,6 @@ export const companyFields = [
 /* -------------------------------------------------------------------------- */
 /*                                company:users                               */
 /* -------------------------------------------------------------------------- */
-
 	{
 		displayName: 'List By',
 		name: 'listBy',
@@ -97,6 +96,48 @@ export const companyFields = [
 		},
 		description: 'View by value',
 	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'users',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'users',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 60,
+		},
+		default: 50,
+		description: 'How many results to return.',
+	},
+
 /* -------------------------------------------------------------------------- */
 /*                                company:getAll                                */
 /* -------------------------------------------------------------------------- */
