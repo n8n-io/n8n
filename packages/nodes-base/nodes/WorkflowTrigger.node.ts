@@ -5,6 +5,9 @@ import {
 	ITriggerResponse,
 } from 'n8n-workflow';
 
+type eventType = 'Workflow activated' | 'Workflow updated' | undefined;
+type activationType = 'activate' | 'update';
+
 export class WorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Workflow Trigger',
@@ -27,18 +30,18 @@ export class WorkflowTrigger implements INodeType {
 				required: true,
 				default: [],
 				description: 'Specifies under which conditions an execution should happen:<br />' +
-					'- <b>Workflow Activated</b>: Triggers when this workflow is activated<br />' +
-					'- <b>Active Workflow Updated</b>: Triggers when this workflow is updated<br>',
+					'- <b>Active Workflow Updated</b>: Triggers when this workflow is updated<br />' +
+					'- <b>Workflow Activated</b>: Triggers when this workflow is activated',
 				options: [
-					{
-						name: 'Workflow Activated',
-						value: 'activate',
-						description: 'Triggers when this workflow is activated',
-					},
 					{
 						name: 'Active Workflow Updated',
 						value: 'update',
 						description: 'Triggers when this workflow is updated',
+					},
+					{
+						name: 'Workflow Activated',
+						value: 'activate',
+						description: 'Triggers when this workflow is activated',
 					},
 				],
 			},
@@ -76,6 +79,3 @@ export class WorkflowTrigger implements INodeType {
 		};
 	}
 }
-
-type eventType = 'Workflow activated' | 'Workflow updated' | undefined;
-type activationType = 'activate' | 'update';

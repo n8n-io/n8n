@@ -5,11 +5,12 @@ import {
 	ITriggerResponse,
 } from 'n8n-workflow';
 
+type eventType = 'Instance started' | undefined;
+
 export class N8nTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'n8n Trigger',
 		name: 'n8nTrigger',
-		//icon: 'fa:dot-circle',
 		icon: 'file:n8nTrigger.svg',
 		group: ['trigger'],
 		version: 1,
@@ -68,5 +69,3 @@ export class N8nTrigger implements INodeType {
 		};
 	}
 }
-
-type eventType = 'Instance started' | undefined;
