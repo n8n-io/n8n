@@ -87,6 +87,7 @@
     "body-parser": "^1.18.3",
     "body-parser-xml": "^1.1.0",
     "bull": "^3.19.0",
+    "callsites": "^3.1.0",
     "client-oauth2": "^4.2.5",
     "compression": "^1.7.4",
     "connect-history-api-fallback": "^1.6.0",
