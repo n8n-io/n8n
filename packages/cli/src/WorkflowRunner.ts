@@ -198,8 +198,7 @@ export class WorkflowRunner {
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
-
-		if (workflowTimeout) {
+		if (workflowTimeout > 0) {
 			const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
 			executionTimeout = setTimeout(() => {
 				this.activeExecutions.stopExecution(executionId, 'timeout');
