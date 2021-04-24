@@ -239,10 +239,10 @@ export class QuestDb implements INodeType {
 			// Transaction and multiple won't work properly with QuestDB.
 			// So we send queries independently.
 			await pgInsert(this.getNodeParameter, pgp, db, items, this.continueOnFail(), 'independently');
-			
+
 			const returnFields = this.getNodeParameter('returnFields', 0) as string;
 			const table = this.getNodeParameter('table', 0) as string;
-			
+
 			const insertData = await db.any('SELECT ${columns:name} from ${table:name}', {
 				columns: returnFields.split(',').map(value => value.trim()).filter(value => !!value),
 				table,

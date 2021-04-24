@@ -293,16 +293,16 @@ export class CrateDb implements INodeType {
 
 			const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 			const mode = additionalFields.mode ?? 'multiple' as string;
-	
+
 			if(mode === 'independently') {
 				const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
 				returnItems = this.helpers.returnJsonArray(updateItems);
 			} else if(mode === 'multiple') {
-				// Crate db does not support multiple-update queries 
+				// Crate db does not support multiple-update queries
 				// Therefore we cannot invoke `pgUpdate` using multiple mode
 				// so we have to call multiple updates manually here
-				
+
 				const table = this.getNodeParameter('table', 0) as string;
 				const schema = this.getNodeParameter('schema', 0) as string;
 				const updateKeys = (this.getNodeParameter('updateKey', 0) as string).split(',').map(column => column.trim());
@@ -323,7 +323,7 @@ export class CrateDb implements INodeType {
 				// if (updateKeyValue === undefined) {
 				// 	throw new NodeOperationError(this.getNode(), 'No value found for update key!');
 				// }
-				
+
 				const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
 				const queries:string[] = [];
 				for (let i = 0; i < items.length; i++) {

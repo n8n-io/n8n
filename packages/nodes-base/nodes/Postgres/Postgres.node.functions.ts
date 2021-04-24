@@ -66,35 +66,35 @@ export async function pgQuery(
 ): Promise<IDataObject[]> {
 	const additionalFields = getNodeParam('additionalFields', 0) as IDataObject;
 	const mode = overrideMode ? overrideMode : (additionalFields.mode ?? 'multiple') as string;
-	if(mode === 'multiple') {
+	if (mode === 'multiple') {
 		const queries: string[] = [];
 		for (let i = 0; i < input.length; i++) {
 			queries.push(getNodeParam('query', i) as string);
 		}
 		return (await db.multi(pgp.helpers.concat(queries))).flat(1);
-	} else if(mode === 'transaction') {
+	} else if (mode === 'transaction') {
 		return db.tx(async t => {
-			const result:IDataObject[] = [];
+			const result: IDataObject[] = [];
 			for (let i = 0; i < input.length; i++) {
 				try {
 					Array.prototype.push.apply(result, await t.any(getNodeParam('query', i) as string));
-				} catch(err) {
-					if(continueOnFail === false) throw err;
-					result.push({...input[i].json, code: err.code, message: err.message});
+				} catch (err) {
+					if (continueOnFail === false) throw err;
+					result.push({ ...input[i].json, code: err.code, message: err.message });
 					return result;
 				}
 			}
 			return result;
 		});
-	} else if(mode === 'independently') {
+	} else if (mode === 'independently') {
 		return db.task(async t => {
-			const result:IDataObject[] = [];
+			const result: IDataObject[] = [];
 			for (let i = 0; i < input.length; i++) {
 				try {
 					Array.prototype.push.apply(result, await t.any(getNodeParam('query', i) as string));
-				} catch(err) {
-					if(continueOnFail === false) throw err;
-					result.push({...input[i].json, code: err.code, message: err.message});
+				} catch (err) {
+					if (continueOnFail === false) throw err;
+					result.push({ ...input[i].json, code: err.code, message: err.message });
 				}
 			}
 			return result;
@@ -129,32 +129,32 @@ export async function pgInsert(
 	const columnNames = columns.map(column => column.name);
 
 	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
-	
+
 	const additionalFields = getNodeParam('additionalFields', 0) as IDataObject;
 	const mode = overrideMode ? overrideMode : (additionalFields.mode ?? 'multiple') as string;
-	
+
 	const returning = generateReturning(pgp, getNodeParam('returnFields', 0) as string);
-	if(mode === 'multiple') {
+	if (mode === 'multiple') {
 		const query = pgp.helpers.insert(getItemsCopy(items, columnNames), cs) + returning;
 		return db.any(query);
-	} else if(mode === 'transaction') {
+	} else if (mode === 'transaction') {
 		return db.tx(async t => {
-			const result:IDataObject[] = [];
+			const result: IDataObject[] = [];
 			for (let i = 0; i < items.length; i++) {
 				const itemCopy = getItemCopy(items[i], columnNames);
 				try {
 					result.push(await t.one(pgp.helpers.insert(itemCopy, cs) + returning));
-				} catch(err) {
-					if(continueOnFail === false) throw err;
-					result.push({...itemCopy, code: err.code, message: err.message});
+				} catch (err) {
+					if (continueOnFail === false) throw err;
+					result.push({ ...itemCopy, code: err.code, message: err.message });
 					return result;
 				}
 			}
 			return result;
 		});
-	} else if(mode === 'independently') {
+	} else if (mode === 'independently') {
 		return db.task(async t => {
-			const result:IDataObject[] = [];
+			const result: IDataObject[] = [];
 			for (let i = 0; i < items.length; i++) {
 				const itemCopy = getItemCopy(items[i], columnNames);
 				try {
@@ -162,17 +162,17 @@ export async function pgInsert(
 					if (insertResult !== null) {
 						result.push(insertResult);
 					}
-				} catch(err) {
-					if(continueOnFail === false) {
+				} catch (err) {
+					if (continueOnFail === false) {
 						throw err;
 					}
-					result.push({...itemCopy, code: err.code, message: err.message});
+					result.push({ ...itemCopy, code: err.code, message: err.message });
 				}
 			}
 			return result;
 		});
 	}
-	
+
 	throw new Error('multiple, independently or transaction are valid options');
 }
 
@@ -221,9 +221,9 @@ export async function pgUpdate(
 	// Prepare the data to update and copy it to be returned
 	const columnNames = columns.map(column => column.name);
 	const updateItems = getItemsCopy(items, columnNames);
-	
+
 	const returning = generateReturning(pgp, getNodeParam('returnFields', 0) as string);
-	if(mode === 'multiple') {
+	if (mode === 'multiple') {
 		const query =
 			pgp.helpers.update(updateItems, cs)
 			+ ' WHERE ' + updateKeys.map(updateKey => {
@@ -234,31 +234,31 @@ export async function pgUpdate(
 		return await db.any(query);
 	} else {
 		const where = ' WHERE ' + updateKeys.map(updateKey => pgp.as.name(updateKey.name) + ' = ${' + updateKey.name + '}').join(' AND ');
-		if(mode === 'transaction') {
+		if (mode === 'transaction') {
 			return db.tx(async t => {
-				const result:IDataObject[] = [];
+				const result: IDataObject[] = [];
 				for (let i = 0; i < items.length; i++) {
 					const itemCopy = getItemCopy(items[i], columnNames);
 					try {
 						Array.prototype.push.apply(result, await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning));
-					} catch(err) {
-						if(continueOnFail === false) throw err;
-						result.push({...itemCopy, code: err.code, message: err.message});
+					} catch (err) {
+						if (continueOnFail === false) throw err;
+						result.push({ ...itemCopy, code: err.code, message: err.message });
 						return result;
 					}
 				}
 				return result;
 			});
-		} else if(mode === 'independently') {
+		} else if (mode === 'independently') {
 			return db.task(async t => {
-				const result:IDataObject[] = [];
+				const result: IDataObject[] = [];
 				for (let i = 0; i < items.length; i++) {
 					const itemCopy = getItemCopy(items[i], columnNames);
 					try {
 						Array.prototype.push.apply(result, await t.any(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning));
-					} catch(err) {
-						if(continueOnFail === false) throw err;
-						result.push({...itemCopy, code: err.code, message: err.message});
+					} catch (err) {
+						if (continueOnFail === false) throw err;
+						result.push({ ...itemCopy, code: err.code, message: err.message });
 					}
 				}
 				return result;
