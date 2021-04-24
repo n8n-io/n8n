@@ -2,6 +2,26 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.117.0
+
+### What changed?
+
+Changed the behavior for nodes that use Postgres Wire Protocol: Postgres, QuestDB, CrateDB and TimescaleDB.
+
+All nodes have been standardized and now follow the same patterns. Behavior will be the same for most cases, but new added functionality can now be explored.
+
+You can now also inform how you would like n8n to execute queries. Default mode is `Multiple queries` which translates to previous behavior, but you can now run them `Independently` or `Transaction`. Also, `Continue on Fail` now plays a major role for the new modes.
+
+The node output for `insert` operations now rely on the new parameter `Return fields`, just like `update` operations did previously.
+
+### When is action necessary?
+
+If you rely on the output returned by `insert` operations for any of the mentioned nodes, we recommend you review your workflows.
+
+By default, all `insert` operations will have `Return fields: *` as the default, setting, returning all information inserted.
+
+Previously, the node would return all information it received, without taking into account what actually happened in the database.
+
 ## 0.113.0
 
 ### What changed?
