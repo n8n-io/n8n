@@ -45,10 +45,24 @@ export class Mqtt implements INodeType {
 				description: `The topic to publish to`,
 			},
 			{
+				displayName: 'Send Input Data',
+				name: 'sendInputData',
+				type: 'boolean',
+				default: true,
+				description: 'Send the the data the node receives as JSON.',
+			},
+			{
 				displayName: 'Message',
 				name: 'message',
 				type: 'string',
 				required: true,
+				displayOptions: {
+					show: {
+						sendInputData: [
+							false,
+						],
+					},
+				},
 				default: '',
 				description: 'The message to publish',
 			},
@@ -118,24 +132,30 @@ export class Mqtt implements INodeType {
 		}
 
 		const client = mqtt.connect(brokerUrl, clientOptions);
+		const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
+		// tslint:disable-next-line: no-any
 		const data = await new Promise((resolve, reject): any => {
 			client.on('connect', () => {
 				for (let i = 0; i < length; i++) {
-					const message = (this.getNodeParameter('message', i) as string);
 
+					let message;
 					const topic = (this.getNodeParameter('topic', i) as string);
-
 					const options = (this.getNodeParameter('options', i) as IDataObject);
 
 					try {
+						if (sendInputData === true) {
+							message = JSON.stringify(items[i].json);
+						} else {
+							message = this.getNodeParameter('message', i) as string;
+						}
 						client.publish(topic, message, options);
 					} catch (e) {
 						reject(e);
 					}
 				}
 				//wait for the in-flight messages to be acked.
-				// needed for messages with QoS 1 & 2
+				//needed for messages with QoS 1 & 2
 				client.end(false, {}, () => {
 					resolve([items]);
 				});
