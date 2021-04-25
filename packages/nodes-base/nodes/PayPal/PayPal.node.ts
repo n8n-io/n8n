@@ -6,6 +6,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 import {
 	payoutFields,
@@ -123,49 +124,34 @@ export class PayPal implements INodeType {
 							});
 							body.items = payoutItems;
 						} else {
-							throw new Error('You must have at least one item.');
+							throw new NodeOperationError(this.getNode(), 'You must have at least one item.');
 						}
 					} else {
 						const itemsJson = validateJSON(this.getNodeParameter('itemsJson', i) as string);
 						body.items = itemsJson;
 					}
-					try {
-						responseData = await payPalApiRequest.call(this, '/payments/payouts', 'POST', body);
-					} catch (err) {
-						throw new Error(`PayPal Error: ${JSON.stringify(err)}`);
-					}
+					responseData = await payPalApiRequest.call(this, '/payments/payouts', 'POST', body);
+
 				}
 				if (operation === 'get') {
 					const payoutBatchId = this.getNodeParameter('payoutBatchId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-					try {
-						if (returnAll === true) {
-							responseData = await payPalApiRequestAllItems.call(this, 'items', `/payments/payouts/${payoutBatchId}`, 'GET', {}, qs);
-						} else {
-							qs.page_size = this.getNodeParameter('limit', i) as number;
-							responseData = await payPalApiRequest.call(this, `/payments/payouts/${payoutBatchId}`, 'GET', {}, qs);
-							responseData = responseData.items;
-						}
-					} catch (err) {
-						throw new Error(`PayPal Error: ${JSON.stringify(err)}`);
+					if (returnAll === true) {
+						responseData = await payPalApiRequestAllItems.call(this, 'items', `/payments/payouts/${payoutBatchId}`, 'GET', {}, qs);
+					} else {
+						qs.page_size = this.getNodeParameter('limit', i) as number;
+						responseData = await payPalApiRequest.call(this, `/payments/payouts/${payoutBatchId}`, 'GET', {}, qs);
+						responseData = responseData.items;
 					}
 				}
 			} else if (resource === 'payoutItem') {
 				if (operation === 'get') {
 					const payoutItemId = this.getNodeParameter('payoutItemId', i) as string;
-					try {
-						responseData = await payPalApiRequest.call(this,`/payments/payouts-item/${payoutItemId}`, 'GET', {}, qs);
-					} catch (err) {
-						throw new Error(`PayPal Error: ${JSON.stringify(err)}`);
-					}
+					responseData = await payPalApiRequest.call(this,`/payments/payouts-item/${payoutItemId}`, 'GET', {}, qs);
 				}
 				if (operation === 'cancel') {
 					const payoutItemId = this.getNodeParameter('payoutItemId', i) as string;
-					try {
-						responseData = await payPalApiRequest.call(this,`/payments/payouts-item/${payoutItemId}/cancel`, 'POST', {}, qs);
-					} catch (err) {
-						throw new Error(`PayPal Error: ${JSON.stringify(err)}`);
-					}
+					responseData = await payPalApiRequest.call(this,`/payments/payouts-item/${payoutItemId}/cancel`, 'POST', {}, qs);
 				}
 			}
 			if (Array.isArray(responseData)) {
