@@ -152,11 +152,9 @@ export const workItemFields = [
 			{
 				displayName: 'Label IDs',
 				name: 'labelIds',
-				type: 'options',
+				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
-					multipleValues: true,
-					multipleValueButtonText: 'Add Label',
 				},
 				default: [],
 				description: 'ID of the label to set on the item to create.',
@@ -164,11 +162,9 @@ export const workItemFields = [
 			{
 				displayName: 'Member IDs',
 				name: 'memberIds',
-				type: 'options',
+				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
-					multipleValues: true,
-					multipleValueButtonText: 'Add User',
 				},
 				default: [],
 				description: 'ID of the user to assign to the item to create.',
@@ -203,14 +199,8 @@ export const workItemFields = [
 	{
 		displayName: 'Work Item ID',
 		name: 'workItemId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getWorkItems',
-			loadOptionsDependsOn: [
-				'spaceId',
-			],
-		},
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		description: 'ID of the work item to retrieve.',
 		displayOptions: {
@@ -318,14 +308,8 @@ export const workItemFields = [
 	{
 		displayName: 'Work Item ID',
 		name: 'workItemId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getWorkItems',
-			loadOptionsDependsOn: [
-				'spaceId',
-			],
-		},
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		description: 'ID of the work item to update.',
 		displayOptions: {
