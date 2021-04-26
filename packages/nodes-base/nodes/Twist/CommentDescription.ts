@@ -16,14 +16,14 @@ export const commentOperations = [
 		},
 		options: [
 			{
-				name: 'Add',
-				value: 'add',
-				description: 'Adds a new comment to a thread.',
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new comment to a thread',
 			},
 			{
-				name: 'Remove',
-				value: 'remove',
-				description: 'Remove a comment',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a comment',
 			},
 			{
 				name: 'Get',
@@ -41,7 +41,7 @@ export const commentOperations = [
 				description: 'Update a comment',
 			},
 		],
-		default: 'add',
+		default: 'create',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
@@ -50,7 +50,7 @@ export const commentFields = [
 	/*-------------------------------------------------------------------------- */
 	/*                                comment:add                                 */
 	/* ------------------------------------------------------------------------- */
-		{
+	{
 		displayName: 'Workspace ID',
 		name: 'workspaceId',
 		type: 'options',
@@ -61,7 +61,7 @@ export const commentFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'add',
+					'create',
 				],
 				resource: [
 					'comment',
@@ -69,7 +69,7 @@ export const commentFields = [
 			},
 		},
 		required: true,
-		description: 'The id of the workspace.',
+		description: 'The ID of the workspace.',
 	},
 	{
 		displayName: 'Thread ID',
@@ -79,7 +79,7 @@ export const commentFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'add',
+					'create',
 				],
 				resource: [
 					'comment',
@@ -87,7 +87,7 @@ export const commentFields = [
 			},
 		},
 		required: true,
-		description: 'The id of the thread.',
+		description: 'The ID of the thread.',
 	},
 	{
 		displayName: 'Content',
@@ -97,7 +97,7 @@ export const commentFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'add',
+					'create',
 				],
 				resource: [
 					'comment',
@@ -119,12 +119,12 @@ export const commentFields = [
 					'comment',
 				],
 				operation: [
-					'add',
+					'create',
 				],
 			},
 		},
 		options: [
-						{
+			{
 				displayName: 'Actions',
 				name: 'actionsUi',
 				type: 'fixedCollection',
@@ -141,7 +141,7 @@ export const commentFields = [
 								displayName: 'Action',
 								name: 'action',
 								type: 'options',
-								description: 'The action of the button',
+								description: 'The action of the button.',
 								options: [
 									{
 										name: 'Open URL',
@@ -184,7 +184,7 @@ export const commentFields = [
 								displayName: 'Type',
 								name: 'type',
 								type: 'options',
-								description: 'The type of the button, for now just action is available.',
+								description: 'The type of the button. (Currently only <code>action</code> is available).',
 								options: [
 									{
 										name: 'Action',
@@ -204,7 +204,7 @@ export const commentFields = [
 										],
 									},
 								},
-								description: 'URL to redirect',
+								description: 'URL to redirect.',
 								default: '',
 							},
 						],
@@ -224,12 +224,12 @@ export const commentFields = [
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
-										loadOptionsDependsOn: [
+					loadOptionsDependsOn: [
 						'workspaceId',
 					],
 				},
 				default: [],
-				description: `The users that are directly mentioned`,
+				description: 'The users that are directly mentioned.',
 			},
 			{
 				displayName: 'Recipients',
@@ -244,21 +244,21 @@ export const commentFields = [
 				default: [],
 				description: 'The users that will attached to the comment.',
 			},
-						{
+			{
 				displayName: 'Temporary ID',
 				name: 'temp_id',
 				type: 'number',
 				default: 0,
-				description: 'The temporary id of the comment.',
+				description: 'The temporary ID of the comment.',
 			},
-						{
+			{
 				displayName: 'Mark thread position',
 				name: 'mark_thread_position',
 				type: 'boolean',
 				default: true,
-				description: 'By default, the position of the thread is marked..',
+				description: 'By default, the position of the thread is marked.',
 			},
-						{
+			{
 				displayName: 'Send as integration',
 				name: 'send_as_integration',
 				type: 'boolean',
@@ -280,7 +280,7 @@ export const commentFields = [
 			show: {
 				operation: [
 					'get',
-					'remove',
+					'delete',
 				],
 				resource: [
 					'comment',
@@ -288,7 +288,7 @@ export const commentFields = [
 			},
 		},
 		required: true,
-		description: 'The ID of the comment',
+		description: 'The ID of the comment.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 comment:getAll                             */
@@ -314,7 +314,7 @@ export const commentFields = [
 		required: true,
 		description: 'The ID of the workspace.',
 	},
-		{
+	{
 		displayName: 'Thread ID',
 		name: 'threadId',
 		type: 'string',
@@ -397,7 +397,7 @@ export const commentFields = [
 				default: false,
 				description: 'If enabled, only the ids of the comments are returned.',
 			},
-						{
+			{
 				displayName: 'Starting object index',
 				name: 'from_obj_index',
 				type: 'number',
@@ -411,31 +411,31 @@ export const commentFields = [
 				default: 50,
 				description: 'Limit comments ending at the specified object index.',
 			},
-						{
+			{
 				displayName: 'Order By',
 				name: 'order_by',
 				type: 'options',
-								options: [
+				options: [
 					{
 						name: 'ASC',
 						value: 'ASC',
 					},
-										{
+					{
 						name: 'DESC',
 						value: 'DESC',
 					},
 				],
 				default: 'ASC',
-				description: 'The order of the comments returned one of DESC or ASC.',
+				description: 'The order of the comments returned - one of DESC or ASC.',
 			},
-						{
+			{
 				displayName: 'Newer Than',
 				name: 'newer_than_ts',
 				type: 'dateTime',
 				default: '',
 				description: 'Limits comments to those newer when the specified Unix time.',
 			},
-						{
+			{
 				displayName: 'Older Than',
 				name: 'older_than_ts',
 				type: 'dateTime',
@@ -448,7 +448,7 @@ export const commentFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                  comment:update                            */
 	/* -------------------------------------------------------------------------- */
-		{
+	{
 		displayName: 'Workspace ID',
 		name: 'workspaceId',
 		type: 'options',
@@ -469,7 +469,7 @@ export const commentFields = [
 		required: true,
 		description: 'The ID of the workspace.',
 	},
-		{
+	{
 		displayName: 'Comment ID',
 		name: 'commentId',
 		type: 'string',
@@ -485,7 +485,7 @@ export const commentFields = [
 			},
 		},
 		required: true,
-		description: 'The ID of the comment',
+		description: 'The ID of the comment.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -504,99 +504,99 @@ export const commentFields = [
 			},
 		},
 		options: [
-						{
-								displayName: 'Content',
-								name: 'content',
-								type: 'string',
-								default: '',
-								description: 'The content of the comment.',
-						},
-						{
+			{
+				displayName: 'Content',
+				name: 'content',
+				type: 'string',
+				default: '',
+				description: 'The content of the comment.',
+			},
+			{
 				displayName: 'Actions',
 				name: 'actionsUi',
 				type: 'fixedCollection',
 				placeholder: 'Add Action',
 				typeOptions: {
 					multipleValues: true,
+					options: [
+						{
+							displayName: 'Action',
+							name: 'actionValues',
+							values: [
+								{
+									displayName: 'Action',
+									name: 'action',
+									type: 'options',
+									description: 'The action of the button.',
+									options: [
+										{
+											name: 'Open URL',
+											value: 'open_url',
+										},
+										{
+											name: 'Prefill Message',
+											value: 'prefill_message',
+										},
+										{
+											name: 'Send Reply',
+											value: 'send_reply',
+										},
+									],
+									default: '',
+								},
+								{
+									displayName: 'Button Text',
+									name: 'button_text',
+									type: 'string',
+									description: 'The text for the action button.',
+									default: '',
+								},
+								{
+									displayName: 'Message',
+									name: 'message',
+									type: 'string',
+									displayOptions: {
+										show: {
+											action: [
+												'send_reply',
+												'prefill_message',
+											],
+										},
+									},
+									description: 'The text for the action button.',
+									default: '',
+								},
+								{
+									displayName: 'Type',
+									name: 'type',
+									type: 'options',
+									description: 'The type of the button. (Currently only <code>action</code> is available).',
+									options: [
+										{
+											name: 'Action',
+											value: 'action',
+										},
+									],
+									default: '',
+								},
+								{
+									displayName: 'URL',
+									name: 'url',
+									type: 'string',
+									displayOptions: {
+										show: {
+											action: [
+												'open_url',
+											],
+										},
+									},
+									description: 'URL to redirect.',
+									default: '',
+								},
+							],
+						},
+					],
 				},
-				options: [
-					{
-						displayName: 'Action',
-						name: 'actionValues',
-						values: [
-							{
-								displayName: 'Action',
-								name: 'action',
-								type: 'options',
-								description: 'The action of the button',
-								options: [
-									{
-										name: 'Open URL',
-										value: 'open_url',
-									},
-									{
-										name: 'Prefill Message',
-										value: 'prefill_message',
-									},
-									{
-										name: 'Send Reply',
-										value: 'send_reply',
-									},
-								],
-								default: '',
-							},
-							{
-								displayName: 'Button Text',
-								name: 'button_text',
-								type: 'string',
-								description: 'The text for the action button.',
-								default: '',
-							},
-							{
-								displayName: 'Message',
-								name: 'message',
-								type: 'string',
-								displayOptions: {
-									show: {
-										action: [
-											'send_reply',
-											'prefill_message',
-										],
-									},
-								},
-								description: 'The text for the action button.',
-								default: '',
-							},
-							{
-								displayName: 'Type',
-								name: 'type',
-								type: 'options',
-								description: 'The type of the button, for now just action is available.',
-								options: [
-									{
-										name: 'Action',
-										value: 'action',
-									},
-								],
-								default: '',
-							},
-							{
-								displayName: 'URL',
-								name: 'url',
-								type: 'string',
-								displayOptions: {
-									show: {
-										action: [
-											'open_url',
-										],
-									},
-								},
-								description: 'URL to redirect',
-								default: '',
-							},
-						],
-					},
-				],
 			},
 			{
 				displayName: 'Attachments',
@@ -611,12 +611,12 @@ export const commentFields = [
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
-										loadOptionsDependsOn: [
+					loadOptionsDependsOn: [
 						'workspaceId',
 					],
 				},
 				default: [],
-				description: `The users that are directly mentioned`,
+				description: 'The users that are directly mentioned.',
 			},
 		],
 	},

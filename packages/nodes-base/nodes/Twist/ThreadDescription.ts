@@ -16,14 +16,14 @@ export const threadOperations = [
 		},
 		options: [
 			{
-				name: 'Add',
-				value: 'add',
-				description: 'Adds a new thread to a channel.',
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new thread in a channel',
 			},
 			{
-				name: 'Remove',
-				value: 'remove',
-				description: 'Remove a thread',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a thread',
 			},
 			{
 				name: 'Get',
@@ -41,7 +41,7 @@ export const threadOperations = [
 				description: 'Update a thread',
 			},
 		],
-		default: 'add',
+		default: 'create',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
@@ -50,7 +50,7 @@ export const threadFields = [
 	/*-------------------------------------------------------------------------- */
 	/*                                thread:add                                 */
 	/* ------------------------------------------------------------------------- */
-		{
+	{
 		displayName: 'Workspace ID',
 		name: 'workspaceId',
 		type: 'options',
@@ -61,7 +61,7 @@ export const threadFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'add',
+					'create',
 				],
 				resource: [
 					'thread',
@@ -69,7 +69,7 @@ export const threadFields = [
 			},
 		},
 		required: true,
-		description: 'The id of the workspace.',
+		description: 'The ID of the workspace.',
 	},
 	{
 		displayName: 'Channel ID',
@@ -79,7 +79,7 @@ export const threadFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'add',
+					'create',
 				],
 				resource: [
 					'thread',
@@ -87,26 +87,26 @@ export const threadFields = [
 			},
 		},
 		required: true,
-		description: 'The id of the channel.',
+		description: 'The ID of the channel.',
 	},
-		{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				displayOptions: {
+	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		default: '',
+		displayOptions: {
 			show: {
 				operation: [
-					'add',
+					'create',
 				],
 				resource: [
 					'thread',
 				],
 			},
 		},
-				required: true,
-				description: 'The title of the new thread (1 < length < 300).',
-		},
+		required: true,
+		description: 'The title of the new thread (1 < length < 300).',
+	},
 	{
 		displayName: 'Content',
 		name: 'content',
@@ -115,7 +115,7 @@ export const threadFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'add',
+					'create',
 				],
 				resource: [
 					'thread',
@@ -137,12 +137,12 @@ export const threadFields = [
 					'thread',
 				],
 				operation: [
-					'add',
+					'create',
 				],
 			},
 		},
 		options: [
-						{
+			{
 				displayName: 'Actions',
 				name: 'actionsUi',
 				type: 'fixedCollection',
@@ -159,7 +159,7 @@ export const threadFields = [
 								displayName: 'Action',
 								name: 'action',
 								type: 'options',
-								description: 'The action of the button',
+								description: 'The action of the button.',
 								options: [
 									{
 										name: 'Open URL',
@@ -202,7 +202,7 @@ export const threadFields = [
 								displayName: 'Type',
 								name: 'type',
 								type: 'options',
-								description: 'The type of the button, for now just action is available.',
+								description: 'The type of the button. (Currently only <code>action</code> is available).',
 								options: [
 									{
 										name: 'Action',
@@ -222,7 +222,7 @@ export const threadFields = [
 										],
 									},
 								},
-								description: 'URL to redirect',
+								description: 'URL to redirect.',
 								default: '',
 							},
 						],
@@ -242,12 +242,12 @@ export const threadFields = [
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
-										loadOptionsDependsOn: [
+					loadOptionsDependsOn: [
 						'workspaceId',
 					],
 				},
 				default: [],
-				description: `The users that are directly mentioned`,
+				description: 'The users that are directly mentioned.',
 			},
 			{
 				displayName: 'Recipients',
@@ -262,19 +262,19 @@ export const threadFields = [
 				default: [],
 				description: 'The users that will attached to the thread.',
 			},
-						{
+			{
 				displayName: 'Send as integration',
 				name: 'send_as_integration',
 				type: 'boolean',
 				default: false,
 				description: 'Displays the integration as the thread creator.',
 			},
-						{
+			{
 				displayName: 'Temporary ID',
 				name: 'temp_id',
 				type: 'number',
 				default: 0,
-				description: 'The temporary id of the thread.',
+				description: 'The temporary ID of the thread.',
 			},
 		],
 	},
@@ -290,7 +290,7 @@ export const threadFields = [
 			show: {
 				operation: [
 					'get',
-					'remove',
+					'delete',
 				],
 				resource: [
 					'thread',
@@ -298,7 +298,7 @@ export const threadFields = [
 			},
 		},
 		required: true,
-		description: 'The ID of the thread',
+		description: 'The ID of the thread.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 thread:getAll                             */
@@ -324,7 +324,7 @@ export const threadFields = [
 		required: true,
 		description: 'The ID of the workspace.',
 	},
-		{
+	{
 		displayName: 'Channel ID',
 		name: 'channelId',
 		type: 'string',
@@ -407,35 +407,35 @@ export const threadFields = [
 				default: false,
 				description: 'If enabled, only the ids of the threads are returned.',
 			},
-						{
+			{
 				displayName: 'Filter By',
 				name: 'filter_by',
 				type: 'options',
-								options: [
+				options: [
 					{
 						name: 'Attached to me',
 						value: 'attached_to_me',
 					},
-										{
+					{
 						name: 'Everyone',
 						value: 'everyone',
 					},
-										{
+					{
 						name: 'Starred',
 						value: 'is_starred',
 					},
 				],
 				default: '',
-				description: 'A filter can be one of attached_to_me, everyone and is_starred.',
+				description: 'A filter can be one of <code>attached_to_me</code>, <code>everyone</code> and <code>is_starred</code>.',
 			},
-						{
+			{
 				displayName: 'Newer Than',
 				name: 'newer_than_ts',
 				type: 'dateTime',
 				default: '',
 				description: 'Limits threads to those newer when the specified Unix time.',
 			},
-						{
+			{
 				displayName: 'Older Than',
 				name: 'older_than_ts',
 				type: 'dateTime',
@@ -448,7 +448,7 @@ export const threadFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                  thread:update                            */
 	/* -------------------------------------------------------------------------- */
-		{
+	{
 		displayName: 'Workspace ID',
 		name: 'workspaceId',
 		type: 'options',
@@ -469,7 +469,7 @@ export const threadFields = [
 		required: true,
 		description: 'The ID of the workspace.',
 	},
-		{
+	{
 		displayName: 'Thread ID',
 		name: 'threadId',
 		type: 'string',
@@ -485,7 +485,7 @@ export const threadFields = [
 			},
 		},
 		required: true,
-		description: 'The ID of the thread',
+		description: 'The ID of the thread.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -504,21 +504,21 @@ export const threadFields = [
 			},
 		},
 		options: [
-						{
-								displayName: 'Title',
-								name: 'title',
-								type: 'string',
-								default: '',
-								description: 'The title of the thread (1 < length < 300).',
-						},
-						{
-								displayName: 'Content',
-								name: 'content',
-								type: 'string',
-								default: '',
-								description: 'The content of the thread.',
-						},
-						{
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'The title of the thread (1 < length < 300).',
+			},
+			{
+				displayName: 'Content',
+				name: 'content',
+				type: 'string',
+				default: '',
+				description: 'The content of the thread.',
+			},
+			{
 				displayName: 'Actions',
 				name: 'actionsUi',
 				type: 'fixedCollection',
@@ -535,7 +535,7 @@ export const threadFields = [
 								displayName: 'Action',
 								name: 'action',
 								type: 'options',
-								description: 'The action of the button',
+								description: 'The action of the button.',
 								options: [
 									{
 										name: 'Open URL',
@@ -578,7 +578,7 @@ export const threadFields = [
 								displayName: 'Type',
 								name: 'type',
 								type: 'options',
-								description: 'The type of the button, for now just action is available.',
+								description: 'The type of the button. (Currently only <code>action</code> is available).',
 								options: [
 									{
 										name: 'Action',
@@ -598,7 +598,7 @@ export const threadFields = [
 										],
 									},
 								},
-								description: 'URL to redirect',
+								description: 'URL to redirect.',
 								default: '',
 							},
 						],
@@ -618,12 +618,12 @@ export const threadFields = [
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
-										loadOptionsDependsOn: [
+					loadOptionsDependsOn: [
 						'workspaceId',
 					],
 				},
 				default: [],
-				description: `The users that are directly mentioned`,
+				description: 'The users that are directly mentioned.',
 			},
 		],
 	},

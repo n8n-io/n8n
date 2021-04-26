@@ -26,14 +26,14 @@ export const messageConversationOperations = [
 				description: 'Delete a message in a conversation',
 			},
 			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all messages in a conversation',
-			},
-			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a message in a conversation',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all messages in a conversation',
 			},
 			{
 				name: 'Update',
@@ -111,7 +111,7 @@ export const messageConversationFields = [
 				],
 			},
 		},
-		description: `The content of the new message. Mentions can be used as [Name](twist-mention://user_id) for users or [Group name](twist-group-mention://group_id) for groups.`,
+		description: 'The content of the new message. Mentions can be used as <code>[Name](twist-mention://user_id)</code> for users or <code>[Group name](twist-group-mention://group_id)</code> for groups.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -128,7 +128,7 @@ export const messageConversationFields = [
 			},
 		},
 		default: {},
-		description: 'Other options to set',
+		description: 'Other options to set.',
 		placeholder: 'Add options',
 		options: [
 			{
@@ -148,7 +148,7 @@ export const messageConversationFields = [
 								displayName: 'Action',
 								name: 'action',
 								type: 'options',
-								description: 'The action of the button',
+								description: 'The action of the button.',
 								options: [
 									{
 										name: 'Open URL',
@@ -191,7 +191,7 @@ export const messageConversationFields = [
 								displayName: 'Type',
 								name: 'type',
 								type: 'options',
-								description: 'The type of the button, for now just action is available.',
+								description: 'The type of the button. (Currently only <code>action</code> is available).',
 								options: [
 									{
 										name: 'Action',
@@ -211,7 +211,7 @@ export const messageConversationFields = [
 										],
 									},
 								},
-								description: 'URL to redirect',
+								description: 'URL to redirect.',
 								default: '',
 							},
 						],
@@ -233,7 +233,7 @@ export const messageConversationFields = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: `The users that are directly mentioned`,
+				description: 'The users that are directly mentioned.',
 			},
 			// {
 			// 	displayName: 'Direct Group Mentions ',
@@ -243,7 +243,7 @@ export const messageConversationFields = [
 			// 		loadOptionsMethod: 'getGroups',
 			// 	},
 			// 	default: [],
-			// 	description: `The groups that are directly mentioned`,
+			// 	description: 'The groups that are directly mentioned.',
 			// },
 		],
 	},
@@ -310,7 +310,7 @@ export const messageConversationFields = [
 			},
 		},
 		default: {},
-		description: 'Other options to set',
+		description: 'Other options to set.',
 		options: [
 			{
 				displayName: 'Limit',
@@ -338,8 +338,8 @@ export const messageConversationFields = [
 				name: 'order_by',
 				type: 'options',
 				default: 'ASC',
-				description: 'The order of the conversations returned one of DESC or ASC.',
-				options:[
+				description: 'The order of the conversations returned - one of DESC or ASC.',
+				options: [
 					{
 						name: 'ASC',
 						value: 'ASC',
@@ -356,7 +356,7 @@ export const messageConversationFields = [
 	/*                                messageConversation:get/delete/update       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'ID',
+		displayName: 'Conversation Message ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -365,7 +365,6 @@ export const messageConversationFields = [
 				operation: [
 					'delete',
 					'get',
-					'update',
 				],
 				resource: [
 					'messageConversation',
@@ -373,7 +372,7 @@ export const messageConversationFields = [
 			},
 		},
 		required: true,
-		description: 'The id of the conversation message.',
+		description: 'The ID of the conversation message.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                messageConversation:update                  */
@@ -400,8 +399,26 @@ export const messageConversationFields = [
 		description: 'The ID of the workspace.',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Conversation Message ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'messageConversation',
+				],
+			},
+		},
+		required: true,
+		description: 'The ID of the conversation message.',
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
 		displayOptions: {
 			show: {
@@ -414,14 +431,14 @@ export const messageConversationFields = [
 			},
 		},
 		default: {},
-		description: 'Other options to set',
+		description: 'Other options to set.',
 		options: [
 			{
 				displayName: 'Content',
 				name: 'content',
 				type: 'string',
 				default: '',
-				description: `The content of the new message. Mentions can be used as [Name](twist-mention://user_id) for users or [Group name](twist-group-mention://group_id) for groups.`,
+				description: 'The content of the new message. Mentions can be used as <code>[Name](twist-mention://user_id)</code> for users or <code>[Group name](twist-group-mention://group_id)</code> for groups.',
 			},
 			{
 				displayName: 'Actions',
@@ -440,7 +457,7 @@ export const messageConversationFields = [
 								displayName: 'Action',
 								name: 'action',
 								type: 'options',
-								description: 'The action of the button',
+								description: 'The action of the button.',
 								options: [
 									{
 										name: 'Open URL',
@@ -483,7 +500,7 @@ export const messageConversationFields = [
 								displayName: 'Type',
 								name: 'type',
 								type: 'options',
-								description: 'The type of the button, for now just action is available.',
+								description: 'The type of the button. (Currently only <code>action</code> is available).',
 								options: [
 									{
 										name: 'Action',
@@ -503,7 +520,7 @@ export const messageConversationFields = [
 										],
 									},
 								},
-								description: 'URL to redirect',
+								description: 'URL to redirect.',
 								default: '',
 							},
 						],
@@ -525,7 +542,7 @@ export const messageConversationFields = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: `The users that are directly mentioned`,
+				description: 'The users that are directly mentioned.',
 			},
 		],
 	},
