@@ -81,7 +81,7 @@ export default mixins(externalHooks).extend({
 		nodeFilter (newVal, oldVal) {
 			// Reset the index whenver the filter-value changes
 			this.activeNodeTypeIndex = 0;
-			this.$externalHooks().run('nodeCreateList.nodeFilterChanged', { oldVal, newVal, selectedType: this.selectedType });
+			this.$externalHooks().run('nodeCreateList.nodeFilterChanged', { oldVal, newVal, selectedType: this.selectedType, filteredNodes: this.filteredNodeTypes });
 		},
 		selectedType (newVal, oldVal) {
 			this.$externalHooks().run('nodeCreateList.selectedTypeChanged', { oldVal, newVal });
@@ -115,6 +115,9 @@ export default mixins(externalHooks).extend({
 	},
 	async mounted() {
 		this.$externalHooks().run('nodeCreateList.mounted');
+	},
+	async destroyed() {
+		this.$externalHooks().run('nodeCreateList.destroyed');
 	},
 });
 </script>
