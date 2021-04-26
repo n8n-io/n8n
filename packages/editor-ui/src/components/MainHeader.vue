@@ -40,7 +40,8 @@
 						</div>
 					</span>
 
-					<div class="divider" v-if="currentWorkflowTagIds.length > 0"></div>
+					<el-divider direction="vertical"></el-divider>
+
 
 					<TagContainer :tagIds="currentWorkflowTagIds" />
 
@@ -321,9 +322,8 @@ export default mixins(
 		margin-right: 16px;
 	}
 
-	.divider {
-		border-right: 1px solid #D8DCE6;
-		min-height: 40px;
+	.el-divider {
+		min-height: 30px;
 	}
 
 	.saving-workflow {
