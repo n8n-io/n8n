@@ -2,27 +2,27 @@
 	<div v-if="dialogVisible"
 	>
 		<el-dialog
-			append-to-body
-			class="dialog-wrapper"
 			:visible="dialogVisible"
 			:before-close="closeDialog"
 			:title="title"
+			append-to-body
+			class="dialog-wrapper"
 			ref="dialog"
 		>
 			<div class="content" @keydown.stop @keydown.enter="save" @keydown.esc="closeDialog">
 				<el-row>
 					<el-input
+						v-model="name"
 						ref="nameInput"
 						placeholder="Enter workflow name"
-						v-model="name"
 					/>
 				</el-row>
 				<el-row>
 					<TagsDropdown
-						placeholder="Choose or create a tag"
 						:currentTagIds="currentTagIds"
-						:createEnabled="true"
 						@onUpdate="onTagsUpdate"
+						createEnabled
+						placeholder="Choose or create a tag"
 					/>
 				</el-row>
 			</div>
@@ -36,7 +36,6 @@
 
 <script lang="ts">
 import mixins from "vue-typed-mixins";
-import { mapState } from "vuex";
 import { workflowHelpers } from "./mixins/workflowHelpers";
 import { showMessage } from "./mixins/showMessage";
 import TagsDropdown from "./TagsDropdown.vue";
@@ -63,7 +62,6 @@ export default mixins(showMessage, workflowHelpers).extend({
 		};
 	},
 	mounted() {
-		// console.log(this.$refs.dialog.$refs);
 		window.addEventListener('keydown', this.onWindowKeydown);
 
 		this.$nextTick(() => {

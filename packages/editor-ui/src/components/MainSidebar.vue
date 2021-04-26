@@ -1,6 +1,5 @@
 <template>
 	<div id="side-menu">
-		<Modals />
 		<about :dialogVisible="aboutDialogVisible" @closeDialog="closeAboutDialog"></about>
 		<executions-list :dialogVisible="executionsListDialogVisible" @closeDialog="closeExecutionsListOpenDialog"></executions-list>
 		<credentials-list :dialogVisible="credentialOpenDialogVisible" @closeDialog="closeCredentialOpenDialog"></credentials-list>
@@ -207,7 +206,6 @@ import About from '@/components/About.vue';
 import CredentialsEdit from '@/components/CredentialsEdit.vue';
 import CredentialsList from '@/components/CredentialsList.vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
-import Modals from '@/components/Modals.vue';
 import WorkflowOpen from '@/components/WorkflowOpen.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
@@ -228,7 +226,6 @@ export default mixins(
 	restApi,
 	showMessage,
 	titleChange,
-	Modals,
 	workflowHelpers,
 	workflowRun,
 )

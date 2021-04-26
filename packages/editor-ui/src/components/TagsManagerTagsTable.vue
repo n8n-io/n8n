@@ -5,7 +5,7 @@
 	>
 		<el-row class="tags-header">
 			<el-col :span="10">
-				<el-input placeholder="Search tags" v-model="search" :disabled="isHeaderDisabled()" :clearable="true" :maxlength="maxLength">
+				<el-input placeholder="Search tags" v-model="search" :disabled="isHeaderDisabled()" clearable :maxlength="maxLength">
 					<i slot="prefix" class="el-input__icon el-icon-search"></i>
 				</el-input>
 			</el-col>
@@ -39,7 +39,7 @@
 								ref="nameInput"
 							></el-input>
 							<span v-else-if="scope.row.delete">Are you sure you want to delete this tag?</span>
-							<span v-else :class="scope.row.disable? 'disabled': ''">
+							<span v-else :class="{disabled: scope.row.disable}">
 								{{scope.row.tag.name}}
 							</span>
 						</transition>
@@ -49,7 +49,7 @@
 			<el-table-column label="Usage">
 					<template slot-scope="scope">
 						<transition name="fade" mode="out-in">
-							<div v-if="!scope.row.create && !scope.row.delete" :class="scope.row.disable? 'disabled': ''">
+							<div v-if="!scope.row.create && !scope.row.delete" :class="{disabled: scope.row.disable}">
 								{{scope.row.usage}}
 							</div>
 						</transition>
@@ -332,6 +332,8 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" scoped>
+@import "../styles/mixins";
+
 .name {
 	min-height: 45px;
 	display: flex;
@@ -344,9 +346,8 @@ export default Vue.extend({
 }
 
 .ops {
+	@include flex-vert-center;
 	min-height: 45px;
-	display: flex;
-	align-items: center;
 	justify-content: flex-end;
 }
 
@@ -355,10 +356,9 @@ export default Vue.extend({
 }
 
 .hidden {
-	position:absolute;
-	z-index:0;
-	opacity:0;
-	filter:alpha(opacity=0);
+	position: absolute;
+	z-index: 0;
+	opacity: 0;
 }
 
 .ops.main > .el-button {

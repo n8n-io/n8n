@@ -14,7 +14,7 @@
 						</span>
 							of
 						<span class="workflow-name clickable" title="Open Workflow">
-							<span @click="openWorkflow(workflowExecution.workflowId)">"{{workflowName}}"</span>
+							<span @click="openWorkflow(workflowExecution.workflowId)"><WorkflowNameShort :name="workflowName"/></span>
 						</span>
 						workflow
 					</span>
@@ -28,7 +28,7 @@
 							<div class="workflow-name">
 								<span v-if="currentWorkflow">
 									<a @click="openRenameDialog">
-										<font-awesome-icon icon="edit" />&nbsp;&nbsp;{{workflowName}}<span v-if="isDirty">*</span>
+										<font-awesome-icon icon="edit" />&nbsp;&nbsp;<WorkflowNameShort :name="workflowName"/><span v-if="isDirty">*</span>
 									</a>
 								</span>
 								<span v-else>
@@ -40,7 +40,7 @@
 						</div>
 					</span>
 
-					<el-divider direction="vertical"></el-divider>
+					<el-divider direction="vertical" v-if="currentWorkflowTagIds.length > 0"></el-divider>
 
 
 					<TagContainer :tagIds="currentWorkflowTagIds" />
@@ -113,9 +113,8 @@ import { saveAs } from 'file-saver';
 import mixins from 'vue-typed-mixins';
 import TagContainer from './TagContainer.vue';
 import { mapGetters, mapState } from 'vuex';
+import WorkflowNameShort from './WorkflowNameShort.vue';
 
-const WORKFLOW_NAME_LIMIT = 25;
-const WORKFLOW_NAME_END_COUNT_TO_KEEP = 4;
 
 export default mixins(
 	genericHelpers,
@@ -130,6 +129,7 @@ export default mixins(
 		components: {
 			WorkflowActivator,
 			TagContainer,
+WorkflowNameShort,
 		},
 		computed: {
 			...mapGetters('workflows', [
@@ -182,16 +182,7 @@ export default mixins(
 				return this.$store.getters.getWorkflowExecution;
 			},
 			workflowName (): string {
-				const name = this.$store.getters.workflowName;
-
-				if (name.length <= WORKFLOW_NAME_LIMIT) {
-					return name;
-				}
-
-				const first = name.slice(0, WORKFLOW_NAME_LIMIT - WORKFLOW_NAME_END_COUNT_TO_KEEP);
-				const last = name.slice(name.length - WORKFLOW_NAME_END_COUNT_TO_KEEP, name.length);
-
-				return `${first}...${last}`;
+				return this.$store.getters.workflowName;
 			},
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');

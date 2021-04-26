@@ -2,16 +2,16 @@
 	<div>
 		<SaveWorkflowDialog
 			v-if="saveAsDialogOpen"
-			title="Save new workflow"
 			:dialogVisible="saveAsDialogOpen"
 			@closeDialog="closeSaveAsDialog"
+			title="Save new workflow"
 		/>
 		<SaveWorkflowDialog
 			v-if="renameDialogOpen"
-			title="Rename workflow"
 			:dialogVisible="renameDialogOpen"
-			:renameOnly="true"
 			@closeDialog="closeRenameDialog"
+			renameOnly
+			title="Rename workflow"
 		/>
 		<TagsManager
 			v-if="tagsManagerOpen"
