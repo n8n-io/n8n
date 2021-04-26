@@ -313,25 +313,18 @@ export const messageConversationFields = [
 		description: 'Other options to set.',
 		options: [
 			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				default: 50,
-				description: 'Limits the number of messages returned.',
-			},
-			{
-				displayName: 'Starting object index',
-				name: 'from_obj_index',
-				type: 'number',
-				default: 0,
-				description: 'Limit messages starting at the specified object index.',
-			},
-			{
 				displayName: 'Ending object index',
 				name: 'to_obj_index',
 				type: 'number',
 				default: 50,
 				description: 'Limit messages ending at the specified object index.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				default: 50,
+				description: 'Limits the number of messages returned.',
 			},
 			{
 				displayName: 'Order By',
@@ -349,6 +342,13 @@ export const messageConversationFields = [
 						value: 'DESC',
 					},
 				],
+			},
+			{
+				displayName: 'Starting object index',
+				name: 'from_obj_index',
+				type: 'number',
+				default: 0,
+				description: 'Limit messages starting at the specified object index.',
 			},
 		],
 	},
@@ -433,13 +433,6 @@ export const messageConversationFields = [
 		default: {},
 		description: 'Other options to set.',
 		options: [
-			{
-				displayName: 'Content',
-				name: 'content',
-				type: 'string',
-				default: '',
-				description: 'The content of the new message. Mentions can be used as <code>[Name](twist-mention://user_id)</code> for users or <code>[Group name](twist-group-mention://group_id)</code> for groups.',
-			},
 			{
 				displayName: 'Actions',
 				name: 'actionsUi',
@@ -533,6 +526,13 @@ export const messageConversationFields = [
 				type: 'string',
 				default: 'data',
 				description: 'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
+			},
+			{
+				displayName: 'Content',
+				name: 'content',
+				type: 'string',
+				default: '',
+				description: 'The content of the new message. Mentions can be used as <code>[Name](twist-mention://user_id)</code> for users or <code>[Group name](twist-group-mention://group_id)</code> for groups.',
 			},
 			{
 				displayName: 'Direct Mentions',

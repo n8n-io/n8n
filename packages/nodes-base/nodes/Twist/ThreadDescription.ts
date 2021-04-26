@@ -484,20 +484,6 @@ export const threadFields = [
 		},
 		options: [
 			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				description: 'The title of the thread (1 < length < 300).',
-			},
-			{
-				displayName: 'Content',
-				name: 'content',
-				type: 'string',
-				default: '',
-				description: 'The content of the thread.',
-			},
-			{
 				displayName: 'Actions',
 				name: 'actionsUi',
 				type: 'fixedCollection',
@@ -592,6 +578,13 @@ export const threadFields = [
 				description: 'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
 			},
 			{
+				displayName: 'Content',
+				name: 'content',
+				type: 'string',
+				default: '',
+				description: 'The content of the thread.',
+			},
+			{
 				displayName: 'Direct Mentions',
 				name: 'direct_mentions',
 				type: 'multiOptions',
@@ -603,6 +596,13 @@ export const threadFields = [
 				},
 				default: [],
 				description: 'The users that are directly mentioned.',
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'The title of the thread (1 < length < 300).',
 			},
 		],
 	},

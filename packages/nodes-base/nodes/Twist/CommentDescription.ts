@@ -211,6 +211,13 @@ export const commentFields = [
 				description: 'The users that are directly mentioned.',
 			},
 			{
+				displayName: 'Mark thread position',
+				name: 'mark_thread_position',
+				type: 'boolean',
+				default: true,
+				description: 'By default, the position of the thread is marked.',
+			},
+			{
 				displayName: 'Recipients',
 				name: 'recipients',
 				type: 'multiOptions',
@@ -229,13 +236,6 @@ export const commentFields = [
 				type: 'number',
 				default: 0,
 				description: 'The temporary ID of the comment.',
-			},
-			{
-				displayName: 'Mark thread position',
-				name: 'mark_thread_position',
-				type: 'boolean',
-				default: true,
-				description: 'By default, the position of the thread is marked.',
 			},
 			{
 				displayName: 'Send as integration',
@@ -377,18 +377,25 @@ export const commentFields = [
 				description: 'If enabled, only the ids of the comments are returned.',
 			},
 			{
-				displayName: 'Starting object index',
-				name: 'from_obj_index',
-				type: 'number',
-				default: 0,
-				description: 'Limit comments starting at the specified object index.',
-			},
-			{
 				displayName: 'Ending object index',
 				name: 'to_obj_index',
 				type: 'number',
 				default: 50,
 				description: 'Limit comments ending at the specified object index.',
+			},
+			{
+				displayName: 'Newer Than',
+				name: 'newer_than_ts',
+				type: 'dateTime',
+				default: '',
+				description: 'Limits comments to those newer when the specified Unix time.',
+			},
+			{
+				displayName: 'Older Than',
+				name: 'older_than_ts',
+				type: 'dateTime',
+				default: '',
+				description: 'Limits comments to those older than the specified Unix time.',
 			},
 			{
 				displayName: 'Order By',
@@ -408,18 +415,11 @@ export const commentFields = [
 				description: 'The order of the comments returned - one of DESC or ASC.',
 			},
 			{
-				displayName: 'Newer Than',
-				name: 'newer_than_ts',
-				type: 'dateTime',
-				default: '',
-				description: 'Limits comments to those newer when the specified Unix time.',
-			},
-			{
-				displayName: 'Older Than',
-				name: 'older_than_ts',
-				type: 'dateTime',
-				default: '',
-				description: 'Limits comments to those older than the specified Unix time.',
+				displayName: 'Starting object index',
+				name: 'from_obj_index',
+				type: 'number',
+				default: 0,
+				description: 'Limit comments starting at the specified object index.',
 			},
 		],
 	},
@@ -483,13 +483,6 @@ export const commentFields = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Content',
-				name: 'content',
-				type: 'string',
-				default: '',
-				description: 'The content of the comment.',
-			},
 			{
 				displayName: 'Actions',
 				name: 'actionsUi',
@@ -583,6 +576,13 @@ export const commentFields = [
 				type: 'string',
 				default: 'data',
 				description: 'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
+			},
+			{
+				displayName: 'Content',
+				name: 'content',
+				type: 'string',
+				default: '',
+				description: 'The content of the comment.',
 			},
 			{
 				displayName: 'Direct Mentions',
