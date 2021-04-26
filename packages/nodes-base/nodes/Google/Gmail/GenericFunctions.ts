@@ -74,6 +74,10 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		}
 
 	} catch (error) {
+		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
+			error.statusCode = '401';
+		}
+
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
