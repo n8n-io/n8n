@@ -53,7 +53,7 @@ import { showMessage } from "@/components/mixins/showMessage";
 import TagsTable from "@/components/TagsManagerTagsTable.vue";
 
 import mixins from "vue-typed-mixins";
-import { mapState } from "vuex";
+import { mapGetters } from "vuex";
 import { MAX_TAG_NAME_LENGTH } from "@/constants";
 
 export default mixins(showMessage).extend({
@@ -63,7 +63,11 @@ export default mixins(showMessage).extend({
 		this.$store.dispatch("tags/fetchAll", {force: true, withUsageCount: true});
 	},
 	data() {
+		const tagIds = this.$store.getters['tags/tags']
+			.map((tag: ITag): string => tag.id);
+
 		return {
+			tagIds,
 			isCreateEnabled: false,
 			updateId: "",
 			deleteId: "",
@@ -74,13 +78,13 @@ export default mixins(showMessage).extend({
 		TagsTable,
 	},
 	computed: {
+		...mapGetters("tags", ["isLoading"]),
 		tags(): ITag[] {
-			return this.$store.getters["tags/allTags"];
+			return this.$data.tagIds.map((tagId: string) => this.$store.getters['tags/getTagById'](tagId));
 		},
 		hasTags(): boolean {
 			return this.tags.length > 0;
 		},
-		...mapState("tags", ["isLoading"]),
 	},
 	methods: {
 		enableCreate() {
@@ -89,16 +93,17 @@ export default mixins(showMessage).extend({
 		disableCreate() {
 			this.$data.isCreateEnabled = false;
 		},
-		async onCreate(name: string, cb: (id: string | null, error?: Error) => void) {
+		async onCreate(name: string, cb: (tag: ITag | null, error?: Error) => void) {
 			try {
 				if (!name) {
 					throw new Error("Tag name was not set");
 				}
 
-				const newTag = await this.$store.dispatch("tags/addNew", name);
+				const newTag = await this.$store.dispatch("tags/create", name);
 
-				cb(newTag.id);
 				this.$data.isCreateEnabled = false;
+				this.$data.tagIds = [newTag.id].concat(this.$data.tagIds);
+				cb(newTag);
 
 				this.$showMessage({
 					title: "New tag was created",
@@ -121,13 +126,14 @@ export default mixins(showMessage).extend({
 		disableUpdate() {
 			this.$data.updateId = "";
 		},
-		async onUpdate(id: string, name: string, oldName: string, cb: (id: string | null, error?: Error) => void) {
+		async onUpdate(id: string, name: string, oldName: string, cb: (tag: ITag | null, error?: Error) => void) {
 			try {
 				if (!name) {
 					throw new Error("Tag name was not set");
 				}
 				if (name !== oldName) {
-					await this.$store.dispatch("tags/rename", { id, name });
+					const updatedTag = await this.$store.dispatch("tags/rename", { id, name });
+					cb(updatedTag)
 
 					this.$showMessage({
 						title: "Tag was updated",
@@ -136,7 +142,6 @@ export default mixins(showMessage).extend({
 					});
 				}
 				this.disableUpdate();
-				cb(null);
 			} catch (error) {
 				this.$showError(
 					error,
@@ -153,24 +158,29 @@ export default mixins(showMessage).extend({
 		disableDelete() {
 			this.$data.deleteId = "";
 		},
-		async onDelete(id: string, name: string, cb: (id: string | null, error?: Error) => void) {
+		async onDelete(id: string, name: string, cb: (deleted: boolean, error?: Error) => void) {
 			try {
-				await this.$store.dispatch("tags/delete", id);
+				const deleted = await this.$store.dispatch("tags/delete", id);
+				if (!deleted) {
+					throw new Error('Uknown error occurred');
+				}
+
+				this.$data.tagIds = this.$data.tagIds.filter((tagId: string) => tagId !== id);
+				cb(deleted);
+				this.disableDelete();
 
 				this.$showMessage({
 					title: "Tag was deleted",
 					message: `The "${name}" tag was successfully deleted from your tag collection`,
 					type: "success",
 				});
-				this.disableDelete();
-				cb(null);
 			} catch (error) {
 				this.$showError(
 					error,
 					"Tag was not deleted",
 					`A problem occurred when trying to delete the "${name}" tag`,
 				);
-				cb(null, error);
+				cb(false, error);
 			}
 		},
 

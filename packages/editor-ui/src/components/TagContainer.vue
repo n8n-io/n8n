@@ -20,10 +20,17 @@ export default Vue.extend({
 	name: 'TagContainer',
 	props: [
 		"tags",
+		"tagIds",
 	],
 	computed: {
 		toDisplay(): {id: string, name: string, title?: string} {
-			const tags = this.$props.tags || []; 
+			let tagIds = this.$props.tagIds; 
+			if (!tagIds) {
+				tagIds = (this.tags && this.tags.map(({id}: ITag) => id)) || [];
+			}
+
+			const tags = tagIds.map((tagId: string) => this.$store.getters['tags/getTagById'](tagId))
+				.filter((tag: ITag) => !!tag);
 
 			const toDisplay = tags.slice(0, 2);
 			if (tags.length > 2) {

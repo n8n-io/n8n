@@ -225,9 +225,9 @@ export default Vue.extend({
 		},
 		createTag(): void {
 			this.$data.isSaving = true;
-			this.$emit('onCreate', this.$data.newTagName.trim(), (createdId: string | null, error?: Error) => {
-				if (createdId) {
-					this.stickyIds.add(createdId);
+			this.$emit('onCreate', this.$data.newTagName.trim(), (created: ITag | null, error?: Error) => {
+				if (created) {
+					this.stickyIds.add(created.id);
 				}
 				this.$data.isSaving = false;
 			});

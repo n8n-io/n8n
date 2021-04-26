@@ -240,7 +240,7 @@ export interface IWorkflowShortResponse {
 	active: boolean;
 	createdAt: number | string;
 	updatedAt: number | string;
-	tags?: ITag[];
+	tags?: ITag[] | string[];
 }
 
 
@@ -496,7 +496,7 @@ export interface IRootState {
 }
 
 export interface ITagsState {
-	tags: ITag[];
+	tags: {[id: string]: ITag};
 	isLoading: boolean;
 	fetchedAll: boolean;
 	fetchedUsageCount: boolean;

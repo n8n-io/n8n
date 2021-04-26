@@ -6,7 +6,7 @@ export async function getTags(context: ActionContext<ITagsState, IRootState>, wi
 	return await makeRestApiRequest(context, 'GET', '/tags', {withUsageCount});
 }
 
-export async function addTag(context: ActionContext<ITagsState, IRootState>, params: { name: string }): Promise<ITag> {
+export async function createTag(context: ActionContext<ITagsState, IRootState>, params: { name: string }): Promise<ITag> {
 	return await makeRestApiRequest(context, 'POST', '/tags', params);
 }
 

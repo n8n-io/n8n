@@ -68,9 +68,6 @@ export default mixins(showMessage).extend({
 			CREATE_KEY,
 		};
 	},
-	created() {
-		this.$store.dispatch("tags/fetchAll");
-	},
 	mounted() {
 		const select = this.$refs.select as (Vue | undefined);
 		if (select) {
@@ -79,29 +76,27 @@ export default mixins(showMessage).extend({
 				input.setAttribute('maxlength', `${MAX_TAG_NAME_LENGTH}`);
 			}
 		}
+
+		this.$store.dispatch("tags/fetchAll");
 	},
 	computed: {
-		options() {
-			return this.tags.filter(({ name }: ITag) =>
-				name.toLowerCase().includes(this.$data.filter.toLowerCase()),
-			);
+		...mapGetters("tags", ["tags", "isLoading", "hasTags"]),
+		options(): ITag[] {
+			return this.tags
+				.filter((tag: ITag) =>
+					tag && tag.name.toLowerCase().includes(this.$data.filter.toLowerCase()),
+				);
 		},
-		appliedTags() {
+		appliedTags(): string[] {
 			return this.$props.currentTagIds.filter((id: string) =>
-				this.tags.find((tag: ITag) => tag.id === id),
+				this.$store.getters['tags/getTagById'](id),
 			);
 		},
-		...mapState("tags", [
-			"tags",
-			"isLoading",
-		]),
-		...mapGetters("tags", ["hasTags"]),
 	},
 	methods: {
 		filterOptions(filter = "") {
 			this.$data.filter = filter.trim();
 			this.$nextTick(() => {
-				// forgive me father for I have sinned
 				if (this.$refs.create) {
 					// @ts-ignore
 					this.$refs.create.hoverItem();
@@ -116,8 +111,15 @@ export default mixins(showMessage).extend({
 		async onCreate() {
 			const name = this.$data.filter;
 			try {
-				const newTag = await this.$store.dispatch("tags/addNew", name);
+				const newTag = await this.$store.dispatch("tags/create", name);
 				this.$emit("onUpdate", [...this.$props.currentTagIds, newTag.id]);
+				this.$nextTick(() => {
+					const added: any = ((this.$refs.tag || []) as Vue[]).find((ref: any) => ref.value === newTag.id);
+					if (added && added.$el && added.$el.scrollIntoView && added.hoverItem) {
+						added.$el.scrollIntoView();
+						added.hoverItem();
+					}
+				});
 
 				this.$showMessage({
 					title: "New tag was created",
@@ -146,6 +148,12 @@ export default mixins(showMessage).extend({
 			} else {
 				this.$emit("onUpdate", selected);
 			}
+		},
+	},
+	watch: {
+		tags() {
+			// for example in case tag is deleted from store
+			this.$emit("onUpdate", this.appliedTags);
 		},
 	},
 });

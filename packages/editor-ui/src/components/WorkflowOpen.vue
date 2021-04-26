@@ -8,7 +8,7 @@
 				<el-col :span="6" :offset="5" class="tags-filter">
 					<TagsDropdown 
 						placeholder="Filter by tags..."
-						:currentTagIds="appliedFilterTagIds"
+						:currentTagIds="filterTagIds"
 						:createEnabled="false"
 						@onUpdate="updateTagsFilter"
 					/>
@@ -71,9 +71,6 @@ export default mixins(
 		TagContainer,
 		TagsDropdown,
 	},
-	created() {
-		this.$store.dispatch("tags/fetchAll");
-	},
 	data () {
 		return {
 			filterText: '',
@@ -83,23 +80,14 @@ export default mixins(
 		};
 	},
 	computed: {
-		appliedFilterTagIds (): string[] {
-			const tags = this.$store.getters['tags/allTags'];
-			const allTagIds = tags.map(({id}: ITag) => id);
-
-			return this.filterTagIds.filter((id) => allTagIds.indexOf(id) >= 0);
-		},
 		filteredWorkflows (): IWorkflowShortResponse[] {
-			const tags = this.$store.getters['tags/allTags'];
-			const filterTagIds = this.appliedFilterTagIds;
-
 			return this.workflows
 				.filter((workflow: IWorkflowShortResponse) => {
 					if (this.filterText && workflow.name.toLowerCase().indexOf(this.filterText.toLowerCase()) === -1) {
 						return false;
 					}
 
-					if (filterTagIds.length === 0) {
+					if (this.filterTagIds.length === 0) {
 						return true;
 					}
 
@@ -107,19 +95,12 @@ export default mixins(
 						return false;
 					}
 
-					return filterTagIds.reduce((accu: boolean, id: string) => {
-						const tagIds = (workflow.tags || []).map(({id}: ITag): string => id);
+					return this.filterTagIds.reduce((accu: boolean, id: string) => {
+						const tagIds = ((workflow.tags || []) as ITag[])
+							.map(({id}: ITag): string => id);
 
 						return accu && tagIds.indexOf(id) > -1;
 					}, true);
-				})
-				.map((workflow): IWorkflowShortResponse => {
-					workflow.tags = (workflow.tags || []).map((tag) => {
-						return tags.find(({id}: ITag) => id === tag.id);
-					})
-						.filter((tag) => !!tag);
-
-					return workflow;
 				});
 		},
 	},

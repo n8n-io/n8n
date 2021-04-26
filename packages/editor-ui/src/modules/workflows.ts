@@ -1,6 +1,6 @@
 
 import { renameWorkflow } from '@/api/workflows';
-import { ActionContext, Module } from 'vuex';
+import { ActionContext, GetterTree, Module } from 'vuex';
 import {
 	IRootState,
 	ITag,
@@ -10,6 +10,11 @@ import {
 const module: Module<IWorkflowsState, IRootState> = {
 	namespaced: true,
 	state: {},
+	getters: {
+		currentWorkflowTagIds: (state: IWorkflowsState, getters: GetterTree<IWorkflowsState, IRootState>, rootState: IRootState): string[] => {
+			return (rootState.workflow.tags || []) as string[];
+		},
+	},
 	actions: {
 		renameCurrent: async (context: ActionContext<IWorkflowsState, IRootState>, {name, tags}: {name: string, tags: ITag[]}) => {
 			const currentId = context.rootGetters.workflowId;

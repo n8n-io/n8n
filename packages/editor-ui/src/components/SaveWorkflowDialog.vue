@@ -22,7 +22,7 @@
 						placeholder="Choose or create a tag"
 						:currentTagIds="currentTagIds"
 						:createEnabled="true"
-						@onUpdate="onUpdate"
+						@onUpdate="onTagsUpdate"
 					/>
 				</el-row>
 			</div>
@@ -47,8 +47,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 	props: ["dialogVisible", "title", "renameOnly"],
 	data() {
 		const currentTagIds = this.$store.getters[
-			"tags/currentWorkflowTagIds"
+			"workflows/currentWorkflowTagIds"
 		] as string[];
+
 		const currentWorkflowName  = this.$store.getters["workflowName"];
 		let name = '';
 		if (currentWorkflowName) {
@@ -60,9 +61,6 @@ export default mixins(showMessage, workflowHelpers).extend({
 			currentTagIds,
 			isSaving: false,
 		};
-	},
-	created() {
-		this.$store.dispatch("tags/fetchAll");
 	},
 	mounted() {
 		// console.log(this.$refs.dialog.$refs);
@@ -78,14 +76,13 @@ export default mixins(showMessage, workflowHelpers).extend({
 	beforeDestroy() {
 		window.removeEventListener('keydown', this.onWindowKeydown);
 	},
-	computed: mapState("tags", ["isLoading"]),
 	methods: {
 		onWindowKeydown(event: KeyboardEvent) {
 			if (event && event.keyCode === 13) {
 				this.save();
 			}
 		},
-		onUpdate(tagIds: string[]) {
+		onTagsUpdate(tagIds: string[]) {
 			this.currentTagIds = tagIds;
 		},
 		async save(): Promise<void> {
@@ -93,7 +90,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			if (!name) {
 				this.$showMessage({
 					title: "Name missing",
-					message: `No name for the workflow got entered and could so not be saved!`,
+					message: `No name for the workflow got entered and so could not be saved!`,
 					type: "error",
 				});
 

@@ -40,9 +40,9 @@
 						</div>
 					</span>
 
-					<div class="divider" v-if="currentWorkflowTags.length > 0"></div>
+					<div class="divider" v-if="currentWorkflowTagIds.length > 0"></div>
 
-					<TagContainer :tags="currentWorkflowTags" />
+					<TagContainer :tagIds="currentWorkflowTagIds" />
 
 					<span class="saving-workflow" v-if="isWorkflowSaving">
 						<font-awesome-icon icon="spinner" spin />
@@ -131,8 +131,8 @@ export default mixins(
 			TagContainer,
 		},
 		computed: {
-			...mapGetters('tags', [
-				'currentWorkflowTags',
+			...mapGetters('workflows', [
+				'currentWorkflowTagIds',
 			]),
 			...mapState('ui', [
 				'sidebarMenuCollapsed',
