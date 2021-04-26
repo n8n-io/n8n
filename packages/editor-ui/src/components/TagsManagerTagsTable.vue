@@ -100,17 +100,20 @@ interface ITagRow {
 	delete?: boolean;
 }
 
+const INPUT_TRANSITION_TIMEOUT = 300;
+const DELETE_TRANSITION_TIMEOUT = 100;
+
 export default Vue.extend({
 	name: 'TagsTable',
 	props: [
 		'tags',
-		'isCreateEnabled',
-		'deleteId',
-		'updateId',
 		'isLoading',
 	],
 	data() {
 		return {
+			createEnabled: false,
+			deleteId: '',
+			updateId: '',
 			searchValue: '',
 			newTagName: '',
 			stickyIds: new Set(),
@@ -118,7 +121,15 @@ export default Vue.extend({
 			isSaving: false,
 		};
 	},
+	mounted() {
+		if (this.$props.tags.length === 0) {
+			this.focusOnInput();
+		}
+	},
 	computed: {
+		isCreateEnabled(): boolean {
+			return this.$props.tags.length === 0 || this.createEnabled;
+		},
 		rows(): ITagRow[] {
 			const filter = this.search;
 			const tagRows = this.tags
@@ -131,7 +142,7 @@ export default Vue.extend({
 					delete: this.isDeleteEnabled(tag.id),
 				}));
 
-			return this.$props.isCreateEnabled ? [{create: true}, ...tagRows] : tagRows;
+			return this.isCreateEnabled || this.tags.length === 0 ? [{create: true}, ...tagRows] : tagRows;
 		},
 		search: {
 			get(): string {
@@ -160,67 +171,95 @@ export default Vue.extend({
 			return 1;
 		},
 		isUpdateEnabled(tagId: string): boolean {
-			return !this.$props.isCreateEnabled && !!this.$props.updateId && tagId === this.$props.updateId;
+			return !this.isCreateEnabled && !!this.$data.updateId && tagId === this.$data.updateId;
 		},
 		isDeleteEnabled(tagId: string): boolean {
-			return !this.$props.isCreateEnabled && !!this.$props.deleteId && tagId === this.$props.deleteId;
+			return !this.isCreateEnabled && !!this.$data.deleteId && tagId === this.$data.deleteId;
 		},
 		isTagDisabled(tagId: string): boolean {
-			if (this.$props.updateId && tagId !== this.$props.updateId) {
+			if (this.$data.updateId && tagId !== this.$data.updateId) {
 				return true;
 			}
 
-			if (this.$props.deleteId && tagId !== this.$props.deleteId) {
+			if (this.$data.deleteId && tagId !== this.$data.deleteId) {
 				return true;
 			}
 
-			return this.$props.isCreateEnabled;
+			return this.isCreateEnabled;
 		},
 		isHeaderDisabled(): boolean {
-			return this.$props.isLoading || !!(this.$props.isCreateEnabled || this.$props.updateId || this.$props.deleteId);
+			return this.$props.isLoading || !!(this.isCreateEnabled || this.$data.updateId || this.$data.deleteId);
+		},
+		focusOnInput(): void {
+			setTimeout(() => {
+				const input = this.$refs.nameInput as any; // tslint:disable-line:no-any
+				if (input && input.focus) {
+					input.focus();
+				}
+			}, INPUT_TRANSITION_TIMEOUT);
 		},
 
 		enableUpdate(row: ITagRow): void {
 			if (row.tag) {
-				this.$emit('enableUpdate', row.tag.id);
+				this.updateId = row.tag.id;
 				this.newTagName = row.tag.name;
+				this.focusOnInput();
 			}
 		},
 		disableUpdate(): void {
-			this.$emit('disableUpdate');
+			this.updateId = '';
 			this.newTagName = '';
 		},
 		updateTag(row: ITagRow): void {
 			if (row.tag) {
 				this.$data.isSaving = true;
-				this.$emit('onUpdate', row.tag.id, this.$data.newTagName.trim(), row.tag.name, () => {
+				const updateId = row.tag.id;
+				this.$emit('onUpdate', updateId, this.$data.newTagName.trim(), row.tag.name, (updated: boolean) => {
 					this.$data.isSaving = false;
+					if (updated) {
+						this.stickyIds.add(updateId);
+						this.disableUpdate();
+					}
 				});
 			}
 		},
 
 		enableDelete(row: ITagRow): void {
 			if (row.tag) {
-				this.$emit('enableDelete', row.tag.id);
+				this.deleteId = row.tag.id;
+
+				setTimeout(() => {
+					const input = this.$refs.deleteHiddenInput as any; // tslint:disable-line:no-any
+					if (input && input.focus) {
+						input.focus();
+					}
+				}, DELETE_TRANSITION_TIMEOUT);
 			}
 		},
 		disableDelete(): void {
-			this.$emit('disableDelete');
+			this.deleteId = '';
 		},
 		deleteTag(row: ITagRow): void {
 			if (row.tag) {
 				this.$data.isSaving = true;
-				this.$emit('onDelete', row.tag.id, row.tag.name, () => {
+				this.$emit('onDelete', row.tag.id, row.tag.name, (deleted: boolean) => {
+					if (deleted) {
+						this.disableDelete();
+					}
 					this.$data.isSaving = false;
 				});
 			}
 		},
 
+
 		enableCreate(): void {
-			this.$emit('enableCreate');
+			this.$data.createEnabled = true;
+			this.$data.newTagName = '';
 			((this.$refs.table as Vue).$refs.bodyWrapper as Element).scrollTop = 0;
+			this.focusOnInput();
 		},
 		disableCreate(): void {
+			this.$data.createEnabled = false;
 			this.$emit('disableCreate');
 		},
 		createTag(): void {
@@ -228,6 +267,7 @@ export default Vue.extend({
 			this.$emit('onCreate', this.$data.newTagName.trim(), (created: ITag | null, error?: Error) => {
 				if (created) {
 					this.stickyIds.add(created.id);
+					this.disableCreate();
 				}
 				this.$data.isSaving = false;
 			});
@@ -238,14 +278,14 @@ export default Vue.extend({
 				return;
 			}
 
-			if (this.$props.isCreateEnabled) {
+			if (this.isCreateEnabled) {
 				this.createTag();
 
 				return;
 			}
 
-			if (this.$props.updateId) {
-				const row = this.rows.find((row) => row.tag && row.tag.id === this.$props.updateId);
+			if (this.$data.updateId) {
+				const row = this.rows.find((row) => row.tag && row.tag.id === this.$data.updateId);
 
 				if (row) {
 					this.updateTag(row);
@@ -254,8 +294,8 @@ export default Vue.extend({
 				return;
 			}
 
-			if (this.$props.deleteId) {
-				const row = this.rows.find((row) => row.tag && row.tag.id === this.$props.deleteId);
+			if (this.$data.deleteId) {
+				const row = this.rows.find((row) => row.tag && row.tag.id === this.$data.deleteId);
 
 				if (row) {
 					this.deleteTag(row);
@@ -269,58 +309,22 @@ export default Vue.extend({
 				return;
 			}
 
-			if (this.$props.isCreateEnabled) {
+			if (this.isCreateEnabled) {
 				this.disableCreate();
 
 				return;
 			}
 
-			if (this.$props.updateId) {
+			if (this.$data.updateId) {
 				this.disableUpdate();
 
 				return;
 			}
 
-			if (this.$props.deleteId) {
+			if (this.$data.deleteId) {
 				this.disableDelete();
 
 				return;
-			}
-		},
-	},
-	watch: {
-		isCreateEnabled(newValue) {
-			this.$data.newTagName = '';
-			if (newValue) {
-				setTimeout(() => {
-					const input = this.$refs.nameInput as any; // tslint:disable-line:no-any
-					if (input && input.focus) {
-						input.focus();
-					}
-				}, 300); // transition timout
-			}
-		},
-		updateId(newValue) {
-			if (newValue) {
-				// on update, keep updated items in view despite filter
-				this.stickyIds.add(newValue);
-
-				setTimeout(() => {
-					const input = this.$refs.nameInput as any; // tslint:disable-line:no-any
-					if (input && input.focus) {
-						input.focus();
-					}
-				}, 300); // transition timout
-			}
-		},
-		deleteId(newValue) {
-			if (newValue) {
-				setTimeout(() => {
-					const input = this.$refs.deleteHiddenInput as any; // tslint:disable-line:no-any
-					if (input && input.focus) {
-						input.focus();
-					}
-				}, 100); // transition timout
 			}
 		},
 	},
