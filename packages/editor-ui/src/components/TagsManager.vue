@@ -80,7 +80,8 @@ export default mixins(showMessage).extend({
 	computed: {
 		...mapGetters("tags", ["isLoading"]),
 		tags(): ITag[] {
-			return this.$data.tagIds.map((tagId: string) => this.$store.getters['tags/getTagById'](tagId));
+			return this.$data.tagIds.map((tagId: string) => this.$store.getters['tags/getTagById'](tagId))
+				.filter((tag: ITag | undefined) => !!tag);
 		},
 		hasTags(): boolean {
 			return this.tags.length > 0;
@@ -131,16 +132,21 @@ export default mixins(showMessage).extend({
 				if (!name) {
 					throw new Error("Tag name was not set");
 				}
-				if (name !== oldName) {
-					const updatedTag = await this.$store.dispatch("tags/rename", { id, name });
-					cb(updatedTag)
 
-					this.$showMessage({
-						title: "Tag was updated",
-						message: `The "${oldName}" tag was successfully updated to "${name}"`,
-						type: "success",
-					});
+				if (name === oldName) {
+					cb(null);
+					this.disableUpdate();
+					return;
 				}
+				
+				const updatedTag = await this.$store.dispatch("tags/rename", { id, name });
+				cb(updatedTag)
+
+				this.$showMessage({
+					title: "Tag was updated",
+					message: `The "${oldName}" tag was successfully updated to "${name}"`,
+					type: "success",
+				});
 				this.disableUpdate();
 			} catch (error) {
 				this.$showError(
@@ -162,7 +168,7 @@ export default mixins(showMessage).extend({
 			try {
 				const deleted = await this.$store.dispatch("tags/delete", id);
 				if (!deleted) {
-					throw new Error('Uknown error occurred');
+					throw new Error('Could not delete tag');
 				}
 
 				this.$data.tagIds = this.$data.tagIds.filter((tagId: string) => tagId !== id);
