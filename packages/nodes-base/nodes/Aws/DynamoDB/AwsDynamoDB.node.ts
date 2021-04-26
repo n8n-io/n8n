@@ -276,8 +276,8 @@ export class AwsDynamoDB implements INodeType {
 				// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html
 				const body: IRequestBody = {TableName: this.getNodeParameter('tableName', i) as string};
 
-				const ExpressionAttributeValues = this.getNodeParameter('expressionAttributeValues.details', i, null) as IAttributeValueUi[];
-				const FilterExpression = this.getNodeParameter('filterExpression', i) as string
+				const expressionAttributeValues = this.getNodeParameter('expressionAttributeValues.details', i, null) as IAttributeValueUi[];
+				const filterExpression = this.getNodeParameter('filterExpression', i) as string;
 
 				const {
 					indexName,
@@ -289,12 +289,12 @@ export class AwsDynamoDB implements INodeType {
 					readConsistencyModel: 'eventuallyConsistent' | 'stronglyConsistent';
 				};
 
-				if (ExpressionAttributeValues) {
-					body.ExpressionAttributeValues = adjustExpressionAttributeValues(ExpressionAttributeValues);
+				if (expressionAttributeValues) {
+					body.ExpressionAttributeValues = adjustExpressionAttributeValues(expressionAttributeValues);
 				}
 
-				if (FilterExpression) {
-					body.FilterExpression = FilterExpression;
+				if (filterExpression) {
+					body.FilterExpression = filterExpression;
 				}
 
 				if (indexName) {
@@ -322,7 +322,7 @@ export class AwsDynamoDB implements INodeType {
 					}
 
 					body.ExclusiveStartKey = response.LastEvaluatedKey;
-				} while (typeof body.ExclusiveStartKey === 'object')
+				} while (typeof body.ExclusiveStartKey === 'object');
 
 				responseData = dbItems.map(simplify);
 			}
