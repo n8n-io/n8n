@@ -51,27 +51,6 @@ export const threadFields = [
 	/*                                thread:add                                 */
 	/* ------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace ID',
-		name: 'workspaceId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getWorkspaces',
-		},
-		default: '',
-		displayOptions: {
-			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'thread',
-				],
-			},
-		},
-		required: true,
-		description: 'The ID of the workspace.',
-	},
-	{
 		displayName: 'Channel ID',
 		name: 'channelId',
 		type: 'string',

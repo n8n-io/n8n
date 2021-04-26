@@ -51,27 +51,6 @@ export const commentFields = [
 	/*                                comment:add                                 */
 	/* ------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace ID',
-		name: 'workspaceId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getWorkspaces',
-		},
-		default: '',
-		displayOptions: {
-			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'comment',
-				],
-			},
-		},
-		required: true,
-		description: 'The ID of the workspace.',
-	},
-	{
 		displayName: 'Thread ID',
 		name: 'threadId',
 		type: 'string',
@@ -518,85 +497,85 @@ export const commentFields = [
 				placeholder: 'Add Action',
 				typeOptions: {
 					multipleValues: true,
-					options: [
-						{
-							displayName: 'Action',
-							name: 'actionValues',
-							values: [
-								{
-									displayName: 'Action',
-									name: 'action',
-									type: 'options',
-									description: 'The action of the button.',
-									options: [
-										{
-											name: 'Open URL',
-											value: 'open_url',
-										},
-										{
-											name: 'Prefill Message',
-											value: 'prefill_message',
-										},
-										{
-											name: 'Send Reply',
-											value: 'send_reply',
-										},
-									],
-									default: '',
-								},
-								{
-									displayName: 'Button Text',
-									name: 'button_text',
-									type: 'string',
-									description: 'The text for the action button.',
-									default: '',
-								},
-								{
-									displayName: 'Message',
-									name: 'message',
-									type: 'string',
-									displayOptions: {
-										show: {
-											action: [
-												'send_reply',
-												'prefill_message',
-											],
-										},
-									},
-									description: 'The text for the action button.',
-									default: '',
-								},
-								{
-									displayName: 'Type',
-									name: 'type',
-									type: 'options',
-									description: 'The type of the button. (Currently only <code>action</code> is available).',
-									options: [
-										{
-											name: 'Action',
-											value: 'action',
-										},
-									],
-									default: '',
-								},
-								{
-									displayName: 'URL',
-									name: 'url',
-									type: 'string',
-									displayOptions: {
-										show: {
-											action: [
-												'open_url',
-											],
-										},
-									},
-									description: 'URL to redirect.',
-									default: '',
-								},
-							],
-						},
-					],
 				},
+				options: [
+					{
+						displayName: 'Action',
+						name: 'actionValues',
+						values: [
+							{
+								displayName: 'Action',
+								name: 'action',
+								type: 'options',
+								description: 'The action of the button.',
+								options: [
+									{
+										name: 'Open URL',
+										value: 'open_url',
+									},
+									{
+										name: 'Prefill Message',
+										value: 'prefill_message',
+									},
+									{
+										name: 'Send Reply',
+										value: 'send_reply',
+									},
+								],
+								default: '',
+							},
+							{
+								displayName: 'Button Text',
+								name: 'button_text',
+								type: 'string',
+								description: 'The text for the action button.',
+								default: '',
+							},
+							{
+								displayName: 'Message',
+								name: 'message',
+								type: 'string',
+								displayOptions: {
+									show: {
+										action: [
+											'send_reply',
+											'prefill_message',
+										],
+									},
+								},
+								description: 'The text for the action button.',
+								default: '',
+							},
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								description: 'The type of the button. (Currently only <code>action</code> is available).',
+								options: [
+									{
+										name: 'Action',
+										value: 'action',
+									},
+								],
+								default: '',
+							},
+							{
+								displayName: 'URL',
+								name: 'url',
+								type: 'string',
+								displayOptions: {
+									show: {
+										action: [
+											'open_url',
+										],
+									},
+								},
+								description: 'URL to redirect.',
+								default: '',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Attachments',

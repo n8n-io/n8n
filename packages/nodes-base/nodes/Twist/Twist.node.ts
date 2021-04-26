@@ -37,7 +37,7 @@ import {
 	commentOperations
 } from './CommentDescription';
 import uuid = require('uuid');
-import moment = require('moment');
+import * as moment from 'moment';
 export class Twist implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Twist',
@@ -190,15 +190,13 @@ export class Twist implements INodeType {
 				}
 				//https://developer.twist.com/v3/#remove-channel
 				if (operation === 'delete') {
-					const channelId = this.getNodeParameter('channelId', i) as string;
-					qs.id = channelId;
+					qs.id = this.getNodeParameter('channelId', i) as string;
 
 					responseData = await twistApiRequest.call(this, 'POST', '/channels/remove', {}, qs);
 				}
 				//https://developer.twist.com/v3/#get-channel
 				if (operation === 'get') {
-					const channelId = this.getNodeParameter('channelId', i) as string;
-					qs.id = channelId;
+					qs.id = this.getNodeParameter('channelId', i) as string;
 
 					responseData = await twistApiRequest.call(this, 'GET', '/channels/getone', {}, qs);
 				}
@@ -230,28 +228,25 @@ export class Twist implements INodeType {
 				}
 				//https://developer.twist.com/v3/#archive-channel
 				if (operation === 'archive') {
-					const channelId = this.getNodeParameter('channelId', i) as string;
-					qs.id = channelId;
+					qs.id = this.getNodeParameter('channelId', i) as string;
 
 					responseData = await twistApiRequest.call(this, 'POST', '/channels/archive', {}, qs);
 				}
 				//https://developer.twist.com/v3/#unarchive-channel
 				if (operation === 'unarchive') {
-					const channelId = this.getNodeParameter('channelId', i) as string;
-					qs.id = channelId;
+					qs.id = this.getNodeParameter('channelId', i) as string;
 
 					responseData = await twistApiRequest.call(this, 'POST', '/channels/unarchive', {}, qs);
 				}
 			}
 			if (resource === 'comment') {
 				//https://developer.twist.com/v3/#add-comment
-				if (operation === 'add') {
-					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+				if (operation === 'create') {
 					const threadId = this.getNodeParameter('threadId', i) as string;
 					const content = this.getNodeParameter('content', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IDataObject = {
-						thread_id:threadId,
+						thread_id: threadId,
 						content,
 					};
 					Object.assign(body, additionalFields);
@@ -283,7 +278,7 @@ export class Twist implements INodeType {
 							attachments.push(await twistApiRequest.call(
 								this,
 								'POST',
-								`/attachments/upload`,
+								'/attachments/upload',
 								{},
 								{},
 								{
@@ -304,26 +299,24 @@ export class Twist implements INodeType {
 					}
 
 					if (body.direct_mentions) {
-						const direcMentions: string[] = [];
+						const directMentions: string[] = [];
 						for (const directMention of body.direct_mentions as number[]) {
-							direcMentions.push(`[name](twist-mention://${directMention})`);
+							directMentions.push(`[name](twist-mention://${directMention})`);
 						}
-						body.content = `${direcMentions.join(' ')} ${body.content}`;
+						body.content = `${directMentions.join(' ')} ${body.content}`;
 					}
 
 					responseData = await twistApiRequest.call(this, 'POST', '/comments/add', body);
 				}
 				//https://developer.twist.com/v3/#remove-comment
-				if (operation === 'remove') {
-					const commentId = this.getNodeParameter('commentId', i) as string;
-					qs.id = commentId;
+				if (operation === 'delete') {
+					qs.id = this.getNodeParameter('commentId', i) as string;
 
 					responseData = await twistApiRequest.call(this, 'POST', '/comments/remove', {}, qs);
 				}
 				//https://developer.twist.com/v3/#get-comment
 				if (operation === 'get') {
-					const commentId = this.getNodeParameter('commentId', i) as string;
-					qs.id = commentId;
+					qs.id = this.getNodeParameter('commentId', i) as string;
 
 					responseData = await twistApiRequest.call(this, 'GET', '/comments/getone', {}, qs);
 				}
@@ -340,10 +333,10 @@ export class Twist implements INodeType {
 					if (!returnAll) {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
-					if(qs.older_than_ts){
+					if (qs.older_than_ts) {
 						qs.older_than_ts = moment(qs.older_than_ts as string).unix();
 					}
-					if(qs.newer_than_ts){
+					if (qs.newer_than_ts) {
 						qs.newer_than_ts = moment(qs.newer_than_ts as string).unix();
 					}
 
@@ -385,7 +378,7 @@ export class Twist implements INodeType {
 							attachments.push(await twistApiRequest.call(
 								this,
 								'POST',
-								`/attachments/upload`,
+								'/attachments/upload',
 								{},
 								{},
 								{
@@ -406,11 +399,11 @@ export class Twist implements INodeType {
 					}
 
 					if (body.direct_mentions) {
-						const direcMentions: string[] = [];
+						const directMentions: string[] = [];
 						for (const directMention of body.direct_mentions as number[]) {
-							direcMentions.push(`[name](twist-mention://${directMention})`);
+							directMentions.push(`[name](twist-mention://${directMention})`);
 						}
-						body.content = `${direcMentions.join(' ')} ${body.content}`;
+						body.content = `${directMentions.join(' ')} ${body.content}`;
 					}
 
 					responseData = await twistApiRequest.call(this, 'POST', '/comments/update', body);
@@ -457,7 +450,7 @@ export class Twist implements INodeType {
 							attachments.push(await twistApiRequest.call(
 								this,
 								'POST',
-								`/attachments/upload`,
+								'/attachments/upload',
 								{},
 								{},
 								{
@@ -478,11 +471,11 @@ export class Twist implements INodeType {
 					}
 
 					if (body.direct_mentions) {
-						const direcMentions: string[] = [];
+						const directMentions: string[] = [];
 						for (const directMention of body.direct_mentions as number[]) {
-							direcMentions.push(`[name](twist-mention://${directMention})`);
+							directMentions.push(`[name](twist-mention://${directMention})`);
 						}
-						body.content = `${direcMentions.join(' ')} ${body.content}`;
+						body.content = `${directMentions.join(' ')} ${body.content}`;
 					}
 
 					// if (body.direct_group_mentions) {
@@ -497,8 +490,7 @@ export class Twist implements INodeType {
 				}
 				//https://developer.twist.com/v3/#get-message
 				if (operation === 'get') {
-					const id = this.getNodeParameter('id', i) as string;
-					qs.id =id;
+					qs.id = this.getNodeParameter('id', i) as string;
 
 					responseData = await twistApiRequest.call(this, 'GET', '/conversation_messages/getone', {}, qs);
 				}
@@ -513,19 +505,18 @@ export class Twist implements INodeType {
 				}
 				//https://developer.twist.com/v3/#remove-message-from-conversation
 				if (operation === 'delete') {
-					const id = this.getNodeParameter('id', i) as string;
-					qs.id =id;
+					qs.id = this.getNodeParameter('id', i) as string;
 
 					responseData = await twistApiRequest.call(this, 'POST', '/conversation_messages/remove', {}, qs);
 				}
 				//https://developer.twist.com/v3/#update-message-in-conversation
 				if (operation === 'update') {
 					const id = this.getNodeParameter('id', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: IDataObject = {
 						id,
 					};
-					Object.assign(body, additionalFields);
+					Object.assign(body, updateFields);
 
 					if (body.actionsUi) {
 						const actions = (body.actionsUi as IDataObject).actionValues as IDataObject[];
@@ -554,7 +545,7 @@ export class Twist implements INodeType {
 							attachments.push(await twistApiRequest.call(
 								this,
 								'POST',
-								`/attachments/upload`,
+								'/attachments/upload',
 								{},
 								{},
 								{
@@ -575,11 +566,11 @@ export class Twist implements INodeType {
 					}
 
 					if (body.direct_mentions) {
-						const direcMentions: string[] = [];
+						const directMentions: string[] = [];
 						for (const directMention of body.direct_mentions as number[]) {
-							direcMentions.push(`[name](twist-mention://${directMention})`);
+							directMentions.push(`[name](twist-mention://${directMention})`);
 						}
-						body.content = `${direcMentions.join(' ')} ${body.content}`;
+						body.content = `${directMentions.join(' ')} ${body.content}`;
 					}
 
 					responseData = await twistApiRequest.call(this, 'POST', '/conversation_messages/update', body);
@@ -587,8 +578,7 @@ export class Twist implements INodeType {
 			}
 			if (resource === 'thread') {
 				//https://developer.twist.com/v3/#add-thread
-				if (operation === 'add') {
-					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+				if (operation === 'create') {
 					const channelId = this.getNodeParameter('channelId', i) as string;
 					const title = this.getNodeParameter('title', i) as string;
 					const content = this.getNodeParameter('content', i) as string;
@@ -627,7 +617,7 @@ export class Twist implements INodeType {
 							attachments.push(await twistApiRequest.call(
 								this,
 								'POST',
-								`/attachments/upload`,
+								'/attachments/upload',
 								{},
 								{},
 								{
@@ -648,26 +638,24 @@ export class Twist implements INodeType {
 					}
 
 					if (body.direct_mentions) {
-						const direcMentions: string[] = [];
+						const directMentions: string[] = [];
 						for (const directMention of body.direct_mentions as number[]) {
-							direcMentions.push(`[name](twist-mention://${directMention})`);
+							directMentions.push(`[name](twist-mention://${directMention})`);
 						}
-						body.content = `${direcMentions.join(' ')} ${body.content}`;
+						body.content = `${directMentions.join(' ')} ${body.content}`;
 					}
 
 					responseData = await twistApiRequest.call(this, 'POST', '/threads/add', body);
 				}
 				//https://developer.twist.com/v3/#remove-thread
-				if (operation === 'remove') {
-					const threadId = this.getNodeParameter('threadId', i) as string;
-					qs.id = threadId;
+				if (operation === 'delete') {
+					qs.id = this.getNodeParameter('threadId', i) as string;
 
 					responseData = await twistApiRequest.call(this, 'POST', '/threads/remove', {}, qs);
 				}
 				//https://developer.twist.com/v3/#get-thread
 				if (operation === 'get') {
-					const threadId = this.getNodeParameter('threadId', i) as string;
-					qs.id = threadId;
+					qs.id = this.getNodeParameter('threadId', i) as string;
 
 					responseData = await twistApiRequest.call(this, 'GET', '/threads/getone', {}, qs);
 				}
@@ -684,10 +672,10 @@ export class Twist implements INodeType {
 					if (!returnAll) {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
-					if(qs.older_than_ts){
+					if (qs.older_than_ts) {
 						qs.older_than_ts = moment(qs.older_than_ts as string).unix();
 					}
-					if(qs.newer_than_ts){
+					if (qs.newer_than_ts) {
 						qs.newer_than_ts = moment(qs.newer_than_ts as string).unix();
 					}
 
@@ -729,7 +717,7 @@ export class Twist implements INodeType {
 							attachments.push(await twistApiRequest.call(
 								this,
 								'POST',
-								`/attachments/upload`,
+								'/attachments/upload',
 								{},
 								{},
 								{
@@ -750,11 +738,11 @@ export class Twist implements INodeType {
 					}
 
 					if (body.direct_mentions) {
-						const direcMentions: string[] = [];
+						const directMentions: string[] = [];
 						for (const directMention of body.direct_mentions as number[]) {
-							direcMentions.push(`[name](twist-mention://${directMention})`);
+							directMentions.push(`[name](twist-mention://${directMention})`);
 						}
-						body.content = `${direcMentions.join(' ')} ${body.content}`;
+						body.content = `${directMentions.join(' ')} ${body.content}`;
 					}
 
 					responseData = await twistApiRequest.call(this, 'POST', '/threads/update', body);

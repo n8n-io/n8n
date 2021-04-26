@@ -356,7 +356,7 @@ export const messageConversationFields = [
 	/*                                messageConversation:get/delete/update       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Conversation Message ID',
+		displayName: 'Message ID',
 		name: 'id',
 		type: 'string',
 		default: '',
