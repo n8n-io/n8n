@@ -5,7 +5,7 @@
 		<el-button
 			v-if="node && !isReadOnly"
 			:disabled="workflowRunning"
-			@click.stop="runWorkflow(node.name)"
+			@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
 			class="execute-node-button"
 			:title="`Executes this ${node.name} node after executing any previous nodes that have not yet returned data`"
 		>

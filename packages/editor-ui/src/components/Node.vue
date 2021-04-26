@@ -187,7 +187,7 @@ export default mixins(nodeBase, workflowHelpers, externalHooks).extend({
 			this.disableNodes([this.data]);
 		},
 		executeNode () {
-			this.$emit('runWorkflow', this.data.name);
+			this.$emit('runWorkflow', this.data.name, 'Node.executeNode');
 		},
 		deleteNode () {
 			Vue.nextTick(() => {
