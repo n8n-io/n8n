@@ -2,16 +2,15 @@
 	<div v-if="dialogVisible">
 		<el-dialog
 			:visible="dialogVisible"
-			append-to-body
 			:before-close="closeDialog"
+			title="Manage Tags"
+			append-to-body
 		>
-			<template slot="title">
-				<span>Manage Tags&nbsp;&nbsp;</span><font-awesome-icon icon="spinner" class="spinner" spin v-if="isLoading"/>
-			</template>
 			<div class="content" @keydown.stop>
-				<el-row v-if="!isLoading">
+				<el-row>
 					<TagsTable
 						v-if="hasTags || isCreateEnabled"
+						:isLoading="isLoading"
 						:tags="tags"
 						:isCreateEnabled="isCreateEnabled"
 						@enableCreate="enableCreate"
@@ -194,10 +193,6 @@ export default mixins(showMessage).extend({
 
 .content {
 	min-height: 300px;
-}
-
-.spinner {
-	color: $--custom-dialog-text-color;
 }
 
 .notags {

@@ -26,6 +26,7 @@
 			:data="rows"
 			:span-method="getSpan"
 			:row-class-name="getRowClasses"
+			v-loading="isLoading"
 		>
 			<el-table-column label="Name">
 				<template slot-scope="scope">
@@ -59,19 +60,19 @@
 				<template slot-scope="scope">
 					<transition name="fade" mode="out-in">
 						<div class="ops" v-if="scope.row.create">
-							<el-button title="Cancel" @click.stop="disableCreate()" size="small" plain :disabled="isLoading">Cancel</el-button>
-							<el-button title="Create Tag" @click.stop="createTag()" size="small" :loading="isLoading">
+							<el-button title="Cancel" @click.stop="disableCreate()" size="small" plain :disabled="isSaving">Cancel</el-button>
+							<el-button title="Create Tag" @click.stop="createTag()" size="small" :loading="isSaving">
 								Create tag
 							</el-button>
 							
 						</div>
 						<div class="ops" v-else-if="scope.row.update">
-							<el-button title="Cancel" @click.stop="disableUpdate()" size="small" plain :disabled="isLoading">Cancel</el-button>
-							<el-button title="Save Tag" @click.stop="updateTag(scope.row)" size="small" :loading="isLoading">Save changes</el-button>
+							<el-button title="Cancel" @click.stop="disableUpdate()" size="small" plain :disabled="isSaving">Cancel</el-button>
+							<el-button title="Save Tag" @click.stop="updateTag(scope.row)" size="small" :loading="isSaving">Save changes</el-button>
 						</div>
 						<div class="ops" v-else-if="scope.row.delete">
-							<el-button title="Cancel" @click.stop="disableDelete()" size="small" plain :disabled="isLoading">Cancel</el-button>
-							<el-button title="Delete Tag" @click.stop="deleteTag(scope.row)" size="small" :loading="isLoading">Delete tag</el-button>
+							<el-button title="Cancel" @click.stop="disableDelete()" size="small" plain :disabled="isSaving">Cancel</el-button>
+							<el-button title="Delete Tag" @click.stop="deleteTag(scope.row)" size="small" :loading="isSaving">Delete tag</el-button>
 						</div>
 						<div class="ops main" v-else-if="!scope.row.disable">
 							<el-button title="Delete Tag" @click.stop="enableDelete(scope.row)" icon="el-icon-delete" circle></el-button>
@@ -106,6 +107,7 @@ export default Vue.extend({
 		'isCreateEnabled',
 		'deleteId',
 		'updateId',
+		'isLoading',
 	],
 	data() {
 		return {
@@ -113,7 +115,7 @@ export default Vue.extend({
 			newTagName: '',
 			stickyIds: new Set(),
 			maxLength: MAX_TAG_NAME_LENGTH,
-			isLoading: false,
+			isSaving: false,
 		};
 	},
 	computed: {
@@ -175,7 +177,7 @@ export default Vue.extend({
 			return this.$props.isCreateEnabled;
 		},
 		isHeaderDisabled(): boolean {
-			return !!(this.$props.isCreateEnabled || this.$props.updateId || this.$props.deleteId);
+			return this.$props.isLoading || !!(this.$props.isCreateEnabled || this.$props.updateId || this.$props.deleteId);
 		},
 
 		enableUpdate(row: ITagRow): void {
@@ -190,9 +192,9 @@ export default Vue.extend({
 		},
 		updateTag(row: ITagRow): void {
 			if (row.tag) {
-				this.$data.isLoading = true;
+				this.$data.isSaving = true;
 				this.$emit('onUpdate', row.tag.id, this.$data.newTagName.trim(), row.tag.name, () => {
-					this.$data.isLoading = false;
+					this.$data.isSaving = false;
 				});
 			}
 		},
@@ -207,9 +209,9 @@ export default Vue.extend({
 		},
 		deleteTag(row: ITagRow): void {
 			if (row.tag) {
-				this.$data.isLoading = true;
+				this.$data.isSaving = true;
 				this.$emit('onDelete', row.tag.id, row.tag.name, () => {
-					this.$data.isLoading = false;
+					this.$data.isSaving = false;
 				});
 			}
 		},
@@ -222,17 +224,17 @@ export default Vue.extend({
 			this.$emit('disableCreate');
 		},
 		createTag(): void {
-			this.$data.isLoading = true;
+			this.$data.isSaving = true;
 			this.$emit('onCreate', this.$data.newTagName.trim(), (createdId: string | null, error?: Error) => {
 				if (createdId) {
 					this.stickyIds.add(createdId);
 				}
-				this.$data.isLoading = false;
+				this.$data.isSaving = false;
 			});
 		},
 
 		applyOperation(): void {
-			if (this.$data.isLoading) {
+			if (this.$data.isSaving) {
 				return;
 			}
 
@@ -263,7 +265,7 @@ export default Vue.extend({
 			}
 		},
 		cancelOperation(): void {
-			if (this.$data.isLoading) {
+			if (this.$data.isSaving ) {
 				return;
 			}
 
