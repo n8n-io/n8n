@@ -1,24 +1,26 @@
 <template>
 	<span>
 		<el-dialog :visible="dialogVisible" append-to-body width="80%" :before-close="closeDialog" top="5vh">
-			<el-row class="workflows-header">
-				<el-col :span="9">
-					<h1>Open Workflow</h1>
-				</el-col>
-				<el-col :span="6" :offset="5" class="tags-filter">
-					<TagsDropdown 
-						placeholder="Filter by tags..."
-						:currentTagIds="filterTagIds"
-						:createEnabled="false"
-						@onUpdate="updateTagsFilter"
-					/>
-				</el-col>
-				<el-col class="ignore-key-press" :span="4">
-					<el-input placeholder="Workflow filter..." ref="inputFieldFilter" v-model="filterText">
-						<i slot="prefix" class="el-input__icon el-icon-search"></i>
-					</el-input>
-				</el-col>
-			</el-row>
+			<template slot="title">
+				<el-row class="workflows-header">
+					<el-col :span="9">
+						<h1>Open Workflow</h1>
+					</el-col>
+					<el-col :span="6" :offset="5" class="tags-filter">
+						<TagsDropdown 
+							placeholder="Filter by tags..."
+							:currentTagIds="filterTagIds"
+							:createEnabled="false"
+							@onUpdate="updateTagsFilter"
+						/>
+					</el-col>
+					<el-col class="ignore-key-press" :span="4">
+						<el-input placeholder="Workflow filter..." ref="inputFieldFilter" v-model="filterText">
+							<i slot="prefix" class="el-input__icon el-icon-search"></i>
+						</el-input>
+					</el-col>
+				</el-row>
+			</template>
 
 			<el-table class="search-table" :data="filteredWorkflows" stripe @cell-click="openWorkflow" :default-sort = "{prop: 'updatedAt', order: 'descending'}" v-loading="isDataLoading">
 				<el-table-column property="name" label="Name" class-name="clickable" sortable>
@@ -192,18 +194,8 @@ export default mixins(
 </script>
 
 <style scoped lang="scss">
-/deep/ .el-dialog  {
-	.el-dialog__header {
-		padding: 0;
-	}
-	.el-dialog__body {
-		padding-top: 20px;
-	}
-}
-
 .workflows-header {
 	h1 {
-		margin-top: 0;
 		font-weight: 600;
 		line-height: 24px;
 		font-size: 18px;
@@ -215,8 +207,6 @@ export default mixins(
 }
 
 .search-table {
-	margin-top: 2em;
-
 	.name span {
 		margin-right: 10px;
 	}
