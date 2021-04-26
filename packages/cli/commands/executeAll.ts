@@ -70,22 +70,22 @@ export class ExecuteAll extends Command {
 		if (flags.snapshot !== undefined) {
 			if (fs.existsSync(flags.snapshot)) {
 				if (!fs.lstatSync(flags.snapshot).isDirectory()) {
-					console.log(`The paramenter --snapshot must be an existing directory`);
+					console.log(`The parameter --snapshot must be an existing directory`);
 					return;
 				}
 			} else {
-				console.log(`The paramenter --snapshot must be an existing directory`);
+				console.log(`The parameter --snapshot must be an existing directory`);
 				return;
 			}
 		}
 		if (flags.compare !== undefined) {
 			if (fs.existsSync(flags.compare)) {
 				if (!fs.lstatSync(flags.compare).isDirectory()) {
-					console.log(`The paramenter --compare must be an existing directory`);
+					console.log(`The parameter --compare must be an existing directory`);
 					return;
 				}
 			} else {
-				console.log(`The paramenter --compare must be an existing directory`);
+				console.log(`The parameter --compare must be an existing directory`);
 				return;
 			}
 		}
@@ -93,7 +93,7 @@ export class ExecuteAll extends Command {
 		if (flags.output !== undefined) {
 			if (fs.existsSync(flags.output)) {
 				if (fs.lstatSync(flags.output).isDirectory()) {
-					console.log(`The paramenter --output must be a writable file`);
+					console.log(`The parameter --output must be a writable file`);
 					return;
 				}
 			}
