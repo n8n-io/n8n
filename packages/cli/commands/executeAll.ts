@@ -36,6 +36,7 @@ export class ExecuteAll extends Command {
 	static examples = [
 		`$ n8n executeAll`,
 		`$ n8n executeAll --debug --output=/data/output.json`,
+		`$ n8n executeAll --ids=10,13,15`,
 		`$ n8n executeAll --snapshot=/data/snapshots`,
 		`$ n8n executeAll --compare=/data/previousExecutionData`,
 	];
@@ -44,6 +45,9 @@ export class ExecuteAll extends Command {
 		help: flags.help({ char: 'h' }),
 		debug: flags.boolean({
 			description: 'Toggles on displaying all errors and debug messages.',
+		}),
+		ids: flags.string({
+			description: 'Specifies workflow IDs to get executed, separated by a comma.',
 		}),
 		output: flags.string({
 			description: 'Enable execution saving, You must inform an existing folder to save execution via this param',
@@ -61,6 +65,7 @@ export class ExecuteAll extends Command {
 		const { flags } = this.parse(ExecuteAll);
 		
 		const debug = flags.debug !== undefined;
+		const IDs: Array<number> = [];
 
 		if (flags.snapshot !== undefined) {
 			if (fs.existsSync(flags.snapshot)) {
@@ -94,6 +99,19 @@ export class ExecuteAll extends Command {
 			}
 		}
 		
+		if (flags.ids !== undefined) {
+			const ids = flags.ids.split(',');
+			const re = /\d+/;
+			const matchedIDs = ids.filter(id => id.match(re) ).map(id => parseInt(id));
+
+			if (matchedIDs.length === 0) {
+				console.log(`The parameter --ids must be a list of numeric IDs separated by a comma.`);
+				return;
+			}
+
+			IDs.push(...matchedIDs);
+
+		}
 		// Start directly with the init of the database to improve startup time
 		const startDbInitPromise = Db.init();
 		
@@ -104,7 +122,14 @@ export class ExecuteAll extends Command {
 		// Wait till the database is ready
 		await startDbInitPromise;
 		
-		const allWorkflows = await Db.collections!.Workflow!.find();
+		let allWorkflows;
+
+		if (IDs.length !== 0) {
+			allWorkflows = await Db.collections!.Workflow!.findByIds(IDs);
+		} else {
+			allWorkflows = await Db.collections!.Workflow!.find();
+		}
+
 		if (debug === true) {
 			this.log(`Found ${allWorkflows.length} workflows to execute.`);
 		}
