@@ -228,6 +228,7 @@ import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
 import NodeErrorView from '@/components/Error/NodeViewError.vue';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
+import { externalHooks } from "@/components/mixins/externalHooks";
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
@@ -239,6 +240,7 @@ const deselectedPlaceholder = '_!^&*';
 
 export default mixins(
 	copyPaste,
+	externalHooks,
 	genericHelpers,
 	nodeHelpers,
 	workflowRun,
@@ -617,8 +619,9 @@ export default mixins(
 			jsonData () {
 				this.refreshDataSize();
 			},
-			displayMode () {
+			displayMode (newVal, oldVal) {
 				this.closeBinaryDataDisplay();
+				this.$externalHooks().run('runData.displayModeChanged', { newVal, oldVal });
 			},
 			maxRunIndex () {
 				this.runIndex = Math.min(this.runIndex, this.maxRunIndex);
