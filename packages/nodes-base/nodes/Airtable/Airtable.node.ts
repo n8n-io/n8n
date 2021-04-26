@@ -466,31 +466,39 @@ export class Airtable implements INodeType {
 			let options: IDataObject;
 
 			for (let i = 0; i < items.length; i++) {
-				addAllFields = this.getNodeParameter('addAllFields', i) as boolean;
-				options = this.getNodeParameter('options', i, {}) as IDataObject;
+				try {
+					addAllFields = this.getNodeParameter('addAllFields', i) as boolean;
+					options = this.getNodeParameter('options', i, {}) as IDataObject;
 
-				if (addAllFields === true) {
-					// Add all the fields the item has
-					body.fields = items[i].json;
-				} else {
-					// Add only the specified fields
-					body.fields = {} as IDataObject;
+					if (addAllFields === true) {
+						// Add all the fields the item has
+						body.fields = items[i].json;
+					} else {
+						// Add only the specified fields
+						body.fields = {} as IDataObject;
 
-					fields = this.getNodeParameter('fields', i, []) as string[];
+						fields = this.getNodeParameter('fields', i, []) as string[];
 
-					for (const fieldName of fields) {
-						// @ts-ignore
-						body.fields[fieldName] = items[i].json[fieldName];
+						for (const fieldName of fields) {
+							// @ts-ignore
+							body.fields[fieldName] = items[i].json[fieldName];
+						}
 					}
+
+					if (options.typecast === true) {
+						body['typecast'] = true;
+					}
+
+					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					returnData.push(responseData);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.message });
+						continue;
+					}
+					throw error;
 				}
-
-				if (options.typecast === true) {
-					body['typecast'] = true;
-				}
-
-				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-
-				returnData.push(responseData);
 			}
 
 		} else if (operation === 'delete') {
@@ -498,60 +506,74 @@ export class Airtable implements INodeType {
 
 			let id: string;
 			for (let i = 0; i < items.length; i++) {
-				id = this.getNodeParameter('id', i) as string;
+				try {
+					id = this.getNodeParameter('id', i) as string;
 
-				endpoint = `${application}/${table}`;
+					endpoint = `${application}/${table}`;
 
-				// Make one request after another. This is slower but makes
-				// sure that we do not run into the rate limit they have in
-				// place and so block for 30 seconds. Later some global
-				// functionality in core should make it easy to make requests
-				// according to specific rules like not more than 5 requests
-				// per seconds.
-				qs.records = [id];
+					// Make one request after another. This is slower but makes
+					// sure that we do not run into the rate limit they have in
+					// place and so block for 30 seconds. Later some global
+					// functionality in core should make it easy to make requests
+					// according to specific rules like not more than 5 requests
+					// per seconds.
+					qs.records = [id];
 
-				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-				returnData.push(...responseData.records);
+					returnData.push(...responseData.records);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.message });
+						continue;
+					}
+					throw error;
+				}
 			}
 
 		} else if (operation === 'list') {
 			// ----------------------------------
 			//         list
 			// ----------------------------------
+			try {
+				requestMethod = 'GET';
+				endpoint = `${application}/${table}`;
 
-			requestMethod = 'GET';
-			endpoint = `${application}/${table}`;
+				returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
-			returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+				const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
 
-			const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
+				const additionalOptions = this.getNodeParameter('additionalOptions', 0, {}) as IDataObject;
 
-			const additionalOptions = this.getNodeParameter('additionalOptions', 0, {}) as IDataObject;
+				for (const key of Object.keys(additionalOptions)) {
+					if (key === 'sort' && (additionalOptions.sort as IDataObject).property !== undefined) {
+						qs[key] = (additionalOptions[key] as IDataObject).property;
+					} else {
+						qs[key] = additionalOptions[key];
+					}
+				}
 
-			for (const key of Object.keys(additionalOptions)) {
-				if (key === 'sort' && (additionalOptions.sort as IDataObject).property !== undefined) {
-					qs[key] = (additionalOptions[key] as IDataObject).property;
+				if (returnAll === true) {
+					responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 				} else {
-					qs[key] = additionalOptions[key];
+					qs.maxRecords = this.getNodeParameter('limit', 0) as number;
+					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+				}
+
+				returnData.push.apply(returnData, responseData.records);
+
+				if (downloadAttachments === true) {
+					const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
+					const data = await downloadRecordAttachments.call(this, responseData.records, downloadFieldNames);
+					return [data];
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+				} else {
+					throw error;
 				}
 			}
-
-			if (returnAll === true) {
-				responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
-			} else {
-				qs.maxRecords = this.getNodeParameter('limit', 0) as number;
-				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-			}
-
-			returnData.push.apply(returnData, responseData.records);
-
-			if (downloadAttachments === true) {
-				const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
-				const data = await downloadRecordAttachments.call(this, responseData.records, downloadFieldNames);
-				return [data];
-			}
-
 		} else if (operation === 'read') {
 			// ----------------------------------
 			//         read
@@ -561,21 +583,28 @@ export class Airtable implements INodeType {
 
 			let id: string;
 			for (let i = 0; i < items.length; i++) {
+				try {
+					id = this.getNodeParameter('id', i) as string;
 
-				id = this.getNodeParameter('id', i) as string;
+					endpoint = `${application}/${table}/${id}`;
 
-				endpoint = `${application}/${table}/${id}`;
+					// Make one request after another. This is slower but makes
+					// sure that we do not run into the rate limit they have in
+					// place and so block for 30 seconds. Later some global
+					// functionality in core should make it easy to make requests
+					// according to specific rules like not more than 5 requests
+					// per seconds.
 
-				// Make one request after another. This is slower but makes
-				// sure that we do not run into the rate limit they have in
-				// place and so block for 30 seconds. Later some global
-				// functionality in core should make it easy to make requests
-				// according to specific rules like not more than 5 requests
-				// per seconds.
+					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-
-				returnData.push(responseData);
+					returnData.push(responseData);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.message });
+						continue;
+					}
+					throw error;
+				}
 			}
 
 		} else if (operation === 'update') {
@@ -590,54 +619,66 @@ export class Airtable implements INodeType {
 			let fields: string[];
 			let options: IDataObject;
 			for (let i = 0; i < items.length; i++) {
-				updateAllFields = this.getNodeParameter('updateAllFields', i) as boolean;
-				options = this.getNodeParameter('options', i, {}) as IDataObject;
+				try {
+					updateAllFields = this.getNodeParameter('updateAllFields', i) as boolean;
+					options = this.getNodeParameter('options', i, {}) as IDataObject;
 
-				if (updateAllFields === true) {
-					// Update all the fields the item has
-					body.fields = items[i].json;
+					if (updateAllFields === true) {
+						// Update all the fields the item has
+						body.fields = items[i].json;
 
-					if (options.ignoreFields && options.ignoreFields !== '') {
-						const ignoreFields = (options.ignoreFields as string).split(',').map(field => field.trim()).filter(field => !!field);
-						if (ignoreFields.length) {
-							// From: https://stackoverflow.com/questions/17781472/how-to-get-a-subset-of-a-javascript-objects-properties
-							body.fields = Object.entries(items[i].json)
-								.filter(([key]) => !ignoreFields.includes(key))
-								.reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {});
+						if (options.ignoreFields && options.ignoreFields !== '') {
+							const ignoreFields = (options.ignoreFields as string).split(',').map(field => field.trim()).filter(field => !!field);
+							if (ignoreFields.length) {
+								// From: https://stackoverflow.com/questions/17781472/how-to-get-a-subset-of-a-javascript-objects-properties
+								body.fields = Object.entries(items[i].json)
+									.filter(([key]) => !ignoreFields.includes(key))
+									.reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {});
+							}
+						}
+					} else {
+						// Update only the specified fields
+						body.fields = {} as IDataObject;
+
+						fields = this.getNodeParameter('fields', i, []) as string[];
+
+						for (const fieldName of fields) {
+							// @ts-ignore
+							body.fields[fieldName] = items[i].json[fieldName];
 						}
 					}
-				} else {
-					// Update only the specified fields
-					body.fields = {} as IDataObject;
 
-					fields = this.getNodeParameter('fields', i, []) as string[];
+					id = this.getNodeParameter('id', i) as string;
 
-					for (const fieldName of fields) {
-						// @ts-ignore
-						body.fields[fieldName] = items[i].json[fieldName];
+					endpoint = `${application}/${table}`;
+
+					// Make one request after another. This is slower but makes
+					// sure that we do not run into the rate limit they have in
+					// place and so block for 30 seconds. Later some global
+					// functionality in core should make it easy to make requests
+					// according to specific rules like not more than 5 requests
+					// per seconds.
+
+					const data = { records: [{ id, fields: body.fields }], typecast: (options.typecast) ? true : false };
+
+					responseData = await apiRequest.call(this, requestMethod, endpoint, data, qs);
+
+					returnData.push(...responseData.records);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ error: error.message });
+						continue;
 					}
+					throw error;
 				}
-
-				id = this.getNodeParameter('id', i) as string;
-
-				endpoint = `${application}/${table}`;
-
-				// Make one request after another. This is slower but makes
-				// sure that we do not run into the rate limit they have in
-				// place and so block for 30 seconds. Later some global
-				// functionality in core should make it easy to make requests
-				// according to specific rules like not more than 5 requests
-				// per seconds.
-
-				const data = { records: [{ id, fields: body.fields }], typecast: (options.typecast) ? true : false };
-
-				responseData = await apiRequest.call(this, requestMethod, endpoint, data, qs);
-
-				returnData.push(...responseData.records);
 			}
 
 		} else {
-			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+			if (this.continueOnFail()) {
+				returnData.push({ error: `The operation "${operation}" is not known!` });
+			} else {
+				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+			}
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
