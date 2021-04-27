@@ -19,37 +19,10 @@
 						workflow
 					</span>
 				</div>
-				<div class="workflow-details" v-else>
-					<span index="workflow-name" class="current-workflow">
-						<div>
-							<div class="workflow-title">
-								WORKFLOW
-							</div>
-							<div class="workflow-name">
-								<span v-if="currentWorkflow">
-									<a @click="openRenameDialog">
-										<font-awesome-icon icon="edit" />&nbsp;&nbsp;<WorkflowNameShort :name="workflowName"/><span v-if="isDirty">*</span>
-									</a>
-								</span>
-								<span v-else>
-									<a @click="openSaveDialog">
-										<font-awesome-icon icon="edit" />&nbsp;&nbsp;Unsaved workflow
-									</a>
-								</span>
-							</div>
-						</div>
-					</span>
 
-					<el-divider direction="vertical" v-if="currentWorkflowTagIds.length > 0"></el-divider>
-
-
-					<TagContainer :tagIds="currentWorkflowTagIds" />
-
-					<span class="saving-workflow" v-if="isWorkflowSaving">
-						<font-awesome-icon icon="spinner" spin />
-						Saving...
-					</span>
-				</div>
+				<WorkflowDetails 
+					v-else
+				/>
 
 				<div class="push-connection-lost" v-if="!isPushConnectionActive">
 					<el-tooltip placement="bottom-end" effect="light">
@@ -91,15 +64,12 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
+import { mapState } from 'vuex';
 
 import {
 	IExecutionResponse,
-	IExecutionsStopData,
-	IWorkflowDataUpdate,
 } from '../Interface';
-
-import WorkflowActivator from '@/components/WorkflowActivator.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { pushConnection } from '@/components/mixins/pushConnection';
@@ -108,13 +78,9 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
-import { saveAs } from 'file-saver';
-
-import mixins from 'vue-typed-mixins';
-import TagContainer from './TagContainer.vue';
-import { mapGetters, mapState } from 'vuex';
-import WorkflowNameShort from './WorkflowNameShort.vue';
-
+import WorkflowActivator from '@/components/WorkflowActivator.vue';
+import WorkflowNameShort from '@/components/WorkflowNameShort.vue';
+import WorkflowDetails from '@/components/MainHeaderWorkflowDetails.vue';
 
 export default mixins(
 	genericHelpers,
@@ -128,13 +94,10 @@ export default mixins(
 		name: 'MainHeader',
 		components: {
 			WorkflowActivator,
-			TagContainer,
-WorkflowNameShort,
+			WorkflowNameShort,
+			WorkflowDetails,
 		},
 		computed: {
-			...mapGetters('workflows', [
-				'currentWorkflowTagIds',
-			]),
 			...mapState('ui', [
 				'sidebarMenuCollapsed',
 			]),
@@ -172,9 +135,6 @@ WorkflowNameShort,
 			isWorkflowActive (): boolean {
 				return this.$store.getters.isActive;
 			},
-			isWorkflowSaving (): boolean {
-				return this.$store.getters.isActionActive('workflowSaving');
-			},
 			currentWorkflow (): string {
 				return this.$route.params.name;
 			},
@@ -187,17 +147,8 @@ WorkflowNameShort,
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
 			},
-			isDirty () : boolean {
-				return this.$store.getters.getStateIsDirty;
-			},
 		},
 		methods: {
-			openSaveDialog() {
-				this.$store.commit('ui/openSaveAsDialog');
-			},
-			openRenameDialog() {
-				this.$store.commit('ui/openRenameDialog');
-			},
 			async openWorkflow (workflowId: string) {
 				this.$titleSet(this.workflowName, 'IDLE');
 				// Change to other workflow
@@ -304,39 +255,7 @@ WorkflowNameShort,
 	box-sizing: border-box;
 }
 
-.workflow-details {
-	display: flex;
-	align-items: center;
-	margin-left: 16px;
-
-	> * {
-		margin-right: 16px;
-	}
-
-	.el-divider {
-		min-height: 30px;
-	}
-
-	.saving-workflow {
-		display: inline-block;
-		padding: 0 15px;
-		color: $--color-primary;
-		background-color: $--color-primary-light;
-		line-height: 30px;
-		height: 30px;
-		border-radius: 15px;
-	}
-
-	.workflow-title {
-		font-size: 9px;
-		font-weight: 600;
-		letter-spacing: 0.75px;
-		color: #5A5E66;
-	}
-}
-
-.current-execution,
-.current-workflow {
+.current-execution {
 	vertical-align: top;
 }
 
