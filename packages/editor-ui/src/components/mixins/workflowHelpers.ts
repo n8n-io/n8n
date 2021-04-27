@@ -366,66 +366,69 @@ export const workflowHelpers = mixins(
 				return workflow.expression.getParameterValue(expression, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', true);
 			},
 
-			// Saves the currently loaded workflow to the database.
-			// if withNewName is false, then it should attempt to save current workflow. if this is a new workflow, then it should open dialog
-			// if withNewName is true but newName is not given, it should open dialog
-			// if withNewName is true but newName is given, it should save it with new name
-			async saveCurrentWorkflow (withNewName = false, newName?: string, tags?: string[]) {
+			async saveCurrentWorkflow() {
 				const currentWorkflow = this.$route.params.name;
-				let workflowName: string | null | undefined = '';
-				if (withNewName === true && !!newName) {
-					workflowName = newName;
-				}
-				else if (currentWorkflow === undefined || withNewName === true) {
-					// Currently no workflow name is set to get it from user
+				if (!currentWorkflow) {
+					// brand new workflow, ask for name
 					this.$store.commit('ui/openSaveAsDialog');
 
 					return;
 				}
 
+				// Workflow exists already so update it
 				try {
 					this.$store.commit('addActiveAction', 'workflowSaving');
 
 					const workflowDataRequest: IWorkflowDataUpdate = await this.getWorkflowDataToSave();
-					let workflowData: IWorkflowDb;
+					const workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest);
+
+					this.$store.commit('removeActiveAction', 'workflowSaving');
+					this.$store.commit('setStateDirty', false);
+					this.$showMessage({
+						title: 'Workflow saved',
+						message: `The workflow "${workflowData.name}" got saved!`,
+						type: 'success',
+					});
+					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+				} catch (e) {
+					this.$store.commit('removeActiveAction', 'workflowSaving');
+
+					this.$showMessage({
+						title: 'Problem saving workflow',
+						message: `There was a problem saving the workflow: "${e.message}"`,
+						type: 'error',
+					});
+				}
+			},
+
+			async saveAsNewWorkflow (name: string, tags?: string[]) {
+				try {
+					this.$store.commit('addActiveAction', 'workflowSaving');
+
+					const workflowDataRequest: IWorkflowDataUpdate = await this.getWorkflowDataToSave();
+					// make sure that the new ones are not active
+					workflowDataRequest.active = false;
+					workflowDataRequest.name = name.trim();
 
 					if (tags) {
 						workflowDataRequest.tags = tags;
 					}
+					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
 
-					if (currentWorkflow === undefined || withNewName === true) {
-						// Workflow is new or is supposed to get saved under a new name
-						// so create a new entry in database
-						workflowDataRequest.name = workflowName!.trim() as string;
+					this.$store.commit('setActive', workflowData.active || false);
+					this.$store.commit('setWorkflowId', workflowData.id);
+					this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
+					this.$store.commit('setWorkflowSettings', workflowData.settings || {});
+					this.$store.commit('setStateDirty', false);
 
-						if (withNewName === true) {
-							// If an existing workflow gets resaved with a new name
-							// make sure that the new ones is not active
-							workflowDataRequest.active = false;
-						}
+					const createdTags = (workflowData.tags || []) as ITag[];
+					const tagIds = createdTags.map((tag: ITag): string => tag.id);
+					this.$store.commit('setWorkflowTagIds', tagIds || [])
 
-						workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
-
-						this.$store.commit('setActive', workflowData.active || false);
-						this.$store.commit('setWorkflowId', workflowData.id);
-						this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
-						this.$store.commit('setWorkflowSettings', workflowData.settings || {});
-						this.$store.commit('setStateDirty', false);
-
-						const tags = (workflowData.tags || []) as ITag[];
-						const tagIds = tags.map((tag: ITag): string => tag.id);
-						this.$store.commit('setWorkflowTagIds', tagIds || []);
-					} else {
-						// Workflow exists already so update it
-						workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest);
-					}
-
-					if (this.$route.params.name !== workflowData.id) {
-						this.$router.push({
-							name: 'NodeViewExisting',
-							params: { name: workflowData.id as string, action: 'workflowSave' },
-						});
-					}
+					this.$router.push({
+						name: 'NodeViewExisting',
+						params: { name: workflowData.id as string, action: 'workflowSave' },
+					});
 
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 					this.$store.commit('setStateDirty', false);

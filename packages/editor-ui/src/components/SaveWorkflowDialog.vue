@@ -19,9 +19,9 @@
 				</el-row>
 				<el-row>
 					<TagsDropdown
+						:createEnabled="true"
 						:currentTagIds="currentTagIds"
 						@onUpdate="onTagsUpdate"
-						createEnabled
 						placeholder="Choose or create a tag"
 					/>
 				</el-row>
@@ -116,7 +116,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 				}
 			}
 			else {
-				await this.saveCurrentWorkflow(true, name, this.currentTagIds);
+				await this.saveAsNewWorkflow(name, this.currentTagIds);
 
 				this.$emit("closeDialog");
 			}
