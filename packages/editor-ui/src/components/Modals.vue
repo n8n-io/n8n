@@ -9,8 +9,8 @@
 		<SaveWorkflowDialog
 			v-if="renameDialogOpen"
 			:dialogVisible="renameDialogOpen"
-			@closeDialog="closeRenameDialog"
 			:renameOnly="true"
+			@closeDialog="closeRenameDialog"
 			title="Rename workflow"
 		/>
 		<TagsManager

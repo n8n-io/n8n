@@ -118,7 +118,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			else {
 				await this.saveAsNewWorkflow(name, this.currentTagIds);
 
-				this.$emit("closeDialog");
+				this.closeDialog();
 			}
 			this.$data.isSaving = false;
 		},

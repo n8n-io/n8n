@@ -48,12 +48,13 @@
 </template>
 
 <script lang="ts">
-import { mapGetters, mapState } from "vuex";
-import { ITag } from "@/Interface";
-import { showMessage } from "@/components/mixins/showMessage";
-
 import mixins from "vue-typed-mixins";
+import { mapGetters } from "vuex";
+
+import { ITag } from "@/Interface";
 import { MAX_TAG_NAME_LENGTH } from "@/constants";
+
+import { showMessage } from "@/components/mixins/showMessage";
 
 const MANAGE_KEY = "__manage";
 const CREATE_KEY = "__create";
@@ -97,11 +98,12 @@ export default mixins(showMessage).extend({
 		filterOptions(filter = "") {
 			this.$data.filter = filter.trim();
 			this.$nextTick(() => {
-				if (this.$refs.create) {
+				// @ts-ignore // focus on create option to allow, by updating element internal state 😞
+				if (this.$refs.create && this.$refs.create.hoverItem) {
 					// @ts-ignore
 					this.$refs.create.hoverItem();
 				}
-				// @ts-ignore
+				// @ts-ignore // focus on top option after filter, by updating element internal state 😞
 				else if (this.$refs.tag && this.$refs.tag[0]) {
 					// @ts-ignore
 					this.$refs.tag[0].hoverItem();
@@ -114,10 +116,15 @@ export default mixins(showMessage).extend({
 				const newTag = await this.$store.dispatch("tags/create", name);
 				this.$emit("onUpdate", [...this.$props.currentTagIds, newTag.id]);
 				this.$nextTick(() => {
-					const added: any = ((this.$refs.tag || []) as Vue[]).find((ref: any) => ref.value === newTag.id);
-					if (added && added.$el && added.$el.scrollIntoView && added.hoverItem) {
-						added.$el.scrollIntoView();
-						added.hoverItem();
+					const tagOptions = (this.$refs.tag as Vue[]) || [];
+					if (tagOptions && tagOptions.length) {
+					const added = tagOptions.find((ref: any) => ref.value === newTag.id);
+						// @ts-ignore // focus on newly created item
+						if (added && added.$el && added.$el.scrollIntoView && added.hoverItem) {
+							// @ts-ignore
+							added.hoverItem();
+							added.$el.scrollIntoView();
+						}
 					}
 				});
 
@@ -143,7 +150,6 @@ export default mixins(showMessage).extend({
 				this.$data.filter = "";
 				this.$store.commit("ui/openTagsManager");
 			} else if (ops === CREATE_KEY) {
-				// @ts-ignore
 				this.onCreate();
 			} else {
 				this.$emit("onUpdate", selected);
@@ -152,6 +158,7 @@ export default mixins(showMessage).extend({
 	},
 	watch: {
 		tags() {
+			// keep applied tags in sync with store
 			// for example in case tag is deleted from store
 			this.$emit("onUpdate", this.appliedTags);
 		},
