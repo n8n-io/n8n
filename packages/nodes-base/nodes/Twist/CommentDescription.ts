@@ -48,7 +48,7 @@ export const commentOperations = [
 
 export const commentFields = [
 	/*-------------------------------------------------------------------------- */
-	/*                                comment:add                                 */
+	/*                                comment:create                             */
 	/* ------------------------------------------------------------------------- */
 	{
 		displayName: 'Thread ID',
@@ -244,11 +244,10 @@ export const commentFields = [
 				default: false,
 				description: 'Displays the integration as the comment creator.',
 			},
-						
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  comment:get/remove                         */
+	/*                                  comment:get/delete                        */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Comment ID',
@@ -377,7 +376,7 @@ export const commentFields = [
 				description: 'If enabled, only the ids of the comments are returned.',
 			},
 			{
-				displayName: 'Ending object index',
+				displayName: 'Ending Object Index',
 				name: 'to_obj_index',
 				type: 'number',
 				default: 50,
@@ -415,7 +414,7 @@ export const commentFields = [
 				description: 'The order of the comments returned - one of DESC or ASC.',
 			},
 			{
-				displayName: 'Starting object index',
+				displayName: 'Starting Object Index',
 				name: 'from_obj_index',
 				type: 'number',
 				default: 0,

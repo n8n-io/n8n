@@ -498,7 +498,7 @@ export class Twist implements INodeType {
 				if (operation === 'getAll') {
 					const conversationId = this.getNodeParameter('conversationId', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					qs.conversation_id= conversationId;
+					qs.conversation_id = conversationId;
 					Object.assign(qs, additionalFields);
 
 					responseData = await twistApiRequest.call(this, 'GET', '/conversation_messages/get', {}, qs);

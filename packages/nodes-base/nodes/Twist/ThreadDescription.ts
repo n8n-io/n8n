@@ -48,7 +48,7 @@ export const threadOperations = [
 
 export const threadFields = [
 	/*-------------------------------------------------------------------------- */
-	/*                                thread:add                                 */
+	/*                                thread:create                              */
 	/* ------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel ID',
@@ -258,7 +258,7 @@ export const threadFields = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  thread:get/remove                         */
+	/*                                  thread:get/delete                         */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Thread ID',
@@ -384,7 +384,7 @@ export const threadFields = [
 				name: 'as_ids',
 				type: 'boolean',
 				default: false,
-				description: 'If enabled, only the ids of the threads are returned.',
+				description: 'If enabled, only the IDs of the threads are returned.',
 			},
 			{
 				displayName: 'Filter By',

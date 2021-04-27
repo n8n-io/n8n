@@ -313,7 +313,7 @@ export const messageConversationFields = [
 		description: 'Other options to set.',
 		options: [
 			{
-				displayName: 'Ending object index',
+				displayName: 'Ending Object Index',
 				name: 'to_obj_index',
 				type: 'number',
 				default: 50,
@@ -344,7 +344,7 @@ export const messageConversationFields = [
 				],
 			},
 			{
-				displayName: 'Starting object index',
+				displayName: 'Starting Object Index',
 				name: 'from_obj_index',
 				type: 'number',
 				default: 0,
