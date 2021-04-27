@@ -114,7 +114,7 @@ export default mixins(showMessage).extend({
 				}
 				
 				const updatedTag = await this.$store.dispatch("tags/rename", { id, name });
-				cb(!!updatedTag)
+				cb(!!updatedTag);
 
 				this.$showMessage({
 					title: "Tag was updated",

@@ -457,6 +457,15 @@ export interface ITag {
 	usageCount?: number;
 }
 
+export interface ITagRow {
+	tag?: ITag;
+	usage?: string;
+	create?: boolean;
+	disable?: boolean;
+	update?: boolean;
+	delete?: boolean;
+}
+
 export interface IRootState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];

@@ -118,7 +118,7 @@ export default mixins(showMessage).extend({
 				this.$nextTick(() => {
 					const tagOptions = (this.$refs.tag as Vue[]) || [];
 					if (tagOptions && tagOptions.length) {
-					const added = tagOptions.find((ref: any) => ref.value === newTag.id);
+						const added = tagOptions.find((ref: any) => ref.value === newTag.id); // tslint:disable-line:no-any
 						// @ts-ignore // focus on newly created item
 						if (added && added.$el && added.$el.scrollIntoView && added.hoverItem) {
 							// @ts-ignore
