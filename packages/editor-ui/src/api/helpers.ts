@@ -3,6 +3,7 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 import {
+	IRestApiContext,
 	IRootState,
 } from '../Interface';
 import { ActionContext, Store } from 'vuex';
@@ -42,17 +43,9 @@ class ResponseError extends Error {
 	}
 }
 
-export default async function makeRestApiRequest(context: ActionContext<any, IRootState> | Store<IRootState>, method: Method, endpoint: string, data?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export default async function makeRestApiRequest(context: IRestApiContext, method: Method, endpoint: string, data?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	try {
-		let baseURL = context.getters.getRestUrl;
-		let sessionid = context.getters.sessionId;
-
-		if ((context as ActionContext<any, IRootState>).rootGetters) { // tslint:disable-line:no-any
-			const actionContext = context as ActionContext<any, IRootState>; // tslint:disable-line:no-any
-			baseURL = actionContext.rootGetters.getRestUrl;
-			sessionid = actionContext.rootGetters.sessionId;
-		}
-
+		const {baseURL, sessionid} = context;
 		const options: AxiosRequestConfig = {
 			method,
 			url: endpoint,

@@ -19,7 +19,7 @@ const module: Module<IWorkflowsState, IRootState> = {
 		renameCurrent: async (context: ActionContext<IWorkflowsState, IRootState>, {name, tags}: {name: string, tags: ITag[]}) => {
 			const currentId = context.rootGetters.workflowId;
 
-			await renameWorkflow(context, currentId, { name, tags });
+			await renameWorkflow(context.rootGetters.getRestApiContext, currentId, { name, tags });
 
 			context.commit('setWorkflowName', { newName: name, setStateDirty: false }, { root: true });
 			context.commit('setWorkflowTagIds', tags, {root: true});

@@ -61,26 +61,26 @@ const module: Module<ITagsState, IRootState> = {
 			}
 
 			context.commit('setLoading', true);
-			const tags = await getTags(context, !!withUsageCount);
+			const tags = await getTags(context.rootGetters.getRestApiContext, !!withUsageCount);
 			context.commit('setAllTags', tags);
 			context.commit('setLoading', false);
 
 			return tags;
 		},
 		create: async (context: ActionContext<ITagsState, IRootState>, name: string) => {
-			const tag = await createTag(context, {name});
+			const tag = await createTag(context.rootGetters.getRestApiContext, {name});
 			context.commit('upsertTags', [tag]);
 
 			return tag;
 		},
 		rename: async (context: ActionContext<ITagsState, IRootState>, params: {name: string, id: string}) => {
-			const tag = await updateTag(context, params.id, {name: params.name});
+			const tag = await updateTag(context.rootGetters.getRestApiContext, params.id, {name: params.name});
 			context.commit('upsertTags', [tag]);
 
 			return tag;
 		}, 
 		delete: async (context: ActionContext<ITagsState, IRootState>, id: string) => {
-			const deleted = await deleteTag(context, id);
+			const deleted = await deleteTag(context.rootGetters.getRestApiContext, id);
 
 			if (deleted) {
 				context.commit('deleteTag', id);

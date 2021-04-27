@@ -511,3 +511,8 @@ export interface IUiState {
 	tagsManagerOpen: boolean;
 	sidebarMenuCollapsed: boolean;
 }
+
+export interface IRestApiContext {
+	baseURL: string;
+	sessionid: string;
+}

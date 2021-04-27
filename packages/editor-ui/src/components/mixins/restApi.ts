@@ -62,7 +62,7 @@ export const restApi = Vue.extend({
 			const self = this;
 			return {
 				async makeRestApiRequest (method: Method, endpoint: string, data?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-					return makeRestApiRequest(self.$store, method, endpoint, data);
+					return makeRestApiRequest(self.$store.getters.getRestApiContext, method, endpoint, data);
 				},
 				getActiveWorkflows: (): Promise<string[]> => {
 					return self.restApi().makeRestApiRequest('GET', `/active`);

@@ -1,19 +1,18 @@
-import { IRootState, ITag, ITagsState } from '@/Interface';
-import { ActionContext } from 'vuex';
+import { IRestApiContext, ITag } from '@/Interface';
 import makeRestApiRequest from './helpers';
 
-export async function getTags(context: ActionContext<ITagsState, IRootState>, withUsageCount = false): Promise<ITag[]> {
+export async function getTags(context: IRestApiContext, withUsageCount = false): Promise<ITag[]> {
 	return await makeRestApiRequest(context, 'GET', '/tags', {withUsageCount});
 }
 
-export async function createTag(context: ActionContext<ITagsState, IRootState>, params: { name: string }): Promise<ITag> {
+export async function createTag(context: IRestApiContext, params: { name: string }): Promise<ITag> {
 	return await makeRestApiRequest(context, 'POST', '/tags', params);
 }
 
-export async function updateTag(context: ActionContext<ITagsState, IRootState>, id: string, params: { name: string }) {
+export async function updateTag(context: IRestApiContext, id: string, params: { name: string }) {
 	return await makeRestApiRequest(context, 'PATCH', `/tags/${id}`, params);
 }
 
-export async function deleteTag(context: ActionContext<ITagsState, IRootState>, id: string) {
+export async function deleteTag(context: IRestApiContext, id: string) {
 	return await makeRestApiRequest(context, 'DELETE', `/tags/${id}`);
 }

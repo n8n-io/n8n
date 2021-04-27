@@ -31,6 +31,7 @@ import {
 	IWorkflowDb,
 	XYPositon,
 	ITag,
+	IRestApiContext,
 } from './Interface';
 
 import tags from './modules/tags';
@@ -642,6 +643,16 @@ export const store = new Vuex.Store({
 				endpoint = process.env.VUE_APP_ENDPOINT_REST;
 			}
 			return `${state.baseUrl}${endpoint}`;
+		},
+		getRestApiContext(state): IRestApiContext {
+			let endpoint = 'rest';
+			if (process.env.VUE_APP_ENDPOINT_REST) {
+				endpoint = process.env.VUE_APP_ENDPOINT_REST;
+			}
+			return {
+				baseURL: `${state.baseUrl}${endpoint}`,
+				sessionid: state.sessionId,
+			};
 		},
 		getWebhookBaseUrl: (state): string => {
 			return state.urlBaseWebhook;
