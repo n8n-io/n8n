@@ -1,16 +1,19 @@
 import {
 	ExecutionError,
+	IConnections,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
+	INode,
 	IRun,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
 	IWorkflowBase as IWorkflowBaseWorkflow,
 	IWorkflowCredentials,
+	IWorkflowSettings,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -25,6 +28,8 @@ import { ObjectID, Repository } from 'typeorm';
 import { ChildProcess } from 'child_process';
 import { Url } from 'url';
 import { Request } from 'express';
+import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { TagEntity } from './databases/entities/TagEntity';
 
 export interface IActivationError {
 	time: number;
@@ -57,9 +62,9 @@ export interface ICredentialsOverwrite {
 export interface IDatabaseCollections {
 	Credentials: Repository<ICredentialsDb> | null;
 	Execution: Repository<IExecutionFlattedDb> | null;
-	Workflow: Repository<IWorkflowDb> | null;
+	Workflow: Repository<WorkflowEntity> | null;
 	Webhook: Repository<IWebhookDb> | null;
-	Tag: Repository<ITagDb> | null;
+	Tag: Repository<TagEntity> | null;
 }
 
 export interface IWebhookDb {
@@ -82,21 +87,60 @@ export interface ITagDb {
 	updatedAt: Date;
 }
 
-export interface ITagRes {
+export interface IShortTag {
 	id: string;
 	name: string;
 }
 
-type UsageCount = {
+export type UsageCount = {
 	usageCount: number
 };
 
 export type ITagWithCountDb = ITagDb & UsageCount;
 
-export type ITagWithCountRes = ITagRes & UsageCount;
+export type ITagWithCount = IShortTag & UsageCount;
 
 // ----------------------------------
 //            workflows
+// ----------------------------------
+
+interface IWorkflowRequestPayload {
+	name: string;
+	active: boolean;
+	connections: IConnections;
+	nodes: INode[];
+	settings?: IWorkflowSettings;
+	staticData?: IDataObject;
+	tags: string[];
+}
+
+export interface ICreateWorkflowRequest extends Request {
+	body: IWorkflowRequestPayload;
+}
+
+export interface IGetWorkflowsRequest extends Request {
+	query: {
+		filter: string;
+	};
+}
+
+export interface IUpdateWorkflowRequest extends Request {
+	body: {
+		id: number;
+	} & IWorkflowRequestPayload;
+}
+
+export interface IShortWorkflow extends IWorkflowBase {
+	id: string;
+	name: string;
+	active: boolean;
+	createdAt: Date;
+	updatedAt: Date;
+	tags: IShortTag[];
+}
+
+// ----------------------------------
+//       original from Jan
 // ----------------------------------
 
 export interface IWorkflowBase extends IWorkflowBaseWorkflow {
@@ -108,88 +152,6 @@ export interface IWorkflowDb extends IWorkflowBase {
 	id: number | string | ObjectID;
 	tags: ITagDb[];
 }
-
-export interface IWorkflowResponse extends IWorkflowBase {
-	id: string;
-	tags: ITagRes[];
-}
-
-export interface IWorkflowShortResponse {
-	id: string;
-	name: string;
-	active: boolean;
-	createdAt: Date;
-	updatedAt: Date;
-}
-
-// export interface IWorkflowDb {
-// 	id: number;
-// 	name: string;
-// 	active: boolean;
-// 	connections: IConnections;
-// 	nodes: INode[];
-// 	createdAt: Date;
-// 	updatedAt: Date;
-// 	settings?: IWorkflowSettings;
-// 	staticData?: IDataObject;
-// 	tags: ITagDb[];
-// }
-
-// export interface IWorkflowRes {
-// 	id: string;
-// 	name: string;
-// 	active: boolean;
-// 	connections: IConnections;
-// 	nodes: INode[];
-// 	createdAt: Date;
-// 	updatedAt: Date;
-// 	settings?: IWorkflowSettings;
-// 	staticData?: IDataObject;
-// 	tags?: ITagRes[];
-// }
-
-export interface IGetWorkflowsRequest extends Request {
-	query: {
-		filter: string;
-	};
-}
-
-// export interface ICreateWorkflowRequest extends Request {
-// 	body: IWorkflowBase & { tags: string[] }
-	// body: {
-	// 	id?: number;
-	// 	name: string;
-	// 	active: boolean;
-	// 	connections: IConnections;
-	// 	nodes: INode[];
-	// 	createdAt: Date;
-	// 	updatedAt: Date;
-	// 	settings?: IWorkflowSettings;
-	// 	staticData?: IDataObject;
-	// 	tags: string[];
-	// };
-// }
-
-// export interface IUpdateWorkflowRequest extends Request {
-// 	body: {
-// 		id: number;
-// 		name: string;
-// 		active: boolean;
-// 		connections: IConnections;
-// 		nodes: INode[];
-// 		createdAt: Date;
-// 		updatedAt: Date;
-// 		settings?: IWorkflowSettings;
-// 		staticData?: IDataObject;
-// 		tags: string[];
-// 	};
-// }
-
-// export interface ICreateTagRequest {
-// 	body: {
-// 		name: string;
-// 	};
-// }
 
 // ----------------------------------
 //            credentials

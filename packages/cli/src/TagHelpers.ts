@@ -3,8 +3,7 @@ import { getConnection } from "typeorm";
 import { validate } from 'class-validator';
 
 import {
-	ITagDb,
-	ITagRes,
+	IShortTag,
 	ResponseHelper,
 } from ".";
 
@@ -13,10 +12,10 @@ import {
 } from "./databases/entities/TagEntity";
 
 import {
+	IShortWorkflow,
+	ITagWithCount,
 	ITagWithCountDb,
-	ITagWithCountRes,
 	IWorkflowDb,
-	IWorkflowResponse,
 } from "./Interfaces";
 
 
@@ -25,46 +24,36 @@ import {
 // ----------------------------------
 
 /**
- * Format `ITagDb[]` into `ITagRes[]`.
+ * Format `TagEntity` into `ShortTag`.
  */
-export function toTagsRes(tags: ITagDb[]): ITagRes[] {
-	return tags.map(({ id, name }) => ({ id: id.toString(), name }));
+export function shortenTag({ id, name }: TagEntity): IShortTag {
+	return ({ id: id.toString(), name });
 }
 
 /**
- * Format `TagWithCountDb[]` into `ITagWithCountRes[]`.
+ * Create a cloned object without a property.
  */
-export function toTagsWithCount(tagsWithCount: ITagWithCountDb[]): ITagWithCountRes[] {
-	return tagsWithCount.map(({ id, name, usageCount }) => ({ id: id.toString(), name, usageCount }));
-}
+export const omit = (keyToOmit: string, { [keyToOmit]: _, ...omittedPropObj }) => omittedPropObj;
 
-/**
- * Create an cloned object without a property.
- */
-const omit = (keyToOmit: string, { [keyToOmit]: _, ...omittedPropObj }) => omittedPropObj;
-
-/**
- * Format `IWorkflowDb` into `IWorkflowResponse`.
- */
-export function toWorkflowRes(workflowDb: IWorkflowDb) {
-	const workflowRes = omit('tags', workflowDb) as IWorkflowResponse;
+export function shortenWorkflow(workflowDb: IWorkflowDb) {
+	const workflowRes = omit('tags', workflowDb) as IShortWorkflow;
 	workflowRes.id = workflowDb.id.toString();
 
 	if (workflowDb.tags.length) {
-		workflowRes.tags = toTagsRes(workflowDb.tags);
+		workflowRes.tags = workflowDb.tags.map(shortenTag);
 	}
 
 	return workflowRes;
 }
 
 /**
- * Sort an `ITagDb[]` by the order of the tag IDs in the incoming request.
+ * Sort a `TagEntity[]` by the order of the tag IDs in the incoming request.
  */
-export function sortByRequestOrder(tagsDb: ITagDb[], tagIds: string[]) {
+export function sortByRequestOrder(tagsDb: TagEntity[], tagIds: string[]) {
 	const tagMap = tagsDb.reduce((acc, tag) => {
 		acc[tag.id.toString()] = tag;
 		return acc;
-	}, {} as { [key: string]: ITagDb });
+	}, {} as { [key: string]: TagEntity });
 
 	return tagIds.map(tagId => tagMap[tagId]);
 }

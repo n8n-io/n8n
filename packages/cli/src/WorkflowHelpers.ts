@@ -82,7 +82,7 @@ export function isWorkflowIdValid (id: string | null | undefined | number): bool
 export async function executeErrorWorkflow(workflowId: string, workflowErrorData: IWorkflowErrorData): Promise<void> {
 	// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 	try {
-		const workflowData = await Db.collections.Workflow!.findOne({ id: workflowId });
+		const workflowData = await Db.collections.Workflow!.findOne({ id: Number(workflowId) });
 
 		if (workflowData === undefined) {
 			// The error workflow could not be found
