@@ -3,21 +3,12 @@
 		@keyup.enter="applyOperation()"
 		@keyup.esc="cancelOperation()"
 	>
-		<el-row class="tags-header">
-			<el-col :span="10">
-				<el-input placeholder="Search tags" v-model="search" :disabled="isHeaderDisabled()" clearable :maxlength="maxLength">
-					<i slot="prefix" class="el-input__icon el-icon-search"></i>
-				</el-input>
-			</el-col>
-			<el-col :span="14">
-				<el-button @click="enableCreate" :disabled="isHeaderDisabled()" plain>
-					<font-awesome-icon icon="plus" />
-					<div class="next-icon-text">
-						Add new
-					</div>
-				</el-button>
-			</el-col>
-		</el-row>
+		<TagsTableHeader
+			:search="search"
+			:disabled="isHeaderDisabled()"
+			@searchChange="onSearchChange"
+			@addNew="enableCreate"
+		/>
 		<el-table 
 			stripe
 			max-height="450"
@@ -64,7 +55,6 @@
 							<el-button title="Create Tag" @click.stop="createTag()" size="small" :loading="isSaving">
 								Create tag
 							</el-button>
-							
 						</div>
 						<div class="ops" v-else-if="scope.row.update">
 							<el-button title="Cancel" @click.stop="disableUpdate()" size="small" plain :disabled="isSaving">Cancel</el-button>
@@ -90,6 +80,7 @@
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import { ITag } from '@/Interface';
 import Vue from 'vue';
+import TagsTableHeader from './TagsTableHeader.vue';
 
 interface ITagRow {
 	tag?: ITag;
@@ -104,6 +95,7 @@ const INPUT_TRANSITION_TIMEOUT = 300;
 const DELETE_TRANSITION_TIMEOUT = 100;
 
 export default Vue.extend({
+  components: { TagsTableHeader },
 	name: 'TagsTable',
 	props: [
 		'tags',
@@ -114,7 +106,7 @@ export default Vue.extend({
 			createEnabled: false,
 			deleteId: '',
 			updateId: '',
-			searchValue: '',
+			search: '',
 			newTagName: '',
 			stickyIds: new Set(),
 			maxLength: MAX_TAG_NAME_LENGTH,
@@ -131,7 +123,7 @@ export default Vue.extend({
 			return this.$props.tags.length === 0 || this.createEnabled;
 		},
 		rows(): ITagRow[] {
-			const filter = this.search;
+			const filter = this.$data.search;
 			const tagRows = this.tags
 				.filter((tag: ITag) => this.stickyIds.has(tag.id) || tag.name.toLowerCase().trim().includes(filter.toLowerCase().trim() || ''))
 				.map((tag: ITag): ITagRow => ({
@@ -144,17 +136,12 @@ export default Vue.extend({
 
 			return this.isCreateEnabled || this.tags.length === 0 ? [{create: true}, ...tagRows] : tagRows;
 		},
-		search: {
-			get(): string {
-				return this.$data.searchValue;
-			},
-			set(search: string) {
-				this.stickyIds.clear();
-				this.$data.searchValue = search;
-			},
-		},
 	},
 	methods: {
+		onSearchChange(search: string): void {
+			this.$data.stickyIds.clear();
+			this.$data.search = search;
+		},
 		getRowClasses: ({row}: {row: ITagRow}): string => {
 			return row.disable ? 'disabled' : '';
 		},
@@ -373,14 +360,6 @@ export default Vue.extend({
 
 /deep/ tr:hover .ops:not(.disabled) .el-button {
 	display: block;
-}
-
-.tags-header {
-	margin-bottom: 15px;
-
-	.el-button {
-		float: right;
-	}
 }
 
 /deep/ .el-input.is-disabled > input {

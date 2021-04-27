@@ -33,7 +33,7 @@
 import { ITag } from "@/Interface";
 
 import { showMessage } from "@/components/mixins/showMessage";
-import TagsTable from "@/components/TagsManagerTagsTable.vue";
+import TagsTable from "@/components/TagsManagerTagsView.vue";
 import NoTagsView from "@/components/TagsManagerNoTagsView.vue";
 
 import mixins from "vue-typed-mixins";
