@@ -8,6 +8,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -334,13 +335,13 @@ export class SpreadsheetFile implements INodeType {
 				}
 
 				if (workbook.SheetNames.length === 0) {
-					throw new Error('Spreadsheet does not have any sheets!');
+					throw new NodeOperationError(this.getNode(), 'Spreadsheet does not have any sheets!');
 				}
 
 				let sheetName = workbook.SheetNames[0];
 				if (options.sheetName) {
 					if (!workbook.SheetNames.includes(options.sheetName as string)) {
-						throw new Error(`Spreadsheet does not contain sheet called "${options.sheetName}"!`);
+						throw new NodeOperationError(this.getNode(), `Spreadsheet does not contain sheet called "${options.sheetName}"!`);
 					}
 					sheetName = options.sheetName as string;
 				}
@@ -442,7 +443,7 @@ export class SpreadsheetFile implements INodeType {
 
 			return this.prepareOutputData(newItems);
 		} else {
-			throw new Error(`The operation "${operation}" is not supported!`);
+			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 		}
 	}
 }

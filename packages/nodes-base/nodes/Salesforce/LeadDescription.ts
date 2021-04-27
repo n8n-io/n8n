@@ -157,7 +157,7 @@ export const leadFields = [
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getLeadCustomFields',
+									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
 								description: 'The ID of the field to add custom field to.',
@@ -251,7 +251,7 @@ export const leadFields = [
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getUsers',
+					loadOptionsMethod: 'getLeadOwners',
 				},
 				default: '',
 				description: 'The owner of the lead.',
@@ -408,7 +408,7 @@ export const leadFields = [
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getLeadCustomFields',
+									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
 								description: 'The ID of the field to add custom field to.',
@@ -509,7 +509,7 @@ export const leadFields = [
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getUsers',
+					loadOptionsMethod: 'getLeadOwners',
 				},
 				default: '',
 				description: 'The owner of the lead.',

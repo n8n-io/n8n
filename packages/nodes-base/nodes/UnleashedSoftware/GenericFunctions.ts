@@ -11,7 +11,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -43,7 +43,7 @@ export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctio
 	const credentials = this.getCredentials('unleashedSoftwareApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const signature = createHmac('sha256', (credentials.apiKey as string))
@@ -58,13 +58,10 @@ export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctio
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.description) {
-			throw new Error(`Unleashed Error response [${error.statusCode}]: ${error.response.body.description}`);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
+
 export async function unleashedApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];

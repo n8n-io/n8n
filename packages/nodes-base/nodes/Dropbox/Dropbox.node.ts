@@ -8,11 +8,13 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	dropboxApiRequest,
 	dropboxpiRequestAllItems,
+	getCredentials,
 	getRootDirectory,
 	simplify,
 } from './GenericFunctions';
@@ -793,15 +795,20 @@ export class Dropbox implements INodeType {
 		let headers: IDataObject = {};
 		let simple = false;
 
-		// get the root directory to set it as the default search folder
-		const { root_info: { root_namespace_id } } = await getRootDirectory.call(this);
 
-		headers = {
-			'dropbox-api-path-root': JSON.stringify({
-				'.tag': 'root',
-				'root': root_namespace_id,
-			}),
-		};
+		const { accessType } = getCredentials.call(this);
+
+		if (accessType === 'full') {
+			// get the root directory to set it as the default for all operations
+			const { root_info: { root_namespace_id } } = await getRootDirectory.call(this);
+
+			headers = {
+				'dropbox-api-path-root': JSON.stringify({
+					'.tag': 'root',
+					'root': root_namespace_id,
+				}),
+			};
+		}
 
 		for (let i = 0; i < items.length; i++) {
 			body = {};
@@ -843,13 +850,13 @@ export class Dropbox implements INodeType {
 						const item = items[i];
 
 						if (item.binary === undefined) {
-							throw new Error('No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
 
 						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
 						if (item.binary[propertyNameUpload] === undefined) {
-							throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
 						}
 
 						body = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING);
@@ -974,7 +981,7 @@ export class Dropbox implements INodeType {
 					endpoint = 'https://api.dropboxapi.com/2/files/move_v2';
 				}
 			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 			}
 
 			if (resource === 'file' && operation === 'download') {
@@ -1026,6 +1033,10 @@ export class Dropbox implements INodeType {
 					'size': 'contentSize',
 					'.tag': 'type',
 					'content_hash': 'contentHash',
+					'path_lower': 'pathLower',
+					'path_display': 'pathDisplay',
+					'has_explicit_shared_members': 'hasExplicitSharedMembers',
+					'is_downloadable': 'isDownloadable',
 				};
 
 				if (returnAll === false) {

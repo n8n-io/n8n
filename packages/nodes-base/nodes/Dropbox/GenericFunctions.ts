@@ -8,7 +8,7 @@ import {
 } from 'request';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 /**
@@ -51,20 +51,7 @@ export async function dropboxApiRequest(this: IHookFunctions | IExecuteFunctions
 			return await this.helpers.requestOAuth2.call(this, 'dropboxOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Dropbox credentials are not valid!');
-		}
-
-		if (error.error && error.error.error_summary) {
-			// Try to return the error prettier
-			throw new Error(
-				`Dropbox error response [${error.statusCode}]: ${error.error.error_summary}`,
-			);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -114,4 +101,12 @@ export function simplify(data: IDataObject[]) {
 	return results;
 }
 
+export function getCredentials(this: IExecuteFunctions) {
+	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
+	if (authenticationMethod === 'accessToken') {
+		return this.getCredentials('dropboxApi') as IDataObject;
+	} else {
+		return this.getCredentials('dropboxOAuth2Api') as IDataObject;
+	}
+}
 

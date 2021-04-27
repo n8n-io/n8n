@@ -11,6 +11,7 @@ import {
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 const BEEMINDER_URI = 'https://www.beeminder.com/api/v1';
@@ -40,10 +41,7 @@ export async function beeminderApiRequest(this: IExecuteFunctions | IWebhookFunc
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error?.message) {
-			throw new Error(`Beeminder error response [${error.statusCode}]: ${error.message}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

@@ -1,4 +1,4 @@
-import { 
+import {
 	OptionsWithUri,
 } from 'request';
 
@@ -12,6 +12,8 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -21,18 +23,18 @@ import {
 	IShoppingLine,
 } from './OrderInterface';
 
-import { 
+import {
 	createHash,
 } from 'crypto';
 
-import { 
+import {
 	snakeCase,
 } from 'change-case';
 
 export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('wooCommerceApi');
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 	let options: OptionsWithUri = {
 		auth: {
@@ -49,22 +51,11 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 		delete options.form;
 	}
 	options = Object.assign({}, options, option);
-	
+
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The WooCommerce credentials are not valid!');
-		}
-
-		if (error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			throw new Error(`WooCommerce Error [${error.statusCode}]: ${error.response.body.message}`);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw new Error('WooCommerce Error: ' + error.message);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

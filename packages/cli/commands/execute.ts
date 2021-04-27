@@ -21,7 +21,7 @@ import {
 	WorkflowCredentials,
 	WorkflowHelpers,
 	WorkflowRunner,
-} from "../src";
+} from '../src';
 
 
 export class Execute extends Command {
@@ -127,7 +127,7 @@ export class Execute extends Command {
 		// Check if the workflow contains the required "Start" node
 		// "requiredNodeTypes" are also defined in editor-ui/views/NodeView.vue
 		const requiredNodeTypes = ['n8n-nodes-base.start'];
-		let startNode: INode | undefined= undefined;
+		let startNode: INode | undefined = undefined;
 		for (const node of workflowData!.nodes) {
 			if (requiredNodeTypes.includes(node.type)) {
 				startNode = node;
@@ -167,10 +167,11 @@ export class Execute extends Command {
 				this.log('====================================');
 				this.log(JSON.stringify(data, null, 2));
 
-				// console.log(data.data.resultData.error);
-				const error = new Error(data.data.resultData.error.message);
-				error.stack = data.data.resultData.error.stack;
-				throw error;
+				const { error } = data.data.resultData;
+				throw {
+					...error,
+					stack: error.stack,
+				};
 			}
 
 			this.log('Execution was successfull:');
@@ -182,7 +183,6 @@ export class Execute extends Command {
 			console.error(e.message);
 			console.error(e.stack);
 			this.exit(1);
-			return;
 		}
 
 		this.exit();
