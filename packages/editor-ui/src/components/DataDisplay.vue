@@ -50,12 +50,15 @@ import {
 } from '../Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
+import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
 import mixins from 'vue-typed-mixins';
 
-export default mixins(externalHooks).extend({
+export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	name: 'DataDisplay',
 	components: {
 		NodeSettings,
@@ -80,12 +83,15 @@ export default mixins(externalHooks).extend({
 			return 'https://docs.n8n.io/nodes/' + (this.nodeType.documentationUrl || this.nodeType.name) + '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=' + this.nodeType.name;
 		},
 		node (): INodeUi {
-			return this.$store.getters.activeNode;
+			const activeNode = this.$store.getters.activeNode;
+			return activeNode;
 		},
 		nodeType (): INodeTypeDescription | null {
 			const activeNode = this.node;
 			if (this.node) {
-				return this.$store.getters.nodeType(this.node.type);
+				const nodeType = this.$store.getters.nodeType(this.node.type);
+				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(this.$store.getters.nodeByName(activeNode.name), nodeType, this.getWorkflow()) });
+				return nodeType;
 			}
 
 			return null;

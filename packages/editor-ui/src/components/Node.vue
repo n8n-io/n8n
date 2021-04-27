@@ -36,8 +36,8 @@
 			<div class="node-name" :title="data.name">
 				{{data.name}}
 			</div>
-			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
-				{{nodeSubtitle}}
+			<div v-if="getNodeSubtitle(this.data, this.nodeType, this.workflow) !== undefined" class="node-subtitle" :title="getNodeSubtitle(this.data, this.nodeType, this.workflow)">
+				{{getNodeSubtitle(this.data, this.nodeType, this.workflow)}}
 			</div>
 		</div>
 	</div>
@@ -46,8 +46,8 @@
 <script lang="ts">
 
 import Vue from 'vue';
-import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
+import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import {
@@ -63,7 +63,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 
 import mixins from 'vue-typed-mixins';
 
-export default mixins(nodeBase, workflowHelpers, externalHooks).extend({
+export default mixins(nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Node',
 	components: {
 		NodeIcon,
@@ -133,43 +133,6 @@ export default mixins(nodeBase, workflowHelpers, externalHooks).extend({
 				return 'play';
 			}
 		},
-		nodeSubtitle (): string | undefined {
-			if (this.data.notesInFlow) {
-				return this.data.notes;
-			}
-
-			if (this.nodeType !== null && this.nodeType.subtitle !== undefined) {
-				return this.workflow.expression.getSimpleParameterValue(this.data as INode, this.nodeType.subtitle, 'internal') as string | undefined;
-			}
-
-			if (this.data.parameters.operation !== undefined) {
-				const operation = this.data.parameters.operation as string;
-				if (this.nodeType === null) {
-					return operation;
-				}
-
-				const operationData = this.nodeType.properties.find((property) => {
-					return property.name === 'operation';
-				});
-				if (operationData === undefined) {
-					return operation;
-				}
-
-				if (operationData.options === undefined) {
-					return operation;
-				}
-
-				const optionData = operationData.options.find((option) => {
-					return (option as INodePropertyOptions).value === this.data.parameters.operation;
-				});
-				if (optionData === undefined) {
-					return operation;
-				}
-
-				return optionData.name;
-			}
-			return undefined;
-		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
 		},
@@ -203,7 +166,6 @@ export default mixins(nodeBase, workflowHelpers, externalHooks).extend({
 		},
 		setNodeActive () {
 			this.$store.commit('setActiveNode', this.data.name);
-			this.$externalHooks().run('nodeView.activeNodeChanged', { source: 'node' });
 		},
 		touchStart () {
 			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {
