@@ -98,13 +98,13 @@ export default mixins(showMessage).extend({
 		filterOptions(filter = "") {
 			this.$data.filter = filter.trim();
 			this.$nextTick(() => {
-				// @ts-ignore // focus on create option to allow, by updating element internal state 😞
+				// @ts-ignore // focus on create option to allow
 				if (this.$refs.create && this.$refs.create.hoverItem) {
 					// @ts-ignore
 					this.$refs.create.hoverItem();
 				}
-				// @ts-ignore // focus on top option after filter, by updating element internal state 😞
-				else if (this.$refs.tag && this.$refs.tag[0]) {
+				// @ts-ignore // focus on top option after filter
+				else if (this.$refs.tag && this.$refs.tag[0] && this.$refs.tag[0].hoverItem) {
 					// @ts-ignore
 					this.$refs.tag[0].hoverItem();
 				}

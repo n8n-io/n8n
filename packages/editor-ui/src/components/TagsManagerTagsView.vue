@@ -1,102 +1,43 @@
 <template>
-	<div @keyup.enter="applyOperation()" @keyup.esc="cancelOperation()">
+	<div @keyup.enter="applyOperation" @keyup.esc="cancelOperation" :rows="rows">
 		<TagsTableHeader
 			:search="search"
 			:disabled="isHeaderDisabled()"
 			@searchChange="onSearchChange"
-			@addNew="enableCreate"
+			@createEnable="onCreateEnable"
 		/>
-		<el-table
-			stripe
-			max-height="450"
-			ref="table"
-			empty-text="No matching tags exist"
-			:data="rows"
-			:span-method="getSpan"
-			:row-class-name="getRowClasses"
-			v-loading="isLoading"
-		>
-			<el-table-column label="Name">
-				<template slot-scope="scope">
-					<div class="name" :key="scope.row.id">
-						<transition name="fade" mode="out-in">
-							<el-input
-								v-if="scope.row.create || scope.row.update"
-								v-model="newTagName"
-								:maxlength="maxLength"
-								ref="nameInput"
-							></el-input>
-							<span v-else-if="scope.row.delete">Are you sure you want to delete this tag?</span>
-							<span v-else :class="{disabled: scope.row.disable}">
-								{{scope.row.tag.name}}
-							</span>
-						</transition>
-					</div>
-				</template>
-			</el-table-column>
-			<el-table-column label="Usage">
-				<template slot-scope="scope">
-					<transition name="fade" mode="out-in">
-							<div v-if="!scope.row.create && !scope.row.delete" :class="{disabled: scope.row.disable}">
-								{{scope.row.usage}}
-							</div>
-						</transition>
-					</template>
-			</el-table-column>
-			<el-table-column width="200">
-				<template slot-scope="scope">
-					<transition name="fade" mode="out-in">
-						<div class="ops" v-if="scope.row.create">
-							<el-button title="Cancel" @click.stop="disableCreate()" size="small" plain :disabled="isSaving">Cancel</el-button>
-							<el-button title="Create Tag" @click.stop="createTag()" size="small" :loading="isSaving">
-								Create tag
-							</el-button>
-						</div>
-						<div class="ops" v-else-if="scope.row.update">
-							<el-button title="Cancel" @click.stop="disableUpdate()" size="small" plain :disabled="isSaving">Cancel</el-button>
-							<el-button title="Save Tag" @click.stop="updateTag(scope.row)" size="small" :loading="isSaving">Save changes</el-button>
-						</div>
-						<div class="ops" v-else-if="scope.row.delete">
-							<el-button title="Cancel" @click.stop="disableDelete()" size="small" plain :disabled="isSaving">Cancel</el-button>
-							<el-button title="Delete Tag" @click.stop="deleteTag(scope.row)" size="small" :loading="isSaving">Delete tag</el-button>
-						</div>
-						<div class="ops main" v-else-if="!scope.row.disable">
-							<el-button title="Delete Tag" @click.stop="enableDelete(scope.row)" icon="el-icon-delete" circle></el-button>
-							<el-button title="Edit Tag" @click.stop="enableUpdate(scope.row)" icon="el-icon-edit" circle></el-button>
-						</div>
-					</transition>
-				</template>
-			</el-table-column>
-		</el-table>
-		<input ref="deleteHiddenInput" class="hidden" />
+		<TagsTable
+			:rows="rows"
+			:isLoading="isLoading"
+			:isSaving="isSaving"
+
+			:newName="newName"
+			@newNameChange="onNewNameChange"
+
+			@updateEnable="onUpdateEnable"
+			@deleteEnable="onDeleteEnable"
+
+			@cancelOperation="cancelOperation"
+			@applyOperation="applyOperation"
+
+			ref="tagsTable"
+		/>
 	</div>
 </template>
 
 <script lang="ts">
-import { MAX_TAG_NAME_LENGTH } from "@/constants";
-import { ITag } from "@/Interface";
 import Vue from "vue";
-import TagsTableHeader from "./TagsTableHeader.vue";
 
-interface ITagRow {
-	tag?: ITag;
-	usage?: string;
-	create?: boolean;
-	disable?: boolean;
-	update?: boolean;
-	delete?: boolean;
-}
-
-const INPUT_TRANSITION_TIMEOUT = 300;
-const DELETE_TRANSITION_TIMEOUT = 100;
+import { ITag, ITagRow } from "@/Interface";
+import TagsTableHeader from "@/components/TagsTableHeader.vue";
+import TagsTable from "@/components/TagsViewTagsTable.vue";
 
 const matches = (name: string, filter: string) => name.toLowerCase().trim().includes(filter.toLowerCase().trim());
-
 const getUsage = (count: number | undefined) => count && count > 0 ? `${count} workflow${count > 1 ? "s" : ""}` : 'Not being Used';
 
 export default Vue.extend({
-	components: { TagsTableHeader },
-	name: "TagsTable",
+	components: { TagsTableHeader, TagsTable },
+	name: "TagsView",
 	props: ["tags", "isLoading"],
 	data() {
 		return {
@@ -104,82 +45,39 @@ export default Vue.extend({
 			deleteId: "",
 			updateId: "",
 			search: "",
-			newTagName: "",
+			newName: "",
 			stickyIds: new Set(),
-			maxLength: MAX_TAG_NAME_LENGTH,
 			isSaving: false,
 		};
 	},
-	mounted() {
-		if (this.$props.tags.length === 0) {
-			this.focusOnInput();
-		}
-	},
 	computed: {
 		isCreateEnabled(): boolean {
-			return this.$props.tags.length === 0 || this.createEnabled;
+			return (this.$props.tags || []).length === 0 || this.$data.createEnabled;
 		},
 		rows(): ITagRow[] {
-			const filter = this.$data.search;
-			const tagRows = this.tags
-				.filter((tag: ITag) => this.stickyIds.has(tag.id) || matches(tag.name, filter))
+			const disabled = this.isCreateEnabled || this.$data.updateId || this.$data.deleteId;
+			const tagRows = (this.$props.tags || [])
+				.filter((tag: ITag) => this.stickyIds.has(tag.id) || matches(tag.name, this.$data.search))
 				.map((tag: ITag): ITagRow => ({
 					tag,
 					usage: getUsage(tag.usageCount),
-					disable: this.isTagDisabled(tag.id),
-					update: this.isUpdateEnabled(tag.id),
-					delete: this.isDeleteEnabled(tag.id),
+					disable: disabled && tag.id !== this.deleteId && tag.id !== this.$data.updateId,
+					update: disabled && tag.id === this.$data.updateId,
+					delete: disabled && tag.id === this.$data.deleteId,
 				}));
 
-			return this.isCreateEnabled || this.tags.length === 0
+			return this.isCreateEnabled
 				? [{ create: true }, ...tagRows]
 				: tagRows;
 		},
 	},
 	methods: {
+		onNewNameChange(name: string): void {
+			this.newName = name;
+		},
 		onSearchChange(search: string): void {
 			this.$data.stickyIds.clear();
 			this.$data.search = search;
-		},
-		getRowClasses: ({ row }: { row: ITagRow }): string => {
-			return row.disable ? "disabled" : "";
-		},
-		getSpan({row, columnIndex}: {row: ITagRow, columnIndex: number}): number | number[] {
-			// expand text column with delete message
-			if (columnIndex === 0 && row.tag && this.isDeleteEnabled(row.tag.id)) {
-				return [1, 2];
-			}
-			// hide usage column on delete
-			if (columnIndex === 1 && row.tag && this.isDeleteEnabled(row.tag.id)) {
-				return [0, 0];
-			}
-
-			return 1;
-		},
-		isUpdateEnabled(tagId: string): boolean {
-			return (
-				!this.isCreateEnabled &&
-				!!this.$data.updateId &&
-				tagId === this.$data.updateId
-			);
-		},
-		isDeleteEnabled(tagId: string): boolean {
-			return (
-				!this.isCreateEnabled &&
-				!!this.$data.deleteId &&
-				tagId === this.$data.deleteId
-			);
-		},
-		isTagDisabled(tagId: string): boolean {
-			if (this.$data.updateId && tagId !== this.$data.updateId) {
-				return true;
-			}
-
-			if (this.$data.deleteId && tagId !== this.$data.deleteId) {
-				return true;
-			}
-
-			return this.isCreateEnabled;
 		},
 		isHeaderDisabled(): boolean {
 			return (
@@ -187,80 +85,55 @@ export default Vue.extend({
 				!!(this.isCreateEnabled || this.$data.updateId || this.$data.deleteId)
 			);
 		},
-		focusOnInput(): void {
-			setTimeout(() => {
-				const input = this.$refs.nameInput as any; // tslint:disable-line:no-any
-				if (input && input.focus) {
-					input.focus();
-				}
-			}, INPUT_TRANSITION_TIMEOUT);
-		},
 
-		enableUpdate(row: ITagRow): void {
-			if (row.tag) {
-				this.updateId = row.tag.id;
-				this.newTagName = row.tag.name;
-				this.focusOnInput();
-			}
+		onUpdateEnable(updateId: string): void {
+			this.updateId = updateId;
 		},
 		disableUpdate(): void {
 			this.updateId = "";
-			this.newTagName = "";
+			this.newName = "";
 		},
-		updateTag(row: ITagRow): void {
-			if (row.tag) {
-				this.$data.isSaving = true;
-				const updateId = row.tag.id;
-				const newName = this.newTagName.trim();
-				const oldName = row.tag.name;
-				const onUpdate = (updated: boolean) => {
-					this.$data.isSaving = false;
-					if (updated) {
-						this.stickyIds.add(updateId);
-						this.disableUpdate();
-					}
-				}; 
+		updateTag(): void {
+			this.$data.isSaving = true;
+			const name = this.newName.trim();
+			const onUpdate = (updated: boolean) => {
+				this.$data.isSaving = false;
+				if (updated) {
+					this.stickyIds.add(this.updateId);
+					this.disableUpdate();
+				}
+			}; 
 
-				this.$emit("onUpdate", updateId, newName, oldName, onUpdate);
-			}
+			this.$emit("update", this.updateId, name, onUpdate);
 		},
 
-		enableDelete(row: ITagRow): void {
-			if (row.tag) {
-				this.deleteId = row.tag.id;
-
-				setTimeout(() => {
-					const input = this.$refs.deleteHiddenInput as any; // tslint:disable-line:no-any
-					if (input && input.focus) {
-						input.focus();
-					}
-				}, DELETE_TRANSITION_TIMEOUT);
-			}
+		onDeleteEnable(deleteId: string): void {
+			this.deleteId = deleteId;
 		},
 		disableDelete(): void {
 			this.deleteId = "";
 		},
-		deleteTag(row: ITagRow): void {
-			if (row.tag) {
-				this.$data.isSaving = true;
-				const deleteId = row.tag.id;
-				const name = row.tag.name;
-				const onDelete =  (deleted: boolean) => {
-					if (deleted) {
-						this.disableDelete();
-					}
-					this.$data.isSaving = false;
-				};
+		deleteTag(): void {
+			this.$data.isSaving = true;
+			const onDelete =  (deleted: boolean) => {
+				if (deleted) {
+					this.disableDelete();
+				}
+				this.$data.isSaving = false;
+			};
 
-				this.$emit("onDelete", deleteId, name, onDelete);
-			}
+			this.$emit("delete", this.deleteId, onDelete);
 		},
 
-		enableCreate(): void {
+		onCreateEnable(): void {
 			this.$data.createEnabled = true;
-			this.$data.newTagName = "";
-			((this.$refs.table as Vue).$refs.bodyWrapper as Element).scrollTop = 0;
-			this.focusOnInput();
+			this.$data.newName = "";
+
+			// @ts-ignore
+			if (this.$refs.tagsTable && this.$refs.tagsTable.focusOnCreate) {
+				// @ts-ignore
+				this.$refs.tagsTable.focusOnCreate();
+			}
 		},
 		disableCreate(): void {
 			this.$data.createEnabled = false;
@@ -268,7 +141,7 @@ export default Vue.extend({
 		},
 		createTag(): void {
 			this.$data.isSaving = true;
-			const name = this.$data.newTagName.trim();
+			const name = this.$data.newName.trim();
 			const onCreate = (created: ITag | null, error?: Error) => {
 				if (created) {
 					this.stickyIds.add(created.id);
@@ -277,121 +150,37 @@ export default Vue.extend({
 				this.$data.isSaving = false;
 			};
 
-			this.$emit("onCreate", name, onCreate);
+			this.$emit("create", name, onCreate);
 		},
 
 		applyOperation(): void {
 			if (this.$data.isSaving) {
 				return;
 			}
-
-			if (this.isCreateEnabled) {
+			else if (this.isCreateEnabled) {
 				this.createTag();
-
-				return;
 			}
-
-			if (this.$data.updateId) {
-				const row = this.rows.find((row) => row.tag && row.tag.id === this.$data.updateId);
-
-				if (row) {
-					this.updateTag(row);
-				}
-
-				return;
+			else if (this.$data.updateId) {
+				this.updateTag();
 			}
-
-			if (this.$data.deleteId) {
-				const row = this.rows.find((row) => row.tag && row.tag.id === this.$data.deleteId);
-
-				if (row) {
-					this.deleteTag(row);
-				}
-
-				return;
+			else if (this.$data.deleteId) {
+				this.deleteTag();
 			}
 		},
 		cancelOperation(): void {
 			if (this.$data.isSaving) {
 				return;
 			}
-
-			if (this.isCreateEnabled) {
+			else if (this.isCreateEnabled) {
 				this.disableCreate();
-
-				return;
 			}
-
-			if (this.$data.updateId) {
+			else if (this.$data.updateId) {
 				this.disableUpdate();
-
-				return;
 			}
-
-			if (this.$data.deleteId) {
+			else if (this.$data.deleteId) {
 				this.disableDelete();
-
-				return;
 			}
 		},
 	},
 });
 </script>
-
-<style lang="scss" scoped>
-@import "../styles/mixins";
-
-.name {
-	min-height: 45px;
-	display: flex;
-	align-items: center;
-
-	/deep/ input {
-		border: 1px solid $--color-primary;
-		background: white;
-	}
-}
-
-.ops {
-	@include flex-vert-center;
-	min-height: 45px;
-	justify-content: flex-end;
-}
-
-.disabled {
-	color: #afafaf;
-}
-
-.hidden {
-	position: absolute;
-	z-index: 0;
-	opacity: 0;
-}
-
-.ops.main > .el-button {
-	display: none;
-	float: right;
-	margin-left: 5px;
-}
-
-/deep/ tr.disabled {
-	pointer-events: none;
-}
-
-/deep/ tr:hover .ops:not(.disabled) .el-button {
-	display: block;
-}
-
-/deep/ .el-input.is-disabled > input {
-	border: none;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-	transition: opacity 0.2s;
-}
-.fade-enter,
-.fade-leave-to {
-	opacity: 0;
-}
-</style>

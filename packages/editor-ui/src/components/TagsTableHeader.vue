@@ -40,7 +40,7 @@ export default Vue.extend({
 	},
 	methods: {
 		onAddNew() {
-			this.$emit("addNew");
+			this.$emit("createEnable");
 		},
 		onSearchChange(search: string) {
 			this.$emit("searchChange", search);

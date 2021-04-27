@@ -8,17 +8,18 @@
 		>
 			<div class="content" @keydown.stop>
 				<el-row>
-					<TagsTable
+					<TagsView
 						v-if="hasTags || isCreating"
 						:isLoading="isLoading"
 						:tags="tags"
-						@onCreate="onCreate"
-						@onUpdate="onUpdate"
-						@onDelete="onDelete"
-						@disableCreate="disableCreate"
+
+						@create="onCreate"
+						@update="onUpdate"
+						@delete="onDelete"
+						@disableCreate="onDisableCreate"
 					/>
 					<NoTagsView 
-						@enableCreate="enableCreate"
+						@enableCreate="onEnableCreate"
 						v-else />
 				</el-row>
 			</div>
@@ -33,7 +34,7 @@
 import { ITag } from "@/Interface";
 
 import { showMessage } from "@/components/mixins/showMessage";
-import TagsTable from "@/components/TagsManagerTagsView.vue";
+import TagsView from "@/components/TagsManagerTagsView.vue";
 import NoTagsView from "@/components/TagsManagerNoTagsView.vue";
 
 import mixins from "vue-typed-mixins";
@@ -55,7 +56,7 @@ export default mixins(showMessage).extend({
 		};
 	},
 	components: {
-		TagsTable,
+		TagsView,
 		NoTagsView,
 	},
 	computed: {
@@ -69,11 +70,11 @@ export default mixins(showMessage).extend({
 		},
 	},
 	methods: {
-		enableCreate() {
+		onEnableCreate() {
 			this.$data.isCreating = true;
 		},
 
-		disableCreate() {
+		onDisableCreate() {
 			this.$data.isCreating = false;
 		},
 
@@ -102,7 +103,10 @@ export default mixins(showMessage).extend({
 			}
 		},
 
-		async onUpdate(id: string, name: string, oldName: string, cb: (tag: boolean, error?: Error) => void) {
+		async onUpdate(id: string, name: string, cb: (tag: boolean, error?: Error) => void) {
+			const tag = this.$store.getters['tags/getTagById'](id);
+			const oldName = tag.name;
+
 			try {
 				if (!name) {
 					throw new Error("Tag name was not set");
@@ -131,7 +135,10 @@ export default mixins(showMessage).extend({
 			}
 		},
 
-		async onDelete(id: string, name: string, cb: (deleted: boolean, error?: Error) => void) {
+		async onDelete(id: string, cb: (deleted: boolean, error?: Error) => void) {
+			const tag = this.$store.getters['tags/getTagById'](id);
+			const name = tag.name;
+
 			try {
 				const deleted = await this.$store.dispatch("tags/delete", id);
 				if (!deleted) {
