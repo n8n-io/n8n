@@ -73,7 +73,7 @@ export async function pgQuery(
 		valuesArray = paramsItems.map((row) => properties.map(col => row[col])) as string[][];
 	}
 
-	const allQueries = [] as {query: string, values?: string[]}[];
+	const allQueries = [] as Array<{query: string, values?: string[]}>;
 	for (let i = 0; i < items.length; i++) {
 		const query = getNodeParam('query', i) as string;
 		const values = valuesArray[i];
@@ -81,7 +81,6 @@ export async function pgQuery(
 		allQueries.push(queryFormat);
 	}
 
-	// return queryResults;
 	const additionalFields = getNodeParam('additionalFields', 0) as IDataObject;
 	const mode = overrideMode ? overrideMode : (additionalFields.mode ?? 'multiple') as string;
 	if (mode === 'multiple') {
