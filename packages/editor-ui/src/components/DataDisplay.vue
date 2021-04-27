@@ -83,18 +83,22 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 			return 'https://docs.n8n.io/nodes/' + (this.nodeType.documentationUrl || this.nodeType.name) + '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=' + this.nodeType.name;
 		},
 		node (): INodeUi {
-			const activeNode = this.$store.getters.activeNode;
-			return activeNode;
+			return this.$store.getters.activeNode;
 		},
 		nodeType (): INodeTypeDescription | null {
 			const activeNode = this.node;
 			if (this.node) {
-				const nodeType = this.$store.getters.nodeType(this.node.type);
-				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(this.$store.getters.nodeByName(activeNode.name), nodeType, this.getWorkflow()) });
-				return nodeType;
+				return this.$store.getters.nodeType(this.node.type);
 			}
 
 			return null;
+		},
+	},
+	watch: {
+		node (node, oldNode) {
+			if(node && !oldNode) {
+				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(node, this.nodeType, this.getWorkflow()) });
+			}
 		},
 	},
 	methods: {
