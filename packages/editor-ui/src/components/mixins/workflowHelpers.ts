@@ -236,6 +236,7 @@ export const workflowHelpers = mixins(
 					connections: workflowConnections,
 					active: this.$store.getters.isActive,
 					settings: this.$store.getters.workflowSettings,
+					tags: this.$store.getters.workflowTags,
 				};
 
 				const workflowId = this.$store.getters.workflowId;

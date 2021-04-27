@@ -847,6 +847,10 @@ export const store = new Vuex.Store({
 			return state.workflow.settings;
 		},
 
+		workflowTags: (state): string[] => {
+			return (state.workflow.tags as string[]) || [];
+		},
+
 		// Workflow Result Data
 		getWorkflowExecution: (state): IExecutionResponse | null => {
 			return state.workflowExecutionData;

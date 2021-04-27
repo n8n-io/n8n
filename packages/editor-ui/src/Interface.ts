@@ -208,6 +208,7 @@ export interface IWorkflowData {
 	nodes: INode[];
 	connections: IConnections;
 	settings?: IWorkflowSettings;
+	tags?: string[];
 }
 
 export interface IWorkflowDataUpdate {
