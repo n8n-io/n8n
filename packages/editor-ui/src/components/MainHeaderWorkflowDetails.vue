@@ -1,11 +1,11 @@
 <template>
     <div class="workflow-details">
-        <span index="workflow-name" class="current-workflow">
+        <span>
             <div>
                 <div class="workflow-title">
                     WORKFLOW
                 </div>
-                <div class="workflow-name">
+                <div class="primary-color clickable">
                     <span v-if="currentWorkflow">
                         <a @click="openRenameDialog">
                             <font-awesome-icon icon="edit" />&nbsp;&nbsp;<WorkflowNameShort :name="workflowName"/><span v-if="isDirty">*</span>
@@ -88,10 +88,6 @@ export default Vue.extend({
 
 .el-divider {
     min-height: 30px;
-}
-
-.current-workflow {
-	vertical-align: top;
 }
 
 .saving-workflow {

@@ -13,7 +13,7 @@
 							<font-awesome-icon icon="times" class="execution-icon error" v-else title="Execution did fail" />
 						</span>
 							of
-						<span class="workflow-name clickable" title="Open Workflow">
+						<span class="primary-color clickable" title="Open Workflow">
 							<span @click="openWorkflow(workflowExecution.workflowId)"><WorkflowNameShort :name="workflowName"/></span>
 						</span>
 						workflow
@@ -240,11 +240,6 @@ export default mixins(
 		line-height: 65px;
 		margin-right: 5em;
 		right: 0;
-	}
-
-	.workflow-name {
-		color: $--color-primary;
-		cursor: pointer;
 	}
 }
 
