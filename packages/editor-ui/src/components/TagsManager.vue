@@ -17,17 +17,9 @@
 						@onDelete="onDelete"
 						@disableCreate="disableCreate"
 					/>
-					<el-col class="notags" :span="16" :offset="4" v-else>
-						<div class="icon">🗄️</div>
-						<div>
-							<div class="headline">Ready to organize your workflows?</div>
-							<div class="description">
-								With workflow tags, you're free to create the perfect tagging
-								system for your flows
-							</div>
-						</div>
-						<el-button @click="enableCreate"> Create a tag </el-button>
-					</el-col>
+					<NoTagsView 
+						@enableCreate="enableCreate"
+						v-else />
 				</el-row>
 			</div>
 			<el-row class="footer">
@@ -42,6 +34,7 @@ import { ITag } from "@/Interface";
 
 import { showMessage } from "@/components/mixins/showMessage";
 import TagsTable from "@/components/TagsManagerTagsTable.vue";
+import NoTagsView from "@/components/TagsManagerNoTagsView.vue";
 
 import mixins from "vue-typed-mixins";
 import { mapGetters } from "vuex";
@@ -63,6 +56,7 @@ export default mixins(showMessage).extend({
 	},
 	components: {
 		TagsTable,
+		NoTagsView,
 	},
 	computed: {
 		...mapGetters("tags", ["isLoading"]),
@@ -182,32 +176,6 @@ export default mixins(showMessage).extend({
 
 .content {
 	min-height: 300px;
-}
-
-.notags {
-	word-break: normal;
-	text-align: center;
-	padding-top: 32px;
-
-	> * {
-		margin-bottom: 32px;
-	}
-
-	.icon {
-		font-size: 36px;
-		line-height: 14px;
-	}
-
-	.headline {
-		font-size: 17.6px;
-		color: black;
-		margin-bottom: 12px;
-	}
-
-	.description {
-		font-size: 14px;
-		line-height: 21px;
-	}
 }
 
 .footer {
