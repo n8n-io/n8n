@@ -549,7 +549,7 @@ export default mixins(
 
 	&.logo-item {
 		background-color: $--color-primary !important;
-		height: 65px;
+		height: $--main-header-height;
 
 		.icon {
 			position: relative;

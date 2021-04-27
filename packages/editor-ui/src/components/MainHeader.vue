@@ -207,7 +207,7 @@ export default mixins(
 	position: relative;
 	font-size: 0.9em;
 	width: 100%;
-	height: 65px; // same as logo in sidebar
+	height: $--main-header-height;
 	font-weight: 400;
 
 	.center-item {
