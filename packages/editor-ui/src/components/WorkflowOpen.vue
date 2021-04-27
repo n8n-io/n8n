@@ -206,9 +206,7 @@ export default mixins(
 	}
 }
 
-.search-table {
-	.name span {
-		margin-right: 10px;
-	}
+.search-table .name span {
+	margin-right: 10px;
 }
 </style>
