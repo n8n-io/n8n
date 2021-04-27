@@ -152,7 +152,7 @@ export class AwsSns implements INodeType {
 				returnData.push({MessageId: responseData.PublishResponse.PublishResult.MessageId} as IDataObject);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({ error: error.message });
 					continue;
 				}
 				throw error;

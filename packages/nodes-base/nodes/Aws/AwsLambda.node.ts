@@ -186,7 +186,7 @@ export class AwsLambda implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({ error: error.message });
 					continue;
 				}
 				throw error;
