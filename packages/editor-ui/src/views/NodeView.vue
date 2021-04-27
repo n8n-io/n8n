@@ -904,7 +904,6 @@ export default mixins(
 
 				if (setActive === true) {
 					this.$store.commit('setActiveNode', node.name);
-					this.$externalHooks().run('nodeView.activeNodeChanged', { source: 'node_view' });
 				}
 			},
 
