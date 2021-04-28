@@ -128,12 +128,6 @@ export default Vue.extend({
 		onCreateEnable(): void {
 			this.$data.createEnabled = true;
 			this.$data.newName = "";
-
-			// @ts-ignore
-			if (this.$refs.tagsTable && this.$refs.tagsTable.focusOnCreate) {
-				// @ts-ignore
-				this.$refs.tagsTable.focusOnCreate();
-			}
 		},
 		disableCreate(): void {
 			this.$data.createEnabled = false;

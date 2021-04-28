@@ -92,6 +92,7 @@ export default Vue.extend({
 		getRowClasses: ({ row }: { row: ITagRow }): string => {
 			return row.disable ? "disabled" : "";
 		},
+
 		getSpan({row, columnIndex}: {row: ITagRow, columnIndex: number}): number | number[] {
 			// expand text column with delete message
 			if (columnIndex === 0 && row.tag && row.delete) {
@@ -103,14 +104,6 @@ export default Vue.extend({
 			}
 
 			return 1;
-		},
-		focusOnInput(): void {
-			setTimeout(() => {
-				const input = this.$refs.nameInput as any; // tslint:disable-line:no-any
-				if (input && input.focus) {
-					input.focus();
-				}
-			}, INPUT_TRANSITION_TIMEOUT);
 		},
 
 		enableUpdate(row: ITagRow): void {
@@ -124,19 +117,8 @@ export default Vue.extend({
 		enableDelete(row: ITagRow): void {
 			if (row.tag) {
 				this.$emit('deleteEnable', row.tag.id);
-
-				setTimeout(() => {
-					const input = this.$refs.deleteHiddenInput as any; // tslint:disable-line:no-any
-					if (input && input.focus) {
-						input.focus();
-					}
-				}, DELETE_TRANSITION_TIMEOUT);
+				this.focusOnDelete();
 			}
-		},
-
-		focusOnCreate(): void {
-			((this.$refs.table as Vue).$refs.bodyWrapper as Element).scrollTop = 0;
-			this.focusOnInput();
 		},
 
 		cancel(): void {
@@ -148,6 +130,36 @@ export default Vue.extend({
 
 		onNewNameChange(name: string): void {
 			this.$emit('newNameChange', name);
+		},
+
+		focusOnInput(): void {
+			setTimeout(() => {
+				const input = this.$refs.nameInput as any; // tslint:disable-line:no-any
+				if (input && input.focus) {
+					input.focus();
+				}
+			}, INPUT_TRANSITION_TIMEOUT);
+		},
+
+		focusOnDelete(): void {
+			setTimeout(() => {
+				const input = this.$refs.deleteHiddenInput as any; // tslint:disable-line:no-any
+				if (input && input.focus) {
+					input.focus();
+				}
+			}, DELETE_TRANSITION_TIMEOUT);
+		},
+
+		focusOnCreate(): void {
+			((this.$refs.table as Vue).$refs.bodyWrapper as Element).scrollTop = 0;
+			this.focusOnInput();
+		},
+	},
+	watch: {
+		rows(newValue: ITagRow[] | undefined) {
+			if (newValue && newValue[0] && newValue[0].create) {
+				this.focusOnCreate();
+			}
 		},
 	},
 });

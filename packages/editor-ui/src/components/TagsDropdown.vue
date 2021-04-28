@@ -95,33 +95,9 @@ export default mixins(showMessage).extend({
 		},
 	},
 	methods: {
-		focusOnTopOption() {
-			// @ts-ignore // focus on create option
-			if (this.$refs.create && this.$refs.create.hoverItem) {
-				// @ts-ignore
-				this.$refs.create.hoverItem();
-			}
-			// @ts-ignore // focus on top option after filter
-			else if (this.$refs.tag && this.$refs.tag[0] && this.$refs.tag[0].hoverItem) {
-				// @ts-ignore
-				this.$refs.tag[0].hoverItem();
-			}
-		},
 		filterOptions(filter = "") {
 			this.$data.filter = filter.trim();
 			this.$nextTick(() => this.focusOnTopOption());
-		},
-		focusOnTag(tagId: string) {
-			const tagOptions = (this.$refs.tag as Vue[]) || [];
-			if (tagOptions && tagOptions.length) {
-				const added = tagOptions.find((ref: any) => ref.value === tagId); // tslint:disable-line:no-any
-				// @ts-ignore // focus on newly created item
-				if (added && added.$el && added.$el.scrollIntoView && added.hoverItem) {
-					// @ts-ignore
-					added.hoverItem();
-					added.$el.scrollIntoView();
-				}
-			}
 		},
 		async onCreate() {
 			const name = this.$data.filter;
@@ -155,6 +131,30 @@ export default mixins(showMessage).extend({
 				this.onCreate();
 			} else {
 				this.$emit("onUpdate", selected);
+			}
+		},
+		focusOnTopOption() {
+			// @ts-ignore // focus on create option
+			if (this.$refs.create && this.$refs.create.hoverItem) {
+				// @ts-ignore
+				this.$refs.create.hoverItem();
+			}
+			// @ts-ignore // focus on top option after filter
+			else if (this.$refs.tag && this.$refs.tag[0] && this.$refs.tag[0].hoverItem) {
+				// @ts-ignore
+				this.$refs.tag[0].hoverItem();
+			}
+		},
+		focusOnTag(tagId: string) {
+			const tagOptions = (this.$refs.tag as Vue[]) || [];
+			if (tagOptions && tagOptions.length) {
+				const added = tagOptions.find((ref: any) => ref.value === tagId); // tslint:disable-line:no-any
+				// @ts-ignore // focus on newly created item
+				if (added && added.$el && added.$el.scrollIntoView && added.hoverItem) {
+					// @ts-ignore
+					added.hoverItem();
+					added.$el.scrollIntoView();
+				}
 			}
 		},
 	},
