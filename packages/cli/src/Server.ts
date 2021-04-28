@@ -743,7 +743,9 @@ class App {
 
 			await TagHelpers.validateTag(newTag);
 
-			return await Db.collections.Tag!.save(newTag);
+			const savedTag = await Db.collections.Tag!.save(newTag);
+
+			return TagHelpers.shortenTag(savedTag);
 		}));
 
 		// Updates a tag
