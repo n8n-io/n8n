@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -206,7 +207,7 @@ export class ERPNext implements INodeType {
 					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
 
 					if (!properties.customProperty.length) {
-						throw new Error('Please enter at least one property for the document to create.');
+						throw new NodeOperationError(this.getNode(), 'Please enter at least one property for the document to create.');
 					}
 
 					properties.customProperty.forEach(property => {
@@ -242,7 +243,7 @@ export class ERPNext implements INodeType {
 					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
 
 					if (!properties.customProperty.length) {
-						throw new Error('Please enter at least one property for the document to update.');
+						throw new NodeOperationError(this.getNode(), 'Please enter at least one property for the document to update.');
 					}
 
 					properties.customProperty.forEach(property => {

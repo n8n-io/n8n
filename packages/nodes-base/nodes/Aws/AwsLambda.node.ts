@@ -6,6 +6,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { awsApiRequestREST } from './GenericFunctions';
@@ -130,13 +132,7 @@ export class AwsLambda implements INodeType {
 		loadOptions: {
 			async getFunctions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-
-				let data;
-				try {
-					data = await awsApiRequestREST.call(this, 'lambda', 'GET', '/2015-03-31/functions/');
-				} catch (err) {
-					throw new Error(`AWS Error: ${err}`);
-				}
+				const data = await awsApiRequestREST.call(this, 'lambda', 'GET', '/2015-03-31/functions/');
 
 				for (const func of data.Functions!) {
 					returnData.push({
@@ -162,22 +158,17 @@ export class AwsLambda implements INodeType {
 				Qualifier: this.getNodeParameter('qualifier', i) as string,
 			};
 
-			let responseData;
-			try {
-				responseData = await awsApiRequestREST.call(
-					this,
-					'lambda',
-					'POST',
-					`/2015-03-31/functions/${params.FunctionName}/invocations?Qualifier=${params.Qualifier}`,
-					params.Payload,
-					{
-						'X-Amz-Invocation-Type': params.InvocationType,
-						'Content-Type': 'application/x-amz-json-1.0',
-					},
-				);
-			} catch (err) {
-				throw new Error(`AWS Error: ${err}`);
-			}
+			const responseData = await awsApiRequestREST.call(
+				this,
+				'lambda',
+				'POST',
+				`/2015-03-31/functions/${params.FunctionName}/invocations?Qualifier=${params.Qualifier}`,
+				params.Payload,
+				{
+					'X-Amz-Invocation-Type': params.InvocationType,
+					'Content-Type': 'application/x-amz-json-1.0',
+				},
+			);
 
 			if (responseData !== null && responseData.errorMessage !== undefined) {
 				let errorMessage = responseData.errorMessage;
@@ -186,7 +177,7 @@ export class AwsLambda implements INodeType {
 					errorMessage += `\n\nStack trace:\n${responseData.stackTrace}`;
 				}
 
-				throw new Error(errorMessage);
+				throw new NodeApiError(this.getNode(), responseData);
 			} else {
 				returnData.push({
 					result: responseData,

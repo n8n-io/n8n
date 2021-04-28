@@ -11,14 +11,14 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('paddleApi');
 
 	if (credentials === undefined) {
-		throw new Error('Could not retrieve credentials!');
+		throw new NodeOperationError(this.getNode(), 'Could not retrieve credentials!');
 	}
 
 	const options: OptionsWithUri = {
@@ -37,12 +37,12 @@ export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions 
 		const response = await this.helpers.request!(options);
 
 		if (!response.success) {
-			throw new Error(`Code: ${response.error.code}. Message: ${response.error.message}`);
+			throw new NodeApiError(this.getNode(), response);
 		}
 
 		return response;
 	} catch (error) {
-		throw new Error(`ERROR: Code: ${error.code}. Message: ${error.message}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

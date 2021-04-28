@@ -7,6 +7,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -168,7 +169,7 @@ export class EmailReadImap implements INodeType {
 		const credentials = this.getCredentials('imap');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		const mailbox = this.getNodeParameter('mailbox') as string;
@@ -181,8 +182,8 @@ export class EmailReadImap implements INodeType {
 		if (options.customEmailConfig !== undefined) {
 			try {
 				searchCriteria = JSON.parse(options.customEmailConfig as string);
-			} catch (err) {
-				throw new Error(`Custom email config is not valid JSON.`);
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), `Custom email config is not valid JSON.`);
 			}
 		}
 
@@ -279,7 +280,7 @@ export class EmailReadImap implements INodeType {
 					const part = lodash.find(message.parts, { which: '' });
 
 					if (part === undefined) {
-						throw new Error('Email part could not be parsed.');
+						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
 					}
 					const parsedEmail = await parseRawEmail.call(this, part.body, dataPropertyAttachmentsPrefixName);
 
@@ -337,7 +338,7 @@ export class EmailReadImap implements INodeType {
 					const part = lodash.find(message.parts, { which: 'TEXT' });
 
 					if (part === undefined) {
-						throw new Error('Email part could not be parsed.');
+						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
 					}
 					// Return base64 string
 					newEmail = {
@@ -353,35 +354,48 @@ export class EmailReadImap implements INodeType {
 			return newEmails;
 		};
 
-		let connection: ImapSimple;
+		const establishConnection = (): Promise<ImapSimple> => {
+			const config: ImapSimpleOptions = {
+				imap: {
+					user: credentials.user as string,
+					password: credentials.password as string,
+					host: credentials.host as string,
+					port: credentials.port as number,
+					tls: credentials.secure as boolean,
+					authTimeout: 20000,
+				},
+				onmail: async () => {
+					if (connection) {
+						const returnData = await getNewEmails(connection, searchCriteria);
 
-		const config: ImapSimpleOptions = {
-			imap: {
-				user: credentials.user as string,
-				password: credentials.password as string,
-				host: credentials.host as string,
-				port: credentials.port as number,
-				tls: credentials.secure as boolean,
-				authTimeout: 20000,
-			},
-			onmail: async () => {
-				const returnData = await getNewEmails(connection, searchCriteria);
+						if (returnData.length) {
+							this.emit([returnData]);
+						}
+					}
+				},
+			};
 
-				if (returnData.length) {
-					this.emit([returnData]);
-				}
-			},
+			if (options.allowUnauthorizedCerts === true) {
+				config.imap.tlsOptions = {
+					rejectUnauthorized: false,
+				};
+			}
+
+			// Connect to the IMAP server and open the mailbox
+			// that we get informed whenever a new email arrives
+			return imapConnect(config).then(async conn => {
+				conn.on('error', async err => {
+					if (err.code.toUpperCase() === 'ECONNRESET') {
+						connection = await establishConnection();
+					}
+					throw err;
+				});
+				return conn;
+			});
 		};
 
-		if (options.allowUnauthorizedCerts === true) {
-			config.imap.tlsOptions = {
-				rejectUnauthorized: false,
-			};
-		}
+		let connection: ImapSimple = await establishConnection();
 
-		// Connect to the IMAP server and open the mailbox
-		// that we get informed whenever a new email arrives
-		connection = await imapConnect(config);
 		await connection.openBox(mailbox);
 
 		// When workflow and so node gets set to inactive close the connectoin

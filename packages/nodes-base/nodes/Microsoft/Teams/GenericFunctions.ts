@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -30,11 +30,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftTeamsOAuth2Api', options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error && error.response.body.error.message) {
-			// Try to return the error prettier
-			throw new Error(`Microsoft error response [${error.statusCode}]: ${error.response.body.error.message}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

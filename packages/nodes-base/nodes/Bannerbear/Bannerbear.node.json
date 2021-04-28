@@ -19,7 +19,18 @@
 		"generic": [
 			{
 				"label": "Automate Designs with Bannerbear and n8n",
-				"url": "https://medium.com/n8n-io/automate-designs-with-bannerbear-and-n8n-2b64c94b54db"
+				"icon": "🎨",
+				"url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/"
+			},
+			{
+				"label": "Automating Conference Organization Processes with n8n",
+				"icon": "🙋‍♀️",
+				"url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/"
+			},
+			{
+				"label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin",
+				"icon": "🎖",
+				"url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/"
 			}
 		]
 	}
