@@ -104,30 +104,27 @@ export type ITagWithCount = IShortTag & UsageCount;
 //            workflows
 // ----------------------------------
 
-interface IWorkflowRequestPayload {
-	name: string;
-	active: boolean;
-	connections: IConnections;
-	nodes: INode[];
-	settings?: IWorkflowSettings;
-	staticData?: IDataObject;
-	tags: string[];
+interface IWorkflowRequestPayload extends Request {
+	body: {
+		id?: number; // if sent by mistake
+		name: string;
+		active: boolean;
+		connections: IConnections;
+		nodes: INode[];
+		settings?: IWorkflowSettings;
+		staticData?: IDataObject;
+		tags: string[];
+	};
 }
 
-export interface ICreateWorkflowRequest extends Request {
-	body: IWorkflowRequestPayload;
-}
+export type ICreateWorkflowRequest = IWorkflowRequestPayload;
+
+export type IUpdateWorkflowRequest = IWorkflowRequestPayload;
 
 export interface IGetWorkflowsRequest extends Request {
 	query: {
 		filter: string;
 	};
-}
-
-export interface IUpdateWorkflowRequest extends Request {
-	body: {
-		id: number;
-	} & IWorkflowRequestPayload;
 }
 
 export interface IShortWorkflow extends IWorkflowBase {
