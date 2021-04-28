@@ -33,7 +33,7 @@ import TagsTableHeader from "@/components/TagsTableHeader.vue";
 import TagsTable from "@/components/TagsViewTagsTable.vue";
 
 const matches = (name: string, filter: string) => name.toLowerCase().trim().includes(filter.toLowerCase().trim());
-const getUsage = (count: number | undefined) => count && count > 0 ? `${count} workflow${count > 1 ? "s" : ""}` : 'Not being Used';
+const getUsage = (count: number | undefined) => count && count > 0 ? `${count} workflow${count > 1 ? "s" : ""}` : 'Not being used';
 
 export default Vue.extend({
 	components: { TagsTableHeader, TagsTable },

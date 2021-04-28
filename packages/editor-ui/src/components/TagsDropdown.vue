@@ -41,7 +41,7 @@
 
 			<el-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
 				<font-awesome-icon icon="cog" />
-				<span>Manage Tags</span>
+				<span>Manage tags</span>
 			</el-option>
 		</el-select>
 	</div>

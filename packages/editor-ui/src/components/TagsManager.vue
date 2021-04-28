@@ -3,7 +3,8 @@
 		<el-dialog
 			:visible="dialogVisible"
 			:before-close="closeDialog"
-			title="Manage Tags"
+			title="Manage tags"
+			class="dialog-wrapper"
 			append-to-body
 		>
 			<div class="content" @keydown.stop>
@@ -177,16 +178,23 @@ export default mixins(showMessage).extend({
 	box-sizing: border-box;
 }
 
-/deep/ .el-dialog {
-	max-width: 600px;
+.dialog-wrapper {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	/deep/ .el-dialog {
+		max-width: 600px;
+	}
 }
 
+
 .content {
-	min-height: 300px;
+	min-height: $--tags-manager-min-height;
 }
 
 .footer {
-	padding-top: 15px;
+	margin-top: 15px;
 
 	.el-button {
 		float: right;
