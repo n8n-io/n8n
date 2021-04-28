@@ -1,5 +1,5 @@
 import { Column, Entity, Index, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
-import { IsDate, IsString, Length } from 'class-validator';
+import { IsDate, IsOptional, IsString, Length } from 'class-validator';
 
 import { ITagDb } from '../../Interfaces';
 import { WorkflowEntity } from './WorkflowEntity';
@@ -12,11 +12,12 @@ export class TagEntity implements ITagDb {
 
 	@Column({ length: 24 })
 	@Index({ unique: true })
-	@IsString()
+	@IsString({ message: 'Tag name must be of type string.' })
 	@Length(1, 24, { message: 'Tag name must be 1 to 24 characters long.' })
 	name: string;
 
 	@Column()
+	@IsOptional() // ignored by validation on update
 	@IsDate()
 	createdAt: Date;
 
