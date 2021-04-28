@@ -95,38 +95,40 @@ export default mixins(showMessage).extend({
 		},
 	},
 	methods: {
+		focusOnTopOption() {
+			// @ts-ignore // focus on create option
+			if (this.$refs.create && this.$refs.create.hoverItem) {
+				// @ts-ignore
+				this.$refs.create.hoverItem();
+			}
+			// @ts-ignore // focus on top option after filter
+			else if (this.$refs.tag && this.$refs.tag[0] && this.$refs.tag[0].hoverItem) {
+				// @ts-ignore
+				this.$refs.tag[0].hoverItem();
+			}
+		},
 		filterOptions(filter = "") {
 			this.$data.filter = filter.trim();
-			this.$nextTick(() => {
-				// @ts-ignore // focus on create option to allow
-				if (this.$refs.create && this.$refs.create.hoverItem) {
+			this.$nextTick(() => this.focusOnTopOption());
+		},
+		focusOnTag(tagId: string) {
+			const tagOptions = (this.$refs.tag as Vue[]) || [];
+			if (tagOptions && tagOptions.length) {
+				const added = tagOptions.find((ref: any) => ref.value === tagId); // tslint:disable-line:no-any
+				// @ts-ignore // focus on newly created item
+				if (added && added.$el && added.$el.scrollIntoView && added.hoverItem) {
 					// @ts-ignore
-					this.$refs.create.hoverItem();
+					added.hoverItem();
+					added.$el.scrollIntoView();
 				}
-				// @ts-ignore // focus on top option after filter
-				else if (this.$refs.tag && this.$refs.tag[0] && this.$refs.tag[0].hoverItem) {
-					// @ts-ignore
-					this.$refs.tag[0].hoverItem();
-				}
-			});
+			}
 		},
 		async onCreate() {
 			const name = this.$data.filter;
 			try {
 				const newTag = await this.$store.dispatch("tags/create", name);
 				this.$emit("onUpdate", [...this.$props.currentTagIds, newTag.id]);
-				this.$nextTick(() => {
-					const tagOptions = (this.$refs.tag as Vue[]) || [];
-					if (tagOptions && tagOptions.length) {
-						const added = tagOptions.find((ref: any) => ref.value === newTag.id); // tslint:disable-line:no-any
-						// @ts-ignore // focus on newly created item
-						if (added && added.$el && added.$el.scrollIntoView && added.hoverItem) {
-							// @ts-ignore
-							added.hoverItem();
-							added.$el.scrollIntoView();
-						}
-					}
-				});
+				this.$nextTick(() => this.focusOnTag(newTag.id));
 
 				this.$showMessage({
 					title: "New tag was created",
