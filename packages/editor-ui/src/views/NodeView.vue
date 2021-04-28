@@ -1448,6 +1448,9 @@ export default mixins(
 					}
 					if (workflowId !== null) {
 						const workflow = await this.restApi().getWorkflow(workflowId);
+						if (!workflow) {
+							throw new Error('Could not find workflow');
+						}
 						this.$titleSet(workflow.name, 'IDLE');
 						// Open existing workflow
 						await this.openWorkflow(workflowId);
