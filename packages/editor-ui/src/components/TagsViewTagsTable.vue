@@ -166,8 +166,6 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" scoped>
-@import "../styles/mixins";
-
 .name {
 	min-height: 45px;
 	display: flex;
@@ -180,9 +178,10 @@ export default Vue.extend({
 }
 
 .ops {
-	@include flex-vert-center;
-	min-height: 45px;
+	display: flex;
+	align-items: center;
 	justify-content: flex-end;
+	min-height: 45px;
 }
 
 .disabled {

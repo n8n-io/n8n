@@ -131,10 +131,10 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 
 <style lang="scss" scoped>
-@import "../styles/mixins";
-
 .dialog-wrapper {
-	@include flex-center;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 
 	/deep/ .el-dialog {
 		max-width: 600px;
