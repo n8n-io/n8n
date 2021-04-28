@@ -486,6 +486,7 @@ class App {
 
 		// Creates a new workflow
 		this.app.post(`/${this.restEndpoint}/workflows`, ResponseHelper.send(async (req: ICreateWorkflowRequest, res: express.Response): Promise<IShortWorkflow> => {
+			delete req.body.id; // ignore if sent by mistake
 			const incomingData = req.body;
 
 			const newWorkflow = new WorkflowEntity();
