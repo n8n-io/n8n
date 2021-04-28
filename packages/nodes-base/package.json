@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.113.1",
+  "version": "0.114.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -138,6 +138,7 @@
       "dist/credentials/LingvaNexApi.credentials.js",
       "dist/credentials/LinkedInOAuth2Api.credentials.js",
       "dist/credentials/MailerLiteApi.credentials.js",
+      "dist/credentials/MailcheckApi.credentials.js",
       "dist/credentials/MailchimpApi.credentials.js",
       "dist/credentials/MailchimpOAuth2Api.credentials.js",
       "dist/credentials/MailgunApi.credentials.js",
@@ -270,7 +271,6 @@
       "dist/credentials/ZulipApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/ActivationTrigger.node.js",
       "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
       "dist/nodes/ActiveCampaign/ActiveCampaignTrigger.node.js",
       "dist/nodes/AgileCrm/AgileCrm.node.js",
@@ -413,6 +413,7 @@
       "dist/nodes/LinkedIn/LinkedIn.node.js",
       "dist/nodes/MailerLite/MailerLite.node.js",
       "dist/nodes/MailerLite/MailerLiteTrigger.node.js",
+      "dist/nodes/Mailcheck/Mailcheck.node.js",
       "dist/nodes/Mailchimp/Mailchimp.node.js",
       "dist/nodes/Mailchimp/MailchimpTrigger.node.js",
       "dist/nodes/Mailgun/Mailgun.node.js",
@@ -440,6 +441,7 @@
       "dist/nodes/MoveBinaryData.node.js",
       "dist/nodes/Msg91/Msg91.node.js",
       "dist/nodes/MySql/MySql.node.js",
+      "dist/nodes/N8nTrigger.node.js",
       "dist/nodes/Nasa/Nasa.node.js",
       "dist/nodes/NextCloud/NextCloud.node.js",
       "dist/nodes/NoOp.node.js",
@@ -537,6 +539,7 @@
       "dist/nodes/Webhook.node.js",
       "dist/nodes/Wekan/Wekan.node.js",
       "dist/nodes/Wordpress/Wordpress.node.js",
+      "dist/nodes/WorkflowTrigger.node.js",
       "dist/nodes/WooCommerce/WooCommerce.node.js",
       "dist/nodes/WooCommerce/WooCommerceTrigger.node.js",
       "dist/nodes/WriteBinaryFile.node.js",
