@@ -16,29 +16,40 @@
 import { ITag } from '@/Interface';
 import Vue from 'vue';
 
+interface ITagEl extends ITag {
+	title?: string;
+}
+
+const MAX_TAGS_TO_DISPLAY = 2;
+
+const getNumberTag = (tags: ITag[]) => {
+	const title = tags.reduce((accu: string, tag: ITag) => {
+		return accu ? `${accu}, ${tag.name}` : tag.name;
+	}, '');
+
+	return {
+		id: 'count',
+		name: `+${tags.length}`,
+		title,
+	};
+};
+
 export default Vue.extend({
 	name: 'TagsContainer',
 	props: [
 		"tagIds",
 	],
 	computed: {
-		toDisplay(): {id: string, name: string, title?: string} {
+		toDisplay(): ITagEl {
 			const tagIds = this.$props.tagIds; 
 			const tags = tagIds.map((tagId: string) => this.$store.getters['tags/getTagById'](tagId))
 				.filter((tag: ITag) => !!tag);
 
-			const toDisplay = tags.slice(0, 2);
-			if (tags.length > 2) {
-				const hidden = tags.slice(2);
-				const title = hidden.reduce((accu: string, tag: ITag) => {
-					return accu ? `${accu}, ${tag.name}` : tag.name;
-				}, '');
+			const toDisplay = tags.slice(0, MAX_TAGS_TO_DISPLAY);
+			if (tags.length > MAX_TAGS_TO_DISPLAY) {
+				const numberTag = getNumberTag(tags.slice(MAX_TAGS_TO_DISPLAY));
 
-				toDisplay.push({
-					id: 'count',
-					name: `+${tags.length - 2}`,
-					title,
-				});
+				toDisplay.push(numberTag);
 			}
 
 			return toDisplay;
