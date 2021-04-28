@@ -219,7 +219,7 @@ import { workflowRun } from '@/components/mixins/workflowRun';
 import { saveAs } from 'file-saver';
 
 import mixins from 'vue-typed-mixins';
-import { mapState } from 'vuex';
+import { mapGetters, mapState } from 'vuex';
 
 export default mixins(
 	genericHelpers,
@@ -253,7 +253,7 @@ export default mixins(
 			};
 		},
 		computed: {
-			...mapState('ui', {
+			...mapGetters('ui', {
 				isCollapsed: 'sidebarMenuCollapsed',
 			}),
 			exeuctionId (): string | undefined {

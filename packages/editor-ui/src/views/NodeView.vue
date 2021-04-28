@@ -167,7 +167,7 @@ import {
 	IPushDataExecutionFinished,
 	ITag,
 } from '../Interface';
-import { mapState } from 'vuex';
+import { mapGetters, mapState } from 'vuex';
 
 export default mixins(
 	copyPaste,
@@ -239,7 +239,7 @@ export default mixins(
 			}
 		},
 		computed: {
-			...mapState('ui', [
+			...mapGetters('ui', [
 				'sidebarMenuCollapsed',
 			]),
 			activeNode (): INodeUi | null {

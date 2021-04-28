@@ -65,7 +65,7 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { mapState } from 'vuex';
+import { mapGetters, mapState } from 'vuex';
 
 import {
 	IExecutionResponse,
@@ -98,7 +98,7 @@ export default mixins(
 			WorkflowDetails,
 		},
 		computed: {
-			...mapState('ui', [
+			...mapGetters('ui', [
 				'sidebarMenuCollapsed',
 			]),
 			executionId (): string | undefined {

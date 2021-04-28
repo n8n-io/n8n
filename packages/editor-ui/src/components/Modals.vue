@@ -26,7 +26,7 @@ import Vue from "vue";
 
 import TagsManager from "@/components/TagsManager.vue";
 import SaveWorkflowDialog from "@/components/SaveWorkflowDialog.vue";
-import { mapMutations, mapState } from "vuex";
+import { mapGetters, mapMutations, mapState } from "vuex";
 
 export default Vue.extend({
 	name: "Modals",
@@ -34,7 +34,7 @@ export default Vue.extend({
 		TagsManager,
 		SaveWorkflowDialog,
 	},
-	computed: mapState("ui", [
+	computed: mapGetters("ui", [
 		"tagsManagerOpen",
 		"saveAsDialogOpen",
 		"renameDialogOpen",

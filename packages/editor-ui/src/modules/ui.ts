@@ -13,6 +13,12 @@ const module: Module<IUiState, IRootState> = {
 		tagsManagerOpen: false,
 		sidebarMenuCollapsed: true,
 	},
+	getters: {
+		saveAsDialogOpen: (state: IUiState): boolean => state.saveAsDialogOpen,
+		renameDialogOpen: (state: IUiState): boolean => state.renameDialogOpen,
+		tagsManagerOpen: (state: IUiState): boolean => state.tagsManagerOpen,
+		sidebarMenuCollapsed: (state: IUiState): boolean => state.sidebarMenuCollapsed,
+	},
 	mutations: {
 		openSaveAsDialog: (state: IUiState) => {
 			state.saveAsDialogOpen = true;

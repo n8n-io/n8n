@@ -4,9 +4,7 @@ import {
 } from 'n8n-workflow';
 import {
 	IRestApiContext,
-	IRootState,
 } from '../Interface';
-import { ActionContext, Store } from 'vuex';
 
 
 class ResponseError extends Error {
