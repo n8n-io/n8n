@@ -319,6 +319,7 @@ export class Twist implements INodeType {
 					qs.id = this.getNodeParameter('commentId', i) as string;
 
 					responseData = await twistApiRequest.call(this, 'GET', '/comments/getone', {}, qs);
+					responseData = responseData?.comment;
 				}
 				//https://developer.twist.com/v3/#get-all-comments
 				if (operation === 'getAll') {
