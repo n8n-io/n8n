@@ -219,59 +219,67 @@ export class HtmlExtract implements INodeType {
 
 		let item: INodeExecutionData;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
-			const extractionValues = this.getNodeParameter('extractionValues', itemIndex) as IDataObject;
-			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
-			const sourceData = this.getNodeParameter('sourceData', itemIndex) as string;
+			try {
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+				const extractionValues = this.getNodeParameter('extractionValues', itemIndex) as IDataObject;
+				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+				const sourceData = this.getNodeParameter('sourceData', itemIndex) as string;
 
-			item = items[itemIndex];
+				item = items[itemIndex];
 
-			let htmlArray: string[] | string = [];
-			if (sourceData === 'json') {
-				if (item.json[dataPropertyName] === undefined) {
-					throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`);
-				}
-				htmlArray = item.json[dataPropertyName] as string;
-			} else {
-				if (item.binary === undefined) {
-					throw new NodeOperationError(this.getNode(), `No item does not contain binary data!`);
-				}
-				if (item.binary[dataPropertyName] === undefined) {
-					throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`);
-				}
-				htmlArray = Buffer.from(item.binary[dataPropertyName].data, 'base64').toString('utf8');
-			}
-
-			// Convert it always to array that it works with a string or an array of strings
-			if (!Array.isArray(htmlArray)) {
-				htmlArray = [htmlArray];
-			}
-
-			for (const html of htmlArray as string[]) {
-				const $ = cheerio.load(html);
-
-				const newItem: INodeExecutionData = {
-					json: {},
-				};
-
-				// Itterate over all the defined values which should be extracted
-				let htmlElement;
-				for (const valueData of extractionValues.values as IValueData[]) {
-					htmlElement = $(valueData.cssSelector);
-
-					if (valueData.returnArray === true) {
-						// An array should be returned so itterate over one
-						// value at a time
-						newItem.json[valueData.key as string] = [];
-						htmlElement.each((i, el) => {
-							(newItem.json[valueData.key as string] as Array<string | undefined>).push(getValue($(el), valueData, options));
-						});
-					} else {
-						// One single value should be returned
-						newItem.json[valueData.key as string] = getValue(htmlElement, valueData, options);
+				let htmlArray: string[] | string = [];
+				if (sourceData === 'json') {
+					if (item.json[dataPropertyName] === undefined) {
+						throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`);
 					}
+					htmlArray = item.json[dataPropertyName] as string;
+				} else {
+					if (item.binary === undefined) {
+						throw new NodeOperationError(this.getNode(), `No item does not contain binary data!`);
+					}
+					if (item.binary[dataPropertyName] === undefined) {
+						throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`);
+					}
+					htmlArray = Buffer.from(item.binary[dataPropertyName].data, 'base64').toString('utf8');
 				}
-				returnData.push(newItem);
+
+				// Convert it always to array that it works with a string or an array of strings
+				if (!Array.isArray(htmlArray)) {
+					htmlArray = [htmlArray];
+				}
+
+				for (const html of htmlArray as string[]) {
+					const $ = cheerio.load(html);
+
+					const newItem: INodeExecutionData = {
+						json: {},
+					};
+
+					// Itterate over all the defined values which should be extracted
+					let htmlElement;
+					for (const valueData of extractionValues.values as IValueData[]) {
+						htmlElement = $(valueData.cssSelector);
+
+						if (valueData.returnArray === true) {
+							// An array should be returned so itterate over one
+							// value at a time
+							newItem.json[valueData.key as string] = [];
+							htmlElement.each((i, el) => {
+								(newItem.json[valueData.key as string] as Array<string | undefined>).push(getValue($(el), valueData, options));
+							});
+						} else {
+							// One single value should be returned
+							newItem.json[valueData.key as string] = getValue(htmlElement, valueData, options);
+						}
+					}
+					returnData.push(newItem);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ json: { error: error.message } });
+					continue;
+				}
+				throw error;
 			}
 		}
 
