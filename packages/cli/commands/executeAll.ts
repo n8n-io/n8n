@@ -65,7 +65,7 @@ export class ExecuteAll extends Command {
 		const { flags } = this.parse(ExecuteAll);
 		
 		const debug = flags.debug !== undefined;
-		const IDs: Array<number> = [];
+		const ids: number[] = [];
 
 		if (flags.snapshot !== undefined) {
 			if (fs.existsSync(flags.snapshot)) {
@@ -100,16 +100,16 @@ export class ExecuteAll extends Command {
 		}
 		
 		if (flags.ids !== undefined) {
-			const ids = flags.ids.split(',');
+			const paramIds = flags.ids.split(',');
 			const re = /\d+/;
-			const matchedIDs = ids.filter(id => id.match(re) ).map(id => parseInt(id));
+			const matchedIDs = paramIds.filter(id => id.match(re) ).map(id => parseInt(id, 10));
 
 			if (matchedIDs.length === 0) {
 				console.log(`The parameter --ids must be a list of numeric IDs separated by a comma.`);
 				return;
 			}
 
-			IDs.push(...matchedIDs);
+			ids.push(...matchedIDs);
 
 		}
 		// Start directly with the init of the database to improve startup time
@@ -124,8 +124,8 @@ export class ExecuteAll extends Command {
 		
 		let allWorkflows;
 
-		if (IDs.length !== 0) {
-			allWorkflows = await Db.collections!.Workflow!.findByIds(IDs);
+		if (ids.length !== 0) {
+			allWorkflows = await Db.collections!.Workflow!.findByIds(ids);
 		} else {
 			allWorkflows = await Db.collections!.Workflow!.find();
 		}
