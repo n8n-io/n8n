@@ -26,7 +26,7 @@
 				<el-table-column property="name" label="Name" class-name="clickable" sortable>
 					<template slot-scope="scope">
 						<div class="name" :key="scope.row.id">
-							<span>{{scope.row.name}}</span> <TagContainer :tags="scope.row.tags"/>
+							<span>{{scope.row.name}}</span> <TagsContainer :tagIds="getIds(scope.row.tags)"/>
 						</div>
 					</template>
 				</el-table-column>
@@ -51,11 +51,10 @@ import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
-import { titleChange } from '@/components/mixins/titleChange';
 import { ITag, IWorkflowShortResponse } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
-import TagContainer from './TagContainer.vue';
+import TagsContainer from './TagsContainer.vue';
 import TagsDropdown from './TagsDropdown.vue';
 
 export default mixins(
@@ -70,7 +69,7 @@ export default mixins(
 	],
 	components: {
 		WorkflowActivator,
-		TagContainer,
+		TagsContainer,
 		TagsDropdown,
 	},
 	data () {
@@ -121,6 +120,9 @@ export default mixins(
 		},
 	},
 	methods: {
+		getIds(tags: ITag[] | undefined) {
+			return (tags || []).map((tag) => tag.id);
+		},
 		updateTagsFilter(tags: string[]) {
 			this.filterTagIds = tags;
 		},

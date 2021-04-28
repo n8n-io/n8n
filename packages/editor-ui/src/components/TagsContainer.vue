@@ -17,18 +17,13 @@ import { ITag } from '@/Interface';
 import Vue from 'vue';
 
 export default Vue.extend({
-	name: 'TagContainer',
+	name: 'TagsContainer',
 	props: [
-		"tags",
 		"tagIds",
 	],
 	computed: {
 		toDisplay(): {id: string, name: string, title?: string} {
-			let tagIds = this.$props.tagIds; 
-			if (!tagIds) {
-				tagIds = (this.tags && this.tags.map(({id}: ITag) => id)) || [];
-			}
-
+			const tagIds = this.$props.tagIds; 
 			const tags = tagIds.map((tagId: string) => this.$store.getters['tags/getTagById'](tagId))
 				.filter((tag: ITag) => !!tag);
 

@@ -25,7 +25,7 @@
 			v-if="currentWorkflowTagIds.length > 0"
 		></el-divider>
 
-		<TagContainer :tagIds="currentWorkflowTagIds" />
+		<TagsContainer :tagIds="currentWorkflowTagIds" />
 
 		<span class="saving-workflow" v-if="isWorkflowSaving">
 			<font-awesome-icon icon="spinner" spin />
@@ -38,12 +38,12 @@
 import Vue from "vue";
 import { mapGetters } from "vuex";
 import WorkflowNameShort from "@/components/WorkflowNameShort.vue";
-import TagContainer from "@/components/TagContainer.vue";
+import TagsContainer from "@/components/TagsContainer.vue";
 
 export default Vue.extend({
 	name: "WorkflowDetails",
 	components: {
-		TagContainer,
+		TagsContainer,
 		WorkflowNameShort,
 	},
 	computed: {
