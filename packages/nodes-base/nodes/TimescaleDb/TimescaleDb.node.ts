@@ -137,20 +137,6 @@ export class TimescaleDb implements INodeType {
 				description:
 					'Comma separated list of the properties which should used as columns for the new rows.',
 			},
-			{
-				displayName: 'Return Fields',
-				name: 'returnFields',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: [
-							'insert',
-						],
-					},
-				},
-				default: '*',
-				description: 'Comma separated list of the fields that the operation will return',
-			},
 
 			// ----------------------------------
 			//         update
@@ -217,6 +203,61 @@ export class TimescaleDb implements INodeType {
 				description:
 					'Comma separated list of the properties which should used as columns for rows to update.',
 			},
+			// ----------------------------------
+			//         insert,update
+			// ----------------------------------
+			{
+				displayName: 'Return Fields',
+				name: 'returnFields',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['insert', 'update'],
+					},
+				},
+				default: '*',
+				description: 'Comma separated list of the fields that the operation will return',
+			},
+			// ----------------------------------
+			//         additional fields
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{
+								name: 'Independently',
+								value: 'independently',
+								description: 'Execute each query independently',
+							},
+							{
+								name: 'Multiple queries',
+								value: 'multiple',
+								description: '<b>Default</b>. Sends multiple queries at once to database.',
+							},
+							{
+								name: 'Transaction',
+								value: 'transaction',
+								description: 'Executes all queries in a single transaction',
+							},
+						],
+						default: 'multiple',
+						description: [
+							'The way queries should be sent to database.',
+							'Can be used in conjunction with <b>Continue on Fail</b>.',
+							'See the docs for more examples',
+						].join('<br>'),
+					},
+				],
+			},
 		],
 	};
 
@@ -251,22 +292,20 @@ export class TimescaleDb implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items);
+			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
-			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+			returnItems = this.helpers.returnJsonArray(queryResult);
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
 			// ----------------------------------
 
-			const [insertData, insertItems] = await pgInsert(this.getNodeParameter, pgp, db, items);
+			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
 			// Add the id to the data
 			for (let i = 0; i < insertData.length; i++) {
 				returnItems.push({
-					json: {
-						...insertData[i],
-					},
+					json: insertData[i],
 				});
 			}
 		} else if (operation === 'update') {
@@ -274,7 +313,7 @@ export class TimescaleDb implements INodeType {
 			//         update
 			// ----------------------------------
 
-			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items);
+			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
 			returnItems = this.helpers.returnJsonArray(updateItems);
 
