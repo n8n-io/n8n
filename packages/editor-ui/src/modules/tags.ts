@@ -31,7 +31,16 @@ const module: Module<ITagsState, IRootState> = {
 		},
 		upsertTags(state: ITagsState, tags: ITag[]) {
 			tags.map((tag) => {
-				Vue.set(state.tags, tag.id, tag);
+				if (state.tags[tag.id]) {
+					const newTag = {
+						...state.tags[tag.id],
+						...tag,
+					};
+					Vue.set(state.tags, tag.id, newTag);
+				}
+				else {
+					Vue.set(state.tags, tag.id, tag);
+				}
 			});
 		},
 		deleteTag(state: ITagsState, id: string) {
