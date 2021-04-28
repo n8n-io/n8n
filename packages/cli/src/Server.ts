@@ -735,7 +735,7 @@ class App {
 		}));
 
 		// Creates a tag
-		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response) => {
+		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IShortTag | void> => {
 			const newTag = new TagEntity();
 			newTag.name = req.body.name;
 			newTag.createdAt = this.getCurrentDate(); // TODO: Set at DB level
@@ -743,9 +743,15 @@ class App {
 
 			await TagHelpers.validateTag(newTag);
 
-			const savedTag = await Db.collections.Tag!.save(newTag);
+			try {
+				const savedTag = await Db.collections.Tag!.save(newTag);
+				return TagHelpers.shortenTag(savedTag);
+			} catch (error) {
+				if (error.message.includes('UNIQUE')) {
+					throw new ResponseHelper.ResponseError('Tag name already exists', undefined, 400);
+				}
+			}
 
-			return TagHelpers.shortenTag(savedTag);
 		}));
 
 		// Updates a tag
@@ -753,12 +759,19 @@ class App {
 			const { name } = req.body;
 			const { id } = req.params;
 
-			const updatedTag: Partial<TagEntity> = {
-				name,
-				updatedAt: this.getCurrentDate(),
-			};
+			const newTag = new TagEntity();
+			newTag.name = name;
+			newTag.updatedAt = this.getCurrentDate();
 
-			await Db.collections.Tag!.update(id, updatedTag); // update returns nothing
+			await TagHelpers.validateTag(newTag);
+
+			try {
+				await Db.collections.Tag!.update(id, newTag); // update returns nothing
+			} catch (error) {
+				if (error.message.includes('UNIQUE')) {
+					throw new ResponseHelper.ResponseError('Tag name already exists', undefined, 400);
+				}
+			}
 
 			return { id, name };
 		}));

@@ -1,6 +1,6 @@
 // import { omit } from 'lodash';
 import { getConnection } from "typeorm";
-import { validate } from 'class-validator';
+import { validate, ValidationError } from 'class-validator';
 
 import {
 	IShortTag,
@@ -13,7 +13,6 @@ import {
 
 import {
 	IShortWorkflow,
-	ITagWithCount,
 	ITagWithCountDb,
 	IWorkflowDb,
 } from "./Interfaces";
@@ -69,9 +68,18 @@ export async function validateTag(newTag: TagEntity) {
 	const errors = await validate(newTag);
 
 	if (errors.length) {
-		throw new ResponseHelper.ResponseError(JSON.stringify(errors), undefined, 400);
+		const validationErrorMessage = extractFirstMessage(errors);
+		throw new ResponseHelper.ResponseError(validationErrorMessage, undefined, 400);
 	}
 }
+
+/**
+ * Extract the first error message from a `ValidationError[]`.
+ */
+const extractFirstMessage = (errors: ValidationError[]) => {
+	const constraints = errors.map(error => error.constraints!)[0];
+	return Object.values(constraints)[0];
+};
 
 // ----------------------------------
 //             queries
