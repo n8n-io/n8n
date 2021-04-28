@@ -1,16 +1,19 @@
 import {
 	ExecutionError,
+	IConnections,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
+	INode,
 	IRun,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
 	IWorkflowBase as IWorkflowBaseWorkflow,
 	IWorkflowCredentials,
+	IWorkflowSettings,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -20,11 +23,12 @@ import {
 } from 'n8n-core';
 
 import * as PCancelable from 'p-cancelable';
-import { Repository } from 'typeorm';
+import { ObjectID, Repository } from 'typeorm';
 
 import { ChildProcess } from 'child_process';
 import { Url } from 'url';
 import { Request } from 'express';
+import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { TagEntity } from './databases/entities/TagEntity';
 
 export interface IActivationError {
@@ -58,9 +62,9 @@ export interface ICredentialsOverwrite {
 export interface IDatabaseCollections {
 	Credentials: Repository<ICredentialsDb> | null;
 	Execution: Repository<IExecutionFlattedDb> | null;
-	Workflow: Repository<IWorkflowDb> | null;
+	Workflow: Repository<WorkflowEntity> | null;
 	Webhook: Repository<IWebhookDb> | null;
-	Tag: Repository<ITagDb> | null;
+	Tag: Repository<TagEntity> | null;
 }
 
 export interface IWebhookDb {
@@ -72,45 +76,86 @@ export interface IWebhookDb {
 	pathLength?: number;
 }
 
-export interface IWorkflowBase extends IWorkflowBaseWorkflow {
-	id?: number | string;
+// ----------------------------------
+//               tags
+// ----------------------------------
+
+export interface ITagDb {
+	id: number;
+	name: string;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
-export interface IWorkflowRequest extends Request {
-	body: {
-		tags?: string[];
+export interface IShortTag {
+	id: string;
+	name: string;
+}
+
+export type UsageCount = {
+	usageCount: number
+};
+
+export type ITagWithCountDb = ITagDb & UsageCount;
+
+export type ITagWithCount = IShortTag & UsageCount;
+
+// ----------------------------------
+//            workflows
+// ----------------------------------
+
+interface IWorkflowRequestPayload {
+	name: string;
+	active: boolean;
+	connections: IConnections;
+	nodes: INode[];
+	settings?: IWorkflowSettings;
+	staticData?: IDataObject;
+	tags: string[];
+}
+
+export interface ICreateWorkflowRequest extends Request {
+	body: IWorkflowRequestPayload;
+}
+
+export interface IGetWorkflowsRequest extends Request {
+	query: {
+		filter: string;
 	};
 }
 
-export interface ITagDb {
-	id: string | number;
-	name: string;
-	createdAt?: Date;
-	updatedAt?: Date;
+export interface IUpdateWorkflowRequest extends Request {
+	body: {
+		id: number;
+	} & IWorkflowRequestPayload;
 }
 
-export interface ITagResponseItem {
-	id: string;
-	name: string;
-}
-
-// Almost identical to editor-ui.Interfaces.ts
-export interface IWorkflowDb extends IWorkflowBase {
-	id: number | string;
-	tags: ITagDb[];
-}
-
-export interface IWorkflowResponse extends IWorkflowBase {
-	id: string;
-}
-
-export interface IWorkflowShortResponse {
+export interface IShortWorkflow extends IWorkflowBase {
 	id: string;
 	name: string;
 	active: boolean;
 	createdAt: Date;
 	updatedAt: Date;
+	tags: IShortTag[];
 }
+
+// ----------------------------------
+//       original from Jan
+// ----------------------------------
+
+export interface IWorkflowBase extends IWorkflowBaseWorkflow {
+	id?: number | string | ObjectID;
+}
+
+// Almost identical to editor-ui.Interfaces.ts
+export interface IWorkflowDb extends IWorkflowBase {
+	id: number | string | ObjectID;
+	tags: ITagDb[];
+}
+
+// ----------------------------------
+//            credentials
+// ----------------------------------
 
 export interface ICredentialsBase {
 	createdAt: Date;

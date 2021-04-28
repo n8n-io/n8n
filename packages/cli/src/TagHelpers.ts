@@ -1,69 +1,61 @@
-import {
-	getConnection,
-} from "typeorm";
+// import { omit } from 'lodash';
+import { getConnection } from "typeorm";
+import { validate } from 'class-validator';
 
 import {
-	Db,
-	ITagDb,
-	ITagResponseItem,
+	IShortTag,
 	ResponseHelper,
 } from ".";
 
-const TAG_NAME_LENGTH_LIMIT = 24;
+import {
+	TagEntity,
+} from "./databases/entities/TagEntity";
+
+import {
+	IShortWorkflow,
+	ITagWithCount,
+	ITagWithCountDb,
+	IWorkflowDb,
+} from "./Interfaces";
+
 
 // ----------------------------------
 //              utils
 // ----------------------------------
 
 /**
- * Type guard for string array.
+ * Format `TagEntity` into `ShortTag`.
  */
-function isStringArray(tags: unknown[]): tags is string[] {
-	return Array.isArray(tags) && tags.every((value) => typeof value === 'string');
+export function shortenTag({ id, name }: TagEntity): IShortTag {
+	return ({ id: id.toString(), name });
 }
 
 /**
- * Format a tags response by stringifying the ID in every `ITagDb` in an array
- * and removing `createdAt` and `updatedAt` to slim down the payload.
+ * Create a cloned object without a property.
  */
-export function formatTagsResponse(tags: ITagDb[]): ITagResponseItem[] {
-	return tags.map(({ id, name }) => ({ id: id.toString(), name }));
-}
+export const omit = (keyToOmit: string, { [keyToOmit]: _, ...omittedPropObj }) => omittedPropObj;
 
-/**
- * Sort a tags response by the order of the tag IDs in the incoming request.
- */
-export function sortByRequestOrder(
-	tagsResponse: ITagResponseItem[],
-	tagIds: string[]
-) {
-	return tagsResponse.sort((a, b) => tagIds.indexOf(a.id) - tagIds.indexOf(b.id));
-}
+export function shortenWorkflow(workflowDb: IWorkflowDb) {
+	const workflowRes = omit('tags', workflowDb) as IShortWorkflow;
+	workflowRes.id = workflowDb.id.toString();
 
-/**
- * Check if a workflow and a tag are related.
- */
-async function checkRelated(workflowId: string, tagId: string): Promise<boolean> {
-	const result = await getConnection().createQueryBuilder()
-		.select()
-		.from('workflows_tags', 'workflows_tags')
-		.where('workflowId = :workflowId AND tagId = :tagId', { workflowId, tagId })
-		.execute();
-
-	return result.length > 0;
-}
-
-/**
- * Check whether a tag ID exists in the `tag_entity` table.
- *
- * Used for creating a workflow or updating a tag.
- */
-export async function exists(id: string): Promise<void> | never {
-	const tag = await Db.collections.Tag!.findOne({ where: { id }});
-
-	if (!tag) {
-		throw new ResponseHelper.ResponseError(`Tag with ID ${id} does not exist.`, undefined, 400);
+	if (workflowDb.tags.length) {
+		workflowRes.tags = workflowDb.tags.map(shortenTag);
 	}
+
+	return workflowRes;
+}
+
+/**
+ * Sort a `TagEntity[]` by the order of the tag IDs in the incoming request.
+ */
+export function sortByRequestOrder(tagsDb: TagEntity[], tagIds: string[]) {
+	const tagMap = tagsDb.reduce((acc, tag) => {
+		acc[tag.id.toString()] = tag;
+		return acc;
+	}, {} as { [key: string]: TagEntity });
+
+	return tagIds.map(tagId => tagMap[tagId]);
 }
 
 // ----------------------------------
@@ -71,62 +63,14 @@ export async function exists(id: string): Promise<void> | never {
 // ----------------------------------
 
 /**
- * Validate whether every tag ID is a string array and exists in the `tag_entity` table.
- *
- * Used for creating a workflow or updating a tag.
+ * Validate a new tag based on `class-validator` constraints.
  */
-export async function validateTags(tags: unknown[]): Promise<void> | never {
-	if (!isStringArray(tags)) {
-		throw new ResponseHelper.ResponseError(`The tags property is not an array of strings.`, undefined, 400);
+export async function validateTag(newTag: TagEntity) {
+	const errors = await validate(newTag);
+
+	if (errors.length) {
+		throw new ResponseHelper.ResponseError(JSON.stringify(errors), undefined, 400);
 	}
-
-	for (const tagId of tags) {
-		await exists(tagId);
-	}
-}
-
-/**
- * Validate whether a tag name
- * - is present in the request body,
- * - is a string,
- * - is 1 to 24 characters long, and
- * - does not exist already.
- *
- * Used for creating or updating a tag.
- */
-export async function validateName(name: unknown): Promise<void> | never {
-	if (name === undefined) {
-		throw new ResponseHelper.ResponseError(`Property 'name' missing from request body.`, undefined, 400);
-	}
-
-	if (typeof name !== 'string') {
-		throw new ResponseHelper.ResponseError(`Property 'name' must be a string.`, undefined, 400);
-	}
-
-	if (name.length <= 0 || name.length > TAG_NAME_LENGTH_LIMIT) {
-		throw new ResponseHelper.ResponseError('Tag name must be 1 to 24 characters long.', undefined, 400);
-	}
-
-	const tag = await Db.collections.Tag!.findOne({ where: { name } });
-
-	if (tag) {
-		throw new ResponseHelper.ResponseError('Tag name already exists.', undefined, 400);
-	}
-}
-
-/**
- * Validate that the provided tags are not related to a workflow.
- *
- * Used before creating a relation before the provided tags and workflow.
- */
-export async function validateRelations(workflowId: string, tagIds: string[]): Promise<void> | never {
-	// for (const tagId of tagIds) {
-	// 	const areRelated = await checkRelated(workflowId, tagId);
-
-	// 	if (areRelated) {
-	// 		throw new ResponseHelper.ResponseError(`Workflow ID ${workflowId} and tag ID ${tagId} are already related.`, undefined, 400);
-	// 	}
-	// }
 }
 
 // ----------------------------------
@@ -134,41 +78,19 @@ export async function validateRelations(workflowId: string, tagIds: string[]): P
 // ----------------------------------
 
 /**
- * Retrieve all existing tags, whether related to a workflow or not,
- * including how many workflows each tag is related to.
+ * Retrieve all tags and the number of workflows each tag is related to.
  */
-export async function getAllTagsWithUsageCount(): Promise<Array<{
-	id: number;
-	name: string;
-	usageCount: number
-}>> {
-	return await getConnection().createQueryBuilder()
-		.select('tag_entity.id', 'id')
-		.addSelect('tag_entity.name', 'name')
-		.addSelect('COUNT(workflow_entity.id)', 'usageCount')
-		.from('tag_entity', 'tag_entity')
-		.leftJoin('workflows_tags', 'workflows_tags', 'workflows_tags.tagId = tag_entity.id')
-		.leftJoin('workflow_entity', 'workflow_entity', 'workflows_tags.workflowId = workflow_entity.id')
-		.groupBy('tag_entity.id')
-		.getRawMany();
-}
-
-/**
- * Retrieve the tags related to a single workflow.
- */
-export async function getWorkflowTags(
-	workflowId: string
-): Promise<Array<{ id: string; name: string }>> {
+export async function getTagsWithCountDb(tablePrefix: string): Promise<ITagWithCountDb[]> {
 	return await getConnection()
-		.createQueryBuilder()
-		.select('tag_entity.id', 'id')
-		.addSelect('tag_entity.name', 'name')
-		.from('tag_entity', 'tag_entity')
-		.leftJoin('workflows_tags', 'workflows_tags', 'workflows_tags.tagId = tag_entity.id')
-		.where('workflowId = :workflowId', { workflowId })
-		.getRawMany();
+	.createQueryBuilder()
+	.select(`${tablePrefix}tag_entity.id`, 'id')
+	.addSelect(`${tablePrefix}tag_entity.name`, 'name')
+	.addSelect(`COUNT(${tablePrefix}workflows_tags.workflowId)`, 'usageCount')
+	.from(`${tablePrefix}tag_entity`, 'tag_entity')
+	.leftJoin(`${tablePrefix}workflows_tags`, 'workflows_tags', `${tablePrefix}workflows_tags.tagId = tag_entity.id`)
+	.groupBy(`${tablePrefix}tag_entity.id`)
+	.getRawMany();
 }
-
 
 // ----------------------------------
 //             mutations
@@ -177,10 +99,11 @@ export async function getWorkflowTags(
 /**
  * Relate a workflow to one or more tags.
  */
-export async function createRelations(workflowId: string, tagIds: string[]) {
-	await getConnection().createQueryBuilder()
+export async function createRelations(workflowId: string, tagIds: string[], tablePrefix: string) {
+	await getConnection()
+		.createQueryBuilder()
 		.insert()
-		.into('workflows_tags')
+		.into(`${tablePrefix}workflows_tags`)
 		.values(tagIds.map(tagId => ({ workflowId, tagId })))
 		.execute();
 }
@@ -188,10 +111,11 @@ export async function createRelations(workflowId: string, tagIds: string[]) {
 /**
  * Remove all tags for a workflow during a tag update operation.
  */
-export async function removeRelations(workflowId: string) {
-	await getConnection().createQueryBuilder()
+export async function removeRelations(workflowId: string, tablePrefix: string) {
+	await getConnection()
+		.createQueryBuilder()
 		.delete()
-		.from('workflows_tags')
+		.from(`${tablePrefix}workflows_tags`)
 		.where('workflowId = :id', { id: workflowId })
 		.execute();
 }
