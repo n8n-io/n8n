@@ -36,14 +36,14 @@ export function shortenTag({ id, name }: TagEntity): IShortTag {
 export const omit = (keyToOmit: string, { [keyToOmit]: _, ...omittedPropObj }) => omittedPropObj;
 
 export function shortenWorkflow(workflowDb: IWorkflowDb) {
-	const workflowRes = omit('tags', workflowDb) as IShortWorkflow;
-	workflowRes.id = workflowDb.id.toString();
+	const shortWorkflow = omit('tags', workflowDb) as IShortWorkflow;
+	shortWorkflow.id = workflowDb.id.toString();
 
 	if (workflowDb.tags.length) {
-		workflowRes.tags = workflowDb.tags.map(shortenTag);
+		shortWorkflow.tags = workflowDb.tags.map(shortenTag);
 	}
 
-	return workflowRes;
+	return shortWorkflow;
 }
 
 /**

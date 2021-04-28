@@ -613,9 +613,19 @@ class App {
 
 			await this.externalHooks.run('workflow.afterUpdate', [incomingData]);
 
+			if (newTags?.length) {
+				const tablePrefix = config.get('database.tablePrefix');
+				await TagHelpers.removeRelations(req.params.id, tablePrefix);
+				await TagHelpers.createRelations(req.params.id, newTags, tablePrefix);
+			}
+
 			// We sadly get nothing back from "update". Neither if it updated a record
 			// nor the new value. So query now the hopefully updated entry.
 			const workflow = await Db.collections.Workflow!.findOne(id, { relations: ['tags'] });
+
+			if (workflow && newTags?.length) {
+				workflow.tags = TagHelpers.sortByRequestOrder(workflow.tags, newTags);
+			}
 
 			if (workflow === undefined) {
 				throw new ResponseHelper.ResponseError(`Workflow with id "${id}" could not be found to be updated.`, undefined, 400);
@@ -639,14 +649,6 @@ class App {
 					// Now return the original error for UI to display
 					throw error;
 				}
-			}
-
-			if (newTags?.length) {
-				const tablePrefix = config.get('database.tablePrefix');
-				await TagHelpers.removeRelations(req.params.id, tablePrefix);
-				await TagHelpers.createRelations(req.params.id, newTags, tablePrefix);
-
-				workflow.tags = TagHelpers.sortByRequestOrder(workflow.tags, newTags);
 			}
 
 			return TagHelpers.shortenWorkflow(workflow);
