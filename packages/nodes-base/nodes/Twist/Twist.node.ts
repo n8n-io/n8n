@@ -342,6 +342,9 @@ export class Twist implements INodeType {
 					}
 
 					responseData = await twistApiRequest.call(this, 'GET', '/comments/get', {}, qs);
+					if (qs.as_ids) {
+						responseData = (responseData as Array<number>).map(id => ({ID:id}));
+					}
 				}
 				//https://developer.twist.com/v3/#update-comment
 				if (operation === 'update') {
@@ -681,6 +684,9 @@ export class Twist implements INodeType {
 					}
 
 					responseData = await twistApiRequest.call(this, 'GET', '/threads/get', {}, qs);
+					if (qs.as_ids) {
+						responseData = (responseData as Array<number>).map(id => ({ID:id}));
+					}
 				}
 				//https://developer.twist.com/v3/#update-thread
 				if (operation === 'update') {
