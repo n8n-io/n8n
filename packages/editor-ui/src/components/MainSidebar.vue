@@ -192,7 +192,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 
 import {
@@ -219,7 +218,7 @@ import { workflowRun } from '@/components/mixins/workflowRun';
 import { saveAs } from 'file-saver';
 
 import mixins from 'vue-typed-mixins';
-import { mapGetters, mapState } from 'vuex';
+import { mapGetters } from 'vuex';
 
 export default mixins(
 	genericHelpers,

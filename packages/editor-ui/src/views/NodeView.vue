@@ -167,7 +167,7 @@ import {
 	IPushDataExecutionFinished,
 	ITag,
 } from '../Interface';
-import { mapGetters, mapState } from 'vuex';
+import { mapGetters } from 'vuex';
 
 export default mixins(
 	copyPaste,
