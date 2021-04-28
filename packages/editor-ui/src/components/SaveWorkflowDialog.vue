@@ -36,9 +36,9 @@
 
 <script lang="ts">
 import mixins from "vue-typed-mixins";
-import { workflowHelpers } from "./mixins/workflowHelpers";
-import { showMessage } from "./mixins/showMessage";
-import TagsDropdown from "./TagsDropdown.vue";
+import { workflowHelpers } from "@/components/mixins/workflowHelpers";
+import { showMessage } from "@/components/mixins/showMessage";
+import TagsDropdown from "@/components/TagsDropdown.vue";
 
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { TagsDropdown },

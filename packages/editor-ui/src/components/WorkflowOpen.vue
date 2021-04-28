@@ -44,18 +44,18 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
 
-import WorkflowActivator from '@/components/WorkflowActivator.vue';
+import { ITag, IWorkflowShortResponse } from '@/Interface';
 
 import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
-import { ITag, IWorkflowShortResponse } from '@/Interface';
 
-import mixins from 'vue-typed-mixins';
-import TagsContainer from './TagsContainer.vue';
-import TagsDropdown from './TagsDropdown.vue';
+import TagsContainer from '@/components/TagsContainer.vue';
+import TagsDropdown from '@/components/TagsDropdown.vue';
+import WorkflowActivator from '@/components/WorkflowActivator.vue';
 
 export default mixins(
 	genericHelpers,

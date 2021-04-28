@@ -13,8 +13,9 @@
 </template>
 
 <script lang="ts">
-import { ITag } from '@/Interface';
 import Vue from 'vue';
+
+import { ITag } from '@/Interface';
 
 interface ITagEl extends ITag {
 	title?: string;
