@@ -105,6 +105,6 @@ export default Vue.extend({
 	font-size: 9px;
 	font-weight: 600;
 	letter-spacing: 0.75px;
-	color: #5a5e66;
+	color: $--custom-font-light;
 }
 </style>
