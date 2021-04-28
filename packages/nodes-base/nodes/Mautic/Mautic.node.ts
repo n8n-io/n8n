@@ -314,7 +314,7 @@ export class Mautic implements INodeType {
 						body.ipAddress = additionalFields.ipAddress as string;
 					}
 					if (additionalFields.lastActive) {
-						body.ipAddress = additionalFields.lastActive as string;
+						body.lastActive = additionalFields.lastActive as string;
 					}
 					if (additionalFields.ownerId) {
 						body.ownerId = additionalFields.ownerId as string;
@@ -423,7 +423,7 @@ export class Mautic implements INodeType {
 						body.ipAddress = updateFields.ipAddress as string;
 					}
 					if (updateFields.lastActive) {
-						body.ipAddress = updateFields.lastActive as string;
+						body.lastActive = updateFields.lastActive as string;
 					}
 					if (updateFields.ownerId) {
 						body.ownerId = updateFields.ownerId as string;
