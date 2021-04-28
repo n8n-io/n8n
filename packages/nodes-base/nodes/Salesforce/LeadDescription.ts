@@ -251,7 +251,7 @@ export const leadFields = [
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getUsers',
+					loadOptionsMethod: 'getLeadOwners',
 				},
 				default: '',
 				description: 'The owner of the lead.',
@@ -509,7 +509,7 @@ export const leadFields = [
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getUsers',
+					loadOptionsMethod: 'getLeadOwners',
 				},
 				default: '',
 				description: 'The owner of the lead.',
