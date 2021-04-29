@@ -371,7 +371,7 @@ export const workflowHelpers = mixins(
 				const currentWorkflow = this.$route.params.name;
 				if (!currentWorkflow) {
 					// brand new workflow, ask for name
-					this.$store.commit('ui/openModal', 'saveAs');
+					this.$store.dispatch('ui/openSaveAsModal');
 
 					return;
 				}

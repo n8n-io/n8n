@@ -1,6 +1,6 @@
 
 import Vue from 'vue';
-import { Module } from 'vuex';
+import { ActionContext, Module } from 'vuex';
 import {
 	IModalNames,
 	IRootState,
@@ -54,6 +54,20 @@ const module: Module<IUiState, IRootState> = {
 			state.sidebarMenuCollapsed = !state.sidebarMenuCollapsed;
 		},
 	},
+	actions: {
+		openTagsManagerModal: async (context: ActionContext<IUiState, IRootState>) => {
+			context.commit('openModal', 'tagsManager');
+		},
+		openWorklfowOpenModal: async (context: ActionContext<IUiState, IRootState>) => {
+			context.commit('openModal', 'workflowOpen');
+		},
+		openRenameModal: async (context: ActionContext<IUiState, IRootState>) => {
+			context.commit('openModal', 'rename');
+		},
+		openSaveAsModal: async (context: ActionContext<IUiState, IRootState>) => {
+			context.commit('openModal', 'saveAs');
+		},
+	}
 };
 
 export default module;

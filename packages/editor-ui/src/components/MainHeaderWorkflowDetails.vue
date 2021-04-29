@@ -63,10 +63,10 @@ export default Vue.extend({
 	},
 	methods: {
 		openSaveDialog() {
-			this.$store.commit("ui/openModal", "saveAs");
+			this.$store.dispatch('ui/openSaveAsModal');
 		},
 		openRenameDialog() {
-			this.$store.commit("ui/openModal", "rename");
+			this.$store.dispatch('ui/openRenameModal');
 		},
 	},
 });

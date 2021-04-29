@@ -328,7 +328,7 @@ export default mixins(
 				this.credentialNewDialogVisible = false;
 			},
 			openTagManager() {
-				this.$store.commit('ui/openModal', 'tagsManager');
+				this.$store.dispatch('ui/openTagsManagerModal');
 			},
 			async stopExecution () {
 				const executionId = this.$store.getters.activeExecutionId;
@@ -386,7 +386,7 @@ export default mixins(
 			},
 			async handleSelect (key: string, keyPath: string) {
 				if (key === 'workflow-open') {
-					this.$store.commit('ui/openModal', 'workflowOpen');
+					this.$store.dispatch('ui/openWorklfowOpenModal');
 				} else if (key === 'workflow-import-file') {
 					(this.$refs.importFile as HTMLInputElement).click();
 				} else if (key === 'workflow-import-url') {
@@ -401,7 +401,7 @@ export default mixins(
 						this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
 					} catch (e) {}
 				} else if (key === 'workflow-rename') {
-					this.$store.commit('ui/openModal', 'rename');
+					this.$store.dispatch('ui/openRenameModal');
 				} else if (key === 'workflow-delete') {
 					const deleteConfirmed = await this.confirmMessage(`Are you sure that you want to delete the workflow "${this.workflowName}"?`, 'Delete Workflow?', 'warning', 'Yes, delete!');
 
@@ -439,7 +439,7 @@ export default mixins(
 				} else if (key === 'workflow-save') {
 					this.saveCurrentWorkflow();
 				} else if (key === 'workflow-save-as') {
-					this.$store.commit('ui/openModal', 'saveAs');
+					this.$store.dispatch('ui/openSaveAsModal');
 				} else if (key === 'help-about') {
 					this.aboutDialogVisible = true;
 				} else if (key === 'workflow-settings') {

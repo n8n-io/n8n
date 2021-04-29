@@ -500,7 +500,7 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.$store.commit('ui/openModal', 'workflowOpen');
+					this.$store.dispatch('openWorkflowOpenDialog');
 				} else if (e.key === 'n' && this.isCtrlKeyPressed(e) === true && e.altKey === true) {
 					// Create a new workflow
 					e.stopPropagation();
