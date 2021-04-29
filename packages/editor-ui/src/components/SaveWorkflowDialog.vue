@@ -2,7 +2,6 @@
 	<Modal
 		:title="title"	
 		:name="modalName"
-		:dialogVisible="dialogVisible"
 		:eventBus="modalBus"
 		:messageBox="true"
 		@enter="save"
