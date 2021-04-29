@@ -747,9 +747,7 @@ class App {
 				const savedTag = await Db.collections.Tag!.save(newTag);
 				return TagHelpers.shortenTag(savedTag);
 			} catch (error) {
-				if (error.message.includes('UNIQUE')) {
-					throw new ResponseHelper.ResponseError('Tag name already exists', undefined, 400);
-				}
+				TagHelpers.throwDuplicateEntryError(error);
 			}
 
 		}));
@@ -768,9 +766,7 @@ class App {
 			try {
 				await Db.collections.Tag!.update(id, newTag); // update returns nothing
 			} catch (error) {
-				if (error.message.includes('UNIQUE')) {
-					throw new ResponseHelper.ResponseError('Tag name already exists', undefined, 400);
-				}
+				TagHelpers.throwDuplicateEntryError(error);
 			}
 
 			return { id, name };
