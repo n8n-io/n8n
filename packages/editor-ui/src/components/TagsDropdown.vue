@@ -1,17 +1,17 @@
 <template>
 	<div class="tags-container" @keydown.stop>
 		<el-select
-			filterable
-			multiple
-			ref="select"
-			popper-class="tags-dropdown"
 			:popperAppendToBody="false"
 			:value="appliedTags"
 			:loading="isLoading"
 			:placeholder="placeholder"
 			:filter-method="filterOptions"
 			@change="tagsUpdated"
+			filterable
+			multiple
+			ref="select"
 			loading-text="..."
+			popper-class="tags-dropdown"
 		>
 			<el-option
 				v-if="options.length === 0 && filter && createEnabled"

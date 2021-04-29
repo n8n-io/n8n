@@ -43,7 +43,7 @@ import Modal from "./Modal.vue";
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { TagsDropdown, Modal },
 	name: "SaveWorkflow",
-	props: ["dialogVisible", "title", "renameOnly", "modalName"],
+	props: ["dialogVisible", "title", "renameOnly", "modalName", "isActive"],
 	data() {
 		const currentTagIds = this.$store.getters[
 			"workflows/currentWorkflowTagIds"
@@ -64,13 +64,21 @@ export default mixins(showMessage, workflowHelpers).extend({
 	},
 	mounted() {
 		this.$nextTick(() => {
-			const input = this.$refs.nameInput as any; // tslint:disable-line:no-any
-			if (input && input.focus) {
-				input.focus();
-			}
+			this.focusOnInput();
 		});
 	},
+	updated() {
+		this.focusOnInput();
+	},
 	methods: {
+		focusOnInput() {
+			if (this.$props.isActive) {
+				const input = this.$refs.nameInput as HTMLElement;
+				if (input && input.focus) {
+					input.focus();
+				}
+			}
+		},
 		onTagsUpdate(tagIds: string[]) {
 			this.currentTagIds = tagIds;
 		},

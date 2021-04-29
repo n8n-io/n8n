@@ -4,12 +4,14 @@
 			v-if="isOpen('saveAs')"
 			modalName="saveAs"
 			title="Save new workflow"
+			:isActive="isActive('rename')"
 		/>
 		<SaveWorkflowDialog
 			v-if="isOpen('rename')"
 			:renameOnly="true"
 			modalName="rename"
 			title="Rename workflow"
+			:isActive="isActive('rename')"
 		/>
 		<TagsManager
 			v-if="isOpen('tagsManager')"	
@@ -35,6 +37,9 @@ export default Vue.extend({
 		WorkflowOpen,
 	},
 	methods: {
+		isActive(name: string) {
+			return this.$store.getters['ui/isModalActive'](name);
+		},
 		isOpen(name: string) {
 			return this.$store.getters['ui/isModalOpen'](name);
 		},

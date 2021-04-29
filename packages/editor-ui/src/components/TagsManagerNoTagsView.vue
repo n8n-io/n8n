@@ -9,10 +9,25 @@
 					your flows
 				</div>
 			</div>
-			<el-button @click="$emit('enableCreate')"> Create a tag </el-button>
+			<el-button ref="create" @click="$emit('enableCreate')"> Create a tag </el-button>
 		</el-col>
 	</div>
 </template>
+
+<script lang="ts">
+
+import Vue from 'vue';
+
+export default Vue.extend({
+	name: 'NoTagsView',
+	mounted() {
+		const create = this.$refs.create as Vue | undefined;
+		if (create) {
+			(create.$el as HTMLElement).focus();
+		}
+	},
+});
+</script>
 
 <style lang="scss" scoped>
 $--footer-spacing: 45px;

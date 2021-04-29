@@ -3,7 +3,7 @@
 		title="Manage tags"
 		name="tagsManager"
 		:eventBus="modalBus"
-		@enter="closeDialog"
+		@enter="onEnter"
 	>
 		<template slot="content">
 			<el-row>
@@ -165,8 +165,16 @@ export default mixins(showMessage).extend({
 			}
 		},
 
-		closeDialog() {
-			this.modalBus.$emit('close');
+		onEnter() {
+			if (this.isLoading) {
+				return;
+			}
+			else if (!this.hasTags) {
+				this.onEnableCreate();
+			}
+			else {
+				this.modalBus.$emit('close');
+			}
 		},
 	},
 });
