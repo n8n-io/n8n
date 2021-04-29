@@ -98,9 +98,22 @@ export class WorkflowRunnerProcess {
 		const externalHooks = ExternalHooks();
 		await externalHooks.init();
 
-		// This code has been split into 3 ifs just to make it easier to understand
+		// Credentials should now be loaded from database.
+		// We check if any node uses credentials. If it does, then
+		// init database.
+		let shouldInitializaDb = false;
+		inputData.workflowData.nodes.map(node => {
+			if (Object.keys(node.credentials === undefined ? {} : node.credentials).length > 0) {
+				shouldInitializaDb = true;
+			}
+		});
+
+		// This code has been split into 4 ifs just to make it easier to understand
 		// Can be made smaller but in the end it will make it impossible to read.
-		if (inputData.workflowData.settings !== undefined && inputData.workflowData.settings.saveExecutionProgress === true) {
+		if (shouldInitializaDb) {
+			// initialize db as we need to load credentials
+			await Db.init();
+		} else if (inputData.workflowData.settings !== undefined && inputData.workflowData.settings.saveExecutionProgress === true) {
 			// Workflow settings specifying it should save
 			await Db.init();
 		} else if (inputData.workflowData.settings !== undefined && inputData.workflowData.settings.saveExecutionProgress !== false && config.get('executions.saveExecutionProgress') as boolean) {

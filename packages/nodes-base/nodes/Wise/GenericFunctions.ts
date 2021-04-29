@@ -25,7 +25,7 @@ export async function wiseApiRequest(
 	qs: IDataObject = {},
 	option: IDataObject = {},
 ) {
-	const { apiToken, environment } = this.getCredentials('wiseApi') as {
+	const { apiToken, environment } = await this.getCredentials('wiseApi') as {
 		apiToken: string,
 		environment: 'live' | 'test',
 	};

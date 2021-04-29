@@ -1108,7 +1108,7 @@ class App {
 			};
 			const mode: WorkflowExecuteMode = 'internal';
 			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const decryptedDataOriginal = await credentialsHelper.getDecrypted(result.name, result.type, mode, true);
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
@@ -1199,7 +1199,7 @@ class App {
 			};
 			const mode: WorkflowExecuteMode = 'internal';
 			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const decryptedDataOriginal = await credentialsHelper.getDecrypted(result.name, result.type, mode, true);
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const options: OptionsWithUrl = {
@@ -1271,7 +1271,7 @@ class App {
 			};
 			const mode: WorkflowExecuteMode = 'internal';
 			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const decryptedDataOriginal = await credentialsHelper.getDecrypted(result.name, result.type, mode, true);
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const token = new csrf();
@@ -1371,7 +1371,7 @@ class App {
 			};
 			const mode: WorkflowExecuteMode = 'internal';
 			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const decryptedDataOriginal = await credentialsHelper.getDecrypted(result.name, result.type, mode, true);
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const token = new csrf();

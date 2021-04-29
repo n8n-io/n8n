@@ -40,7 +40,7 @@ export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctio
 		delete options.body;
 	}
 
-	const credentials = this.getCredentials('unleashedSoftwareApi');
+	const credentials = await this.getCredentials('unleashedSoftwareApi');
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

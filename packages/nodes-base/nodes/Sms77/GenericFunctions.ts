@@ -21,7 +21,7 @@ import {
  * @returns {Promise<any>}
  */
 export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, form: IDataObject, qs?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('sms77Api');
+	const credentials = await this.getCredentials('sms77Api');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}

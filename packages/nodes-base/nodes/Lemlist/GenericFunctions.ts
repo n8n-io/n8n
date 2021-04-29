@@ -25,7 +25,7 @@ export async function lemlistApiRequest(
 	option: IDataObject = {},
 ) {
 
-	const { apiKey } = this.getCredentials('lemlistApi') as {
+	const { apiKey } = await this.getCredentials('lemlistApi') as {
 		apiKey: string,
 	};
 

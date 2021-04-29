@@ -97,7 +97,7 @@ export class Amqp implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('amqp');
+		const credentials = await this.getCredentials('amqp');
 		if (!credentials) {
 			throw new NodeOperationError(this.getNode(), 'Credentials are mandatory!');
 		}

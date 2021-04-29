@@ -132,7 +132,7 @@ export class AmqpTrigger implements INodeType {
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 
-		const credentials = this.getCredentials('amqp');
+		const credentials = await this.getCredentials('amqp');
 		if (!credentials) {
 			throw new NodeOperationError(this.getNode(), 'Credentials are mandatory!');
 		}

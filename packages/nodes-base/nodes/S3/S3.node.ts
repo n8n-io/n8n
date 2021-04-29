@@ -119,7 +119,7 @@ export class S3 implements INodeType {
 					let credentials;
 
 					try {
-						credentials = this.getCredentials('s3');
+						credentials = await this.getCredentials('s3');
 					} catch (error) {
 						throw new NodeApiError(this.getNode(), error);
 					}

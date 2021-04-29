@@ -39,7 +39,7 @@ export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions,
 		const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
 
 		if (authenticationMethod === 'accessToken') {
-			const credentials = this.getCredentials('githubApi');
+			const credentials = await this.getCredentials('githubApi');
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
@@ -50,7 +50,7 @@ export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions,
 			options.headers!.Authorization = `token ${credentials.accessToken}`;
 			return await this.helpers.request(options);
 		} else {
-			const credentials = this.getCredentials('githubOAuth2Api');
+			const credentials = await this.getCredentials('githubOAuth2Api');
 
 			const baseUrl = credentials!.server || 'https://api.github.com';
 			options.uri = `${baseUrl}${endpoint}`;

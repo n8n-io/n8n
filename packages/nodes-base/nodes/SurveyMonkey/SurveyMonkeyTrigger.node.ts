@@ -497,9 +497,9 @@ export class SurveyMonkeyTrigger implements INodeType {
 		const webhookName = this.getWebhookName();
 
 		if (authenticationMethod === 'accessToken') {
-			credentials = this.getCredentials('surveyMonkeyApi') as IDataObject;
+			credentials = await this.getCredentials('surveyMonkeyApi') as IDataObject;
 		} else {
-			credentials = this.getCredentials('surveyMonkeyOAuth2Api') as IDataObject;
+			credentials = await this.getCredentials('surveyMonkeyOAuth2Api') as IDataObject;
 		}
 
 		if (webhookName === 'setup') {

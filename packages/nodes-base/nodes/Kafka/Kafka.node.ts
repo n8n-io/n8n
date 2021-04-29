@@ -180,7 +180,7 @@ export class Kafka implements INodeType {
 			compression = CompressionTypes.GZIP;
 		}
 
-		const credentials = this.getCredentials('kafka') as IDataObject;
+		const credentials = await this.getCredentials('kafka') as IDataObject;
 
 		const brokers = (credentials.brokers as string || '').split(',').map(item => item.trim()) as string[];
 

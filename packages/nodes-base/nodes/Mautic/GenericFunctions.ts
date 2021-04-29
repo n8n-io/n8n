@@ -37,7 +37,7 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 		let returnData;
 
 		if (authenticationMethod === 'credentials') {
-			const credentials = this.getCredentials('mauticApi') as IDataObject;
+			const credentials = await this.getCredentials('mauticApi') as IDataObject;
 
 			const base64Key = Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
 
@@ -48,7 +48,7 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 			//@ts-ignore
 			returnData = await this.helpers.request(options);
 		} else {
-			const credentials = this.getCredentials('mauticOAuth2Api') as IDataObject;
+			const credentials = await this.getCredentials('mauticOAuth2Api') as IDataObject;
 
 			options.uri = `${credentials.url}${options.uri}`;
 			//@ts-ignore

@@ -146,7 +146,7 @@ export class EmailSend implements INodeType {
 			const attachmentPropertyString = this.getNodeParameter('attachments', itemIndex) as string;
 			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 
-			const credentials = this.getCredentials('smtp');
+			const credentials = await this.getCredentials('smtp');
 
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

@@ -14,7 +14,7 @@ import {
 
 export async function automizyApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('automizyApi') as IDataObject;
+	const credentials = await this.getCredentials('automizyApi') as IDataObject;
 
 	const options: OptionsWithUri = {
 		headers: {

@@ -426,7 +426,7 @@ export class Wise implements INodeType {
 
 						// in sandbox, simulate transfer completion so that PDF receipt can be downloaded
 
-						const { environment } = this.getCredentials('wiseApi') as IDataObject;
+						const { environment } = await this.getCredentials('wiseApi') as IDataObject;
 
 						if (environment === 'test') {
 							for (const endpoint of ['processing', 'funds_converted', 'outgoing_payment_sent']) {

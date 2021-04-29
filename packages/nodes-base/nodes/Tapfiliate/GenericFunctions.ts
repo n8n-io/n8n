@@ -14,7 +14,7 @@ import {
 } from 'n8n-workflow';
 
 export async function tapfiliateApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string | undefined, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('tapfiliateApi') as IDataObject;
+	const credentials = await this.getCredentials('tapfiliateApi') as IDataObject;
 
 	const options: OptionsWithUri = {
 		headers: {

@@ -151,9 +151,9 @@ export class TaigaTrigger implements INodeType {
 				let credentials;
 
 				if (version === 'server') {
-					credentials = this.getCredentials('taigaServerApi') as ICredentialDataDecryptedObject;
+					credentials = await this.getCredentials('taigaServerApi') as ICredentialDataDecryptedObject;
 				} else {
-					credentials = this.getCredentials('taigaCloudApi') as ICredentialDataDecryptedObject;
+					credentials = await this.getCredentials('taigaCloudApi') as ICredentialDataDecryptedObject;
 				}
 
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;

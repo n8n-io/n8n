@@ -25,7 +25,7 @@ export async function erpNextApiRequest(
 	option: IDataObject = {},
 ) {
 
-	const credentials = this.getCredentials('erpNextApi');
+	const credentials = await this.getCredentials('erpNextApi');
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

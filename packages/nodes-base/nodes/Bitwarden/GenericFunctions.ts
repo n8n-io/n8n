@@ -25,6 +25,7 @@ export async function bitwardenApiRequest(
 	token: string,
 ): Promise<any> { // tslint:disable-line:no-any
 
+	const baseUrl = await getBaseUrl.call(this);
 	const options: OptionsWithUri = {
 		headers: {
 			'user-agent': 'n8n',
@@ -34,7 +35,7 @@ export async function bitwardenApiRequest(
 		method,
 		qs,
 		body,
-		uri: `${getBaseUrl.call(this)}${endpoint}`,
+		uri: `${baseUrl}${endpoint}`,
 		json: true,
 	};
 
@@ -60,7 +61,7 @@ export async function getAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 ): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('bitwardenApi') as IDataObject;
+	const credentials = await this.getCredentials('bitwardenApi') as IDataObject;
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -76,7 +77,7 @@ export async function getAccessToken(
 			deviceType: 2, // https://github.com/bitwarden/server/blob/master/src/Core/Enums/DeviceType.cs
 			deviceIdentifier: 'n8n',
 		},
-		uri: getTokenUrl.call(this),
+		uri: await getTokenUrl.call(this),
 		json: true,
 	};
 
@@ -114,8 +115,8 @@ export async function handleGetAll(
 /**
  * Return the access token URL based on the user's environment.
  */
-function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
-	const { environment, domain } = this.getCredentials('bitwardenApi') as IDataObject;
+ async function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
+	const { environment, domain } = await this.getCredentials('bitwardenApi') as IDataObject;
 
 	return environment === 'cloudHosted'
 		? 'https://identity.bitwarden.com/connect/token'
@@ -126,8 +127,8 @@ function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
 /**
  * Return the base API URL based on the user's environment.
  */
-function getBaseUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
-	const { environment, domain } = this.getCredentials('bitwardenApi') as IDataObject;
+async function getBaseUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
+	const { environment, domain } = await this.getCredentials('bitwardenApi') as IDataObject;
 
 	return environment === 'cloudHosted'
 		? 'https://api.bitwarden.com'

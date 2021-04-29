@@ -15,7 +15,7 @@ export async function apiTemplateIoApiRequest(
 	qs = {},
 	body = {},
 ) {
-	const { apiKey } = this.getCredentials('apiTemplateIoApi') as { apiKey: string };
+	const { apiKey } = await this.getCredentials('apiTemplateIoApi') as { apiKey: string };
 
 	const options: OptionsWithUri = {
 		headers: {

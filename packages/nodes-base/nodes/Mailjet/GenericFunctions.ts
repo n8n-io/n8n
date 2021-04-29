@@ -7,7 +7,7 @@ import {
 import { IDataObject, IHookFunctions, NodeApiError } from 'n8n-workflow';
 
 export async function mailjetApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const emailApiCredentials = this.getCredentials('mailjetEmailApi');
+	const emailApiCredentials = await this.getCredentials('mailjetEmailApi');
 	let options: OptionsWithUri = {
 		headers: {
 			Accept: 'application/json',
@@ -28,7 +28,7 @@ export async function mailjetApiRequest(this: IExecuteFunctions | IExecuteSingle
 		//@ts-ignore
 		options.headers['Authorization'] = `Basic ${base64Credentials}`;
 	} else {
-		const smsApiCredentials = this.getCredentials('mailjetSmsApi');
+		const smsApiCredentials = await this.getCredentials('mailjetSmsApi');
 		//@ts-ignore
 		options.headers['Authorization'] = `Bearer ${smsApiCredentials.token}`;
 	}

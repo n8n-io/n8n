@@ -126,7 +126,7 @@ export class Mailgun implements INodeType {
 			const html = this.getNodeParameter('html', itemIndex) as string;
 			const attachmentPropertyString = this.getNodeParameter('attachments', itemIndex) as string;
 
-			const credentials = this.getCredentials('mailgunApi');
+			const credentials = await this.getCredentials('mailgunApi');
 
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
