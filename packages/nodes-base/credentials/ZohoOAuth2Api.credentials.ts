@@ -60,6 +60,22 @@ export class ZohoOAuth2Api implements ICredentialType {
 			required: true,
 		},
 		{
+			displayName: 'Region',
+			name: 'region',
+			type: 'options' as NodePropertyTypes,
+			default: 'europe',
+			options: [
+				{
+					name: 'Europe',
+					value: 'europe',
+				},
+				{
+					name: 'United States',
+					value: 'unitedStates',
+				},
+			],
+		},
+		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,

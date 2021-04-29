@@ -4,40 +4,54 @@ import {
 
 import {
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
+	adjustAccountFields,
+	adjustContactFields,
+	adjustInvoiceFields,
+	adjustLeadFields,
+	adjustPurchaseOrderFields,
+	adjustQuoteFields,
+	adjustSalesOrderFields,
+	handleListing,
 	zohoApiRequest,
-	zohoApiRequestAllItems,
 } from './GenericFunctions';
 
 import {
+	accountFields,
+	accountOperations,
+	contactFields,
+	contactOperations,
+	dealFields,
+	dealOperations,
+	invoiceFields,
+	invoiceOperations,
 	leadFields,
 	leadOperations,
-} from './LeadDescription';
-
-import {
-	IAddress,
-	ILead,
-} from './LeadInterface';
+	purchaseOrderFields,
+	purchaseOrderOperations,
+	quoteFields,
+	quoteOperations,
+	salesOrderFields,
+	salesOrderOperations,
+} from './descriptions';
 
 export class ZohoCrm implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Zoho CRM',
-		name: 'zohoCrm',
-		icon: 'file:zohoCrm.png',
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		group: ['input'],
+		displayName: 'Zoho',
+		name: 'zoho',
+		icon: 'file:zoho.svg',
+		group: ['transform'],
 		version: 1,
-		description: 'Consume Zoho CRM API.',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		description: 'Consume the Zoho API',
 		defaults: {
-			name: 'Zoho CRM',
-			color: '#CE2232',
+			name: 'Zoho',
+			color: '\#CE2232',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -54,399 +68,745 @@ export class ZohoCrm implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Account',
+						value: 'account',
+					},
+					{
+						name: 'Contact',
+						value: 'contact',
+					},
+					{
+						name: 'Deal',
+						value: 'deal',
+					},
+					{
+						name: 'Invoice',
+						value: 'invoice',
+					},
+					{
 						name: 'Lead',
 						value: 'lead',
 					},
+					{
+						name: 'Purchase Order',
+						value: 'purchaseOrder',
+					},
+					{
+						name: 'Quote',
+						value: 'quote',
+					},
+					{
+						name: 'Sales Order',
+						value: 'salesOrder',
+					},
 				],
-				default: 'lead',
-				description: 'The resource to operate on.',
+				default: 'account',
+				description: 'Resource to consume',
 			},
+			...accountOperations,
+			...accountFields,
+			...contactOperations,
+			...contactFields,
+			...dealOperations,
+			...dealFields,
+			...invoiceOperations,
+			...invoiceFields,
 			...leadOperations,
 			...leadFields,
+			...purchaseOrderOperations,
+			...purchaseOrderFields,
+			...quoteOperations,
+			...quoteFields,
+			...salesOrderOperations,
+			...salesOrderFields,
 		],
-	};
-
-	methods = {
-		loadOptions: {
-			// Get all the available users to display them to user so that he can
-			// select them easily
-			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const { users } = await zohoApiRequest.call(this, 'GET', '/users', {}, { type: 'AllUsers' });
-				for (const user of users) {
-					const userName = `${user.first_name} ${user.last_name}`;
-					const userId = user.profile.id;
-					returnData.push({
-						name: userName,
-						value: userId,
-					});
-				}
-				return returnData;
-			},
-			// Get all the available accounts to display them to user so that he can
-			// select them easily
-			async getAccounts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const qs: IDataObject = {};
-				qs.sort_by = 'Created_Time';
-				qs.sort_order = 'desc';
-				const { data } = await zohoApiRequest.call(this, 'GET', '/accounts', {}, qs);
-				for (const account of data) {
-					const accountName = account.Account_Name;
-					const accountId = account.id;
-					returnData.push({
-						name: accountName,
-						value: accountId,
-					});
-				}
-				return returnData;
-			},
-			// Get all the available lead statuses to display them to user so that he can
-			// select them easily
-			async getLeadStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const qs: IDataObject = {};
-				qs.module = 'leads';
-				const { fields } = await zohoApiRequest.call(this, 'GET', '/settings/fields', {}, qs);
-				for (const field of fields) {
-					if (field.api_name === 'Lead_Status') {
-						for (const value of field.pick_list_values) {
-							const valueName = value.display_value;
-							const valueId = value.actual_value;
-							returnData.push({
-								name: valueName,
-								value: valueId,
-							});
-							return returnData;
-						}
-					}
-				}
-				return returnData;
-			},
-			// Get all the available lead sources to display them to user so that he can
-			// select them easily
-			async getLeadSources(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const qs: IDataObject = {};
-				qs.module = 'leads';
-				const { fields } = await zohoApiRequest.call(this, 'GET', '/settings/fields', {}, qs);
-				for (const field of fields) {
-					if (field.api_name === 'Lead_Source') {
-						for (const value of field.pick_list_values) {
-							const valueName = value.display_value;
-							const valueId = value.actual_value;
-							returnData.push({
-								name: valueName,
-								value: valueId,
-							});
-							return returnData;
-						}
-					}
-				}
-				return returnData;
-			},
-			// Get all the available industries to display them to user so that he can
-			// select them easily
-			async getIndustries(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const qs: IDataObject = {};
-				qs.module = 'leads';
-				const { fields } = await zohoApiRequest.call(this, 'GET', '/settings/fields', {}, qs);
-				for (const field of fields) {
-					if (field.api_name === 'Industry') {
-						for (const value of field.pick_list_values) {
-							const valueName = value.display_value;
-							const valueId = value.actual_value;
-							returnData.push({
-								name: valueName,
-								value: valueId,
-							});
-							return returnData;
-						}
-					}
-				}
-				return returnData;
-			},
-			// Get all the available lead fields to display them to user so that he can
-			// select them easily
-			async getLeadFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const qs: IDataObject = {};
-				qs.module = 'leads';
-				const { fields } = await zohoApiRequest.call(this, 'GET', '/settings/fields', {}, qs);
-				for (const field of fields) {
-					returnData.push({
-						name: field.field_label,
-						value: field.api_name,
-					});
-				}
-				return returnData;
-			},
-		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
-		const qs: IDataObject = {};
+
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+
 		let responseData;
-		for (let i = 0; i < length; i++) {
-			const resource = this.getNodeParameter('resource', 0) as string;
-			const operation = this.getNodeParameter('operation', 0) as string;
-			if (resource === 'lead') {
-				//https://www.zoho.com/crm/developer/docs/api/insert-records.html
+
+		for (let i = 0; i < items.length; i++) {
+
+			// https://www.zoho.com/crm/developer/docs/api/insert-records.html
+			// https://www.zoho.com/crm/developer/docs/api/get-records.html
+			// https://www.zoho.com/crm/developer/docs/api/update-specific-record.html
+			// https://www.zoho.com/crm/developer/docs/api/delete-specific-record.html
+
+			if (resource === 'account') {
+
+				// **********************************************************************
+				//                                account
+				// **********************************************************************
+
+				// https://www.zoho.com/crm/developer/docs/api/v2/accounts-response.html
+
 				if (operation === 'create') {
-					const lastName = this.getNodeParameter('lastName', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const body: ILead = {
-						Last_Name: lastName,
+
+					// ----------------------------------------
+					//             account: create
+					// ----------------------------------------
+
+					const body: IDataObject = {
+						Account_Name: this.getNodeParameter('accountName', i),
 					};
-					if (additionalFields.owner) {
-						body.Lead_Owner = additionalFields.owner as string;
-					}
-					if (additionalFields.company) {
-						body.Company = additionalFields.company as string;
-					}
-					if (additionalFields.firstName) {
-						body.First_Name = additionalFields.firstName as string;
-					}
-					if (additionalFields.email) {
-						body.Email = additionalFields.email as string;
-					}
-					if (additionalFields.title) {
-						body.Designation = additionalFields.title as string;
-					}
-					if (additionalFields.phone) {
-						body.Phone = additionalFields.phone as string;
-					}
-					if (additionalFields.mobile) {
-						body.Mobile = additionalFields.mobile as string;
-					}
-					if (additionalFields.leadStatus) {
-						body.Lead_Status = additionalFields.leadStatus as string;
-					}
-					if (additionalFields.fax) {
-						body.Fax = additionalFields.fax as string;
-					}
-					if (additionalFields.website) {
-						body.Website = additionalFields.website as string;
-					}
-					if (additionalFields.leadSource) {
-						body.Lead_Source = additionalFields.leadSource as string;
-					}
-					if (additionalFields.industry) {
-						body.Industry = additionalFields.industry as string;
-					}
-					if (additionalFields.numberOfEmployees) {
-						body.No_of_Employees = additionalFields.numberOfEmployees as number;
-					}
-					if (additionalFields.annualRevenue) {
-						body.Annual_Revenue = additionalFields.annualRevenue as number;
-					}
-					if (additionalFields.emailOptOut) {
-						body.Email_Opt_Out = additionalFields.emailOptOut as boolean;
-					}
-					if (additionalFields.skypeId) {
-						body.Skype_ID = additionalFields.skypeId as string;
-					}
-					if (additionalFields.salutation) {
-						body.Salutation = additionalFields.salutation as string;
-					}
-					if (additionalFields.secondaryEmail) {
-						body.Secondary_Email = additionalFields.secondaryEmail as string;
-					}
-					if (additionalFields.twitter) {
-						body.Twitter = additionalFields.twitter as string;
-					}
-					if (additionalFields.isRecordDuplicate) {
-						body.Is_Record_Duplicate = additionalFields.isRecordDuplicate as boolean;
-					}
-					if (additionalFields.description) {
-						body.Description = additionalFields.description as string;
-					}
-					const address = (this.getNodeParameter('addressUi', i) as IDataObject).addressValues as IAddress;
-					if (address) {
-						if (address.country) {
-							body.Country = address.country as string;
-						}
-						if (address.city) {
-							body.City = address.city as string;
-						}
-						if (address.state) {
-							body.State = address.state as string;
-						}
-						if (address.street) {
-							body.Street = address.street as string;
-						}
-						if (address.zipCode) {
-							body.Zip_Code = address.zipCode as string;
-						}
-					}
-					responseData = await zohoApiRequest.call(this, 'POST', '/leads', body);
-					responseData = responseData.data;
 
-					if (responseData.length) {
-						responseData = responseData[0].details;
-					}
-				}
-				//https://www.zoho.com/crm/developer/docs/api/update-specific-record.html
-				if (operation === 'update') {
-					const leadId = this.getNodeParameter('leadId', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const body: ILead = {};
-					if (additionalFields.lastName) {
-						body.Last_Name = additionalFields.lastName as string;
-					}
-					if (additionalFields.owner) {
-						body.Lead_Owner = additionalFields.owner as string;
-					}
-					if (additionalFields.company) {
-						body.Company = additionalFields.company as string;
-					}
-					if (additionalFields.firstName) {
-						body.First_Name = additionalFields.firstName as string;
-					}
-					if (additionalFields.email) {
-						body.Email = additionalFields.email as string;
-					}
-					if (additionalFields.title) {
-						body.Designation = additionalFields.title as string;
-					}
-					if (additionalFields.phone) {
-						body.Phone = additionalFields.phone as string;
-					}
-					if (additionalFields.mobile) {
-						body.Mobile = additionalFields.mobile as string;
-					}
-					if (additionalFields.leadStatus) {
-						body.Lead_Status = additionalFields.leadStatus as string;
-					}
-					if (additionalFields.fax) {
-						body.Fax = additionalFields.fax as string;
-					}
-					if (additionalFields.website) {
-						body.Website = additionalFields.website as string;
-					}
-					if (additionalFields.leadSource) {
-						body.Lead_Source = additionalFields.leadSource as string;
-					}
-					if (additionalFields.industry) {
-						body.Industry = additionalFields.industry as string;
-					}
-					if (additionalFields.numberOfEmployees) {
-						body.No_of_Employees = additionalFields.numberOfEmployees as number;
-					}
-					if (additionalFields.annualRevenue) {
-						body.Annual_Revenue = additionalFields.annualRevenue as number;
-					}
-					if (additionalFields.emailOptOut) {
-						body.Email_Opt_Out = additionalFields.emailOptOut as boolean;
-					}
-					if (additionalFields.skypeId) {
-						body.Skype_ID = additionalFields.skypeId as string;
-					}
-					if (additionalFields.salutation) {
-						body.Salutation = additionalFields.salutation as string;
-					}
-					if (additionalFields.secondaryEmail) {
-						body.Secondary_Email = additionalFields.secondaryEmail as string;
-					}
-					if (additionalFields.twitter) {
-						body.Twitter = additionalFields.twitter as string;
-					}
-					if (additionalFields.isRecordDuplicate) {
-						body.Is_Record_Duplicate = additionalFields.isRecordDuplicate as boolean;
-					}
-					if (additionalFields.description) {
-						body.Description = additionalFields.description as string;
-					}
-					const address = (this.getNodeParameter('addressUi', i) as IDataObject).addressValues as IAddress;
-					if (address) {
-						if (address.country) {
-							body.Country = address.country as string;
-						}
-						if (address.city) {
-							body.City = address.city as string;
-						}
-						if (address.state) {
-							body.State = address.state as string;
-						}
-						if (address.street) {
-							body.Street = address.street as string;
-						}
-						if (address.zipCode) {
-							body.Zip_Code = address.zipCode as string;
-						}
-					}
-					responseData = await zohoApiRequest.call(this, 'PUT', `/leads/${leadId}`, body);
-					responseData = responseData.data;
 
-					if (responseData.length) {
-						responseData = responseData[0].details;
-					}
-				}
-				//https://www.zoho.com/crm/developer/docs/api/update-specific-record.html
-				if (operation === 'get') {
-					const leadId = this.getNodeParameter('leadId', i) as string;
-					responseData = await zohoApiRequest.call(this, 'GET', `/leads/${leadId}`);
-					if (responseData !== undefined) {
-						responseData = responseData.data;
+					if (Object.keys(additionalFields).length) {
+						Object.assign(body, adjustAccountFields(additionalFields));
 					}
 
+					responseData = await zohoApiRequest.call(this, 'POST', '/accounts', body);
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------------
+					//             account: delete
+					// ----------------------------------------
+
+					const accountId = this.getNodeParameter('accountId', i);
+
+					const endpoint = `/accounts/${accountId}`;
+					responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
+
+				} else if (operation === 'get') {
+
+					// ----------------------------------------
+					//               account: get
+					// ----------------------------------------
+
+					const accountId = this.getNodeParameter('accountId', i);
+
+					const endpoint = `/accounts/${accountId}`;
+					responseData = await zohoApiRequest.call(this, 'GET', endpoint);
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------------
+					//             account: getAll
+					// ----------------------------------------
+
+					const body: IDataObject = {};
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					if (Object.keys(filters).length) {
+						Object.assign(body, filters);
+					}
+
+					responseData = await handleListing.call(this, 'GET', '/accounts', body);
+
+				} else if (operation === 'update') {
+
+					// ----------------------------------------
+					//             account: update
+					// ----------------------------------------
+
+					const body: IDataObject = {};
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (Object.keys(updateFields).length) {
+						Object.assign(body, adjustAccountFields(updateFields));
+					}
+
+					const accountId = this.getNodeParameter('accountId', i);
+
+					const endpoint = `/accounts/${accountId}`;
+					responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
+
 				}
-				//https://www.zoho.com/crm/developer/docs/api/get-records.html
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
-					if (options.fields) {
-						qs.fields = (options.fields as string[]).join(',');
+
+			} else if (resource === 'contact') {
+
+				// **********************************************************************
+				//                                contact
+				// **********************************************************************
+
+				// https://www.zoho.com/crm/developer/docs/api/v2/contacts-response.html
+
+				if (operation === 'create') {
+
+					// ----------------------------------------
+					//             contact: create
+					// ----------------------------------------
+
+					const body: IDataObject = {
+						Last_Name: this.getNodeParameter('Last_Name', i),
+					};
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (Object.keys(additionalFields).length) {
+						Object.assign(body, adjustContactFields(additionalFields));
 					}
-					if (options.approved) {
-						qs.approved = options.approved as boolean;
+
+					responseData = await zohoApiRequest.call(this, 'POST', '/contacts', body);
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------------
+					//             contact: delete
+					// ----------------------------------------
+
+					const contactId = this.getNodeParameter('contactId', i);
+
+					const endpoint = `/contacts/${contactId}`;
+					responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
+
+				} else if (operation === 'get') {
+
+					// ----------------------------------------
+					//               contact: get
+					// ----------------------------------------
+
+					const contactId = this.getNodeParameter('contactId', i);
+
+					const endpoint = `/contacts/${contactId}`;
+					responseData = await zohoApiRequest.call(this, 'GET', endpoint);
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------------
+					//             contact: getAll
+					// ----------------------------------------
+
+					const body: IDataObject = {};
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					if (Object.keys(filters).length) {
+						Object.assign(body, filters);
 					}
-					if (options.converted) {
-						qs.converted = options.converted as boolean;
+
+					responseData = await handleListing.call(this, 'GET', '/contacts', body);
+
+				} else if (operation === 'update') {
+
+					// ----------------------------------------
+					//             contact: update
+					// ----------------------------------------
+
+					const body: IDataObject = {};
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (Object.keys(updateFields).length) {
+						Object.assign(body, adjustContactFields(updateFields));
 					}
-					if (options.includeChild) {
-						qs.include_child = options.includeChild as boolean;
-					}
-					if (options.sortOrder) {
-						qs.sort_order = options.sortOrder as string;
-					}
-					if (options.sortBy) {
-						qs.sort_by = options.sortBy as string;
-					}
-					if (options.territoryId) {
-						qs.territory_id = options.territoryId as string;
-					}
-					if (returnAll) {
-						responseData = await zohoApiRequestAllItems.call(this, 'data', 'GET', '/leads', {}, qs);
-					} else {
-						qs.per_page = this.getNodeParameter('limit', i) as number;
-						responseData = await zohoApiRequest.call(this, 'GET', '/leads', {}, qs);
-						responseData = responseData.data;
-					}
+
+					const contactId = this.getNodeParameter('contactId', i);
+
+					const endpoint = `/contacts/${contactId}`;
+					responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
+
 				}
-				//https://www.zoho.com/crm/developer/docs/api/delete-specific-record.html
-				if (operation === 'delete') {
-					const leadId = this.getNodeParameter('leadId', i) as string;
+
+			} else if (resource === 'deal') {
+
+				// **********************************************************************
+				//                                  deal
+				// **********************************************************************
+
+				// https://www.zoho.com/crm/developer/docs/api/v2/deals-response.html
+
+				if (operation === 'create') {
+
+					// ----------------------------------------
+					//               deal: create
+					// ----------------------------------------
+
+					const body: IDataObject = {
+						Deal_Name: this.getNodeParameter('Deal_Name', i),
+						Stage: this.getNodeParameter('Stage', i),
+					};
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (Object.keys(additionalFields).length) {
+						Object.assign(body, additionalFields);
+					}
+
+					responseData = await zohoApiRequest.call(this, 'POST', '/deals', body);
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------------
+					//               deal: delete
+					// ----------------------------------------
+
+					const dealId = this.getNodeParameter('dealId', i);
+
+					responseData = await zohoApiRequest.call(this, 'DELETE', `/deals/${dealId}`);
+
+				} else if (operation === 'get') {
+
+					// ----------------------------------------
+					//                deal: get
+					// ----------------------------------------
+
+					const dealId = this.getNodeParameter('dealId', i);
+
+					responseData = await zohoApiRequest.call(this, 'GET', `/deals/${dealId}`);
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------------
+					//               deal: getAll
+					// ----------------------------------------
+
+					const body: IDataObject = {};
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					if (Object.keys(filters).length) {
+						Object.assign(body, filters);
+					}
+
+					responseData = await handleListing.call(this, 'GET', '/deals', body);
+
+				} else if (operation === 'update') {
+
+					// ----------------------------------------
+					//               deal: update
+					// ----------------------------------------
+
+					const body: IDataObject = {};
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (Object.keys(updateFields).length) {
+						Object.assign(body, updateFields);
+					}
+
+					const dealId = this.getNodeParameter('dealId', i);
+
+					responseData = await zohoApiRequest.call(this, 'PUT', `/deals/${dealId}`, body);
+
+				}
+
+			} else if (resource === 'invoice') {
+
+				// **********************************************************************
+				//                                invoice
+				// **********************************************************************
+
+				// https://www.zoho.com/crm/developer/docs/api/v2/invoices-response.html
+
+				if (operation === 'create') {
+
+					// ----------------------------------------
+					//             invoice: create
+					// ----------------------------------------
+
+					const body: IDataObject = {
+						Product_Details: this.getNodeParameter('Product_Details', i),
+						Subject: this.getNodeParameter('Subject', i),
+					};
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (Object.keys(additionalFields).length) {
+						Object.assign(body, adjustInvoiceFields(additionalFields));
+					}
+
+					responseData = await zohoApiRequest.call(this, 'POST', '/invoices', body);
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------------
+					//             invoice: delete
+					// ----------------------------------------
+
+					const invoiceId = this.getNodeParameter('invoiceId', i);
+
+					const endpoint = `/invoices/${invoiceId}`;
+					responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
+
+				} else if (operation === 'get') {
+
+					// ----------------------------------------
+					//               invoice: get
+					// ----------------------------------------
+
+					const invoiceId = this.getNodeParameter('invoiceId', i);
+
+					const endpoint = `/invoices/${invoiceId}`;
+					responseData = await zohoApiRequest.call(this, 'GET', endpoint);
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------------
+					//             invoice: getAll
+					// ----------------------------------------
+
+					const body: IDataObject = {};
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					if (Object.keys(filters).length) {
+						Object.assign(body, filters);
+					}
+
+					responseData = await handleListing.call(this, 'GET', '/invoices', body);
+
+				} else if (operation === 'update') {
+
+					// ----------------------------------------
+					//             invoice: update
+					// ----------------------------------------
+
+					const body: IDataObject = {};
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (Object.keys(updateFields).length) {
+						Object.assign(body, adjustInvoiceFields(updateFields));
+					}
+
+					const invoiceId = this.getNodeParameter('invoiceId', i);
+
+					const endpoint = `/invoices/${invoiceId}`;
+					responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
+
+				}
+
+			} else if (resource === 'lead') {
+
+				// **********************************************************************
+				//                                  lead
+				// **********************************************************************
+
+				// https://www.zoho.com/crm/developer/docs/api/v2/leads-response.html
+
+				if (operation === 'create') {
+
+					// ----------------------------------------
+					//               lead: create
+					// ----------------------------------------
+
+					const body: IDataObject = {
+						Company: this.getNodeParameter('Company', i),
+						Last_Name: this.getNodeParameter('Last_Name', i),
+					};
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (Object.keys(additionalFields).length) {
+						Object.assign(body, adjustLeadFields(additionalFields));
+					}
+
+					responseData = await zohoApiRequest.call(this, 'POST', '/leads', body);
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------------
+					//               lead: delete
+					// ----------------------------------------
+
+					const leadId = this.getNodeParameter('leadId', i);
+
 					responseData = await zohoApiRequest.call(this, 'DELETE', `/leads/${leadId}`);
-					responseData = responseData.data;
+
+				} else if (operation === 'get') {
+
+					// ----------------------------------------
+					//                lead: get
+					// ----------------------------------------
+
+					const leadId = this.getNodeParameter('leadId', i);
+
+					responseData = await zohoApiRequest.call(this, 'GET', `/leads/${leadId}`);
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------------
+					//               lead: getAll
+					// ----------------------------------------
+
+					const body: IDataObject = {};
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					if (Object.keys(filters).length) {
+						Object.assign(body, filters);
+					}
+
+					responseData = await handleListing.call(this, 'GET', '/leads', body);
+
+				} else if (operation === 'update') {
+
+					// ----------------------------------------
+					//               lead: update
+					// ----------------------------------------
+
+					const body: IDataObject = {};
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (Object.keys(updateFields).length) {
+						Object.assign(body, adjustLeadFields(updateFields));
+					}
+
+					const leadId = this.getNodeParameter('leadId', i);
+
+					responseData = await zohoApiRequest.call(this, 'PUT', `/leads/${leadId}`, body);
+
 				}
-				//https://www.zoho.com/crm/developer/docs/api/field-meta.html
-				if (operation === 'getFields') {
-					qs.module = 'leads';
-					responseData = await zohoApiRequest.call(this, 'GET', '/settings/fields', {}, qs);
-					responseData = responseData.fields;
+
+			} else if (resource === 'purchaseOrder') {
+
+				// **********************************************************************
+				//                             purchaseOrder
+				// **********************************************************************
+
+				// https://www.zoho.com/crm/developer/docs/api/v2/purchase-orders-response.html
+
+				if (operation === 'create') {
+
+					// ----------------------------------------
+					//          purchaseOrder: create
+					// ----------------------------------------
+
+					const body: IDataObject = {
+						Subject: this.getNodeParameter('Subject', i),
+						Vendor_Name: this.getNodeParameter('Vendor_Name', i),
+					};
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (Object.keys(additionalFields).length) {
+						Object.assign(body, adjustPurchaseOrderFields(additionalFields));
+					}
+
+					responseData = await zohoApiRequest.call(this, 'POST', '/purchaseorders', body);
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------------
+					//          purchaseOrder: delete
+					// ----------------------------------------
+
+					const purchaseOrderId = this.getNodeParameter('purchaseOrderId', i);
+
+					const endpoint = `/purchaseorders/${purchaseOrderId}`;
+					responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
+
+				} else if (operation === 'get') {
+
+					// ----------------------------------------
+					//            purchaseOrder: get
+					// ----------------------------------------
+
+					const purchaseOrderId = this.getNodeParameter('purchaseOrderId', i);
+
+					const endpoint = `/purchaseorders/${purchaseOrderId}`;
+					responseData = await zohoApiRequest.call(this, 'GET', endpoint);
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------------
+					//          purchaseOrder: getAll
+					// ----------------------------------------
+
+					const body: IDataObject = {};
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					if (Object.keys(filters).length) {
+						Object.assign(body, filters);
+					}
+
+					responseData = await handleListing.call(this, 'GET', '/purchaseorders', body);
+
+				} else if (operation === 'update') {
+
+					// ----------------------------------------
+					//          purchaseOrder: update
+					// ----------------------------------------
+
+					const body: IDataObject = {};
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (Object.keys(updateFields).length) {
+						Object.assign(body, adjustPurchaseOrderFields(updateFields));
+					}
+
+					const purchaseOrderId = this.getNodeParameter('purchaseOrderId', i);
+
+					const endpoint = `/purchaseorders/${purchaseOrderId}`;
+					responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
+
 				}
+
+			} else if (resource === 'quote') {
+
+				// **********************************************************************
+				//                                 quote
+				// **********************************************************************
+
+				// https://www.zoho.com/crm/developer/docs/api/v2/quotes-response.html
+
+				if (operation === 'create') {
+
+					// ----------------------------------------
+					//              quote: create
+					// ----------------------------------------
+
+					const body: IDataObject = {
+						Product_Details: this.getNodeParameter('Product_Details', i),
+						Subject: this.getNodeParameter('Subject', i),
+					};
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (Object.keys(additionalFields).length) {
+						Object.assign(body, adjustQuoteFields(additionalFields));
+					}
+
+					responseData = await zohoApiRequest.call(this, 'POST', '/quotes', body);
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------------
+					//              quote: delete
+					// ----------------------------------------
+
+					const quoteId = this.getNodeParameter('quoteId', i);
+
+					responseData = await zohoApiRequest.call(this, 'DELETE', `/quotes/${quoteId}`);
+
+				} else if (operation === 'get') {
+
+					// ----------------------------------------
+					//                quote: get
+					// ----------------------------------------
+
+					const quoteId = this.getNodeParameter('quoteId', i);
+
+					responseData = await zohoApiRequest.call(this, 'GET', `/quotes/${quoteId}`);
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------------
+					//              quote: getAll
+					// ----------------------------------------
+
+					const body: IDataObject = {};
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					if (Object.keys(filters).length) {
+						Object.assign(body, filters);
+					}
+
+					responseData = await handleListing.call(this, 'GET', '/quotes', body);
+
+				} else if (operation === 'update') {
+
+					// ----------------------------------------
+					//              quote: update
+					// ----------------------------------------
+
+					const body: IDataObject = {};
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (Object.keys(updateFields).length) {
+						Object.assign(body, adjustQuoteFields(updateFields));
+					}
+
+					const quoteId = this.getNodeParameter('quoteId', i);
+
+					responseData = await zohoApiRequest.call(this, 'PUT', `/quotes/${quoteId}`, body);
+
+				}
+
+			} else if (resource === 'salesOrder') {
+
+				// **********************************************************************
+				//                               salesOrder
+				// **********************************************************************
+
+				// https://www.zoho.com/crm/developer/docs/api/v2/sales-orders-response.html
+
+				if (operation === 'create') {
+
+					// ----------------------------------------
+					//            salesOrder: create
+					// ----------------------------------------
+
+					const body: IDataObject = {
+						Account_Name: this.getNodeParameter('Account_Name', i),
+						Subject: this.getNodeParameter('Subject', i),
+					};
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (Object.keys(additionalFields).length) {
+						Object.assign(body, adjustSalesOrderFields(additionalFields));
+					}
+
+					responseData = await zohoApiRequest.call(this, 'POST', '/salesorders', body);
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------------
+					//            salesOrder: delete
+					// ----------------------------------------
+
+					const salesOrderId = this.getNodeParameter('salesOrderId', i);
+
+					const endpoint = `/salesorders/${salesOrderId}`;
+					responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
+
+				} else if (operation === 'get') {
+
+					// ----------------------------------------
+					//             salesOrder: get
+					// ----------------------------------------
+
+					const salesOrderId = this.getNodeParameter('salesOrderId', i);
+
+					const endpoint = `/salesorders/${salesOrderId}`;
+					responseData = await zohoApiRequest.call(this, 'GET', endpoint);
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------------
+					//            salesOrder: getAll
+					// ----------------------------------------
+
+					const body: IDataObject = {};
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					if (Object.keys(filters).length) {
+						Object.assign(body, filters);
+					}
+
+					responseData = await handleListing.call(this, 'GET', '/salesorders', body);
+
+				} else if (operation === 'update') {
+
+					// ----------------------------------------
+					//            salesOrder: update
+					// ----------------------------------------
+
+					const body: IDataObject = {};
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (Object.keys(updateFields).length) {
+						Object.assign(body, adjustSalesOrderFields(updateFields));
+					}
+
+					const salesOrderId = this.getNodeParameter('salesOrderId', i);
+
+					const endpoint = `/salesorders/${salesOrderId}`;
+					responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
+
+				}
+
 			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else if (responseData !== undefined) {
-				returnData.push(responseData as IDataObject);
-			}
+
+			Array.isArray(responseData)
+				? returnData.push(...responseData)
+				: returnData.push(responseData);
+
 		}
+
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
