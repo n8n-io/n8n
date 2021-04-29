@@ -529,7 +529,7 @@ export interface IUiState {
 		saveAs: IModalState;
 		rename: IModalState;
 		workflowOpen: IModalState;
-	}
+	};
 }
 
 export interface IRestApiContext {

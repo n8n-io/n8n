@@ -452,7 +452,6 @@ export default mixins(
 					}
 				}
 				const anyModalsOpen = this.$store.getters['ui/anyModalsOpen'];
-				console.log('keydown', e, anyModalsOpen)
 				if (anyModalsOpen) {
 					return;
 				}
