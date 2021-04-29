@@ -519,18 +519,14 @@ export interface IModalState {
 	open: boolean;
 }
 
-export type IModalNames = "saveAs" | "rename" | "tagsManager" | "workflowOpen";
-
 export interface IUiState {
 	sidebarMenuCollapsed: boolean;
-	modalStack: IModalNames[];
+	modalStack: string[];
 	modals: {
-		tagsManager: IModalState;
-		saveAs: IModalState;
-		rename: IModalState;
-		workflowOpen: IModalState;
+		[key: string]: IModalState;
 	};
 }
+
 
 export interface IRestApiContext {
 	baseURL: string;

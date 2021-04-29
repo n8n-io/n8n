@@ -1,7 +1,7 @@
 <template>
 	<Modal
 		title="Manage tags"
-		name="tagsManager"
+		:name="modalName"
 		:eventBus="modalBus"
 		@enter="onEnter"
 	>
@@ -45,6 +45,7 @@ export default mixins(showMessage).extend({
 	created() {
 		this.$store.dispatch("tags/fetchAll", {force: true, withUsageCount: true});
 	},
+	props: ['modalName'],
 	data() {
 		const tagIds = this.$store.getters['tags/tags']
 			.map((tag: ITag): string => tag.id);

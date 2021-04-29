@@ -1,6 +1,6 @@
 <template>
 	<Modal
-		name="workflowOpen"
+		:name="modalName"
 		size="xl"
 	>
 			<template slot="header">
@@ -74,6 +74,7 @@ export default mixins(
 		TagsDropdown,
 		Modal,
 	},
+	props: ['modalName'],
 	data () {
 		return {
 			filterText: '',

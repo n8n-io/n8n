@@ -1,8 +1,8 @@
 
+import { RENAME_MODAL_KEY, SAVE_AS_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
-	IModalNames,
 	IRootState,
 	IUiState,
 } from '../Interface';
@@ -11,16 +11,16 @@ const module: Module<IUiState, IRootState> = {
 	namespaced: true,
 	state: {
 		modals: {
-			saveAs: {
+			[SAVE_AS_MODAL_KEY]: {
 				open: false,
 			},
-			rename: {
+			[RENAME_MODAL_KEY]: {
 				open: false,
 			},
-			tagsManager: {
+			[TAGS_MANAGER_MODAL_KEY]: {
 				open: false,
 			},
-			workflowOpen: {
+			[WORKLOW_OPEN_MODAL_KEY]: {
 				open: false,
 			},
 		},
@@ -29,10 +29,10 @@ const module: Module<IUiState, IRootState> = {
 	},
 	getters: {
 		isModalOpen: (state: IUiState) => {
-			return (name: IModalNames) => state.modals[name].open;
+			return (name: string) => state.modals[name].open;
 		},
 		isModalActive: (state: IUiState) => {
-			return (name: IModalNames) => name === state.modalStack[0];
+			return (name: string) => name === state.modalStack[0];
 		},
 		anyModalsOpen: (state: IUiState) => {
 			return state.modalStack.length > 0;
@@ -40,7 +40,7 @@ const module: Module<IUiState, IRootState> = {
 		sidebarMenuCollapsed: (state: IUiState): boolean => state.sidebarMenuCollapsed,
 	},
 	mutations: {
-		openModal: (state: IUiState, name: IModalNames) => {
+		openModal: (state: IUiState, name: string) => {
 			Vue.set(state.modals[name], 'open', true);
 			state.modalStack = [name].concat(state.modalStack);
 		},
@@ -56,16 +56,16 @@ const module: Module<IUiState, IRootState> = {
 	},
 	actions: {
 		openTagsManagerModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', 'tagsManager');
+			context.commit('openModal', TAGS_MANAGER_MODAL_KEY);
 		},
 		openWorklfowOpenModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', 'workflowOpen');
+			context.commit('openModal', WORKLOW_OPEN_MODAL_KEY);
 		},
 		openRenameModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', 'rename');
+			context.commit('openModal', RENAME_MODAL_KEY);
 		},
 		openSaveAsModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', 'saveAs');
+			context.commit('openModal', SAVE_AS_MODAL_KEY);
 		},
 	}
 };
