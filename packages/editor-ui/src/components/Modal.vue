@@ -96,10 +96,6 @@ export default Vue.extend({
 	display: flex;
 	align-items: center;
 	justify-content: center;
-
-	/deep/ .el-dialog {
-		max-width: 600px;
-	}
 }
 
 .modal-content > .el-row {
