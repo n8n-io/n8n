@@ -1,6 +1,6 @@
 import { URL } from 'url';
 import { sign } from 'aws4';
-import { OptionsWithUri } from 'request';
+import { OptionsWithUri, OptionsWithUrl } from 'request';
 import { parseString } from 'xml2js';
 
 import {
@@ -35,21 +35,19 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 
 	// Concatenate path and instantiate URL object so it parses correctly query strings
 	const endpoint = new URL(getEndpointForService(service, credentials) + path);
-
-	// Sign AWS API request with the user credentials
-	const signOpts = {
-		headers: headers || {}, host: endpoint.host, method, path, body: JSON.stringify(body) };
-	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim() });
-
-
-	const options: OptionsWithUri = {
-		headers: signOpts.headers,
-		method,
-		uri: endpoint.href,
-		body: signOpts.body,
-	};
-
-	console.log(options);
+	
+	const options = sign({
+			uri: endpoint,
+			service,
+			region: credentials.region,
+			method,
+			path: '/',
+			headers:  { ...headers },
+			body: JSON.stringify(body),
+	}, {
+		accessKeyId: credentials.accessKeyId,
+		secretAccessKey: credentials.secretAccessKey,
+	});
 
 	try {
 		return await this.helpers.request!(options);
@@ -81,12 +79,12 @@ export async function awsApiRequestSOAPAllItems(this: IHookFunctions | IExecuteF
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	console.log('primer request body requesg')
+	console.log('primer request body requesg');
 	console.log(body);
 	do {
 		//@ts-ignore
 		responseData = await awsApiRequestREST.call(this, service, method, path, body, headers);
-		console.log('esta es la respuesta')
+		console.log('esta es la respuesta');
 		console.log(responseData);
 		if (responseData.LastEvaluatedKey) {
 			console.log('Se agrega el exclusivestartkey');

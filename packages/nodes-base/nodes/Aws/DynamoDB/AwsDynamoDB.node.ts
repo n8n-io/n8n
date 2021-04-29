@@ -27,9 +27,9 @@ import {
 import {
 	adjustExpressionAttributeValues,
 	copyInputItem,
+	mapToAttributeValues,
 	simplify,
 	validateJSON,
-	mapToAttributeValues,
 } from './utils';
 
 enum EAttributeValueType {
@@ -140,7 +140,7 @@ export class AwsDynamoDB implements INodeType {
 					'X-Amz-Target': 'DynamoDB_20120810.ListTables',
 				};
 
-				const responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify({}), headers);
+				const responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', {}, headers);
 
 				return responseData.TableNames.map((table: string) => ({ name: table, value: table }));
 			},
@@ -182,7 +182,7 @@ export class AwsDynamoDB implements INodeType {
 
 				console.log(body);
 
-				responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers);
+				responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', body, headers);
 				responseData = { success: true };
 
 			} else if (operation === 'delete') {
@@ -261,7 +261,7 @@ export class AwsDynamoDB implements INodeType {
 
 				console.log(body);
 
-				responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers);
+				responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', body, headers);
 				//responseData = { success: true };
 
 			} else if (operation === 'get') {
@@ -310,7 +310,7 @@ export class AwsDynamoDB implements INodeType {
 					'Content-Type': 'application/x-amz-json-1.0',
 				};
 
-				responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers);
+				responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', body, headers);
 
 				responseData = responseData.Item;
 
@@ -330,7 +330,7 @@ export class AwsDynamoDB implements INodeType {
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
-				const body: IRequestBody = {
+				let body: IRequestBody = {
 					TableName: this.getNodeParameter('tableName', i) as string,
 					KeyConditionExpression: this.getNodeParameter('keyConditionExpression', i) as string,
 					ExpressionAttributeValues: adjustExpressionAttributeValues(eavUi),
@@ -367,15 +367,12 @@ export class AwsDynamoDB implements INodeType {
 				}
 
 				const headers = {
-					'Content-Type': 'application/x-amz-json-1.0',
+					'Content-Type': 'application/json',
 					'X-Amz-Target': 'DynamoDB_20120810.Query',
 				};
 
 
 				delete body.ExpressionAttributeNames;
-
-				console.log(body);
-
 				if (returnAll === true) {
 					body.Limit = 1;
 					responseData = await awsApiRequestSOAPAllItems.call(this, 'dynamodb', 'POST', '/', body, headers);
@@ -383,12 +380,30 @@ export class AwsDynamoDB implements INodeType {
 				} else {
 					body.Limit = this.getNodeParameter('limit', 0) as number;
 					responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', body, headers);
+					responseData = responseData.Items;
+					
+					// body.ExclusiveStartKey = responseData.LastEvaluatedKey;
+					// // console.log('response of primer request')
+					// // console.log(responseData);
+			
+					// // body = {
+					// // 	//@ts-ignore
+					// // 	TableName: "testing_2",
+					// // 	KeyConditionExpression: "id = :id",
+					// // 							//@ts-ignore
+					// // 	ExpressionAttributeValues: { ":id": { "N": "1" } },
+					// // 	Limit: 1,
+					// // 	//@ts-ignore
+					// // 	ExclusiveStartKey: { "id": { "N": "1" }, "status": { "S": "aja" } },
+					// // };
+
+					// responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', body, headers);
+
+					//console.log(responseData);
 				}
-
-				console.log(responseData);
-
+				
 				if (simple === true) {
-					responseData = responseData.Items.map(simplify);
+					responseData = responseData.map(simplify);
 				}
 
 			} else if (operation === 'scan') {
@@ -434,7 +449,7 @@ export class AwsDynamoDB implements INodeType {
 					'Content-Type': 'application/x-amz-json-1.0',
 				};
 
-				responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', JSON.stringify(body), headers);
+				responseData = await awsApiRequestREST.call(this, 'dynamodb', 'POST', '/', body, headers);
 
 				if (responseData.Items) {
 					responseData = responseData.Items.map(simplify);
