@@ -41,6 +41,11 @@ export default Vue.extend({
 				this.closeDialog();
 			});
 		}
+
+		const activeElement = document.activeElement as HTMLElement;
+		if (activeElement) {
+			activeElement.blur();
+		}
 	},
 	beforeDestroy() {
 		window.removeEventListener('keydown', this.onWindowKeydown);

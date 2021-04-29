@@ -85,6 +85,7 @@ export default mixins(showMessage).extend({
 				if (input && input.focus) {
 					input.focus();
 				}
+				this.focusOnTopOption();
 			});
 		}
 

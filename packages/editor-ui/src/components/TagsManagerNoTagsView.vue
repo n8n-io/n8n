@@ -20,12 +20,6 @@ import Vue from 'vue';
 
 export default Vue.extend({
 	name: 'NoTagsView',
-	mounted() {
-		const create = this.$refs.create as Vue | undefined;
-		if (create) {
-			(create.$el as HTMLElement).focus();
-		}
-	},
 });
 </script>
 
