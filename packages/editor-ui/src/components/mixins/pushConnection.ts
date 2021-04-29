@@ -260,11 +260,13 @@ export const pushConnection = mixins(
 					if(runDataExecuted.data.resultData.lastNodeExecuted && !runDataExecutedErrorMessage) {
 						itemsCount = runDataExecuted.data.resultData.runData[runDataExecuted.data.resultData.lastNodeExecuted][0].data!.main[0]!.length;
 					}
+
 					this.$externalHooks().run('pushConnection.executionFinished', {
 						itemsCount,
 						nodeName: runDataExecuted.data.resultData.lastNodeExecuted,
 						errorMessage: runDataExecutedErrorMessage,
 						runDataExecutedStartData: runDataExecuted.data.startData,
+						resultDataError: runDataExecuted.data.resultData.error,
 					});
 
 				} else if (receivedData.type === 'executionStarted') {
