@@ -62,13 +62,5 @@ export default Vue.extend({
 		TAGS_MANAGER_MODAL_KEY,
 		WORKLOW_OPEN_MODAL_KEY,
 	}),
-	methods: {
-		isActive(name: string) {
-			return this.$store.getters['ui/isModalActive'](name);
-		},
-		isOpen(name: string) {
-			return this.$store.getters['ui/isModalOpen'](name);
-		},
-	},
 });
 </script>
