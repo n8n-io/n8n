@@ -67,7 +67,7 @@ const module: Module<IUiState, IRootState> = {
 		openSaveAsModal: async (context: ActionContext<IUiState, IRootState>) => {
 			context.commit('openModal', SAVE_AS_MODAL_KEY);
 		},
-	}
+	},
 };
 
 export default module;
