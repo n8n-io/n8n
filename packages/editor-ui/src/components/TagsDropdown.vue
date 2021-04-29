@@ -145,15 +145,23 @@ export default mixins(showMessage).extend({
 			}
 		},
 		focusOnTopOption() {
-			// @ts-ignore // focus on create option
-			if (this.$refs.create && this.$refs.create.hoverItem) {
+			const tags = this.$refs.tag as Vue[] | undefined;
+			const create = this.$refs.create as Vue | undefined;
+			//@ts-ignore // focus on create option
+			if (create && create.hoverItem) {
 				// @ts-ignore
-				this.$refs.create.hoverItem();
+				create.hoverItem();
 			}
-			// @ts-ignore // focus on top option after filter
-			else if (this.$refs.tag && this.$refs.tag[0] && this.$refs.tag[0].hoverItem) {
+			//@ts-ignore // focus on top option after filter
+			else if (tags && tags[0] && tags[0].hoverItem) {
 				// @ts-ignore
-				this.$refs.tag[0].hoverItem();
+				tags[0].hoverItem();
+
+				// @ts-ignore
+				if (tags[0] && tags[0].$el && tags[0].$el.scrollIntoView) {
+					// @ts-ignore
+					tags[0].$el.scrollIntoView();
+				}
 			}
 		},
 		focusOnTag(tagId: string) {
