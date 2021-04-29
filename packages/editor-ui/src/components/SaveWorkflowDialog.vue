@@ -75,7 +75,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			if (active) {
 				this.focusOnSelect();
 			}
-		}
+		},
 	},
 	methods: {
 		focusOnSelect() {
