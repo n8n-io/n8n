@@ -102,8 +102,8 @@ export abstract class ICredentialsHelper {
 		this.workflowCredentials = workflowCredentials;
 	}
 
-	abstract getCredentials(name: string, type: string): ICredentials;
-	abstract getDecrypted(name: string, type: string, mode: WorkflowExecuteMode, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): ICredentialDataDecryptedObject;
+	abstract getCredentials(name: string, type: string): Promise<ICredentials>;
+	abstract getDecrypted(name: string, type: string, mode: WorkflowExecuteMode, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): Promise<ICredentialDataDecryptedObject>;
 	abstract updateCredentials(name: string, type: string, data: ICredentialDataDecryptedObject): Promise<void>;
 }
 
@@ -212,7 +212,7 @@ export interface IExecuteFunctions {
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
 	executeWorkflow(workflowInfo: IExecuteWorkflowInfo, inputData?: INodeExecutionData[]): Promise<any>; // tslint:disable-line:no-any
 	getContext(type: string): IContextObject;
-	getCredentials(type: string, itemIndex?: number): ICredentialDataDecryptedObject | undefined;
+	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject | undefined>;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
@@ -234,7 +234,7 @@ export interface IExecuteSingleFunctions {
 	continueOnFail(): boolean;
 	evaluateExpression(expression: string, itemIndex: number | undefined): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
 	getContext(type: string): IContextObject;
-	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
@@ -255,7 +255,7 @@ export interface IExecuteWorkflowInfo {
 }
 
 export interface ILoadOptionsFunctions {
-	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getNode(): INode;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getCurrentNodeParameter(parameterName: string): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object | undefined;
@@ -268,7 +268,7 @@ export interface ILoadOptionsFunctions {
 }
 
 export interface IHookFunctions {
-	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
@@ -286,7 +286,7 @@ export interface IHookFunctions {
 
 export interface IPollFunctions {
 	__emit(data: INodeExecutionData[][]): void;
-	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
@@ -302,7 +302,7 @@ export interface IPollFunctions {
 
 export interface ITriggerFunctions {
 	emit(data: INodeExecutionData[][]): void;
-	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
@@ -318,7 +318,7 @@ export interface ITriggerFunctions {
 
 export interface IWebhookFunctions {
 	getBodyData(): IDataObject;
-	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
+	getCredentials(type: string): Promise<ICredentialDataDecryptedObject | undefined>;
 	getHeaderData(): object;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;

@@ -48,7 +48,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @returns {Credentials}
 	 * @memberof CredentialsHelper
 	 */
-	getCredentials(name: string, type: string): Credentials {
+	async getCredentials(name: string, type: string): Promise<Credentials> {
+
+		const credentialsDb = await Db.collections.Credentials?.find({type});
+
+		console.log(credentialsDb);
+
 		if (!this.workflowCredentials[type]) {
 			throw new Error(`No credentials of type "${type}" exist.`);
 		}
@@ -102,8 +107,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @returns {ICredentialDataDecryptedObject}
 	 * @memberof CredentialsHelper
 	 */
-	getDecrypted(name: string, type: string, mode: WorkflowExecuteMode, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): ICredentialDataDecryptedObject {
-		const credentials = this.getCredentials(name, type);
+	async getDecrypted(name: string, type: string, mode: WorkflowExecuteMode, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): Promise<ICredentialDataDecryptedObject> {
+		const credentials = await this.getCredentials(name, type);
 
 		const decryptedDataOriginal = credentials.getData(this.encryptionKey);
 
