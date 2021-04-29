@@ -4,7 +4,7 @@
 			v-if="isOpen('saveAs')"
 			modalName="saveAs"
 			title="Save new workflow"
-			:isActive="isActive('rename')"
+			:isActive="isActive('saveAs')"
 		/>
 		<SaveWorkflowDialog
 			v-if="isOpen('rename')"

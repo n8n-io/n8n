@@ -19,8 +19,10 @@
 					<TagsDropdown
 						:createEnabled="true"
 						:currentTagIds="currentTagIds"
+						:eventBus="dropdownBus"
 						@onUpdate="onTagsUpdate"
 						placeholder="Choose or create a tag"
+						ref="dropdown"
 					/>
 				</el-row>
 		</template>
@@ -60,23 +62,29 @@ export default mixins(showMessage, workflowHelpers).extend({
 			currentTagIds,
 			isSaving: false,
 			modalBus: new Vue(),
+			dropdownBus: new Vue(),
 		};
 	},
 	mounted() {
 		this.$nextTick(() => {
-			this.focusOnInput();
+			this.focusOnNameInput();
 		});
 	},
-	updated() {
-		this.focusOnInput();
+	watch: {
+		isActive(active) {
+			if (active) {
+				this.focusOnSelect();
+			}
+		}
 	},
 	methods: {
-		focusOnInput() {
-			if (this.$props.isActive) {
-				const input = this.$refs.nameInput as HTMLElement;
-				if (input && input.focus) {
-					input.focus();
-				}
+		focusOnSelect() {
+			this.dropdownBus.$emit('focus');
+		},
+		focusOnNameInput() {
+			const input = this.$refs.nameInput as HTMLElement;
+			if (input && input.focus) {
+				input.focus();
 			}
 		},
 		onTagsUpdate(tagIds: string[]) {

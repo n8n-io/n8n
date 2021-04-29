@@ -61,7 +61,7 @@ const CREATE_KEY = "__create";
 
 export default mixins(showMessage).extend({
 	name: "TagsDropdown",
-	props: ["placeholder", "currentTagIds", "createEnabled"],
+	props: ["placeholder", "currentTagIds", "createEnabled", "eventBus"],
 	data() {
 		return {
 			filter: "",
@@ -76,6 +76,16 @@ export default mixins(showMessage).extend({
 			if (input) {
 				input.setAttribute('maxlength', `${MAX_TAG_NAME_LENGTH}`);
 			}
+		}
+
+		if (this.$props.eventBus) {
+			this.$props.eventBus.$on('focus', () => {
+				const select = this.$refs.select as Vue;
+				const input = select && select.$refs.input as HTMLElement;
+				if (input && input.focus) {
+					input.focus();
+				}
+			});
 		}
 
 		this.$store.dispatch("tags/fetchAll");
