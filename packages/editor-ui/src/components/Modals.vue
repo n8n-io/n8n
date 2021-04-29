@@ -54,7 +54,7 @@ export default Vue.extend({
 		TagsManager,
 		SaveWorkflowDialog,
 		WorkflowOpen,
-ModalRoot,
+		ModalRoot,
 	},
 	data: () => ({
 		RENAME_MODAL_KEY,
