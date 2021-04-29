@@ -451,6 +451,11 @@ export default mixins(
 						return;
 					}
 				}
+				const anyModalsOpen = this.$store.getters['ui/anyModalsOpen'];
+				console.log('keydown', e, anyModalsOpen)
+				if (anyModalsOpen) {
+					return;
+				}
 
 				if (e.key === 'd') {
 					this.callDebounced('deactivateSelectedNode', 350);
@@ -496,7 +501,7 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.$root.$emit('openWorkflowDialog');
+					this.$store.commit('ui/openModal', 'workflowOpen');
 				} else if (e.key === 'n' && this.isCtrlKeyPressed(e) === true && e.altKey === true) {
 					// Create a new workflow
 					e.stopPropagation();

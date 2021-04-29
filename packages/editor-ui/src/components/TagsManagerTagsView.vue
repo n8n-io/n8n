@@ -1,5 +1,5 @@
 <template>
-	<div @keyup.enter="applyOperation" @keyup.esc="cancelOperation" :rows="rows">
+	<div @keyup.enter="applyOperation" @keyup.esc="cancelOperation">
 		<TagsTableHeader
 			:search="search"
 			:disabled="isHeaderDisabled()"

@@ -1,6 +1,8 @@
 
+import Vue from 'vue';
 import { Module } from 'vuex';
 import {
+	IModalNames,
 	IRootState,
 	IUiState,
 } from '../Interface';
@@ -8,35 +10,45 @@ import {
 const module: Module<IUiState, IRootState> = {
 	namespaced: true,
 	state: {
-		saveAsDialogOpen: false,
-		renameDialogOpen: false,
-		tagsManagerOpen: false,
+		modals: {
+			saveAs: {
+				open: false,
+			},
+			rename: {
+				open: false,
+			},
+			tagsManager: {
+				open: false,
+			},
+			workflowOpen: {
+				open: false,
+			},
+		},
+		modalStack: [],
 		sidebarMenuCollapsed: true,
 	},
 	getters: {
-		saveAsDialogOpen: (state: IUiState): boolean => state.saveAsDialogOpen,
-		renameDialogOpen: (state: IUiState): boolean => state.renameDialogOpen,
-		tagsManagerOpen: (state: IUiState): boolean => state.tagsManagerOpen,
+		isModalOpen: (state: IUiState) => {
+			return (name: IModalNames) => state.modals[name].open;
+		},
+		isModalActive: (state: IUiState) => {
+			return (name: IModalNames) => name === state.modalStack[0];
+		},
+		anyModalsActive: (state: IUiState) => {
+			return state.modalStack.length > 0;
+		},
 		sidebarMenuCollapsed: (state: IUiState): boolean => state.sidebarMenuCollapsed,
 	},
 	mutations: {
-		openSaveAsDialog: (state: IUiState) => {
-			state.saveAsDialogOpen = true;
+		openModal: (state: IUiState, name: IModalNames) => {
+			Vue.set(state.modals[name], 'open', true);
+			state.modalStack = [name].concat(state.modalStack);
 		},
-		closeSaveAsDialog: (state: IUiState) => {
-			state.saveAsDialogOpen = false;
-		},
-		openRenameDialog: (state: IUiState) => {
-			state.renameDialogOpen = true;
-		},
-		closeRenameDialog: (state: IUiState) => {
-			state.renameDialogOpen = false;
-		},
-		openTagsManager: (state: IUiState) => {
-			state.tagsManagerOpen = true;
-		},
-		closeTagsManager: (state: IUiState) => {
-			state.tagsManagerOpen = false;
+		closeTopModal: (state: IUiState) => {
+			const name = state.modalStack[0];
+			Vue.set(state.modals[name], 'open', false);
+
+			state.modalStack = state.modalStack.slice(1);
 		},
 		toggleSidebarMenuCollapse: (state: IUiState) => {
 			state.sidebarMenuCollapsed = !state.sidebarMenuCollapsed;

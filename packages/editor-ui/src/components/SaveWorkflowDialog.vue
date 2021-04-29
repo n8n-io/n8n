@@ -1,15 +1,13 @@
 <template>
-	<div v-if="dialogVisible"
+	<Modal
+		:title="title"	
+		:name="modalName"
+		:dialogVisible="dialogVisible"
+		:eventBus="modalBus"
+		:messageBox="true"
+		@enter="save"
 	>
-		<el-dialog
-			:visible="dialogVisible"
-			:before-close="closeDialog"
-			:title="title"
-			append-to-body
-			class="dialog-wrapper"
-			ref="dialog"
-		>
-			<div class="content" @keydown.stop @keydown.enter="save" @keydown.esc="closeDialog">
+		<template slot="content">
 				<el-row>
 					<el-input
 						v-model="name"
@@ -25,25 +23,27 @@
 						placeholder="Choose or create a tag"
 					/>
 				</el-row>
-			</div>
-			<el-row class="footer">
-				<el-button size="small" @click="save" :loading="isSaving">Save</el-button>
-				<el-button size="small" @click="closeDialog" :disabled="isSaving">Cancel</el-button>
-			</el-row>
-		</el-dialog>
-	</div>
+		</template>
+		<template v-slot:footer="{ close }">
+			<el-button size="small" @click="save" :loading="isSaving">Save</el-button>
+			<el-button size="small" @click="close" :disabled="isSaving">Cancel</el-button>
+		</template>
+	</Modal>
 </template>
 
 <script lang="ts">
+import Vue from "vue";
 import mixins from "vue-typed-mixins";
+
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
 import TagsDropdown from "@/components/TagsDropdown.vue";
+import Modal from "./Modal.vue";
 
 export default mixins(showMessage, workflowHelpers).extend({
-	components: { TagsDropdown },
+	components: { TagsDropdown, Modal },
 	name: "SaveWorkflow",
-	props: ["dialogVisible", "title", "renameOnly"],
+	props: ["dialogVisible", "title", "renameOnly", "modalName"],
 	data() {
 		const currentTagIds = this.$store.getters[
 			"workflows/currentWorkflowTagIds"
@@ -59,11 +59,10 @@ export default mixins(showMessage, workflowHelpers).extend({
 			name,
 			currentTagIds,
 			isSaving: false,
+			modalBus: new Vue(),
 		};
 	},
 	mounted() {
-		window.addEventListener('keydown', this.onWindowKeydown);
-
 		this.$nextTick(() => {
 			const input = this.$refs.nameInput as any; // tslint:disable-line:no-any
 			if (input && input.focus) {
@@ -71,15 +70,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			}
 		});
 	},
-	beforeDestroy() {
-		window.removeEventListener('keydown', this.onWindowKeydown);
-	},
 	methods: {
-		onWindowKeydown(event: KeyboardEvent) {
-			if (event && event.keyCode === 13) {
-				this.save();
-			}
-		},
 		onTagsUpdate(tagIds: string[]) {
 			this.currentTagIds = tagIds;
 		},
@@ -106,7 +97,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 						type: "success",
 					});
 
-					this.$emit("closeDialog");
+					this.closeDialog();
 				} catch (error) {
 					this.$showError(
 						error,
@@ -123,31 +114,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$data.isSaving = false;
 		},
 		closeDialog(): void {
-			this.$emit("closeDialog");
+			this.modalBus.$emit("close");
 		},
 	},
 });
 </script>
-
-
-<style lang="scss" scoped>
-.dialog-wrapper {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-
-	/deep/ .el-dialog {
-		max-width: 600px;
-	}
-}
-
-
-.content > .el-row {
-	margin-bottom: 15px;
-}
-
-.footer > .el-button {
-	float: right;
-	margin-left: 5px;
-}
-</style>

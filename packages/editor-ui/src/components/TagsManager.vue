@@ -1,49 +1,47 @@
 <template>
-	<div v-if="dialogVisible">
-		<el-dialog
-			:visible="dialogVisible"
-			:before-close="closeDialog"
-			title="Manage tags"
-			class="dialog-wrapper"
-			append-to-body
-		>
-			<div class="content" @keydown.stop>
-				<el-row>
-					<TagsView
-						v-if="hasTags || isCreating"
-						:isLoading="isLoading"
-						:tags="tags"
+	<Modal
+		title="Manage tags"
+		name="tagsManager"
+		:eventBus="modalBus"
+		@enter="closeDialog"
+	>
+		<template slot="content">
+			<el-row>
+				<TagsView
+					v-if="hasTags || isCreating"
+					:isLoading="isLoading"
+					:tags="tags"
 
-						@create="onCreate"
-						@update="onUpdate"
-						@delete="onDelete"
-						@disableCreate="onDisableCreate"
-					/>
-					<NoTagsView 
-						@enableCreate="onEnableCreate"
-						v-else />
-				</el-row>
-			</div>
-			<el-row class="footer">
-				<el-button size="small" @click="closeDialog">Done</el-button>
+					@create="onCreate"
+					@update="onUpdate"
+					@delete="onDelete"
+					@disableCreate="onDisableCreate"
+				/>
+				<NoTagsView 
+					@enableCreate="onEnableCreate"
+					v-else />
 			</el-row>
-		</el-dialog>
-	</div>
+		</template>
+		<template v-slot:footer="{ close }">
+				<el-button size="small" @click="close">Done</el-button>
+		</template>
+	</Modal>
 </template>
 
 <script lang="ts">
+import Vue from "vue";
+import mixins from "vue-typed-mixins";
+import { mapGetters } from "vuex";
+
 import { ITag } from "@/Interface";
 
 import { showMessage } from "@/components/mixins/showMessage";
 import TagsView from "@/components/TagsManagerTagsView.vue";
 import NoTagsView from "@/components/TagsManagerNoTagsView.vue";
-
-import mixins from "vue-typed-mixins";
-import { mapGetters } from "vuex";
+import Modal from "@/components/Modal.vue";
 
 export default mixins(showMessage).extend({
 	name: "TagsManager",
-	props: ["dialogVisible"],
 	created() {
 		this.$store.dispatch("tags/fetchAll", {force: true, withUsageCount: true});
 	},
@@ -54,11 +52,13 @@ export default mixins(showMessage).extend({
 		return {
 			tagIds,
 			isCreating: false,
+			modalBus: new Vue(),
 		};
 	},
 	components: {
 		TagsView,
 		NoTagsView,
+		Modal,
 	},
 	computed: {
 		...mapGetters("tags", ["isLoading"]),
@@ -166,38 +166,14 @@ export default mixins(showMessage).extend({
 		},
 
 		closeDialog() {
-			this.$emit("closeDialog");
+			this.modalBus.$emit('close');
 		},
 	},
 });
 </script>
 
-
-<style scoped lang="scss">
-* {
-	box-sizing: border-box;
-}
-
-.dialog-wrapper {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-
-	/deep/ .el-dialog {
-		max-width: 600px;
-	}
-}
-
-
-.content {
+<style lang="scss" scoped>	
+.el-row {
 	min-height: $--tags-manager-min-height;
-}
-
-.footer {
-	margin-top: 15px;
-
-	.el-button {
-		float: right;
-	}
 }
 </style>

@@ -1,7 +1,9 @@
 <template>
-	<span>
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :before-close="closeDialog" top="5vh">
-			<template slot="title">
+	<Modal
+		name="workflowOpen"
+		size="xl"
+	>
+			<template slot="header">
 				<el-row class="workflows-header">
 					<el-col :span="9">
 						<h1>Open Workflow</h1>
@@ -14,7 +16,7 @@
 							@onUpdate="updateTagsFilter"
 						/>
 					</el-col>
-					<el-col class="ignore-key-press" :span="4">
+					<el-col :span="4">
 						<el-input placeholder="Workflow filter..." ref="inputFieldFilter" v-model="filterText">
 							<i slot="prefix" class="el-input__icon el-icon-search"></i>
 						</el-input>
@@ -22,24 +24,25 @@
 				</el-row>
 			</template>
 
-			<el-table class="search-table" :data="filteredWorkflows" stripe @cell-click="openWorkflow" :default-sort = "{prop: 'updatedAt', order: 'descending'}" v-loading="isDataLoading">
-				<el-table-column property="name" label="Name" class-name="clickable" sortable>
-					<template slot-scope="scope">
-						<div class="name" :key="scope.row.id">
-							<span>{{scope.row.name}}</span> <TagsContainer :tagIds="getIds(scope.row.tags)"/>
-						</div>
-					</template>
-				</el-table-column>
-				<el-table-column property="createdAt" label="Created" class-name="clickable" width="225" sortable></el-table-column>
-				<el-table-column property="updatedAt" label="Updated" class-name="clickable" width="225" sortable></el-table-column>
-				<el-table-column label="Active" width="90">
-					<template slot-scope="scope">
-						<workflow-activator :workflow-active="scope.row.active" :workflow-id="scope.row.id" @workflowActiveChanged="workflowActiveChanged" />
-					</template>
-				</el-table-column>
-			</el-table>
-		</el-dialog>
-	</span>
+			<template slot="content">
+				<el-table class="search-table" :data="filteredWorkflows" stripe @cell-click="openWorkflow" :default-sort = "{prop: 'updatedAt', order: 'descending'}" v-loading="isDataLoading">
+					<el-table-column property="name" label="Name" class-name="clickable" sortable>
+						<template slot-scope="scope">
+							<div class="name" :key="scope.row.id">
+								<span>{{scope.row.name}}</span> <TagsContainer :tagIds="getIds(scope.row.tags)"/>
+							</div>
+						</template>
+					</el-table-column>
+					<el-table-column property="createdAt" label="Created" class-name="clickable" width="225" sortable></el-table-column>
+					<el-table-column property="updatedAt" label="Updated" class-name="clickable" width="225" sortable></el-table-column>
+					<el-table-column label="Active" width="90">
+						<template slot-scope="scope">
+							<workflow-activator :workflow-active="scope.row.active" :workflow-id="scope.row.id" @workflowActiveChanged="workflowActiveChanged" />
+						</template>
+					</el-table-column>
+				</el-table>
+			</template>
+	</Modal>
 </template>
 
 <script lang="ts">
@@ -53,6 +56,7 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 
+import Modal from '@/components/Modal.vue';
 import TagsContainer from '@/components/TagsContainer.vue';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
@@ -64,13 +68,11 @@ export default mixins(
 	workflowHelpers,
 ).extend({
 	name: 'WorkflowOpen',
-	props: [
-		'dialogVisible',
-	],
 	components: {
 		WorkflowActivator,
 		TagsContainer,
 		TagsDropdown,
+		Modal,
 	},
 	data () {
 		return {
@@ -105,19 +107,15 @@ export default mixins(
 				});
 		},
 	},
-	watch: {
-		dialogVisible (newValue, oldValue) {
-			if (newValue) {
-				this.filterText = '';
-				this.filterTagIds = [];
-				this.openDialog();
+	mounted() {
+		this.filterText = '';
+		this.filterTagIds = [];
+		this.openDialog();
 
-				Vue.nextTick(() => {
-					// Make sure that users can directly type in the filter
-					(this.$refs.inputFieldFilter as HTMLInputElement).focus();
-				});
-			}
-		},
+		Vue.nextTick(() => {
+			// Make sure that users can directly type in the filter
+			(this.$refs.inputFieldFilter as HTMLInputElement).focus();
+		});
 	},
 	methods: {
 		getIds(tags: ITag[] | undefined) {
@@ -125,12 +123,6 @@ export default mixins(
 		},
 		updateTagsFilter(tags: string[]) {
 			this.filterTagIds = tags;
-		},
-		closeDialog () {
-			// Handle the close externally as the visible parameter is an external prop
-			// and is so not allowed to be changed here.
-			this.$emit('closeDialog');
-			return false;
 		},
 		async openWorkflow (data: IWorkflowShortResponse, column: any) { // tslint:disable-line:no-any
 			if (column.label !== 'Active') {
@@ -156,11 +148,19 @@ export default mixins(
 					} else {
 						// This is used to avoid duplicating the message
 						this.$store.commit('setStateDirty', false);
-						this.$emit('openWorkflow', data.id);
+
+						this.$router.push({
+							name: 'NodeViewExisting',
+							params: { name: data.id },
+						});
 					}
 				} else {
-					this.$emit('openWorkflow', data.id);
+					this.$router.push({
+						name: 'NodeViewExisting',
+						params: { name: data.id },
+					});
 				}
+				this.$store.commit('ui/closeTopModal');
 			}
 		},
 		openDialog () {

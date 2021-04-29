@@ -515,11 +515,21 @@ export interface ITagsState {
 export interface IWorkflowsState {
 }
 
+export interface IModalState {
+	open: boolean;
+}
+
+export type IModalNames = "saveAs" | "rename" | "tagsManager" | "workflowOpen";
+
 export interface IUiState {
-	saveAsDialogOpen: boolean;
-	renameDialogOpen: boolean;
-	tagsManagerOpen: boolean;
 	sidebarMenuCollapsed: boolean;
+	modalStack: IModalNames[];
+	modals: {
+		tagsManager: IModalState;
+		saveAs: IModalState;
+		rename: IModalState;
+		workflowOpen: IModalState;
+	}
 }
 
 export interface IRestApiContext {

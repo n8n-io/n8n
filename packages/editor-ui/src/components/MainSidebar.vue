@@ -4,7 +4,6 @@
 		<executions-list :dialogVisible="executionsListDialogVisible" @closeDialog="closeExecutionsListOpenDialog"></executions-list>
 		<credentials-list :dialogVisible="credentialOpenDialogVisible" @closeDialog="closeCredentialOpenDialog"></credentials-list>
 		<credentials-edit :dialogVisible="credentialNewDialogVisible" @closeDialog="closeCredentialNewDialog"></credentials-edit>
-		<workflow-open @openWorkflow="openWorkflow" :dialogVisible="workflowOpenDialogVisible" @closeDialog="closeWorkflowOpenDialog"></workflow-open>
 		<workflow-settings :dialogVisible="workflowSettingsDialogVisible" @closeDialog="closeWorkflowSettingsDialog"></workflow-settings>
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
@@ -205,7 +204,6 @@ import About from '@/components/About.vue';
 import CredentialsEdit from '@/components/CredentialsEdit.vue';
 import CredentialsList from '@/components/CredentialsList.vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
-import WorkflowOpen from '@/components/WorkflowOpen.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -235,7 +233,6 @@ export default mixins(
 			CredentialsEdit,
 			CredentialsList,
 			ExecutionsList,
-			WorkflowOpen,
 			WorkflowSettings,
 		},
 		data () {
@@ -247,7 +244,6 @@ export default mixins(
 				credentialOpenDialogVisible: false,
 				executionsListDialogVisible: false,
 				stopExecutionInProgress: false,
-				workflowOpenDialogVisible: false,
 				workflowSettingsDialogVisible: false,
 			};
 		},
@@ -319,9 +315,6 @@ export default mixins(
 			closeAboutDialog () {
 				this.aboutDialogVisible = false;
 			},
-			closeWorkflowOpenDialog () {
-				this.workflowOpenDialogVisible = false;
-			},
 			closeWorkflowSettingsDialog () {
 				this.workflowSettingsDialogVisible = false;
 			},
@@ -335,7 +328,7 @@ export default mixins(
 				this.credentialNewDialogVisible = false;
 			},
 			openTagManager() {
-				this.$store.commit('ui/openTagsManager');
+				this.$store.commit('ui/openModal', 'tagsManager');
 			},
 			async stopExecution () {
 				const executionId = this.$store.getters.activeExecutionId;
@@ -363,7 +356,7 @@ export default mixins(
 					params: { name: workflowId },
 				});
 
-				this.workflowOpenDialogVisible = false;
+				this.$store.commit('ui/closeTopModal');
 			},
 			async handleFileImport () {
 				const reader = new FileReader();
@@ -393,7 +386,7 @@ export default mixins(
 			},
 			async handleSelect (key: string, keyPath: string) {
 				if (key === 'workflow-open') {
-					this.workflowOpenDialogVisible = true;
+					this.$store.commit('ui/openModal', 'workflowOpen');
 				} else if (key === 'workflow-import-file') {
 					(this.$refs.importFile as HTMLInputElement).click();
 				} else if (key === 'workflow-import-url') {
@@ -408,7 +401,7 @@ export default mixins(
 						this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
 					} catch (e) {}
 				} else if (key === 'workflow-rename') {
-					this.$store.commit('ui/openRenameDialog');
+					this.$store.commit('ui/openModal', 'rename');
 				} else if (key === 'workflow-delete') {
 					const deleteConfirmed = await this.confirmMessage(`Are you sure that you want to delete the workflow "${this.workflowName}"?`, 'Delete Workflow?', 'warning', 'Yes, delete!');
 
@@ -446,7 +439,7 @@ export default mixins(
 				} else if (key === 'workflow-save') {
 					this.saveCurrentWorkflow();
 				} else if (key === 'workflow-save-as') {
-					this.$store.commit('ui/openSaveAsDialog');
+					this.$store.commit('ui/openModal', 'saveAs');
 				} else if (key === 'help-about') {
 					this.aboutDialogVisible = true;
 				} else if (key === 'workflow-settings') {
@@ -487,11 +480,6 @@ export default mixins(
 					this.executionsListDialogVisible = true;
 				}
 			},
-		},
-		async mounted () {
-			this.$root.$on('openWorkflowDialog', async () => {
-				this.workflowOpenDialogVisible = true;
-			});
 		},
 	});
 </script>

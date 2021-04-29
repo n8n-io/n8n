@@ -1,22 +1,21 @@
 <template>
 	<div>
 		<SaveWorkflowDialog
-			v-if="saveAsDialogOpen"
-			:dialogVisible="saveAsDialogOpen"
-			@closeDialog="closeSaveAsDialog"
+			v-if="isOpen('saveAs')"
+			modalName="saveAs"
 			title="Save new workflow"
 		/>
 		<SaveWorkflowDialog
-			v-if="renameDialogOpen"
-			:dialogVisible="renameDialogOpen"
+			v-if="isOpen('rename')"
 			:renameOnly="true"
-			@closeDialog="closeRenameDialog"
+			modalName="rename"
 			title="Rename workflow"
 		/>
 		<TagsManager
-			v-if="tagsManagerOpen"
-			:dialogVisible="tagsManagerOpen"
-			@closeDialog="closeTagsManager"
+			v-if="isOpen('tagsManager')"	
+		/>
+		<WorkflowOpen
+			v-if="isOpen('workflowOpen')"
 		/>
 	</div>
 </template>
@@ -26,23 +25,19 @@ import Vue from "vue";
 
 import TagsManager from "@/components/TagsManager.vue";
 import SaveWorkflowDialog from "@/components/SaveWorkflowDialog.vue";
-import { mapGetters, mapMutations } from "vuex";
+import WorkflowOpen from "./WorkflowOpen.vue";
 
 export default Vue.extend({
 	name: "Modals",
 	components: {
 		TagsManager,
 		SaveWorkflowDialog,
+		WorkflowOpen,
 	},
-	computed: mapGetters("ui", [
-		"tagsManagerOpen",
-		"saveAsDialogOpen",
-		"renameDialogOpen",
-	]),
-	methods: mapMutations("ui", [
-		"closeSaveAsDialog",
-		"closeRenameDialog",
-		"closeTagsManager",
-	]),
+	methods: {
+		isOpen(name: string) {
+			return this.$store.getters['ui/isModalOpen'](name);
+		},
+	},
 });
 </script>

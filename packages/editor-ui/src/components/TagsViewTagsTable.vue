@@ -11,7 +11,7 @@
 	>
 		<el-table-column label="Name">
 			<template slot-scope="scope">
-				<div class="name" :key="scope.row.id">
+				<div class="name" :key="scope.row.id" @keydown.stop>
 					<transition name="fade" mode="out-in">
 						<el-input
 							v-if="scope.row.create || scope.row.update"

@@ -126,7 +126,7 @@ export default mixins(showMessage).extend({
 			);
 			if (ops === MANAGE_KEY) {
 				this.$data.filter = "";
-				this.$store.commit("ui/openTagsManager");
+				this.$store.commit("ui/openModal", 'tagsManager');
 			} else if (ops === CREATE_KEY) {
 				this.onCreate();
 			} else {
