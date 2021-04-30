@@ -224,6 +224,10 @@ $--max-input-height: 60px;
 		position: relative;
 		max-height: $--dropdown-length;
 
+		> div {
+			overflow: auto;
+		}
+
 		ul {
 			padding: 0;
 			max-height: $--dropdown-length - $--item-height;
@@ -239,6 +243,7 @@ $--max-input-height: 60px;
 
 	li {
 		height: $--item-height; 
+		background-color: white;
 		padding: 6px 20px;
 		margin: 0;
 
