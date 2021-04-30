@@ -23,7 +23,7 @@ import {
 } from 'n8n-core';
 
 import * as PCancelable from 'p-cancelable';
-import { ObjectID, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 
 import { ChildProcess } from 'child_process';
 import { Url } from 'url';
@@ -87,66 +87,23 @@ export interface ITagDb {
 	updatedAt: Date;
 }
 
-export interface IShortTag {
-	id: string;
-	name: string;
-}
-
 export type UsageCount = {
 	usageCount: number
 };
 
 export type ITagWithCountDb = ITagDb & UsageCount;
 
-export type ITagWithCount = IShortTag & UsageCount;
-
 // ----------------------------------
 //            workflows
 // ----------------------------------
 
-interface IWorkflowRequestPayload extends Request {
-	body: {
-		id?: number; // if sent by mistake
-		name: string;
-		active: boolean;
-		connections: IConnections;
-		nodes: INode[];
-		settings?: IWorkflowSettings;
-		staticData?: IDataObject;
-		tags: string[];
-	};
-}
-
-export type ICreateWorkflowRequest = IWorkflowRequestPayload;
-
-export type IUpdateWorkflowRequest = IWorkflowRequestPayload;
-
-export interface IGetWorkflowsRequest extends Request {
-	query: {
-		filter: string;
-	};
-}
-
-export interface IShortWorkflow extends IWorkflowBase {
-	id: string;
-	name: string;
-	active: boolean;
-	createdAt: Date;
-	updatedAt: Date;
-	tags: IShortTag[];
-}
-
-// ----------------------------------
-//       original from Jan
-// ----------------------------------
-
 export interface IWorkflowBase extends IWorkflowBaseWorkflow {
-	id?: number | string | ObjectID;
+	id?: number | string;
 }
 
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
-	id: number | string | ObjectID;
+	id: number | string;
 	tags: ITagDb[];
 }
 

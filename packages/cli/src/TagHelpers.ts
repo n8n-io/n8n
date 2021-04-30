@@ -1,9 +1,7 @@
-// import { omit } from 'lodash';
 import { getConnection } from "typeorm";
-import { validate, ValidationError } from 'class-validator';
+import { validate } from 'class-validator';
 
 import {
-	IShortTag,
 	ResponseHelper,
 } from ".";
 
@@ -12,45 +10,13 @@ import {
 } from "./databases/entities/TagEntity";
 
 import {
-	IShortWorkflow,
 	ITagWithCountDb,
-	IWorkflowDb,
 } from "./Interfaces";
 
 
 // ----------------------------------
 //              utils
 // ----------------------------------
-
-/**
- * Format `TagEntity` into `ShortTag`.
- */
-export function shortenTag({ id, name }: TagEntity): IShortTag {
-	return ({ id: id.toString(), name });
-}
-
-/**
- * Create a cloned object without a property.
- */
-export const omit = (keyToOmit: string, { [keyToOmit]: _, ...omittedPropObj }) => omittedPropObj;
-
-export function shortenWorkflow(workflowDb: IWorkflowDb) {
-	const shortWorkflow = omit('tags', workflowDb) as IShortWorkflow;
-	shortWorkflow.id = workflowDb.id.toString();
-
-	if (workflowDb.tags.length) {
-		shortWorkflow.tags = workflowDb.tags.map(shortenTag);
-	}
-
-	return shortWorkflow;
-}
-
-export function throwDuplicateEntryError(error: Error) {
-	const errorMessage = error.message.toLowerCase();
-	if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
-		throw new ResponseHelper.ResponseError('Tag name already exists', undefined, 400);
-	}
-}
 
 /**
  * Sort a `TagEntity[]` by the order of the tag IDs in the incoming request.
@@ -75,18 +41,19 @@ export async function validateTag(newTag: TagEntity) {
 	const errors = await validate(newTag);
 
 	if (errors.length) {
-		const validationErrorMessage = extractFirstMessage(errors);
+		const validationErrorMessage = Object.values(errors[0].constraints!)[0];
 		throw new ResponseHelper.ResponseError(validationErrorMessage, undefined, 400);
 	}
 }
 
-/**
- * Extract the first error message from a `ValidationError[]`.
- */
-const extractFirstMessage = (errors: ValidationError[]) => {
-	const constraints = errors.map(error => error.constraints!)[0];
-	return Object.values(constraints)[0];
-};
+export function throwDuplicateEntryError(error: Error) {
+	const errorMessage = error.message.toLowerCase();
+	if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
+		throw new ResponseHelper.ResponseError('Tag name already exists', undefined, 400);
+	}
+
+	throw new ResponseHelper.ResponseError(errorMessage, undefined, 400);
+}
 
 // ----------------------------------
 //             queries
