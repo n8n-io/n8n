@@ -10,10 +10,10 @@ import {
 
 import {
 	AttributeValueType,
+	EAttributeValueType,
 	IAttributeValue,
 	IAttributeValueUi,
 	IAttributeValueValue,
-	PartitionKey,
 } from './types';
 
 const addColon = (attribute: string) => attribute = attribute.charAt(0) === ':' ? attribute : `:${attribute}`;
@@ -68,16 +68,6 @@ export function validateJSON(input: any): object {
 	}
 }
 
-// export function populatePartitionKey(this: IExecuteFunctions, i: number) {
-// 	const keys = this.getNodeParameter('keyUi.keyValues', i) as IDataObject[];;
-
-// 	return {
-// 		[name]: {
-// 			[type]: value,
-// 		},
-// 	};
-// }
-
 export function copyInputItem(item: INodeExecutionData, properties: string[]): IDataObject {
 	// Prepare the data to insert and copy it to be returned
 	let newItem: IDataObject;
@@ -99,4 +89,15 @@ export function mapToAttributeValues(item: IDataObject): void {
 			delete item[key];
 		}
 	}
+}
+
+export function decodeItem(item: IAttributeValue): IDataObject {
+	const _item: IDataObject = {};
+	for (const entry of Object.entries(item)) {
+		const [attribute, value]: [string, object] = entry;
+		const [type, content]: [string, object] = Object.entries(value)[0];
+		_item[attribute] = decodeAttribute(type as EAttributeValueType, content as unknown as string);
+	}
+
+	return _item;
 }

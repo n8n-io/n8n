@@ -2,7 +2,46 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const operationFields = [
+export const itemOperations = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'item',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Create/Update',
+				value: 'upsert',
+				description: 'Create/Update an item',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete an item',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get an item',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all item',
+			},
+		],
+		default: 'upsert',
+		description: 'The operation to perform.',
+	},
+] as INodeProperties[];
+
+export const itemFields = [
 	// ----------------------------------
 	//              all
 	// ----------------------------------
@@ -12,6 +51,13 @@ export const operationFields = [
 		description: 'Table to operate on.',
 		type: 'options',
 		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'item',
+				],
+			},
+		},
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
@@ -27,7 +73,7 @@ export const operationFields = [
 		description: 'Substitution tokens for attribute names in an expression.',
 		placeholder: 'Add Metadata',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		required: true,
 		typeOptions: {
 			multipleValues: true,
@@ -35,6 +81,9 @@ export const operationFields = [
 		},
 		displayOptions: {
 			show: {
+				resource: [
+					'item',
+				],
 				operation: [
 					'upsert',
 				],
@@ -86,8 +135,11 @@ export const operationFields = [
 		placeholder: 'id = :id',
 		displayOptions: {
 			show: {
+				resource: [
+					'item',
+				],
 				operation: [
-					'createUpdate',
+					'upsert',
 				],
 			},
 		},
@@ -96,20 +148,6 @@ export const operationFields = [
 	// ----------------------------------
 	//              delete
 	// ----------------------------------
-	{
-		displayName: 'JSON Parameters',
-		name: 'jsonParameters',
-		type: 'boolean',
-		default: false,
-		description: 'Enable specifying the item to delete as JSON.',
-		displayOptions: {
-			show: {
-				operation: [
-					'delete',
-				],
-			},
-		},
-	},
 	{
 		displayName: 'Keys',
 		name: 'keysUi',
@@ -121,14 +159,11 @@ export const operationFields = [
 		},
 		displayOptions: {
 			show: {
-				// resource: [
-				// 	'item',
-				// ],
+				resource: [
+					'item',
+				],
 				operation: [
 					'delete',
-				],
-				jsonParameters: [
-					false,
 				],
 			},
 		},
@@ -176,25 +211,53 @@ export const operationFields = [
 		you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.`,
 	},
 	{
-		displayName: 'Keys (JSON)',
-		name: 'keysJson',
-		type: 'json',
-		required: true,
+		displayName: 'Return Values',
+		name: 'returnValues',
+		type: 'options',
 		displayOptions: {
 			show: {
-				// resource: [
-				// 	'item',
-				// ],
+				resource: [
+					'item',
+				],
 				operation: [
 					'delete',
 				],
-				jsonParameters: [
-					true,
+			},
+		},
+		options: [
+			{
+				name: 'All Old',
+				value: 'ALL_OLD',
+			},
+			{
+				name: 'None',
+				value: 'NONE',
+			},
+		],
+		default: 'NONE',
+		description: `Use ReturnValues if you want to get the item attributes as they appeared before they were deleted. For DeleteItem, the valid values are:</br>
+				NONE - If ReturnValues is not specified, or if its value is NONE, then nothing is returned. (This setting is the default for ReturnValues.)</br>
+				ALL_OLD - The content of the old item is returned.`,
+	},
+	{
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'item',
+				],
+				operation: [
+					'delete',
+				],
+				returnValues: [
+					'ALL_OLD',
 				],
 			},
 		},
-		default: '',
-		description: 'Specify the Item you want to operate on',
+		default: true,
+		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -204,9 +267,9 @@ export const operationFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				// resource: [
-				// 	'item',
-				// ],
+				resource: [
+					'item',
+				],
 				operation: [
 					'delete',
 				],
@@ -215,7 +278,7 @@ export const operationFields = [
 		options: [
 			{
 				displayName: 'Condition Expression',
-				name: 'ConditionExpression',
+				name: 'conditionExpression',
 				type: 'string',
 				default: '',
 				description: `A condition that must be satisfied in order for a conditional DeleteItem to succeed.`,
@@ -258,16 +321,6 @@ export const operationFields = [
 				default: {},
 				typeOptions: {
 					multipleValues: true,
-				},
-				displayOptions: {
-					show: {
-						// resource: [
-						// 	'item',
-						// ],
-						'/jsonParameters': [
-							false,
-						],
-					},
 				},
 				options: [
 					{
@@ -340,129 +393,12 @@ export const operationFields = [
 				description: `For the primary key, you must provide all of the attributes. For example, with a simple primary key,</br>
 		you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.`,
 			},
-			{
-				displayName: 'Expression Attribute Values (JSON)',
-				name: 'expressionAttributeValueJson',
-				type: 'json',
-				required: true,
-				displayOptions: {
-					show: {
-						// resource: [
-						// 	'item',
-						// ],
-						'/jsonParameters': [
-							true,
-						],
-					},
-				},
-				default: '',
-				description: 'Specify the Item you want to operate on',
-			},
-			{
-				displayName: 'Return Collection Metrics',
-				name: 'ReturnItemCollectionMetrics',
-				type: 'options',
-				options: [
-					{
-						name: 'Size',
-						value: 'SIZE',
-					},
-					{
-						name: 'None',
-						value: 'NONE',
-					},
-				],
-				default: 'NONE',
-				description: `Determines whether item collection metrics are returned. If set to SIZE, the response includes statistics about item collections, if any, that were modified during the operation are returned in the response. If set to NONE (the default), no statistics are returned.`,
-			},
-			{
-				displayName: 'Return Consumed Capacity',
-				name: 'ReturnConsumedCapacity',
-				type: 'options',
-				options: [
-					{
-						name: 'Indexes',
-						value: 'INDEXES',
-					},
-					{
-						name: 'Total',
-						value: 'TOTAL',
-					},
-					{
-						name: 'None',
-						value: 'NONE',
-					},
-				],
-				default: '',
-				description: `Determines the level of detail about provisioned throughput consumption that is returned in the response:`,
-			},
-			{
-				displayName: 'Select',
-				name: 'select',
-				type: 'options',
-				options: [
-					{
-						name: 'All Attributes',
-						value: 'ALL_ATTRIBUTES',
-					},
-					{
-						name: 'All Projected Attributes',
-						value: 'ALL_PROJECTED_ATTRIBUTES',
-					},
-					{
-						name: 'Count',
-						value: 'COUNT',
-					},
-					{
-						name: 'Specific Attributes',
-						value: 'SPECIFIC_ATTRIBUTES',
-					},
-				],
-				default: 'ALL_PROJECTED_ATTRIBUTES',
-				description: `The attributes to be returned in the result. You can retrieve all item attributes, specific item attributes, the count of matching items, or in the case of an index, some or all of the attributes projected into the index.`,
-			},
-			{
-				displayName: 'Return Values',
-				name: 'ReturnValues',
-				type: 'options',
-				options: [
-					{
-						name: 'All Old',
-						value: 'ALL_OLD',
-					},
-					{
-						name: 'None',
-						value: 'NONE',
-					},
-				],
-				default: 'NONE',
-				description: `Use ReturnValues if you want to get the item attributes as they appeared before they were deleted. For DeleteItem, the valid values are:</br>
-				NONE - If ReturnValues is not specified, or if its value is NONE, then nothing is returned. (This setting is the default for ReturnValues.)</br>
-				ALL_OLD - The content of the old item is returned.`,
-			},
 		],
 	},
 
 	// ----------------------------------
 	//              get
 	// ----------------------------------
-	{
-		displayName: 'JSON Parameters',
-		name: 'jsonParameters',
-		type: 'boolean',
-		default: false,
-		description: '',
-		displayOptions: {
-			show: {
-				// resource: [
-				// 	'item',
-				// ],
-				operation: [
-					'get',
-				],
-			},
-		},
-	},
 	{
 		displayName: 'Keys',
 		name: 'keysUi',
@@ -474,14 +410,11 @@ export const operationFields = [
 		},
 		displayOptions: {
 			show: {
-				// resource: [
-				// 	'item',
-				// ],
+				resource: [
+					'item',
+				],
 				operation: [
 					'get',
-				],
-				jsonParameters: [
-					false,
 				],
 			},
 		},
@@ -529,25 +462,35 @@ export const operationFields = [
 		you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.`,
 	},
 	{
-		displayName: 'Keys (JSON)',
-		name: 'keysJson',
-		type: 'json',
-		required: true,
+		displayName: 'Select',
+		name: 'select',
+		type: 'options',
 		displayOptions: {
 			show: {
-				// resource: [
-				// 	'item',
-				// ],
+				resource: [
+					'item',
+				],
 				operation: [
 					'get',
 				],
-				jsonParameters: [
-					true,
-				],
 			},
 		},
-		default: '',
-		description: 'Specify the Item you want to operate on',
+		options: [
+			{
+				name: 'All Attributes',
+				value: 'ALL_ATTRIBUTES',
+			},
+			{
+				name: 'All Projected Attributes',
+				value: 'ALL_PROJECTED_ATTRIBUTES',
+			},
+			{
+				name: 'Specific Attributes',
+				value: 'SPECIFIC_ATTRIBUTES',
+			},
+		],
+		default: 'ALL_ATTRIBUTES',
+		description: `The attributes to be returned in the result. You can retrieve all item attributes, specific item attributes, the count of matching items, or in the case of an index, some or all of the attributes projected into the index.`,
 	},
 	{
 		displayName: 'Simple',
@@ -555,11 +498,15 @@ export const operationFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				// resource: [
-				// 	'item',
-				// ],
+				resource: [
+					'item',
+				],
 				operation: [
 					'get',
+				],
+				select: [
+					'ALL_PROJECTED_ATTRIBUTES',
+					'ALL_ATTRIBUTES',
 				],
 			},
 		},
@@ -574,9 +521,9 @@ export const operationFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				// resource: [
-				// 	'item',
-				// ],
+				resource: [
+					'item',
+				],
 				operation: [
 					'get',
 				],
@@ -585,43 +532,22 @@ export const operationFields = [
 		options: [
 			{
 				displayName: 'Consistent Read',
-				name: 'ConsistentRead',
+				name: 'consistentRead',
 				type: 'boolean',
 				default: false,
 				description: `Determines the read consistency model: If set to true, then the operation uses strongly consistent reads; otherwise, the operation uses eventually consistent reads.`,
 			},
 			{
 				displayName: 'Projection Expression',
-				name: 'ProjectionExpression',
+				name: 'projectionExpression',
 				type: 'string',
 				placeholder: 'id, name',
 				default: '',
 				description: 'Attributes to select',
 			},
 			{
-				displayName: 'Return Consumed Capacity',
-				name: 'ReturnConsumedCapacity',
-				type: 'options',
-				options: [
-					{
-						name: 'Indexes',
-						value: 'INDEXES',
-					},
-					{
-						name: 'Total',
-						value: 'TOTAL',
-					},
-					{
-						name: 'None',
-						value: 'NONE',
-					},
-				],
-				default: '',
-				description: `Determines the level of detail about provisioned throughput consumption that is returned in the response:`,
-			},
-			{
 				displayName: 'Expression Attribute Names',
-				name: 'ExpressionAttributeNames',
+				name: 'expressionAttributeNames',
 				placeholder: 'Add Expression',
 				type: 'fixedCollection',
 				default: '',
@@ -678,6 +604,9 @@ export const operationFields = [
 		required: true,
 		displayOptions: {
 			show: {
+				resource: [
+					'item',
+				],
 				operation: [
 					'getAll',
 				],
@@ -698,6 +627,9 @@ export const operationFields = [
 		},
 		displayOptions: {
 			show: {
+				resource: [
+					'item',
+				],
 				operation: [
 					'getAll',
 				],
@@ -746,6 +678,9 @@ export const operationFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
+				resource: [
+					'item',
+				],
 				operation: [
 					'getAll',
 				],
@@ -776,16 +711,55 @@ export const operationFields = [
 		description: 'How many results to return.',
 	},
 	{
+		displayName: 'Select',
+		name: 'select',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'item',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'All Attributes',
+				value: 'ALL_ATTRIBUTES',
+			},
+			{
+				name: 'All Projected Attributes',
+				value: 'ALL_PROJECTED_ATTRIBUTES',
+			},
+			{
+				name: 'Count',
+				value: 'COUNT',
+			},
+			{
+				name: 'Specific Attributes',
+				value: 'SPECIFIC_ATTRIBUTES',
+			},
+		],
+		default: 'ALL_ATTRIBUTES',
+		description: `The attributes to be returned in the result. You can retrieve all item attributes, specific item attributes, the count of matching items, or in the case of an index, some or all of the attributes projected into the index.`,
+	},
+	{
 		displayName: 'Simple',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				// resource: [
-				// 	'item',
-				// ],
+				resource: [
+					'item',
+				],
 				operation: [
 					'getAll',
+				],
+				select: [
+					'ALL_PROJECTED_ATTRIBUTES',
+					'ALL_ATTRIBUTES',
 				],
 			},
 		},
@@ -800,6 +774,9 @@ export const operationFields = [
 		default: {},
 		displayOptions: {
 			show: {
+				resource: [
+					'item',
+				],
 				operation: [
 					'getAll',
 				],
@@ -876,127 +853,4 @@ export const operationFields = [
 			},
 		],
 	},
-
-	// // ----------------------------------
-	// //             scan
-	// // ----------------------------------
-	// {
-	// 	displayName: 'Expression Attribute Values',
-	// 	name: 'expressionAttributeValues',
-	// 	description: 'Substitution tokens for attribute names in an expression.',
-	// 	placeholder: 'Add Metadata',
-	// 	type: 'fixedCollection',
-	// 	default: '',
-	// 	required: true,
-	// 	typeOptions: {
-	// 		multipleValues: true,
-	// 		minValue: 1,
-	// 	},
-	// 	displayOptions: {
-	// 		show: {
-	// 			operation: [
-	// 				'scan',
-	// 			],
-	// 		},
-	// 	},
-	// 	options: [
-	// 		{
-	// 			name: 'details',
-	// 			displayName: 'Details',
-	// 			values: [
-	// 				{
-	// 					displayName: 'Attribute',
-	// 					name: 'attribute',
-	// 					type: 'string',
-	// 					default: '',
-	// 				},
-	// 				{
-	// 					displayName: 'Type',
-	// 					name: 'type',
-	// 					type: 'options',
-	// 					options: [
-	// 						{
-	// 							name: 'Number',
-	// 							value: 'N',
-	// 						},
-	// 						{
-	// 							name: 'String',
-	// 							value: 'S',
-	// 						},
-	// 					],
-	// 					default: 'S',
-	// 				},
-	// 				{
-	// 					displayName: 'Value',
-	// 					name: 'value',
-	// 					type: 'string',
-	// 					default: '',
-	// 				},
-	// 			],
-	// 		},
-	// 	],
-	// },
-	// {
-	// 	displayName: 'Filter Expression',
-	// 	name: 'filterExpression',
-	// 	description: 'Condition to apply after the scan operation, but before the data is returned.',
-	// 	type: 'string',
-	// 	default: '',
-	// 	placeholder: 'username = :username',
-	// 	displayOptions: {
-	// 		show: {
-	// 			operation: [
-	// 				'scan',
-	// 			],
-	// 		},
-	// 	},
-	// },
-	// {
-	// 	displayName: 'Additional Fields',
-	// 	name: 'additionalFields',
-	// 	type: 'collection',
-	// 	placeholder: 'Add Field',
-	// 	default: {},
-	// 	displayOptions: {
-	// 		show: {
-	// 			operation: [
-	// 				'scan',
-	// 			],
-	// 		},
-	// 	},
-	// 	options: [
-	// 		{
-	// 			displayName: 'Index Name',
-	// 			name: 'indexName',
-	// 			description: 'Name of the index to query. This index can be any <br>secondary local or global index on the table.',
-	// 			type: 'string',
-	// 			default: '',
-	// 		},
-	// 		{
-	// 			displayName: 'Projection Expression',
-	// 			name: 'projectionExpression',
-	// 			description: 'Comma-separated list of attributes to retrieve.',
-	// 			type: 'string',
-	// 			placeholder: 'id, username',
-	// 			default: '',
-	// 		},
-	// 		{
-	// 			displayName: 'Read Consistency Model',
-	// 			name: 'readConsistencyModel',
-	// 			type: 'options',
-	// 			default: 'stronglyConsistent',
-	// 			description: 'Select the <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadConsistency.html">read consistency model</a>.',
-	// 			options: [
-	// 				{
-	// 					name: 'Eventually Consistent',
-	// 					value: 'eventuallyConsistent',
-	// 				},
-	// 				{
-	// 					name: 'Strongly Consistent',
-	// 					value: 'stronglyConsistent',
-	// 				},
-	// 			],
-	// 		},
-	// 	],
-	// },
 ] as INodeProperties[];

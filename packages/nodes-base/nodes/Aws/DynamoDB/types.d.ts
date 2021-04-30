@@ -1,5 +1,5 @@
 export interface IRequestBody {
-	[key: string]: string | IAttributeValue | undefined | boolean | object| number;
+	[key: string]: string | IAttributeValue | undefined | boolean | object | number;
 	TableName: string;
 	Key?: object;
 	IndexName?: string;
@@ -16,9 +16,13 @@ export interface IAttributeValue {
 	[attribute: string]: IAttributeValueValue;
 }
 
-type IAttributeValueValue = {
-	[type in AttributeValueType]: string;
-};
+// type IAttributeValueValue = {
+// 	[type in AttributeValueType]: string;
+// };
+
+interface IAttributeValueValue {
+	[type: string]: string | string[] | IAttributeValue[];
+}
 
 export interface IAttributeValueUi {
 	attribute: string;
@@ -45,3 +49,13 @@ export type PartitionKey = {
 		value: string;
 	},
 };
+
+export enum EAttributeValueType {
+	S = 'S', SS = 'SS', M = 'M', L = 'L', NS = 'NS', N = 'N', BOOL = 'BOOL', B = 'B', BS = 'BS', NULL = 'NULL',
+}
+
+export interface IExpressionAttributeValue {
+	attribute: string;
+	type: EAttributeValueType;
+	value: string;
+}
