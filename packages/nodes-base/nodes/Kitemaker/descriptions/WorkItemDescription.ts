@@ -176,27 +176,6 @@ export const workItemFields = [
 	//         workItem: get
 	// ----------------------------------
 	{
-		displayName: 'Space ID',
-		name: 'spaceId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getSpaces',
-		},
-		default: [],
-		required: true,
-		description: 'ID of the space to retrieve the work item from.',
-		displayOptions: {
-			show: {
-				resource: [
-					'workItem',
-				],
-				operation: [
-					'get',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Work Item ID',
 		name: 'workItemId',
 		type: 'string',
@@ -284,27 +263,6 @@ export const workItemFields = [
 	// ----------------------------------
 	//         workItem: update
 	// ----------------------------------
-	{
-		displayName: 'Space ID',
-		name: 'spaceId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getSpaces',
-		},
-		default: [],
-		required: true,
-		description: 'ID of the space where the work item to update is.',
-		displayOptions: {
-			show: {
-				resource: [
-					'workItem',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
 	{
 		displayName: 'Work Item ID',
 		name: 'workItemId',
