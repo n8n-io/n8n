@@ -210,8 +210,8 @@ $--max-input-height: 60px;
 
 <style lang="scss">
 .tags-dropdown {
-	$--dropdown-length: 224px;
 	$--item-height: 32px;
+	$--dropdown-length: $--item-height * 7;
 
 	min-width: $--dropdown-length !important;
 	max-width: $--dropdown-length;
@@ -236,7 +236,7 @@ $--max-input-height: 60px;
 		&:after {
 			content: " ";
 			display: block;
-			height: $--item-height;
+			height: $--item-height * 2;
 			width: 100%;
 		}
 	}
