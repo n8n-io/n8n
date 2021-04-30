@@ -413,7 +413,7 @@ export class Orbit implements INodeType {
 					const url = this.getNodeParameter('url', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IDataObject = {
-						type: "post",
+						type: 'post',
 						url,
 					};
 					if (additionalFields.publishedAt) {
