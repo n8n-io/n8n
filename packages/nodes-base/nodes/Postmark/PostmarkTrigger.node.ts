@@ -236,7 +236,7 @@ export class PostmarkTrigger implements INodeType {
 
 					try {
 						await postmarkApiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

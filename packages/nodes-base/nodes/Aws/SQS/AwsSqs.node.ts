@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -11,6 +10,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -20,6 +21,10 @@ import {
 import {
 	awsApiRequestSOAP,
 } from '../GenericFunctions';
+
+import {
+	pascalCase,
+} from 'change-case';
 
 export class AwsSqs implements INodeType {
 	description: INodeTypeDescription = {
@@ -266,12 +271,17 @@ export class AwsSqs implements INodeType {
 		loadOptions: {
 			// Get all the available queues to display them to user so that it can be selected easily
 			async getQueues(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const params = [
+					'Version=2012-11-05',
+					`Action=ListQueues`,
+				];
+
 				let data;
 				try {
 					// loads first 1000 queues from SQS
-					data = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `?Action=ListQueues`);
-				} catch (err) {
-					throw new Error(`AWS Error: ${err}`);
+					data = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `?${params.join('&')}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 
 				let queues = data.ListQueuesResponse.ListQueuesResult.QueueUrl;
@@ -308,7 +318,11 @@ export class AwsSqs implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			const queueUrl = this.getNodeParameter('queue', i) as string;
 			const queuePath = new URL(queueUrl).pathname;
-			const params = [];
+
+			const params = [
+				'Version=2012-11-05',
+				`Action=${pascalCase(operation)}`,
+			];
 
 			const options = this.getNodeParameter('options', i, {}) as IDataObject;
 			const sendInputData = this.getNodeParameter('sendInputData', i) as boolean;
@@ -349,11 +363,11 @@ export class AwsSqs implements INodeType {
 				const item = items[i];
 
 				if (item.binary === undefined) {
-					throw new Error('No binary data set. So message attribute cannot be added!');
+					throw new NodeOperationError(this.getNode(), 'No binary data set. So message attribute cannot be added!');
 				}
 
 				if (item.binary[dataPropertyName] === undefined) {
-					throw new Error(`The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`);
+					throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`);
 				}
 
 				const binaryData = item.binary[dataPropertyName].data;
@@ -373,9 +387,9 @@ export class AwsSqs implements INodeType {
 
 			let responseData;
 			try {
-				responseData = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `${queuePath}/?Action=${operation}&` + params.join('&'));
-			} catch (err) {
-				throw new Error(`AWS Error: ${err}`);
+				responseData = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `${queuePath}?${params.join('&')}`);
+			} catch (error) {
+				throw new NodeApiError(this.getNode(), error);
 			}
 
 			const result = responseData.SendMessageResponse.SendMessageResult;

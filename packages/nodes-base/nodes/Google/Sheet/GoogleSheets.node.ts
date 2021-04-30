@@ -10,6 +10,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -987,7 +988,7 @@ export class GoogleSheets implements INodeType {
 				const responseData = await sheet.spreadsheetGetSheets();
 
 				if (responseData === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeOperationError(this.getNode(), 'No data got returned');
 				}
 
 				const returnData: INodePropertyOptions[] = [];

@@ -16,7 +16,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import * as moment from 'moment';
@@ -26,7 +26,7 @@ export async function cortexApiRequest(this: IHookFunctions | IExecuteFunctions 
 	const credentials = this.getCredentials('cortexApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const headerWithAuthentication = Object.assign({}, { Authorization: ` Bearer ${credentials.cortexApiKey}` });
@@ -53,10 +53,7 @@ export async function cortexApiRequest(this: IHookFunctions | IExecuteFunctions 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.error) {
-			const errorMessage = `Cortex error response [${error.statusCode}]: ${error.error.message}`;
-			throw new Error(errorMessage);
-		} else throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
