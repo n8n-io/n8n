@@ -274,6 +274,32 @@ export class GoogleDrive implements INodeType {
 				},
 				description: 'Name of the binary property to which to<br />write the data of the read file.',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'download',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'File Name',
+						name: 'fileName',
+						type: 'string',
+						default: '',
+						description: 'File name. Ex: data.pdf',
+					},
+				],
+			},
 
 
 			// ----------------------------------
@@ -2011,6 +2037,7 @@ export class GoogleDrive implements INodeType {
 					// ----------------------------------
 
 					const fileId = this.getNodeParameter('fileId', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
 					const requestOptions = {
 						resolveWithFullResponse: true,
@@ -2021,8 +2048,13 @@ export class GoogleDrive implements INodeType {
 					const response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}`, {}, { alt: 'media' }, undefined, requestOptions);
 
 					let mimeType: string | undefined;
+					let fileName: string | undefined = undefined;
 					if (response.headers['content-type']) {
 						mimeType = response.headers['content-type'];
+					}
+
+					if (options.fileName) {
+						fileName = options.fileName as string;
 					}
 
 					const newItem: INodeExecutionData = {
@@ -2043,7 +2075,7 @@ export class GoogleDrive implements INodeType {
 
 					const data = Buffer.from(response.body as string);
 
-					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, undefined, mimeType);
+					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, fileName, mimeType);
 
 				} else if (operation === 'list') {
 					// ----------------------------------
