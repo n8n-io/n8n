@@ -147,8 +147,12 @@ export class Ftp implements INodeType {
 				description: 'The file path of the file to delete. Has to contain the full path.',
 				required: true,
 			},
+
 			{
-				displayName: 'Folder',
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
 				displayOptions: {
 					show: {
 						operation: [
@@ -156,29 +160,32 @@ export class Ftp implements INodeType {
 						],
 					},
 				},
-				name: 'folder',
-				type: 'boolean',
-				default: false,
-				description: 'When set to true, folder can be deleted.',
-				required: true,
-			},
-			{
-				displayName: 'Recursive',
-				displayOptions: {
-					show: {
-						operation: [
-							'delete',
-						],
-						folder: [
-							true,
-						],
+				default: {},
+				options: [
+					{
+						displayName: 'Folder',
+						name: 'folder',
+						type: 'boolean',
+						default: false,
+						description: 'When set to true, folders can be deleted.',
+						required: true,
 					},
-				},
-				name: 'recursive',
-				type: 'boolean',
-				default: false,
-				description: 'If true, remove all files and directories in target directory.',
-				required: true,
+					{
+						displayName: 'Recursive',
+						displayOptions: {
+							show: {
+								folder: [
+									true,
+								],
+							},
+						},
+						name: 'recursive',
+						type: 'boolean',
+						default: false,
+						description: 'If true, remove all files and directories in target directory.',
+						required: true,
+					},
+				],
 			},
 
 			// ----------------------------------
@@ -434,13 +441,12 @@ export class Ftp implements INodeType {
 
 				if (operation === 'delete') {
 					const path = this.getNodeParameter('path', i) as string;
-					const folder = this.getNodeParameter('folder', i) as boolean;
-					const recursive = this.getNodeParameter('recursive', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
-					if (folder === false) {
-						responseData = await sftp!.delete(path);
+					if (options.folder === true) {
+						responseData = await sftp!.rmdir(path, !!options.recursive);
 					} else {
-						responseData = await sftp!.rmdir(path, recursive);
+						responseData = await sftp!.delete(path);
 					}
 
 					returnItems.push({ json: { success: true } });
@@ -527,13 +533,12 @@ export class Ftp implements INodeType {
 
 				if (operation === 'delete') {
 					const path = this.getNodeParameter('path', i) as string;
-					const folder = this.getNodeParameter('folder', i) as boolean;
-					const recursive = this.getNodeParameter('recursive', i) as boolean || false;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
-					if (folder === false) {
-						responseData = await ftp!.delete(path);
+					if (options.folder === true) {
+						responseData = await ftp!.rmdir(path, !!options.recursive);
 					} else {
-						responseData = await ftp!.rmdir(path, recursive);
+						responseData = await ftp!.delete(path);
 					}
 
 					returnItems.push({ json: { success: true } });
