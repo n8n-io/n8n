@@ -58,8 +58,8 @@
 						<el-button title="Delete Tag" @click.stop="apply" size="small" :loading="isSaving">Delete tag</el-button>
 					</div>
 					<div class="ops main" v-else-if="!scope.row.disable">
-						<el-button title="Delete Tag" @click.stop="enableDelete(scope.row)" icon="el-icon-delete" circle></el-button>
 						<el-button title="Edit Tag" @click.stop="enableUpdate(scope.row)" icon="el-icon-edit" circle></el-button>
+						<el-button title="Delete Tag" @click.stop="enableDelete(scope.row)" icon="el-icon-delete" circle></el-button>
 					</div>
 				</transition>
 			</template>
