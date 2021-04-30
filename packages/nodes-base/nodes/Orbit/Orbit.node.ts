@@ -413,22 +413,24 @@ export class Orbit implements INodeType {
 					const url = this.getNodeParameter('url', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IDataObject = {
+						type: "post",
 						url,
 					};
 					if (additionalFields.publishedAt) {
-						body.published_at = additionalFields.publishedAt as string;
+						body.occurred_at = additionalFields.publishedAt as string;
 					}
 
-					responseData = await orbitApiRequest.call(this, 'POST', `/${workspaceId}/members/${memberId}/posts`, body);
+					responseData = await orbitApiRequest.call(this, 'POST', `/${workspaceId}/members/${memberId}/activities/`, body);
 					responseData = responseData.data;
 				}
 				if (operation === 'getAll') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
-					let endpoint = `/${workspaceId}/posts`;
+					let endpoint = `/${workspaceId}/activities`;
+					qs.type = 'content';
 					if (filters.memberId) {
-						endpoint = `/${workspaceId}/members/${filters.memberId}/posts`;
+						endpoint = `/${workspaceId}/members/${filters.memberId}/activities`;
 					}
 					if (returnAll === true) {
 						responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', endpoint, {}, qs);
@@ -443,7 +445,7 @@ export class Orbit implements INodeType {
 					const memberId = this.getNodeParameter('memberId', i) as string;
 					const postId = this.getNodeParameter('postId', i) as string;
 
-					responseData = await orbitApiRequest.call(this, 'DELETE', `/${workspaceId}/members/${memberId}/posts/${postId}`);
+					responseData = await orbitApiRequest.call(this, 'DELETE', `/${workspaceId}/members/${memberId}/activities/${postId}`);
 					responseData = { success: true };
 				}
 			}
