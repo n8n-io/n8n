@@ -45,6 +45,13 @@ export function shortenWorkflow(workflowDb: IWorkflowDb) {
 	return shortWorkflow;
 }
 
+export function throwDuplicateEntryError(error: Error) {
+	const errorMessage = error.message.toLowerCase();
+	if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
+		throw new ResponseHelper.ResponseError('Tag name already exists', undefined, 400);
+	}
+}
+
 /**
  * Sort a `TagEntity[]` by the order of the tag IDs in the incoming request.
  */
