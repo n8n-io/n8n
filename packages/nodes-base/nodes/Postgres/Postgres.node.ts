@@ -121,18 +121,6 @@ export class Postgres implements INodeType {
 				description:
 					'Comma separated list of the properties which should used as columns for the new rows.<br>You can use type casting with colons (:) like id:int.',
 			},
-			{
-				displayName: 'Return Fields',
-				name: 'returnFields',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: ['insert'],
-					},
-				},
-				default: '*',
-				description: 'Comma separated list of the fields that the operation will return',
-			},
 
 			// ----------------------------------
 			//         update
@@ -147,7 +135,7 @@ export class Postgres implements INodeType {
 					},
 				},
 				default: 'public',
-				required: true,
+				required: false,
 				description: 'Name of the schema the table belongs to',
 			},
 			{
@@ -174,8 +162,7 @@ export class Postgres implements INodeType {
 				},
 				default: 'id',
 				required: true,
-				description:
-					'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+				description: 'Comma separated list of the properties which decides which rows in the database should be updated. Normally that would be "id".',
 			},
 			{
 				displayName: 'Columns',
@@ -190,6 +177,62 @@ export class Postgres implements INodeType {
 				placeholder: 'name:text,description',
 				description:
 					'Comma separated list of the properties which should used as columns for rows to update.<br>You can use type casting with colons (:) like id:int.',
+			},
+
+			// ----------------------------------
+			//         insert,update
+			// ----------------------------------
+			{
+				displayName: 'Return Fields',
+				name: 'returnFields',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['insert', 'update'],
+					},
+				},
+				default: '*',
+				description: 'Comma separated list of the fields that the operation will return',
+			},
+			// ----------------------------------
+			//         Additional fields
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{
+								name: 'Independently',
+								value: 'independently',
+								description: 'Execute each query independently',
+							},
+							{
+								name: 'Multiple queries',
+								value: 'multiple',
+								description: '<b>Default</b>. Sends multiple queries at once to database.',
+							},
+							{
+								name: 'Transaction',
+								value: 'transaction',
+								description: 'Executes all queries in a single transaction',
+							},
+						],
+						default: 'multiple',
+						description: [
+							'The way queries should be sent to database.',
+							'Can be used in conjunction with <b>Continue on Fail</b>.',
+							'See the docs for more examples',
+						].join('<br>'),
+					},
+				],
 			},
 		],
 	};
@@ -232,23 +275,19 @@ export class Postgres implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items);
+			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
-			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+			returnItems = this.helpers.returnJsonArray(queryResult);
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
 			// ----------------------------------
 
-			const [insertData, insertItems] = await pgInsert(this.getNodeParameter, pgp, db, items);
+			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
-			// Add the id to the data
 			for (let i = 0; i < insertData.length; i++) {
 				returnItems.push({
-					json: {
-						...insertData[i],
-						...insertItems[i],
-					},
+					json: insertData[i],
 				});
 			}
 		} else if (operation === 'update') {
@@ -256,7 +295,7 @@ export class Postgres implements INodeType {
 			//         update
 			// ----------------------------------
 
-			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items);
+			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
 			returnItems = this.helpers.returnJsonArray(updateItems);
 		} else {

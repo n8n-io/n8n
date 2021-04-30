@@ -8,12 +8,14 @@ describe('pgUpdate', () => {
 			table: 'mytable',
 			schema: 'myschema',
 			updateKey: 'id',
-			columns: 'id,name'
+			columns: 'id,name',
+			additionalFields: {},
+			returnFields: '*',
 		};
 		const getNodeParam = (key) => nodeParams[key];
 		const pgp = pgPromise();
-		const none = jest.fn();
-		const db = {none};
+		const any = jest.fn();
+		const db = {any};
 
 		const items = [
 			{
@@ -21,10 +23,9 @@ describe('pgUpdate', () => {
 			}
 		];
 
-		const results = await PostgresFun.pgUpdate(getNodeParam, pgp, db, items)
+		await PostgresFun.pgUpdate(getNodeParam, pgp, db, items)
 
-		expect(db.none).toHaveBeenCalledWith(`update \"myschema\".\"mytable\" as t set \"id\"=v.\"id\",\"name\"=v.\"name\" from (values(1234,'test')) as v(\"id\",\"name\") WHERE v.id = t.id`);
-		expect(results).toEqual([updateItem]);
+		expect(db.any).toHaveBeenCalledWith(`update \"myschema\".\"mytable\" as t set \"id\"=v.\"id\",\"name\"=v.\"name\" from (values(1234,'test')) as v(\"id\",\"name\") WHERE v.\"id\" = t.\"id\" RETURNING *`);
 	});
 
 	it('runs query to update db if updateKey is not in columns', async () => {
@@ -33,12 +34,14 @@ describe('pgUpdate', () => {
 			table: 'mytable',
 			schema: 'myschema',
 			updateKey: 'id',
-			columns: 'name'
+			columns: 'name',
+			additionalFields: {},
+			returnFields: '*',
 		};
 		const getNodeParam = (key) => nodeParams[key];
 		const pgp = pgPromise();
-		const none = jest.fn();
-		const db = {none};
+		const any = jest.fn();
+		const db = {any};
 
 		const items = [
 			{
@@ -48,8 +51,7 @@ describe('pgUpdate', () => {
 
 		const results = await PostgresFun.pgUpdate(getNodeParam, pgp, db, items)
 
-		expect(db.none).toHaveBeenCalledWith(`update \"myschema\".\"mytable\" as t set \"id\"=v.\"id\",\"name\"=v.\"name\" from (values(1234,'test')) as v(\"id\",\"name\") WHERE v.id = t.id`);
-		expect(results).toEqual([updateItem]);
+		expect(db.any).toHaveBeenCalledWith(`update \"myschema\".\"mytable\" as t set \"id\"=v.\"id\",\"name\"=v.\"name\" from (values(1234,'test')) as v(\"id\",\"name\") WHERE v.\"id\" = t.\"id\" RETURNING *`);
 	});
 
 	it('runs query to update db with cast as updateKey', async () => {
@@ -58,12 +60,14 @@ describe('pgUpdate', () => {
 			table: 'mytable',
 			schema: 'myschema',
 			updateKey: 'id:uuid',
-			columns: 'name'
+			columns: 'name',
+			additionalFields: {},
+			returnFields: '*',
 		};
 		const getNodeParam = (key) => nodeParams[key];
 		const pgp = pgPromise();
-		const none = jest.fn();
-		const db = {none};
+		const any = jest.fn();
+		const db = {any};
 
 		const items = [
 			{
@@ -71,10 +75,9 @@ describe('pgUpdate', () => {
 			}
 		];
 
-		const results = await PostgresFun.pgUpdate(getNodeParam, pgp, db, items)
+		await PostgresFun.pgUpdate(getNodeParam, pgp, db, items)
 
-		expect(db.none).toHaveBeenCalledWith(`update \"myschema\".\"mytable\" as t set \"id\"=v.\"id\",\"name\"=v.\"name\" from (values('1234'::uuid,'test')) as v(\"id\",\"name\") WHERE v.id = t.id`);
-		expect(results).toEqual([updateItem]);
+		expect(db.any).toHaveBeenCalledWith(`update \"myschema\".\"mytable\" as t set \"id\"=v.\"id\",\"name\"=v.\"name\" from (values('1234'::uuid,'test')) as v(\"id\",\"name\") WHERE v.\"id\" = t.\"id\" RETURNING *`);
 	});
 
 	it('runs query to update db with cast in target columns', async () => {
@@ -83,12 +86,14 @@ describe('pgUpdate', () => {
 			table: 'mytable',
 			schema: 'myschema',
 			updateKey: 'id',
-			columns: 'id:uuid,name'
+			columns: 'id:uuid,name',
+			additionalFields: {},
+			returnFields: '*',
 		};
 		const getNodeParam = (key) => nodeParams[key];
 		const pgp = pgPromise();
-		const none = jest.fn();
-		const db = {none};
+		const any = jest.fn();
+		const db = {any};
 
 		const items = [
 			{
@@ -96,10 +101,9 @@ describe('pgUpdate', () => {
 			}
 		];
 
-		const results = await PostgresFun.pgUpdate(getNodeParam, pgp, db, items)
+		await PostgresFun.pgUpdate(getNodeParam, pgp, db, items)
 
-		expect(db.none).toHaveBeenCalledWith(`update \"myschema\".\"mytable\" as t set \"id\"=v.\"id\",\"name\"=v.\"name\" from (values('1234'::uuid,'test')) as v(\"id\",\"name\") WHERE v.id = t.id`);
-		expect(results).toEqual([updateItem]);
+		expect(db.any).toHaveBeenCalledWith(`update \"myschema\".\"mytable\" as t set \"id\"=v.\"id\",\"name\"=v.\"name\" from (values('1234'::uuid,'test')) as v(\"id\",\"name\") WHERE v.\"id\" = t.\"id\" RETURNING *`);
 	});
 });
 
@@ -113,11 +117,12 @@ describe('pgInsert', () => {
 			schema: 'myschema',
 			columns: 'id,name,age',
 			returnFields: '*',
+			additionalFields: {},
 		};
 		const getNodeParam = (key) => nodeParams[key];
 		const pgp = pgPromise();
-		const manyOrNone = jest.fn();
-		const db = {manyOrNone};
+		const any = jest.fn();
+		const db = {any};
 
 		const items = [
 			{
@@ -125,10 +130,9 @@ describe('pgInsert', () => {
 			},
 		];
 
-		const results = await PostgresFun.pgInsert(getNodeParam, pgp, db, items);
+		await PostgresFun.pgInsert(getNodeParam, pgp, db, items);
 
-		expect(db.manyOrNone).toHaveBeenCalledWith(`insert into \"myschema\".\"mytable\"(\"id\",\"name\",\"age\") values(1234,'test',34) RETURNING *`);
-		expect(results).toEqual([undefined, [insertItem]]);
+		expect(db.any).toHaveBeenCalledWith(`insert into \"myschema\".\"mytable\"(\"id\",\"name\",\"age\") values(1234,'test',34) RETURNING *`);
 	});
 
 	it('runs query to insert with type casting', async () => {
@@ -138,11 +142,12 @@ describe('pgInsert', () => {
 			schema: 'myschema',
 			columns: 'id:int,name:text,age',
 			returnFields: '*',
+			additionalFields: {},
 		};
 		const getNodeParam = (key) => nodeParams[key];
 		const pgp = pgPromise();
-		const manyOrNone = jest.fn();
-		const db = {manyOrNone};
+		const any = jest.fn();
+		const db = {any};
 
 		const items = [
 			{
@@ -150,9 +155,8 @@ describe('pgInsert', () => {
 			},
 		];
 
-		const results = await PostgresFun.pgInsert(getNodeParam, pgp, db, items);
+		await PostgresFun.pgInsert(getNodeParam, pgp, db, items);
 
-		expect(db.manyOrNone).toHaveBeenCalledWith(`insert into \"myschema\".\"mytable\"(\"id\",\"name\",\"age\") values(1234::int,'test'::text,34) RETURNING *`);
-		expect(results).toEqual([undefined, [insertItem]]);
+		expect(db.any).toHaveBeenCalledWith(`insert into \"myschema\".\"mytable\"(\"id\",\"name\",\"age\") values(1234::int,'test'::text,34) RETURNING *`);
 	});
 });
