@@ -3,8 +3,10 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
+// https://developers.google.com/drive/api/v3/about-auth
+
 const scopes = [
-	'https://www.googleapis.com/auth/drive.file',
+	'https://www.googleapis.com/auth/drive',
 	'https://www.googleapis.com/auth/spreadsheets',
 ];
 

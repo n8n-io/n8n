@@ -375,6 +375,7 @@
       "dist/nodes/Google/Gmail/Gmail.node.js",
       "dist/nodes/Google/GSuiteAdmin/GSuiteAdmin.node.js",
       "dist/nodes/Google/Sheet/GoogleSheets.node.js",
+      "dist/nodes/Google/Sheet/GoogleSheetsTrigger.node.js",
       "dist/nodes/Google/Slides/GoogleSlides.node.js",
       "dist/nodes/Google/Task/GoogleTasks.node.js",
       "dist/nodes/Google/Translate/GoogleTranslate.node.js",

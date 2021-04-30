@@ -618,6 +618,9 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 			getNode: () => {
 				return getNode(node);
 			},
+			getNodeWebhookUrl: (name: string): string | undefined => {
+				return getNodeWebhookUrl(name, workflow, node, additionalData, mode);
+			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
 			},
