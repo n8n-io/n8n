@@ -77,34 +77,6 @@ export class QuestDb implements INodeType {
 				required: true,
 				description: 'The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.',
 			},
-			{
-				displayName: 'Use query parameters',
-				name: 'useQueryParams',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						operation: ['executeQuery'],
-					},
-				},
-				default: false,
-				required: true,
-				description: 'Use Parametrized Queries, where variables are replaced using $1, $2, etc.. <br>Do not use this for regular n8n expressions.',
-			},
-			{
-				displayName: 'Properties',
-				name: 'properties',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: ['executeQuery'],
-						useQueryParams: [true],
-					},
-				},
-				default: '',
-				placeholder: 'quantity,price',
-				description:
-					'Comma separated list of properties which should be used as query parameters.',
-			},
 
 			// ----------------------------------
 			//         insert
@@ -203,6 +175,21 @@ export class QuestDb implements INodeType {
 							'Can be used in conjunction with <b>Continue on Fail</b>.',
 							'See the docs for more examples',
 						].join('<br>'),
+					},
+					{
+						displayName: 'Query Parameters',
+						name: 'queryParams',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'executeQuery',
+								],
+							},
+						},
+						default: '',
+						placeholder: 'quantity,price',
+						description: 'Comma separated list of properties which should be used as query parameters.',
 					},
 				],
 			},

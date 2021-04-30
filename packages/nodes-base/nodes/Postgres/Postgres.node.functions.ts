@@ -64,10 +64,11 @@ export async function pgQuery(
 	continueOnFail: boolean,
 	overrideMode?: string,
 ): Promise<IDataObject[]> {
-	const useQueryParam = getNodeParam('useQueryParams', 0) as boolean;
+	const additionalFields = getNodeParam('additionalFields', 0) as IDataObject;
+
 	let valuesArray = [] as string[][];
-	if (useQueryParam) {
-		const propertiesString = getNodeParam('properties', 0) as string;
+	if (additionalFields.queryParams) {
+		const propertiesString = additionalFields.queryParams as string;
 		const properties = propertiesString.split(',').map(column => column.trim());
 		const paramsItems = getItemsCopy(items, properties);
 		valuesArray = paramsItems.map((row) => properties.map(col => row[col])) as string[][];
@@ -81,7 +82,6 @@ export async function pgQuery(
 		allQueries.push(queryFormat);
 	}
 
-	const additionalFields = getNodeParam('additionalFields', 0) as IDataObject;
 	const mode = overrideMode ? overrideMode : (additionalFields.mode ?? 'multiple') as string;
 	if (mode === 'multiple') {
 		return (await db.multi(pgp.helpers.concat(allQueries))).flat(1);
