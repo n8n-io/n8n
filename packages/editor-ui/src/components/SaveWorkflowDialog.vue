@@ -107,8 +107,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 					await this.$store.dispatch("workflows/renameCurrent", {name, tags: this.currentTagIds});
 
 					this.$showMessage({
-						title: "Workflow renamed",
-						message: `The workflow got renamed to "${name}"!`,
+						title: "Workflow updated",
+						message: `The workflow "${name}" has been updated!`,
 						type: "success",
 					});
 
@@ -116,8 +116,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 				} catch (error) {
 					this.$showError(
 						error,
-						"Problem renaming the workflow",
-						"There was a problem renaming the workflow:",
+						"Problem updating the workflow",
+						"There was a problem updating the workflow:",
 					);
 				}
 			}
