@@ -29,7 +29,16 @@ import {
 	messageConversationOperations,
 } from './MessageConversationDescription';
 
+import {
+	threadFields,
+	threadOperations
+} from './ThreadDescription';
+import {
+	commentFields,
+	commentOperations
+} from './CommentDescription';
 import uuid = require('uuid');
+import * as moment from 'moment';
 
 export class Twist implements INodeType {
 	description: INodeTypeDescription = {
@@ -63,8 +72,16 @@ export class Twist implements INodeType {
 						value: 'channel',
 					},
 					{
+						name: 'Comment',
+						value: 'comment',
+					},
+					{
 						name: 'Message Conversation',
 						value: 'messageConversation',
+					},
+					{
+						name: 'Thread',
+						value: 'thread',
 					},
 				],
 				default: 'messageConversation',
@@ -72,8 +89,12 @@ export class Twist implements INodeType {
 			},
 			...channelOperations,
 			...channelFields,
+			...commentOperations,
+			...commentFields,
 			...messageConversationOperations,
 			...messageConversationFields,
+			...threadOperations,
+			...threadFields,
 		],
 	};
 
@@ -169,10 +190,15 @@ export class Twist implements INodeType {
 
 					responseData = await twistApiRequest.call(this, 'POST', '/channels/add', body);
 				}
+				//https://developer.twist.com/v3/#remove-channel
+				if (operation === 'delete') {
+					qs.id = this.getNodeParameter('channelId', i) as string;
+
+					responseData = await twistApiRequest.call(this, 'POST', '/channels/remove', {}, qs);
+				}
 				//https://developer.twist.com/v3/#get-channel
 				if (operation === 'get') {
-					const channelId = this.getNodeParameter('channelId', i) as string;
-					qs.id = channelId;
+					qs.id = this.getNodeParameter('channelId', i) as string;
 
 					responseData = await twistApiRequest.call(this, 'GET', '/channels/getone', {}, qs);
 				}
@@ -201,6 +227,190 @@ export class Twist implements INodeType {
 					Object.assign(body, updateFields);
 
 					responseData = await twistApiRequest.call(this, 'POST', '/channels/update', body);
+				}
+				//https://developer.twist.com/v3/#archive-channel
+				if (operation === 'archive') {
+					qs.id = this.getNodeParameter('channelId', i) as string;
+
+					responseData = await twistApiRequest.call(this, 'POST', '/channels/archive', {}, qs);
+				}
+				//https://developer.twist.com/v3/#unarchive-channel
+				if (operation === 'unarchive') {
+					qs.id = this.getNodeParameter('channelId', i) as string;
+
+					responseData = await twistApiRequest.call(this, 'POST', '/channels/unarchive', {}, qs);
+				}
+			}
+			if (resource === 'comment') {
+				//https://developer.twist.com/v3/#add-comment
+				if (operation === 'create') {
+					const threadId = this.getNodeParameter('threadId', i) as string;
+					const content = this.getNodeParameter('content', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IDataObject = {
+						thread_id: threadId,
+						content,
+					};
+					Object.assign(body, additionalFields);
+
+					if (body.actionsUi) {
+						const actions = (body.actionsUi as IDataObject).actionValues as IDataObject[];
+
+						if (actions) {
+							body.actions = actions;
+							delete body.actionsUi;
+						}
+					}
+
+					if (body.binaryProperties) {
+						const binaryProperties = (body.binaryProperties as string).split(',') as string[];
+
+						const attachments: IDataObject[] = [];
+
+						for (const binaryProperty of binaryProperties) {
+
+							const item = items[i].binary as IBinaryKeyData;
+
+							const binaryData = item[binaryProperty] as IBinaryData;
+
+							if (binaryData === undefined) {
+								throw new Error(`No binary data property "${binaryProperty}" does not exists on item!`);
+							}
+
+							attachments.push(await twistApiRequest.call(
+								this,
+								'POST',
+								'/attachments/upload',
+								{},
+								{},
+								{
+									formData: {
+										file_name: {
+											value: Buffer.from(binaryData.data, BINARY_ENCODING),
+											options: {
+												filename: binaryData.fileName,
+											},
+										},
+										attachment_id: uuid(),
+									},
+								},
+							));
+						}
+
+						body.attachments = attachments;
+					}
+
+					if (body.direct_mentions) {
+						const directMentions: string[] = [];
+						for (const directMention of body.direct_mentions as number[]) {
+							directMentions.push(`[name](twist-mention://${directMention})`);
+						}
+						body.content = `${directMentions.join(' ')} ${body.content}`;
+					}
+
+					responseData = await twistApiRequest.call(this, 'POST', '/comments/add', body);
+				}
+				//https://developer.twist.com/v3/#remove-comment
+				if (operation === 'delete') {
+					qs.id = this.getNodeParameter('commentId', i) as string;
+
+					responseData = await twistApiRequest.call(this, 'POST', '/comments/remove', {}, qs);
+				}
+				//https://developer.twist.com/v3/#get-comment
+				if (operation === 'get') {
+					qs.id = this.getNodeParameter('commentId', i) as string;
+
+					responseData = await twistApiRequest.call(this, 'GET', '/comments/getone', {}, qs);
+					responseData = responseData?.comment;
+				}
+				//https://developer.twist.com/v3/#get-all-comments
+				if (operation === 'getAll') {
+					const threadId = this.getNodeParameter('threadId', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					qs.thread_id = threadId;
+
+					Object.assign(qs, filters);
+					if (!returnAll) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+					if (qs.older_than_ts) {
+						qs.older_than_ts = moment(qs.older_than_ts as string).unix();
+					}
+					if (qs.newer_than_ts) {
+						qs.newer_than_ts = moment(qs.newer_than_ts as string).unix();
+					}
+
+					responseData = await twistApiRequest.call(this, 'GET', '/comments/get', {}, qs);
+					if (qs.as_ids) {
+						responseData = (responseData as Array<number>).map(id => ({ ID: id }));
+					}
+				}
+				//https://developer.twist.com/v3/#update-comment
+				if (operation === 'update') {
+					const commentId = this.getNodeParameter('commentId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const body: IDataObject = {
+						id: commentId,
+					};
+					Object.assign(body, updateFields);
+
+					if (body.actionsUi) {
+						const actions = (body.actionsUi as IDataObject).actionValues as IDataObject[];
+
+						if (actions) {
+							body.actions = actions;
+							delete body.actionsUi;
+						}
+					}
+
+					if (body.binaryProperties) {
+						const binaryProperties = (body.binaryProperties as string).split(',') as string[];
+
+						const attachments: IDataObject[] = [];
+
+						for (const binaryProperty of binaryProperties) {
+
+							const item = items[i].binary as IBinaryKeyData;
+
+							const binaryData = item[binaryProperty] as IBinaryData;
+
+							if (binaryData === undefined) {
+								throw new Error(`No binary data property "${binaryProperty}" does not exists on item!`);
+							}
+
+							attachments.push(await twistApiRequest.call(
+								this,
+								'POST',
+								'/attachments/upload',
+								{},
+								{},
+								{
+									formData: {
+										file_name: {
+											value: Buffer.from(binaryData.data, BINARY_ENCODING),
+											options: {
+												filename: binaryData.fileName,
+											},
+										},
+										attachment_id: uuid(),
+									},
+								},
+							));
+						}
+
+						body.attachments = attachments;
+					}
+
+					if (body.direct_mentions) {
+						const directMentions: string[] = [];
+						for (const directMention of body.direct_mentions as number[]) {
+							directMentions.push(`[name](twist-mention://${directMention})`);
+						}
+						body.content = `${directMentions.join(' ')} ${body.content}`;
+					}
+
+					responseData = await twistApiRequest.call(this, 'POST', '/comments/update', body);
 				}
 			}
 			if (resource === 'messageConversation') {
@@ -244,7 +454,7 @@ export class Twist implements INodeType {
 							attachments.push(await twistApiRequest.call(
 								this,
 								'POST',
-								`/attachments/upload`,
+								'/attachments/upload',
 								{},
 								{},
 								{
@@ -265,11 +475,11 @@ export class Twist implements INodeType {
 					}
 
 					if (body.direct_mentions) {
-						const direcMentions: string[] = [];
+						const directMentions: string[] = [];
 						for (const directMention of body.direct_mentions as number[]) {
-							direcMentions.push(`[name](twist-mention://${directMention})`);
+							directMentions.push(`[name](twist-mention://${directMention})`);
 						}
-						body.content = `${direcMentions.join(' ')} ${body.content}`;
+						body.content = `${directMentions.join(' ')} ${body.content}`;
 					}
 
 					// if (body.direct_group_mentions) {
@@ -281,6 +491,266 @@ export class Twist implements INodeType {
 					// }
 
 					responseData = await twistApiRequest.call(this, 'POST', '/conversation_messages/add', body);
+				}
+				//https://developer.twist.com/v3/#get-message
+				if (operation === 'get') {
+					qs.id = this.getNodeParameter('id', i) as string;
+
+					responseData = await twistApiRequest.call(this, 'GET', '/conversation_messages/getone', {}, qs);
+				}
+				//https://developer.twist.com/v3/#get-all-messages
+				if (operation === 'getAll') {
+					const conversationId = this.getNodeParameter('conversationId', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					qs.conversation_id = conversationId;
+					Object.assign(qs, additionalFields);
+
+					responseData = await twistApiRequest.call(this, 'GET', '/conversation_messages/get', {}, qs);
+				}
+				//https://developer.twist.com/v3/#remove-message-from-conversation
+				if (operation === 'delete') {
+					qs.id = this.getNodeParameter('id', i) as string;
+
+					responseData = await twistApiRequest.call(this, 'POST', '/conversation_messages/remove', {}, qs);
+				}
+				//https://developer.twist.com/v3/#update-message-in-conversation
+				if (operation === 'update') {
+					const id = this.getNodeParameter('id', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const body: IDataObject = {
+						id,
+					};
+					Object.assign(body, updateFields);
+
+					if (body.actionsUi) {
+						const actions = (body.actionsUi as IDataObject).actionValues as IDataObject[];
+
+						if (actions) {
+							body.actions = actions;
+							delete body.actionsUi;
+						}
+					}
+
+					if (body.binaryProperties) {
+						const binaryProperties = (body.binaryProperties as string).split(',') as string[];
+
+						const attachments: IDataObject[] = [];
+
+						for (const binaryProperty of binaryProperties) {
+
+							const item = items[i].binary as IBinaryKeyData;
+
+							const binaryData = item[binaryProperty] as IBinaryData;
+
+							if (binaryData === undefined) {
+								throw new Error(`No binary data property "${binaryProperty}" does not exists on item!`);
+							}
+
+							attachments.push(await twistApiRequest.call(
+								this,
+								'POST',
+								'/attachments/upload',
+								{},
+								{},
+								{
+									formData: {
+										file_name: {
+											value: Buffer.from(binaryData.data, BINARY_ENCODING),
+											options: {
+												filename: binaryData.fileName,
+											},
+										},
+										attachment_id: uuid(),
+									},
+								},
+							));
+						}
+
+						body.attachments = attachments;
+					}
+
+					if (body.direct_mentions) {
+						const directMentions: string[] = [];
+						for (const directMention of body.direct_mentions as number[]) {
+							directMentions.push(`[name](twist-mention://${directMention})`);
+						}
+						body.content = `${directMentions.join(' ')} ${body.content}`;
+					}
+
+					responseData = await twistApiRequest.call(this, 'POST', '/conversation_messages/update', body);
+				}
+			}
+			if (resource === 'thread') {
+				//https://developer.twist.com/v3/#add-thread
+				if (operation === 'create') {
+					const channelId = this.getNodeParameter('channelId', i) as string;
+					const title = this.getNodeParameter('title', i) as string;
+					const content = this.getNodeParameter('content', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IDataObject = {
+						channel_id: channelId,
+						content,
+						title,
+					};
+					Object.assign(body, additionalFields);
+
+					if (body.actionsUi) {
+						const actions = (body.actionsUi as IDataObject).actionValues as IDataObject[];
+
+						if (actions) {
+							body.actions = actions;
+							delete body.actionsUi;
+						}
+					}
+
+					if (body.binaryProperties) {
+						const binaryProperties = (body.binaryProperties as string).split(',') as string[];
+
+						const attachments: IDataObject[] = [];
+
+						for (const binaryProperty of binaryProperties) {
+
+							const item = items[i].binary as IBinaryKeyData;
+
+							const binaryData = item[binaryProperty] as IBinaryData;
+
+							if (binaryData === undefined) {
+								throw new Error(`No binary data property "${binaryProperty}" does not exists on item!`);
+							}
+
+							attachments.push(await twistApiRequest.call(
+								this,
+								'POST',
+								'/attachments/upload',
+								{},
+								{},
+								{
+									formData: {
+										file_name: {
+											value: Buffer.from(binaryData.data, BINARY_ENCODING),
+											options: {
+												filename: binaryData.fileName,
+											},
+										},
+										attachment_id: uuid(),
+									},
+								},
+							));
+						}
+
+						body.attachments = attachments;
+					}
+
+					if (body.direct_mentions) {
+						const directMentions: string[] = [];
+						for (const directMention of body.direct_mentions as number[]) {
+							directMentions.push(`[name](twist-mention://${directMention})`);
+						}
+						body.content = `${directMentions.join(' ')} ${body.content}`;
+					}
+
+					responseData = await twistApiRequest.call(this, 'POST', '/threads/add', body);
+				}
+				//https://developer.twist.com/v3/#remove-thread
+				if (operation === 'delete') {
+					qs.id = this.getNodeParameter('threadId', i) as string;
+
+					responseData = await twistApiRequest.call(this, 'POST', '/threads/remove', {}, qs);
+				}
+				//https://developer.twist.com/v3/#get-thread
+				if (operation === 'get') {
+					qs.id = this.getNodeParameter('threadId', i) as string;
+
+					responseData = await twistApiRequest.call(this, 'GET', '/threads/getone', {}, qs);
+				}
+				//https://developer.twist.com/v3/#get-all-threads
+				if (operation === 'getAll') {
+					const channelId = this.getNodeParameter('channelId', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					qs.channel_id = channelId;
+
+					Object.assign(qs, filters);
+					if (!returnAll) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+					if (qs.older_than_ts) {
+						qs.older_than_ts = moment(qs.older_than_ts as string).unix();
+					}
+					if (qs.newer_than_ts) {
+						qs.newer_than_ts = moment(qs.newer_than_ts as string).unix();
+					}
+
+					responseData = await twistApiRequest.call(this, 'GET', '/threads/get', {}, qs);
+					if (qs.as_ids) {
+						responseData = (responseData as Array<number>).map(id => ({ ID: id }));
+					}
+				}
+				//https://developer.twist.com/v3/#update-thread
+				if (operation === 'update') {
+					const threadId = this.getNodeParameter('threadId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const body: IDataObject = {
+						id: threadId,
+					};
+					Object.assign(body, updateFields);
+
+					if (body.actionsUi) {
+						const actions = (body.actionsUi as IDataObject).actionValues as IDataObject[];
+
+						if (actions) {
+							body.actions = actions;
+							delete body.actionsUi;
+						}
+					}
+
+					if (body.binaryProperties) {
+						const binaryProperties = (body.binaryProperties as string).split(',') as string[];
+
+						const attachments: IDataObject[] = [];
+
+						for (const binaryProperty of binaryProperties) {
+
+							const item = items[i].binary as IBinaryKeyData;
+
+							const binaryData = item[binaryProperty] as IBinaryData;
+
+							if (binaryData === undefined) {
+								throw new Error(`No binary data property "${binaryProperty}" does not exists on item!`);
+							}
+
+							attachments.push(await twistApiRequest.call(
+								this,
+								'POST',
+								'/attachments/upload',
+								{},
+								{},
+								{
+									formData: {
+										file_name: {
+											value: Buffer.from(binaryData.data, BINARY_ENCODING),
+											options: {
+												filename: binaryData.fileName,
+											},
+										},
+										attachment_id: uuid(),
+									},
+								},
+							));
+						}
+
+						body.attachments = attachments;
+					}
+
+					if (body.direct_mentions) {
+						const directMentions: string[] = [];
+						for (const directMention of body.direct_mentions as number[]) {
+							directMentions.push(`[name](twist-mention://${directMention})`);
+						}
+						body.content = `${directMentions.join(' ')} ${body.content}`;
+					}
+
+					responseData = await twistApiRequest.call(this, 'POST', '/threads/update', body);
 				}
 			}
 			if (Array.isArray(responseData)) {
