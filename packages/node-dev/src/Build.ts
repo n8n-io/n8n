@@ -1,9 +1,13 @@
 import { ChildProcess, spawn } from 'child_process';
 const copyfiles = require('copyfiles');
+
 import {
 	readFile as fsReadFile,
+} from 'fs/promises';
+import {
 	write as fsWrite,
 } from 'fs';
+
 import { join } from 'path';
 import { file } from 'tmp-promise';
 import { promisify } from 'util';
@@ -32,7 +36,7 @@ export async function createCustomTsconfig () {
 	const tsconfigPath = join(__dirname, '../../src/tsconfig-build.json');
 
 	// Read the tsconfi file
-	const tsConfigString = await fsReadFileAsync(tsconfigPath, { encoding: 'utf8'}) as string;
+	const tsConfigString = await fsReadFile(tsconfigPath, { encoding: 'utf8'}) as string;
 	const tsConfig = JSON.parse(tsConfigString);
 
 	// Set absolute include paths
