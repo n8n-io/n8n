@@ -59,7 +59,6 @@ If you are using a Dropbox APP with permission type, "App Folder".
 ### How to upgrade:
 
 Open your Dropbox node's credentials and set the "APP Access Type" parameter to "App Folder".
->>>>>>> master
 
 ## 0.111.0
 
