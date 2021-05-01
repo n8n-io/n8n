@@ -1,8 +1,8 @@
 import {
-	INodeProperties
+	INodeProperties,
 } from 'n8n-workflow';
 
-export const messageConversationOperations = [
+export const threadOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const messageConversationOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'messageConversation',
+					'thread',
 				],
 			},
 		},
@@ -18,27 +18,27 @@ export const messageConversationOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a message in a conversation',
+				description: 'Create a new thread in a channel',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a message in a conversation',
+				description: 'Delete a thread',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a message in a conversation',
+				description: 'Get information about a thread',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all messages in a conversation',
+				description: 'Get all threads',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a message in a conversation',
+				description: 'Update a thread',
 			},
 		],
 		default: 'create',
@@ -46,18 +46,14 @@ export const messageConversationOperations = [
 	},
 ] as INodeProperties[];
 
-export const messageConversationFields = [
-
-	/* -------------------------------------------------------------------------- */
-	/*                                messageConversation:create                  */
-	/* -------------------------------------------------------------------------- */
+export const threadFields = [
+	/*-------------------------------------------------------------------------- */
+	/*                                thread:create                              */
+	/* ------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace ID',
-		name: 'workspaceId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getWorkspaces',
-		},
+		displayName: 'Channel ID',
+		name: 'channelId',
+		type: 'string',
 		default: '',
 		displayOptions: {
 			show: {
@@ -65,23 +61,17 @@ export const messageConversationFields = [
 					'create',
 				],
 				resource: [
-					'messageConversation',
+					'thread',
 				],
 			},
 		},
 		required: true,
-		description: 'The ID of the workspace.',
+		description: 'The ID of the channel.',
 	},
 	{
-		displayName: 'Conversation ID',
-		name: 'conversationId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getConversations',
-			loadOptionsDependsOn: [
-				'workspaceId',
-			],
-		},
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
 		default: '',
 		displayOptions: {
 			show: {
@@ -89,12 +79,12 @@ export const messageConversationFields = [
 					'create',
 				],
 				resource: [
-					'messageConversation',
+					'thread',
 				],
 			},
 		},
 		required: true,
-		description: 'The ID of the conversation.',
+		description: 'The title of the new thread (1 < length < 300).',
 	},
 	{
 		displayName: 'Content',
@@ -107,29 +97,29 @@ export const messageConversationFields = [
 					'create',
 				],
 				resource: [
-					'messageConversation',
+					'thread',
 				],
 			},
 		},
-		description: 'The content of the new message. Mentions can be used as <code>[Name](twist-mention://user_id)</code> for users or <code>[Group name](twist-group-mention://group_id)</code> for groups.',
+		required: true,
+		description: 'The content of the thread.',
 	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
+				resource: [
+					'thread',
+				],
 				operation: [
 					'create',
 				],
-				resource: [
-					'messageConversation',
-				],
 			},
 		},
-		default: {},
-		description: 'Other options to set.',
-		placeholder: 'Add options',
 		options: [
 			{
 				displayName: 'Actions',
@@ -231,158 +221,194 @@ export const messageConversationFields = [
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
+					loadOptionsDependsOn: [
+						'workspaceId',
+					],
 				},
 				default: [],
 				description: 'The users that are directly mentioned.',
 			},
-			// {
-			// 	displayName: 'Direct Group Mentions ',
-			// 	name: 'direct_group_mentions',
-			// 	type: 'multiOptions',
-			// 	typeOptions: {
-			// 		loadOptionsMethod: 'getGroups',
-			// 	},
-			// 	default: [],
-			// 	description: 'The groups that are directly mentioned.',
-			// },
-		],
-	},
-
-	/* -------------------------------------------------------------------------- */
-	/*                                messageConversation:getAll                  */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Workspace ID',
-		name: 'workspaceId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getWorkspaces',
-		},
-		default: '',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'messageConversation',
-				],
-			},
-		},
-		required: true,
-		description: 'The ID of the workspace.',
-	},
-	{
-		displayName: 'Conversation ID',
-		name: 'conversationId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getConversations',
-			loadOptionsDependsOn: [
-				'workspaceId',
-			],
-		},
-		default: '',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'messageConversation',
-				],
-			},
-		},
-		required: true,
-		description: 'The ID of the conversation.',
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'messageConversation',
-				],
-			},
-		},
-		default: {},
-		description: 'Other options to set.',
-		options: [
 			{
-				displayName: 'Ending Object Index',
-				name: 'to_obj_index',
-				type: 'number',
-				default: 50,
-				description: 'Limit messages ending at the specified object index.',
+				displayName: 'Recipients',
+				name: 'recipients',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+					loadOptionsDependsOn: [
+						'workspaceId',
+					],
+				},
+				default: [],
+				description: 'The users that will attached to the thread.',
 			},
 			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				default: 50,
-				description: 'Limits the number of messages returned.',
+				displayName: 'Send as integration',
+				name: 'send_as_integration',
+				type: 'boolean',
+				default: false,
+				description: 'Displays the integration as the thread creator.',
 			},
 			{
-				displayName: 'Order By',
-				name: 'order_by',
-				type: 'options',
-				default: 'ASC',
-				description: 'The order of the conversations returned - one of DESC or ASC.',
-				options: [
-					{
-						name: 'ASC',
-						value: 'ASC',
-					},
-					{
-						name: 'DESC',
-						value: 'DESC',
-					},
-				],
-			},
-			{
-				displayName: 'Starting Object Index',
-				name: 'from_obj_index',
+				displayName: 'Temporary ID',
+				name: 'temp_id',
 				type: 'number',
 				default: 0,
-				description: 'Limit messages starting at the specified object index.',
+				description: 'The temporary ID of the thread.',
 			},
 		],
 	},
-
 	/* -------------------------------------------------------------------------- */
-	/*                                messageConversation:get/delete/update       */
+	/*                                  thread:get/delete                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Message ID',
-		name: 'id',
+		displayName: 'Thread ID',
+		name: 'threadId',
 		type: 'string',
 		default: '',
 		displayOptions: {
 			show: {
 				operation: [
-					'delete',
 					'get',
+					'delete',
 				],
 				resource: [
-					'messageConversation',
+					'thread',
 				],
 			},
 		},
 		required: true,
-		description: 'The ID of the conversation message.',
+		description: 'The ID of the thread.',
 	},
-	
 	/* -------------------------------------------------------------------------- */
-	/*                                messageConversation:update                  */
+	/*                                 thread:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Conversation Message ID',
-		name: 'id',
+		displayName: 'Channel ID',
+		name: 'channelId',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'thread',
+				],
+			},
+		},
+		required: true,
+		description: 'The ID of the channel.',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'thread',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'thread',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'thread',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'As IDs',
+				name: 'as_ids',
+				type: 'boolean',
+				default: false,
+				description: 'If enabled, only the IDs of the threads are returned.',
+			},
+			{
+				displayName: 'Filter By',
+				name: 'filter_by',
+				type: 'options',
+				options: [
+					{
+						name: 'Attached to me',
+						value: 'attached_to_me',
+					},
+					{
+						name: 'Everyone',
+						value: 'everyone',
+					},
+					{
+						name: 'Starred',
+						value: 'is_starred',
+					},
+				],
+				default: '',
+				description: 'A filter can be one of <code>attached_to_me</code>, <code>everyone</code> and <code>is_starred</code>.',
+			},
+			{
+				displayName: 'Newer Than',
+				name: 'newer_than_ts',
+				type: 'dateTime',
+				default: '',
+				description: 'Limits threads to those newer when the specified Unix time.',
+			},
+			{
+				displayName: 'Older Than',
+				name: 'older_than_ts',
+				type: 'dateTime',
+				default: '',
+				description: 'Limits threads to those older than the specified Unix time.',
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  thread:update                            */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Thread ID',
+		name: 'threadId',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -391,29 +417,29 @@ export const messageConversationFields = [
 					'update',
 				],
 				resource: [
-					'messageConversation',
+					'thread',
 				],
 			},
 		},
 		required: true,
-		description: 'The ID of the conversation message.',
+		description: 'The ID of the thread.',
 	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
+				resource: [
+					'thread',
+				],
 				operation: [
 					'update',
 				],
-				resource: [
-					'messageConversation',
-				],
 			},
 		},
-		default: {},
-		description: 'Other options to set.',
 		options: [
 			{
 				displayName: 'Actions',
@@ -514,7 +540,7 @@ export const messageConversationFields = [
 				name: 'content',
 				type: 'string',
 				default: '',
-				description: 'The content of the new message. Mentions can be used as <code>[Name](twist-mention://user_id)</code> for users or <code>[Group name](twist-group-mention://group_id)</code> for groups.',
+				description: 'The content of the thread.',
 			},
 			{
 				displayName: 'Direct Mentions',
@@ -522,9 +548,19 @@ export const messageConversationFields = [
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
+					loadOptionsDependsOn: [
+						'workspaceId',
+					],
 				},
 				default: [],
 				description: 'The users that are directly mentioned.',
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'The title of the thread (1 < length < 300).',
 			},
 		],
 	},
