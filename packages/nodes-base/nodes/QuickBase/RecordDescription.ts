@@ -69,7 +69,7 @@ export const recordFields = [
 		description: 'The table identifier',
 	},
 	{
-		displayName: 'Columns',
+		displayName: 'Insert Fields',
 		name: 'columns',
 		type: 'string',
 		displayOptions: {
@@ -84,11 +84,30 @@ export const recordFields = [
 		},
 		default: '',
 		required: true,
-		placeholder: 'id,name,description',
+		placeholder: 'Select Fields...',
 		description: 'Comma separated list of the properties which should used as columns for the new rows.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Use Field IDs',
+		name: 'useFieldIDs',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'record',
+				],
+				operation: [
+					'create',
+					'upsert',
+					'update'
+				],
+			},
+		},
+		default: false,
+		description: 'Use Field IDs instead of Field Names in Insert Fields.',
+	},
+	{
+		displayName: 'Simplified Response',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
@@ -122,7 +141,7 @@ export const recordFields = [
 		},
 		options: [
 			{
-				displayName: 'Fields',
+				displayName: 'Return Fields',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -133,7 +152,7 @@ export const recordFields = [
 				},
 				default: [],
 				description: `Specify an array of field ids that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested.`,
-			},
+			}
 		],
 	},
 	/* -------------------------------------------------------------------------- */
@@ -255,54 +274,6 @@ export const recordFields = [
 			},
 		},
 		options: [
-			// {
-			// 	displayName: 'Group By',
-			// 	name: 'groupByUi',
-			// 	placeholder: 'Add Group By',
-			// 	type: 'fixedCollection',
-			// 	typeOptions: {
-			// 		multipleValues: true,
-			// 	},
-			// 	default: {},
-			// 	options: [
-			// 		{
-			// 			name: 'groupByValues',
-			// 			displayName: 'Group By',
-			// 			values: [
-			// 				{
-			// 					displayName: 'Field ID',
-			// 					name: 'fieldId',
-			// 					type: 'options',
-			// 					typeOptions: {
-			// 						loadOptionsMethod: 'getTableFields',
-			// 					},
-			// 					default: '',
-			// 					description: 'The unique identifier of a field in a table.',
-			// 				},
-			// 				{
-			// 					displayName: 'Grouping',
-			// 					name: 'grouping',
-			// 					type: 'options',
-			// 					options: [
-			// 						{
-			// 							name: 'ASC',
-			// 							value: 'ASC',
-			// 						},
-			// 						{
-			// 							name: 'DESC',
-			// 							value: 'DESC',
-			// 						},
-			// 						{
-			// 							name: 'Equal Values',
-			// 							value: 'equal-values',
-			// 						},
-			// 					],
-			// 					default: 'ASC',
-			// 				},
-			// 			],
-			// 		},
-			// 	],
-			// },
 			{
 				displayName: 'Select',
 				name: 'select',
