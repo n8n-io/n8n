@@ -620,7 +620,7 @@
     "moment": "2.29.1",
     "moment-timezone": "^0.5.28",
     "mongodb": "3.6.3",
-    "mqtt": "4.2.1",
+    "mqtt": "4.2.6",
     "mssql": "^6.2.0",
     "mysql2": "~2.2.0",
     "n8n-core": "~0.68.0",
