@@ -283,27 +283,6 @@ export const threadFields = [
 	/*                                 thread:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workspace ID',
-		name: 'workspaceId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getWorkspaces',
-		},
-		default: '',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'thread',
-				],
-			},
-		},
-		required: true,
-		description: 'The ID of the workspace.',
-	},
-	{
 		displayName: 'Channel ID',
 		name: 'channelId',
 		type: 'string',
@@ -427,27 +406,6 @@ export const threadFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                  thread:update                            */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Workspace ID',
-		name: 'workspaceId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getWorkspaces',
-		},
-		default: '',
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'thread',
-				],
-			},
-		},
-		required: true,
-		description: 'The ID of the workspace.',
-	},
 	{
 		displayName: 'Thread ID',
 		name: 'threadId',

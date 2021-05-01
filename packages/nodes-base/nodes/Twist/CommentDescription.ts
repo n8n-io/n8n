@@ -246,6 +246,7 @@ export const commentFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                  comment:get/delete                        */
 	/* -------------------------------------------------------------------------- */
@@ -268,30 +269,10 @@ export const commentFields = [
 		required: true,
 		description: 'The ID of the comment.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 comment:getAll                             */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Workspace ID',
-		name: 'workspaceId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getWorkspaces',
-		},
-		default: '',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'comment',
-				],
-			},
-		},
-		required: true,
-		description: 'The ID of the workspace.',
-	},
 	{
 		displayName: 'Thread ID',
 		name: 'threadId',
@@ -426,27 +407,6 @@ export const commentFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                  comment:update                            */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Workspace ID',
-		name: 'workspaceId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getWorkspaces',
-		},
-		default: '',
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'comment',
-				],
-			},
-		},
-		required: true,
-		description: 'The ID of the workspace.',
-	},
 	{
 		displayName: 'Comment ID',
 		name: 'commentId',

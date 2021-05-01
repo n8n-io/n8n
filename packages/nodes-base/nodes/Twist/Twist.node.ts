@@ -39,6 +39,7 @@ import {
 } from './CommentDescription';
 import uuid = require('uuid');
 import * as moment from 'moment';
+
 export class Twist implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Twist',
@@ -324,11 +325,9 @@ export class Twist implements INodeType {
 				}
 				//https://developer.twist.com/v3/#get-all-comments
 				if (operation === 'getAll') {
-					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const threadId = this.getNodeParameter('threadId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
-					qs.workspace_id = workspaceId;
 					qs.thread_id = threadId;
 
 					Object.assign(qs, filters);
@@ -344,7 +343,7 @@ export class Twist implements INodeType {
 
 					responseData = await twistApiRequest.call(this, 'GET', '/comments/get', {}, qs);
 					if (qs.as_ids) {
-						responseData = (responseData as Array<number>).map(id => ({ID:id}));
+						responseData = (responseData as Array<number>).map(id => ({ ID: id }));
 					}
 				}
 				//https://developer.twist.com/v3/#update-comment
@@ -589,7 +588,7 @@ export class Twist implements INodeType {
 					const content = this.getNodeParameter('content', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IDataObject = {
-						channel_id:channelId,
+						channel_id: channelId,
 						content,
 						title,
 					};
@@ -666,11 +665,9 @@ export class Twist implements INodeType {
 				}
 				//https://developer.twist.com/v3/#get-all-threads
 				if (operation === 'getAll') {
-					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const channelId = this.getNodeParameter('channelId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
-					qs.workspace_id = workspaceId;
 					qs.channel_id = channelId;
 
 					Object.assign(qs, filters);
@@ -686,7 +683,7 @@ export class Twist implements INodeType {
 
 					responseData = await twistApiRequest.call(this, 'GET', '/threads/get', {}, qs);
 					if (qs.as_ids) {
-						responseData = (responseData as Array<number>).map(id => ({ID:id}));
+						responseData = (responseData as Array<number>).map(id => ({ ID: id }));
 					}
 				}
 				//https://developer.twist.com/v3/#update-thread

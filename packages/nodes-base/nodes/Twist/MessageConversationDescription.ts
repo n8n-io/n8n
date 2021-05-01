@@ -247,6 +247,7 @@ export const messageConversationFields = [
 			// },
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                messageConversation:getAll                  */
 	/* -------------------------------------------------------------------------- */
@@ -352,6 +353,7 @@ export const messageConversationFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                messageConversation:get/delete/update       */
 	/* -------------------------------------------------------------------------- */
@@ -374,30 +376,10 @@ export const messageConversationFields = [
 		required: true,
 		description: 'The ID of the conversation message.',
 	},
+	
 	/* -------------------------------------------------------------------------- */
 	/*                                messageConversation:update                  */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Workspace ID',
-		name: 'workspaceId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getWorkspaces',
-		},
-		default: '',
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'messageConversation',
-				],
-			},
-		},
-		required: true,
-		description: 'The ID of the workspace.',
-	},
 	{
 		displayName: 'Conversation Message ID',
 		name: 'id',
