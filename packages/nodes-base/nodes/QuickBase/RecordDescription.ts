@@ -69,7 +69,7 @@ export const recordFields = [
 		description: 'The table identifier',
 	},
 	{
-		displayName: 'Insert Fields',
+		displayName: 'Columns',
 		name: 'columns',
 		type: 'string',
 		displayOptions: {
@@ -86,25 +86,6 @@ export const recordFields = [
 		required: true,
 		placeholder: 'Select Fields...',
 		description: 'Comma separated list of the properties which should used as columns for the new rows.',
-	},
-	{
-		displayName: 'Use Field IDs',
-		name: 'useFieldIDs',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'record',
-				],
-				operation: [
-					'create',
-					'upsert',
-					'update'
-				],
-			},
-		},
-		default: false,
-		description: 'Use Field IDs instead of Field Names in Insert Fields.',
 	},
 	{
 		displayName: 'Simplified Response',
@@ -152,7 +133,14 @@ export const recordFields = [
 				},
 				default: [],
 				description: `Specify an array of field ids that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested.`,
-			}
+			},
+			{
+				displayName: 'Use Field IDs',
+				name: 'useFieldIDs',
+				type: 'boolean',
+				default: false,
+				description: 'Use Field IDs instead of Field Names in Columns.',
+			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
@@ -443,6 +431,13 @@ export const recordFields = [
 				default: [],
 				description: `Specify an array of field ids that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested.`,
 			},
+			{
+				displayName: 'Use Field IDs',
+				name: 'useFieldIDs',
+				type: 'boolean',
+				default: false,
+				description: 'Use Field IDs instead of Field Names in Columns.',
+			},
 			// {
 			// 	displayName: 'Merge Field ID',
 			// 	name: 'mergeFieldId',
@@ -582,6 +577,13 @@ export const recordFields = [
 				},
 				default: [],
 				description: `Specify an array of field ids that will return data for any updates or added record. Record ID (FID 3) is always returned if any field ID is requested.`,
+			},
+			{
+				displayName: 'Use Field IDs',
+				name: 'useFieldIDs',
+				type: 'boolean',
+				default: false,
+				description: 'Use Field IDs instead of Field Names in Columns.',
 			},
 		],
 	},

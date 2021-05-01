@@ -41,7 +41,7 @@ export async function quickbaseApiRequest(this: IExecuteFunctions | ILoadOptions
 			body,
 			qs,
 			uri: `https://api.quickbase.com/v1${resource}`,
-			json: true
+			json: true,
 		};
 
 
