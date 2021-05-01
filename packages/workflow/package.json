@@ -37,7 +37,8 @@
   },
   "dependencies": {
     "lodash.get": "^4.4.2",
-    "riot-tmpl": "^3.0.8"
+    "riot-tmpl": "^3.0.8",
+    "xml2js": "^0.4.23"
   },
   "jest": {
     "transform": {
