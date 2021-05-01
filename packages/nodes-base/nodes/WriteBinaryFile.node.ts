@@ -13,10 +13,7 @@ import {
 
 import {
 	writeFile as fsWriteFile,
-} from 'fs';
-import { promisify } from 'util';
-
-const fsWriteFileAsync = promisify(fsWriteFile);
+} from 'fs/promises';
 
 
 export class WriteBinaryFile implements INodeType {
@@ -80,7 +77,7 @@ export class WriteBinaryFile implements INodeType {
 			}
 
 			// Write the file to disk
-			await fsWriteFileAsync(fileName, Buffer.from(item.binary[dataPropertyName].data, BINARY_ENCODING), 'binary');
+			await fsWriteFile(fileName, Buffer.from(item.binary[dataPropertyName].data, BINARY_ENCODING), 'binary');
 
 			const newItem: INodeExecutionData = {
 				json: {},
