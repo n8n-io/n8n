@@ -2,6 +2,15 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.118.0
+
+### What changed?
+In the Postgres, CrateDB, QuestDB and TimescaleDB nodes the `Execute Query` operation returns the result from all queries executed instead of just one of the results.
+
+### When is action necessary?
+
+If you use any of the above mentioned nodes with the `Execute Query` operation and the result is relevant to you, you are encouraged to revisit your logic. The node output may now contain more information than before. This change was made so that the behavior is more consistent across n8n where input with multiple rows should yield results acccording all input data instead of only one. Please note: n8n was already running multiple queries based on input. Only the output was changed.
+
 ## 0.117.0
 
 ### What changed?
@@ -50,6 +59,7 @@ If you are using a Dropbox APP with permission type, "App Folder".
 ### How to upgrade:
 
 Open your Dropbox node's credentials and set the "APP Access Type" parameter to "App Folder".
+>>>>>>> master
 
 ## 0.111.0
 

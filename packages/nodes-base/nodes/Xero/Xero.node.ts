@@ -434,7 +434,6 @@ export class Xero implements INodeType {
 				}
 			}
 			if (resource === 'contact') {
-			}
 				if (operation === 'create') {
 					const organizationId = this.getNodeParameter('organizationId', i) as string;
 					const name = this.getNodeParameter('name', i) as string;
@@ -670,6 +669,7 @@ export class Xero implements INodeType {
 					responseData = await xeroApiRequest.call(this, 'POST', `/Contacts/${contactId}`, { organizationId, Contacts: [body] });
 					responseData = responseData.Contacts;
 				}
+			}
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
