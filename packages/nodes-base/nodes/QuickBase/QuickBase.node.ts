@@ -230,8 +230,6 @@ export class QuickBase implements INodeType {
 			if (operation === 'create') {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 
-				const useFieldIDs = this.getNodeParameter('useFieldIDs', 0) as boolean;
-				
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 
 				const data: IDataObject[] = [];
@@ -244,7 +242,7 @@ export class QuickBase implements INodeType {
 					const columns = this.getNodeParameter('columns', i) as string;
 
 					const columnList = columns.split(',').map(column => column.trim());
-					if (useFieldIDs) {
+					if (options.useFieldIDs === true) {
 						for (const key of Object.keys(items[i].json)) {
 							record[key] = { value: items[i].json[key] };
 						}
@@ -372,8 +370,6 @@ export class QuickBase implements INodeType {
 
 				const { fieldsLabelKey, fieldsIdKey } = await getFieldsObject.call(this, tableId);
 
-				const useFieldIDs = this.getNodeParameter('useFieldIDs', 0) as boolean;
-
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 
 				const updateKey = this.getNodeParameter('updateKey', 0) as string;
@@ -389,7 +385,7 @@ export class QuickBase implements INodeType {
 
 					const columnList = columns.split(',').map(column => column.trim());
 
-					if (useFieldIDs) {
+					if (options.useFieldIDs === true) {
 						for (const key of Object.keys(items[i].json)) {
 							record[key] = { value: items[i].json[key] };
 						}
@@ -447,9 +443,6 @@ export class QuickBase implements INodeType {
 			if (operation === 'upsert') {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 
-				const useFieldIDs = this.getNodeParameter('useFieldIDs', 0) as boolean;
-
-
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 
 				const updateKey = this.getNodeParameter('updateKey', 0) as string;
@@ -467,7 +460,7 @@ export class QuickBase implements INodeType {
 
 					const columnList = columns.split(',').map(column => column.trim());
 
-					if (useFieldIDs) {
+					if (options.useFieldIDs === true) {
 						for (const key of Object.keys(items[i].json)) {
 							record[key] = { value: items[i].json[key] };
 						}
