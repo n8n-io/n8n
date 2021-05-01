@@ -409,9 +409,24 @@ export class GoogleSheet {
 			inputData[keyRowIndex],
 		];
 
+		// Standardise values array, if rows is [[]], map it to [['']] (Keep the columns into consideration)
+		for (let rowIndex = 0; rowIndex < inputData?.length; rowIndex++) {
+			if (inputData[rowIndex].length === 0) {
+				for (let i = 0; i < keys.length; i++) {
+					inputData[rowIndex][i] = '';
+				}
+			} else if (inputData[rowIndex].length < keys.length) {
+				for (let i = 0; i < keys.length; i++) {
+					if (inputData[rowIndex][i] === undefined) {
+						inputData[rowIndex].push('');
+					}
+				}
+			}
+		}
 		// Loop over all the lookup values and try to find a row to return
 		let rowIndex: number;
 		let returnColumnIndex: number;
+
 		lookupLoop:
 		for (const lookupValue of lookupValues) {
 			returnColumnIndex = keys.indexOf(lookupValue.lookupColumn);
