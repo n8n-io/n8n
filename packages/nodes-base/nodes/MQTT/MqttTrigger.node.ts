@@ -55,18 +55,18 @@ export class MqttTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Only Message',
-						name: 'onlyMessage',
-						type: 'boolean',
-						default: false,
-						description: 'Returns only the message property.',
-					},
-					{
 						displayName: 'JSON Parse Body',
 						name: 'jsonParseBody',
 						type: 'boolean',
 						default: false,
 						description: 'Try to parse the message to an object.',
+					},
+					{
+						displayName: 'Only Message',
+						name: 'onlyMessage',
+						type: 'boolean',
+						default: false,
+						description: 'Returns only the message property.',
 					},
 				],
 			},
@@ -133,7 +133,7 @@ export class MqttTrigger implements INodeType {
 							if (options.jsonParseBody) {
 								try {
 									message = JSON.parse(message.toString());
-								} catch (err) {}
+								} catch (err) { }
 							}
 
 							result.message = message;
