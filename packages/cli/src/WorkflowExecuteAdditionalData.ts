@@ -45,7 +45,7 @@ import {
 
 import * as config from '../config';
 
-import { LessThanOrEqual } from "typeorm";
+import { LessThanOrEqual } from 'typeorm';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
@@ -85,9 +85,11 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
 		// Run the error workflow
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
 		if (workflowData.settings !== undefined && workflowData.settings.errorWorkflow && !(mode === 'error' && workflowData.id && workflowData.settings.errorWorkflow.toString() === workflowData.id.toString())) {
+			Logger.verbose(`Start external error workflow`, { executionId: this.executionId, errorWorkflowId: workflowData.settings.errorWorkflow.toString(), workflowId: this.workflowData.id });
 			// If a specific error workflow is set run only that one
 			WorkflowHelpers.executeErrorWorkflow(workflowData.settings.errorWorkflow as string, workflowErrorData);
 		} else if (mode !== 'error' && workflowData.id !== undefined && workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)) {
+			Logger.verbose(`Start internal error workflow`, { executionId: this.executionId, workflowId: this.workflowData.id });
 			// If the workflow contains
 			WorkflowHelpers.executeErrorWorkflow(workflowData.id.toString(), workflowErrorData);
 		}
@@ -102,6 +104,8 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
 let throttling = false;
 function pruneExecutionData(): void {
 	if (!throttling) {
+		Logger.verbose('Pruning execution data from database');
+
 		throttling = true;
 		const timeout = config.get('executions.pruneDataTimeout') as number; // in seconds
 		const maxAge = config.get('executions.pruneDataMaxAge') as number; // in h
@@ -133,7 +137,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				if (this.sessionId === undefined) {
 					return;
 				}
-				Logger.verbose(`Executing hook on node "${nodeName}" (nodeExecuteBefore, hookFunctionsPush)`, {executionId: this.executionId, workflowId: this.workflowData.id, sessionId: this.sessionId});
+				Logger.verbose(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {executionId: this.executionId, workflowId: this.workflowData.id, sessionId: this.sessionId});
 
 				const pushInstance = Push.getInstance();
 				pushInstance.send('nodeExecuteBefore', {
@@ -148,7 +152,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				if (this.sessionId === undefined) {
 					return;
 				}
-				Logger.verbose(`Executing hook on node "${nodeName}" (nodeExecuteAfter, hookFunctionsPush)`, {executionId: this.executionId, workflowId: this.workflowData.id, sessionId: this.sessionId});
+				Logger.verbose(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {executionId: this.executionId, workflowId: this.workflowData.id, sessionId: this.sessionId});
 
 				const pushInstance = Push.getInstance();
 				pushInstance.send('nodeExecuteAfter', {
@@ -160,7 +164,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 		],
 		workflowExecuteBefore: [
 			async function (this: WorkflowHooks): Promise<void> {
-				Logger.verbose(`Executing hook (workflowExecuteBefore, hookFunctionsPush)`, {executionId: this.executionId, workflowId: this.workflowData.id, sessionId: this.sessionId});
+				Logger.verbose(`Executing hook (hookFunctionsPush)`, {executionId: this.executionId, workflowId: this.workflowData.id, sessionId: this.sessionId});
 				// Push data to session which started the workflow
 				if (this.sessionId === undefined) {
 					return;
@@ -178,7 +182,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 		],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
-				Logger.verbose(`Executing hook (workflowExecuteAfter, hookFunctionsPush)`, {executionId: this.executionId, workflowId: this.workflowData.id, sessionId: this.sessionId});
+				Logger.verbose(`Executing hook (hookFunctionsPush)`, {executionId: this.executionId, workflowId: this.workflowData.id, sessionId: this.sessionId});
 				// Push data to session which started the workflow
 				if (this.sessionId === undefined) {
 					return;
@@ -199,6 +203,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				};
 
 				// Push data to editor-ui once workflow finished
+				Logger.verbose(`Save execution progress to database for execution ID ${this.executionId} `, { executionId: this.executionId, workflowId: this.workflowData.id });
 				// TODO: Look at this again
 				const sendData: IPushDataExecutionFinished = {
 					executionId: this.executionId,
@@ -236,6 +241,8 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 				}
 
 				try {
+					Logger.verbose(`Save execution progress to database for execution ID ${this.executionId} `, { executionId: this.executionId, nodeName });
+
 					const execution = await Db.collections.Execution!.findOne(this.executionId);
 
 					if (execution === undefined) {
@@ -311,7 +318,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 		workflowExecuteBefore: [],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
-				Logger.verbose(`Executing hook (workflowExecuteAfter, hookFunctionsSave)`, {executionId: this.executionId, workflowId: this.workflowData.id, sessionId: this.sessionId});
+				Logger.verbose(`Executing hook (hookFunctionsSave)`, { executionId: this.executionId, workflowId: this.workflowData.id });
 
 				// Prune old execution data
 				if (config.get('executions.pruneData')) {
@@ -378,6 +385,9 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					if (this.workflowData.id !== undefined && WorkflowHelpers.isWorkflowIdValid(this.workflowData.id.toString()) === true) {
 						fullExecutionData.workflowId = this.workflowData.id.toString();
 					}
+
+					// Leave log message before flatten as that operation increased memory usage a lot and the chance of a crash is highest here
+					Logger.verbose(`Save execution data to database for execution ID ${this.executionId}`, { executionId: this.executionId, workflowId: this.workflowData.id });
 
 					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 

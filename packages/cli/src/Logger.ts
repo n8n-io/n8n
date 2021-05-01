@@ -2,6 +2,7 @@ import config = require('../config');
 import * as winston from 'winston';
 
 import {
+	IDataObject,
 	ILogger,
 	LogTypes,
 } from 'n8n-workflow';
@@ -67,7 +68,14 @@ class Logger implements ILogger {
 		// [2]: Should point to the caller.
 		// Note: getting line number is useless because at this point
 		// We are in runtime, so it means we are looking at compiled js files
-		const logDetails = callsite[2] === undefined ? {} : {file: basename(callsite[2].getFileName() || '')};
+		const logDetails = {} as IDataObject;
+		if (callsite[2] !== undefined) {
+			logDetails.file = basename(callsite[2].getFileName() || '');
+			const functionName = callsite[2].getFunctionName();
+			if (functionName) {
+				logDetails.function = functionName;
+			}
+		}
 		this.logger.log(type, message, {...meta, ...logDetails});
 	}
 

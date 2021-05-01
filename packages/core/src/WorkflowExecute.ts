@@ -565,7 +565,7 @@ export class WorkflowExecute {
 					executionData = this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
 					executionNode = executionData.node;
 
-					Logger.debug(`Process node: "${executionNode.name}" (Start)`);
+					Logger.debug(`Process node: "${executionNode.name}" (start)`);
 					await this.executeHook('nodeExecuteBefore', [executionNode.name]);
 
 					// Get the index of the current run
