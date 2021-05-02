@@ -613,9 +613,6 @@ export class GoogleCalendar implements INodeType {
 					// Return the actual reason as error
 					returnData.push(
 						{
-							input: {
-								...items[i].json,
-							},
 							error: error.message,
 						},
 					);
