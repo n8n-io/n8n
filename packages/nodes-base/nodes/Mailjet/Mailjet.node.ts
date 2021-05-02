@@ -128,6 +128,8 @@ export class Mailjet implements INodeType {
 						for (const variable of variables) {
 							//@ts-ignore
 							body.Messages[0].Variables[variable.name] = variable.value;
+							//@ts-ignore
+							body.Messages[0].TemplateLanguage = true;
 						}
 					}
 					if (htmlBody) {
@@ -200,6 +202,7 @@ export class Mailjet implements INodeType {
 								Cc: [],
 								Bcc: [],
 								Variables: {},
+								TemplateLanguage: false,
 								TemplateID: templateId,
 							},
 						],
@@ -215,6 +218,8 @@ export class Mailjet implements INodeType {
 						for (const variable of variables) {
 							//@ts-ignore
 							body.Messages[0].Variables[variable.name] = variable.value;
+							//@ts-ignore
+							body.Messages[0].TemplateLanguage = true;
 						}
 					}
 					if (additionalFields.bccEmail) {
