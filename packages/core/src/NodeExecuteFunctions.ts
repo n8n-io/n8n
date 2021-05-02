@@ -51,6 +51,9 @@ import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
 import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
+import {
+	LoggerProxy as Logger,
+} from 'n8n-workflow';
 
 const requestPromiseWithDefaults = requestPromise.defaults({
 	timeout: 300000, // 5 minutes
@@ -188,7 +191,11 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 					};
 				}
 
+				Logger.debug(`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`);
+
 				const newToken = await token.refresh(tokenRefreshOptions);
+
+				Logger.debug(`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`);
 
 				credentials.oauthTokenData = newToken.data;
 
@@ -200,6 +207,8 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 
 				// Save the refreshed token
 				await additionalData.credentialsHelper.updateCredentials(name, credentialsType, credentials);
+
+				Logger.debug(`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`);
 
 				// Make the request again with the new token
 				const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);

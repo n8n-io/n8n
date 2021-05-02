@@ -764,6 +764,16 @@ export interface IWorkflowSettings {
 	[key: string]: IDataObject | string | number | boolean | undefined;
 }
 
+export type LogTypes = 'debug' | 'verbose' | 'info' | 'warn' | 'error';
+
+export interface ILogger {
+	log: (type: LogTypes, message: string, meta?: object) => void;
+	debug: (message: string, meta?: object) => void;
+	verbose: (message: string, meta?: object) => void;
+	info: (message: string, meta?: object) => void;
+	warn: (message: string, meta?: object) => void;
+	error: (message: string, meta?: object) => void;
+}
 export interface IRawErrorObject {
 	[key: string]: string | object | number | boolean | undefined | null | string[] | object[] | number[] | boolean[];
 }

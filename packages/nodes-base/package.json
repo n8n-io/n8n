@@ -133,6 +133,7 @@
       "dist/credentials/JotFormApi.credentials.js",
       "dist/credentials/Kafka.credentials.js",
       "dist/credentials/KeapOAuth2Api.credentials.js",
+      "dist/credentials/KitemakerApi.credentials.js",
       "dist/credentials/LemlistApi.credentials.js",
       "dist/credentials/LineNotifyOAuth2Api.credentials.js",
       "dist/credentials/LingvaNexApi.credentials.js",
@@ -406,6 +407,7 @@
       "dist/nodes/Kafka/KafkaTrigger.node.js",
       "dist/nodes/Keap/Keap.node.js",
       "dist/nodes/Keap/KeapTrigger.node.js",
+      "dist/nodes/Kitemaker/Kitemaker.node.js",
       "dist/nodes/Lemlist/Lemlist.node.js",
       "dist/nodes/Lemlist/LemlistTrigger.node.js",
       "dist/nodes/Line/Line.node.js",
@@ -437,6 +439,7 @@
       "dist/nodes/Mocean/Mocean.node.js",
       "dist/nodes/MondayCom/MondayCom.node.js",
       "dist/nodes/MongoDb/MongoDb.node.js",
+      "dist/nodes/MQTT/Mqtt.node.js",
       "dist/nodes/MQTT/MqttTrigger.node.js",
       "dist/nodes/MoveBinaryData.node.js",
       "dist/nodes/Msg91/Msg91.node.js",
@@ -616,8 +619,8 @@
     "mailparser": "^3.2.0",
     "moment": "2.29.1",
     "moment-timezone": "^0.5.28",
-    "mongodb": "3.6.3",
-    "mqtt": "4.2.1",
+    "mongodb": "3.6.5",
+    "mqtt": "4.2.6",
     "mssql": "^6.2.0",
     "mysql2": "~2.2.0",
     "n8n-core": "~0.68.0",
@@ -636,7 +639,7 @@
     "uuid": "^3.4.0",
     "vm2": "^3.6.10",
     "xlsx": "^0.16.7",
-    "xml2js": "^0.4.22"
+    "xml2js": "^0.4.23"
   },
   "jest": {
     "transform": {
