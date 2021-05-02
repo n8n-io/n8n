@@ -15,6 +15,7 @@ import {
 	ITaskDataConnections,
 	IWaitingForExecution,
 	IWorkflowExecuteAdditionalData,
+	LoggerProxy as Logger,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowOperationError,
@@ -482,6 +483,8 @@ export class WorkflowExecute {
 	 * @memberof WorkflowExecute
 	 */
 	processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
+		Logger.verbose('Workflow execution started', { workflowId: workflow.id });
+
 		const startedAt = new Date();
 
 		const workflowIssues = workflow.checkReadyForExecution();
@@ -501,7 +504,6 @@ export class WorkflowExecute {
 		if (this.runExecutionData.startData === undefined) {
 			this.runExecutionData.startData = {};
 		}
-
 
 		let currentExecutionTry = '';
 		let lastExecutionTry = '';
@@ -564,6 +566,7 @@ export class WorkflowExecute {
 					executionData = this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
 					executionNode = executionData.node;
 
+					Logger.debug(`Start processing node "${executionNode.name}"`, { node: executionNode.name, workflowId: workflow.id });
 					await this.executeHook('nodeExecuteBefore', [executionNode.name]);
 
 					// Get the index of the current run
@@ -661,7 +664,9 @@ export class WorkflowExecute {
 								}
 							}
 
+							Logger.debug(`Running node "${executionNode.name}" started`, { node: executionNode.name, workflowId: workflow.id });
 							nodeSuccessData = await workflow.runNode(executionData.node, executionData.data, this.runExecutionData, runIndex, this.additionalData, NodeExecuteFunctions, this.mode);
+							Logger.debug(`Running node "${executionNode.name}" finished successfully`, { node: executionNode.name, workflowId: workflow.id });
 
 							if (nodeSuccessData === undefined) {
 								// Node did not get executed
@@ -698,6 +703,8 @@ export class WorkflowExecute {
 								message: error.message,
 								stack: error.stack,
 							};
+
+							Logger.debug(`Running node "${executionNode.name}" finished with error`, { node: executionNode.name, workflowId: workflow.id });
 						}
 					}
 
@@ -829,8 +836,10 @@ export class WorkflowExecute {
 		const fullRunData = this.getFullRunData(startedAt);
 
 		if (executionError !== undefined) {
+			Logger.verbose(`Workflow execution finished with error`, { error: executionError, workflowId: workflow.id });
 			fullRunData.data.resultData.error = executionError;
 		} else {
+			Logger.verbose(`Workflow execution finished successfully`, { workflowId: workflow.id });
 			fullRunData.finished = true;
 		}
 
