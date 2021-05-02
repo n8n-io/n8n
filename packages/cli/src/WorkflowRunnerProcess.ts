@@ -65,9 +65,11 @@ export class WorkflowRunnerProcess {
 
 		const logger = this.logger = getLogger();
 		LoggerProxy.init(logger);
-		logger.info('Initializing n8n sub-process', { pid: process.pid });
 
 		this.data = inputData;
+
+		logger.verbose('Initializing n8n sub-process', { pid: process.pid, workflowId: this.data.workflowData.id });
+
 		let className: string;
 		let tempNode: INodeType;
 		let filePath: string;
