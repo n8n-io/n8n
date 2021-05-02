@@ -8,6 +8,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import * as uuid from 'uuid/v4';
@@ -28,7 +29,7 @@ export class FacebookTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Facebook Trigger',
 		name: 'facebookTrigger',
-		icon: 'file:facebook.png',
+		icon: 'file:facebook.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["appId"] +"/"+ $parameter["object"]}}',
@@ -192,7 +193,7 @@ export class FacebookTrigger implements INodeType {
 
 				if (responseData.success !== true) {
 					// Facebook did not return success, so something went wrong
-					throw new Error('Facebook webhook creation response did not contain the expected data.');
+					throw new NodeApiError(this.getNode(), responseData, { message: 'Facebook webhook creation response did not contain the expected data.' });
 				}
 				return true;
 			},
@@ -202,7 +203,7 @@ export class FacebookTrigger implements INodeType {
 
 				try {
 					await facebookApiRequest.call(this, 'DELETE', `/${appId}/subscriptions`, { object: snakeCase(object) });
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;

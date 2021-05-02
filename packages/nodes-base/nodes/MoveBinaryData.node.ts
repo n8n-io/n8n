@@ -16,6 +16,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as iconv from 'iconv-lite';
@@ -486,7 +487,7 @@ export class MoveBinaryData implements INodeType {
 					}
 				}
 			} else {
-				throw new Error(`The operation "${mode}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
 			}
 
 			returnData.push(newItem);

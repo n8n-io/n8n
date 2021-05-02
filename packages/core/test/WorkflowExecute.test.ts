@@ -1,8 +1,10 @@
 
 import {
 	IConnections,
+	ILogger,
 	INode,
 	IRun,
+	LoggerProxy,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -1154,9 +1156,19 @@ describe('WorkflowExecute', () => {
 			},
 		];
 
+		const fakeLogger = {
+			log: () => {},
+			debug:  () => {},
+			verbose:  () => {},
+			info:  () => {},
+			warn:  () => {},
+			error:  () => {},
+		} as ILogger;
+
 
 		const executionMode = 'manual';
 		const nodeTypes = Helpers.NodeTypes();
+		LoggerProxy.init(fakeLogger);
 
 		for (const testData of tests) {
 			test(testData.description, async () => {
