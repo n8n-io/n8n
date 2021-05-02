@@ -588,23 +588,23 @@ const config = convict({
 			env: 'N8N_LOG_OUTPUT',
 		},
 		file: {
+			fileCountMax: {
+				doc: 'Maximum number of files to keep.',
+				format: Number,
+				default: 100,
+				env: 'N8N_LOG_FILE_COUNT_MAX',
+			},
+			fileSizeMax: {
+				doc: 'Maximum size for each log file in MB.',
+				format: Number,
+				default: 16,
+				env: 'N8N_LOG_FILE_SIZE_MAX',
+			},
 			location: {
 				doc: 'Log file location; only used if log output is set to file.',
 				format: String,
 				default: path.join(core.UserSettings.getUserN8nFolderPath(), 'logs/n8n.log'),
 				env: 'N8N_LOG_FILE_LOCATION',
-			},
-			maxFileSize: {
-				doc: 'Maximum size for each log file in MB.',
-				format: Number,
-				default: 16,
-				env: 'N8N_LOG_FILE_MAXSIZE',
-			},
-			maxFileCount: {
-				doc: 'Maximum number of files to keep.',
-				format: Number,
-				default: 100,
-				env: 'N8N_LOG_FILE_MAXCOUNT',
 			},
 		},
 	},
