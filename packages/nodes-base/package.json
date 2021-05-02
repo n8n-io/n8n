@@ -619,7 +619,7 @@
     "mailparser": "^3.2.0",
     "moment": "2.29.1",
     "moment-timezone": "^0.5.28",
-    "mongodb": "3.6.5",
+    "mongodb": "3.6.6",
     "mqtt": "4.2.6",
     "mssql": "^6.2.0",
     "mysql2": "~2.2.0",
