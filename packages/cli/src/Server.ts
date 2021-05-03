@@ -761,9 +761,13 @@ class App {
 			newTag.createdAt = this.getCurrentDate();
 			newTag.updatedAt = this.getCurrentDate();
 
-			await TagHelpers.validateTag(newTag);
+			await this.externalHooks.run('tag.beforeCreate', [newTag]);
 
+			await TagHelpers.validateTag(newTag);
 			const tag = await Db.collections.Tag!.save(newTag).catch(TagHelpers.throwDuplicateEntryError);
+
+			await this.externalHooks.run('tag.afterCreate', [tag]);
+
 			// @ts-ignore
 			tag.id = tag.id.toString();
 			return tag;
@@ -779,9 +783,13 @@ class App {
 			newTag.name = name.trim();
 			newTag.updatedAt = this.getCurrentDate();
 
-			await TagHelpers.validateTag(newTag);
+			await this.externalHooks.run('tag.beforeUpdate', [newTag]);
 
+			await TagHelpers.validateTag(newTag);
 			const tag = await Db.collections.Tag!.save(newTag).catch(TagHelpers.throwDuplicateEntryError);
+
+			await this.externalHooks.run('tag.afterUpdate', [tag]);
+
 			// @ts-ignore
 			tag.id = tag.id.toString();
 			return tag;
@@ -790,7 +798,13 @@ class App {
 		// Deletes a tag
 		this.app.delete(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
 			const id = Number(req.params.id);
+
+			await this.externalHooks.run('tag.beforeDelete', [id]);
+
 			await Db.collections.Tag!.delete({ id });
+
+			await this.externalHooks.run('tag.afterDelete', [id]);
+
 			return true;
 		}));
 
