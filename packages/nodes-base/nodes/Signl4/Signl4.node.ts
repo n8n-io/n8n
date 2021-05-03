@@ -260,115 +260,123 @@ export class Signl4 implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
-			if (resource === 'alert') {
-				//https://connect.signl4.com/webhook/docs/index.html
-				// Send alert
-				if (operation === 'send') {
-					const message = this.getNodeParameter('message', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+			try {
+				if (resource === 'alert') {
+					//https://connect.signl4.com/webhook/docs/index.html
+					// Send alert
+					if (operation === 'send') {
+						const message = this.getNodeParameter('message', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const data: IDataObject = {
-						message,
-					};
+						const data: IDataObject = {
+							message,
+						};
 
-					if (additionalFields.title) {
-						data.title = additionalFields.title as string;
-					}
-
-					if (additionalFields.service) {
-						data.service = additionalFields.service as string;
-					}
-					if (additionalFields.locationFieldsUi) {
-						const locationUi = (additionalFields.locationFieldsUi as IDataObject).locationFieldsValues as IDataObject;
-						if (locationUi) {
-							data['X-S4-Location'] = `${locationUi.latitude},${locationUi.longitude}`;
+						if (additionalFields.title) {
+							data.title = additionalFields.title as string;
 						}
-					}
 
-					if (additionalFields.alertingScenario) {
-						data['X-S4-AlertingScenario'] = additionalFields.alertingScenario as string;
-					}
-
-					if (additionalFields.filtering) {
-						data['X-S4-Filtering'] = (additionalFields.filtering as boolean).toString();
-					}
-
-					if (additionalFields.externalId) {
-						data['X-S4-ExternalID'] = additionalFields.externalId as string;
-					}
-
-					data['X-S4-Status'] = 'new';
-
-					data['X-S4-SourceSystem'] = 'n8n';
-
-					// Attachments
-					const attachments = additionalFields.attachmentsUi as IDataObject;
-					if (attachments) {
-						if (attachments.attachmentsBinary && items[i].binary) {
-
-							const propertyName = (attachments.attachmentsBinary as IDataObject).property as string;
-
-							const binaryProperty = (items[i].binary as IBinaryKeyData)[propertyName];
-
-							if (binaryProperty) {
-
-								const supportedFileExtension = ['png', 'jpg', 'jpeg', 'bmp', 'gif', 'mp3', 'wav'];
-
-								if (!supportedFileExtension.includes(binaryProperty.fileExtension as string)) {
-
-									throw new NodeOperationError(this.getNode(), `Invalid extension, just ${supportedFileExtension.join(',')} are supported}`);
-								}
-
-								data.attachment = {
-									value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
-									options: {
-										filename: binaryProperty.fileName,
-										contentType: binaryProperty.mimeType,
-									},
-								};
-
-							} else {
-								throw new NodeOperationError(this.getNode(), `Binary property ${propertyName} does not exist on input`);
+						if (additionalFields.service) {
+							data.service = additionalFields.service as string;
+						}
+						if (additionalFields.locationFieldsUi) {
+							const locationUi = (additionalFields.locationFieldsUi as IDataObject).locationFieldsValues as IDataObject;
+							if (locationUi) {
+								data['X-S4-Location'] = `${locationUi.latitude},${locationUi.longitude}`;
 							}
 						}
+
+						if (additionalFields.alertingScenario) {
+							data['X-S4-AlertingScenario'] = additionalFields.alertingScenario as string;
+						}
+
+						if (additionalFields.filtering) {
+							data['X-S4-Filtering'] = (additionalFields.filtering as boolean).toString();
+						}
+
+						if (additionalFields.externalId) {
+							data['X-S4-ExternalID'] = additionalFields.externalId as string;
+						}
+
+						data['X-S4-Status'] = 'new';
+
+						data['X-S4-SourceSystem'] = 'n8n';
+
+						// Attachments
+						const attachments = additionalFields.attachmentsUi as IDataObject;
+						if (attachments) {
+							if (attachments.attachmentsBinary && items[i].binary) {
+
+								const propertyName = (attachments.attachmentsBinary as IDataObject).property as string;
+
+								const binaryProperty = (items[i].binary as IBinaryKeyData)[propertyName];
+
+								if (binaryProperty) {
+
+									const supportedFileExtension = ['png', 'jpg', 'jpeg', 'bmp', 'gif', 'mp3', 'wav'];
+
+									if (!supportedFileExtension.includes(binaryProperty.fileExtension as string)) {
+
+										throw new NodeOperationError(this.getNode(), `Invalid extension, just ${supportedFileExtension.join(',')} are supported}`);
+									}
+
+									data.attachment = {
+										value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
+										options: {
+											filename: binaryProperty.fileName,
+											contentType: binaryProperty.mimeType,
+										},
+									};
+
+								} else {
+									throw new NodeOperationError(this.getNode(), `Binary property ${propertyName} does not exist on input`);
+								}
+							}
+						}
+
+						responseData = await SIGNL4ApiRequest.call(
+							this,
+							'POST',
+							'',
+							{},
+							{
+								formData: data,
+							},
+						);
 					}
+					// Resolve alert
+					if (operation === 'resolve') {
 
-					responseData = await SIGNL4ApiRequest.call(
-						this,
-						'POST',
-						'',
-						{},
-						{
-							formData: data,
-						},
-					);
+						const data: IDataObject = {};
+
+						data['X-S4-ExternalID'] = this.getNodeParameter('externalId', i) as string;
+
+						data['X-S4-Status'] = 'resolved';
+
+						data['X-S4-SourceSystem'] = 'n8n';
+
+						responseData = await SIGNL4ApiRequest.call(
+							this,
+							'POST',
+							'',
+							{},
+							{
+								formData: data,
+							},
+						);
+					}
 				}
-				// Resolve alert
-				if (operation === 'resolve') {
-
-					const data: IDataObject = {};
-
-					data['X-S4-ExternalID'] = this.getNodeParameter('externalId', i) as string;
-
-					data['X-S4-Status'] = 'resolved';
-
-					data['X-S4-SourceSystem'] = 'n8n';
-
-					responseData = await SIGNL4ApiRequest.call(
-						this,
-						'POST',
-						'',
-						{},
-						{
-							formData: data,
-						},
-					);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else if (responseData !== undefined) {
+					returnData.push(responseData as IDataObject);
 				}
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else if (responseData !== undefined) {
-				returnData.push(responseData as IDataObject);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
