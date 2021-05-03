@@ -560,6 +560,8 @@ class App {
 				workflow.id = workflow.id.toString();
 				workflow.tags.forEach(tag => {
 					// @ts-ignore
+					tag.id = tag.id.toString();
+					// @ts-ignore
 					delete tag.createdAt;
 					// @ts-ignore
 					delete tag.updatedAt;
@@ -578,6 +580,8 @@ class App {
 
 			// @ts-ignore
 			workflow.id = workflow.id.toString();
+			// @ts-ignore
+			workflow.tags.forEach(tag => tag.id = tag.id.toString());
 			return workflow;
 		}));
 
@@ -627,7 +631,9 @@ class App {
 
 			const tablePrefix = config.get('database.tablePrefix');
 			await TagHelpers.removeRelations(req.params.id, tablePrefix);
-			await TagHelpers.createRelations(req.params.id, tags, tablePrefix);
+			if (tags?.length) {
+				await TagHelpers.createRelations(req.params.id, tags, tablePrefix);
+			}
 
 			// We sadly get nothing back from "update". Neither if it updated a record
 			// nor the new value. So query now the hopefully updated entry.
@@ -739,12 +745,13 @@ class App {
 		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<TagEntity[] | ITagWithCountDb[]> => {
 			if (req.query.withUsageCount === 'true') {
 				const tablePrefix = config.get('database.tablePrefix');
-				const tagsWithCount = await TagHelpers.getTagsWithCountDb(tablePrefix);
-				tagsWithCount.forEach(tag => tag.usageCount = Number(tag.usageCount));
-				return tagsWithCount;
+				return TagHelpers.getTagsWithCountDb(tablePrefix);
 			}
 
-			return Db.collections.Tag!.find({ select: ['id', 'name'] });
+			const tags = await Db.collections.Tag!.find({ select: ['id', 'name'] });
+			// @ts-ignore
+			tags.forEach(tag => tag.id = tag.id.toString());
+			return tags;
 		}));
 
 		// Creates a tag
@@ -756,8 +763,10 @@ class App {
 
 			await TagHelpers.validateTag(newTag);
 
-			return Db.collections.Tag!.save(newTag)
-			.catch(TagHelpers.throwDuplicateEntryError);
+			const tag = await Db.collections.Tag!.save(newTag).catch(TagHelpers.throwDuplicateEntryError);
+			// @ts-ignore
+			tag.id = tag.id.toString();
+			return tag;
 		}));
 
 		// Updates a tag
@@ -772,8 +781,10 @@ class App {
 
 			await TagHelpers.validateTag(newTag);
 
-			return Db.collections.Tag!.save(newTag)
-			.catch(TagHelpers.throwDuplicateEntryError);
+			const tag = await Db.collections.Tag!.save(newTag).catch(TagHelpers.throwDuplicateEntryError);
+			// @ts-ignore
+			tag.id = tag.id.toString();
+			return tag;
 		}));
 
 		// Deletes a tag

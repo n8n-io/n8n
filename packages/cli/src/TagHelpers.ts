@@ -23,7 +23,9 @@ import {
  */
 export function sortByRequestOrder(tagsDb: TagEntity[], tagIds: string[]) {
 	const tagMap = tagsDb.reduce((acc, tag) => {
-		acc[tag.id.toString()] = tag;
+		// @ts-ignore
+		tag.id = tag.id.toString();
+		acc[tag.id] = tag;
 		return acc;
 	}, {} as { [key: string]: TagEntity });
 
@@ -62,8 +64,8 @@ export function throwDuplicateEntryError(error: Error) {
 /**
  * Retrieve all tags and the number of workflows each tag is related to.
  */
-export async function getTagsWithCountDb(tablePrefix: string): Promise<ITagWithCountDb[]> {
-	return await getConnection()
+export function getTagsWithCountDb(tablePrefix: string): Promise<ITagWithCountDb[]> {
+	return getConnection()
 	.createQueryBuilder()
 	.select(`${tablePrefix}tag_entity.id`, 'id')
 	.addSelect(`${tablePrefix}tag_entity.name`, 'name')
@@ -71,7 +73,14 @@ export async function getTagsWithCountDb(tablePrefix: string): Promise<ITagWithC
 	.from(`${tablePrefix}tag_entity`, 'tag_entity')
 	.leftJoin(`${tablePrefix}workflows_tags`, 'workflows_tags', `${tablePrefix}workflows_tags.tagId = tag_entity.id`)
 	.groupBy(`${tablePrefix}tag_entity.id`)
-	.getRawMany();
+	.getRawMany()
+	.then(tagsWithCount => {
+		tagsWithCount.forEach(tag => {
+			tag.id = tag.id.toString();
+			tag.usageCount = Number(tag.usageCount);
+		});
+		return tagsWithCount;
+	});
 }
 
 // ----------------------------------
@@ -81,8 +90,8 @@ export async function getTagsWithCountDb(tablePrefix: string): Promise<ITagWithC
 /**
  * Relate a workflow to one or more tags.
  */
-export async function createRelations(workflowId: string, tagIds: string[], tablePrefix: string) {
-	await getConnection()
+export function createRelations(workflowId: string, tagIds: string[], tablePrefix: string) {
+	return getConnection()
 		.createQueryBuilder()
 		.insert()
 		.into(`${tablePrefix}workflows_tags`)
@@ -93,8 +102,8 @@ export async function createRelations(workflowId: string, tagIds: string[], tabl
 /**
  * Remove all tags for a workflow during a tag update operation.
  */
-export async function removeRelations(workflowId: string, tablePrefix: string) {
-	await getConnection()
+export function removeRelations(workflowId: string, tablePrefix: string) {
+	return getConnection()
 		.createQueryBuilder()
 		.delete()
 		.from(`${tablePrefix}workflows_tags`)
