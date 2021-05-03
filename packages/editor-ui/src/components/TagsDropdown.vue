@@ -212,6 +212,7 @@ $--max-input-height: 60px;
 .tags-dropdown {
 	$--item-height: 32px;
 	$--items-to-show: 7;
+	$--item-padding: 6px 20px;
 	$--dropdown-height: $--item-height * $--items-to-show;
 	$--dropdown-width: 224px;
 
@@ -238,15 +239,16 @@ $--max-input-height: 60px;
 		&:after {
 			content: " ";
 			display: block;
-			height: $--item-height * 2;
-			width: 100%;
+			height: $--item-height;
+			width: $--dropdown-width;
+			padding: $--item-padding;
 		}
 	}
 
 	li {
 		height: $--item-height; 
 		background-color: white;
-		padding: 6px 20px;
+		padding: $--item-padding;
 		margin: 0;
 
 		&.is-disabled {
