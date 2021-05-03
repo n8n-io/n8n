@@ -529,6 +529,6 @@ export interface IUiState {
 
 
 export interface IRestApiContext {
-	baseURL: string;
-	sessionid: string;
+	baseUrl: string;
+	sessionId: string;
 }

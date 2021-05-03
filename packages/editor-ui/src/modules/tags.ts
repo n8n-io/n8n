@@ -1,4 +1,3 @@
-
 import { ActionContext, Module } from 'vuex';
 import {
 	ITag,
@@ -30,16 +29,17 @@ const module: Module<ITagsState, IRootState> = {
 			state.fetchedAll = true;
 		},
 		upsertTags(state: ITagsState, tags: ITag[]) {
-			tags.map((tag) => {
-				if (state.tags[tag.id]) {
+			tags.forEach((tag) => {
+				const tagId = tag.id;
+				if (state.tags[tagId]) {
 					const newTag = {
-						...state.tags[tag.id],
+						...state.tags[tagId],
 						...tag,
 					};
-					Vue.set(state.tags, tag.id, newTag);
+					Vue.set(state.tags, tagId, newTag);
 				}
 				else {
-					Vue.set(state.tags, tag.id, tag);
+					Vue.set(state.tags, tagId, tag);
 				}
 			});
 		},
@@ -63,27 +63,27 @@ const module: Module<ITagsState, IRootState> = {
 		},
 	},
 	actions: {
-		fetchAll: async (context: ActionContext<ITagsState, IRootState>, params: {force?: boolean, withUsageCount?: boolean}) => {
-			const {force, withUsageCount} = params || {};
+		fetchAll: async (context: ActionContext<ITagsState, IRootState>, params: { force?: boolean, withUsageCount?: boolean }) => {
+			const { force, withUsageCount } = params || {};
 			if (!force && context.state.fetchedAll && context.state.fetchedUsageCount === !!withUsageCount) {
 				return context.state.tags;
 			}
 
 			context.commit('setLoading', true);
-			const tags = await getTags(context.rootGetters.getRestApiContext, !!withUsageCount);
+			const tags = await getTags(context.rootGetters.getRestApiContext, Boolean(withUsageCount));
 			context.commit('setAllTags', tags);
 			context.commit('setLoading', false);
 
 			return tags;
 		},
 		create: async (context: ActionContext<ITagsState, IRootState>, name: string) => {
-			const tag = await createTag(context.rootGetters.getRestApiContext, {name});
+			const tag = await createTag(context.rootGetters.getRestApiContext, { name });
 			context.commit('upsertTags', [tag]);
 
 			return tag;
 		},
 		rename: async (context: ActionContext<ITagsState, IRootState>, params: {name: string, id: string}) => {
-			const tag = await updateTag(context.rootGetters.getRestApiContext, params.id, {name: params.name});
+			const tag = await updateTag(context.rootGetters.getRestApiContext, params.id, { name: params.name });
 			context.commit('upsertTags', [tag]);
 
 			return tag;

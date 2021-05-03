@@ -11,7 +11,7 @@ class ResponseError extends Error {
 	// The HTTP status code of response
 	httpStatusCode?: number;
 
-	// The error code in the resonse
+	// The error code in the response
 	errorCode?: number;
 
 	// The stack trace of the server
@@ -25,10 +25,11 @@ class ResponseError extends Error {
 	 * @param {string} [stack] The stack trace
 	 * @memberof ResponseError
 	 */
-	constructor (message: string, errorCode?: number, httpStatusCode?: number, stack?: string) {
+	constructor (message: string, options?: {errorCode?: number, httpStatusCode?: number, stack?: string}) {
 		super(message);
 		this.name = 'ResponseError';
 
+		const { errorCode, httpStatusCode, stack } = options || {};
 		if (errorCode) {
 			this.errorCode = errorCode;
 		}
@@ -41,23 +42,23 @@ class ResponseError extends Error {
 	}
 }
 
-export default async function makeRestApiRequest(context: IRestApiContext, method: Method, endpoint: string, data?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	try {
-		const {baseURL, sessionid} = context;
-		const options: AxiosRequestConfig = {
-			method,
-			url: endpoint,
-			baseURL,
-			headers: {
-				sessionid,
-			},
-		};
-		if (['PATCH', 'POST', 'PUT'].includes(method)) {
-			options.data = data;
-		} else {
-			options.params = data;
-		}
+export async function makeRestApiRequest(context: IRestApiContext, method: Method, endpoint: string, data?: IDataObject) {
+	const { baseUrl, sessionId } = context;
+	const options: AxiosRequestConfig = {
+		method,
+		url: endpoint,
+		baseURL: baseUrl,
+		headers: {
+			sessionid: sessionId,
+		},
+	};
+	if (['PATCH', 'POST', 'PUT'].includes(method)) {
+		options.data = data;
+	} else {
+		options.params = data;
+	}
 
+	try {
 		const response = await axios.request(options);
 		return response.data.data;
 	} catch (error) {
@@ -67,7 +68,7 @@ export default async function makeRestApiRequest(context: IRestApiContext, metho
 
 		const errorResponseData = error.response.data;
 		if (errorResponseData !== undefined && errorResponseData.message !== undefined) {
-			throw new ResponseError(errorResponseData.message, errorResponseData.code, error.response.status, errorResponseData.stack);
+			throw new ResponseError(errorResponseData.message, {errorCode: errorResponseData.code, httpStatusCode: error.response.status, stack: errorResponseData.stack});
 		}
 
 		throw error;

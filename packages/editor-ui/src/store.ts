@@ -650,8 +650,8 @@ export const store = new Vuex.Store({
 				endpoint = process.env.VUE_APP_ENDPOINT_REST;
 			}
 			return {
-				baseURL: `${state.baseUrl}${endpoint}`,
-				sessionid: state.sessionId,
+				baseUrl: `${state.baseUrl}${endpoint}`,
+				sessionId: state.sessionId,
 			};
 		},
 		getWebhookBaseUrl: (state): string => {

@@ -1,4 +1,3 @@
-
 import { RENAME_MODAL_KEY, SAVE_AS_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';

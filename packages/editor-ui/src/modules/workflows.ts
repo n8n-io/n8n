@@ -1,4 +1,3 @@
-
 import { renameWorkflow } from '@/api/workflows';
 import { ActionContext, GetterTree, Module } from 'vuex';
 import {
@@ -20,13 +19,13 @@ const module: Module<IWorkflowsState, IRootState> = {
 		},
 	},
 	actions: {
-		renameCurrent: async (context: ActionContext<IWorkflowsState, IRootState>, {name, tags}: {name: string, tags: ITag[]}) => {
+		renameCurrent: async (context: ActionContext<IWorkflowsState, IRootState>, { name, tags }: { name: string, tags: ITag[] }) => {
 			const currentId = context.rootGetters.workflowId;
 
 			await renameWorkflow(context.rootGetters.getRestApiContext, currentId, { name, tags });
 
 			context.commit('setWorkflowName', { newName: name, setStateDirty: false }, { root: true });
-			context.commit('setWorkflowTagIds', tags, {root: true});
+			context.commit('setWorkflowTagIds', tags, { root: true });
 		},
 	},
 };

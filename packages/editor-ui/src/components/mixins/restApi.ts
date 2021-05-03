@@ -30,7 +30,7 @@ import {
 	INodePropertyOptions,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import makeRestApiRequest from '@/api/helpers';
+import { makeRestApiRequest } from '@/api/helpers';
 
 /**
  * Unflattens the Execution data.
