@@ -558,14 +558,8 @@ class App {
 			workflows.forEach(workflow => {
 				// @ts-ignore
 				workflow.id = workflow.id.toString();
-				workflow.tags.forEach(tag => {
-					// @ts-ignore
-					tag.id = tag.id.toString();
-					// @ts-ignore
-					delete tag.createdAt;
-					// @ts-ignore
-					delete tag.updatedAt;
-				});
+				// @ts-ignore
+				workflow.tags = workflow.tags.map(({ id, name }) => ({ id: id.toString(), name }));
 			});
 			return workflows;
 		}));
