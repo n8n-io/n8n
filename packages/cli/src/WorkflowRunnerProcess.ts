@@ -20,23 +20,29 @@ import {
 	ExecutionError,
 	IDataObject,
 	IExecuteWorkflowInfo,
+	ILogger,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeData,
 	IRun,
-	IRunExecutionData,
 	ITaskData,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecuteHooks,
+	LoggerProxy,
 	Workflow,
 	WorkflowHooks,
 	WorkflowOperationError,
 } from 'n8n-workflow';
 
+import {
+	getLogger,
+} from '../src/Logger';
+
 import * as config from '../config';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
+	logger: ILogger;
 	startedAt = new Date();
 	workflow: Workflow | undefined;
 	workflowExecute: WorkflowExecute | undefined;
@@ -57,7 +63,13 @@ export class WorkflowRunnerProcess {
 		process.on('SIGTERM', WorkflowRunnerProcess.stopProcess);
 		process.on('SIGINT', WorkflowRunnerProcess.stopProcess);
 
+		const logger = this.logger = getLogger();
+		LoggerProxy.init(logger);
+
 		this.data = inputData;
+
+		logger.verbose('Initializing n8n sub-process', { pid: process.pid, workflowId: this.data.workflowData.id });
+
 		let className: string;
 		let tempNode: INodeType;
 		let filePath: string;
@@ -152,6 +164,8 @@ export class WorkflowRunnerProcess {
 				throw e;
 			}
 
+			await sendToParentProcess('finishExecution', { executionId, result });
+
 			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(result);
 			return returnData!.data!.main;
 		};
@@ -187,12 +201,7 @@ export class WorkflowRunnerProcess {
 				parameters,
 			});
 		} catch (error) {
-			// TODO: Add proper logging
-			console.error(`There was a problem sending hook: "${hook}"`);
-			console.error('Parameters:');
-			console.error(parameters);
-			console.error('Error:');
-			console.error(error);
+			this.logger.error(`There was a problem sending hook: "${hook}"`, { parameters, error});
 		}
 	}
 

@@ -9,10 +9,7 @@ import * as path from 'path';
 
 import {
 	readFile as fsReadFile,
-} from 'fs';
-import { promisify } from 'util';
-
-const fsReadFileAsync = promisify(fsReadFile);
+} from 'fs/promises';
 
 
 export class ReadBinaryFiles implements INodeType {
@@ -61,7 +58,7 @@ export class ReadBinaryFiles implements INodeType {
 		let item: INodeExecutionData;
 		let data: Buffer;
 		for (const filePath of files) {
-			data = await fsReadFileAsync(filePath) as Buffer;
+			data = await fsReadFile(filePath) as Buffer;
 
 			item = {
 				binary: {

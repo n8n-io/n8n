@@ -613,11 +613,17 @@ export class GoogleCalendar implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+				if (this.continueOnFail() !== true) {
+					throw error;
+				} else {
+					// Return the actual reason as error
+					returnData.push(
+						{
+							error: error.message,
+						},
+					);
 					continue;
 				}
-				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

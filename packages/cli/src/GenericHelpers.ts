@@ -3,13 +3,10 @@ import * as express from 'express';
 import { join as pathJoin } from 'path';
 import {
 	readFile as fsReadFile,
-} from 'fs';
-import { promisify } from 'util';
+} from 'fs/promises';
 import { IDataObject } from 'n8n-workflow';
 
 import { IPackageVersions } from './';
-
-const fsReadFileAsync = promisify(fsReadFile);
 
 let versionCache: IPackageVersions | undefined;
 
@@ -72,7 +69,7 @@ export async function getVersions(): Promise<IPackageVersions> {
 		return versionCache;
 	}
 
-	const packageFile = await fsReadFileAsync(pathJoin(__dirname, '../../package.json'), 'utf8') as string;
+	const packageFile = await fsReadFile(pathJoin(__dirname, '../../package.json'), 'utf8') as string;
 	const packageData = JSON.parse(packageFile);
 
 	versionCache = {
@@ -122,7 +119,7 @@ export async function getConfigValue(configKey: string): Promise<string | boolea
 
 	let data;
 	try {
-		data = await fsReadFileAsync(fileEnvironmentVariable, 'utf8') as string;
+		data = await fsReadFile(fileEnvironmentVariable, 'utf8') as string;
 	} catch (error) {
 		if (error.code === 'ENOENT') {
 			throw new Error(`The file "${fileEnvironmentVariable}" could not be found.`);
