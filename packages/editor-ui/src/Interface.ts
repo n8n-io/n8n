@@ -218,7 +218,7 @@ export interface IWorkflowDataUpdate {
 	connections?: IConnections;
 	settings?: IWorkflowSettings;
 	active?: boolean;
-	tags?: string[] | ITag[];
+	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from api response
 }
 
 // Almost identical to cli.Interfaces.ts
@@ -231,7 +231,7 @@ export interface IWorkflowDb {
 	nodes: INodeUi[];
 	connections: IConnections;
 	settings?: IWorkflowSettings;
-	tags?: ITag[] | string[];
+	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from api response
 }
 
 // Identical to cli.Interfaces.ts
