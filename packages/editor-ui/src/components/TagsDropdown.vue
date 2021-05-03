@@ -211,10 +211,12 @@ $--max-input-height: 60px;
 <style lang="scss">
 .tags-dropdown {
 	$--item-height: 32px;
-	$--dropdown-length: $--item-height * 7;
+	$--items-to-show: 7;
+	$--dropdown-height: $--item-height * $--items-to-show;
+	$--dropdown-width: 224px;
 
-	min-width: $--dropdown-length !important;
-	max-width: $--dropdown-length;
+	min-width: $--dropdown-width !important;
+	max-width: $--dropdown-width;
 
 	* {
 		box-sizing: border-box;
@@ -222,7 +224,7 @@ $--max-input-height: 60px;
 
 	.el-scrollbar {
 		position: relative;
-		max-height: $--dropdown-length;
+		max-height: $--dropdown-height;
 
 		> div {
 			overflow: auto;
@@ -230,7 +232,7 @@ $--max-input-height: 60px;
 
 		ul {
 			padding: 0;
-			max-height: $--dropdown-length - $--item-height;
+			max-height: $--dropdown-height - $--item-height;
 		}
 
 		&:after {
@@ -268,7 +270,7 @@ $--max-input-height: 60px;
 		&.manage-tags {
 			position: absolute;
 			bottom: 0;
-			min-width: $--dropdown-length;
+			min-width: $--dropdown-width;
 		}
 	}
 }
