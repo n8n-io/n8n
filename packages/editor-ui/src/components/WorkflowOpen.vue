@@ -8,7 +8,7 @@
 					<div>
 						<h1>Open Workflow</h1>
 					</div>
-					<div class="filter">
+					<div class="tags-filter">
 						<TagsDropdown 
 							placeholder="Filter by tags..."
 							:currentTagIds="filterTagIds"
@@ -16,7 +16,7 @@
 							@onUpdate="updateTagsFilter"
 						/>
 					</div>
-					<div class="filter">
+					<div class="search-filter">
 						<el-input placeholder="Search workflows..." ref="inputFieldFilter" v-model="filterText">
 							<i slot="prefix" class="el-input__icon el-icon-search"></i>
 						</el-input>
@@ -210,9 +210,13 @@ export default mixins(
 		}
 	}
 
-	.filter {
+	.search-filter {
 		margin-left: 10px;
-		min-width: 150px;
+		min-width: 160px;
+	}
+
+	.tags-filter {
+		min-width: 220px;
 	}
 }
 
