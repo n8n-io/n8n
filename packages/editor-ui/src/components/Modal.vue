@@ -4,7 +4,7 @@
 			:visible="dialogVisible"
 			:before-close="closeDialog"
 			:title="title"
-			:class="{'dialog-wrapper': true, messageBox}"
+			:class="{'dialog-wrapper': true, [size]: true}"
 			:width="width"
 			append-to-body
 		>
@@ -32,7 +32,7 @@ const sizeMap: {[size: string]: string} = {
 
 export default Vue.extend({
 	name: "Modal",
-	props: ['name', 'title', 'eventBus', 'messageBox', 'size'],
+	props: ['name', 'title', 'eventBus', 'size'],
 	mounted() {
 		window.addEventListener('keydown', this.onWindowKeydown);
 
@@ -92,10 +92,20 @@ export default Vue.extend({
 	box-sizing: border-box;
 }
 
-.dialog-wrapper.messageBox {
-	display: flex;
-	align-items: center;
-	justify-content: center;
+.dialog-wrapper {
+	&.xl > div, &.md > div {
+		min-width: 500px;
+	}
+
+	&.sm {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+
+		> div {
+			max-width: 420px;
+		}
+	}
 }
 
 .modal-content > .el-row {

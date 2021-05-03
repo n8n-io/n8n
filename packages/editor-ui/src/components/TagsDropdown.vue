@@ -210,9 +210,11 @@ $--max-input-height: 60px;
 
 <style lang="scss">
 .tags-dropdown {
-	$--item-height: 32px;
+	$--item-line-height: 14px;
+	$--item-vertical-padding: 12px;
+	$--item-height: $--item-line-height + $--item-vertical-padding * 2;
 	$--items-to-show: 7;
-	$--item-padding: 6px 20px;
+	$--item-padding: $--item-vertical-padding 20px;
 	$--dropdown-height: $--item-height * $--items-to-show;
 	$--dropdown-width: 224px;
 
@@ -239,9 +241,11 @@ $--max-input-height: 60px;
 		&:after {
 			content: " ";
 			display: block;
-			height: $--item-height;
+			min-height: $--item-height;
+			margin-top: $--item-vertical-padding - 1;
 			width: $--dropdown-width;
 			padding: $--item-padding;
+			box-sizing: border-box;
 		}
 	}
 
@@ -250,10 +254,16 @@ $--max-input-height: 60px;
 		background-color: white;
 		padding: $--item-padding;
 		margin: 0;
+		line-height: $--item-line-height;
+		font-weight: 400;
 
 		&.is-disabled {
 			color: $--custom-font-light;
 			cursor: default;
+		}
+
+		&.selected {
+			font-weight: bold;
 		}
 
 		&.ops {

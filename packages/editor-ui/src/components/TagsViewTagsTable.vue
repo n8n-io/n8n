@@ -31,7 +31,7 @@
 				</div>
 			</template>
 		</el-table-column>
-		<el-table-column label="Usage">
+		<el-table-column label="Usage" width="150">
 			<template slot-scope="scope">
 				<transition name="fade" mode="out-in">
 						<div v-if="!scope.row.create && !scope.row.delete" :class="{disabled: scope.row.disable}">
@@ -40,7 +40,7 @@
 					</transition>
 				</template>
 		</el-table-column>
-		<el-table-column width="200">
+		<el-table-column>
 			<template slot-scope="scope">
 				<transition name="fade" mode="out-in">
 					<div class="ops" v-if="scope.row.create">
@@ -178,10 +178,15 @@ export default Vue.extend({
 }
 
 .ops {
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
 	min-height: 45px;
+	justify-content: flex-end;
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap-reverse;
+
+	> .el-button {
+		margin: 2px;
+	}
 }
 
 .disabled {
@@ -197,7 +202,7 @@ export default Vue.extend({
 .ops.main > .el-button {
 	display: none;
 	float: right;
-	margin-left: 5px;
+	margin-left: 2px;
 }
 
 /deep/ tr.disabled {

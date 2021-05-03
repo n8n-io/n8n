@@ -6,26 +6,28 @@
 				<div class="primary-color clickable">
 					<span v-if="currentWorkflow">
 						<a @click="openRenameDialog">
-							<font-awesome-icon icon="edit" />&nbsp;&nbsp;<WorkflowNameShort
+							<font-awesome-icon icon="edit" /><WorkflowNameShort
 								:name="workflowName"
 							/><span v-if="isDirty">*</span>
 						</a>
 					</span>
 					<span v-else>
 						<a @click="openSaveDialog">
-							<font-awesome-icon icon="edit" />&nbsp;&nbsp;Unsaved workflow
+							<font-awesome-icon icon="edit" />&nbsp;Unsaved workflow
 						</a>
 					</span>
 				</div>
 			</div>
 		</span>
 
-		<el-divider
-			direction="vertical"
-			v-if="currentWorkflowTagIds.length > 0"
-		></el-divider>
+		<div class="hidden-xs-only">
+			<el-divider
+				direction="vertical"
+				v-if="currentWorkflowTagIds.length > 0"
+			></el-divider>
 
-		<TagsContainer :tagIds="currentWorkflowTagIds" />
+			<TagsContainer :tagIds="currentWorkflowTagIds" />
+		</div>
 
 		<span class="saving-workflow" v-if="isWorkflowSaving">
 			<font-awesome-icon icon="spinner" spin />

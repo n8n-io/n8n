@@ -4,6 +4,7 @@
 		:name="modalName"
 		:eventBus="modalBus"
 		@enter="onEnter"
+		size="md"
 	>
 		<template slot="content">
 			<el-row>

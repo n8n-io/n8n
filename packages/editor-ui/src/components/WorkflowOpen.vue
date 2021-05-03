@@ -4,24 +4,24 @@
 		size="xl"
 	>
 			<template slot="header">
-				<el-row class="workflows-header">
-					<el-col :span="9">
+				<div class="workflows-header">
+					<div>
 						<h1>Open Workflow</h1>
-					</el-col>
-					<el-col :span="6" :offset="5" class="tags-filter">
+					</div>
+					<div class="filter">
 						<TagsDropdown 
 							placeholder="Filter by tags..."
 							:currentTagIds="filterTagIds"
 							:createEnabled="false"
 							@onUpdate="updateTagsFilter"
 						/>
-					</el-col>
-					<el-col :span="4">
-						<el-input placeholder="Workflow filter..." ref="inputFieldFilter" v-model="filterText">
+					</div>
+					<div class="filter">
+						<el-input placeholder="Search workflows..." ref="inputFieldFilter" v-model="filterText">
 							<i slot="prefix" class="el-input__icon el-icon-search"></i>
 						</el-input>
-					</el-col>
-				</el-row>
+					</div>
+				</div>
 			</template>
 
 			<template slot="content">
@@ -29,13 +29,13 @@
 					<el-table-column property="name" label="Name" class-name="clickable" sortable>
 						<template slot-scope="scope">
 							<div class="name" :key="scope.row.id">
-								<span>{{scope.row.name}}</span> <TagsContainer :tagIds="getIds(scope.row.tags)"/>
+								<span>{{scope.row.name}}</span> <TagsContainer class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)"/>
 							</div>
 						</template>
 					</el-table-column>
-					<el-table-column property="createdAt" label="Created" class-name="clickable" width="225" sortable></el-table-column>
-					<el-table-column property="updatedAt" label="Updated" class-name="clickable" width="225" sortable></el-table-column>
-					<el-table-column label="Active" width="90">
+					<el-table-column property="createdAt" label="Created" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column property="updatedAt" label="Updated" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column label="Active" width="75">
 						<template slot-scope="scope">
 							<workflow-activator :workflow-active="scope.row.active" :workflow-id="scope.row.id" @workflowActiveChanged="workflowActiveChanged" />
 						</template>
@@ -198,14 +198,21 @@ export default mixins(
 
 <style scoped lang="scss">
 .workflows-header {
-	h1 {
-		font-weight: 600;
-		line-height: 24px;
-		font-size: 18px;
+	display: flex;
+
+	> div:first-of-type {
+		flex-grow: 1;
+
+		h1 {
+			font-weight: 600;
+			line-height: 24px;
+			font-size: 18px;
+		}
 	}
 
-	.tags-filter {
-		padding-right: 10px;
+	.filter {
+		margin-left: 10px;
+		min-width: 150px;
 	}
 }
 

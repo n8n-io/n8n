@@ -3,8 +3,8 @@
 		:title="title"	
 		:name="modalName"
 		:eventBus="modalBus"
-		:messageBox="true"
 		@enter="save"
+		size="sm"
 	>
 		<template slot="content">
 				<el-row>
