@@ -654,6 +654,22 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 }
 
 
+async function sendMessageToUI(source: string, message: string) {
+	// TODO: Get the sessionId (currently missing)
+	// TODO: Make work also in "own" mode
+	// // Push data to session which started workflow
+	// if (this.sessionId === undefined) {
+	// 	return;
+	// }
+
+	const pushInstance = Push.getInstance();
+	pushInstance.send('sendConsoleMessage', {
+		source: `Node: "${source}"`,
+		message,
+	}, this.sessionId);
+}
+
+
 /**
  * Returns the base additional data without webhooks
  *
@@ -680,6 +696,7 @@ export async function getBase(credentials: IWorkflowCredentials, currentNodePara
 		encryptionKey,
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + config.get('endpoints.rest') as string,
+		sendMessageToUI,
 		timezone,
 		webhookBaseUrl,
 		webhookTestBaseUrl,

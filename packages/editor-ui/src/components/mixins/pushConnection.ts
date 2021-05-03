@@ -1,6 +1,7 @@
 import {
 	IExecutionsCurrentSummaryExtended,
 	IPushData,
+	IPushDataConsoleMessage,
 	IPushDataExecutionFinished,
 	IPushDataExecutionStarted,
 	IPushDataNodeExecuteAfter,
@@ -155,6 +156,12 @@ export const pushConnection = mixins(
 					receivedData = JSON.parse(event.data);
 				} catch (error) {
 					return false;
+				}
+
+				if (receivedData.type === 'sendConsoleMessage') {
+					const pushData = receivedData.data as IPushDataConsoleMessage;
+					console.log(pushData.source, pushData.message);
+					return true;
 				}
 
 				if (!['testWebhookReceived'].includes(receivedData.type) && isRetry !== true && this.pushMessageQueue.length) {

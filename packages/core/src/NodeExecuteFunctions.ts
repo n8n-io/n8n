@@ -749,6 +749,11 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				return workflow.getStaticData(type, node);
 			},
 			prepareOutputData: NodeHelpers.prepareOutputData,
+			sendMessageToUI(message: string): void {
+				if (mode === 'manual') {
+					additionalData.sendMessageToUI(node.name, message);
+				}
+			},
 			helpers: {
 				prepareBinaryData,
 				request: requestPromiseWithDefaults,

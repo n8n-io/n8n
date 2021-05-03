@@ -318,11 +318,11 @@ export interface IPackageVersions {
 }
 
 export interface IPushData {
-	data: IPushDataExecutionFinished | IPushDataNodeExecuteAfter | IPushDataNodeExecuteBefore | IPushDataTestWebhook;
+	data: IPushDataExecutionFinished | IPushDataNodeExecuteAfter | IPushDataNodeExecuteBefore | IPushDataTestWebhook | IPushDataConsoleMessage;
 	type: IPushDataType;
 }
 
-export type IPushDataType = 'executionFinished' | 'executionStarted' | 'nodeExecuteAfter' | 'nodeExecuteBefore' | 'testWebhookDeleted' | 'testWebhookReceived';
+export type IPushDataType = 'executionFinished' | 'executionStarted' | 'nodeExecuteAfter' | 'nodeExecuteBefore' | 'sendConsoleMessage' | 'testWebhookDeleted' | 'testWebhookReceived';
 
 export interface IPushDataExecutionFinished {
 	data: IRun;
@@ -357,6 +357,10 @@ export interface IPushDataTestWebhook {
 	workflowId: string;
 }
 
+export interface IPushDataConsoleMessage {
+	source: string;
+	message: string;
+}
 
 export interface IResponseCallbackData {
 	data?: IDataObject | IDataObject[];

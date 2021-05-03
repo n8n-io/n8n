@@ -351,11 +351,11 @@ export interface IExecutionDeleteFilter {
 }
 
 export interface IPushData {
-	data: IPushDataExecutionFinished | IPushDataNodeExecuteAfter | IPushDataNodeExecuteBefore | IPushDataTestWebhook;
+	data: IPushDataExecutionFinished | IPushDataNodeExecuteAfter | IPushDataNodeExecuteBefore | IPushDataTestWebhook | IPushDataConsoleMessage;
 	type: IPushDataType;
 }
 
-export type IPushDataType = 'executionFinished' | 'executionStarted' | 'nodeExecuteAfter' | 'nodeExecuteBefore' | 'testWebhookDeleted' | 'testWebhookReceived';
+export type IPushDataType = 'executionFinished' | 'executionStarted' | 'nodeExecuteAfter' | 'nodeExecuteBefore' | 'sendConsoleMessage' | 'testWebhookDeleted' | 'testWebhookReceived';
 
 export interface IPushDataExecutionStarted {
 	executionId: string;
@@ -390,6 +390,11 @@ export interface IPushDataNodeExecuteBefore {
 export interface IPushDataTestWebhook {
 	executionId: string;
 	workflowId: string;
+}
+
+export interface IPushDataConsoleMessage {
+	source: string;
+	message: string;
 }
 
 export interface IN8nUISettings {
