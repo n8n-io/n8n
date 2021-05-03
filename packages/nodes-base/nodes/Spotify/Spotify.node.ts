@@ -652,252 +652,137 @@ export class Spotify implements INodeType {
 		returnAll = false;
 
 		for (let i = 0; i < items.length; i++) {
-			if (resource === 'player') {
+			try {
+				if (resource === 'player') {
 
-				// -----------------------------
-				//      Player Operations
-				// -----------------------------
+					// -----------------------------
+					//      Player Operations
+					// -----------------------------
 
-				if (operation === 'pause') {
-					requestMethod = 'PUT';
+					if (operation === 'pause') {
+						requestMethod = 'PUT';
 
-					endpoint = `/me/player/pause`;
-
-					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					responseData = { success: true };
-
-				} else if (operation === 'recentlyPlayed') {
-					requestMethod = 'GET';
-
-					endpoint = `/me/player/recently-played`;
-
-					const limit = this.getNodeParameter('limit', i) as number;
-
-					qs = {
-						limit,
-					};
-
-					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					responseData = responseData.items;
-
-				} else if (operation === 'currentlyPlaying') {
-					requestMethod = 'GET';
-
-					endpoint = `/me/player/currently-playing`;
-
-					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-				} else if (operation === 'nextSong') {
-					requestMethod = 'POST';
-
-					endpoint = `/me/player/next`;
-
-					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					responseData = { success: true };
-
-				} else if (operation === 'previousSong') {
-					requestMethod = 'POST';
-
-					endpoint = `/me/player/previous`;
-
-					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					responseData = { success: true };
-
-				} else if (operation === 'startMusic') {
-					requestMethod = 'PUT';
-
-					endpoint = `/me/player/play`;
-
-					const id = this.getNodeParameter('id', i) as string;
-
-					body.context_uri = id;
-
-					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					responseData = { success: true };
-
-				} else if (operation === 'addSongToQueue') {
-					requestMethod = 'POST';
-
-					endpoint = `/me/player/queue`;
-
-					const id = this.getNodeParameter('id', i) as string;
-
-					qs = {
-						uri: id,
-					};
-
-					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					responseData = { success: true };
-				}
-
-			} else if (resource === 'album') {
-
-				// -----------------------------
-				//      Album Operations
-				// -----------------------------
-
-				if (operation === 'get') {
-					const uri = this.getNodeParameter('id', i) as string;
-
-					const id = uri.replace('spotify:album:', '');
-
-					requestMethod = 'GET';
-
-					endpoint = `/albums/${id}`;
-
-					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-				} else if (operation === 'getNewReleases') {
-
-					endpoint = '/browse/new-releases';
-					requestMethod = 'GET';
-
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-
-					if (Object.keys(filters).length) {
-						Object.assign(qs, filters);
-					}
-
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					if (!returnAll) {
-						qs.limit = this.getNodeParameter('limit', i);
-						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-						responseData = responseData.albums.items;
-					}
-
-				} else if (operation === 'getTracks') {
-					const uri = this.getNodeParameter('id', i) as string;
-
-					const id = uri.replace('spotify:album:', '');
-
-					requestMethod = 'GET';
-
-					endpoint = `/albums/${id}/tracks`;
-
-					propertyName = 'tracks';
-
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					propertyName = 'items';
-
-					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
-
-						qs = {
-							limit,
-						};
-
-						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-						responseData = responseData.items;
-					}
-				}
-
-			} else if (resource === 'artist') {
-
-				// -----------------------------
-				//      Artist Operations
-				// -----------------------------
-
-				const uri = this.getNodeParameter('id', i) as string;
-
-				const id = uri.replace('spotify:artist:', '');
-
-				if (operation === 'getAlbums') {
-
-					endpoint = `/artists/${id}/albums`;
-
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					propertyName = 'items';
-
-					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
-
-						qs = {
-							limit,
-						};
-
-						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-						responseData = responseData.items;
-					}
-
-				} else if (operation === 'getRelatedArtists') {
-
-					endpoint = `/artists/${id}/related-artists`;
-
-					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					responseData = responseData.artists;
-
-				} else if (operation === 'getTopTracks') {
-					const country = this.getNodeParameter('country', i) as string;
-
-					qs = {
-						country,
-					};
-
-					endpoint = `/artists/${id}/top-tracks`;
-
-					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					responseData = responseData.tracks;
-
-				} else if (operation === 'get') {
-
-					requestMethod = 'GET';
-
-					endpoint = `/artists/${id}`;
-
-					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-				}
-
-			} else if (resource === 'playlist') {
-
-				// -----------------------------
-				//      Playlist Operations
-				// -----------------------------
-
-				if (['delete', 'get', 'getTracks', 'add'].includes(operation)) {
-					const uri = this.getNodeParameter('id', i) as string;
-
-					const id = uri.replace('spotify:playlist:', '');
-
-					if (operation === 'delete') {
-						requestMethod = 'DELETE';
-						const trackId = this.getNodeParameter('trackID', i) as string;
-
-						body.tracks = [
-							{
-								uri: trackId,
-							},
-						];
-
-						endpoint = `/playlists/${id}/tracks`;
+						endpoint = `/me/player/pause`;
 
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 						responseData = { success: true };
 
-					} else if (operation === 'get') {
+					} else if (operation === 'recentlyPlayed') {
 						requestMethod = 'GET';
 
-						endpoint = `/playlists/${id}`;
+						endpoint = `/me/player/recently-played`;
+
+						const limit = this.getNodeParameter('limit', i) as number;
+
+						qs = {
+							limit,
+						};
 
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
-					} else if (operation === 'getTracks') {
+						responseData = responseData.items;
+
+					} else if (operation === 'currentlyPlaying') {
 						requestMethod = 'GET';
 
-						endpoint = `/playlists/${id}/tracks`;
+						endpoint = `/me/player/currently-playing`;
+
+						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					} else if (operation === 'nextSong') {
+						requestMethod = 'POST';
+
+						endpoint = `/me/player/next`;
+
+						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						responseData = { success: true };
+
+					} else if (operation === 'previousSong') {
+						requestMethod = 'POST';
+
+						endpoint = `/me/player/previous`;
+
+						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						responseData = { success: true };
+
+					} else if (operation === 'startMusic') {
+						requestMethod = 'PUT';
+
+						endpoint = `/me/player/play`;
+
+						const id = this.getNodeParameter('id', i) as string;
+
+						body.context_uri = id;
+
+						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						responseData = { success: true };
+
+					} else if (operation === 'addSongToQueue') {
+						requestMethod = 'POST';
+
+						endpoint = `/me/player/queue`;
+
+						const id = this.getNodeParameter('id', i) as string;
+
+						qs = {
+							uri: id,
+						};
+
+						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						responseData = { success: true };
+					}
+
+				} else if (resource === 'album') {
+
+					// -----------------------------
+					//      Album Operations
+					// -----------------------------
+
+					if (operation === 'get') {
+						const uri = this.getNodeParameter('id', i) as string;
+
+						const id = uri.replace('spotify:album:', '');
+
+						requestMethod = 'GET';
+
+						endpoint = `/albums/${id}`;
+
+						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					} else if (operation === 'getNewReleases') {
+
+						endpoint = '/browse/new-releases';
+						requestMethod = 'GET';
+
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+						if (Object.keys(filters).length) {
+							Object.assign(qs, filters);
+						}
+
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i);
+							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+							responseData = responseData.albums.items;
+						}
+
+					} else if (operation === 'getTracks') {
+						const uri = this.getNodeParameter('id', i) as string;
+
+						const id = uri.replace('spotify:album:', '');
+
+						requestMethod = 'GET';
+
+						endpoint = `/albums/${id}/tracks`;
+
+						propertyName = 'tracks';
 
 						returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
@@ -907,120 +792,243 @@ export class Spotify implements INodeType {
 							const limit = this.getNodeParameter('limit', i) as number;
 
 							qs = {
-								'limit': limit,
+								limit,
 							};
 
 							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 							responseData = responseData.items;
 						}
-					} else if (operation === 'add') {
-						requestMethod = 'POST';
+					}
 
-						const trackId = this.getNodeParameter('trackID', i) as string;
+				} else if (resource === 'artist') {
 
-						qs = {
-							uris: trackId,
-						};
+					// -----------------------------
+					//      Artist Operations
+					// -----------------------------
 
-						endpoint = `/playlists/${id}/tracks`;
+					const uri = this.getNodeParameter('id', i) as string;
+
+					const id = uri.replace('spotify:artist:', '');
+
+					if (operation === 'getAlbums') {
+
+						endpoint = `/artists/${id}/albums`;
+
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						propertyName = 'items';
+
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i) as number;
+
+							qs = {
+								limit,
+							};
+
+							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+							responseData = responseData.items;
+						}
+
+					} else if (operation === 'getRelatedArtists') {
+
+						endpoint = `/artists/${id}/related-artists`;
 
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
+						responseData = responseData.artists;
+
+					} else if (operation === 'getTopTracks') {
+						const country = this.getNodeParameter('country', i) as string;
+
+						qs = {
+							country,
+						};
+
+						endpoint = `/artists/${id}/top-tracks`;
+
+						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						responseData = responseData.tracks;
+
+					} else if (operation === 'get') {
+
+						requestMethod = 'GET';
+
+						endpoint = `/artists/${id}`;
+
+						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 					}
-				} else if (operation === 'getUserPlaylists') {
+
+				} else if (resource === 'playlist') {
+
+					// -----------------------------
+					//      Playlist Operations
+					// -----------------------------
+
+					if (['delete', 'get', 'getTracks', 'add'].includes(operation)) {
+						const uri = this.getNodeParameter('id', i) as string;
+
+						const id = uri.replace('spotify:playlist:', '');
+
+						if (operation === 'delete') {
+							requestMethod = 'DELETE';
+							const trackId = this.getNodeParameter('trackID', i) as string;
+
+							body.tracks = [
+								{
+									uri: trackId,
+								},
+							];
+
+							endpoint = `/playlists/${id}/tracks`;
+
+							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+							responseData = { success: true };
+
+						} else if (operation === 'get') {
+							requestMethod = 'GET';
+
+							endpoint = `/playlists/${id}`;
+
+							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						} else if (operation === 'getTracks') {
+							requestMethod = 'GET';
+
+							endpoint = `/playlists/${id}/tracks`;
+
+							returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+							propertyName = 'items';
+
+							if (!returnAll) {
+								const limit = this.getNodeParameter('limit', i) as number;
+
+								qs = {
+									'limit': limit,
+								};
+
+								responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+								responseData = responseData.items;
+							}
+						} else if (operation === 'add') {
+							requestMethod = 'POST';
+
+							const trackId = this.getNodeParameter('trackID', i) as string;
+
+							qs = {
+								uris: trackId,
+							};
+
+							endpoint = `/playlists/${id}/tracks`;
+
+							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						}
+					} else if (operation === 'getUserPlaylists') {
+						requestMethod = 'GET';
+
+						endpoint = '/me/playlists';
+
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						propertyName = 'items';
+
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i) as number;
+
+							qs = {
+								limit,
+							};
+
+							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+							responseData = responseData.items;
+						}
+
+					} else if (operation === 'create') {
+
+						// https://developer.spotify.com/console/post-playlists/
+
+						body.name = this.getNodeParameter('name', i) as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (Object.keys(additionalFields).length) {
+							Object.assign(body, additionalFields);
+						}
+
+						responseData = await spotifyApiRequest.call(this, 'POST', '/me/playlists', body, qs);
+					}
+
+				} else if (resource === 'track') {
+
+					// -----------------------------
+					//      Track Operations
+					// -----------------------------
+
+					const uri = this.getNodeParameter('id', i) as string;
+
+					const id = uri.replace('spotify:track:', '');
+
 					requestMethod = 'GET';
 
-					endpoint = '/me/playlists';
-
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					propertyName = 'items';
-
-					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
-
-						qs = {
-							limit,
-						};
-
-						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-						responseData = responseData.items;
+					if (operation === 'getAudioFeatures') {
+						endpoint = `/audio-features/${id}`;
+					} else if (operation === 'get') {
+						endpoint = `/tracks/${id}`;
 					}
 
-				} else if (operation === 'create') {
+					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
-					// https://developer.spotify.com/console/post-playlists/
+				} else if (resource === 'library') {
 
-					body.name = this.getNodeParameter('name', i) as string;
+					// -----------------------------
+					//      Library Operations
+					// -----------------------------
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					if (operation === 'getLikedTracks') {
+						requestMethod = 'GET';
 
-					if (Object.keys(additionalFields).length) {
-						Object.assign(body, additionalFields);
-					}
+						endpoint = '/me/tracks';
 
-					responseData = await spotifyApiRequest.call(this, 'POST', '/me/playlists', body, qs);
-				}
+						returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-			} else if (resource === 'track') {
+						propertyName = 'items';
 
-				// -----------------------------
-				//      Track Operations
-				// -----------------------------
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i) as number;
 
-				const uri = this.getNodeParameter('id', i) as string;
+							qs = {
+								limit,
+							};
 
-				const id = uri.replace('spotify:track:', '');
+							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
-				requestMethod = 'GET';
-
-				if (operation === 'getAudioFeatures') {
-					endpoint = `/audio-features/${id}`;
-				} else if (operation === 'get') {
-					endpoint = `/tracks/${id}`;
-				}
-
-				responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-			} else if (resource === 'library') {
-
-				// -----------------------------
-				//      Library Operations
-				// -----------------------------
-
-				if (operation === 'getLikedTracks') {
-					requestMethod = 'GET';
-
-					endpoint = '/me/tracks';
-
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-					propertyName = 'items';
-
-					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
-
-						qs = {
-							limit,
-						};
-
-						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-						responseData = responseData.items;
+							responseData = responseData.items;
+						}
 					}
 				}
-			}
 
-			if (returnAll) {
-				responseData = await spotifyApiRequestAllItems.call(this, propertyName, requestMethod, endpoint, body, qs);
-			}
+				if (returnAll) {
+					responseData = await spotifyApiRequestAllItems.call(this, propertyName, requestMethod, endpoint, body, qs);
+				}
 
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 
