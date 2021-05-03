@@ -104,6 +104,10 @@ export interface IWorkflowDb extends IWorkflowBase {
 	tags: ITagDb[];
 }
 
+export interface IWorkflowResponse extends IWorkflowBase {
+	id: string;
+}
+
 // ----------------------------------
 //            credentials
 // ----------------------------------
