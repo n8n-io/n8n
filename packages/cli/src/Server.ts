@@ -739,7 +739,9 @@ class App {
 		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<TagEntity[] | ITagWithCountDb[]> => {
 			if (req.query.withUsageCount === 'true') {
 				const tablePrefix = config.get('database.tablePrefix');
-				return TagHelpers.getTagsWithCountDb(tablePrefix);
+				const tagsWithCount = await TagHelpers.getTagsWithCountDb(tablePrefix);
+				tagsWithCount.forEach(tag => tag.usageCount = Number(tag.usageCount));
+				return tagsWithCount;
 			}
 
 			return Db.collections.Tag!.find({ select: ['id', 'name'] });
