@@ -848,7 +848,7 @@ export const store = new Vuex.Store({
 		},
 
 		workflowTags: (state): string[] => {
-			return (state.workflow.tags as string[]) || [];
+			return state.workflow.tags as string[];
 		},
 
 		// Workflow Result Data

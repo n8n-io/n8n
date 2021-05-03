@@ -11,7 +11,7 @@ const module: Module<IWorkflowsState, IRootState> = {
 	state: {},
 	getters: {
 		currentWorkflowTagIds: (state: IWorkflowsState, getters: GetterTree<IWorkflowsState, IRootState>, rootState: IRootState): string[] => {
-			const tags = (rootState.workflow.tags || []) as string[];
+			const tags = rootState.workflow.tags as string[];
 			// @ts-ignore
 			const tagsMap = rootState.tags.tags;
 
