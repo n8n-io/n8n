@@ -41,7 +41,7 @@ export default Vue.extend({
 	},
 	computed: {
 		nodeTypes (): INodeTypeDescription[] {
-			return this.$store.getters.allNodeTypesDefaultVersion;
+			return this.$store.getters.allNodeTypes;
 		},
 		filteredNodeTypes () {
 			const filter = this.nodeFilter.toLowerCase();

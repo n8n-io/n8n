@@ -720,9 +720,8 @@ class App {
 		// get generated dynamically
 		this.app.get(`/${this.restEndpoint}/node-parameter-options`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodePropertyOptions[]> => {
 			const nodeTypeAndVersion = JSON.parse('' + req.query.nodeTypeAndVersion) as INodeTypeNameVersion;
-			console.log(nodeTypeAndVersion);
 			let credentials: INodeCredentials | undefined = undefined;
-			const currentNodeParameters = JSON.parse('' + req.query.currentNodeParameters) as INodeParameters;
+			const currentNodeParameters = JSON.parse(`${req.query.nodeTypeAndVersion}`) as INodeParameters;
 			if (req.query.credentials !== undefined) {
 				credentials = JSON.parse(req.query.credentials as string);
 			}

@@ -1207,12 +1207,10 @@ export function mergeNodeProperties(mainProperties: INodeProperties[], addProper
 }
 
 export function getVersionedTypeNode(object: INodeVersionedType | INodeType, version?: number): INodeType {
-	if('getNodeType' in object) {
-		const nodeType = object.getNodeType(version);
-		nodeType.description.name = object.description.name;
-		return nodeType;
+	if(isNodeTypeVersioned(object)) {
+		return (object as INodeVersionedType).getNodeType(version);
 	} else {
-		return object;
+		return object as INodeType;
 	}
 }
 

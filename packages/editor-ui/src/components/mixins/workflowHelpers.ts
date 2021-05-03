@@ -98,6 +98,9 @@ export const workflowHelpers = mixins(
 				const returnData: INodeTypesMaxCount = {};
 
 				const nodeTypes = this.$store.getters.allNodeTypes;
+				console.log('AHSAN');
+				console.log('getNodeTypesMaxCount');
+
 				for (const nodeType of nodeTypes) {
 					if (nodeType.maxNodes !== undefined) {
 						returnData[nodeType.name] = {
