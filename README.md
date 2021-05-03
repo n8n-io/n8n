@@ -30,9 +30,9 @@ The changelog can be found [here](https://docs.n8n.io/reference/changelog.html) 
 
 ## Usage
 
-  - :books: Learn [how to **install** and **use** it from the command line](https://github.com/n8n-io/n8n/tree/master/packages/cli/README.md)
-  - :whale: Learn [how to run n8n in **Docker**](https://github.com/n8n-io/n8n/tree/master/docker/images/n8n/README.md)
-  - ⭕ Learn [how to run n8n in **Openshift**](https://github.com/n8n-io/n8n/tree/master/deploy/README.md)
+- :books: Learn [how to **install** and **use** it from the command line](https://github.com/n8n-io/n8n/tree/master/packages/cli/README.md)
+- :whale: Learn [how to run n8n in **Docker**](https://github.com/n8n-io/n8n/tree/master/docker/images/n8n/README.md)
+- :whale: Learn [how to run n8n in **Openshift**](https://github.com/n8n-io/n8n/tree/master/deploy/README.md)
 
 
 ## Start
