@@ -625,11 +625,9 @@ class App {
 
 			await Db.collections.Workflow!.update(id, updateData);
 
-			if (tags?.length) {
-				const tablePrefix = config.get('database.tablePrefix');
-				await TagHelpers.removeRelations(req.params.id, tablePrefix);
-				await TagHelpers.createRelations(req.params.id, tags, tablePrefix);
-			}
+			const tablePrefix = config.get('database.tablePrefix');
+			await TagHelpers.removeRelations(req.params.id, tablePrefix);
+			await TagHelpers.createRelations(req.params.id, tags, tablePrefix);
 
 			// We sadly get nothing back from "update". Neither if it updated a record
 			// nor the new value. So query now the hopefully updated entry.
