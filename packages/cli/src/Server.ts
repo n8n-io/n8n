@@ -584,8 +584,8 @@ class App {
 
 		// Updates an existing workflow
 		this.app.patch(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<WorkflowEntity> => {
-			const tags = req.body.tags;
-			const updateData = req.body as IWorkflowBase;
+			const { tags, ...updateData } = req.body;
+
 			const id = req.params.id;
 
 			await this.externalHooks.run('workflow.update', [updateData]);
