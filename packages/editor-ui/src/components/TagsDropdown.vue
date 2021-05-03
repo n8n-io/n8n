@@ -75,6 +75,9 @@ export default mixins(showMessage).extend({
 			const input = select.$refs.input as (Element | undefined);
 			if (input) {
 				input.setAttribute('maxlength', `${MAX_TAG_NAME_LENGTH}`);
+				input.addEventListener('blur', () => {
+					this.$data.filter = '';
+				});
 			}
 		}
 
