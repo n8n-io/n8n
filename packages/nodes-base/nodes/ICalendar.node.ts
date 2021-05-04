@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -43,15 +42,15 @@ export class ICalendar implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Create Event',
-						value: 'createEvent',
+						name: 'Create Event File',
+						value: 'createEventFile',
 					},
 				],
-				default: 'createEvent',
-				description: 'The resource to operate on.',
+				default: 'createEventFile',
+				description: 'Operation to perform.',
 			},
 			{
-				displayName: 'Title',
+				displayName: 'Event Title',
 				name: 'title',
 				type: 'string',
 				default: '',
@@ -93,7 +92,7 @@ export class ICalendar implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'Name of the binary property from which to<br />write the ics file.',
+				description: 'Name of the binary property to which to<br />write the data of the file.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -104,7 +103,7 @@ export class ICalendar implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createEvent',
+							'createEventFile',
 						],
 					},
 				},
@@ -127,18 +126,14 @@ export class ICalendar implements INodeType {
 										displayName: 'Name',
 										name: 'name',
 										type: 'string',
+										required: true,
 										default: '',
 									},
 									{
 										displayName: 'Email',
 										name: 'email',
 										type: 'string',
-										default: '',
-									},
-									{
-										displayName: 'Dir',
-										name: 'dir',
-										type: 'string',
+										required: true,
 										default: '',
 									},
 									{
@@ -146,6 +141,7 @@ export class ICalendar implements INodeType {
 										name: 'rsvp',
 										type: 'boolean',
 										default: false,
+										description: `Whether the attendee has to confirm if it's going to the event or not.`,
 									},
 								],
 							},
@@ -169,7 +165,7 @@ export class ICalendar implements INodeType {
 						description: 'Used to specify busy status for Microsoft applications, like Outlook.',
 					},
 					{
-						displayName: 'Cal Name',
+						displayName: 'Calendar Name',
 						name: 'calName',
 						type: 'string',
 						default: '',
@@ -180,14 +176,13 @@ export class ICalendar implements INodeType {
 						name: 'description',
 						type: 'string',
 						default: '',
-						description: 'Description of event.',
 					},
 					{
 						displayName: 'File Name',
 						name: 'fileName',
 						type: 'string',
 						default: '',
-						description: 'Example: event.ics',
+						description: 'Name that will be set to the file. Default value: event.ics',
 					},
 					{
 						displayName: 'Geolocation',
@@ -231,7 +226,8 @@ export class ICalendar implements INodeType {
 						name: 'recurrenceRule',
 						type: 'string',
 						default: '',
-						description: 'A recurrence rule, commonly referred to as an RRULE, defines the repeat pattern or rule for to-dos, journal entries and events.',
+						description: `A recurrence rule, commonly referred to as an RRULE, defines the repeat pattern or rule for to-dos, journal entries and events.</br>
+						For help, <a href="https://icalendar.org/rrule-tool.html" target="_blank">see</a>' the recurrence rule generator.`,
 					},
 					{
 						displayName: 'Organizer',
@@ -252,12 +248,14 @@ export class ICalendar implements INodeType {
 										name: 'name',
 										type: 'string',
 										default: '',
+										required: true,
 									},
 									{
 										displayName: 'Email',
 										name: 'email',
 										type: 'string',
 										default: '',
+										required: true,
 									},
 								],
 							},
@@ -295,6 +293,7 @@ export class ICalendar implements INodeType {
 						name: 'uid',
 						type: 'string',
 						default: '',
+						description: `Universal unique id for event, produced by default with uuid/v1. Warning: This value must be globally unique.`,
 					},
 					{
 						displayName: 'URL',
@@ -314,7 +313,7 @@ export class ICalendar implements INodeType {
 		const qs: IDataObject = {};
 		const returnData: INodeExecutionData[] = [];
 		const operation = this.getNodeParameter('operation', 0) as string;
-		if (operation === 'createEvent') {
+		if (operation === 'createEventFile') {
 			for (let i = 0; i < length; i++) {
 				const title = this.getNodeParameter('title', i) as string;
 				const allDay = this.getNodeParameter('allDay', i) as boolean;
@@ -322,7 +321,7 @@ export class ICalendar implements INodeType {
 				const end = (!allDay) ? this.getNodeParameter('end', i) as string : moment(start).add(1, 'day').format();
 				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-				let fileName = 'event.ics'
+				let fileName = 'event.ics';
 
 				if (additionalFields.fileName) {
 					fileName = additionalFields.fileName as string;
@@ -360,8 +359,8 @@ export class ICalendar implements INodeType {
 						binary: {
 							[binaryPropertyName]: binaryData,
 						},
-					}
-				)
+					},
+				);
 			}
 		}
 		return [returnData];
