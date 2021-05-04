@@ -6,7 +6,8 @@
 			:loading="isLoading"
 			:placeholder="placeholder"
 			:filter-method="filterOptions"
-			@change="tagsUpdated"
+			@change="onTagsUpdated"
+			@visible-change="onVisibleChange"
 			filterable
 			multiple
 			ref="select"
@@ -131,7 +132,7 @@ export default mixins(showMessage).extend({
 				);
 			}
 		},
-		tagsUpdated(selected: string[]) {
+		onTagsUpdated(selected: string[]) {
 			const ops = selected.find(
 				(value) => value === MANAGE_KEY || value === CREATE_KEY,
 			);
@@ -174,6 +175,11 @@ export default mixins(showMessage).extend({
 					added.hoverItem();
 					added.$el.scrollIntoView();
 				}
+			}
+		},
+		onVisibleChange(visible: boolean) {
+			if (!visible) {
+				this.$data.filter = '';
 			}
 		},
 	},
