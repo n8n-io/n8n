@@ -1453,6 +1453,8 @@ export default mixins(
 						(e || window.event).returnValue = confirmationMessage; //Gecko + IE
 						return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
 					} else {
+						this.startLoading('Redirecting');
+
 						return;
 					}
 				});

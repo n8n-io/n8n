@@ -15,15 +15,9 @@
 <script lang="ts">
 
 import { IMenuItem } from '../Interface';
-import { isExternalUrl, isValidUrl } from '../utils/url';
+import Vue from 'vue';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-
-import mixins from 'vue-typed-mixins';
-
-export default mixins(
-	genericHelpers,
-).extend({
+export default Vue.extend({
 	name: 'MenuItemsIterator',
 	props: [
 		'items',
@@ -41,10 +35,6 @@ export default mixins(
 					window.open(href);
 				}
 				else {
-					if (isValidUrl(href) && isExternalUrl(href)){
-						this.startLoading('Redirecting');
-					}
-
 					window.location.assign(item.properties.href);
 				}
 			}
