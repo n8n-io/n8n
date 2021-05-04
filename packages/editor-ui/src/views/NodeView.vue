@@ -2016,9 +2016,6 @@ export default mixins(
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();
 				this.$store.commit('setNodeTypes', nodeTypes);
-
-				// const nodeTypesOnlyDefault = await this.restApi().getNodeTypes(true);
-				// this.$store.commit('setNodeTypesDefaultVersion', nodeTypesOnlyDefault);
 			},
 			async loadCredentialTypes (): Promise<void> {
 				const credentialTypes = await this.restApi().getCredentialTypes();
@@ -2030,8 +2027,6 @@ export default mixins(
 			},
 			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 				const allNodes:INodeTypeDescription[] = this.$store.getters.allNodeTypes;
-				console.log('AHSAN');
-				console.log('getNodeTypesMaxCount');
 
 				const nodesToBeFetched:INodeTypeNameVersion[] = [];
 				allNodes.forEach(node => {

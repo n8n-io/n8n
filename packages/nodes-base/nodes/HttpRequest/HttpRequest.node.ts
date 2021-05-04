@@ -16,12 +16,13 @@ export class HttpRequest extends NodeVersionedType {
 			group: ['input'],
 			subtitle: '={{$parameter["requestMethod"] + ": " + $parameter["url"]}}',
 			description: 'Makes a HTTP request and returns the received data',
+			defaultVersion: 2,
 		},
 		nodeVersions: INodeVersions = {
 			1: new HttpRequestV1(description),
 			2: new HttpRequestV2(description),
 		},
-		defaultVersion = 2;
+		defaultVersion = description.defaultVersion;
 		super(nodeVersions, description, defaultVersion);
 	}
 }

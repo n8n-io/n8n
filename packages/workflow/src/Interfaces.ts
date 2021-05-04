@@ -567,6 +567,7 @@ export interface INodeTypeBaseDescription {
 	description: string;
 	documentationUrl?: string;
 	subtitle?: string;
+	defaultVersion?: number;
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
