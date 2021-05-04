@@ -5,11 +5,16 @@ This list shows all the versions which include breaking changes and how to upgra
 ## 0.118.0
 
 ### What changed?
-In the Postgres, CrateDB, QuestDB and TimescaleDB nodes the `Execute Query` operation returns the result from all queries executed instead of just one of the results.
+- In the Postgres, CrateDB, QuestDB and TimescaleDB nodes the `Execute Query` operation returns the result from all queries executed instead of just one of the results.
+- The minimum Node.js version required for n8n is now v14.
 
 ### When is action necessary?
 
-If you use any of the above mentioned nodes with the `Execute Query` operation and the result is relevant to you, you are encouraged to revisit your logic. The node output may now contain more information than before. This change was made so that the behavior is more consistent across n8n where input with multiple rows should yield results acccording all input data instead of only one. Please note: n8n was already running multiple queries based on input. Only the output was changed.
+- If you use any of the above mentioned nodes with the `Execute Query` operation and the result is relevant to you, you are encouraged to revisit your logic. The node output may now contain more information than before. This change was made so that the behavior is more consistent across n8n where input with multiple rows should yield results acccording all input data instead of only one. Please note: n8n was already running multiple queries based on input. Only the output was changed.
+- If you're using n8n via npm or PM2 or if you're contributing to n8n.
+
+### How to upgrade:
+- To continue using n8n via npm, update the Node.js version to v14 or above.
 
 ## 0.117.0
 
