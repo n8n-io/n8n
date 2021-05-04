@@ -18,8 +18,8 @@ import {
 	IRunExecutionData,
 	ITaskData,
 	IWorkflowCredentials,
-	Workflow,
-} from 'n8n-workflow';
+	LoggerProxy as Logger,
+	Workflow,} from 'n8n-workflow';
 
 import * as config from '../config';
 
@@ -86,7 +86,7 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 
 		if (workflowData === undefined) {
 			// The error workflow could not be found
-			console.error(`ERROR: Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`);
+			Logger.error(`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`, { workflowId });
 			return;
 		}
 
@@ -105,7 +105,7 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 		}
 
 		if (workflowStartNode === undefined) {
-			console.error(`ERROR: Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${ERROR_TRIGGER_TYPE}" in workflow "${workflowId}"`);
+			Logger.error(`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${ERROR_TRIGGER_TYPE}" in workflow "${workflowId}"`);
 			return;
 		}
 
@@ -153,7 +153,7 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 		const workflowRunner = new WorkflowRunner();
 		await workflowRunner.run(runData);
 	} catch (error) {
-		console.error(`ERROR: Calling Error Workflow for "${workflowErrorData.workflow.id}": ${error.message}`);
+		Logger.error(`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`, { workflowId: workflowErrorData.workflow.id });
 	}
 }
 
@@ -315,8 +315,7 @@ export async function saveStaticData(workflow: Workflow): Promise <void> {
 				await saveStaticDataById(workflow.id!, workflow.staticData);
 				workflow.staticData.__dataChanged = false;
 			} catch (e) {
-				// TODO: Add proper logging!
-				console.error(`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: ${e.message}`);
+				Logger.error(`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${e.message}"`, { workflowId: workflow.id });
 			}
 		}
 	}
