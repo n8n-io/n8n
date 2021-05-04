@@ -29,7 +29,7 @@ export class FacebookTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Facebook Trigger',
 		name: 'facebookTrigger',
-		icon: 'file:facebook.png',
+		icon: 'file:facebook.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["appId"] +"/"+ $parameter["object"]}}',

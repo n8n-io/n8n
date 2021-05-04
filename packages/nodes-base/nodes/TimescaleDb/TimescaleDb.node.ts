@@ -11,7 +11,6 @@ import {
 } from 'n8n-workflow';
 
 import {
-	getItemCopy,
 	pgInsert,
 	pgQuery,
 	pgUpdate,
@@ -77,15 +76,13 @@ export class TimescaleDb implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'executeQuery',
-						],
+						operation: ['executeQuery'],
 					},
 				},
 				default: '',
-				placeholder: 'SELECT id, name FROM product WHERE id < 40',
+				placeholder: 'SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
 				required: true,
-				description: 'The SQL query to execute.',
+				description: 'The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.',
 			},
 
 			// ----------------------------------
@@ -255,6 +252,21 @@ export class TimescaleDb implements INodeType {
 							'Can be used in conjunction with <b>Continue on Fail</b>.',
 							'See the docs for more examples',
 						].join('<br>'),
+					},
+					{
+						displayName: 'Query Parameters',
+						name: 'queryParams',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'executeQuery',
+								],
+							},
+						},
+						default: '',
+						placeholder: 'quantity,price',
+						description: 'Comma separated list of properties which should be used as query parameters.',
 					},
 				],
 			},

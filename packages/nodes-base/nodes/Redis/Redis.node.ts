@@ -451,77 +451,80 @@ export class Redis implements INodeType {
 			});
 
 			client.on('ready', async (err: Error | null) => {
+				try {
+					if (operation === 'info') {
+						const clientInfo = util.promisify(client.info).bind(client);
+						const result = await clientInfo();
 
-				if (operation === 'info') {
-					const clientInfo = util.promisify(client.info).bind(client);
-					const result = await clientInfo();
+						resolve(this.prepareOutputData([{ json: convertInfoToObject(result as unknown as string) }]));
+						client.quit();
 
-					resolve(this.prepareOutputData([{ json: convertInfoToObject(result as unknown as string) }]));
-					client.quit();
+					} else if (['delete', 'get', 'keys', 'set'].includes(operation)) {
+						const items = this.getInputData();
+						const returnItems: INodeExecutionData[] = [];
 
-				} else if (['delete', 'get', 'keys', 'set'].includes(operation)) {
-					const items = this.getInputData();
-					const returnItems: INodeExecutionData[] = [];
+						let item: INodeExecutionData;
+						for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+							item = { json: {} };
 
-					let item: INodeExecutionData;
-					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-						item = { json: {} };
+							if (operation === 'delete') {
+								const keyDelete = this.getNodeParameter('key', itemIndex) as string;
 
-						if (operation === 'delete') {
-							const keyDelete = this.getNodeParameter('key', itemIndex) as string;
+								const clientDel = util.promisify(client.del).bind(client);
+								// @ts-ignore
+								await clientDel(keyDelete);
+								returnItems.push(items[itemIndex]);
+							} else if (operation === 'get') {
+								const propertyName = this.getNodeParameter('propertyName', itemIndex) as string;
+								const keyGet = this.getNodeParameter('key', itemIndex) as string;
+								const keyType = this.getNodeParameter('keyType', itemIndex) as string;
 
-							const clientDel = util.promisify(client.del).bind(client);
-							// @ts-ignore
-							await clientDel(keyDelete);
-							returnItems.push(items[itemIndex]);
-						} else if (operation === 'get') {
-							const propertyName = this.getNodeParameter('propertyName', itemIndex) as string;
-							const keyGet = this.getNodeParameter('key', itemIndex) as string;
-							const keyType = this.getNodeParameter('keyType', itemIndex) as string;
+								const value = await getValue(client, keyGet, keyType) || null;
 
-							const value = await getValue(client, keyGet, keyType) || null;
+								const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 
-							const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+								if (options.dotNotation === false) {
+									item.json[propertyName] = value;
+								} else {
+									set(item.json, propertyName, value);
+								}
 
-							if (options.dotNotation === false) {
-								item.json[propertyName] = value;
-							} else {
-								set(item.json, propertyName, value);
+								returnItems.push(item);
+							} else if (operation === 'keys') {
+								const keyPattern = this.getNodeParameter('keyPattern', itemIndex) as string;
+
+								const clientKeys = util.promisify(client.keys).bind(client);
+								const keys = await clientKeys(keyPattern);
+
+								const promises: {
+									[key: string]: GenericValue;
+								} = {};
+
+								for (const keyName of keys) {
+									promises[keyName] = await getValue(client, keyName);
+								}
+
+								for (const keyName of keys) {
+									item.json[keyName] = await promises[keyName];
+								}
+								returnItems.push(item);
+							} else if (operation === 'set') {
+								const keySet = this.getNodeParameter('key', itemIndex) as string;
+								const value = this.getNodeParameter('value', itemIndex) as string;
+								const keyType = this.getNodeParameter('keyType', itemIndex) as string;
+								const expire = this.getNodeParameter('expire', itemIndex, false) as boolean;
+								const ttl = this.getNodeParameter('ttl', itemIndex, -1) as number;
+
+								await setValue(client, keySet, value, expire, ttl, keyType);
+								returnItems.push(items[itemIndex]);
 							}
-
-							returnItems.push(item);
-						} else if (operation === 'keys') {
-							const keyPattern = this.getNodeParameter('keyPattern', itemIndex) as string;
-
-							const clientKeys = util.promisify(client.keys).bind(client);
-							const keys = await clientKeys(keyPattern);
-
-							const promises: {
-								[key: string]: GenericValue;
-							} = {};
-
-							for (const keyName of keys) {
-								promises[keyName] = await getValue(client, keyName);
-							}
-
-							for (const keyName of keys) {
-								item.json[keyName] = await promises[keyName];
-							}
-							returnItems.push(item);
-						} else if (operation === 'set') {
-							const keySet = this.getNodeParameter('key', itemIndex) as string;
-							const value = this.getNodeParameter('value', itemIndex) as string;
-							const keyType = this.getNodeParameter('keyType', itemIndex) as string;
-							const expire = this.getNodeParameter('expire', itemIndex, false) as boolean;
-							const ttl = this.getNodeParameter('ttl', itemIndex, -1) as number;
-
-							await setValue(client, keySet, value, expire, ttl, keyType);
-							returnItems.push(items[itemIndex]);
 						}
-					}
 
-					client.quit();
-					resolve(this.prepareOutputData(returnItems));
+						client.quit();
+						resolve(this.prepareOutputData(returnItems));
+					}
+				} catch (error) {
+					reject(error);
 				}
 			});
 		});

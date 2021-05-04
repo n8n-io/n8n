@@ -20,7 +20,7 @@ export class FacebookGraphApi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Facebook Graph API',
 		name: 'facebookGraphApi',
-		icon: 'file:facebook.png',
+		icon: 'file:facebook.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Interacts with Facebook using the Graph API',
