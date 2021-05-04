@@ -3,8 +3,8 @@
 export const createIdentifierDictionary = (ids: string[]) => ids.reduce(
 	(dict, id: string) => {
 		try {
-			const [prefix, suffix] = id.split(':');
-			dict[prefix] = suffix;
+			const [prefix, ...suffixes] = id.split(':');
+			dict[prefix] = suffixes.join('');
 		} catch (e) {}
 		return dict;
 	},
