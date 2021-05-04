@@ -4,5 +4,10 @@ export default {
 		about: {
 			"sourceCode": "Source Code",
 		},
+		"n8n-nodes-base": {
+			start: {
+				hello: "hi",
+			},
+		},
 	},
 };

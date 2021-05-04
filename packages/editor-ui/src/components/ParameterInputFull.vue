@@ -1,7 +1,7 @@
 <template>
 	<el-row class="parameter-wrapper">
 		<el-col :span="isMultiLineParameter ? 24 : 10" class="parameter-name" :class="{'multi-line': isMultiLineParameter}">
-			<span class="title" :title="parameter.displayName">{{parameter.displayName}}</span>:
+			<span class="title" :title="parameter.displayName">{{getTranslation(parameter.displayName)}}</span>:
 			<el-tooltip class="parameter-info" placement="top" v-if="parameter.description" effect="light">
 				<div slot="content" v-html="parameter.description"></div>
 				<font-awesome-icon icon="question-circle" />
@@ -52,6 +52,7 @@ export default Vue
 		],
 		methods: {
 			getArgument (argumentName: string): string | number | boolean | undefined {
+				console.log(this.$t(`${this.$store.getters.activeNode.type}.${this.parameter.displayName}`));
 				if (this.parameter.typeOptions === undefined) {
 					return undefined;
 				}
@@ -64,6 +65,9 @@ export default Vue
 			},
 			valueChanged (parameterData: IUpdateInformation) {
 				this.$emit('valueChanged', parameterData);
+			},
+			getTranslation(str: string) {
+				return this.$te(`${this.$store.getters.activeNode.type}.${str}`) ? this.$t(`${this.$store.getters.activeNode.type}.${str}`) : str;
 			},
 		},
 	});

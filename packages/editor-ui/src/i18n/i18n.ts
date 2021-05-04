@@ -20,6 +20,16 @@ function setI18nLanguage (lang: string): string {
 	return lang;
 }
 
+export function addNodeTranslations(translations: object) {
+	const lang = Object.keys(translations)[0];
+	// @ts-ignore
+	const messages = translations[lang];
+	console.log('ADDING NODE LANGUAGE', lang, messages);
+	const newNodesBase = { 'n8n-nodes-base': Object.assign(i18n.messages[lang]['n8n-nodes-base'], messages) };
+	i18n.setLocaleMessage(lang, Object.assign(i18n.messages[lang], newNodesBase));
+	console.log(i18n.messages);
+}
+
 export function loadLanguageAsync(lang: string) {
 	// If the same language
 	if (i18n.locale === lang) {
