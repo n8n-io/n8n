@@ -94,7 +94,7 @@ export default Vue.extend({
 
 .dialog-wrapper {
 	&.xl > div, &.md > div {
-		min-width: 500px;
+		min-width: 620px;
 	}
 
 	&.sm {

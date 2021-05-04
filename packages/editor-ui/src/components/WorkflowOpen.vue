@@ -221,6 +221,7 @@ export default mixins(
 }
 
 .search-table .name span {
+	font-weight: 400;
 	margin-right: 10px;
 }
 </style>

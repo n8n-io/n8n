@@ -216,11 +216,12 @@ $--max-input-height: 60px;
 
 <style lang="scss">
 .tags-dropdown {
-	$--item-line-height: 14px;
+	$--item-font-size: 14px;
 	$--item-vertical-padding: 12px;
-	$--item-height: $--item-line-height + $--item-vertical-padding * 2;
+	$--item-horizontal-padding: 20px;
+	$--item-height: $--item-font-size+ $--item-vertical-padding * 2;
 	$--items-to-show: 7;
-	$--item-padding: $--item-vertical-padding 20px;
+	$--item-padding: $--item-vertical-padding $--item-horizontal-padding;
 	$--dropdown-height: $--item-height * $--items-to-show;
 	$--dropdown-width: 224px;
 
@@ -260,8 +261,9 @@ $--max-input-height: 60px;
 		background-color: white;
 		padding: $--item-padding;
 		margin: 0;
-		line-height: $--item-line-height;
+		line-height: $--item-font-size;
 		font-weight: 400;
+		font-size: $--item-font-size;
 
 		&.is-disabled {
 			color: $--custom-font-light;
@@ -270,6 +272,17 @@ $--max-input-height: 60px;
 
 		&.selected {
 			font-weight: bold;
+
+			> span {
+				display: inline-block;
+				width: calc(100% - #{$--item-font-size});
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+
+			&:after { // selected check
+				font-size: $--item-font-size !important;
+			}
 		}
 
 		&.ops {
