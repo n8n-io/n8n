@@ -115,10 +115,23 @@ export class ActionNetwork implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			let responseData = await resolveResource(this, i) as any
 
+			// Some general transformations on the resolved data
 			try {
 				// Identify where the list of data is
 				const firstDataKey = Object.keys(responseData['_embedded'])[0]
-				// And optionally generate data items from the request, if possible
+				if (!firstDataKey) {
+					throw new Error("No data found")
+				}
+				// Try to give each item an ID dictionary for upstream work.
+				// Particularly useful for pulling out the Action Network ID of an item for a further operation on it
+				// e.g. find an event, get its ID and then sign someone up to it via its ID
+				responseData['_embedded'].forEach((item, i) => {
+					responseData['_embedded'][i] = {
+						...item,
+						identifierDictionary: createIdentifierDictionary(item?.identifiers as string[])
+					}
+				})
+				// Optionally return a big list of items
 				if (!this.getNodeParameter('include_metadata', i) as boolean) {
 					// @ts-ignore
 					responseData = responseData['_embedded'][firstDataKey]
@@ -131,19 +144,6 @@ export class ActionNetwork implements INodeType {
 			} else {
 				returnData.push(responseData);
 			}
-
-			// Try to identify a dictionary of IDs
-			// Particularly useful for pulling out the Action Network ID of an item for a further operation on it
-			// e.g. find an event, get its ID and then sign someone up to it via its ID
-			returnData = returnData.map(item => {
-				try {
-					item = {
-						...item,
-						identifierDictionary: createIdentifierDictionary(item?.identifiers as string[])
-					}
-				} catch (e) {}
-				return item;
-			})
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
