@@ -729,7 +729,7 @@ class App {
 
 			const nodeTypes = NodeTypes();
 
-			const loadDataInstance = new LoadNodeParameterOptions(nodeTypeAndVersion, nodeTypes, JSON.parse('' + req.query.currentNodeParameters), credentials!);
+			const loadDataInstance = new LoadNodeParameterOptions(nodeTypeAndVersion, nodeTypes, JSON.parse(`${req.query.currentNodeParameters}`), credentials!);
 
 			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
 			const workflowCredentials = await WorkflowCredentials(workflowData.nodes);
@@ -756,7 +756,7 @@ class App {
 				return nodeInfo;
 			};
 
-			if(onlyLatest) {
+			if (onlyLatest) {
 				allNodes.forEach((nodeData) => {
 					const nodeType = NodeHelpers.getVersionedTypeNode(nodeData);
 					const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
@@ -776,7 +776,7 @@ class App {
 		}));
 
 
-		// Returns node information baesd on namese
+		// Returns node information based on node names and versions
 		this.app.post(`/${this.restEndpoint}/node-types`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
 			const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
 			const nodeTypes = NodeTypes();
@@ -784,7 +784,7 @@ class App {
 			const returnData: INodeTypeDescription[] = [];
 			nodeInfos.forEach(nodeInfo => {
 				const nodeType = nodeTypes.getByNameAndVersion(nodeInfo.name, nodeInfo.version);
-				if(nodeType && nodeType.description) {
+				if (nodeType && nodeType.description) {
 					returnData.push(nodeType.description);
 				}
 			});

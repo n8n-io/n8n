@@ -2,7 +2,7 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, DEFAULT_NODETYPE_VERSION } from '@/constants';
 
 import {
 	IConnection,
@@ -775,7 +775,7 @@ export const store = new Vuex.Store({
 		},
 		nodeType: (state, getters) => (nodeType: string, typeVersion?: number): INodeTypeDescription | null => {
 			const foundType = state.nodeTypes.find(typeData => {
-				return typeData.name === nodeType && typeData.version === (typeVersion || typeData.defaultVersion || 1);
+				return typeData.name === nodeType && typeData.version === (typeVersion || typeData.defaultVersion || DEFAULT_NODETYPE_VERSION);
 			});
 
 			if (foundType === undefined) {
