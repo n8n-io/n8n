@@ -65,7 +65,6 @@ export const store = new Vuex.Store({
 		lastSelectedNodeOutputIndex: null as number | null,
 		nodeIndex: [] as Array<string | null>,
 		nodeTypes: [] as INodeTypeDescription[],
-		nodeTypesDefaultVersion: [] as INodeTypeDescription[],
 		nodeViewOffsetPosition: [0, 0] as XYPositon,
 		nodeViewMoveInProgress: false,
 		selectedNodes: [] as INodeUi[],
@@ -483,11 +482,6 @@ export const store = new Vuex.Store({
 			Vue.set(state, 'nodeTypes', nodeTypes);
 		},
 
-		// Node-Types Default Versions
-		setNodeTypesDefaultVersion (state, nodeTypes: INodeTypeDescription[]) {
-			Vue.set(state, 'nodeTypesDefaultVersion', nodeTypes);
-		},
-
 		// Active Execution
 		setExecutingNode (state, executingNode: string) {
 			state.executingNode = executingNode;
@@ -779,31 +773,15 @@ export const store = new Vuex.Store({
 		allNodeTypes: (state): INodeTypeDescription[] => {
 			return state.nodeTypes;
 		},
-		allNodeTypesDefaultVersion: (state): INodeTypeDescription[] => {
-			return state.nodeTypesDefaultVersion;
-		},
 		nodeType: (state, getters) => (nodeType: string, typeVersion?: number): INodeTypeDescription | null => {
-			if(typeVersion === undefined) {
-				typeVersion = getters.nodeTypeDefaultVersion(nodeType) || 1;
-			}
 			const foundType = state.nodeTypes.find(typeData => {
-				return typeData.name === nodeType && typeData.version === typeVersion;
+				return typeData.name === nodeType && typeData.version === (typeVersion || typeData.defaultVersion || 1);
 			});
 
 			if (foundType === undefined) {
 				return null;
 			}
 			return foundType;
-		},
-		nodeTypeDefaultVersion: (state) => (nodeType: string): number | null => {
-			const foundType = state.nodeTypesDefaultVersion.find(typeData => {
-				return typeData.name === nodeType;
-			});
-
-			if (foundType === undefined) {
-				return null;
-			}
-			return foundType.version;
 		},
 		activeNode: (state, getters): INodeUi | null => {
 			return getters.nodeByName(state.activeNode);
