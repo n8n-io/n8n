@@ -52,7 +52,9 @@ import {
 	IExternalHooksClass,
 	IN8nUISettings,
 	IPackageVersions,
+	ITagWithCountDb,
 	IWorkflowExecutionDataProcess,
+	IWorkflowResponse,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	Push,
@@ -105,7 +107,6 @@ import * as querystring from 'querystring';
 import * as Queue from '../src/Queue';
 import { OptionsWithUrl } from 'request-promise-native';
 import { Registry } from 'prom-client';
-import { ICreateWorkflowRequest, IGetWorkflowsRequest, IShortTag, IShortWorkflow, IUpdateWorkflowRequest, UsageCount } from './Interfaces';
 
 import * as TagHelpers from './TagHelpers';
 import { TagEntity } from './databases/entities/TagEntity';
@@ -485,34 +486,36 @@ class App {
 
 
 		// Creates a new workflow
-		this.app.post(`/${this.restEndpoint}/workflows`, ResponseHelper.send(async (req: ICreateWorkflowRequest, res: express.Response): Promise<IShortWorkflow> => {
+		this.app.post(`/${this.restEndpoint}/workflows`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<WorkflowEntity> => {
 			delete req.body.id; // ignore if sent by mistake
 			const incomingData = req.body;
 
 			const newWorkflow = new WorkflowEntity();
-			newWorkflow.createdAt = this.getCurrentDate(); // TODO: Set at DB level
-			newWorkflow.updatedAt = this.getCurrentDate(); // TODO: Set at DB level
+			newWorkflow.createdAt = this.getCurrentDate();
+			newWorkflow.updatedAt = this.getCurrentDate();
 
 			Object.assign(newWorkflow, incomingData);
 			newWorkflow.name = incomingData.name.trim();
 
-			await this.externalHooks.run('workflow.create', [incomingData]);
-
-			const incomingTagOrder = [...incomingData.tags];
+			const incomingTagOrder = incomingData.tags.slice();
 
 			if (incomingData.tags.length) {
 				newWorkflow.tags = await Db.collections.Tag!.findByIds(incomingData.tags, { select: ['id', 'name'] });
 			}
 
+			await this.externalHooks.run('workflow.create', [newWorkflow]);
+
 			const savedWorkflow = await Db.collections.Workflow!.save(newWorkflow);
 			savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, incomingTagOrder);
 
-			return TagHelpers.shortenWorkflow(savedWorkflow);
+			// @ts-ignore
+			savedWorkflow.id = savedWorkflow.id.toString();
+			return savedWorkflow;
 		}));
 
 
 		// Reads and returns workflow data from an URL
-		this.app.get(`/${this.restEndpoint}/workflows/from-url`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IShortWorkflow> => {
+		this.app.get(`/${this.restEndpoint}/workflows/from-url`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowResponse> => {
 			if (req.query.url === undefined) {
 				throw new ResponseHelper.ResponseError(`The parameter "url" is missing!`, undefined, 400);
 			}
@@ -521,7 +524,7 @@ class App {
 			}
 			const data = await requestPromise.get(req.query.url as string);
 
-			let workflowData: IShortWorkflow | undefined;
+			let workflowData: IWorkflowResponse | undefined;
 			try {
 				workflowData = JSON.parse(data);
 			} catch (error) {
@@ -540,41 +543,50 @@ class App {
 
 
 		// Returns workflows
-		this.app.get(`/${this.restEndpoint}/workflows`, ResponseHelper.send(async (req: IGetWorkflowsRequest, res: express.Response) => {
+		this.app.get(`/${this.restEndpoint}/workflows`, ResponseHelper.send(async (req: express.Request, res: express.Response) => {
 			const findQuery: FindManyOptions<WorkflowEntity> = {
 				select: ['id', 'name', 'active', 'createdAt', 'updatedAt'],
 				relations: ['tags'],
 			};
 
 			if (req.query.filter) {
-				findQuery.where = JSON.parse(req.query.filter);
+				findQuery.where = JSON.parse(req.query.filter as string);
 			}
 
 			const workflows = await Db.collections.Workflow!.find(findQuery);
 
-			return workflows.map(TagHelpers.shortenWorkflow);
+			workflows.forEach(workflow => {
+				// @ts-ignore
+				workflow.id = workflow.id.toString();
+				// @ts-ignore
+				workflow.tags = workflow.tags.map(({ id, name }) => ({ id: id.toString(), name }));
+			});
+			return workflows;
 		}));
 
 		// Returns a specific workflow
-		this.app.get(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IShortWorkflow | undefined> => {
+		this.app.get(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<WorkflowEntity | undefined> => {
 			const workflow = await Db.collections.Workflow!.findOne(req.params.id, { relations: ['tags'] });
 
 			if (workflow === undefined) {
 				return undefined;
 			}
 
-			return TagHelpers.shortenWorkflow(workflow);
+			// @ts-ignore
+			workflow.id = workflow.id.toString();
+			// @ts-ignore
+			workflow.tags.forEach(tag => tag.id = tag.id.toString());
+			return workflow;
 		}));
 
 
 		// Updates an existing workflow
-		this.app.patch(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: IUpdateWorkflowRequest, res: express.Response): Promise<IShortWorkflow> => {
-			const { tags: newTags } = req.body;
-			const incomingData = TagHelpers.omit('tags', req.body);
+		this.app.patch(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<WorkflowEntity> => {
+			const { tags, ...updateData } = req.body;
 
 			const id = req.params.id;
 
-			await this.externalHooks.run('workflow.update', [incomingData]);
+			await this.externalHooks.run('workflow.update', [updateData]);
 
 			const isActive = await this.activeWorkflowRunner.isActive(id);
 
@@ -584,52 +596,52 @@ class App {
 				await this.activeWorkflowRunner.remove(id);
 			}
 
-			if (incomingData.settings) {
-				if (incomingData.settings.timezone === 'DEFAULT') {
+			if (updateData.settings) {
+				if (updateData.settings.timezone === 'DEFAULT') {
 					// Do not save the default timezone
-					delete incomingData.settings.timezone;
+					delete updateData.settings.timezone;
 				}
-				if (incomingData.settings.saveDataErrorExecution === 'DEFAULT') {
+				if (updateData.settings.saveDataErrorExecution === 'DEFAULT') {
 					// Do not save when default got set
-					delete incomingData.settings.saveDataErrorExecution;
+					delete updateData.settings.saveDataErrorExecution;
 				}
-				if (incomingData.settings.saveDataSuccessExecution === 'DEFAULT') {
+				if (updateData.settings.saveDataSuccessExecution === 'DEFAULT') {
 					// Do not save when default got set
-					delete incomingData.settings.saveDataSuccessExecution;
+					delete updateData.settings.saveDataSuccessExecution;
 				}
-				if (incomingData.settings.saveManualExecutions === 'DEFAULT') {
+				if (updateData.settings.saveManualExecutions === 'DEFAULT') {
 					// Do not save when default got set
-					delete incomingData.settings.saveManualExecutions;
+					delete updateData.settings.saveManualExecutions;
 				}
-				if (parseInt(incomingData.settings.executionTimeout as string, 10) === this.executionTimeout) {
+				if (parseInt(updateData.settings.executionTimeout as string, 10) === this.executionTimeout) {
 					// Do not save when default got set
-					delete incomingData.settings.executionTimeout;
+					delete updateData.settings.executionTimeout;
 				}
 			}
 
-			incomingData.updatedAt = this.getCurrentDate(); // TODO: Set at DB level
+			updateData.updatedAt = this.getCurrentDate(); // TODO: Set at DB level
 
-			await Db.collections.Workflow!.update(id, incomingData);
+			await Db.collections.Workflow!.update(id, updateData);
 
-			await this.externalHooks.run('workflow.afterUpdate', [incomingData]);
-
-			if (newTags?.length) {
-				const tablePrefix = config.get('database.tablePrefix');
-				await TagHelpers.removeRelations(req.params.id, tablePrefix);
-				await TagHelpers.createRelations(req.params.id, newTags, tablePrefix);
+			const tablePrefix = config.get('database.tablePrefix');
+			await TagHelpers.removeRelations(req.params.id, tablePrefix);
+			if (tags?.length) {
+				await TagHelpers.createRelations(req.params.id, tags, tablePrefix);
 			}
 
 			// We sadly get nothing back from "update". Neither if it updated a record
 			// nor the new value. So query now the hopefully updated entry.
 			const workflow = await Db.collections.Workflow!.findOne(id, { relations: ['tags'] });
 
-			if (workflow && newTags?.length) {
-				workflow.tags = TagHelpers.sortByRequestOrder(workflow.tags, newTags);
-			}
-
 			if (workflow === undefined) {
 				throw new ResponseHelper.ResponseError(`Workflow with id "${id}" could not be found to be updated.`, undefined, 400);
 			}
+
+			if (tags?.length) {
+				workflow.tags = TagHelpers.sortByRequestOrder(workflow.tags, tags);
+			}
+
+			await this.externalHooks.run('workflow.afterUpdate', [workflow]);
 
 			if (workflow.active === true) {
 				// When the workflow is supposed to be active add it again
@@ -639,9 +651,9 @@ class App {
 					await this.activeWorkflowRunner.add(id, isActive ? 'update' : 'activate');
 				} catch (error) {
 					// If workflow could not be activated set it again to inactive
-					incomingData.active = false;
+					updateData.active = false;
 					// @ts-ignore
-					await Db.collections.Workflow!.update(id, incomingData);
+					await Db.collections.Workflow!.update(id, updateData);
 
 					// Also set it in the returned data
 					workflow.active = false;
@@ -651,7 +663,9 @@ class App {
 				}
 			}
 
-			return TagHelpers.shortenWorkflow(workflow);
+			// @ts-ignore
+			workflow.id = workflow.id.toString();
+			return workflow;
 		}));
 
 
@@ -722,60 +736,69 @@ class App {
 		}));
 
 		// Retrieves all tags, with or without usage count
-		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IShortTag[] | Array<IShortTag & UsageCount>> => {
+		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<TagEntity[] | ITagWithCountDb[]> => {
 			if (req.query.withUsageCount === 'true') {
 				const tablePrefix = config.get('database.tablePrefix');
-				const tagsWithCountDb = await TagHelpers.getTagsWithCountDb(tablePrefix);
-				return tagsWithCountDb.map(({ id, ...rest }) => ({ id: id.toString(), ...rest }));
+				return TagHelpers.getTagsWithCountDb(tablePrefix);
 			}
 
 			const tags = await Db.collections.Tag!.find({ select: ['id', 'name'] });
-
-			return tags.map(TagHelpers.shortenTag);
+			// @ts-ignore
+			tags.forEach(tag => tag.id = tag.id.toString());
+			return tags;
 		}));
 
 		// Creates a tag
-		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IShortTag | void> => {
+		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<TagEntity | void> => {
 			const newTag = new TagEntity();
-			newTag.name = req.body.name;
-			newTag.createdAt = this.getCurrentDate(); // TODO: Set at DB level
-			newTag.updatedAt = this.getCurrentDate(); // TODO: Set at DB level
+			newTag.name = req.body.name.trim();
+			newTag.createdAt = this.getCurrentDate();
+			newTag.updatedAt = this.getCurrentDate();
+
+			await this.externalHooks.run('tag.beforeCreate', [newTag]);
 
 			await TagHelpers.validateTag(newTag);
+			const tag = await Db.collections.Tag!.save(newTag).catch(TagHelpers.throwDuplicateEntryError);
 
-			try {
-				const savedTag = await Db.collections.Tag!.save(newTag);
-				return TagHelpers.shortenTag(savedTag);
-			} catch (error) {
-				TagHelpers.throwDuplicateEntryError(error);
-			}
+			await this.externalHooks.run('tag.afterCreate', [tag]);
 
+			// @ts-ignore
+			tag.id = tag.id.toString();
+			return tag;
 		}));
 
 		// Updates a tag
-		this.app.patch(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IShortTag> => {
+		this.app.patch(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<TagEntity | void> => {
 			const { name } = req.body;
 			const { id } = req.params;
 
 			const newTag = new TagEntity();
-			newTag.name = name;
+			newTag.id = Number(id);
+			newTag.name = name.trim();
 			newTag.updatedAt = this.getCurrentDate();
 
+			await this.externalHooks.run('tag.beforeUpdate', [newTag]);
+
 			await TagHelpers.validateTag(newTag);
+			const tag = await Db.collections.Tag!.save(newTag).catch(TagHelpers.throwDuplicateEntryError);
 
-			try {
-				await Db.collections.Tag!.update(id, newTag); // update returns nothing
-			} catch (error) {
-				TagHelpers.throwDuplicateEntryError(error);
-			}
+			await this.externalHooks.run('tag.afterUpdate', [tag]);
 
-			return { id, name };
+			// @ts-ignore
+			tag.id = tag.id.toString();
+			return tag;
 		}));
 
 		// Deletes a tag
 		this.app.delete(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
 			const id = Number(req.params.id);
+
+			await this.externalHooks.run('tag.beforeDelete', [id]);
+
 			await Db.collections.Tag!.delete({ id });
+
+			await this.externalHooks.run('tag.afterDelete', [id]);
+
 			return true;
 		}));
 
