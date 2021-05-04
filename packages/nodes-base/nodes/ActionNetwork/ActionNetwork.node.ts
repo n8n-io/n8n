@@ -112,7 +112,7 @@ export class ActionNetwork implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			const resource = this.getNodeParameter('resource', i)
-			const resolveResource = resources.find(r => r.value === resource)?.resolver!	
+			const resolveResource = resources.find(r => r.value === resource)?.resolver!
 			let responseData = await resolveResource(this, i) as any
 
 			// Some general transformations on the resolved data
@@ -125,8 +125,8 @@ export class ActionNetwork implements INodeType {
 				// Try to give each item an ID dictionary for upstream work.
 				// Particularly useful for pulling out the Action Network ID of an item for a further operation on it
 				// e.g. find an event, get its ID and then sign someone up to it via its ID
-				(responseData['_embedded'] as any[]).forEach((item, i) => {
-					responseData['_embedded'][i] = {
+				(responseData['_embedded'][firstDataKey] as any[]).forEach((item, i) => {
+					responseData['_embedded'][firstDataKey][i] = {
 						...item,
 						identifierDictionary: createIdentifierDictionary(item?.identifiers as string[])
 					}
