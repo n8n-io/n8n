@@ -30,7 +30,7 @@ export class Mailjet implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailjet',
 		name: 'mailjet',
-		icon: 'file:mailjet.png',
+		icon: 'file:mailjet.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
