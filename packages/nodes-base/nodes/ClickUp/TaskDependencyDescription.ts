@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export const taskDependencyOperations = [
 	{
@@ -33,9 +33,9 @@ export const taskDependencyOperations = [
 
 export const taskDependencyFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                taskDependency:create                        */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                taskDependency:create                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'task',
@@ -69,9 +69,10 @@ export const taskDependencyFields = [
 		},
 		required: true,
 	},
-/* -------------------------------------------------------------------------- */
-/*                                taskDependency:delete                        */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                taskDependency:delete                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'task',

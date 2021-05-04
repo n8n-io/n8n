@@ -11,7 +11,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function stravaApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -45,27 +45,10 @@ export async function stravaApiRequest(this: IExecuteFunctions | IExecuteSingleF
 
 		} else {
 			//@ts-ignore
-			return await this.helpers.requestOAuth2.call(this, 'stravaOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'stravaOAuth2Api', options, { includeCredentialsOnRefreshOnBody: true });
 		}
 	} catch (error) {
-
-		if (error.statusCode === 402) {
-			throw new Error(
-				`Strava error response [${error.statusCode}]: Payment Required`,
-			);
-		}
-
-		if (error.response && error.response.body && error.response.body.errors) {
-
-			let errors = error.response.body.errors;
-
-			errors = errors.map((e: IDataObject) => `${e.code} -> ${e.field}`);
-			// Try to return the error prettier
-			throw new Error(
-				`Strava error response [${error.statusCode}]: ${errors.join('|')}`,
-			);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

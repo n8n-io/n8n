@@ -1,6 +1,10 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-const resource = ['expense'];
+const resource = [
+	'expense',
+];
 
 export const expenseOperations = [
 	{
@@ -48,7 +52,7 @@ export const expenseOperations = [
 export const expenseFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                expense:getAll                            */
+	/*                                expense:getAll                              */
 	/* -------------------------------------------------------------------------- */
 
 	{
@@ -166,7 +170,7 @@ export const expenseFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                expense:get                            */
+	/*                                expense:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Expense Id',
@@ -186,7 +190,7 @@ export const expenseFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                expense:delete                            */
+	/*                                expense:delete                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Expense Id',
@@ -206,7 +210,7 @@ export const expenseFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                expense:create                           */
+	/*                                expense:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Project Id',
@@ -310,7 +314,7 @@ export const expenseFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                invoice:update                           */
+	/*                                invoice:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Invoice Id',

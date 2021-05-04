@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function automizyApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
@@ -40,14 +40,7 @@ export async function automizyApiRequest(this: IExecuteFunctions | IExecuteSingl
 		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
-		if (error.response && error.response.body) {
-
-			throw new Error(
-				`Automizy error response [${error.statusCode}]: ${error.response.body.title}`,
-			);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

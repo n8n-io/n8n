@@ -20,9 +20,9 @@
 		<div class="header">
 			<div class="title-text">
 				<strong v-if="dataCount < maxDisplayItems">
-					Results: {{ dataCount }}
+					Items: {{ dataCount }}
 				</strong>
-				<strong v-else>Results:
+				<strong v-else>Items:
 					<el-select v-model="maxDisplayItems" @click.stop>
 						<el-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
 					</el-select>&nbsp;/
@@ -81,8 +81,7 @@
 		<div class="data-display-content">
 			<span v-if="node && workflowRunData !== null && workflowRunData.hasOwnProperty(node.name)">
 				<div v-if="workflowRunData[node.name][runIndex].error" class="error-display">
-					<div class="error-message">ERROR: {{workflowRunData[node.name][runIndex].error.message}}</div>
-					<pre><code>{{workflowRunData[node.name][runIndex].error.stack}}</code></pre>
+					<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
 				</div>
 				<span v-else>
 					<div v-if="showData === false" class="to-much-data">
@@ -157,6 +156,10 @@
 												<div class="label">File Name: </div>
 												<div class="value">{{binaryData.fileName}}</div>
 											</div>
+											<div v-if="binaryData.directory">
+												<div class="label">Directory: </div>
+												<div class="value">{{binaryData.directory}}</div>
+											</div>
 											<div v-if="binaryData.fileExtension">
 												<div class="label">File Extension:</div>
 												<div class="value">{{binaryData.fileExtension}}</div>
@@ -222,6 +225,7 @@ import {
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
+import NodeErrorView from '@/components/Error/NodeViewError.vue';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -243,6 +247,7 @@ export default mixins(
 		name: 'RunData',
 		components: {
 			BinaryDataDisplay,
+			NodeErrorView,
 			VueJsonPretty,
 		},
 		data () {
@@ -732,13 +737,6 @@ export default mixins(
 
 			.text {
 				margin-bottom: 1em;
-			}
-		}
-
-		.error-display {
-			.error-message {
-				color: #ff0000;
-				font-weight: bold;
 			}
 		}
 

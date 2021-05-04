@@ -1453,6 +1453,8 @@ export default mixins(
 						(e || window.event).returnValue = confirmationMessage; //Gecko + IE
 						return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
 					} else {
+						this.startLoading('Redirecting');
+
 						return;
 					}
 				});
@@ -2139,6 +2141,7 @@ export default mixins(
 	position: relative;
 	width: 100%;
 	height: 100%;
+	transform-origin: 0 0;
 }
 
 .node-view-background {

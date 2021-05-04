@@ -14,6 +14,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 export class KafkaTrigger implements INodeType {
@@ -123,10 +124,14 @@ export class KafkaTrigger implements INodeType {
 			logLevel: logLevel.ERROR,
 		};
 
-		if (credentials.username || credentials.password) {
+		if (credentials.authentication === true) {
+			if(!(credentials.username && credentials.password)) {
+				throw new NodeOperationError(this.getNode(), 'Username and password are required for authentication');
+			}
 			config.sasl = {
 				username: credentials.username as string,
 				password: credentials.password as string,
+				mechanism: credentials.saslMechanism as string,
 			} as SASLOptions;
 		}
 
@@ -152,7 +157,7 @@ export class KafkaTrigger implements INodeType {
 					if (options.jsonParseMessage) {
 						try {
 							value = JSON.parse(value);
-						} catch (err) { }
+						} catch (error) { }
 					}
 
 					data.message = value;

@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -11,7 +11,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -24,7 +24,7 @@ export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunction
 		method,
 		qs,
 		body,
-		uri: uri ||`https://sentry.io${resource}`,
+		uri: uri || `https://sentry.io${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {
@@ -69,11 +69,11 @@ export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunction
 		}
 
 	} catch (error) {
-		throw new Error(`Sentry.io Error: ${error}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function sentryApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function sentryApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -99,17 +99,17 @@ export async function sentryApiRequestAllItems(this: IHookFunctions | IExecuteFu
 }
 
 function getNext(link: string) {
-	if (link  === undefined) {
+	if (link === undefined) {
 		return;
 	}
 	const next = link.split(',')[1];
 	if (next.includes('rel="next"')) {
-		return next.split(';')[0].replace('<', '').replace('>','').trim();
+		return next.split(';')[0].replace('<', '').replace('>', '').trim();
 	}
 }
 
 function hasMore(link: string) {
-	if (link  === undefined) {
+	if (link === undefined) {
 		return;
 	}
 	const next = link.split(',')[1];
