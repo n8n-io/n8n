@@ -112,6 +112,10 @@ import {
 	userOperations,
 } from './UserDescription';
 
+import {
+	LoggerProxy as Logger,
+} from 'n8n-workflow';
+
 export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Salesforce',
@@ -922,6 +926,8 @@ export class Salesforce implements INodeType {
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+
+		Logger.debug(`Running "Salesforce" node named "${this.getNode.name}" resource "${resource}" operation "${operation}"`);
 
 		for (let i = 0; i < items.length; i++) {
 			if (resource === 'lead') {

@@ -415,6 +415,12 @@ export class GoogleSheet {
 				for (let i = 0; i < keys.length; i++) {
 					inputData[rowIndex][i] = '';
 				}
+			} else if (inputData[rowIndex].length < keys.length) {
+				for (let i = 0; i < keys.length; i++) {
+					if (inputData[rowIndex][i] === undefined) {
+						inputData[rowIndex].push('');
+					}
+				}
 			}
 		}
 		// Loop over all the lookup values and try to find a row to return
