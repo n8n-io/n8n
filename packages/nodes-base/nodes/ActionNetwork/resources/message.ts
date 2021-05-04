@@ -204,7 +204,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	let url = `/api/v2/messages`
 
 	if (operation === 'list') {
-    const qs = createPaginationProperties(node)
+    const qs = createPaginationProperties(node, i)
     return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
 	}
 

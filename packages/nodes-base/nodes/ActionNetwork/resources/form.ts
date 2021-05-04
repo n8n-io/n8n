@@ -196,8 +196,8 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 
 	// Otherwise list forms
 	const qs = {
-		...createPaginationProperties(node),
-		...createFilterProperties(node)
+		...createPaginationProperties(node, i),
+		...createFilterProperties(node, i)
 	}
 	return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
 }

@@ -38,6 +38,6 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 		url += `/${query_id}`
 	}
 
-	const qs = createPaginationProperties(node)
+	const qs = createPaginationProperties(node, i)
 	return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
 }

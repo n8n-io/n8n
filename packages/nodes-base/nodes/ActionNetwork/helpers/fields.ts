@@ -43,7 +43,7 @@ export const createListOperations = createFields([
 	},
 ])
 
-export const createPaginationProperties = (node: IExecuteFunctions) => {
+export const createPaginationProperties = (node: IExecuteFunctions, i: number) => {
 	const page = node.getNodeParameter('page', i) as string;
 	const per_page = Math.max(1, Math.min(25, node.getNodeParameter('per_page', i) as number));
 	return { page, per_page }
@@ -120,7 +120,7 @@ export const createFilterFields = ({ properties, ...options }: { properties: str
 
 type FilterObj = { property: string, operation: string, search_term: string }
 
-export function createFilterProperties(node: IExecuteFunctions) {
+export function createFilterProperties(node: IExecuteFunctions, i: number) {
 	let obj = {}
 	const { filters } = node.getNodeParameter('filters', i, []) as any;
 	if (filters) {

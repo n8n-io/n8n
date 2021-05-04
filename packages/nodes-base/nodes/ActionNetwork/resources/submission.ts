@@ -202,7 +202,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 		if (personRefURL) {
 			body = { ...body, ...createResourceLink('osdi:person', personRefURL) }
 		} else {
-			body = { ...body, ...createPersonSignupHelperObject(node) }
+			body = { ...body, ...createPersonSignupHelperObject(node, i) }
 		}
 
 		return actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>
@@ -210,8 +210,8 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 
 	// Otherwise list all
 	const qs = {
-		...createPaginationProperties(node),
-		...createFilterProperties(node)
+		...createPaginationProperties(node, i),
+		...createFilterProperties(node, i)
 	}
 	return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
 }

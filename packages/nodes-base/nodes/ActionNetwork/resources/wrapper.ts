@@ -44,6 +44,6 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	}
 
 	// Otherwise list all
-	const qs = createPaginationProperties(node)
+	const qs = createPaginationProperties(node, i)
 	return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
 }
