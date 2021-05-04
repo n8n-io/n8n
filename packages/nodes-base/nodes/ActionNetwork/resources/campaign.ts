@@ -50,8 +50,8 @@ export const fields = [
 	}),
 ] as INodeProperties[];
 
-export const logic = async (node: IExecuteFunctions) => {
-	const campaign_id = node.getNodeParameter('campaign_id', 0) as string;
+export const resolve = async (node: IExecuteFunctions, i: number) => {
+	const campaign_id = node.getNodeParameter('campaign_id', i) as string;
 	let url = `/api/v2/campaigns`
 
 	if (campaign_id) {

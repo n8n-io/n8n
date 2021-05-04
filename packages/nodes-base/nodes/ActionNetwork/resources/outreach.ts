@@ -199,9 +199,9 @@ export const fields = [
 	}),
 ] as INodeProperties[];
 
-export const logic = async (node: IExecuteFunctions) => {
-	const advocacy_campaign_id = node.getNodeParameter('advocacy_campaign_id', 0) as string;
-	const person_id = node.getNodeParameter('person_id', 0) as string;
+export const resolve = async (node: IExecuteFunctions, i: number) => {
+	const advocacy_campaign_id = node.getNodeParameter('advocacy_campaign_id', i) as string;
+	const person_id = node.getNodeParameter('person_id', i) as string;
 
 	let url = `/api/v2`
 	if (advocacy_campaign_id) {
@@ -212,8 +212,8 @@ export const logic = async (node: IExecuteFunctions) => {
 		throw new Error("You must provide a Form ID or Person ID")
 	}
 
-	const outreach_id = node.getNodeParameter('outreach_id', 0) as string;
-	const operation = node.getNodeParameter('operation', 0) as 'GET' | 'PUT' | 'POST';
+	const outreach_id = node.getNodeParameter('outreach_id', i) as string;
+	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST';
 
 	if (outreach_id && operation === 'GET') {
 		return actionNetworkApiRequest.call(node, operation, `${url}/${outreach_id}`) as Promise<IDataObject>
@@ -221,23 +221,23 @@ export const logic = async (node: IExecuteFunctions) => {
 
 	if (outreach_id && operation === 'PUT') {
 		let body: any = {
-			'identifiers': (node.getNodeParameter('additional_properties', 0, undefined) as any)?.identifiers,
-			'targets': (node.getNodeParameter('additional_properties', 0, undefined) as any)?.targets,
-			'subject': node.getNodeParameter('subject', 0, undefined),
-			'message': node.getNodeParameter('message', 0, undefined)
+			'identifiers': (node.getNodeParameter('additional_properties', i, undefined) as any)?.identifiers,
+			'targets': (node.getNodeParameter('additional_properties', i, undefined) as any)?.targets,
+			'subject': node.getNodeParameter('subject', i, undefined),
+			'message': node.getNodeParameter('message', i, undefined)
 		}
 		return actionNetworkApiRequest.call(node, operation, `${url}/${outreach_id}`, body) as Promise<IDataObject>
 	}
 
 	if (advocacy_campaign_id && operation === 'POST') {
 		let body: any = {
-			'identifiers': (node.getNodeParameter('additional_properties', 0, undefined) as any)?.identifiers,
-			'targets': (node.getNodeParameter('additional_properties', 0, undefined) as any)?.targets,
-			'subject': node.getNodeParameter('subject', 0, undefined),
-			'message': node.getNodeParameter('message', 0, undefined),
+			'identifiers': (node.getNodeParameter('additional_properties', i, undefined) as any)?.identifiers,
+			'targets': (node.getNodeParameter('additional_properties', i, undefined) as any)?.targets,
+			'subject': node.getNodeParameter('subject', i, undefined),
+			'message': node.getNodeParameter('message', i, undefined),
 		}
 
-		const personRefURL = node.getNodeParameter('osdi:person', 0) as string;
+		const personRefURL = node.getNodeParameter('osdi:person', i) as string;
 		if (personRefURL) {
 			body = { ...body, ...createResourceLink('osdi:person', personRefURL) }
 		} else {

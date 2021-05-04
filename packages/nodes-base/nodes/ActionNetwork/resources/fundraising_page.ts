@@ -141,9 +141,9 @@ export const fields = [
 	}),
 ] as INodeProperties[];
 
-export const logic = async (node: IExecuteFunctions) => {
-	const fundraising_page_id = node.getNodeParameter('fundraising_page_id', 0) as string;
-	const operation = node.getNodeParameter('operation', 0) as 'GET' | 'PUT' | 'POST';
+export const resolve = async (node: IExecuteFunctions, i: number) => {
+	const fundraising_page_id = node.getNodeParameter('fundraising_page_id', i) as string;
+	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST';
 	let url = `/api/v2/fundraising_pages`
 
 	if (fundraising_page_id && operation === 'GET') {
@@ -152,11 +152,11 @@ export const logic = async (node: IExecuteFunctions) => {
 
 	if (fundraising_page_id && operation === 'PUT') {
 		let body: any = {
-			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
+			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
-			title: node.getNodeParameter('title', 0) || undefined,
-			description: node.getNodeParameter('description', 0) || undefined,
-			origin_system: node.getNodeParameter('origin_system', 0) || undefined,
+			title: node.getNodeParameter('title', i) || undefined,
+			description: node.getNodeParameter('description', i) || undefined,
+			origin_system: node.getNodeParameter('origin_system', i) || undefined,
 		}
 
 		return actionNetworkApiRequest.call(node, operation, `${url}/${fundraising_page_id}`, body) as Promise<IDataObject>
@@ -164,11 +164,11 @@ export const logic = async (node: IExecuteFunctions) => {
 
 	if (operation === 'POST') {
 		let body: any = {
-			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
+			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
-			title: node.getNodeParameter('title', 0) || undefined,
-			description: node.getNodeParameter('description', 0) || undefined,
-			origin_system: node.getNodeParameter('origin_system', 0) || undefined,
+			title: node.getNodeParameter('title', i) || undefined,
+			description: node.getNodeParameter('description', i) || undefined,
+			origin_system: node.getNodeParameter('origin_system', i) || undefined,
 		}
 
 		return actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>

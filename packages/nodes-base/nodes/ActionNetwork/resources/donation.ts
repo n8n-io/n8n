@@ -190,9 +190,9 @@ export const fields = [
 	}),
 ] as INodeProperties[];
 
-export const logic = async (node: IExecuteFunctions) => {
-	const fundraising_page_id = node.getNodeParameter('fundraising_page_id', 0) as string;
-	const person_id = node.getNodeParameter('person_id', 0) as string;
+export const resolve = async (node: IExecuteFunctions, i: number) => {
+	const fundraising_page_id = node.getNodeParameter('fundraising_page_id', i) as string;
+	const person_id = node.getNodeParameter('person_id', i) as string;
 
 	let url = `/api/v2`
 	if (fundraising_page_id) {
@@ -203,8 +203,8 @@ export const logic = async (node: IExecuteFunctions) => {
 		url += `/donations`
 	}
 
-	const donation_id = node.getNodeParameter('donation_id', 0) as string;
-	const operation = node.getNodeParameter('operation', 0) as 'GET' | 'PUT' | 'POST';
+	const donation_id = node.getNodeParameter('donation_id', i) as string;
+	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST';
 
 	if (donation_id && operation === 'GET') {
 		return actionNetworkApiRequest.call(node, operation, `${url}/${donation_id}`) as Promise<IDataObject>
@@ -212,23 +212,23 @@ export const logic = async (node: IExecuteFunctions) => {
 
 	if (donation_id && operation === 'PUT') {
 		let body: any = {
-			'identifiers': (node.getNodeParameter('additional_properties', 0, undefined) as any)?.identifiers,
-			'recipients': (node.getNodeParameter('additional_properties', 0, undefined) as any)?.recipients,
-			'comments': node.getNodeParameter('comments', 0, undefined),
-			'created_date': node.getNodeParameter('created_date', 0, undefined)
+			'identifiers': (node.getNodeParameter('additional_properties', i, undefined) as any)?.identifiers,
+			'recipients': (node.getNodeParameter('additional_properties', i, undefined) as any)?.recipients,
+			'comments': node.getNodeParameter('comments', i, undefined),
+			'created_date': node.getNodeParameter('created_date', i, undefined)
 		}
 		return actionNetworkApiRequest.call(node, operation, `${url}/${donation_id}`, body) as Promise<IDataObject>
 	}
 
 	if (fundraising_page_id && operation === 'POST') {
 		let body: any = {
-			'identifiers': (node.getNodeParameter('additional_properties', 0, undefined) as any)?.identifiers,
-			'recipients': (node.getNodeParameter('additional_properties', 0, undefined) as any)?.recipients,
-			'comments': node.getNodeParameter('comments', 0, undefined),
-			'created_date': node.getNodeParameter('created_date', 0, undefined),
+			'identifiers': (node.getNodeParameter('additional_properties', i, undefined) as any)?.identifiers,
+			'recipients': (node.getNodeParameter('additional_properties', i, undefined) as any)?.recipients,
+			'comments': node.getNodeParameter('comments', i, undefined),
+			'created_date': node.getNodeParameter('created_date', i, undefined),
 		}
 
-		const personRefURL = node.getNodeParameter('osdi:person', 0) as string;
+		const personRefURL = node.getNodeParameter('osdi:person', i) as string;
 		if (personRefURL) {
 			body = { ...body, ...createResourceLink('osdi:person', personRefURL) }
 		} else {

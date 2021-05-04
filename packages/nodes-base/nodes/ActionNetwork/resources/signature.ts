@@ -174,9 +174,9 @@ export const fields = [
 	}),
 ] as INodeProperties[];
 
-export const logic = async (node: IExecuteFunctions) => {
-	const petition_id = node.getNodeParameter('petition_id', 0) as string;
-	const person_id = node.getNodeParameter('person_id', 0) as string;
+export const resolve = async (node: IExecuteFunctions, i: number) => {
+	const petition_id = node.getNodeParameter('petition_id', i) as string;
+	const person_id = node.getNodeParameter('person_id', i) as string;
 
 	let url = `/api/v2`
 	if (petition_id) {
@@ -187,8 +187,8 @@ export const logic = async (node: IExecuteFunctions) => {
 		throw new Error("You must provide a Form ID or Person ID")
 	}
 
-	const signature_id = node.getNodeParameter('signature_id', 0) as string;
-	const operation = node.getNodeParameter('operation', 0) as 'GET' | 'PUT' | 'POST';
+	const signature_id = node.getNodeParameter('signature_id', i) as string;
+	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST';
 
 	if (signature_id && operation === 'GET') {
 		return actionNetworkApiRequest.call(node, operation, `${url}/${signature_id}`) as Promise<IDataObject>
@@ -196,24 +196,24 @@ export const logic = async (node: IExecuteFunctions) => {
 
 	if (signature_id && operation === 'PUT') {
 		let body: any = {
-			'identifiers': (node.getNodeParameter('additional_properties', 0, undefined) as any)?.identifiers,
-			'comments': node.getNodeParameter('comments', 0, undefined)
+			'identifiers': (node.getNodeParameter('additional_properties', i, undefined) as any)?.identifiers,
+			'comments': node.getNodeParameter('comments', i, undefined)
 		}
 		return actionNetworkApiRequest.call(node, operation, `${url}/${signature_id}`, body) as Promise<IDataObject>
 	}
 
 	if (petition_id && operation === 'POST') {
 		let body: any = {
-			'identifiers': (node.getNodeParameter('additional_properties', 0, undefined) as any)?.identifiers,
-			'comments': node.getNodeParameter('comments', 0, undefined),
+			'identifiers': (node.getNodeParameter('additional_properties', i, undefined) as any)?.identifiers,
+			'comments': node.getNodeParameter('comments', i, undefined),
 			'triggers': {
 				'autoresponse': {
-					'enabled': node.getNodeParameter('is_autoresponse_enabled', 0) as boolean
+					'enabled': node.getNodeParameter('is_autoresponse_enabled', i) as boolean
 				}
 			}
 		}
 
-		const personRefURL = node.getNodeParameter('osdi:person', 0) as string;
+		const personRefURL = node.getNodeParameter('osdi:person', i) as string;
 		if (personRefURL) {
 			body = { ...body, ...createResourceLink('osdi:person', personRefURL) }
 		} else {

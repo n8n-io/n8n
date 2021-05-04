@@ -42,9 +42,9 @@ export const fields: INodeProperties[] = [
 	}
 ];
 
-export const logic = async (node: IExecuteFunctions) => {
-	const action_type = node.getNodeParameter('action_type', 0) as string
-	const action_id = node.getNodeParameter('action_id', 0) as string
+export const resolve = async (node: IExecuteFunctions, i: number) => {
+	const action_type = node.getNodeParameter('action_type', i) as string
+	const action_id = node.getNodeParameter('action_id', i) as string
 	let url = `/api/v2/${action_type}/${action_id}/embed`
 	return actionNetworkApiRequest.call(node, 'GET', url) as Promise<IDataObject[]>
 }

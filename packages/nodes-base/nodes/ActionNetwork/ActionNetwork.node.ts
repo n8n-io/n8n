@@ -29,23 +29,23 @@ import * as query from './resources/query'
 import { createIdentifierDictionary } from './helpers/osdi';
 
 const resources = [
-	{ name: 'Person', value: 'person', resolver: person.logic },
-	{ name: "Message", value: 'message', resolver: message.logic },
-	{ name: 'Campaign', value: 'campaign', resolver: campaign.logic },
-	{ name: 'Petition', value: 'petition', resolver: petition.logic },
-	{ name: 'Signature', value: 'signature', resolver: signature.logic },
-	{ name: 'Event Campaign', value: 'event_campaign', resolver: event_campaign.logic },
-	{ name: 'Event', value: 'event', resolver: event.logic },
-	{ name: 'Attendance', value: 'attendance', resolver: attendance.logic },
-	{ name: 'Fundraising Page', value: 'fundraising_page', resolver: fundraising_page.logic },
-	{ name: 'Donation', value: 'donation', resolver: donation.logic },
-	{ name: 'Form', value: 'form', resolver: form.logic },
-	{ name: 'Submission', value: 'submission', resolver: submission.logic },
-	{ name: "Advocacy Campaign", value: "advocacy_campaign", resolver: advocacy_campaign.logic },
-	{ name: 'Outreach' , value: 'outreach', resolver: outreach.logic },
-	{ name: 'Query', value: 'query', resolver: query.logic },
-	{ name: 'HTML Embed', value: 'embed', resolver: embed.logic },
-	{ name: 'HTML Wrapper', value: 'wrapper', resolver: wrapper.logic },
+	{ name: 'Person', value: 'person', resolver: person.resolve },
+	{ name: "Message", value: 'message', resolver: message.resolve },
+	{ name: 'Campaign', value: 'campaign', resolver: campaign.resolve },
+	{ name: 'Petition', value: 'petition', resolver: petition.resolve },
+	{ name: 'Signature', value: 'signature', resolver: signature.resolve },
+	{ name: 'Event Campaign', value: 'event_campaign', resolver: event_campaign.resolve },
+	{ name: 'Event', value: 'event', resolver: event.resolve },
+	{ name: 'Attendance', value: 'attendance', resolver: attendance.resolve },
+	{ name: 'Fundraising Page', value: 'fundraising_page', resolver: fundraising_page.resolve },
+	{ name: 'Donation', value: 'donation', resolver: donation.resolve },
+	{ name: 'Form', value: 'form', resolver: form.resolve },
+	{ name: 'Submission', value: 'submission', resolver: submission.resolve },
+	{ name: "Advocacy Campaign", value: "advocacy_campaign", resolver: advocacy_campaign.resolve },
+	{ name: 'Outreach' , value: 'outreach', resolver: outreach.resolve },
+	{ name: 'Query', value: 'query', resolver: query.resolve },
+	{ name: 'HTML Embed', value: 'embed', resolver: embed.resolve },
+	{ name: 'HTML Wrapper', value: 'wrapper', resolver: wrapper.resolve },
 	// TODO: https://actionnetwork.org/docs/v2/tags
 	// - Scenario: Retrieving a collection of tags (GET)
 	// - Scenario: Creating a new tag (POST)
@@ -108,25 +108,24 @@ export class ActionNetwork implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		// Loop through 'em
 		const items = this.getInputData();
-		const returnData: IDataObject | IDataObject[] = [];
-		const resource = this.getNodeParameter('resource', 0)
-		const resourceResolver = resources.find(r => r.value === resource)?.resolver!
+		let returnData: IDataObject | IDataObject[] = [];
+		const resource = this.getNodeParameter('resource', i)
+		const resolveResource = resources.find(r => r.value === resource)?.resolver!
 
 		for (let i = 0; i < items.length; i++) {
-			let responseData = await resourceResolver(this) as any
+			let responseData = await resolveResource(this, i) as any
 
 			try {
 				// Identify where the list of data is
 				const firstDataKey = Object.keys(responseData['_embedded'])[0]
 				// And optionally generate data items from the request, if possible
-				if (!this.getNodeParameter('include_metadata', 0) as boolean) {
+				if (!this.getNodeParameter('include_metadata', i) as boolean) {
 					// @ts-ignore
 					responseData = responseData['_embedded'][firstDataKey]
 				}
 			} catch (e) {}
 
 			// Add the responses onto the return chain
-			// TODO: correctly extract response items from the metadata wrapper
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData);
 			} else {
@@ -136,13 +135,17 @@ export class ActionNetwork implements INodeType {
 			// Try to identify a dictionary of IDs
 			// Particularly useful for pulling out the Action Network ID of an item for a further operation on it
 			// e.g. find an event, get its ID and then sign someone up to it via its ID
-			returnData.map(item => {
+			returnData = returnData.map(item => {
 				try {
-					item.identifierDictionary = createIdentifierDictionary(item?.identifiers as string[]);
+					item = {
+						...item,
+						identifierDictionary: createIdentifierDictionary(item?.identifiers as string[])
+					}
 				} catch (e) {}
 				return item;
 			})
 		}
+
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

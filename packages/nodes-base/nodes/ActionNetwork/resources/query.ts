@@ -30,10 +30,10 @@ export const fields: INodeProperties[] = [
 	}),
 ];
 
-export const logic = async (node: IExecuteFunctions) => {
+export const resolve = async (node: IExecuteFunctions, i: number) => {
 	let url = `/api/v2/queries`
 
-	const query_id = node.getNodeParameter('query_id', 0) as string
+	const query_id = node.getNodeParameter('query_id', i) as string
 	if (query_id) {
 		url += `/${query_id}`
 	}

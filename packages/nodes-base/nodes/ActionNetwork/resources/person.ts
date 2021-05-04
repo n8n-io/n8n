@@ -249,7 +249,7 @@ export function createPersonSignupHelperObject(node: IExecuteFunctions) {
 		phone_numbers,
 		custom_fields,
 		postal_addresses
-	} = node.getNodeParameter('new_person_fields', 0, {}) as any
+	} = node.getNodeParameter('new_person_fields', i, {}) as any
 
 	if (!email_addresses.length) {
 		throw new Error("Please add at least one email address")
@@ -258,8 +258,8 @@ export function createPersonSignupHelperObject(node: IExecuteFunctions) {
 	const body: any = {
 		identifiers,
 		person: {
-			family_name: node.getNodeParameter('family_name', 0),
-			given_name: node.getNodeParameter('given_name', 0),
+			family_name: node.getNodeParameter('family_name', i),
+			given_name: node.getNodeParameter('given_name', i),
 			email_addresses
 		},
 		add_tags
@@ -370,9 +370,9 @@ export const fields = [
 	}),
 ] as INodeProperties[];
 
-export const logic = async (node: IExecuteFunctions) => {
-	const person_id = node.getNodeParameter('person_id', 0, null) as string;
-	const operation = node.getNodeParameter('operation', 0) as 'GET' | 'POST';
+export const resolve = async (node: IExecuteFunctions, i: number) => {
+	const person_id = node.getNodeParameter('person_id', i, null) as string;
+	const operation = node.getNodeParameter('operation', i) as 'GET' | 'POST';
 	let url = `/api/v2/people`
 
 	if (person_id && operation === 'GET') {

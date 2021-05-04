@@ -44,8 +44,8 @@ export const createListOperations = createFields([
 ])
 
 export const createPaginationProperties = (node: IExecuteFunctions) => {
-	const page = node.getNodeParameter('page', 0) as string;
-	const per_page = Math.max(1, Math.min(25, node.getNodeParameter('per_page', 0) as number));
+	const page = node.getNodeParameter('page', i) as string;
+	const per_page = Math.max(1, Math.min(25, node.getNodeParameter('per_page', i) as number));
 	return { page, per_page }
 }
 
@@ -122,9 +122,9 @@ type FilterObj = { property: string, operation: string, search_term: string }
 
 export function createFilterProperties(node: IExecuteFunctions) {
 	let obj = {}
-	const { filters } = node.getNodeParameter('filters', 0, []) as any;
+	const { filters } = node.getNodeParameter('filters', i, []) as any;
 	if (filters) {
-		const filter_logic = node.getNodeParameter('filter_logic', 0, 'and') as string;
+		const filter_logic = node.getNodeParameter('filter_logic', i, 'and') as string;
 		obj = {
 			filter: constructODIFilterString(filters, filter_logic)
 		}

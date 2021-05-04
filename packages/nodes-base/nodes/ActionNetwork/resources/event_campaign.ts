@@ -165,9 +165,9 @@ export const fields = [
 	}),
 ] as INodeProperties[];
 
-export const logic = async (node: IExecuteFunctions) => {
-	const event_campaign_id = node.getNodeParameter('event_campaign_id', 0) as string;
-	const operation = node.getNodeParameter('operation', 0) as 'GET' | 'PUT' | 'POST';
+export const resolve = async (node: IExecuteFunctions, i: number) => {
+	const event_campaign_id = node.getNodeParameter('event_campaign_id', i) as string;
+	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST';
 	let url = `/api/v2/event_campaigns`
 
 	if (event_campaign_id && operation === 'GET') {
@@ -176,13 +176,13 @@ export const logic = async (node: IExecuteFunctions) => {
 
 	if (event_campaign_id && operation === 'PUT') {
 		let body: any = {
-			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
+			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
-			title: node.getNodeParameter('title', 0) || undefined,
-			description: node.getNodeParameter('description', 0) || undefined,
-			host_pitch: node.getNodeParameter('host_pitch', 0, undefined),
-			host_instructions: node.getNodeParameter('host_instructions', 0, undefined),
-			origin_system: node.getNodeParameter('origin_system', 0) || undefined,
+			title: node.getNodeParameter('title', i) || undefined,
+			description: node.getNodeParameter('description', i) || undefined,
+			host_pitch: node.getNodeParameter('host_pitch', i, undefined),
+			host_instructions: node.getNodeParameter('host_instructions', i, undefined),
+			origin_system: node.getNodeParameter('origin_system', i) || undefined,
 		}
 
 		return actionNetworkApiRequest.call(node, operation, `${url}/${event_campaign_id}`, body) as Promise<IDataObject>
@@ -190,13 +190,13 @@ export const logic = async (node: IExecuteFunctions) => {
 
 	if (operation === 'POST') {
 		let body: any = {
-			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
+			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
-			title: node.getNodeParameter('title', 0) || undefined,
-			description: node.getNodeParameter('description', 0) || undefined,
-			host_pitch: node.getNodeParameter('host_pitch', 0, undefined),
-			host_instructions: node.getNodeParameter('host_instructions', 0, undefined),
-			origin_system: node.getNodeParameter('origin_system', 0) || undefined,
+			title: node.getNodeParameter('title', i) || undefined,
+			description: node.getNodeParameter('description', i) || undefined,
+			host_pitch: node.getNodeParameter('host_pitch', i, undefined),
+			host_instructions: node.getNodeParameter('host_instructions', i, undefined),
+			origin_system: node.getNodeParameter('origin_system', i) || undefined,
 		}
 
 		return actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>

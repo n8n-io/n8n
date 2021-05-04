@@ -35,8 +35,8 @@ export const fields: INodeProperties[] = [
 	})
 ];
 
-export const logic = async (node: IExecuteFunctions) => {
-	const wrapper_id = node.getNodeParameter('wrapper_id', 0) as string
+export const resolve = async (node: IExecuteFunctions, i: number) => {
+	const wrapper_id = node.getNodeParameter('wrapper_id', i) as string
 	let url = `/api/v2/wrappers`
 	if (wrapper_id) {
 		url += `/${wrapper_id}`

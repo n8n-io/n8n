@@ -198,8 +198,8 @@ export const fields: INodeProperties[] = [
 	}),
 ];
 
-export const logic = async (node: IExecuteFunctions) => {
-	const operation = node.getNodeParameter('operation', 0) as 'list'| 'get'| 'create'| 'update'| 'send'| 'stop'| 'schedule'| 'cancel';
+export const resolve = async (node: IExecuteFunctions, i: number) => {
+	const operation = node.getNodeParameter('operation', i) as 'list'| 'get'| 'create'| 'update'| 'send'| 'stop'| 'schedule'| 'cancel';
 
 	let url = `/api/v2/messages`
 
@@ -210,18 +210,18 @@ export const logic = async (node: IExecuteFunctions) => {
 
 	if (operation === 'create') {
 		let body: any = {
-			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
+			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
-			'targets': (node.getNodeParameter('additional_properties', 0, { targets: [] }) as any)?.targets?.map(url => ({ url })),
-			origin_system: node.getNodeParameter('origin_system', 0, undefined) as string,
-			name: node.getNodeParameter('name', 0, undefined) as string,
-			subject: node.getNodeParameter('subject', 0, undefined) as string,
-			from: node.getNodeParameter('from', 0, undefined) as string,
-			'reply_to': node.getNodeParameter('reply_to', 0, undefined) as string,
-			body: node.getNodeParameter('body', 0, undefined) as string,
+			'targets': (node.getNodeParameter('additional_properties', i, { targets: [] }) as any)?.targets?.map(url => ({ url })),
+			origin_system: node.getNodeParameter('origin_system', i, undefined) as string,
+			name: node.getNodeParameter('name', i, undefined) as string,
+			subject: node.getNodeParameter('subject', i, undefined) as string,
+			from: node.getNodeParameter('from', i, undefined) as string,
+			'reply_to': node.getNodeParameter('reply_to', i, undefined) as string,
+			body: node.getNodeParameter('body', i, undefined) as string,
 		}
 
-		const wrapper = node.getNodeParameter('osdi:wrapper', 0, '') as string
+		const wrapper = node.getNodeParameter('osdi:wrapper', i, '') as string
 		if (wrapper) {
 			body['_links'] = {
 				'osdi:wrapper': {
@@ -233,7 +233,7 @@ export const logic = async (node: IExecuteFunctions) => {
     return actionNetworkApiRequest.call(node, 'POST', url, body) as Promise<IDataObject[]>
 	}
 
-	const message_id = node.getNodeParameter('message_id', 0) as string;
+	const message_id = node.getNodeParameter('message_id', i) as string;
 
 	if (message_id && operation === 'get') {
     url += `/${message_id}`
@@ -244,18 +244,18 @@ export const logic = async (node: IExecuteFunctions) => {
     url += `/${message_id}`
 
 		let body: any = {
-			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
+			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
-			'targets': (node.getNodeParameter('additional_properties', 0, { targets: [] }) as any)?.targets?.map(url => ({ url })),
-			origin_system: node.getNodeParameter('origin_system', 0, undefined) as string,
-			name: node.getNodeParameter('name', 0, undefined) as string,
-			subject: node.getNodeParameter('subject', 0, undefined) as string,
-			from: node.getNodeParameter('from', 0, undefined) as string,
-			'reply_to': node.getNodeParameter('reply_to', 0, undefined) as string,
-			body: node.getNodeParameter('body', 0, undefined) as string,
+			'targets': (node.getNodeParameter('additional_properties', i, { targets: [] }) as any)?.targets?.map(url => ({ url })),
+			origin_system: node.getNodeParameter('origin_system', i, undefined) as string,
+			name: node.getNodeParameter('name', i, undefined) as string,
+			subject: node.getNodeParameter('subject', i, undefined) as string,
+			from: node.getNodeParameter('from', i, undefined) as string,
+			'reply_to': node.getNodeParameter('reply_to', i, undefined) as string,
+			body: node.getNodeParameter('body', i, undefined) as string,
 		}
 
-		const wrapper = node.getNodeParameter('osdi:wrapper', 0, '') as string
+		const wrapper = node.getNodeParameter('osdi:wrapper', i, '') as string
 		if (wrapper) {
 			body['_links'] = {
 				'osdi:wrapper': {
@@ -282,7 +282,7 @@ export const logic = async (node: IExecuteFunctions) => {
 	if (message_id && operation === 'schedule') {
     url += `/${message_id}/schedule/`
     const body = {
-      "scheduled_start_date": node.getNodeParameter('scheduled_start_date', 0) as string
+      "scheduled_start_date": node.getNodeParameter('scheduled_start_date', i) as string
     }
     return actionNetworkApiRequest.call(node, 'POST', url, body ) as Promise<IDataObject[]>
 	}

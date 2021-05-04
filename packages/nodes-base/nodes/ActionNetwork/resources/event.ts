@@ -240,9 +240,9 @@ export const fields: INodeProperties[] = [
 	}),
 ];
 
-export const logic = async (node: IExecuteFunctions) => {
-	const event_id = node.getNodeParameter('event_id', 0) as string;
-	const operation = node.getNodeParameter('operation', 0) as 'GET' | 'PUT' | 'POST';
+export const resolve = async (node: IExecuteFunctions, i: number) => {
+	const event_id = node.getNodeParameter('event_id', i) as string;
+	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST';
 	let url = `/api/v2/events`
 
 	if (event_id && operation === 'GET') {
@@ -251,15 +251,15 @@ export const logic = async (node: IExecuteFunctions) => {
 
 	if (event_id && operation === 'PUT') {
 		let body: any = {
-			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
+			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
-			'target': (node.getNodeParameter('additional_properties', 0, { targets: [] }) as any)?.targets?.map(name => ({ name })),
-			description: node.getNodeParameter('description', 0) || undefined,
-			instructions: node.getNodeParameter('instructions', 0) || undefined,
-			origin_system: node.getNodeParameter('origin_system', 0) || undefined,
-			title: node.getNodeParameter('title', 0) || undefined,
-			location: node.getNodeParameter('location', 0) || undefined,
-			start_date: node.getNodeParameter('start_date', 0) || undefined
+			'target': (node.getNodeParameter('additional_properties', i, { targets: [] }) as any)?.targets?.map(name => ({ name })),
+			description: node.getNodeParameter('description', i) || undefined,
+			instructions: node.getNodeParameter('instructions', i) || undefined,
+			origin_system: node.getNodeParameter('origin_system', i) || undefined,
+			title: node.getNodeParameter('title', i) || undefined,
+			location: node.getNodeParameter('location', i) || undefined,
+			start_date: node.getNodeParameter('start_date', i) || undefined
 		}
 
 		return actionNetworkApiRequest.call(node, operation, `${url}/${event_id}`, body) as Promise<IDataObject>
@@ -267,22 +267,22 @@ export const logic = async (node: IExecuteFunctions) => {
 
 	// If the event campaign is specified
 	// then create and filter events inside it
-	const event_campaign_id = node.getNodeParameter('event_campaign_id', 0)
+	const event_campaign_id = node.getNodeParameter('event_campaign_id', i)
 	if (event_campaign_id) {
 		url = `/api/v2/event_campaigns/${event_campaign_id}/events`
 	}
 
 	if (operation === 'POST') {
 		let body: any = {
-			'identifiers': (node.getNodeParameter('additional_properties', 0, { identifiers: [] }) as any)?.identifiers,
+			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
-			'target': (node.getNodeParameter('additional_properties', 0, { targets: [] }) as any)?.targets?.map(name => ({ name })),
-			description: node.getNodeParameter('description', 0) || undefined,
-			instructions: node.getNodeParameter('instructions', 0) || undefined,
-			origin_system: node.getNodeParameter('origin_system', 0) || undefined,
-			title: node.getNodeParameter('title', 0) || undefined,
-			location: node.getNodeParameter('location', 0) || undefined,
-			start_date: node.getNodeParameter('start_date', 0) || undefined
+			'target': (node.getNodeParameter('additional_properties', i, { targets: [] }) as any)?.targets?.map(name => ({ name })),
+			description: node.getNodeParameter('description', i) || undefined,
+			instructions: node.getNodeParameter('instructions', i) || undefined,
+			origin_system: node.getNodeParameter('origin_system', i) || undefined,
+			title: node.getNodeParameter('title', i) || undefined,
+			location: node.getNodeParameter('location', i) || undefined,
+			start_date: node.getNodeParameter('start_date', i) || undefined
 		}
 
 		return actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>
