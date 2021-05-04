@@ -1,10 +1,8 @@
 import * as config from '../config';
 import * as express from 'express';
 import { join as pathJoin } from 'path';
-import {
-	readFile as fsReadFile,
-	readFileSync as fsReadFileSync,
-} from 'fs/promises';
+import { readFile as fsReadFile } from 'fs/promises';
+import { readFileSync as fsReadFileSync } from 'fs';
 import { IDataObject } from 'n8n-workflow';
 
 import { IPackageVersions } from './';
