@@ -726,8 +726,7 @@ export function WorkflowExecuteAdditionalData(waitPromise: IDeferredPromise<IRun
 	};
 
 	return {
-		credentials: {},
-		credentialsHelper: new CredentialsHelper({}, ''),
+		credentialsHelper: new CredentialsHelper(''),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
 		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {}, // tslint:disable-line:no-any
 		restApiUrl: '',

@@ -95,11 +95,9 @@ export interface ICredentialsExpressionResolveValues {
 
 export abstract class ICredentialsHelper {
 	encryptionKey: string;
-	workflowCredentials: IWorkflowCredentials;
 
-	constructor(workflowCredentials: IWorkflowCredentials, encryptionKey: string) {
+	constructor(encryptionKey: string) {
 		this.encryptionKey = encryptionKey;
-		this.workflowCredentials = workflowCredentials;
 	}
 
 	abstract getCredentials(name: string, type: string): Promise<ICredentials>;
@@ -735,7 +733,6 @@ export interface IWorkflowExecuteHooks {
 }
 
 export interface IWorkflowExecuteAdditionalData {
-	credentials: IWorkflowCredentials;
 	credentialsHelper: ICredentialsHelper;
 	encryptionKey: string;
 	executeWorkflow: (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[], parentExecutionId?: string, loadedWorkflowData?: IWorkflowBase, loadedRunData?: any) => Promise<any>; // tslint:disable-line:no-any
