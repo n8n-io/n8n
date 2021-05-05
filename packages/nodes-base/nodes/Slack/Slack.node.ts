@@ -10,6 +10,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -569,10 +570,10 @@ export class Slack implements INodeType {
 										for (const elementUi of elementsUi) {
 											const element: Element = {};
 											if (elementUi.actionId === '') {
-												throw new Error('Action ID must be set');
+												throw new NodeOperationError(this.getNode(), 'Action ID must be set');
 											}
 											if (elementUi.text === '') {
-												throw new Error('Text must be set');
+												throw new NodeOperationError(this.getNode(), 'Text must be set');
 											}
 											element.action_id = elementUi.actionId as string;
 											element.type = elementUi.type as string;
@@ -649,7 +650,7 @@ export class Slack implements INodeType {
 										text.text = textUi.text as string;
 										block.text = text;
 									} else {
-										throw new Error('Property text must be defined');
+										throw new NodeOperationError(this.getNode(), 'Property text must be defined');
 									}
 									const fieldsUi = (blockUi.fieldsUi as IDataObject).fieldsValues as IDataObject[];
 									if (fieldsUi) {
@@ -744,10 +745,10 @@ export class Slack implements INodeType {
 						const attachmentsJson = this.getNodeParameter('attachmentsJson', i, '') as string;
 						const blocksJson = this.getNodeParameter('blocksJson', i, []) as string;
 						if (attachmentsJson !== '' && validateJSON(attachmentsJson) === undefined) {
-							throw new Error('Attachments it is not a valid json');
+							throw new NodeOperationError(this.getNode(), 'Attachments it is not a valid json');
 						}
 						if (blocksJson !== '' && validateJSON(blocksJson) === undefined) {
-							throw new Error('Blocks it is not a valid json');
+							throw new NodeOperationError(this.getNode(), 'Blocks it is not a valid json');
 						}
 						if (attachmentsJson !== '') {
 							body.attachments = attachmentsJson;
@@ -922,7 +923,7 @@ export class Slack implements INodeType {
 						if (items[i].binary === undefined
 							//@ts-ignore
 							|| items[i].binary[binaryPropertyName] === undefined) {
-							throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 						}
 						body.file = {
 							//@ts-ignore

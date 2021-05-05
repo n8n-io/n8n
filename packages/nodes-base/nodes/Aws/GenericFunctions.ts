@@ -1,7 +1,7 @@
 import { URL } from 'url';
 import { sign } from 'aws4';
 import { OptionsWithUri } from 'request';
-import { parseString } from 'xml2js';
+import { parseString as parseXml } from 'xml2js';
 
 import {
 	IExecuteFunctions,
@@ -11,7 +11,7 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialDataDecryptedObject,
+	ICredentialDataDecryptedObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 function getEndpointForService(service: string, credentials: ICredentialDataDecryptedObject): string {
@@ -31,7 +31,7 @@ function getEndpointForService(service: string, credentials: ICredentialDataDecr
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('aws');
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	// Concatenate path and instantiate URL object so it parses correctly query strings
@@ -52,17 +52,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = (error.response && error.response.body.message) || (error.response && error.response.body.Message) || error.message;
-
-		if (error.statusCode === 403) {
-			if (errorMessage === 'The security token included in the request is invalid.') {
-				throw new Error('The AWS credentials are not valid!');
-			} else if (errorMessage.startsWith('The request signature we calculated does not match the signature you provided')) {
-				throw new Error('The AWS credentials are not valid!');
-			}
-		}
-
-		throw new Error(`AWS error response [${error.statusCode}]: ${errorMessage}`);
+		throw new NodeApiError(this.getNode(), error, { parseXml: true });
 	}
 }
 
@@ -70,7 +60,7 @@ export async function awsApiRequestREST(this: IHookFunctions | IExecuteFunctions
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
 		return JSON.parse(response);
-	} catch (e) {
+	} catch (error) {
 		return response;
 	}
 }
@@ -79,14 +69,14 @@ export async function awsApiRequestSOAP(this: IHookFunctions | IExecuteFunctions
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
 		return await new Promise((resolve, reject) => {
-			parseString(response, { explicitArray: false }, (err, data) => {
+			parseXml(response, { explicitArray: false }, (err, data) => {
 				if (err) {
 					return reject(err);
 				}
 				resolve(data);
 			});
 		});
-	} catch (e) {
+	} catch (error) {
 		return response;
 	}
 }

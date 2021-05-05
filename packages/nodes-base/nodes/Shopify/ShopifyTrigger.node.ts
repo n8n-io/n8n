@@ -304,7 +304,7 @@ export class ShopifyTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const endpoint = `/webhooks`;
-				
+
 				const { webhooks }  = await shopifyApiRequest.call(this, 'GET', endpoint, {}, { topic });
 				for (const webhook of webhooks) {
 					if (webhook.address === webhookUrl) {
@@ -328,7 +328,7 @@ export class ShopifyTrigger implements INodeType {
 				};
 
 				let responseData;
-				
+
 				responseData = await shopifyApiRequest.call(this, 'POST', endpoint, body);
 
 				if (responseData.webhook === undefined || responseData.webhook.id === undefined) {
@@ -345,7 +345,7 @@ export class ShopifyTrigger implements INodeType {
 					const endpoint = `/webhooks/${webhookData.webhookId}.json`;
 					try {
 						await shopifyApiRequest.call(this, 'DELETE', endpoint, {});
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 					delete webhookData.webhookId;

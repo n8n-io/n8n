@@ -2,7 +2,7 @@
 	"node": "n8n-nodes-base.if",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"details": "The IF node can be used to implement binary conditional logic in your workflow. You can setup one-to-many conditions to evalute each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly. \n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+	"details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
 	"categories": [
 		"Core Nodes"
 	],
@@ -27,6 +27,11 @@
 				"label": "Why business process automation with n8n can change your daily life",
 				"icon": "🧬",
 				"url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/"
+			},
+			{
+				"label": "5 workflow automations for Mattermost that we love at n8n",
+				"icon": "🤖",
+				"url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/"
 			},
 			{
 				"label": "Why this Product Manager loves workflow automation with n8n",
