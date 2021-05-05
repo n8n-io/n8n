@@ -2174,7 +2174,11 @@ export class Github implements INodeType {
 
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					if (overwriteDataOperations.includes(fullOperation) || overwriteDataOperationsArray.includes(fullOperation)) {
+						returnData.push({ error: error.message });
+					} else {
+						items[i].json = { error: error.message };
+					}
 					continue;
 				}
 				throw error;
