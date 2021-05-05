@@ -1,6 +1,6 @@
 import { createPersonSignupHelperFields, createPersonSignupHelperObject } from './person';
 import { INodeProperties } from 'n8n-workflow';
-import { createListOperations, createFilterFields, createResourceLink, createPaginationProperties, createFilterProperties } from '../helpers/fields';
+import { createListOperations, createResourceLink, createPaginationProperties } from '../helpers/fields';
 import { IExecuteFunctions } from 'n8n-core/dist/src/Interfaces';
 import { actionNetworkApiRequest } from '../helpers/request';
 import { IDataObject } from '../../../../workflow/dist/src/Interfaces';
@@ -175,7 +175,7 @@ export const fields: INodeProperties[] = [
 	},
 	{
 		name: "osdi:wrapper",
-		displayName: "URL for HTML wrapper",
+		displayName: "ID or URL for HTML wrapper",
 		type: "string",
 		default: '',
 		displayOptions: {
@@ -223,10 +223,9 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 
 		const wrapper = node.getNodeParameter('osdi:wrapper', i, null) as string
 		if (wrapper) {
-			body['_links'] = {
-				'osdi:wrapper': {
-					href: wrapper
-				}
+			body = {
+				...body,
+				...createResourceLink('osdi:wrapper', wrapper, 'https://actionnetwork.org/api/v2/wrappers/')
 			}
 		}
 
@@ -257,10 +256,9 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 
 		const wrapper = node.getNodeParameter('osdi:wrapper', i, null) as string
 		if (wrapper) {
-			body['_links'] = {
-				'osdi:wrapper': {
-					href: wrapper
-				}
+			body = {
+				...body,
+				...createResourceLink('osdi:wrapper', wrapper, 'https://actionnetwork.org/api/v2/wrappers/')
 			}
 		}
 
