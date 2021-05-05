@@ -24,6 +24,8 @@ export const createResourceLink = (name: string, href: string, urlPrefix?: strin
  * Listing resources
  */
 
+const ACTION_NETWORK_LIST_MAX_COUNT = 25
+
 export const createListOperations = createFields([
 	{
 		displayName: 'Include API Metadata',
@@ -33,10 +35,11 @@ export const createListOperations = createFields([
 		default: false,
 	},
 	{
-		displayName: 'Limit (max 25)',
-		name: 'per_page',
+		displayName: 'Limit',
+    description: `Maximum of ${ACTION_NETWORK_LIST_MAX_COUNT} items allowed`
+		name: 'limit',
 		type: 'number',
-		default: 25,
+		default: ACTION_NETWORK_LIST_MAX_COUNT,
 	},
 	{
 		displayName: 'Page',
@@ -48,8 +51,8 @@ export const createListOperations = createFields([
 
 export const createPaginationProperties = (node: IExecuteFunctions, i: number) => {
 	const page = node.getNodeParameter('page', i, 1) as string;
-	const per_page = Math.max(1, Math.min(25, node.getNodeParameter('per_page', i) as number));
-	return { page, per_page }
+	const limit = Math.max(1, Math.min(ACTION_NETWORK_LIST_MAX_COUNT, node.getNodeParameter('limit', i) as number));
+	return { page, per_page: limit }
 }
 
 /**
