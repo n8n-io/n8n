@@ -1,9 +1,10 @@
 import { createPersonSignupHelperFields, createPersonSignupHelperObject } from './person';
 import { INodeProperties } from 'n8n-workflow';
-import { createListOperations, createFilterFields, createResourceLink, createPaginationProperties, createFilterProperties } from '../helpers/fields';
+import { createListOperations, createFilterFields, createPaginationProperties, createFilterProperties } from '../helpers/fields';
 import { IExecuteFunctions } from 'n8n-core/dist/src/Interfaces';
 import { actionNetworkApiRequest } from '../helpers/request';
 import { IDataObject } from '../../../../workflow/dist/src/Interfaces';
+import { createResourceLink } from '../helpers/osdi';
 
 // DOCS: https://actionnetwork.org/docs/v2/attendances
 // Scenario: Retrieving a collection of attendance resources (GET)
@@ -148,8 +149,8 @@ export const fields = [
 	},
 	{
 		name: "osdi:person",
-		displayName: "Person ID/URL",
-		description: "Link to a person by their ID/URL",
+		displayName: "Person ID or URL",
+		description: "Link to a person by their ID or URL",
 		type: 'string',
 		required: false,
 		default: '',
@@ -235,7 +236,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 
 		const personRefURL = node.getNodeParameter('osdi:person', i, null) as string;
 		if (personRefURL) {
-			body = { ...body, ...createResourceLink('osdi:person', personRefURL, "https://actionnetwork.org/api/v2/people/") }
+			body = { ...body, ...createResourceLink('osdi:person', personRefURL) }
 		} else {
 			body = { ...body, ...createPersonSignupHelperObject(node, i) }
 		}

@@ -8,19 +8,6 @@ export const createFields = (fields: INodeProperties[]) => {
 }
 
 /**
- * Linking to resources
- */
-
-export const createResourceLink = (name: string, href: string, urlPrefix?: string) => {
-	if (urlPrefix && !href.startsWith(urlPrefix)) {
-		href = `${urlPrefix}${href}`
-	}
-	return {
-		_links: { [name]: {	href } }
-	}
-}
-
-/**
  * Listing resources
  */
 
@@ -36,7 +23,7 @@ export const createListOperations = createFields([
 	},
 	{
 		displayName: 'Limit',
-    description: `Maximum of ${ACTION_NETWORK_LIST_MAX_COUNT} items allowed`
+    description: `Maximum of ${ACTION_NETWORK_LIST_MAX_COUNT} items allowed`,
 		name: 'limit',
 		type: 'number',
 		default: ACTION_NETWORK_LIST_MAX_COUNT,

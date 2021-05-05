@@ -1,9 +1,10 @@
 import { createPersonSignupHelperFields, createPersonSignupHelperObject } from './person';
 import { INodeProperties } from 'n8n-workflow';
-import { createListOperations, createFilterFields, createResourceLink, createPaginationProperties, createFilterProperties } from '../helpers/fields';
+import { createListOperations, createFilterFields, createPaginationProperties, createFilterProperties } from '../helpers/fields';
 import { IExecuteFunctions } from 'n8n-core/dist/src/Interfaces';
 import { actionNetworkApiRequest } from '../helpers/request';
 import { IDataObject } from '../../../../workflow/dist/src/Interfaces';
+import { createResourceLink } from '../helpers/osdi';
 
 // DOCS: https://actionnetwork.org/docs/v2/submissions
 // Scenario: Retrieving a collection of submission resources (GET)
@@ -120,8 +121,8 @@ export const fields = [
 	},
 	{
 		name: "osdi:person",
-		displayName: "Person URL",
-		description: "Link to a person by their URL",
+		displayName: "Person ID or URL",
+		description: "Link to a person by their ID or URL",
 		type: 'string',
 		required: false,
 		default: '',

@@ -1,9 +1,9 @@
-import { createPersonSignupHelperFields, createPersonSignupHelperObject } from './person';
 import { INodeProperties } from 'n8n-workflow';
-import { createListOperations, createFilterFields, createPaginationProperties, createFilterProperties, createResourceLink } from '../helpers/fields';
+import { createListOperations, createPaginationProperties } from '../helpers/fields';
 import { IExecuteFunctions } from 'n8n-core/dist/src/Interfaces';
 import { actionNetworkApiRequest } from '../helpers/request';
 import { IDataObject } from '../../../../workflow/dist/src/Interfaces';
+import { createResourceLink } from '../helpers/osdi';
 
 // https://actionnetwork.org/docs/v2/tag
 // - Scenario: Retrieving a collection of item resources (GET)
@@ -69,8 +69,8 @@ export const fields: INodeProperties[] = [
 	},
 	{
 		name: "osdi:person",
-		displayName: "Person ID/URL",
-		description: "Link to a person by their ID/URL",
+		displayName: "Person ID or URL",
+		description: "Link to a person by their ID or URL",
 		type: 'string',
 		required: true,
 		default: '',
@@ -111,7 +111,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 
 	if (operation === 'POST') {
 		const personRefURL = node.getNodeParameter('osdi:person', i, null) as string;
-		const body = createResourceLink('osdi:person', personRefURL, 'https://actionnetwork.org/api/v2/people/')
+		const body = createResourceLink('osdi:person', personRefURL)
 		return actionNetworkApiRequest.call(node, 'POST', url, body) as Promise<IDataObject>
 	}
 
