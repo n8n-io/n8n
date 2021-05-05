@@ -85,11 +85,11 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
 		// Run the error workflow
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
 		if (workflowData.settings !== undefined && workflowData.settings.errorWorkflow && !(mode === 'error' && workflowData.id && workflowData.settings.errorWorkflow.toString() === workflowData.id.toString())) {
-			Logger.verbose(`Start external error workflow`, { executionId: this.executionId, errorWorkflowId: workflowData.settings.errorWorkflow.toString(), workflowId: this.workflowData.id });
+			Logger.verbose(`Start external error workflow`, { executionId, errorWorkflowId: workflowData.settings.errorWorkflow.toString(), workflowId: workflowData.id });
 			// If a specific error workflow is set run only that one
 			WorkflowHelpers.executeErrorWorkflow(workflowData.settings.errorWorkflow as string, workflowErrorData);
 		} else if (mode !== 'error' && workflowData.id !== undefined && workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)) {
-			Logger.verbose(`Start internal error workflow`, { executionId: this.executionId, workflowId: this.workflowData.id });
+			Logger.verbose(`Start internal error workflow`, { executionId, workflowId: workflowData.id });
 			// If the workflow contains
 			WorkflowHelpers.executeErrorWorkflow(workflowData.id.toString(), workflowErrorData);
 		}
