@@ -44,7 +44,7 @@ export const createListOperations = createFields([
 ])
 
 export const createPaginationProperties = (node: IExecuteFunctions, i: number) => {
-	const page = node.getNodeParameter('page', i) as string;
+	const page = node.getNodeParameter('page', i, 1) as string;
 	const per_page = Math.max(1, Math.min(25, node.getNodeParameter('per_page', i) as number));
 	return { page, per_page }
 }

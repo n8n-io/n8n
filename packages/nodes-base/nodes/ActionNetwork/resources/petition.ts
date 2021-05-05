@@ -164,7 +164,7 @@ export const fields = [
 ] as INodeProperties[];
 
 export const resolve = async (node: IExecuteFunctions, i: number) => {
-	const petition_id = node.getNodeParameter('petition_id', i) as string;
+	const petition_id = node.getNodeParameter('petition_id', i, null) as string;
 	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
 	let url = `/api/v2/petitions`
 
@@ -177,10 +177,10 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
 			'target': (node.getNodeParameter('additional_properties', i, { targets: [] }) as any)?.target?.map(name => ({ name })),
-			description: node.getNodeParameter('description', i) || undefined,
-			petition_text: node.getNodeParameter('petition_text', i) || undefined,
-			origin_system: node.getNodeParameter('origin_system', i) || undefined,
-			title: node.getNodeParameter('title', i) || undefined
+			description: node.getNodeParameter('description', i, undefined),
+			petition_text: node.getNodeParameter('petition_text', i, undefined),
+			origin_system: node.getNodeParameter('origin_system', i, undefined),
+			title: node.getNodeParameter('title', i, undefined)
 		}
 
 		return actionNetworkApiRequest.call(node, operation, `${url}/${petition_id}`, body) as Promise<IDataObject>
@@ -191,10 +191,10 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
 			'target': (node.getNodeParameter('additional_properties', i, { targets: [] }) as any)?.target?.map(name => ({ name })),
-			description: node.getNodeParameter('description', i) || undefined,
-			petition_text: node.getNodeParameter('petition_text', i) || undefined,
-			origin_system: node.getNodeParameter('origin_system', i) || undefined,
-			title: node.getNodeParameter('title', i) || undefined
+			description: node.getNodeParameter('description', i, undefined),
+			petition_text: node.getNodeParameter('petition_text', i, undefined),
+			origin_system: node.getNodeParameter('origin_system', i, undefined),
+			title: node.getNodeParameter('title', i, undefined)
 		}
 
 		return actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>

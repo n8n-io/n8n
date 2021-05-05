@@ -24,7 +24,7 @@ export const fields = [
 				value: 'GET',
 			},
 			{
-				name: 'Get',
+				name: 'Get All',
 				value: 'GET_ALL',
 			},
 			{
@@ -164,8 +164,10 @@ export const fields = [
 ] as INodeProperties[];
 
 export const resolve = async (node: IExecuteFunctions, i: number) => {
-	const form_id = node.getNodeParameter('form_id', i) as string;
-	const person_id = node.getNodeParameter('person_id', i) as string;
+	const form_id = node.getNodeParameter('form_id', i, undefined) as string;
+	const person_id = node.getNodeParameter('person_id', i, undefined) as string;
+	const submission_id = node.getNodeParameter('submission_id', i, undefined) as string;
+	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
 
 	let url = `/api/v2`
 	if (form_id) {
@@ -175,9 +177,6 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	} else {
 		throw new Error("You must provide a Form ID or Person ID")
 	}
-
-	const submission_id = node.getNodeParameter('submission_id', i) as string;
-	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
 
 	if (submission_id && operation === 'GET') {
 		return actionNetworkApiRequest.call(node, operation, `${url}/${submission_id}`) as Promise<IDataObject>
@@ -195,12 +194,12 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
 			'triggers': {
 				'autoresponse': {
-					'enabled': node.getNodeParameter('is_autoresponse_enabled', i) as boolean
+					'enabled': node.getNodeParameter('is_autoresponse_enabled', i, true) as boolean
 				}
 			}
 		}
 
-		const personRefURL = node.getNodeParameter('osdi:person', i) as string;
+		const personRefURL = node.getNodeParameter('osdi:person', i, undefined) as string;
 		if (personRefURL) {
 			body = { ...body, ...createResourceLink('osdi:person', personRefURL) }
 		} else {

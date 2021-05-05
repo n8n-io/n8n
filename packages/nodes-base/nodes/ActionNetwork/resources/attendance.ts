@@ -192,9 +192,11 @@ export const fields = [
 ] as INodeProperties[];
 
 export const resolve = async (node: IExecuteFunctions, i: number) => {
-	const event_campaign_id = node.getNodeParameter('event_campaign_id', i) as string;
-	const event_id = node.getNodeParameter('event_id', i) as string;
-	const person_id = node.getNodeParameter('person_id', i) as string;
+	const event_campaign_id = node.getNodeParameter('event_campaign_id', i, null) as string;
+	const event_id = node.getNodeParameter('event_id', i, null) as string;
+	const person_id = node.getNodeParameter('person_id', i, null) as string;
+	const attendance_id = node.getNodeParameter('attendance_id', i, null) as string;
+	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
 
 	let url = `/api/v2`
 	if (event_campaign_id) {
@@ -209,9 +211,6 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	} else {
 		throw new Error("You must provide an Event ID or Person ID")
 	}
-
-	const attendance_id = node.getNodeParameter('attendance_id', i) as string;
-	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
 
 	if (attendance_id && operation === 'GET') {
 		return actionNetworkApiRequest.call(node, operation, `${url}/${attendance_id}`) as Promise<IDataObject>
@@ -229,12 +228,12 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
 			'triggers': {
 				'autoresponse': {
-					'enabled': node.getNodeParameter('is_autoresponse_enabled', i) as boolean
+					'enabled': node.getNodeParameter('is_autoresponse_enabled', i, true) as boolean
 				}
 			}
 		}
 
-		const personRefURL = node.getNodeParameter('osdi:person', i) as string;
+		const personRefURL = node.getNodeParameter('osdi:person', i, null) as string;
 		if (personRefURL) {
 			body = { ...body, ...createResourceLink('osdi:person', personRefURL) }
 		} else {

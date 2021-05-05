@@ -15,12 +15,14 @@ export const createPersonSignupHelperFields = createFields([
 		name: 'given_name',
 		type: 'string',
 		default: '',
+		required: false,
 	},
 	{
 		displayName: 'Last / Family Name',
 		name: 'family_name',
 		type: 'string',
 		default: '',
+		required: false,
 	},
 	{
 		displayName: 'Person Properties',
@@ -258,8 +260,8 @@ export function createPersonSignupHelperObject(node: IExecuteFunctions, i: numbe
 	const body: any = {
 		identifiers,
 		person: {
-			family_name: node.getNodeParameter('family_name', i),
-			given_name: node.getNodeParameter('given_name', i),
+			family_name: node.getNodeParameter('family_name', i, undefined),
+			given_name: node.getNodeParameter('given_name', i, undefined),
 			email_addresses
 		},
 		add_tags

@@ -36,7 +36,7 @@ export const fields: INodeProperties[] = [
 		name: 'query_id',
 		type: 'string',
 		default: '',
-		required: false,
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [ 'query' ],
@@ -58,7 +58,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	let url = `/api/v2/queries`
 	const operation = node.getNodeParameter('operation', i) as 'GET' | 'GET_ALL';
 
-	const query_id = node.getNodeParameter('query_id', i) as string
+	const query_id = node.getNodeParameter('query_id', i, undefined) as string
 	if (operation === 'GET' && query_id) {
 		url += `/${query_id}`
 		return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined) as Promise<IDataObject[]>

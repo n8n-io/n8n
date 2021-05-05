@@ -37,7 +37,7 @@ export const fields = [
 		name: 'campaign_id',
 		type: 'string',
 		default: '',
-		required: false,
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [ 'campaign' ],
@@ -70,20 +70,20 @@ export const fields = [
 
 export const resolve = async (node: IExecuteFunctions, i: number) => {
 	let url = `/api/v2/campaigns`
-	const campaign_id = node.getNodeParameter('campaign_id', i) as string;
 	const operation = node.getNodeParameter('operation', i) as 'GET' | 'GET_ALL';
 
-	if (operation === 'GET' && campaign_id) {
-		return actionNetworkApiRequest.call(node, 'GET', `${url}/${campaign_id}`) as Promise<IDataObject>
-	}
-
-	// Otherwise list all
 	if (operation === 'GET_ALL') {
 		const qs = {
 			...createPaginationProperties(node, i),
 			...createFilterProperties(node, i)
 		}
 		return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
+	}
+
+	const campaign_id = node.getNodeParameter('campaign_id', i, null) as string;
+
+	if (operation === 'GET' && campaign_id) {
+		return actionNetworkApiRequest.call(node, 'GET', `${url}/${campaign_id}`) as Promise<IDataObject>
 	}
 
 	return []

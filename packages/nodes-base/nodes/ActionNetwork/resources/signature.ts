@@ -177,8 +177,10 @@ export const fields = [
 ] as INodeProperties[];
 
 export const resolve = async (node: IExecuteFunctions, i: number) => {
-	const petition_id = node.getNodeParameter('petition_id', i) as string;
-	const person_id = node.getNodeParameter('person_id', i) as string;
+	const petition_id = node.getNodeParameter('petition_id', i, undefined) as string;
+	const person_id = node.getNodeParameter('person_id', i, undefined) as string;
+	const signature_id = node.getNodeParameter('signature_id', i, undefined) as string;
+	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
 
 	let url = `/api/v2`
 	if (petition_id) {
@@ -188,9 +190,6 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	} else {
 		throw new Error("You must provide a Petition ID or Person ID")
 	}
-
-	const signature_id = node.getNodeParameter('signature_id', i) as string;
-	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
 
 	if (signature_id && operation === 'GET') {
 		return actionNetworkApiRequest.call(node, operation, `${url}/${signature_id}`) as Promise<IDataObject>
@@ -210,12 +209,12 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 			'comments': node.getNodeParameter('comments', i, undefined),
 			'triggers': {
 				'autoresponse': {
-					'enabled': node.getNodeParameter('is_autoresponse_enabled', i) as boolean
+					'enabled': node.getNodeParameter('is_autoresponse_enabled', i, true) as boolean
 				}
 			}
 		}
 
-		const personRefURL = node.getNodeParameter('osdi:person', i) as string;
+		const personRefURL = node.getNodeParameter('osdi:person', i, undefined) as string;
 		if (personRefURL) {
 			body = { ...body, ...createResourceLink('osdi:person', personRefURL) }
 		} else {

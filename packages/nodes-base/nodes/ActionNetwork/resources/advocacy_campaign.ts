@@ -156,7 +156,7 @@ export const fields = [
 ] as INodeProperties[];
 
 export const resolve = async (node: IExecuteFunctions, i: number) => {
-	const advocacy_campaign_id = node.getNodeParameter('advocacy_campaign_id', i) as string;
+	const advocacy_campaign_id = node.getNodeParameter('advocacy_campaign_id', i, null) as string;
 	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
 	let url = `/api/v2/advocacy_campaigns`
 
@@ -168,10 +168,10 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
-			title: node.getNodeParameter('title', i) || undefined,
-			description: node.getNodeParameter('description', i) || undefined,
+			title: node.getNodeParameter('title', i, undefined),
+			description: node.getNodeParameter('description', i, undefined),
 			targets: node.getNodeParameter('targets', i, undefined),
-			origin_system: node.getNodeParameter('origin_system', i) || undefined,
+			origin_system: node.getNodeParameter('origin_system', i, undefined),
 		}
 
 		return actionNetworkApiRequest.call(node, operation, `${url}/${advocacy_campaign_id}`, body) as Promise<IDataObject>
@@ -181,10 +181,10 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
-			title: node.getNodeParameter('title', i) || undefined,
-			description: node.getNodeParameter('description', i) || undefined,
+			title: node.getNodeParameter('title', i, undefined),
+			description: node.getNodeParameter('description', i, undefined),
 			targets: node.getNodeParameter('targets', i, undefined),
-			origin_system: node.getNodeParameter('origin_system', i) || undefined,
+			origin_system: node.getNodeParameter('origin_system', i, undefined),
 		}
 
 		return actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>

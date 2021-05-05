@@ -144,7 +144,7 @@ export const fields = [
 ] as INodeProperties[];
 
 export const resolve = async (node: IExecuteFunctions, i: number) => {
-	const fundraising_page_id = node.getNodeParameter('fundraising_page_id', i) as string;
+	const fundraising_page_id = node.getNodeParameter('fundraising_page_id', i, null) as string;
 	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
 	let url = `/api/v2/fundraising_pages`
 
@@ -156,9 +156,9 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
-			title: node.getNodeParameter('title', i) || undefined,
-			description: node.getNodeParameter('description', i) || undefined,
-			origin_system: node.getNodeParameter('origin_system', i) || undefined,
+			title: node.getNodeParameter('title', i, undefined),
+			description: node.getNodeParameter('description', i, undefined),
+			origin_system: node.getNodeParameter('origin_system', i, undefined),
 		}
 
 		return actionNetworkApiRequest.call(node, operation, `${url}/${fundraising_page_id}`, body) as Promise<IDataObject>
@@ -168,9 +168,9 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
-			title: node.getNodeParameter('title', i) || undefined,
-			description: node.getNodeParameter('description', i) || undefined,
-			origin_system: node.getNodeParameter('origin_system', i) || undefined,
+			title: node.getNodeParameter('title', i, undefined),
+			description: node.getNodeParameter('description', i, undefined),
+			origin_system: node.getNodeParameter('origin_system', i, undefined),
 		}
 
 		return actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>

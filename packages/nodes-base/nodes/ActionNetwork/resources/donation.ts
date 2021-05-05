@@ -208,8 +208,10 @@ export const fields = [
 ] as INodeProperties[];
 
 export const resolve = async (node: IExecuteFunctions, i: number) => {
-	const fundraising_page_id = node.getNodeParameter('fundraising_page_id', i) as string;
-	const person_id = node.getNodeParameter('person_id', i) as string;
+	const fundraising_page_id = node.getNodeParameter('fundraising_page_id', i, null) as string;
+	const person_id = node.getNodeParameter('person_id', i, null) as string;
+	const donation_id = node.getNodeParameter('donation_id', i, null) as string;
+	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
 
 	let url = `/api/v2`
 
@@ -220,9 +222,6 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	} else {
 		url += `/donations`
 	}
-
-	const donation_id = node.getNodeParameter('donation_id', i) as string;
-	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
 
 	if (donation_id && operation === 'GET') {
 		return actionNetworkApiRequest.call(node, operation, `${url}/${donation_id}`) as Promise<IDataObject>
@@ -246,7 +245,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 			'created_date': node.getNodeParameter('created_date', i, undefined),
 		}
 
-		const personRefURL = node.getNodeParameter('osdi:person', i) as string;
+		const personRefURL = node.getNodeParameter('osdi:person', i, null) as string;
 		if (personRefURL) {
 			body = { ...body, ...createResourceLink('osdi:person', personRefURL) }
 		} else {
