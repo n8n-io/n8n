@@ -30,17 +30,17 @@ export const createListOperations = createFields([
 		default: false,
 	},
 	{
-		displayName: 'Page',
-		name: 'page',
-		type: 'number',
-		default: 1,
-	},
-	{
-		displayName: 'Items (max 25)',
+		displayName: 'Limit (max 25)',
 		name: 'per_page',
 		type: 'number',
 		default: 25,
 	},
+	{
+		displayName: 'Page',
+		name: 'page',
+		type: 'number',
+		default: 1,
+	}
 ])
 
 export const createPaginationProperties = (node: IExecuteFunctions, i: number) => {
