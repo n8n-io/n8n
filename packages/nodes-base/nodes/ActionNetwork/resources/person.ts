@@ -11,25 +11,47 @@ import { actionNetworkApiRequest } from '../helpers/request';
  */
 export const createPersonSignupHelperFields = createFields([
 	{
-		displayName: 'First / Given Name',
+		displayName: 'First Name',
 		name: 'given_name',
 		type: 'string',
-		default: '',
 		required: false,
+		default: null,
 	},
 	{
-		displayName: 'Last / Family Name',
+		displayName: 'Last Name',
 		name: 'family_name',
 		type: 'string',
-		default: '',
 		required: false,
+		default: null,
 	},
 	{
-		displayName: 'Person Properties',
-		name: 'new_person_additional_fields',
+		name: "primary_email_address",
+		displayName: 'Primary Email Address',
+		type: 'string',
+		default: null,
+	},
+	{
+		displayName: 'Status',
+		name: 'status',
+		type: 'options',
+		options: [
+			{
+				name: 'unsubscribed',
+				value: 'unsubscribed',
+			},
+			{
+				name: 'subscribed',
+				value: 'subscribed',
+			},
+		],
+		default: 'subscribed',
+	},
+	{
+		displayName: 'Contact Details',
+		name: 'contactDetails',
 		type: 'fixedCollection',
-		default: '',
-		placeholder: 'Add Field',
+		placeholder: 'Add Contact Detail',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -37,12 +59,14 @@ export const createPersonSignupHelperFields = createFields([
 			{
 				name: 'email_addresses',
 				displayName: 'Email Addresses',
+				placeholder: "Add Email Address",
+				default: null,
 				values: [
 					{
 						displayName: 'Address',
 						name: 'address',
 						type: 'string',
-						default: '',
+						default: null
 					},
 					{
 						displayName: 'Primary',
@@ -71,54 +95,56 @@ export const createPersonSignupHelperFields = createFields([
 			{
 				name: 'postal_addresses',
 				displayName: 'Postal Addresses',
+				placeholder: "Add Postal Address",
+				default: null,
 				values: [
 					{
 						displayName: 'street_address',
 						name: 'street_address',
 						type: 'string',
-						default: '',
+						default: null
 					},
 					{
 						displayName: 'locality',
 						name: 'locality',
 						type: 'string',
-						default: '',
+						default: null
 					},
 					{
 						displayName: 'region',
 						name: 'region',
 						type: 'string',
-						default: '',
+						default: null
 					},
 					{
 						displayName: 'postal_code',
 						name: 'postal_code',
 						type: 'string',
-						default: '',
+						default: null
 					},
 					{
 						displayName: 'country',
 						name: 'country',
 						type: 'string',
-						default: '',
+						default: null
 					},
 					{
 						displayName: 'language',
 						name: 'language',
 						type: 'string',
-						default: '',
+						default: null
 					},
 					{
 						displayName: 'latitude',
 						name: 'latitude',
 						type: 'number',
-						default: '',
+						default: null
 					},
 					{
 						displayName: 'longitude',
 						name: 'longitude',
 						type: 'number',
-						default: '',
+						default: null
 					},
 					{
 						displayName: 'accuracy',
@@ -143,12 +169,14 @@ export const createPersonSignupHelperFields = createFields([
 			{
 				name: 'phone_numbers',
 				displayName: 'Phone Numbers',
+				placeholder: "Add Phone Number",
+				default: undefined,
 				values: [
 					{
 						displayName: 'Number',
 						name: 'number',
 						type: 'string',
-						default: '',
+						default: null
 					},
 					{
 						displayName: 'Type',
@@ -186,18 +214,19 @@ export const createPersonSignupHelperFields = createFields([
 					},
 				],
 			},
-			{
-				name: 'add_tags',
-				displayName: 'Tags',
-				type: 'string',
-				default: '',
-			},
-			{
-				name: 'identifiers',
-				displayName: 'Custom IDs',
-				type: 'string',
-				default: '',
-			},
+		],
+	},
+	{
+		displayName: 'Custom Fields',
+		name: 'customFields',
+		default: [],
+		placeholder: 'Add Custom Field',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add Custom Field MVBT',
+		},
+		options: [
 			{
 				name: 'custom_fields',
 				displayName: 'Custom Fields',
@@ -207,18 +236,53 @@ export const createPersonSignupHelperFields = createFields([
 						name: 'key',
 						type: 'string',
 						description: 'Custom field name as defined in Action Network',
-						default: '',
+						default: null
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						description: 'Custom field value',
-						default: '',
+						default: null
 					},
 				],
 			},
 		],
+	},
+	{
+		displayName: 'Tags and Identifiers',
+		name: 'tags_and_ids',
+		type: 'collection',
+		placeholder: 'Add Tag / ID',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [ 'advocacy_campaign' ],
+				operation: [ 'POST', 'PUT' ]
+			}
+		},
+		options: [
+			{
+				name: 'add_tags',
+				displayName: 'Tags',
+				type: 'string',
+				default: [],
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add tag',
+				},
+			},
+			{
+				name: 'identifiers',
+				displayName: 'Custom IDs',
+				type: 'string',
+				default: [],
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add custom ID',
+				},
+			},
+		]
 	},
 ])
 
@@ -244,25 +308,33 @@ export const createPersonSignupHelperFields = createFields([
  */
 export function createPersonSignupHelperObject(node: IExecuteFunctions, i: number) {
 	// @ts-ignore
-	const {
-		email_addresses,
-		add_tags,
-		identifiers,
-		phone_numbers,
-		custom_fields,
-		postal_addresses
-	} = node.getNodeParameter('new_person_fields', i, {}) as any
+	const primary_email_address = node.getNodeParameter('primary_email_address', i, null)
 
-	if (!email_addresses.length) {
-		throw new Error("Please add at least one email address")
-	}
+	const { custom_fields } = node.getNodeParameter('customFields', i, {}) as any
+
+	const { add_tags, identifiers } = node.getNodeParameter('tags_and_ids', i, {}) as any
+
+	let {
+		email_addresses,
+		phone_numbers,
+		postal_addresses
+	} = node.getNodeParameter('contactDetails', i, {}) as any
+
+	email_addresses = [
+		...(email_addresses || []),
+		{
+			address: primary_email_address,
+			primary: true,
+			status: node.getNodeParameter('status', i, 'subscribed')
+		}
+	]
 
 	const body: any = {
 		identifiers,
 		person: {
+			email_addresses,
 			family_name: node.getNodeParameter('family_name', i, undefined),
 			given_name: node.getNodeParameter('given_name', i, undefined),
-			email_addresses
 		},
 		add_tags
 	}
@@ -282,14 +354,20 @@ export function createPersonSignupHelperObject(node: IExecuteFunctions, i: numbe
 		body.postal_addresses = postal_addresses.map(
 			// @ts-ignore
 			({ street_address, latitude, longitude, accuracy, ...a }) => {
+				let location = undefined
+				if (latitude && longitude) {
+					location = { latitude, longitude, accuracy }
+				}
 				return {
-					...a,
 					address_lines: street_address ? [street_address] : undefined,
-					location: { latitude, longitude, accuracy }
+					...a,
+					location
 				}
 			}
 		)
 	}
+
+	console.log(JSON.stringify(body))
 
 	return body
 }
@@ -332,7 +410,6 @@ export const fields = [
 		name: 'person_id',
 		type: 'string',
 		required: false,
-		default: '',
 		displayOptions: {
 			show: {
 				resource: [ 'person' ],
