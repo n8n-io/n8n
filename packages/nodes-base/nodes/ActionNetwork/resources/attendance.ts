@@ -148,8 +148,8 @@ export const fields = [
 	},
 	{
 		name: "osdi:person",
-		displayName: "Person URL",
-		description: "Link to a person by their URL",
+		displayName: "Person ID/URL",
+		description: "Link to a person by their ID/URL",
 		type: 'string',
 		required: false,
 		default: '',
@@ -235,7 +235,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 
 		const personRefURL = node.getNodeParameter('osdi:person', i, null) as string;
 		if (personRefURL) {
-			body = { ...body, ...createResourceLink('osdi:person', personRefURL) }
+			body = { ...body, ...createResourceLink('osdi:person', personRefURL, "https://actionnetwork.org/api/v2/people/") }
 		} else {
 			body = { ...body, ...createPersonSignupHelperObject(node, i) }
 		}

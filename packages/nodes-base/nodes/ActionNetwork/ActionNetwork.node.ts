@@ -26,33 +26,31 @@ import * as wrapper from './resources/wrapper'
 import * as embed from './resources/embed'
 import * as message from './resources/message'
 import * as query from './resources/query'
+import * as tag from './resources/tag'
+import * as tagging from './resources/tagging'
+
 import { createIdentifierDictionary } from './helpers/osdi';
 
 const resources = [
-	{ name: 'Person', value: 'person', resolver: person.resolve },
-	{ name: 'Message', value: 'message', resolver: message.resolve },
-	{ name: 'Campaign', value: 'campaign', resolver: campaign.resolve },
-	{ name: 'Petition', value: 'petition', resolver: petition.resolve },
-	{ name: 'Signature', value: 'signature', resolver: signature.resolve },
-	{ name: 'Event Campaign', value: 'event_campaign', resolver: event_campaign.resolve },
-	{ name: 'Event', value: 'event', resolver: event.resolve },
-	{ name: 'Attendance', value: 'attendance', resolver: attendance.resolve },
-	{ name: 'Fundraising Page', value: 'fundraising_page', resolver: fundraising_page.resolve },
-	{ name: 'Donation', value: 'donation', resolver: donation.resolve },
-	{ name: 'Form', value: 'form', resolver: form.resolve },
-	{ name: 'Submission', value: 'submission', resolver: submission.resolve },
-	{ name: 'Advocacy Campaign', value: 'advocacy_campaign', resolver: advocacy_campaign.resolve },
-	{ name: 'Outreach' , value: 'outreach', resolver: outreach.resolve },
-	{ name: 'Query', value: 'query', resolver: query.resolve },
-	{ name: 'HTML Embed', value: 'embed', resolver: embed.resolve },
-	{ name: 'HTML Wrapper', value: 'wrapper', resolver: wrapper.resolve },
-	// TODO: https://actionnetwork.org/docs/v2/tags
-	// - Scenario: Retrieving a collection of tags (GET)
-	// - Scenario: Creating a new tag (POST)
-	// TODO: https://actionnetwork.org/docs/v2/taggings
-	// - Scenario: Retrieving a collection of tagged people (GET)
-	// - Scenario: Tag a person (POST)
-	// - Scenario: Untag a person (DELETE)
+	{ name: 'Person', value: 'person', module: person },
+	{ name: 'Message', value: 'message', module: message },
+	{ name: 'Campaign', value: 'campaign', module: campaign },
+	{ name: 'Petition', value: 'petition', module: petition },
+	{ name: 'Signature', value: 'signature', module: signature },
+	{ name: 'Event Campaign', value: 'event_campaign', module: event_campaign },
+	{ name: 'Event', value: 'event', module: event },
+	{ name: 'Attendance', value: 'attendance', module: attendance },
+	{ name: 'Fundraising Page', value: 'fundraising_page', module: fundraising_page },
+	{ name: 'Donation', value: 'donation', module: donation },
+	{ name: 'Form', value: 'form', module: form },
+	{ name: 'Submission', value: 'submission', module: submission },
+	{ name: 'Advocacy Campaign', value: 'advocacy_campaign', module: advocacy_campaign },
+	{ name: 'Outreach' , value: 'outreach', module: outreach },
+	{ name: 'Query', value: 'query', module: query },
+	{ name: 'HTML Embed', value: 'embed', module: embed },
+	{ name: 'HTML Wrapper', value: 'wrapper', module: wrapper },
+	{ name: 'Tags', value: 'tag', module: tag },
+	{ name: 'Taggings', value: 'tagging', module: tagging },
 ]
 
 export class ActionNetwork implements INodeType {
@@ -85,23 +83,8 @@ export class ActionNetwork implements INodeType {
 				default: 'person',
 				description: 'The resource to operate on.',
 			},
-			...person.fields,
-			...campaign.fields,
-			...event_campaign.fields,
-			...event.fields,
-			...attendance.fields,
-			...petition.fields,
-			...signature.fields,
-			...form.fields,
-			...submission.fields,
-			...fundraising_page.fields,
-			...donation.fields,
-			...advocacy_campaign.fields,
-			...outreach.fields,
-			...message.fields,
-			...query.fields,
-			...embed.fields,
-			...wrapper.fields
+			// Unpack all the fields from the 'resources' blob up top
+			...resources.reduce((fields, resource) => fields.concat(resource.module.fields), [] as any[])
 		]
 	};
 
@@ -112,7 +95,7 @@ export class ActionNetwork implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			const resource = this.getNodeParameter('resource', i)
-			const resolveResource = resources.find(r => r.value === resource)?.resolver!
+			const resolveResource = resources.find(r => r.value === resource)?.module.resolve!
 			let responseData = await resolveResource(this, i) as any
 
 			// Some general transformations on the resolved data

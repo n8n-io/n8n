@@ -11,7 +11,10 @@ export const createFields = (fields: INodeProperties[]) => {
  * Linking to resources
  */
 
-export const createResourceLink = (name: string, href: string) => {
+export const createResourceLink = (name: string, href: string, urlPrefix?: string) => {
+	if (urlPrefix && !href.startsWith(urlPrefix)) {
+		href = `${urlPrefix}${href}`
+	}
 	return {
 		_links: { [name]: {	href } }
 	}
