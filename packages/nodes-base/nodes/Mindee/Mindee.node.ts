@@ -210,6 +210,11 @@ export class Mindee implements INodeType {
 						}
 					}
 				}
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else if (responseData !== undefined) {
+					returnData.push(responseData as IDataObject);
+				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
@@ -217,11 +222,6 @@ export class Mindee implements INodeType {
 				}
 				throw error;
 			}
-		}
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
