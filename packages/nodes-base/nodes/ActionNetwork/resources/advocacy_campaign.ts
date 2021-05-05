@@ -59,19 +59,6 @@ export const fields = [
 	 * Adding or updating a resource
 	 */
 	{
-		displayName: "Origin System",
-		description: "A human readable string identifying where this advocacy_campaign originated. May be used in the user interface for this purpose.",
-		name: "origin_system",
-		type: "string",
-		required: false,
-		displayOptions: {
-			show: {
-				resource: [ 'advocacy_campaign' ],
-				operation: [ 'POST', 'PUT' ]
-			}
-		},
-	},
-	{
 		displayName: "Title",
 		description: "The advocacy_campaign's public title. ",
 		name: "title",
@@ -85,6 +72,20 @@ export const fields = [
 		},
 	},
 	{
+		displayName: "Origin System",
+		description: "A human readable string identifying where this advocacy_campaign originated. May be used in the user interface for this purpose.",
+		name: "origin_system",
+		type: "string",
+		required: false,
+		displayOptions: {
+			show: {
+				resource: [ 'advocacy_campaign' ],
+				operation: [ 'POST', 'PUT' ]
+			}
+		},
+	},
+	{
+		displayName: "Description",
 		name: "description",
 		type: "string",
 		description: "The advocacy_campaign's description. May contain HTML.",
@@ -97,9 +98,23 @@ export const fields = [
 		},
 	},
 	{
+		displayName: "Targets",
 		name: "targets",
 		type: "string",
 		description: "The target universe for this advocacy campaign. (ex: 'U.S. Congress')",
+		required: false,
+		displayOptions: {
+			show: {
+				resource: [ 'advocacy_campaign' ],
+				operation: [ 'POST', 'PUT' ]
+			}
+		},
+	},
+	{
+		displayName: "Type",
+		name: "type",
+		type: "options",
+		description: "The type of advocacy campaign, specifying how users perform outreaches to targets.",
 		required: false,
 		displayOptions: {
 			show: {
@@ -173,6 +188,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 			description: node.getNodeParameter('description', i, undefined),
 			targets: node.getNodeParameter('targets', i, undefined),
 			origin_system: node.getNodeParameter('origin_system', i, undefined),
+			type: node.getNodeParameter('type', i, 'email')
 		}
 
 		return actionNetworkApiRequest.call(node, operation, `${url}/${advocacy_campaign_id}`, body) as Promise<IDataObject>
@@ -186,6 +202,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 			description: node.getNodeParameter('description', i, undefined),
 			targets: node.getNodeParameter('targets', i, undefined),
 			origin_system: node.getNodeParameter('origin_system', i, undefined),
+			type: node.getNodeParameter('type', i, 'email')
 		}
 
 		return actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>
