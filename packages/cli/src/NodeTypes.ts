@@ -1,4 +1,5 @@
 import {
+	CodexSearchProperties,
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
@@ -25,7 +26,15 @@ class NodeTypesClass implements INodeTypes {
 	}
 
 	getAll(): INodeType[] {
-		return Object.values(this.nodeTypes).map((data) => data.type);
+		return Object.values(this.nodeTypes).map((data) => {
+			try {
+				data.type.description.codex = this.getCodexSearchProperties(data.sourcePath);
+			} catch (error) {
+				console.error(`No codex available for: ${data.sourcePath.split('/').pop()}`);
+			}
+
+			return data.type;
+		});
 	}
 
 	getByName(nodeType: string): INodeType | undefined {
@@ -33,6 +42,15 @@ class NodeTypesClass implements INodeTypes {
 			throw new Error(`The node-type "${nodeType}" is not known!`);
 		}
 		return this.nodeTypes[nodeType].type;
+	}
+
+	getCodexSearchProperties(fullNodePath: string): CodexSearchProperties {
+		const codex = require(`${fullNodePath}on`); // .js to .json
+
+		return {
+			categories: codex.categories ?? [],
+			alias: codex.alias ?? [],
+		};
 	}
 }
 
