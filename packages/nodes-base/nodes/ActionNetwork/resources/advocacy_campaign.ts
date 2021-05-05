@@ -109,14 +109,11 @@ export const fields = [
 		},
 	},
 	{
-		displayName: 'Additional properties',
-		name: 'additional_properties',
-		type: 'fixedCollection',
-		default: '',
-		placeholder: 'Add data',
-		typeOptions: {
-			multipleValues: true,
-		},
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [ 'advocacy_campaign' ],
@@ -128,7 +125,11 @@ export const fields = [
 				name: 'identifiers',
 				displayName: 'Custom ID',
 				type: 'string',
-				default: '',
+				default: [],
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add custom ID',
+				},
 			},
 		]
 	},
@@ -166,7 +167,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 
 	if (advocacy_campaign_id && operation === 'PUT') {
 		let body: any = {
-			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
+			'identifiers': (node.getNodeParameter('additionalFields', i, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
 			title: node.getNodeParameter('title', i, undefined),
 			description: node.getNodeParameter('description', i, undefined),
@@ -179,7 +180,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 
 	if (operation === 'POST') {
 		let body: any = {
-			'identifiers': (node.getNodeParameter('additional_properties', i, { identifiers: [] }) as any)?.identifiers,
+			'identifiers': (node.getNodeParameter('additionalFields', i, { identifiers: [] }) as any)?.identifiers,
 			// @ts-ignore
 			title: node.getNodeParameter('title', i, undefined),
 			description: node.getNodeParameter('description', i, undefined),
