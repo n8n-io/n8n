@@ -177,9 +177,9 @@ export const fields = [
 ] as INodeProperties[];
 
 export const resolve = async (node: IExecuteFunctions, i: number) => {
-	const petition_id = node.getNodeParameter('petition_id', i, undefined) as string;
-	const person_id = node.getNodeParameter('person_id', i, undefined) as string;
-	const signature_id = node.getNodeParameter('signature_id', i, undefined) as string;
+	const petition_id = node.getNodeParameter('petition_id', i, null) as string;
+	const person_id = node.getNodeParameter('person_id', i, null) as string;
+	const signature_id = node.getNodeParameter('signature_id', i, null) as string;
 	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
 
 	let url = `/api/v2`
@@ -198,7 +198,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	if (signature_id && operation === 'PUT') {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', i, undefined) as any)?.identifiers,
-			'comments': node.getNodeParameter('comments', i, undefined)
+			'comments': node.getNodeParameter('comments', i, null)
 		}
 		return actionNetworkApiRequest.call(node, operation, `${url}/${signature_id}`, body) as Promise<IDataObject>
 	}
@@ -206,7 +206,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	if (petition_id && operation === 'POST') {
 		let body: any = {
 			'identifiers': (node.getNodeParameter('additional_properties', i, undefined) as any)?.identifiers,
-			'comments': node.getNodeParameter('comments', i, undefined),
+			'comments': node.getNodeParameter('comments', i, null),
 			'triggers': {
 				'autoresponse': {
 					'enabled': node.getNodeParameter('is_autoresponse_enabled', i, true) as boolean
@@ -214,7 +214,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 			}
 		}
 
-		const personRefURL = node.getNodeParameter('osdi:person', i, undefined) as string;
+		const personRefURL = node.getNodeParameter('osdi:person', i, null) as string;
 		if (personRefURL) {
 			body = { ...body, ...createResourceLink('osdi:person', personRefURL) }
 		} else {

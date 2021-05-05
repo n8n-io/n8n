@@ -164,9 +164,9 @@ export const fields = [
 ] as INodeProperties[];
 
 export const resolve = async (node: IExecuteFunctions, i: number) => {
-	const form_id = node.getNodeParameter('form_id', i, undefined) as string;
-	const person_id = node.getNodeParameter('person_id', i, undefined) as string;
-	const submission_id = node.getNodeParameter('submission_id', i, undefined) as string;
+	const form_id = node.getNodeParameter('form_id', i, null) as string;
+	const person_id = node.getNodeParameter('person_id', i, null) as string;
+	const submission_id = node.getNodeParameter('submission_id', i, null) as string;
 	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
 
 	let url = `/api/v2`
@@ -199,7 +199,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 			}
 		}
 
-		const personRefURL = node.getNodeParameter('osdi:person', i, undefined) as string;
+		const personRefURL = node.getNodeParameter('osdi:person', i, null) as string;
 		if (personRefURL) {
 			body = { ...body, ...createResourceLink('osdi:person', personRefURL) }
 		} else {

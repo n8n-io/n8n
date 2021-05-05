@@ -60,9 +60,11 @@ export const fields: INodeProperties[] = [
 
 export const resolve = async (node: IExecuteFunctions, i: number) => {
 	const operation = node.getNodeParameter('operation', i) as 'GET' | 'GET_ALL';
-	const wrapper_id = node.getNodeParameter('wrapper_id', i, undefined) as string
 	let url = `/api/v2/wrappers`
-	if (operation === 'GET' && wrapper_id) {
+
+	if (operation === 'GET') {
+		const wrapper_id = node.getNodeParameter('wrapper_id', i) as string
+		if (!wrapper_id) throw new Error("Wrapper ID is required")
 		url += `/${wrapper_id}`
 		return actionNetworkApiRequest.call(node, 'GET', url) as Promise<IDataObject[]>
 	}

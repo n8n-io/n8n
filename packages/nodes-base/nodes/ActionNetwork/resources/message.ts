@@ -221,7 +221,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 			body: node.getNodeParameter('body', i, undefined) as string,
 		}
 
-		const wrapper = node.getNodeParameter('osdi:wrapper', i, undefined) as string
+		const wrapper = node.getNodeParameter('osdi:wrapper', i, null) as string
 		if (wrapper) {
 			body['_links'] = {
 				'osdi:wrapper': {
@@ -233,7 +233,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
     return actionNetworkApiRequest.call(node, 'POST', url, body) as Promise<IDataObject[]>
 	}
 
-	const message_id = node.getNodeParameter('message_id', i, undefined) as string;
+	const message_id = node.getNodeParameter('message_id', i, null) as string;
 
 	if (message_id && operation === 'get') {
     url += `/${message_id}`
@@ -255,7 +255,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 			body: node.getNodeParameter('body', i, undefined) as string,
 		}
 
-		const wrapper = node.getNodeParameter('osdi:wrapper', i, undefined) as string
+		const wrapper = node.getNodeParameter('osdi:wrapper', i, null) as string
 		if (wrapper) {
 			body['_links'] = {
 				'osdi:wrapper': {

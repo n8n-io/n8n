@@ -217,8 +217,8 @@ export const fields = [
 ] as INodeProperties[];
 
 export const resolve = async (node: IExecuteFunctions, i: number) => {
-	const advocacy_campaign_id = node.getNodeParameter('advocacy_campaign_id', i, undefined) as string;
-	const person_id = node.getNodeParameter('person_id', i, undefined) as string;
+	const advocacy_campaign_id = node.getNodeParameter('advocacy_campaign_id', i, null) as string;
+	const person_id = node.getNodeParameter('person_id', i, null) as string;
 
 	let url = `/api/v2`
 	if (advocacy_campaign_id) {
@@ -229,7 +229,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 		throw new Error("You must provide a Form ID or Person ID")
 	}
 
-	const outreach_id = node.getNodeParameter('outreach_id', i, undefined) as string;
+	const outreach_id = node.getNodeParameter('outreach_id', i, null) as string;
 	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
 
 	if (outreach_id && operation === 'GET') {
@@ -254,7 +254,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 			'message': node.getNodeParameter('message', i, undefined),
 		}
 
-		const personRefURL = node.getNodeParameter('osdi:person', i, undefined) as string;
+		const personRefURL = node.getNodeParameter('osdi:person', i, null) as string;
 		if (personRefURL) {
 			body = { ...body, ...createResourceLink('osdi:person', personRefURL) }
 		} else {
