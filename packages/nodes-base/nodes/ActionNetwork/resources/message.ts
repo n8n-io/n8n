@@ -16,18 +16,18 @@ export const fields: INodeProperties[] = [
 			// DOCS: https://actionnetwork.org/docs/v2/messages
 			// https://actionnetwork.org/api/v2/messages/
 			// https://actionnetwork.org/api/v2/messages/[message_id]
-			{ name: "List all messages", value: "list" },
-			{ name: "Get a message", value: "get" },
-			{ name: "Create new message", value: "create" },
-			{ name: "Modify a message", value: "update" },
+			{ name: "Get", value: "get" },
+			{ name: "Get All", value: "list" },
+			{ name: "Create", value: "create" },
+			{ name: "Update", value: "update" },
 			// DOCS: https://actionnetwork.org/docs/v2/send_helper
 			// https://actionnetwork.org/api/v2/messages/[message_id]/send
-			{ name: "Send a message", value: "send" },
-			{ name: "Stop a message mid-send", value: "stop" },
+			{ name: "Send", value: "send" },
+			{ name: "Stop Send", value: "stop" },
 			// DOCS: https://actionnetwork.org/docs/v2/schedule_helper
 			// https://actionnetwork.org/api/v2/messages/[message_id]/schedule
-			{ name: "Schedule message", value: "schedule" },
-			{ name: "Cancel message's scheduling", value: "cancel" },
+			{ name: "Schedule", value: "schedule" },
+			{ name: "Cancel Schedule", value: "cancel" },
 		],
 		displayOptions: {
 			show: {

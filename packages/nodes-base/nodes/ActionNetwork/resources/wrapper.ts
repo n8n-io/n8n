@@ -11,6 +11,28 @@ import { IDataObject } from '../../../../workflow/dist/src/Interfaces';
 
 export const fields: INodeProperties[] = [
 	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		default: 'GET',
+		description: 'Operation to perform',
+		options: [
+			{
+				name: 'Get',
+				value: 'GET',
+			},
+			{
+				name: 'Get',
+				value: 'GET_ALL',
+			}
+		],
+		displayOptions: {
+			show: {
+				resource: [ 'wrapper' ],
+			},
+		},
+	},
+	{
 		displayName: 'Wrapper ID',
 		name: 'wrapper_id',
 		type: 'string',
@@ -18,7 +40,8 @@ export const fields: INodeProperties[] = [
 		required: false,
 		displayOptions: {
 			show: {
-				resource: [ 'wrapper' ]
+				resource: [ 'wrapper' ],
+				operation: [ 'GET' ],
 			},
 		},
 	},
@@ -29,21 +52,26 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'wrapper' ],
-				wrapper_id: [null, '', undefined]
+				operation: [ 'GET_ALL' ],
 			}
 		}
 	})
 ];
 
 export const resolve = async (node: IExecuteFunctions, i: number) => {
+	const operation = node.getNodeParameter('operation', i) as 'GET' | 'GET_ALL';
 	const wrapper_id = node.getNodeParameter('wrapper_id', i) as string
 	let url = `/api/v2/wrappers`
-	if (wrapper_id) {
+	if (operation === 'GET' && wrapper_id) {
 		url += `/${wrapper_id}`
 		return actionNetworkApiRequest.call(node, 'GET', url) as Promise<IDataObject[]>
 	}
 
-	// Otherwise list all
-	const qs = createPaginationProperties(node, i)
-	return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
+	if (operation === 'GET_ALL') {
+		// Otherwise list all
+		const qs = createPaginationProperties(node, i)
+		return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
+	}
+
+	return []
 }

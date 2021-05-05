@@ -24,11 +24,15 @@ export const fields = [
 				value: 'GET',
 			},
 			{
-				name: 'Create (POST)',
+				name: 'Get All',
+				value: 'GET_ALL',
+			},
+			{
+				name: 'Create',
 				value: 'POST',
 			},
 			{
-				name: 'Update (PUT)',
+				name: 'Update',
 				value: 'PUT',
 			},
 		],
@@ -44,10 +48,25 @@ export const fields = [
 		description: "Donation data relating to this page",
 		type: 'string',
 		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [ 'donation' ],
+				operation: [ 'POST' ]
+			},
+		},
+	},
+	{
+		displayName: 'Fundraising Page ID',
+		name: 'fundraising_page_id',
+		description: "Donation data relating to this page",
+		type: 'string',
+		default: '',
 		required: false,
 		displayOptions: {
 			show: {
 				resource: [ 'donation' ],
+				operation: [ 'PUT', 'GET', 'GET_ALL' ]
 			},
 		},
 	},
@@ -172,8 +191,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'donation' ],
-				operation: [ 'GET' ],
-				donation_id: [null, '', undefined]
+				operation: [ 'GET_ALL' ],
 			}
 		}
 	}),
@@ -183,8 +201,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'donation' ],
-				operation: [ 'GET' ],
-				donation_id: [null, '', undefined]
+				operation: [ 'GET_ALL' ],
 			}
 		}
 	}),
@@ -195,6 +212,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	const person_id = node.getNodeParameter('person_id', i) as string;
 
 	let url = `/api/v2`
+
 	if (fundraising_page_id) {
 		url += `/fundraising_pages/${fundraising_page_id}/donations`
 	} else if (person_id) {
@@ -204,7 +222,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	}
 
 	const donation_id = node.getNodeParameter('donation_id', i) as string;
-	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST';
+	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
 
 	if (donation_id && operation === 'GET') {
 		return actionNetworkApiRequest.call(node, operation, `${url}/${donation_id}`) as Promise<IDataObject>
@@ -239,9 +257,14 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	}
 
 	// Otherwise list all
-	const qs = {
-		...createPaginationProperties(node, i),
-		...createFilterProperties(node, i)
+
+	if (operation === 'GET_ALL') {
+		const qs = {
+			...createPaginationProperties(node, i),
+			...createFilterProperties(node, i)
+		}
+		return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
 	}
-	return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
+
+	return []
 }

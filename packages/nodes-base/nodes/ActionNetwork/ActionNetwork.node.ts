@@ -30,7 +30,7 @@ import { createIdentifierDictionary } from './helpers/osdi';
 
 const resources = [
 	{ name: 'Person', value: 'person', resolver: person.resolve },
-	{ name: "Message", value: 'message', resolver: message.resolve },
+	{ name: 'Message', value: 'message', resolver: message.resolve },
 	{ name: 'Campaign', value: 'campaign', resolver: campaign.resolve },
 	{ name: 'Petition', value: 'petition', resolver: petition.resolve },
 	{ name: 'Signature', value: 'signature', resolver: signature.resolve },
@@ -41,7 +41,7 @@ const resources = [
 	{ name: 'Donation', value: 'donation', resolver: donation.resolve },
 	{ name: 'Form', value: 'form', resolver: form.resolve },
 	{ name: 'Submission', value: 'submission', resolver: submission.resolve },
-	{ name: "Advocacy Campaign", value: "advocacy_campaign", resolver: advocacy_campaign.resolve },
+	{ name: 'Advocacy Campaign', value: 'advocacy_campaign', resolver: advocacy_campaign.resolve },
 	{ name: 'Outreach' , value: 'outreach', resolver: outreach.resolve },
 	{ name: 'Query', value: 'query', resolver: query.resolve },
 	{ name: 'HTML Embed', value: 'embed', resolver: embed.resolve },

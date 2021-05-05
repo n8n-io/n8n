@@ -24,11 +24,15 @@ export const fields = [
 				value: 'GET',
 			},
 			{
-				name: 'Create (POST)',
+				name: 'Get All',
+				value: 'GET_ALL',
+			},
+			{
+				name: 'Create',
 				value: 'POST',
 			},
 			{
-				name: 'Update (PUT)',
+				name: 'Update',
 				value: 'PUT',
 			},
 		],
@@ -143,8 +147,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'petition' ],
-				operation: [ 'GET' ],
-				petition_id: [null, '', undefined]
+				operation: [ 'GET_ALL' ]
 			}
 		}
 	}),
@@ -154,8 +157,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'petition' ],
-				operation: [ 'GET' ],
-				petition_id: [null, '', undefined]
+				operation: [ 'GET_ALL' ]
 			}
 		}
 	}),
@@ -163,7 +165,7 @@ export const fields = [
 
 export const resolve = async (node: IExecuteFunctions, i: number) => {
 	const petition_id = node.getNodeParameter('petition_id', i) as string;
-	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST';
+	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
 	let url = `/api/v2/petitions`
 
 	if (petition_id && operation === 'GET') {
@@ -199,10 +201,15 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	}
 
 	// Otherwise list all
-	const qs = {
-		...createPaginationProperties(node, i),
-		...createFilterProperties(node, i)
+
+	if (operation === 'GET_ALL') {
+		const qs = {
+			...createPaginationProperties(node, i),
+			...createFilterProperties(node, i)
+		}
+
+		return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
 	}
 
-	return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
+	return []
 }

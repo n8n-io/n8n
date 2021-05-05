@@ -24,11 +24,15 @@ export const fields = [
 				value: 'GET',
 			},
 			{
-				name: 'Create (POST)',
+				name: 'Get All',
+				value: 'GET_ALL',
+			},
+			{
+				name: 'Create',
 				value: 'POST',
 			},
 			{
-				name: 'Update (PUT)',
+				name: 'Update',
 				value: 'PUT',
 			},
 		],
@@ -46,7 +50,7 @@ export const fields = [
 		required: false,
 		displayOptions: {
 			show: {
-				resource: [ 'signature' ],
+				resource: [ 'signature' ]
 			},
 		},
 	},
@@ -59,7 +63,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'signature' ],
-				operation: [ 'GET' ]
+				operation: [ 'GET', 'GET_ALL' ]
 			},
 		},
 	},
@@ -67,7 +71,7 @@ export const fields = [
 		displayName: 'Signature ID',
 		name: 'signature_id',
 		type: 'string',
-		required: false,
+		required: true,
 		default: '',
 		displayOptions: {
 			show: {
@@ -156,8 +160,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'signature' ],
-				operation: [ 'GET' ],
-				signature_id: [null, '', undefined]
+				operation: [ 'GET_ALL' ]
 			}
 		}
 	}),
@@ -167,8 +170,7 @@ export const fields = [
 		displayOptions: {
 			show: {
 				resource: [ 'signature' ],
-				operation: [ 'GET' ],
-				signature_id: [null, '', undefined]
+				operation: [ 'GET_ALL' ]
 			}
 		}
 	}),
@@ -184,11 +186,11 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	} else if (person_id) {
 		url += `/people/${person_id}/signatures`
 	} else {
-		throw new Error("You must provide a Form ID or Person ID")
+		throw new Error("You must provide a Petition ID or Person ID")
 	}
 
 	const signature_id = node.getNodeParameter('signature_id', i) as string;
-	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST';
+	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
 
 	if (signature_id && operation === 'GET') {
 		return actionNetworkApiRequest.call(node, operation, `${url}/${signature_id}`) as Promise<IDataObject>
@@ -224,9 +226,13 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	}
 
 	// Otherwise list all
-	const qs = {
-		...createPaginationProperties(node, i),
-		...createFilterProperties(node, i)
+	if (operation === 'GET_ALL') {
+		const qs = {
+			...createPaginationProperties(node, i),
+			...createFilterProperties(node, i)
+		}
+		return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
 	}
-	return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>
+
+	return []
 }
