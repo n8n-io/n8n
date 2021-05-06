@@ -234,7 +234,7 @@ export const monitorFields = [
 				displayName: 'Monitors',
 				name: 'monitors',
 				type: 'string',
-				description: 'Specify monitors IDs separated with -, eq 15830-32696-83920.',
+				description: 'Specify monitors IDs separated with dash, eg 15830-32696-83920.',
 			},
 			{
 				displayName: 'Response Times',

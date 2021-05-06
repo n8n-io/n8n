@@ -15,7 +15,11 @@ import {
 import {
 	monitorOperations,
 	monitorFields,
-} from './MonitorDescripion'
+} from './MonitorDescription';
+import {
+	alertContactOperations,
+	alertContactFields,
+} from './AlertContactDescription';
 
 export class UptimeRobot implements INodeType {
 	description: INodeTypeDescription = {
@@ -47,6 +51,10 @@ export class UptimeRobot implements INodeType {
 					{
 						name: 'Account',
 						value: 'account',
+					},
+					{
+						name: 'Alert Contact',
+						value: 'alertContact',
 					},
 					{
 						name: 'Monitor',
@@ -85,6 +93,11 @@ export class UptimeRobot implements INodeType {
 			/* -------------------------------------------------------------------------- */
 			...monitorOperations,
 			...monitorFields,
+			/* -------------------------------------------------------------------------- */
+			/*                                Alert Contact                               */
+			/* -------------------------------------------------------------------------- */
+			...alertContactOperations,
+			...alertContactFields,
 		],
 	};
 
@@ -228,6 +241,91 @@ export class UptimeRobot implements INodeType {
 							throw new Error(responseData.error.message);
 						}
 						responseData = responseData.monitor;
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
+					}
+				}
+			}
+			if (resource === 'alertContact') {
+				if (operation === 'create') {
+					const friendly_name = this.getNodeParameter('friendly_name', i) as string;
+					const value = this.getNodeParameter('value', i) as string;
+					const type = this.getNodeParameter('type', i) as number;
+
+					body = {
+						friendly_name,
+						value,
+						type,
+					};
+
+					try {
+						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/newAlertContact', body);
+						console.log({responseData});
+						if (responseData.stat !== 'ok') {
+							throw new Error(responseData.error.message);
+						}
+						responseData = responseData.alertcontact;
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
+					}
+				}
+				if (operation === 'delete') {
+					const id = this.getNodeParameter('id', i) as string;
+
+					body = {
+						id,
+					};
+
+					try {
+						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deleteAlertContact', body);
+						console.log({responseData});
+						if (responseData.stat !== 'ok') {
+							throw new Error(responseData.error.message);
+						}
+						responseData = responseData.alert_contact;
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
+					}
+				}
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					body = {
+						...filters
+					};
+
+					if (!returnAll){
+						body.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					try {
+						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getAlertContacts', body);
+						console.log({responseData});
+						if (responseData.stat !== 'ok') {
+							throw new Error(responseData.error.message);
+						}
+						responseData = responseData.alert_contacts;
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
+					}
+				}
+				if (operation === 'update') {
+					const id = this.getNodeParameter('id', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					body = {
+						id,
+						...updateFields
+					};
+
+					try {
+						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/editAlertContact', body);
+						console.log({responseData});
+						if (responseData.stat !== 'ok') {
+							throw new Error(responseData.error.message);
+						}
+						responseData = responseData.alert_contact;
 					} catch (error) {
 						throw new NodeApiError(this.getNode(), error);
 					}
