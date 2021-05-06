@@ -198,7 +198,7 @@ export default mixins(
 				this.createNodeActive = false;
 			},
 			nodes: {
-				async handler (val, oldVal) {
+				async handler (value, oldValue) {
 					// Load a workflow
 					let workflowId = null as string | null;
 					if (this.$route && this.$route.params.name) {
@@ -208,7 +208,7 @@ export default mixins(
 				deep: true,
 			},
 			connections: {
-				async handler (val, oldVal) {
+				async handler (value, oldValue) {
 					// Load a workflow
 					let workflowId = null as string | null;
 					if (this.$route && this.$route.params.name) {
@@ -332,6 +332,7 @@ export default mixins(
 			},
 			openNodeCreator () {
 				this.createNodeActive = true;
+				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'add_node_button' });
 			},
 			async openExecution (executionId: string) {
 				this.resetWorkspace();
@@ -354,6 +355,8 @@ export default mixins(
 				this.$store.commit('setWorkflowExecutionData', data);
 
 				await this.addNodes(JSON.parse(JSON.stringify(data.workflowData.nodes)), JSON.parse(JSON.stringify(data.workflowData.connections)));
+
+				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
 			},
 			async openWorkflow (workflowId: string) {
 				this.resetWorkspace();
@@ -1052,6 +1055,8 @@ export default mixins(
 
 				this.$store.commit('setStateDirty', true);
 
+				this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
+
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
 				this.deselectAllNodes();
@@ -1174,6 +1179,7 @@ export default mixins(
 
 					// Display the node-creator
 					this.createNodeActive = true;
+					this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'node_connection_drop' });
 				});
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
