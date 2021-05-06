@@ -29,7 +29,7 @@
 					<el-table-column property="name" label="Name" class-name="clickable" sortable>
 						<template slot-scope="scope">
 							<div class="name" :key="scope.row.id">
-								<span>{{scope.row.name}}</span> <TagsContainer class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)"/>
+								<span>{{scope.row.name}}</span> <TagsContainer class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="2" />
 							</div>
 						</template>
 					</el-table-column>

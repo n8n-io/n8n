@@ -20,13 +20,13 @@
 			</div>
 		</span>
 
-		<div class="hidden-xs-only">
+		<div class="hidden-xs-only tags" >
 			<el-divider
 				direction="vertical"
 				v-if="currentWorkflowTagIds.length > 0"
 			></el-divider>
 
-			<TagsContainer :tagIds="currentWorkflowTagIds" />
+			<TagsContainerResponsive :tagIds="currentWorkflowTagIds" :limit="1" :limitMD="2" :limitLG="3" :limitXL="4" />
 		</div>
 
 		<span class="saving-workflow" v-if="isWorkflowSaving">
@@ -40,12 +40,12 @@
 import Vue from "vue";
 import { mapGetters } from "vuex";
 import WorkflowNameShort from "@/components/WorkflowNameShort.vue";
-import TagsContainer from "@/components/TagsContainer.vue";
+import TagsContainerResponsive from "@/components/TagsContainerResponsive.vue";
 
 export default Vue.extend({
 	name: "WorkflowDetails",
 	components: {
-		TagsContainer,
+		TagsContainerResponsive,
 		WorkflowNameShort,
 	},
 	computed: {
@@ -101,6 +101,10 @@ export default Vue.extend({
 	line-height: 30px;
 	height: 30px;
 	border-radius: 15px;
+}
+
+.tags {
+	display: flex;
 }
 
 .workflow-title {

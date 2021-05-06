@@ -1,5 +1,5 @@
 <template>
-	<div class="tags-container">
+	<div :class="{'tags-container': true, 'nowrap': nowrap}">
 		<el-tag 
 			v-for="tag in toDisplay" 
 			:key="tag.id"
@@ -21,8 +21,6 @@ interface ITagEl extends ITag {
 	title?: string;
 }
 
-const MAX_TAGS_TO_DISPLAY = 2;
-
 const getNumberTag = (tags: ITag[]) => {
 	const title = tags.reduce((accu: string, tag: ITag) => {
 		return accu ? `${accu}, ${tag.name}` : tag.name;
@@ -39,6 +37,8 @@ export default Vue.extend({
 	name: 'TagsContainer',
 	props: [
 		"tagIds",
+		"limit",
+		"nowrap",
 	],
 	computed: {
 		toDisplay(): ITagEl {
@@ -46,9 +46,13 @@ export default Vue.extend({
 			const tags = tagIds.map((tagId: string) => this.$store.getters['tags/getTagById'](tagId))
 				.filter((tag: ITag) => !!tag);
 
-			const toDisplay = tags.slice(0, MAX_TAGS_TO_DISPLAY);
-			if (tags.length > MAX_TAGS_TO_DISPLAY) {
-				const numberTag = getNumberTag(tags.slice(MAX_TAGS_TO_DISPLAY));
+			if (!this.$props.limit) {
+				return tags;
+			}
+
+			const toDisplay = tags.slice(0, this.$props.limit);
+			if (tags.length > this.$props.limit) {
+				const numberTag = getNumberTag(tags.slice(this.$props.limit));
 
 				toDisplay.push(numberTag);
 			}
@@ -62,6 +66,10 @@ export default Vue.extend({
 <style lang="scss" scoped>
 	.tags-container {
 		display: inline-block;
+
+		&.nowrap {
+			display: flex;
+		}
 	}
 
 	.tags-container .el-tag {

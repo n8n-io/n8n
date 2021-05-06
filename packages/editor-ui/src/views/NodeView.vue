@@ -135,7 +135,6 @@ import RunData from '@/components/RunData.vue';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
-import { debounce } from 'lodash';
 import axios from 'axios';
 import {
 	IConnection,
@@ -311,7 +310,6 @@ export default mixins(
 				lastClickPosition: [450, 450] as XYPositon,
 				nodeViewScale: 1,
 				ctrlKeyPressed: false,
-				debouncedFunctions: [] as any[], // tslint:disable-line:no-any
 				stopExecutionInProgress: false,
 			};
 		},
@@ -322,18 +320,6 @@ export default mixins(
 			document.removeEventListener('keyup', this.keyUp);
 		},
 		methods: {
-			async callDebounced (...inputParameters: any[]): Promise<void> { // tslint:disable-line:no-any
-				const functionName = inputParameters.shift() as string;
-				const debounceTime = inputParameters.shift() as number;
-
-				// @ts-ignore
-				if (this.debouncedFunctions[functionName] === undefined) {
-					// @ts-ignore
-					this.debouncedFunctions[functionName] = debounce(this[functionName], debounceTime, { leading: true });
-				}
-				// @ts-ignore
-				await this.debouncedFunctions[functionName].apply(this, inputParameters);
-			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
