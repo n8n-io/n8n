@@ -619,9 +619,9 @@ export default mixins(
 			jsonData () {
 				this.refreshDataSize();
 			},
-			displayMode (newVal, oldVal) {
+			displayMode (newValue, oldValue) {
 				this.closeBinaryDataDisplay();
-				this.$externalHooks().run('runData.displayModeChanged', { newVal, oldVal });
+				this.$externalHooks().run('runData.displayModeChanged', { newValue, oldValue });
 			},
 			maxRunIndex () {
 				this.runIndex = Math.min(this.runIndex, this.maxRunIndex);

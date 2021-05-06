@@ -36,8 +36,8 @@
 			<div class="node-name" :title="data.name">
 				{{data.name}}
 			</div>
-			<div v-if="getNodeSubtitle(this.data, this.nodeType, this.workflow) !== undefined" class="node-subtitle" :title="getNodeSubtitle(this.data, this.nodeType, this.workflow)">
-				{{getNodeSubtitle(this.data, this.nodeType, this.workflow)}}
+			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
+				{{nodeSubtitle}}
 			</div>
 		</div>
 	</div>
@@ -51,11 +51,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import {
-	INode,
-	INodeIssueObjectProperty,
-	INodePropertyOptions,
 	INodeTypeDescription,
-	ITaskData,
 	NodeHelpers,
 } from 'n8n-workflow';
 
@@ -132,6 +128,9 @@ export default mixins(nodeBase, nodeHelpers, workflowHelpers).extend({
 			} else {
 				return 'play';
 			}
+		},
+		nodeSubtitle (): string | undefined {
+			return this.getNodeSubtitle(this.data, this.nodeType, this.workflow);
 		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');

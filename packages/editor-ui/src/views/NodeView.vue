@@ -198,7 +198,7 @@ export default mixins(
 				this.createNodeActive = false;
 			},
 			nodes: {
-				async handler (val, oldVal) {
+				async handler (value, oldValue) {
 					// Load a workflow
 					let workflowId = null as string | null;
 					if (this.$route && this.$route.params.name) {
@@ -208,7 +208,7 @@ export default mixins(
 				deep: true,
 			},
 			connections: {
-				async handler (val, oldVal) {
+				async handler (value, oldValue) {
 					// Load a workflow
 					let workflowId = null as string | null;
 					if (this.$route && this.$route.params.name) {
