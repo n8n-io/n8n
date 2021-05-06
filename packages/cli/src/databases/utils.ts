@@ -27,3 +27,16 @@ export function resolveDataType(dataType: string) {
 	return typeMap[dbType][dataType] ?? dataType;
 }
 
+export function getTimestampSyntax() {
+	const dbType = getConfigValueSync('database.type') as DatabaseType;
+
+	const map: { [key in DatabaseType]: string } = {
+		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
+		postgresdb: "CURRENT_TIMESTAMP(3)",
+		mysqldb: "CURRENT_TIMESTAMP(3)",
+		mariadb: "CURRENT_TIMESTAMP(3)",
+	};
+
+	return map[dbType];
+}
+

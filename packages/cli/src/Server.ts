@@ -491,8 +491,6 @@ class App {
 			const incomingData = req.body;
 
 			const newWorkflow = new WorkflowEntity();
-			newWorkflow.createdAt = this.getCurrentDate();
-			newWorkflow.updatedAt = this.getCurrentDate();
 
 			Object.assign(newWorkflow, incomingData);
 			newWorkflow.name = incomingData.name.trim();
@@ -752,8 +750,6 @@ class App {
 		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<TagEntity | void> => {
 			const newTag = new TagEntity();
 			newTag.name = req.body.name.trim();
-			newTag.createdAt = this.getCurrentDate();
-			newTag.updatedAt = this.getCurrentDate();
 
 			await this.externalHooks.run('tag.beforeCreate', [newTag]);
 
@@ -775,7 +771,6 @@ class App {
 			const newTag = new TagEntity();
 			newTag.id = Number(id);
 			newTag.name = name.trim();
-			newTag.updatedAt = this.getCurrentDate();
 
 			await this.externalHooks.run('tag.beforeUpdate', [newTag]);
 
@@ -979,8 +974,6 @@ class App {
 			await this.externalHooks.run('credentials.create', [newCredentialsData]);
 
 			// Add special database related data
-			newCredentialsData.createdAt = this.getCurrentDate();
-			newCredentialsData.updatedAt = this.getCurrentDate();
 
 			// TODO: also add user automatically depending on who is logged in, if anybody is logged in
 
