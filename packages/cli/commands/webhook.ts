@@ -67,7 +67,7 @@ export class Webhook extends Command {
 			if (activeWorkflowRunner !== undefined && skipWebhookDeregistration !== true) {
 				removePromises.push(activeWorkflowRunner.removeAll());
 			}
-			
+
 			// Remove all test webhooks
 			const testWebhooks = TestWebhooks.getInstance();
 			removePromises.push(testWebhooks.removeAll());
