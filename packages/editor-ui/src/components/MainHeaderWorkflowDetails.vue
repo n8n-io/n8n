@@ -26,7 +26,7 @@
 				v-if="currentWorkflowTagIds.length > 0"
 			></el-divider>
 
-			<TagsContainerResponsive :tagIds="currentWorkflowTagIds" :limit="1" :limitMD="2" :limitLG="3" :limitXL="4" />
+			<TagsContainerResponsive :tagIds="currentWorkflowTagIds" :limit="1" :limitSM="2" :limitMD="3" :limitLG="4" :limitXL="5" />
 		</div>
 
 		<span class="saving-workflow" v-if="isWorkflowSaving">
