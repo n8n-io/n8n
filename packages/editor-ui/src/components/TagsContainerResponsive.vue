@@ -31,6 +31,6 @@ export default Vue.extend({
 			const matchingSize = SIZES.find((size) => size === windowSize && this.$props[`limit${size}`]);
 			return this.$props[`limit${matchingSize}`] || this.$props.limit;
 		},
-	}
+	},
 });
 </script>
