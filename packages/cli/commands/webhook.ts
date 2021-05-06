@@ -61,11 +61,13 @@ export class Webhook extends Command {
 				process.exit(processExistCode);
 			}, 30000);
 
+			const skipWebhookDeregistration = config.get('endpoints.skipWebhoooksDeregistrationOnShutdown') as boolean;
+
 			const removePromises = [];
-			if (activeWorkflowRunner !== undefined) {
+			if (activeWorkflowRunner !== undefined && skipWebhookDeregistration !== true) {
 				removePromises.push(activeWorkflowRunner.removeAll());
 			}
-
+			
 			// Remove all test webhooks
 			const testWebhooks = TestWebhooks.getInstance();
 			removePromises.push(testWebhooks.removeAll());
