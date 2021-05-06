@@ -20,7 +20,12 @@ import {
 	alertContactOperations,
 	alertContactFields,
 } from './AlertContactDescription';
+import {
+	maintenanceWindowsOperations,
+	maintenanceWindowsFields,
+} from './MaintenanceWindowsDescription';
 
+import * as moment from 'moment';
 export class UptimeRobot implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'UptimeRobot',
@@ -55,6 +60,10 @@ export class UptimeRobot implements INodeType {
 					{
 						name: 'Alert Contact',
 						value: 'alertContact',
+					},
+					{
+						name: 'Maintenance Windows',
+						value: 'mwindows',
 					},
 					{
 						name: 'Monitor',
@@ -98,6 +107,11 @@ export class UptimeRobot implements INodeType {
 			/* -------------------------------------------------------------------------- */
 			...alertContactOperations,
 			...alertContactFields,
+			/* -------------------------------------------------------------------------- */
+			/*                                Maintenance Windows                         */
+			/* -------------------------------------------------------------------------- */
+			...maintenanceWindowsOperations,
+			...maintenanceWindowsFields,
 		],
 	};
 
@@ -166,11 +180,11 @@ export class UptimeRobot implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
-					
+
 					body = {
 						...filters
 					};
-					
+
 					if (body.statuses) {
 						body.statuses = (body.statuses as string[]).join('-');
 					}
@@ -191,7 +205,7 @@ export class UptimeRobot implements INodeType {
 					if (body.response_times) {
 						body.response_times = 1;
 					}
-					
+
 					if (!returnAll){
 						body.limit = this.getNodeParameter('limit', i) as number;
 					}
@@ -326,6 +340,104 @@ export class UptimeRobot implements INodeType {
 							throw new Error(responseData.error.message);
 						}
 						responseData = responseData.alert_contact;
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
+					}
+				}
+			}
+			if (resource === 'mwindows') {
+				if (operation === 'create') {
+					const friendly_name = this.getNodeParameter('friendly_name', i) as string;
+					const value = this.getNodeParameter('value', i) as string;
+					const type = this.getNodeParameter('type', i) as number;
+					const duration = this.getNodeParameter('duration', i) as number;
+					const startTime = this.getNodeParameter('start_time', i) as string;
+					let start_time;
+
+					if (type === 1){
+						start_time = moment(startTime).unix();
+					} else {
+						start_time = moment(startTime).format('HH:mm');
+					}
+
+					body = {
+						friendly_name,
+						value,
+						type,
+						duration,
+						start_time,
+					};
+
+					try {
+						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/newMWindow', body);
+						console.log({responseData});
+						if (responseData.stat !== 'ok') {
+							throw new Error(responseData.error.message);
+						}
+						responseData = responseData.mwindow;
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
+					}
+				}
+				if (operation === 'delete') {
+					const id = this.getNodeParameter('id', i) as string;
+
+					body = {
+						id,
+					};
+
+					try {
+						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deleteMWindow', body);
+						console.log({responseData});
+						if (responseData.stat !== 'ok') {
+							throw new Error(responseData.error.message);
+						}
+						responseData = { status : responseData.message };
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
+					}
+				}
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					body = {
+						...filters,
+					};
+
+					if (!returnAll){
+						body.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					try {
+						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getMWindows', body);
+						console.log({responseData});
+						if (responseData.stat !== 'ok') {
+							throw new Error(responseData.error.message);
+						}
+						responseData = responseData.mwindows;
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
+					}
+				}
+				if (operation === 'update') {
+					const id = this.getNodeParameter('id', i) as string;
+					const duration = this.getNodeParameter('duration', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					body = {
+						id,
+						duration,
+						...updateFields,
+					};
+
+					try {
+						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/editMWindow', body);
+						console.log({responseData});
+						if (responseData.stat !== 'ok') {
+							throw new Error(responseData.error.message);
+						}
+						responseData = responseData.mwindow;
 					} catch (error) {
 						throw new NodeApiError(this.getNode(), error);
 					}
