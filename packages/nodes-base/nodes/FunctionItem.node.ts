@@ -105,7 +105,7 @@ export class FunctionItem implements INodeType {
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({json:{ error: error.message }});
-						continue
+						continue;
 					} else {
 						return Promise.reject(error);
 					}

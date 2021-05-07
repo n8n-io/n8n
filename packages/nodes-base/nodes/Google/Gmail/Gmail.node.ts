@@ -632,7 +632,7 @@ export class Gmail implements INodeType {
 
 						if (additionalFields.attachmentsUi) {
 							const attachmentsUi = additionalFields.attachmentsUi as IDataObject;
-							let attachmentsBinary = [];
+							const attachmentsBinary = [];
 							if (!isEmpty(attachmentsUi)) {
 								if (!isEmpty(attachmentsUi)) {
 									if (attachmentsUi.hasOwnProperty('attachmentsBinary')
