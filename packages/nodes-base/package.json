@@ -599,7 +599,7 @@
     "aws4": "^1.8.0",
     "basic-auth": "^2.0.1",
     "change-case": "^4.1.1",
-    "cheerio": "1.0.0-rc.8",
+    "cheerio": "1.0.0-rc.6",
     "cron": "^1.7.2",
     "eventsource": "^1.0.7",
     "fflate": "^0.4.8",
