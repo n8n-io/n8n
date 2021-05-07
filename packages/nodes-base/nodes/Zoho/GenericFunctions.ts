@@ -130,8 +130,15 @@ const adjustMailingAddressFields = adjustLocationFields('Mailing_Address');
 const adjustShippingAddressFields = adjustLocationFields('Shipping_Address');
 const adjustOtherAddressFields = adjustLocationFields('Other_Address');
 
+const adjustDateOfBirth = (allFields: { Date_of_Birth: string }) => {
+	if (!allFields.Date_of_Birth) return allFields;
+	allFields.Date_of_Birth = allFields.Date_of_Birth.split('T')[0];
+
+	return allFields;
+};
+
 export const adjustAccountFields = flow(adjustBillingAddressFields, adjustShippingAddressFields);
-export const adjustContactFields = flow(adjustMailingAddressFields, adjustOtherAddressFields);
+export const adjustContactFields = flow(adjustMailingAddressFields, adjustOtherAddressFields, adjustDateOfBirth);
 export const adjustInvoiceFields = flow(adjustBillingAddressFields, adjustShippingAddressFields); // TODO: product details
 export const adjustLeadFields = adjustAddressFields;
 export const adjustPurchaseOrderFields = adjustInvoiceFields;

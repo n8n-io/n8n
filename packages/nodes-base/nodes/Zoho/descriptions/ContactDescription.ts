@@ -109,7 +109,7 @@ export const contactFields = [
 			{
 				displayName: 'Date of Birth',
 				name: 'Date_of_Birth',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 			},
 			{
@@ -319,7 +319,7 @@ export const contactFields = [
 			{
 				displayName: 'Date of Birth',
 				name: 'Date_of_Birth',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 			},
 			{
