@@ -158,6 +158,7 @@ import Vue from 'vue';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -182,6 +183,7 @@ import {
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
+	externalHooks,
 	genericHelpers,
 	restApi,
 	showMessage,
@@ -558,6 +560,8 @@ export default mixins(
 			await this.loadWorkflows();
 			await this.refreshData();
 			this.handleAutoRefreshToggle();
+
+			this.$externalHooks().run('executionsList.openDialog');
 		},
 		async retryExecution (execution: IExecutionShortResponse, loadWorkflow?: boolean) {
 			this.isDataLoading = true;
