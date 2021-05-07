@@ -23,7 +23,7 @@
 
 		<PushConnectionTracker class="actions">
 			<template>
-				<span>
+				<span class="activator">
 					Active:
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" :disabled="!currentWorkflowId"/>
 				</span>
@@ -83,6 +83,12 @@ export default Vue.extend({
 .name {
 	color: $--custom-font-dark;
 	font-size: 15px;
+}
+
+.activator {
+	color: $--custom-font-dark;
+	font-weight: 400;
+	font-size: 13px;
 }
 
 .actions,.details {

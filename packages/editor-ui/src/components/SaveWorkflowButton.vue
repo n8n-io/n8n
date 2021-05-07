@@ -1,10 +1,10 @@
 <template>
 	<div class="save-button">
-		<el-button v-if="isDirty || isWorkflowSaving" :disabled="isWorkflowSaving"  size="small" @click="save">
-			<span v-if="isDirty">
+		<el-button v-if="isDirty" :disabled="isWorkflowSaving"  size="small" @click="save">
+			<font-awesome-icon v-if="isWorkflowSaving" icon="spinner" spin />
+			<span v-else>
 				Save
 			</span>
-			<font-awesome-icon v-else icon="spinner" spin />
 		</el-button>
 		<span v-else>Saved</span>
 	</div>
@@ -38,6 +38,19 @@ export default mixins(workflowHelpers).extend({
 <style lang="scss" scoped>
 .save-button {
 	min-width: 60px;
+
+	> button {
+		width: 65px;
+
+		// override disabled colors
+		color: white;
+		background-color: $--color-primary;
+
+		&:hover {
+			color: white;
+			background-color: $--color-primary;
+		}
+	}
 
 	> span {
 	  color: $--custom-font-very-light;
