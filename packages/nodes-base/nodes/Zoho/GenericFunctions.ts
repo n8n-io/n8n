@@ -6,7 +6,6 @@ import {
 import {
 	IDataObject,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -27,8 +26,7 @@ export async function zohoApiRequest(
 ) {
 	const operation = this.getNodeParameter('operation', 0) as string;
 
-	const { region } = this.getCredentials('zohoOAuth2Api') as { region: 'europe' | 'unitedStates' };
-	const tld = getTld(region);
+	const { oauthTokenData: { api_domain: apiDomain } } = this.getCredentials('zohoOAuth2Api') as { oauthTokenData: { api_domain: string} };
 
 	const options: OptionsWithUri = {
 		body: {
@@ -38,7 +36,7 @@ export async function zohoApiRequest(
 		},
 		method,
 		qs,
-		uri: uri ?? `https://www.zohoapis.${tld}/crm/v2${endpoint}`,
+		uri: uri ?? `${apiDomain}/crm/v2${endpoint}`,
 		json: true,
 	};
 
@@ -51,7 +49,7 @@ export async function zohoApiRequest(
 	}
 
 	try {
-		console.log(JSON.stringify(options.body.data, null, 2));
+		console.log(JSON.stringify(options, null, 2));
 		const responseData = await this.helpers.requestOAuth2.call(this, 'zohoOAuth2Api', options);
 		return operation === 'getAll' ? responseData : responseData.data;
 	} catch (error) {
@@ -150,9 +148,6 @@ function hasAddressFields(locationField: unknown): locationField is LocationFiel
 	if (typeof locationField !== 'object' || locationField === null) return false;
 	return locationField.hasOwnProperty('address_fields');
 }
-
-const getTld = (region: 'europe' | 'unitedStates') =>
-	({ europe: 'eu', unitedStates: 'com' }[region]);
 
 // ----------------------------------------
 //               types
