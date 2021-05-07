@@ -3,7 +3,7 @@
 		<div class="details">
 			<span>
 				<div>
-					<div class="clickable">
+					<div class="clickable name">
 						<WorkflowNameShort
 							:name="workflowName"
 						/>
@@ -78,6 +78,11 @@ export default Vue.extend({
 .details {
 	margin-left: $--header-spacing;
 	flex: 1;
+}
+
+.name {
+	color: $--custom-font-dark;
+	font-size: 15px;
 }
 
 .actions,.details {
