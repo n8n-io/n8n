@@ -54,7 +54,7 @@ export const genericHelpers = mixins(showMessage).extend({
 			return true;
 		},
 
-		startLoading () {
+		startLoading (text?: string) {
 			if (this.loadingService !== null) {
 				return;
 			}
@@ -62,7 +62,7 @@ export const genericHelpers = mixins(showMessage).extend({
 			this.loadingService = this.$loading(
 				{
 					lock: true,
-					text: 'Loading',
+					text: text || 'Loading',
 					spinner: 'el-icon-loading',
 					background: 'rgba(255, 255, 255, 0.8)',
 				},

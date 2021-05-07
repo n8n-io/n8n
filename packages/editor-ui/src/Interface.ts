@@ -440,7 +440,7 @@ export type MenuItemPosition = 'top' | 'bottom';
 export interface IMenuItem {
 	id: string;
 	type: MenuItemType;
-	position: MenuItemPosition;
+	position?: MenuItemPosition;
 	properties: ILinkMenuItemProperties;
 }
 
