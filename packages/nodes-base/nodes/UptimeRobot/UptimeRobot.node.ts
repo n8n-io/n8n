@@ -13,22 +13,24 @@ import {
 	uptimeRobotApiRequest,
 } from './GenericFunctions';
 import {
-	monitorOperations,
 	monitorFields,
+	monitorOperations,
 } from './MonitorDescription';
 import {
-	alertContactOperations,
 	alertContactFields,
+	alertContactOperations,
 } from './AlertContactDescription';
 import {
-	maintenanceWindowsOperations,
 	maintenanceWindowsFields,
+	maintenanceWindowsOperations,
 } from './MaintenanceWindowsDescription';
 import {
-	publicStatusPagesOperations,
 	publicStatusPagesFields,
-} from './PublicStatusPagesDescription copy';
+	publicStatusPagesOperations,
+} from './PublicStatusPagesDescription';
+
 import * as moment from 'moment';
+
 export class UptimeRobot implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'UptimeRobot',
@@ -133,418 +135,425 @@ export class UptimeRobot implements INodeType {
 		const length = items.length as unknown as number;
 		let responseData;
 		for (let i = 0; i < length; i++) {
-		 
-			const resource = this.getNodeParameter('resource', 0) as string;
-			const operation = this.getNodeParameter('operation', 0) as string;
-			let body:IDataObject = {};
-			//https://uptimerobot.com/#methods
-			if (resource === 'account') {
-				if (operation === 'getAccountDetails') {
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getAccountDetails');
-						responseData = responseData.account;
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
-					}
-				}
-			}
-			if (resource === 'monitor') {
-				if (operation === 'create') {
-					const friendly_name = this.getNodeParameter('friendly_name', i) as string;
-					const url = this.getNodeParameter('url', i) as string;
-					const type = this.getNodeParameter('type', i) as number;
-
-					body = {
-						friendly_name,
-						url,
-						type,
-					};
-
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/newMonitor', body);
-						console.log({responseData});
-						if (responseData.stat !== 'ok') {
-							throw new Error(responseData.error.message);
+			try {
+				const resource = this.getNodeParameter('resource', 0) as string;
+				const operation = this.getNodeParameter('operation', 0) as string;
+				let body: IDataObject = {};
+				//https://uptimerobot.com/#methods
+				if (resource === 'account') {
+					if (operation === 'getAccountDetails') {
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getAccountDetails');
+							responseData = responseData.account;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
 						}
-						responseData = responseData.monitor;
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
 					}
 				}
-				if (operation === 'delete') {
-					const id = this.getNodeParameter('id', i) as string;
+				if (resource === 'monitor') {
+					if (operation === 'create') {
+						const friendlyName = this.getNodeParameter('friendly_name', i) as string;
+						const url = this.getNodeParameter('url', i) as string;
+						const type = this.getNodeParameter('type', i) as number;
 
-					body = {
-						id,
-					};
+						body = {
+							friendly_name: friendlyName,
+							url,
+							type,
+						};
 
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deleteMonitor', body);
-						console.log({responseData});
-						if (responseData.stat !== 'ok') {
-							throw new Error(responseData.error.message);
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/newMonitor', body);
+							console.log({ responseData });
+							if (responseData.stat !== 'ok') {
+								throw new Error(responseData.error.message);
+							}
+							responseData = responseData.monitor;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
 						}
-						responseData = responseData.monitor;
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
 					}
-				}
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					if (operation === 'delete') {
+						const id = this.getNodeParameter('id', i) as string;
 
-					body = {
-						...filters
-					};
+						body = {
+							id,
+						};
 
-					if (body.statuses) {
-						body.statuses = (body.statuses as string[]).join('-');
-					}
-
-					if (body.types) {
-						body.types = (body.types as string[]).join('-');
-					}
-
-					if (body.alert_contacts) {
-						body.alert_contacts = 1;
-					}
-					if (body.logs) {
-						body.logs = 1;
-					}
-					if (body.mwindows) {
-						body.mwindows = 1;
-					}
-					if (body.response_times) {
-						body.response_times = 1;
-					}
-
-					if (!returnAll){
-						body.limit = this.getNodeParameter('limit', i) as number;
-					}
-
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getMonitors', body);
-						console.log({responseData});
-						if (responseData.stat !== 'ok') {
-							throw new Error(responseData.error.message);
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deleteMonitor', body);
+							console.log({ responseData });
+							if (responseData.stat !== 'ok') {
+								throw new Error(responseData.error.message);
+							}
+							responseData = responseData.monitor;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
 						}
-						responseData = responseData.monitors;
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
 					}
-				}
-				if (operation === 'reset') {
-					const id = this.getNodeParameter('id', i) as string;
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
 
-					body = {
-						id,
-					};
+						body = {
+							...filters,
+						};
 
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/resetMonitor', body);
-						console.log({responseData});
-						if (responseData.stat !== 'ok') {
-							throw new Error(responseData.error.message);
+						if (body.statuses) {
+							body.statuses = (body.statuses as string[]).join('-');
 						}
-						responseData = responseData.monitor;
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
-					}
-				}
-				if (operation === 'update') {
-					const id = this.getNodeParameter('id', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-					body = {
-						id,
-						...updateFields
-					};
-
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/editMonitor', body);
-						console.log({responseData});
-						if (responseData.stat !== 'ok') {
-							throw new Error(responseData.error.message);
+						if (body.types) {
+							body.types = (body.types as string[]).join('-');
 						}
-						responseData = responseData.monitor;
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
-					}
-				}
-			}
-			if (resource === 'alertContact') {
-				if (operation === 'create') {
-					const friendly_name = this.getNodeParameter('friendly_name', i) as string;
-					const value = this.getNodeParameter('value', i) as string;
-					const type = this.getNodeParameter('type', i) as number;
 
-					body = {
-						friendly_name,
-						value,
-						type,
-					};
-
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/newAlertContact', body);
-						console.log({responseData});
-						if (responseData.stat !== 'ok') {
-							throw new Error(responseData.error.message);
+						if (body.alert_contacts) {
+							body.alert_contacts = 1;
 						}
-						responseData = responseData.alertcontact;
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
-					}
-				}
-				if (operation === 'delete') {
-					const id = this.getNodeParameter('id', i) as string;
-
-					body = {
-						id,
-					};
-
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deleteAlertContact', body);
-						console.log({responseData});
-						if (responseData.stat !== 'ok') {
-							throw new Error(responseData.error.message);
+						if (body.logs) {
+							body.logs = 1;
 						}
-						responseData = responseData.alert_contact;
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
-					}
-				}
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-
-					body = {
-						...filters
-					};
-
-					if (!returnAll){
-						body.limit = this.getNodeParameter('limit', i) as number;
-					}
-
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getAlertContacts', body);
-						console.log({responseData});
-						if (responseData.stat !== 'ok') {
-							throw new Error(responseData.error.message);
+						if (body.mwindows) {
+							body.mwindows = 1;
 						}
-						responseData = responseData.alert_contacts;
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
-					}
-				}
-				if (operation === 'update') {
-					const id = this.getNodeParameter('id', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-					body = {
-						id,
-						...updateFields
-					};
-
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/editAlertContact', body);
-						console.log({responseData});
-						if (responseData.stat !== 'ok') {
-							throw new Error(responseData.error.message);
+						if (body.response_times) {
+							body.response_times = 1;
 						}
-						responseData = responseData.alert_contact;
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
-					}
-				}
-			}
-			if (resource === 'mwindows') {
-				if (operation === 'create') {
-					const friendly_name = this.getNodeParameter('friendly_name', i) as string;
-					const value = this.getNodeParameter('value', i) as string;
-					const type = this.getNodeParameter('type', i) as number;
-					const duration = this.getNodeParameter('duration', i) as number;
-					const startTime = this.getNodeParameter('start_time', i) as string;
-					let start_time;
 
-					if (type === 1){
-						start_time = moment(startTime).unix();
-					} else {
-						start_time = moment(startTime).format('HH:mm');
-					}
-
-					body = {
-						friendly_name,
-						value,
-						type,
-						duration,
-						start_time,
-					};
-
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/newMWindow', body);
-						console.log({responseData});
-						if (responseData.stat !== 'ok') {
-							throw new Error(responseData.error.message);
+						if (!returnAll) {
+							body.limit = this.getNodeParameter('limit', i) as number;
 						}
-						responseData = responseData.mwindow;
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
-					}
-				}
-				if (operation === 'delete') {
-					const id = this.getNodeParameter('id', i) as string;
 
-					body = {
-						id,
-					};
-
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deleteMWindow', body);
-						console.log({responseData});
-						if (responseData.stat !== 'ok') {
-							throw new Error(responseData.error.message);
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getMonitors', body);
+							console.log({ responseData });
+							if (responseData.stat !== 'ok') {
+								throw new Error(responseData.error.message);
+							}
+							responseData = responseData.monitors;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
 						}
-						responseData = { status : responseData.message };
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
 					}
-				}
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					if (operation === 'reset') {
+						const id = this.getNodeParameter('id', i) as string;
 
-					body = {
-						...filters,
-					};
+						body = {
+							id,
+						};
 
-					if (!returnAll){
-						body.limit = this.getNodeParameter('limit', i) as number;
-					}
-
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getMWindows', body);
-						console.log({responseData});
-						if (responseData.stat !== 'ok') {
-							throw new Error(responseData.error.message);
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/resetMonitor', body);
+							console.log({ responseData });
+							if (responseData.stat !== 'ok') {
+								throw new Error(responseData.error.message);
+							}
+							responseData = responseData.monitor;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
 						}
-						responseData = responseData.mwindows;
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
 					}
-				}
-				if (operation === 'update') {
-					const id = this.getNodeParameter('id', i) as string;
-					const duration = this.getNodeParameter('duration', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					if (operation === 'update') {
+						const id = this.getNodeParameter('id', i) as string;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-					body = {
-						id,
-						duration,
-						...updateFields,
-					};
+						body = {
+							id,
+							...updateFields,
+						};
 
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/editMWindow', body);
-						console.log({responseData});
-						if (responseData.stat !== 'ok') {
-							throw new Error(responseData.error.message);
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/editMonitor', body);
+							console.log({ responseData });
+							if (responseData.stat !== 'ok') {
+								throw new Error(responseData.error.message);
+							}
+							responseData = responseData.monitor;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
 						}
-						responseData = responseData.mwindow;
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
 					}
 				}
-			}
-			if (resource === 'psp'){
-				if (operation === 'create') {
-					const friendly_name = this.getNodeParameter('friendly_name', i) as string;
-					const monitors = this.getNodeParameter('monitors', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+				if (resource === 'alertContact') {
+					if (operation === 'create') {
+						const friendlyName = this.getNodeParameter('friendly_name', i) as string;
+						const value = this.getNodeParameter('value', i) as string;
+						const type = this.getNodeParameter('type', i) as number;
 
-					body = {
-						friendly_name,
-						monitors,
-						...additionalFields,
-					};
+						body = {
+							friendly_name: friendlyName,
+							value,
+							type,
+						};
 
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/newPSP', body);
-						console.log({responseData});
-						if (responseData.stat !== 'ok') {
-							throw new Error(responseData.error.message);
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/newAlertContact', body);
+							console.log({ responseData });
+							if (responseData.stat !== 'ok') {
+								throw new Error(responseData.error.message);
+							}
+							responseData = responseData.alertcontact;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
 						}
-						responseData = responseData.psp;
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
 					}
-				}
-				if (operation === 'delete') {
-					const id = this.getNodeParameter('id', i) as string;
+					if (operation === 'delete') {
+						const id = this.getNodeParameter('id', i) as string;
 
-					body = {
-						id,
-					};
+						body = {
+							id,
+						};
 
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deletePSP', body);
-						console.log({responseData});
-						if (responseData.stat !== 'ok') {
-							throw new Error(responseData.error.message);
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deleteAlertContact', body);
+							console.log({ responseData });
+							if (responseData.stat !== 'ok') {
+								throw new Error(responseData.error.message);
+							}
+							responseData = responseData.alert_contact;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
 						}
-						responseData = responseData.psp;
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
 					}
-				}
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
 
-					body = {
-						...filters,
-					};
+						body = {
+							...filters,
+						};
 
-					if (!returnAll){
-						body.limit = this.getNodeParameter('limit', i) as number;
-					}
-
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getPSPs', body);
-						console.log({responseData});
-						if (responseData.stat !== 'ok') {
-							throw new Error(responseData.error.message);
+						if (!returnAll) {
+							body.limit = this.getNodeParameter('limit', i) as number;
 						}
-						responseData = responseData.psps;
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
-					}
-				}
-				if (operation === 'update') {
-					const id = this.getNodeParameter('id', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-					body = {
-						id,
-						...updateFields,
-					};
-
-					try {
-						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/editPSP', body);
-						console.log({responseData});
-						if (responseData.stat !== 'ok') {
-							throw new Error(responseData.error.message);
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getAlertContacts', body);
+							console.log({ responseData });
+							if (responseData.stat !== 'ok') {
+								throw new Error(responseData.error.message);
+							}
+							responseData = responseData.alert_contacts;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
 						}
-						responseData = responseData.psp;
-					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
+					}
+					if (operation === 'update') {
+						const id = this.getNodeParameter('id', i) as string;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						body = {
+							id,
+							...updateFields,
+						};
+
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/editAlertContact', body);
+							console.log({ responseData });
+							if (responseData.stat !== 'ok') {
+								throw new Error(responseData.error.message);
+							}
+							responseData = responseData.alert_contact;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
+						}
 					}
 				}
-			}
+				if (resource === 'mwindows') {
+					if (operation === 'create') {
+						const friendlyName = this.getNodeParameter('friendly_name', i) as string;
+						const value = this.getNodeParameter('value', i) as string;
+						const type = this.getNodeParameter('type', i) as number;
+						const duration = this.getNodeParameter('duration', i) as number;
+						const startTime = this.getNodeParameter('start_time', i) as string;
+						let parsedStartTime;
 
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+						if (type === 1) {
+							parsedStartTime = moment(startTime).unix();
+						} else {
+							parsedStartTime = moment(startTime).format('HH:mm');
+						}
+
+						body = {
+							friendly_name: friendlyName,
+							value,
+							type,
+							duration,
+							start_time: parsedStartTime,
+						};
+
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/newMWindow', body);
+							console.log({ responseData });
+							if (responseData.stat !== 'ok') {
+								throw new Error(responseData.error.message);
+							}
+							responseData = responseData.mwindow;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
+						}
+					}
+					if (operation === 'delete') {
+						const id = this.getNodeParameter('id', i) as string;
+
+						body = {
+							id,
+						};
+
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deleteMWindow', body);
+							console.log({ responseData });
+							if (responseData.stat !== 'ok') {
+								throw new Error(responseData.error.message);
+							}
+							responseData = { status: responseData.message };
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
+						}
+					}
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+						body = {
+							...filters,
+						};
+
+						if (!returnAll) {
+							body.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getMWindows', body);
+							console.log({ responseData });
+							if (responseData.stat !== 'ok') {
+								throw new Error(responseData.error.message);
+							}
+							responseData = responseData.mwindows;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
+						}
+					}
+					if (operation === 'update') {
+						const id = this.getNodeParameter('id', i) as string;
+						const duration = this.getNodeParameter('duration', i) as string;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						body = {
+							id,
+							duration,
+							...updateFields,
+						};
+
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/editMWindow', body);
+							console.log({ responseData });
+							if (responseData.stat !== 'ok') {
+								throw new Error(responseData.error.message);
+							}
+							responseData = responseData.mwindow;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
+						}
+					}
+				}
+				if (resource === 'psp') {
+					if (operation === 'create') {
+						const friendlyName = this.getNodeParameter('friendly_name', i) as string;
+						const monitors = this.getNodeParameter('monitors', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						body = {
+							friendly_name: friendlyName,
+							monitors,
+							...additionalFields,
+						};
+
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/newPSP', body);
+							console.log({ responseData });
+							if (responseData.stat !== 'ok') {
+								throw new Error(responseData.error.message);
+							}
+							responseData = responseData.psp;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
+						}
+					}
+					if (operation === 'delete') {
+						const id = this.getNodeParameter('id', i) as string;
+
+						body = {
+							id,
+						};
+
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deletePSP', body);
+							console.log({ responseData });
+							if (responseData.stat !== 'ok') {
+								throw new Error(responseData.error.message);
+							}
+							responseData = responseData.psp;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
+						}
+					}
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+						body = {
+							...filters,
+						};
+
+						if (!returnAll) {
+							body.limit = this.getNodeParameter('limit', i) as number;
+						}
+
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getPSPs', body);
+							console.log({ responseData });
+							if (responseData.stat !== 'ok') {
+								throw new Error(responseData.error.message);
+							}
+							responseData = responseData.psps;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
+						}
+					}
+					if (operation === 'update') {
+						const id = this.getNodeParameter('id', i) as string;
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+						body = {
+							id,
+							...updateFields,
+						};
+
+						try {
+							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/editPSP', body);
+							console.log({ responseData });
+							if (responseData.stat !== 'ok') {
+								throw new Error(responseData.error.message);
+							}
+							responseData = responseData.psp;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error);
+						}
+					}
+				}
+
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

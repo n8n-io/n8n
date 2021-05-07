@@ -45,12 +45,9 @@ export const alertContactOperations = [
 ] as INodeProperties[];
 
 export const alertContactFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                                alertContact:create                              */
-/* -------------------------------------------------------------------------- */
-
-
+	/* -------------------------------------------------------------------------- */
+	/*                                alertContact:create                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Friendly Name',
 		name: 'friendly_name',
@@ -67,7 +64,68 @@ export const alertContactFields = [
 				],
 			},
 		},
-		description: 'the friendly name of the alert contact.',
+		description: 'The friendly name of the alert contact.',
+	},
+	{
+		displayName: 'Type',
+		name: 'type',
+		type: 'options',
+		required: true,
+		default: '',
+		options: [
+			{
+				name: 'SMS',
+				value: 1,
+			},
+			{
+				name: 'E-mail',
+				value: 2,
+			},
+			{
+				name: 'Twitter DM',
+				value: 3,
+			},
+			{
+				name: 'Boxcar',
+				value: 4,
+			},
+			{
+				name: 'Web-Hook',
+				value: 5,
+			},
+			{
+				name: 'Pushbullet',
+				value: 6,
+			},
+			// the commented option are not supported yet
+			// {
+			// 	name:'Zapier',
+			// 	value:7,
+			// },
+			{
+				name: 'Pushover',
+				value: 9,
+			},
+			// {
+			// 	name:'HipChat',
+			// 	value:10,
+			// },
+			// {
+			// 	name:'Slack',
+			// 	value:11
+			// },
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'alertContact',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		description: 'The type of the alert contact.',
 	},
 	{
 		displayName: 'Value',
@@ -86,68 +144,6 @@ export const alertContactFields = [
 			},
 		},
 		description: 'The correspondent value for the alert contact type.',
-	},
-	{
-		displayName: 'Type',
-		name: 'type',
-		type: 'options',
-		required: true,
-		default: '',
-		options: [
-			{
-				name:'SMS',
-				value:1,
-			},
-			{
-				name:'E-mail',
-				value:2,
-			},
-			{
-				name:'Twitter DM',
-				value:3,
-			},
-			{
-				name:'Boxcar',
-				value:4,
-			},
-			{
-				name:'Web-Hook',
-				value:5,
-			},
-			{
-				name:'Pushbullet',
-				value:6,
-			},
-			// the commented option are not supported yet
-			// {
-			// 	name:'Zapier',
-			// 	value:7,
-			// },
-			{
-				name:'Pushover',
-				value:9,
-			},
-			// {
-			// 	name:'HipChat',
-			// 	value:10,
-			// },
-			// {
-			// 	name:'Slack',
-			// 	value:11
-			// },
-		],
-				
-		displayOptions: {
-			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		description: 'the type of the alert contact.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                alertContact:delete                              */
@@ -168,7 +164,7 @@ export const alertContactFields = [
 				],
 			},
 		},
-		description: 'the ID of the alert contact.',
+		description: 'The ID of the alert contact.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                alertContact:getAll                              */
@@ -266,7 +262,7 @@ export const alertContactFields = [
 				],
 			},
 		},
-		description: 'the ID of the alert contact.',
+		description: 'The ID of the alert contact.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -290,7 +286,7 @@ export const alertContactFields = [
 				name: 'friendly_name',
 				type: 'string',
 				default: '',
-				description: 'the friendly name of the alert contact.',
+				description: 'The friendly name of the alert contact.',
 			},
 			{
 				displayName: 'Value',

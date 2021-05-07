@@ -45,12 +45,9 @@ export const monitorOperations = [
 ] as INodeProperties[];
 
 export const monitorFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                                monitor:create                              */
-/* -------------------------------------------------------------------------- */
-
-
+	/* -------------------------------------------------------------------------- */
+	/*                                monitor:create                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Friendly Name',
 		name: 'friendly_name',
@@ -67,7 +64,47 @@ export const monitorFields = [
 				],
 			},
 		},
-		description: 'the friendly name of the monitor.',
+		description: 'The friendly name of the monitor.',
+	},
+	{
+		displayName: 'Type',
+		name: 'type',
+		type: 'options',
+		required: true,
+		default: '',
+		options: [
+			{
+				name: 'HTTP(s)',
+				value: 1,
+			},
+			{
+				name: 'Keyword',
+				value: 2,
+			},
+			{
+				name: 'Ping',
+				value: 3,
+			},
+			{
+				name: 'Port',
+				value: 4,
+			},
+			{
+				name: 'Heartbeat',
+				value: 5,
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'monitor',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		description: 'The type of the monitor.',
 	},
 	{
 		displayName: 'URL',
@@ -85,47 +122,7 @@ export const monitorFields = [
 				],
 			},
 		},
-		description: 'the URL/IP of the monitor.',
-	},
-	{
-		displayName: 'Type',
-		name: 'type',
-		type: 'options',
-		required: true,
-		default: '',
-		options: [
-			{ 
-				name: "HTTP(s)",
-				value: 1
-			},
-			{ 
-				name: "Keyword",
-				value: 2
-			},
-			{ 
-				name: "Ping",
-				value: 3
-			},
-			{ 
-				name: "Port",
-				value: 4
-			},
-			{ 
-				name: "Heartbeat",
-				value: 5
-			},
-		],		
-		displayOptions: {
-			show: {
-				resource: [
-					'monitor',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		description: 'the type of the monitor.',
+		description: 'The URL/IP of the monitor.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                monitor:delete                              */
@@ -146,7 +143,7 @@ export const monitorFields = [
 				],
 			},
 		},
-		description: 'the ID of the monitor.',
+		description: 'The ID of the monitor.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                monitor:getAll                              */
@@ -276,7 +273,7 @@ export const monitorFields = [
 						name: 'down',
 						value: 9,
 					},
-				],	
+				],
 				description: 'Select monitor statuses.',
 			},
 			{
@@ -285,27 +282,27 @@ export const monitorFields = [
 				type: 'multiOptions',
 				default: '',
 				options: [
-					{ 
-						name: "HTTP(s)",
-						value: 1
+					{
+						name: 'HTTP(s)',
+						value: 1,
 					},
-					{ 
-						name: "Keyword",
-						value: 2
+					{
+						name: 'Keyword',
+						value: 2,
 					},
-					{ 
-						name: "Ping",
-						value: 3
+					{
+						name: 'Ping',
+						value: 3,
 					},
-					{ 
-						name: "Port",
-						value: 4
+					{
+						name: 'Port',
+						value: 4,
 					},
-					{ 
-						name: "Heartbeat",
-						value: 5
+					{
+						name: 'Heartbeat',
+						value: 5,
 					},
-				],	
+				],
 				description: 'Select monitor types.',
 			},
 		],
@@ -330,7 +327,7 @@ export const monitorFields = [
 				],
 			},
 		},
-		description: 'the ID of the monitor.',
+		description: 'The ID of the monitor.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -354,58 +351,7 @@ export const monitorFields = [
 				name: 'friendly_name',
 				type: 'string',
 				default: '',
-				description: 'the friendly name of the monitor.',
-			},
-			{
-				displayName: 'URL',
-				name: 'url',
-				type: 'string',
-				default: '',
-				description: 'the URL/IP of the monitor.',
-			},
-			{
-				displayName: 'Sub type',
-				name: 'sub_type',
-				type: 'options',
-				default: '',
-				options: [
-					{
-						name:'HTTP (80)',
-						value: 1,
-					},
-					{
-						name:'HTTPS (443)',
-						value: 2,
-					},
-					{
-						name:'FTP (21)',
-						value: 3,
-					},
-					{
-						name:'SMTP (25)',
-						value: 4,
-					},
-					{
-						name:'POP3 (110)',
-						value: 5,
-					},
-					{
-						name:'IMAP (143)',
-						value: 6,
-					},
-					{
-						name:'Custom Port',
-						value: 99,
-					},
-				],
-				description: 'Specify which pre-defined port/service or custom port is monitored.',
-			},
-			{
-				displayName: 'Port',
-				name: 'port',
-				type: 'number',
-				default: '',
-				description: 'Specify the monitored port.',
+				description: 'The friendly name of the monitor.',
 			},
 			{
 				displayName: 'Http Username',
@@ -445,32 +391,32 @@ export const monitorFields = [
 				default: '',
 				options: [
 					{
-						name:'HEAD',
-						value:1,
+						name: 'HEAD',
+						value: 1,
 					},
 					{
-						name:'GET',
-						value:2,
+						name: 'GET',
+						value: 2,
 					},
 					{
-						name:'POST',
-						value:3,
+						name: 'POST',
+						value: 3,
 					},
 					{
-						name:'PUT',
-						value:4,
+						name: 'PUT',
+						value: 4,
 					},
 					{
-						name:'PATCH',
-						value:5,
+						name: 'PATCH',
+						value: 5,
 					},
 					{
-						name:'DELETE',
-						value:6,
+						name: 'DELETE',
+						value: 6,
 					},
 					{
-						name:'OPTIONS',
-						value:7,
+						name: 'OPTIONS',
+						value: 7,
 					},
 				],
 				description: 'Specify the HTTP method to be used.',
@@ -481,6 +427,13 @@ export const monitorFields = [
 				type: 'number',
 				default: '',
 				description: 'Specify the interval for the monitoring check.',
+			},
+			{
+				displayName: 'Port',
+				name: 'port',
+				type: 'number',
+				default: '',
+				description: 'Specify the monitored port.',
 			},
 			{
 				displayName: 'Status',
@@ -496,8 +449,52 @@ export const monitorFields = [
 						name: 'resume',
 						value: 1,
 					},
-				],	
+				],
 				description: 'Select monitor statuses.',
+			},
+			{
+				displayName: 'Sub type',
+				name: 'sub_type',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						name: 'HTTP (80)',
+						value: 1,
+					},
+					{
+						name: 'HTTPS (443)',
+						value: 2,
+					},
+					{
+						name: 'FTP (21)',
+						value: 3,
+					},
+					{
+						name: 'SMTP (25)',
+						value: 4,
+					},
+					{
+						name: 'POP3 (110)',
+						value: 5,
+					},
+					{
+						name: 'IMAP (143)',
+						value: 6,
+					},
+					{
+						name: 'Custom Port',
+						value: 99,
+					},
+				],
+				description: 'Specify which pre-defined port/service or custom port is monitored.',
+			},
+			{
+				displayName: 'URL',
+				name: 'url',
+				type: 'string',
+				default: '',
+				description: 'The URL/IP of the monitor.',
 			},
 		],
 	},

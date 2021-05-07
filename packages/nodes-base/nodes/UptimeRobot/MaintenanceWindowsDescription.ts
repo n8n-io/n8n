@@ -40,28 +40,9 @@ export const maintenanceWindowsOperations = [
 ] as INodeProperties[];
 
 export const maintenanceWindowsFields = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                maintenanceWindows:create                    */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Friendly Name',
-		name: 'friendly_name',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'mwindows',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		description: 'the friendly name of the alert contact.',
-	},
 	{
 		displayName: 'Duration',
 		name: 'duration',
@@ -78,7 +59,25 @@ export const maintenanceWindowsFields = [
 				],
 			},
 		},
-		description: 'the maintenance window activation period (minutes).',
+		description: 'The maintenance window activation period (minutes).',
+	},
+	{
+		displayName: 'Friendly Name',
+		name: 'friendly_name',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'mwindows',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		description: 'The friendly name of the alert contact.',
 	},
 	{
 		displayName: 'Start Time',
@@ -96,7 +95,43 @@ export const maintenanceWindowsFields = [
 				],
 			},
 		},
-		description: 'the maintenance window start datetime.',
+		description: 'The maintenance window start datetime.',
+	},
+	{
+		displayName: 'Type',
+		name: 'type',
+		type: 'options',
+		required: true,
+		default: '',
+		options: [
+			{
+				name: 'Once',
+				value: 1,
+			},
+			{
+				name: 'Daily',
+				value: 2,
+			},
+			{
+				name: 'Weekly',
+				value: 3,
+			},
+			{
+				name: 'Monthly',
+				value: 4,
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'mwindows',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		description: 'The type of the alert contact.',
 	},
 	{
 		displayName: 'Value',
@@ -115,43 +150,6 @@ export const maintenanceWindowsFields = [
 			},
 		},
 		description: 'The correspondent value for the alert contact type.',
-	},
-	{
-		displayName: 'Type',
-		name: 'type',
-		type: 'options',
-		required: true,
-		default: '',
-		options: [
-			{
-				name:'Once',
-				value:1,
-			},
-			{
-				name:'Daily',
-				value:2,
-			},
-			{
-				name:'Weekly',
-				value:3,
-			},
-			{
-				name:'Monthly',
-				value:4,
-			},
-		],
-				
-		displayOptions: {
-			show: {
-				resource: [
-					'mwindows',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		description: 'the type of the alert contact.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                maintenanceWindows:delete                 */
@@ -172,7 +170,7 @@ export const maintenanceWindowsFields = [
 				],
 			},
 		},
-		description: 'the ID of the alert contact.',
+		description: 'The ID of the alert contact.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                maintenanceWindows:getAll                   */
@@ -270,7 +268,7 @@ export const maintenanceWindowsFields = [
 				],
 			},
 		},
-		description: 'the ID of the alert contact.',
+		description: 'The ID of the alert contact.',
 	},
 	{
 		displayName: 'Duration',
@@ -288,7 +286,7 @@ export const maintenanceWindowsFields = [
 				],
 			},
 		},
-		description: 'the maintenance window activation period (minutes).',
+		description: 'The maintenance window activation period (minutes).',
 	},
 	{
 		displayName: 'Update Fields',
@@ -312,21 +310,14 @@ export const maintenanceWindowsFields = [
 				name: 'friendly_name',
 				type: 'string',
 				default: '',
-				description: 'the friendly name of the alert contact.',
+				description: 'The friendly name of the alert contact.',
 			},
 			{
 				displayName: 'Start Time',
 				name: 'start_time',
 				type: 'dateTime',
 				default: '',
-				description: 'the maintenance window start datetime.',
-			},
-			{
-				displayName: 'Value',
-				name: 'value',
-				type: 'string',
-				default: '',
-				description: 'The correspondent value for the alert contact type.',
+				description: 'The maintenance window start datetime.',
 			},
 			{
 				displayName: 'Type',
@@ -335,23 +326,30 @@ export const maintenanceWindowsFields = [
 				default: '',
 				options: [
 					{
-						name:'Once',
-						value:1,
+						name: 'Once',
+						value: 1,
 					},
 					{
-						name:'Daily',
-						value:2,
+						name: 'Daily',
+						value: 2,
 					},
 					{
-						name:'Weekly',
-						value:3,
+						name: 'Weekly',
+						value: 3,
 					},
 					{
-						name:'Monthly',
-						value:4,
+						name: 'Monthly',
+						value: 4,
 					},
 				],
-				description: 'the type of the alert contact.',
+				description: 'The type of the alert contact.',
+			},
+			{
+				displayName: 'Value',
+				name: 'value',
+				type: 'string',
+				default: '',
+				description: 'The correspondent value for the alert contact type.',
 			},
 		],
 	},

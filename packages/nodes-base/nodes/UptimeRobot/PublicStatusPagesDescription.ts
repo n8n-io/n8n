@@ -40,10 +40,9 @@ export const publicStatusPagesOperations = [
 ] as INodeProperties[];
 
 export const publicStatusPagesFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                            publicStatusPage:create                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                            publicStatusPage:create                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Friendly Name',
 		name: 'friendly_name',
@@ -60,7 +59,7 @@ export const publicStatusPagesFields = [
 				],
 			},
 		},
-		description: 'the friendly name of the status page.',
+		description: 'The friendly name of the status page.',
 	},
 	{
 		displayName: 'Monitors',
@@ -102,14 +101,14 @@ export const publicStatusPagesFields = [
 				name: 'custom_domain',
 				type: 'string',
 				default: '',
-				description: 'the domain or subdomain that the status page will run on.',
+				description: 'The domain or subdomain that the status page will run on.',
 			},
 			{
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: 'the password for the status page.',
+				description: 'The password for the status page.',
 			},
 			{
 				displayName: 'Sort',
@@ -118,23 +117,23 @@ export const publicStatusPagesFields = [
 				default: '',
 				options: [
 					{
-						name:'friendly name (a-z)',
-						value:1,
+						name: 'friendly name (a-z)',
+						value: 1,
 					},
 					{
-						name:'friendly name (z-a)',
-						value:2,
+						name: 'friendly name (z-a)',
+						value: 2,
 					},
 					{
-						name:'status (up-down-paused)',
-						value:3,
+						name: 'status (up-down-paused)',
+						value: 3,
 					},
 					{
-						name:'status (down-up-paused)',
-						value:4,
+						name: 'status (down-up-paused)',
+						value: 4,
 					},
 				],
-				description: 'the sorting of the status page',
+				description: 'The sorting of the status page',
 			},
 		],
 	},
@@ -157,7 +156,7 @@ export const publicStatusPagesFields = [
 				],
 			},
 		},
-		description: 'the ID of the public status page.',
+		description: 'The ID of the public status page.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                            publicStatusPage:getAll                         */
@@ -255,9 +254,8 @@ export const publicStatusPagesFields = [
 				],
 			},
 		},
-		description: 'the ID of the public status page.',
+		description: 'The ID of the public status page.',
 	},
-	
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -276,11 +274,18 @@ export const publicStatusPagesFields = [
 		},
 		options: [
 			{
+				displayName: 'Custom Domain',
+				name: 'custom_domain',
+				type: 'string',
+				default: '',
+				description: 'The domain or subdomain that the status page will run on.',
+			},
+			{
 				displayName: 'Friendly Name',
 				name: 'friendly_name',
 				type: 'string',
 				default: '',
-				description: 'the friendly name of the status page.',
+				description: 'The friendly name of the status page.',
 			},
 			{
 				displayName: 'Monitors',
@@ -290,18 +295,11 @@ export const publicStatusPagesFields = [
 				description: 'Specify monitors IDs  be displayed in status page (the values are seperated with a dash (-) or 0 for all monitors).',
 			},
 			{
-				displayName: 'Custom Domain',
-				name: 'custom_domain',
-				type: 'string',
-				default: '',
-				description: 'the domain or subdomain that the status page will run on.',
-			},
-			{
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: 'the password for the status page.',
+				description: 'The password for the status page.',
 			},
 			{
 				displayName: 'Sort',
@@ -310,24 +308,24 @@ export const publicStatusPagesFields = [
 				default: '',
 				options: [
 					{
-						name:'friendly name (a-z)',
-						value:1,
+						name: 'friendly name (a-z)',
+						value: 1,
 					},
 					{
-						name:'friendly name (z-a)',
-						value:2,
+						name: 'friendly name (z-a)',
+						value: 2,
 					},
 					{
-						name:'status (up-down-paused)',
-						value:3,
+						name: 'status (up-down-paused)',
+						value: 3,
 					},
 					{
-						name:'status (down-up-paused)',
-						value:4,
+						name: 'status (down-up-paused)',
+						value: 4,
 					},
 				],
-				description: 'the sorting of the status page',
+				description: 'The sorting of the status page',
 			},
 		],
-	}
+	},
 ] as INodeProperties[];
