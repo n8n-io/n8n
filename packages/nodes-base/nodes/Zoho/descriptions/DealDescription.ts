@@ -110,7 +110,7 @@ export const dealFields = [
 			{
 				displayName: 'Closing Date',
 				name: 'Closing_Date',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 			},
 			{
@@ -150,9 +150,13 @@ export const dealFields = [
 			{
 				displayName: 'Probability',
 				name: 'Probability',
-				type: 'string',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 100,
+				},
 				default: '',
-				description: 'Probability of deal closure.',
+				description: 'Probability of deal closure as a percentage.',
 			},
 			{
 				displayName: 'Sales Cycle Duration',
@@ -261,7 +265,7 @@ export const dealFields = [
 			{
 				displayName: 'Closing Date',
 				name: 'Closing_Date',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 			},
 			{
@@ -307,9 +311,13 @@ export const dealFields = [
 			{
 				displayName: 'Probability',
 				name: 'Probability',
-				type: 'string',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 100,
+				},
 				default: '',
-				description: 'Probability of deal closure.',
+				description: 'Probability of deal closure as a percentage.',
 			},
 			{
 				displayName: 'Sales Cycle Duration',

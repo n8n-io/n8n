@@ -12,6 +12,7 @@ import {
 import {
 	adjustAccountFields,
 	adjustContactFields,
+	adjustDealFields,
 	adjustInvoiceFields,
 	adjustLeadFields,
 	adjustPurchaseOrderFields,
@@ -305,14 +306,14 @@ export class ZohoCrm implements INodeType {
 					// ----------------------------------------
 
 					const body: IDataObject = {
-						Deal_Name: this.getNodeParameter('Deal_Name', i),
-						Stage: this.getNodeParameter('Stage', i),
+						Deal_Name: this.getNodeParameter('dealName', i),
+						Stage: this.getNodeParameter('stage', i),
 					};
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (Object.keys(additionalFields).length) {
-						Object.assign(body, additionalFields);
+						Object.assign(body, adjustDealFields(additionalFields));
 					}
 
 					responseData = await zohoApiRequest.call(this, 'POST', '/deals', body);
@@ -355,7 +356,7 @@ export class ZohoCrm implements INodeType {
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 					if (Object.keys(updateFields).length) {
-						Object.assign(body, updateFields);
+						Object.assign(body, adjustDealFields(updateFields));
 					}
 
 					const dealId = this.getNodeParameter('dealId', i);

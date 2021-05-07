@@ -107,7 +107,7 @@ export const accountFields = [
 			{
 				displayName: 'Annual Revenue',
 				name: 'Annual_Revenue',
-				type: 'string',
+				type: 'number',
 				default: '',
 			},
 			billingAddress,
@@ -140,7 +140,7 @@ export const accountFields = [
 			{
 				displayName: 'Exchange Rate',
 				name: 'Exchange_Rate',
-				type: 'string',
+				type: 'number',
 				default: '',
 				description: 'Exchange rate of the default currency to the home currency.',
 			},
@@ -293,7 +293,7 @@ export const accountFields = [
 			{
 				displayName: 'Annual Revenue',
 				name: 'Annual_Revenue',
-				type: 'string',
+				type: 'number',
 				default: '',
 			},
 			billingAddress,
@@ -326,7 +326,7 @@ export const accountFields = [
 			{
 				displayName: 'Exchange Rate',
 				name: 'Exchange_Rate',
-				type: 'string',
+				type: 'number',
 				default: '',
 				description: 'Exchange rate of the default currency to the home currency.',
 			},

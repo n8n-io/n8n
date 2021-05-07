@@ -201,7 +201,7 @@ export const salesOrderFields = [
 			{
 				displayName: 'Exchange Rate',
 				name: 'Exchange_Rate',
-				type: 'string',
+				type: 'number',
 				default: '',
 				description: 'Exchange rate of the default currency to the home currency.',
 			},
@@ -476,7 +476,7 @@ export const salesOrderFields = [
 			{
 				displayName: 'Exchange Rate',
 				name: 'Exchange_Rate',
-				type: 'string',
+				type: 'number',
 				default: '',
 				description: 'Exchange rate of the default currency to the home currency.',
 			},

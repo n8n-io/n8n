@@ -130,15 +130,25 @@ const adjustMailingAddressFields = adjustLocationFields('Mailing_Address');
 const adjustShippingAddressFields = adjustLocationFields('Shipping_Address');
 const adjustOtherAddressFields = adjustLocationFields('Other_Address');
 
-const adjustDateOfBirth = (allFields: { Date_of_Birth: string }) => {
-	if (!allFields.Date_of_Birth) return allFields;
-	allFields.Date_of_Birth = allFields.Date_of_Birth.split('T')[0];
+/**
+ * Remove a date field's timestamp.
+ */
+const adjustDateField = (dateType: DateType) => (allFields: DateField) => {
+	const dateField = allFields[dateType];
+
+	if (!dateField) return allFields;
+
+	allFields[dateType] = dateField.split('T')[0];
 
 	return allFields;
 };
 
+const adjustDateOfBirthField = adjustDateField('Date_of_Birth');
+const adjustClosingDateField = adjustDateField('Closing_Date');
+
 export const adjustAccountFields = flow(adjustBillingAddressFields, adjustShippingAddressFields);
-export const adjustContactFields = flow(adjustMailingAddressFields, adjustOtherAddressFields, adjustDateOfBirth);
+export const adjustContactFields = flow(adjustMailingAddressFields, adjustOtherAddressFields, adjustDateOfBirthField);
+export const adjustDealFields = adjustClosingDateField;
 export const adjustInvoiceFields = flow(adjustBillingAddressFields, adjustShippingAddressFields); // TODO: product details
 export const adjustLeadFields = adjustAddressFields;
 export const adjustPurchaseOrderFields = adjustInvoiceFields;
@@ -165,3 +175,7 @@ type LocationType = 'Address' | 'Billing_Address' | 'Mailing_Address' | 'Shippin
 type LocationField = {
 	address_fields: { [key in LocationType]: string };
 };
+
+type DateType = 'Date_of_Birth' | 'Closing_Date';
+
+type DateField = { Date_of_Birth?: string; Closing_Date?: string; };
