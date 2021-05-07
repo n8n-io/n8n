@@ -1,6 +1,6 @@
 <template>
 	<span>
-		<slot v-bind:size="size" v-bind:width="width" />
+		<slot :size="size" :width="width" />
 	</span>
 </template>
 

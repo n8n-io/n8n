@@ -38,7 +38,7 @@
 			@nodeTypeSelected="nodeTypeSelected"
 			@closeNodeCreator="closeNodeCreator"
 			></node-creator>
-		<div :class="{'zoom-menu': true, expanded: !sidebarMenuCollapsed}">
+		<div :class="{ 'zoom-menu': true, expanded: !sidebarMenuCollapsed }">
 			<button @click="setZoom('in')" class="button-white" title="Zoom In">
 				<font-awesome-icon icon="search-plus"/>
 			</button>
@@ -372,7 +372,7 @@ export default mixins(
 				const tags = (data.tags || []) as ITag[];
 				this.$store.commit('tags/upsertTags', tags);
 
-				const tagIds = tags.map((tag: ITag): string => tag.id);
+				const tagIds = tags.map((tag) => tag.id);
 				this.$store.commit('setWorkflowTagIds', tagIds || []);
 
 				await this.addNodes(data.nodes, data.connections);

@@ -7,23 +7,23 @@
 		size="sm"
 	>
 		<template slot="content">
-				<el-row>
-					<el-input
-						v-model="name"
-						ref="nameInput"
-						placeholder="Enter workflow name"
-					/>
-				</el-row>
-				<el-row>
-					<TagsDropdown
-						:createEnabled="true"
-						:currentTagIds="currentTagIds"
-						:eventBus="dropdownBus"
-						@onUpdate="onTagsUpdate"
-						placeholder="Choose or create a tag"
-						ref="dropdown"
-					/>
-				</el-row>
+			<el-row>
+				<el-input
+					v-model="name"
+					ref="nameInput"
+					placeholder="Enter workflow name"
+				/>
+			</el-row>
+			<el-row>
+				<TagsDropdown
+					:createEnabled="true"
+					:currentTagIds="currentTagIds"
+					:eventBus="dropdownBus"
+					@onUpdate="onTagsUpdate"
+					placeholder="Choose or create a tag"
+					ref="dropdown"
+				/>
+			</el-row>
 		</template>
 		<template v-slot:footer="{ close }">
 			<el-button size="small" @click="save" :loading="isSaving">Save</el-button>
@@ -65,9 +65,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 		};
 	},
 	mounted() {
-		this.$nextTick(() => {
-			this.focusOnNameInput();
-		});
+		this.$nextTick(() => this.focusOnNameInput());
 	},
 	watch: {
 		isActive(active) {
@@ -104,7 +102,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$data.isSaving = true;
 			if (this.$props.renameOnly) {
 				try {
-					await this.$store.dispatch("workflows/renameCurrent", {name, tags: this.currentTagIds});
+					await this.$store.dispatch("workflows/renameCurrent", { name, tags: this.currentTagIds });
 
 					this.$showMessage({
 						title: "Workflow updated",

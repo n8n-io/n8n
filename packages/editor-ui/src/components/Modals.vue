@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<ModalRoot :name="SAVE_AS_MODAL_KEY">
-			<template v-slot:default="{modalName, active}">
+			<template v-slot:default="{ modalName, active }">
 				<SaveWorkflowDialog
 					:isActive="active"
 					:modalName="modalName"
@@ -11,7 +11,7 @@
 		</ModalRoot>
 
 		<ModalRoot :name="RENAME_MODAL_KEY">
-			<template v-slot:default="{modalName, active}">
+			<template v-slot:default="{ modalName, active }">
 				<SaveWorkflowDialog
 					:isActive="active"
 					:modalName="modalName"
@@ -22,7 +22,7 @@
 		</ModalRoot>
 
 		<ModalRoot :name="TAGS_MANAGER_MODAL_KEY">
-			<template v-slot="{modalName}">
+			<template v-slot="{ modalName }">
 				<TagsManager
 					:modalName="modalName"
 				/>
@@ -30,7 +30,7 @@
 		</ModalRoot>
 
 		<ModalRoot :name="WORKLOW_OPEN_MODAL_KEY">
-			<template v-slot="{modalName}">
+			<template v-slot="{ modalName }">
 				<WorkflowOpen
 					:modalName="modalName"
 				/>

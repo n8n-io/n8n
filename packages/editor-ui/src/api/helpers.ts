@@ -25,11 +25,11 @@ class ResponseError extends Error {
 	 * @param {string} [stack] The stack trace
 	 * @memberof ResponseError
 	 */
-	constructor (message: string, options?: {errorCode?: number, httpStatusCode?: number, stack?: string}) {
+	constructor (message: string, options: {errorCode?: number, httpStatusCode?: number, stack?: string} = {}) {
 		super(message);
 		this.name = 'ResponseError';
 
-		const { errorCode, httpStatusCode, stack } = options || {};
+		const { errorCode, httpStatusCode, stack } = options;
 		if (errorCode) {
 			this.errorCode = errorCode;
 		}

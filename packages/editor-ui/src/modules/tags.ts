@@ -21,7 +21,7 @@ const module: Module<ITagsState, IRootState> = {
 		},
 		setAllTags: (state: ITagsState, tags: ITag[]) => {
 			state.tags = tags
-				.reduce((accu: {[id: string]: ITag}, tag: ITag) => {
+				.reduce((accu: { [id: string]: ITag }, tag: ITag) => {
 					accu[tag.id] = tag;
 
 					return accu;
@@ -31,9 +31,10 @@ const module: Module<ITagsState, IRootState> = {
 		upsertTags(state: ITagsState, tags: ITag[]) {
 			tags.forEach((tag) => {
 				const tagId = tag.id;
-				if (state.tags[tagId]) {
+				const currentTag = state.tags[tagId];
+				if (currentTag) {
 					const newTag = {
-						...state.tags[tagId],
+						...currentTag,
 						...tag,
 					};
 					Vue.set(state.tags, tagId, newTag);
@@ -48,9 +49,9 @@ const module: Module<ITagsState, IRootState> = {
 		},
 	},
 	getters: {
-		tags(state: ITagsState): ITag[] {
+		allTags(state: ITagsState): ITag[] {
 			return Object.values(state.tags)
-				.sort((a: ITag, b: ITag) => a.name.localeCompare(b.name));
+				.sort((a, b) => a.name.localeCompare(b.name));
 		},
 		isLoading: (state: ITagsState): boolean => {
 			return state.isLoading;
@@ -63,9 +64,9 @@ const module: Module<ITagsState, IRootState> = {
 		},
 	},
 	actions: {
-		fetchAll: async (context: ActionContext<ITagsState, IRootState>, params: { force?: boolean, withUsageCount?: boolean }) => {
-			const { force, withUsageCount } = params || {};
-			if (!force && context.state.fetchedAll && context.state.fetchedUsageCount === !!withUsageCount) {
+		fetchAll: async (context: ActionContext<ITagsState, IRootState>, params?: { force?: boolean, withUsageCount?: boolean }) => {
+			const { force = false, withUsageCount = false } = params || {};
+			if (!force && context.state.fetchedAll && context.state.fetchedUsageCount === withUsageCount) {
 				return context.state.tags;
 			}
 
@@ -82,8 +83,8 @@ const module: Module<ITagsState, IRootState> = {
 
 			return tag;
 		},
-		rename: async (context: ActionContext<ITagsState, IRootState>, params: {name: string, id: string}) => {
-			const tag = await updateTag(context.rootGetters.getRestApiContext, params.id, { name: params.name });
+		rename: async (context: ActionContext<ITagsState, IRootState>, { id, name }: { id: string, name: string }) => {
+			const tag = await updateTag(context.rootGetters.getRestApiContext, id, { name });
 			context.commit('upsertTags', [tag]);
 
 			return tag;

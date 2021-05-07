@@ -31,7 +31,7 @@ const module: Module<IUiState, IRootState> = {
 			return (name: string) => state.modals[name].open;
 		},
 		isModalActive: (state: IUiState) => {
-			return (name: string) => name === state.modalStack[0];
+			return (name: string) => state.modalStack.length > 0 && name === state.modalStack[0];
 		},
 		anyModalsOpen: (state: IUiState) => {
 			return state.modalStack.length > 0;

@@ -218,7 +218,7 @@ export interface IWorkflowDataUpdate {
 	connections?: IConnections;
 	settings?: IWorkflowSettings;
 	active?: boolean;
-	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from api response
+	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
 }
 
 // Almost identical to cli.Interfaces.ts
@@ -231,7 +231,7 @@ export interface IWorkflowDb {
 	nodes: INodeUi[];
 	connections: IConnections;
 	settings?: IWorkflowSettings;
-	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from api response
+	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
 }
 
 // Identical to cli.Interfaces.ts
@@ -451,7 +451,6 @@ export interface ILinkMenuItemProperties {
 	newWindow?: boolean;
 }
 
-// ITagGetResponseItem
 export interface ITag {
 	id: string;
 	name: string;
@@ -506,7 +505,7 @@ export interface IRootState {
 }
 
 export interface ITagsState {
-	tags: {[id: string]: ITag};
+	tags: { [id: string]: ITag };
 	isLoading: boolean;
 	fetchedAll: boolean;
 	fetchedUsageCount: boolean;

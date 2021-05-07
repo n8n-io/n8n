@@ -2,7 +2,7 @@
 	<div
 			v-if="isOpen(name)"
 	>
-		<slot v-bind:modalName="name" v-bind:active="isActive(name)"></slot>	
+		<slot :modalName="name" :active="isActive(name)"></slot>	
 	</div>
 </template>
 

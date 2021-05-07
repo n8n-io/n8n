@@ -24,8 +24,8 @@
 							<span>Are you sure you want to delete this tag?</span>
 							<input ref="deleteHiddenInput" class="hidden" />
 						</span>
-						<span v-else :class="{disabled: scope.row.disable}">
-							{{scope.row.tag.name}}
+						<span v-else :class="{ disabled: scope.row.disable }">
+							{{ scope.row.tag.name }}
 						</span>
 					</transition>
 				</div>
@@ -34,8 +34,8 @@
 		<el-table-column label="Usage" width="150">
 			<template slot-scope="scope">
 				<transition name="fade" mode="out-in">
-						<div v-if="!scope.row.create && !scope.row.delete" :class="{disabled: scope.row.disable}">
-							{{scope.row.usage}}
+						<div v-if="!scope.row.create && !scope.row.delete" :class="{ disabled: scope.row.disable }">
+							{{ scope.row.usage }}
 						</div>
 					</transition>
 				</template>
@@ -93,7 +93,7 @@ export default Vue.extend({
 			return row.disable ? "disabled" : "";
 		},
 
-		getSpan({row, columnIndex}: {row: ITagRow, columnIndex: number}): number | number[] {
+		getSpan({ row, columnIndex }: { row: ITagRow, columnIndex: number }): number | number[] {
 			// expand text column with delete message
 			if (columnIndex === 0 && row.tag && row.delete) {
 				return [1, 2];

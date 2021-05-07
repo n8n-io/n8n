@@ -4,7 +4,7 @@
 			:visible="dialogVisible"
 			:before-close="closeDialog"
 			:title="title"
-			:class="{'dialog-wrapper': true, [size]: true}"
+			:class="{ 'dialog-wrapper': true, [size]: true }"
 			:width="width"
 			append-to-body
 		>
@@ -15,7 +15,7 @@
 				<slot name="content"/>
 			</div>
 			<el-row class="modal-footer">
-				<slot name="footer" v-bind:close="closeDialog" />
+				<slot name="footer" :close="closeDialog" />
 			</el-row>
 		</el-dialog>
 	</div>

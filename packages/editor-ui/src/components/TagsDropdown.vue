@@ -26,7 +26,7 @@
 			</el-option>
 			<el-option v-else-if="options.length === 0" value="message" disabled>
 				<span v-if="createEnabled">Type to create a tag</span>
-				<span v-else-if="tags.length > 0">No matching tags exist</span>
+				<span v-else-if="allTags.length > 0">No matching tags exist</span>
 				<span v-else>No tags exist</span>
 			</el-option>
 
@@ -93,9 +93,9 @@ export default mixins(showMessage).extend({
 		this.$store.dispatch("tags/fetchAll");
 	},
 	computed: {
-		...mapGetters("tags", ["tags", "isLoading", "hasTags"]),
+		...mapGetters("tags", ["allTags", "isLoading", "hasTags"]),
 		options(): ITag[] {
-			return this.tags
+			return this.allTags
 				.filter((tag: ITag) =>
 					tag && tag.name.toLowerCase().includes(this.$data.filter.toLowerCase()),
 				);

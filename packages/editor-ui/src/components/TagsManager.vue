@@ -48,8 +48,8 @@ export default mixins(showMessage).extend({
 	},
 	props: ['modalName'],
 	data() {
-		const tagIds = this.$store.getters['tags/tags']
-			.map((tag: ITag): string => tag.id);
+		const tagIds = (this.$store.getters['tags/allTags'] as ITag[])
+			.map((tag): string => tag.id);
 
 		return {
 			tagIds,
@@ -66,7 +66,7 @@ export default mixins(showMessage).extend({
 		...mapGetters("tags", ["isLoading"]),
 		tags(): ITag[] {
 			return this.$data.tagIds.map((tagId: string) => this.$store.getters['tags/getTagById'](tagId))
-				.filter((tag: ITag | undefined) => !!tag);
+				.filter(Boolean); // if tag is deleted from store
 		},
 		hasTags(): boolean {
 			return this.tags.length > 0;

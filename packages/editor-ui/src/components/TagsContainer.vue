@@ -7,7 +7,7 @@
 			type="info"
 			size="small"
 		>
-			{{tag.name}}
+			{{ tag.name }}
 		</el-tag>
 	</div>
 </template>
