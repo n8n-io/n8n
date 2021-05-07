@@ -192,14 +192,7 @@ export class ZohoCrm implements INodeType {
 					//             account: getAll
 					// ----------------------------------------
 
-					const body: IDataObject = {};
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-
-					if (Object.keys(filters).length) {
-						Object.assign(body, filters);
-					}
-
-					responseData = await handleListing.call(this, 'GET', '/accounts', body);
+					responseData = await handleListing.call(this, 'GET', '/accounts');
 
 				} else if (operation === 'update') {
 
@@ -275,14 +268,7 @@ export class ZohoCrm implements INodeType {
 					//             contact: getAll
 					// ----------------------------------------
 
-					const body: IDataObject = {};
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-
-					if (Object.keys(filters).length) {
-						Object.assign(body, filters);
-					}
-
-					responseData = await handleListing.call(this, 'GET', '/contacts', body);
+					responseData = await handleListing.call(this, 'GET', '/contacts');
 
 				} else if (operation === 'update') {
 
@@ -357,14 +343,7 @@ export class ZohoCrm implements INodeType {
 					//               deal: getAll
 					// ----------------------------------------
 
-					const body: IDataObject = {};
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-
-					if (Object.keys(filters).length) {
-						Object.assign(body, filters);
-					}
-
-					responseData = await handleListing.call(this, 'GET', '/deals', body);
+					responseData = await handleListing.call(this, 'GET', '/deals');
 
 				} else if (operation === 'update') {
 
@@ -440,14 +419,7 @@ export class ZohoCrm implements INodeType {
 					//             invoice: getAll
 					// ----------------------------------------
 
-					const body: IDataObject = {};
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-
-					if (Object.keys(filters).length) {
-						Object.assign(body, filters);
-					}
-
-					responseData = await handleListing.call(this, 'GET', '/invoices', body);
+					responseData = await handleListing.call(this, 'GET', '/invoices');
 
 				} else if (operation === 'update') {
 
@@ -522,14 +494,7 @@ export class ZohoCrm implements INodeType {
 					//               lead: getAll
 					// ----------------------------------------
 
-					const body: IDataObject = {};
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-
-					if (Object.keys(filters).length) {
-						Object.assign(body, filters);
-					}
-
-					responseData = await handleListing.call(this, 'GET', '/leads', body);
+					responseData = await handleListing.call(this, 'GET', '/leads');
 
 				} else if (operation === 'update') {
 
@@ -605,14 +570,7 @@ export class ZohoCrm implements INodeType {
 					//          purchaseOrder: getAll
 					// ----------------------------------------
 
-					const body: IDataObject = {};
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-
-					if (Object.keys(filters).length) {
-						Object.assign(body, filters);
-					}
-
-					responseData = await handleListing.call(this, 'GET', '/purchaseorders', body);
+					responseData = await handleListing.call(this, 'GET', '/purchaseorders');
 
 				} else if (operation === 'update') {
 
@@ -687,14 +645,7 @@ export class ZohoCrm implements INodeType {
 					//              quote: getAll
 					// ----------------------------------------
 
-					const body: IDataObject = {};
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-
-					if (Object.keys(filters).length) {
-						Object.assign(body, filters);
-					}
-
-					responseData = await handleListing.call(this, 'GET', '/quotes', body);
+					responseData = await handleListing.call(this, 'GET', '/quotes');
 
 				} else if (operation === 'update') {
 
@@ -770,14 +721,7 @@ export class ZohoCrm implements INodeType {
 					//            salesOrder: getAll
 					// ----------------------------------------
 
-					const body: IDataObject = {};
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-
-					if (Object.keys(filters).length) {
-						Object.assign(body, filters);
-					}
-
-					responseData = await handleListing.call(this, 'GET', '/salesorders', body);
+					responseData = await handleListing.call(this, 'GET', '/salesorders');
 
 				} else if (operation === 'update') {
 

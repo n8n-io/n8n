@@ -304,12 +304,6 @@ export const productDetails = {
 	],
 };
 
-const pluralize = (resource: string) => (isCamelCase(resource) ? splitCamelCased(resource) : resource) + 's';
-
-const isCamelCase = (resource: string) => /([a-z])([A-Z])/.test(resource);
-
-const splitCamelCased = (resource: string) => resource.replace(/([a-z])([A-Z])/, '$1 $2').toLowerCase();
-
 export const makeGetAllFields = (resource: string) => [
 	{
 		displayName: 'Return All',
@@ -351,31 +345,5 @@ export const makeGetAllFields = (resource: string) => [
 				],
 			},
 		},
-	},
-	{
-		displayName: 'Filters',
-		name: 'filters',
-		type: 'collection',
-		placeholder: 'Add Filter',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					resource,
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'IDs',
-				name: 'id',
-				type: 'string',
-				default: '',
-				description: `Comma-separated list of IDs to filter the ${pluralize(resource)} by.`,
-			},
-		],
 	},
 ];
