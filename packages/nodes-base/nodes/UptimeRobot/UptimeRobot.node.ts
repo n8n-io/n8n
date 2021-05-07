@@ -24,13 +24,16 @@ import {
 	maintenanceWindowsOperations,
 	maintenanceWindowsFields,
 } from './MaintenanceWindowsDescription';
-
+import {
+	publicStatusPagesOperations,
+	publicStatusPagesFields,
+} from './PublicStatusPagesDescription copy';
 import * as moment from 'moment';
 export class UptimeRobot implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'UptimeRobot',
 		name: 'uptimeRobot',
-		icon: 'file:uptimeRobot.svg',
+		icon: 'file:uptimerobot.png',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -68,6 +71,10 @@ export class UptimeRobot implements INodeType {
 					{
 						name: 'Monitor',
 						value: 'monitor',
+					},
+					{
+						name: 'Public Status Page',
+						value: 'psp',
 					},
 				],
 				default: 'account',
@@ -112,6 +119,11 @@ export class UptimeRobot implements INodeType {
 			/* -------------------------------------------------------------------------- */
 			...maintenanceWindowsOperations,
 			...maintenanceWindowsFields,
+			/* -------------------------------------------------------------------------- */
+			/*                               Public Status Pages                          */
+			/* -------------------------------------------------------------------------- */
+			...publicStatusPagesOperations,
+			...publicStatusPagesFields,
 		],
 	};
 
@@ -443,6 +455,92 @@ export class UptimeRobot implements INodeType {
 					}
 				}
 			}
+			if (resource === 'psp'){
+				if (operation === 'create') {
+					const friendly_name = this.getNodeParameter('friendly_name', i) as string;
+					const monitors = this.getNodeParameter('monitors', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					body = {
+						friendly_name,
+						monitors,
+						...additionalFields,
+					};
+
+					try {
+						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/newPSP', body);
+						console.log({responseData});
+						if (responseData.stat !== 'ok') {
+							throw new Error(responseData.error.message);
+						}
+						responseData = responseData.psp;
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
+					}
+				}
+				if (operation === 'delete') {
+					const id = this.getNodeParameter('id', i) as string;
+
+					body = {
+						id,
+					};
+
+					try {
+						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deletePSP', body);
+						console.log({responseData});
+						if (responseData.stat !== 'ok') {
+							throw new Error(responseData.error.message);
+						}
+						responseData = responseData.psp;
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
+					}
+				}
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					body = {
+						...filters,
+					};
+
+					if (!returnAll){
+						body.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					try {
+						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getPSPs', body);
+						console.log({responseData});
+						if (responseData.stat !== 'ok') {
+							throw new Error(responseData.error.message);
+						}
+						responseData = responseData.psps;
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
+					}
+				}
+				if (operation === 'update') {
+					const id = this.getNodeParameter('id', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					body = {
+						id,
+						...updateFields,
+					};
+
+					try {
+						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/editPSP', body);
+						console.log({responseData});
+						if (responseData.stat !== 'ok') {
+							throw new Error(responseData.error.message);
+						}
+						responseData = responseData.psp;
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error);
+					}
+				}
+			}
+
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
