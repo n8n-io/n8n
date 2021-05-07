@@ -29,7 +29,7 @@ import * as query from './resources/query'
 import * as tag from './resources/tag'
 import * as tagging from './resources/tagging'
 
-import { createIdentifierDictionary } from './helpers/osdi';
+import { createIdentifierDictionary, createRelatedResourcesIdentifierDictionary } from './helpers/osdi';
 
 const resources = [
 	{ name: 'Person', value: 'person', module: person },
@@ -98,28 +98,36 @@ export class ActionNetwork implements INodeType {
 			const resolveResource = resources.find(r => r.value === resource)?.module.resolve!
 			let responseData = await resolveResource(this, i) as any
 
+			// Identify where the list of data is
+			const firstDataKey = Object.keys(responseData['_embedded'])[0]
+
 			// Some general transformations on the resolved data
-			try {
-				// Identify where the list of data is
-				const firstDataKey = Object.keys(responseData['_embedded'])[0]
-				if (!firstDataKey) {
-					throw new Error("No data found")
-				}
-				// Try to give each item an ID dictionary for upstream work.
-				// Particularly useful for pulling out the Action Network ID of an item for a further operation on it
-				// e.g. find an event, get its ID and then sign someone up to it via its ID
+			if (firstDataKey) {
+				// For each item, try and provide some more usable data for downstream work
 				(responseData['_embedded'][firstDataKey] as any[]).forEach((item, i) => {
+					// Try to give each item an ID dictionary for upstream work.
+					// Particularly useful for pulling out the Action Network ID of an item for a further operation on it
+					// e.g. find an event, get its ID and then sign someone up to it via its ID
+					const identifierDictionary = createIdentifierDictionary(item?.identifiers as string[] || [])
+					// Also provide IDs for related items mentioned in `links`
+					// for downstream operations
+					const relatedResourceIdentifiers = createRelatedResourcesIdentifierDictionary(item?._links || {})
+					//
 					responseData['_embedded'][firstDataKey][i] = {
 						...item,
-						identifierDictionary: createIdentifierDictionary(item?.identifiers as string[])
+						identifierDictionary: {
+							self: identifierDictionary,
+							...relatedResourceIdentifiers
+						}
 					}
 				})
-				// Optionally return a big list of items
-				if (!this.getNodeParameter('include_metadata', i) as boolean) {
-					// @ts-ignore
-					responseData = responseData['_embedded'][firstDataKey]
-				}
-			} catch (e) {}
+			}
+
+			// Optionally return a big list of items
+			if (firstDataKey && !this.getNodeParameter('include_metadata', i) as boolean) {
+				// @ts-ignore
+				responseData = responseData['_embedded'][firstDataKey]
+			}
 
 			// Add the responses onto the return chain
 			if (Array.isArray(responseData)) {

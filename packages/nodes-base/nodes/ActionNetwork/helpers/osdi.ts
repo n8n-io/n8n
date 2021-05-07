@@ -1,6 +1,6 @@
 // E.g. ["actionnetwork:asdasa-21321asdasd-sadada", "mailchimp:123124141"]
 // Returns { actionnetwork: "asdasa-21321asdasd-sadada", mailchimp: 123124141 }
-export const createIdentifierDictionary = (ids: string[]) => ids.reduce(
+export const createIdentifierDictionary = (ids: string[] = []) => ids.reduce(
 	(dict, id: string) => {
 		try {
 			const [prefix, ...suffixes] = id.split(':');
@@ -11,6 +11,22 @@ export const createIdentifierDictionary = (ids: string[]) => ids.reduce(
 	{} as { [source: string]: string }
 )
 
+export const createRelatedResourcesIdentifierDictionary = (links: object = {}) => Object.entries(links).reduce(
+	(dict, [resourceName, link]: [string, any]) => {
+		if (!link?.href || resourceName === 'self' || resourceName === 'curies') {
+			return dict
+		}
+		try {
+			const id = getResourceIDFromURL(resourceName as any, link?.href)
+			if (!id || id.length === 0) {
+				return dict
+			}
+			dict[resourceName] = { action_network: id }
+		} catch (e) {}
+		return dict
+	},
+	{} as { [resourceName: string]: { action_network: string } }
+)
 
 /**
  * Linking to resources
@@ -79,20 +95,24 @@ const OSDIResources = {
 	}
 }
 
-export const createResourceLink = (name: keyof typeof OSDIResources, href: string) => {
-	const urlPrefix = OSDIResources[name].href!
+export const createResourceLink = (resourceName: keyof typeof OSDIResources, href: string) => {
+	const urlPrefix = OSDIResources[resourceName].href!
 	if (!href.startsWith(urlPrefix)) {
 		href = `${urlPrefix}/${href}`
 	}
 	return {
-		_links: { [name]: {	href } }
+		_links: { [resourceName]: {	href } }
 	}
 }
 
-export const getResourceIDFromURL = (name: keyof typeof OSDIResources, href: string) => {
-	const urlPrefix = OSDIResources[name].href!
-	if (href.startsWith(urlPrefix)) {
-		href = href.replace(urlPrefix, '')
+export const getResourceIDFromURL = (resourceName: keyof typeof OSDIResources, href: string) => {
+	try {
+		const urlPrefix = OSDIResources[resourceName].href!
+		if (href.startsWith(urlPrefix)) {
+			href = href.replace(urlPrefix, '').replace('/', '').replace('/', '').replace('/', '')
+		}
+		return href
+	} catch (e) {
+		throw new Error(`An ID could not be found for this URL, no matching resource: ${resourceName} ${href}`)
 	}
-	return href
 }
