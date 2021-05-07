@@ -77,7 +77,7 @@ export const maintenanceWindowsFields = [
 				],
 			},
 		},
-		description: 'The friendly name of the alert contact.',
+		description: 'The friendly name of the maintenance window.',
 	},
 	{
 		displayName: 'Start Time',
@@ -131,7 +131,7 @@ export const maintenanceWindowsFields = [
 				],
 			},
 		},
-		description: 'The type of the alert contact.',
+		description: 'The type of the maintenance window.',
 	},
 	{
 		displayName: 'Value',
@@ -149,7 +149,7 @@ export const maintenanceWindowsFields = [
 				],
 			},
 		},
-		description: 'The correspondent value for the alert contact type.',
+		description: 'The correspondent value for the maintenance window type.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                maintenanceWindows:delete                 */
@@ -170,7 +170,7 @@ export const maintenanceWindowsFields = [
 				],
 			},
 		},
-		description: 'The ID of the alert contact.',
+		description: 'The ID of the maintenance window.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                maintenanceWindows:getAll                   */
@@ -268,7 +268,7 @@ export const maintenanceWindowsFields = [
 				],
 			},
 		},
-		description: 'The ID of the alert contact.',
+		description: 'The ID of the maintenance window.',
 	},
 	{
 		displayName: 'Duration',
@@ -310,7 +310,7 @@ export const maintenanceWindowsFields = [
 				name: 'friendly_name',
 				type: 'string',
 				default: '',
-				description: 'The friendly name of the alert contact.',
+				description: 'The friendly name of the maintenance window.',
 			},
 			{
 				displayName: 'Start Time',
@@ -342,14 +342,14 @@ export const maintenanceWindowsFields = [
 						value: 4,
 					},
 				],
-				description: 'The type of the alert contact.',
+				description: 'The type of the maintenance window.',
 			},
 			{
 				displayName: 'Value',
 				name: 'value',
 				type: 'string',
 				default: '',
-				description: 'The correspondent value for the alert contact type.',
+				description: 'The correspondent value for the maintenance window type.',
 			},
 		],
 	},

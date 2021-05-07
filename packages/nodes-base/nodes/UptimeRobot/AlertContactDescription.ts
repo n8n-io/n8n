@@ -29,11 +29,6 @@ export const alertContactOperations = [
 				description: 'Get all alert contacts.',
 			},
 			{
-				name: 'Reset',
-				value: 'reset',
-				description: 'Reset a alert contact.',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a alert contact.',
@@ -46,7 +41,7 @@ export const alertContactOperations = [
 
 export const alertContactFields = [
 	/* -------------------------------------------------------------------------- */
-	/*                                alertContact:create                              */
+	/*                                alertContact:create                         */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Friendly Name',
@@ -146,7 +141,7 @@ export const alertContactFields = [
 		description: 'The correspondent value for the alert contact type.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                alertContact:delete                              */
+	/*                                alertContact:delete                          */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
@@ -167,7 +162,7 @@ export const alertContactFields = [
 		description: 'The ID of the alert contact.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                alertContact:getAll                              */
+	/*                                alertContact:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',

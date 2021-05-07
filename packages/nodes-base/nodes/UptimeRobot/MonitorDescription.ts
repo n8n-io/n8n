@@ -125,7 +125,7 @@ export const monitorFields = [
 		description: 'The URL/IP of the monitor.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                monitor:delete                              */
+	/*                                monitor:delete/reset                        */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
@@ -140,6 +140,7 @@ export const monitorFields = [
 				],
 				operation: [
 					'delete',
+					'reset',
 				],
 			},
 		},
@@ -231,6 +232,7 @@ export const monitorFields = [
 				displayName: 'Monitors',
 				name: 'monitors',
 				type: 'string',
+				default: '',
 				description: 'Specify monitors IDs separated with dash, eg 15830-32696-83920.',
 			},
 			{
@@ -308,7 +310,7 @@ export const monitorFields = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                monitor:delete/reset                        */
+	/*                                monitor:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
@@ -322,7 +324,6 @@ export const monitorFields = [
 					'monitor',
 				],
 				operation: [
-					'reset',
 					'update',
 				],
 			},

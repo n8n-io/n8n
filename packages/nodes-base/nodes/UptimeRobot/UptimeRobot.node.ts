@@ -164,7 +164,6 @@ export class UptimeRobot implements INodeType {
 
 						try {
 							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/newMonitor', body);
-							console.log({ responseData });
 							if (responseData.stat !== 'ok') {
 								throw new Error(responseData.error.message);
 							}
@@ -182,7 +181,6 @@ export class UptimeRobot implements INodeType {
 
 						try {
 							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deleteMonitor', body);
-							console.log({ responseData });
 							if (responseData.stat !== 'ok') {
 								throw new Error(responseData.error.message);
 							}
@@ -226,7 +224,6 @@ export class UptimeRobot implements INodeType {
 
 						try {
 							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getMonitors', body);
-							console.log({ responseData });
 							if (responseData.stat !== 'ok') {
 								throw new Error(responseData.error.message);
 							}
@@ -244,7 +241,6 @@ export class UptimeRobot implements INodeType {
 
 						try {
 							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/resetMonitor', body);
-							console.log({ responseData });
 							if (responseData.stat !== 'ok') {
 								throw new Error(responseData.error.message);
 							}
@@ -264,7 +260,6 @@ export class UptimeRobot implements INodeType {
 
 						try {
 							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/editMonitor', body);
-							console.log({ responseData });
 							if (responseData.stat !== 'ok') {
 								throw new Error(responseData.error.message);
 							}
@@ -288,7 +283,6 @@ export class UptimeRobot implements INodeType {
 
 						try {
 							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/newAlertContact', body);
-							console.log({ responseData });
 							if (responseData.stat !== 'ok') {
 								throw new Error(responseData.error.message);
 							}
@@ -306,7 +300,6 @@ export class UptimeRobot implements INodeType {
 
 						try {
 							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deleteAlertContact', body);
-							console.log({ responseData });
 							if (responseData.stat !== 'ok') {
 								throw new Error(responseData.error.message);
 							}
@@ -329,7 +322,6 @@ export class UptimeRobot implements INodeType {
 
 						try {
 							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getAlertContacts', body);
-							console.log({ responseData });
 							if (responseData.stat !== 'ok') {
 								throw new Error(responseData.error.message);
 							}
@@ -349,7 +341,6 @@ export class UptimeRobot implements INodeType {
 
 						try {
 							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/editAlertContact', body);
-							console.log({ responseData });
 							if (responseData.stat !== 'ok') {
 								throw new Error(responseData.error.message);
 							}
@@ -384,7 +375,6 @@ export class UptimeRobot implements INodeType {
 
 						try {
 							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/newMWindow', body);
-							console.log({ responseData });
 							if (responseData.stat !== 'ok') {
 								throw new Error(responseData.error.message);
 							}
@@ -402,7 +392,6 @@ export class UptimeRobot implements INodeType {
 
 						try {
 							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deleteMWindow', body);
-							console.log({ responseData });
 							if (responseData.stat !== 'ok') {
 								throw new Error(responseData.error.message);
 							}
@@ -425,7 +414,6 @@ export class UptimeRobot implements INodeType {
 
 						try {
 							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getMWindows', body);
-							console.log({ responseData });
 							if (responseData.stat !== 'ok') {
 								throw new Error(responseData.error.message);
 							}
@@ -447,7 +435,6 @@ export class UptimeRobot implements INodeType {
 
 						try {
 							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/editMWindow', body);
-							console.log({ responseData });
 							if (responseData.stat !== 'ok') {
 								throw new Error(responseData.error.message);
 							}
@@ -471,7 +458,6 @@ export class UptimeRobot implements INodeType {
 
 						try {
 							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/newPSP', body);
-							console.log({ responseData });
 							if (responseData.stat !== 'ok') {
 								throw new Error(responseData.error.message);
 							}
@@ -489,7 +475,6 @@ export class UptimeRobot implements INodeType {
 
 						try {
 							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/deletePSP', body);
-							console.log({ responseData });
 							if (responseData.stat !== 'ok') {
 								throw new Error(responseData.error.message);
 							}
@@ -512,7 +497,6 @@ export class UptimeRobot implements INodeType {
 
 						try {
 							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getPSPs', body);
-							console.log({ responseData });
 							if (responseData.stat !== 'ok') {
 								throw new Error(responseData.error.message);
 							}
@@ -532,7 +516,6 @@ export class UptimeRobot implements INodeType {
 
 						try {
 							responseData = await uptimeRobotApiRequest.call(this, 'POST', '/editPSP', body);
-							console.log({ responseData });
 							if (responseData.stat !== 'ok') {
 								throw new Error(responseData.error.message);
 							}
