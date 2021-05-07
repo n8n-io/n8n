@@ -229,7 +229,7 @@ export class ZohoCrm implements INodeType {
 					// ----------------------------------------
 
 					const body: IDataObject = {
-						Last_Name: this.getNodeParameter('Last_Name', i),
+						Last_Name: this.getNodeParameter('lastName', i),
 					};
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -457,7 +457,7 @@ export class ZohoCrm implements INodeType {
 
 					const body: IDataObject = {
 						Company: this.getNodeParameter('Company', i),
-						Last_Name: this.getNodeParameter('Last_Name', i),
+						Last_Name: this.getNodeParameter('lastName', i),
 					};
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -531,7 +531,7 @@ export class ZohoCrm implements INodeType {
 
 					const body: IDataObject = {
 						Subject: this.getNodeParameter('Subject', i),
-						Vendor_Name: this.getNodeParameter('Vendor_Name', i),
+						Vendor_Name: this.getNodeParameter('vendorName', i),
 					};
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
