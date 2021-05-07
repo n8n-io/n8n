@@ -88,3 +88,11 @@ export const createResourceLink = (name: keyof typeof OSDIResources, href: strin
 		_links: { [name]: {	href } }
 	}
 }
+
+export const getResourceIDFromURL = (name: keyof typeof OSDIResources, href: string) => {
+	const urlPrefix = OSDIResources[name].href!
+	if (href.startsWith(urlPrefix)) {
+		href = href.replace(urlPrefix, '')
+	}
+	return href
+}
