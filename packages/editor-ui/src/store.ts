@@ -54,7 +54,7 @@ const state: IRootState = {
 	executionId: null,
 	executingNode: '',
 	executionWaitingForWebhook: false,
-	pushConnectionActive: false,
+	pushConnectionActive: true,
 	saveDataErrorExecution: 'all',
 	saveDataSuccessExecution: 'all',
 	saveManualExecutions: false,

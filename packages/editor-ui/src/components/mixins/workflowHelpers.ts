@@ -370,8 +370,7 @@ export const workflowHelpers = mixins(
 			async saveCurrentWorkflow() {
 				const currentWorkflow = this.$route.params.name;
 				if (!currentWorkflow) {
-					// brand new workflow, ask for name
-					this.$store.dispatch('ui/openSaveAsModal');
+					this.saveAsNewWorkflow();
 
 					return;
 				}
@@ -402,14 +401,17 @@ export const workflowHelpers = mixins(
 				}
 			},
 
-			async saveAsNewWorkflow (name: string, tags?: string[]) {
+			async saveAsNewWorkflow ({name, tags}: {name?: string, tags?: string[]} = {}) {
 				try {
 					this.$store.commit('addActiveAction', 'workflowSaving');
 
 					const workflowDataRequest: IWorkflowDataUpdate = await this.getWorkflowDataToSave();
 					// make sure that the new ones are not active
 					workflowDataRequest.active = false;
-					workflowDataRequest.name = name.trim();
+
+					if (name) {
+						workflowDataRequest.name = name.trim();
+					}
 
 					if (tags) {
 						workflowDataRequest.tags = tags;

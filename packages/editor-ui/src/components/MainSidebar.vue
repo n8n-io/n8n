@@ -52,12 +52,6 @@
 							<span slot="title" class="item-title">Save As</span>
 						</template>
 					</el-menu-item>
-					<el-menu-item index="workflow-rename" :disabled="!currentWorkflow">
-						<template slot="title">
-							<font-awesome-icon icon="edit"/>
-							<span slot="title" class="item-title">Rename</span>
-						</template>
-					</el-menu-item>
 					<el-menu-item index="workflow-delete" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="trash"/>
@@ -387,8 +381,6 @@ export default mixins(
 
 						this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
 					} catch (e) {}
-				} else if (key === 'workflow-rename') {
-					this.$store.dispatch('ui/openRenameModal');
 				} else if (key === 'workflow-delete') {
 					const deleteConfirmed = await this.confirmMessage(`Are you sure that you want to delete the workflow "${this.workflowName}"?`, 'Delete Workflow?', 'warning', 'Yes, delete!');
 
@@ -523,7 +515,7 @@ export default mixins(
 
 	&.logo-item {
 		background-color: $--color-primary !important;
-		height: $--main-header-height;
+		height: $--header-height;
 
 		.icon {
 			position: relative;

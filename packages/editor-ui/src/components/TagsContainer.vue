@@ -1,5 +1,5 @@
 <template>
-	<div :class="{'tags-container': true, 'nowrap': nowrap}">
+	<div class="tags-container">
 		<el-tag 
 			v-for="tag in toDisplay" 
 			:key="tag.id"
@@ -38,7 +38,6 @@ export default Vue.extend({
 	props: [
 		"tagIds",
 		"limit",
-		"nowrap",
 	],
 	computed: {
 		toDisplay(): ITagEl {
@@ -66,10 +65,6 @@ export default Vue.extend({
 <style lang="scss" scoped>
 	.tags-container {
 		display: inline-block;
-
-		&.nowrap {
-			display: flex;
-		}
 	}
 
 	.tags-container .el-tag {

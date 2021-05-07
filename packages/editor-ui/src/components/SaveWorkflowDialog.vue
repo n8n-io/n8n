@@ -44,7 +44,7 @@ import Modal from "./Modal.vue";
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { TagsDropdown, Modal },
 	name: "SaveWorkflow",
-	props: ["dialogVisible", "title", "renameOnly", "modalName", "isActive"],
+	props: ["dialogVisible", "title", "modalName", "isActive"],
 	data() {
 		const currentTagIds = this.$store.getters[
 			"workflows/currentWorkflowTagIds"
@@ -53,7 +53,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 		const currentWorkflowName  = this.$store.getters["workflowName"];
 		let name = '';
 		if (currentWorkflowName) {
-			name = this.renameOnly ? currentWorkflowName : `${currentWorkflowName} copy`;
+			name = `${currentWorkflowName} copy`;
 		}
 
 		return {
@@ -100,30 +100,10 @@ export default mixins(showMessage, workflowHelpers).extend({
 			}
 
 			this.$data.isSaving = true;
-			if (this.$props.renameOnly) {
-				try {
-					await this.$store.dispatch("workflows/renameCurrent", { name, tags: this.currentTagIds });
 
-					this.$showMessage({
-						title: "Workflow updated",
-						message: `The workflow "${name}" has been updated!`,
-						type: "success",
-					});
+			await this.saveAsNewWorkflow({name, tags: this.currentTagIds});
 
-					this.closeDialog();
-				} catch (error) {
-					this.$showError(
-						error,
-						"Problem updating the workflow",
-						"There was a problem updating the workflow:",
-					);
-				}
-			}
-			else {
-				await this.saveAsNewWorkflow(name, this.currentTagIds);
-
-				this.closeDialog();
-			}
+			this.closeDialog();
 			this.$data.isSaving = false;
 		},
 		closeDialog(): void {

@@ -1,75 +1,17 @@
 <template>
 	<div>
 		<div :class="{'main-header': true, expanded: !sidebarMenuCollapsed}">
-			<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
-
 			<div class="top-menu">
-				<div class="center-item" v-if="isExecutionPage">
-					<span>
-						Execution Id:
-						<span class="execution-name">
-							<strong>{{executionId}}</strong>&nbsp;
-							<font-awesome-icon icon="check" class="execution-icon success" v-if="executionFinished" title="Execution was successful" />
-							<font-awesome-icon icon="times" class="execution-icon error" v-else title="Execution did fail" />
-						</span>
-							of
-						<span class="primary-color clickable" title="Open Workflow">
-							<span @click="openWorkflow(workflowExecution.workflowId)"><WorkflowNameShort :name="workflowName"/></span>
-						</span>
-						workflow
-					</span>
-				</div>
-
-				<WorkflowDetails 
-					v-else
-				/>
-
-				<div class="push-connection-lost" v-if="!isPushConnectionActive">
-					<el-tooltip placement="bottom-end" effect="light">
-						<div slot="content">
-							Cannot connect to server.<br />
-							It is either down or you have a connection issue. <br />
-							It should reconnect automatically once the issue is resolved.
-						</div>
-						<span>
-							<font-awesome-icon icon="exclamation-triangle" />&nbsp;
-							Connection lost
-						</span>
-					</el-tooltip>
-				</div>
-				<div class="workflow-active" v-else-if="!isReadOnly">
-					Active:
-					<workflow-activator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflow" :disabled="!currentWorkflow"/>
-				</div>
-
-				<div class="read-only" v-if="isReadOnly">
-					<el-tooltip placement="bottom-end" effect="light">
-						<div slot="content">
-							You're viewing the log of a previous execution. You cannot<br />
-							make changes since this execution already occured. Make changes<br /> to this workflow by clicking on it`s name on the left.
-						</div>
-						<span>
-							<font-awesome-icon icon="exclamation-triangle" />
-							Read only
-						</span>
-					</el-tooltip>
-				</div>
-
+				<ExecutionDetails v-if="isExecutionPage" />
+				<WorkflowDetails v-else />
 			</div>
-
 		</div>
-
 	</div>
-
 </template>
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
-
-import {
-	IExecutionResponse,
-} from '../Interface';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { pushConnection } from '@/components/mixins/pushConnection';
@@ -81,6 +23,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import WorkflowNameShort from '@/components/WorkflowNameShort.vue';
 import WorkflowDetails from '@/components/MainHeaderWorkflowDetails.vue';
+import ExecutionDetails from './MainHeaderExecutionDetails.vue';
 
 export default mixins(
 	genericHelpers,
@@ -96,74 +39,15 @@ export default mixins(
 			WorkflowActivator,
 			WorkflowNameShort,
 			WorkflowDetails,
+			ExecutionDetails,
 		},
 		computed: {
 			...mapGetters('ui', [
 				'sidebarMenuCollapsed',
 			]),
-			executionId (): string | undefined {
-				return this.$route.params.id;
-			},
-			executionFinished (): boolean {
-				if (!this.isExecutionPage) {
-					// We are not on an execution page so return false
-					return false;
-				}
-
-				const fullExecution = this.$store.getters.getWorkflowExecution;
-
-				if (fullExecution === null) {
-					// No execution loaded so return also false
-					return false;
-				}
-
-				if (fullExecution.finished === true) {
-					return true;
-				}
-
-				return false;
-			},
 			isExecutionPage (): boolean {
-				if (['ExecutionById'].includes(this.$route.name as string)) {
-					return true;
-				}
-				return false;
+				return ['ExecutionById'].includes(this.$route.name as string);
 			},
-			isPushConnectionActive (): boolean {
-				return this.$store.getters.pushConnectionActive;
-			},
-			isWorkflowActive (): boolean {
-				return this.$store.getters.isActive;
-			},
-			currentWorkflow (): string {
-				return this.$route.params.name;
-			},
-			workflowExecution (): IExecutionResponse | null {
-				return this.$store.getters.getWorkflowExecution;
-			},
-			workflowName (): string {
-				return this.$store.getters.workflowName;
-			},
-			workflowRunning (): boolean {
-				return this.$store.getters.isActionActive('workflowRunning');
-			},
-		},
-		methods: {
-			async openWorkflow (workflowId: string) {
-				this.$titleSet(this.workflowName, 'IDLE');
-				// Change to other workflow
-				this.$router.push({
-					name: 'NodeViewExisting',
-					params: { name: workflowId },
-				});
-			},
-		},
-		async mounted () {
-			// Initialize the push connection
-			this.pushConnect();
-		},
-		beforeDestroy () {
-			this.pushDisconnect();
 		},
 	});
 </script>
@@ -199,62 +83,17 @@ export default mixins(
 	&.expanded {
 		padding-left: $--sidebar-expanded-width;
 	}
+
+	* {
+		box-sizing: border-box;
+	}
 }
 
 .top-menu {
 	display: flex;
 	align-items: center;
-	position: relative;
 	font-size: 0.9em;
-	width: 100%;
-	height: $--main-header-height;
+	height: $--header-height;
 	font-weight: 400;
-
-	.center-item {
-		margin: 0 auto;
-		text-align: center;
-		line-height: 65px;
-	}
-
-	.read-only {
-		position: absolute;
-		top: 0;
-		line-height: 65px;
-		margin-right: 5em;
-		right: 0;
-		color: $--color-primary;
-	}
-
-	.push-connection-lost {
-		position: absolute;
-		top: 0;
-		line-height: 65px;
-		margin-right: 5em;
-		right: 0;
-		color: $--color-primary;
-	}
-
-	.workflow-active {
-		position: absolute;
-		top: 0;
-		line-height: 65px;
-		margin-right: 5em;
-		right: 0;
-	}
-}
-
-</style>
-
-<style scoped lang="scss">
-* {
-	box-sizing: border-box;
-}
-
-.current-execution {
-	vertical-align: top;
-}
-
-.execution-icon.success {
-	color: #22FF44;
 }
 </style>

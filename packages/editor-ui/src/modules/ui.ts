@@ -1,4 +1,4 @@
-import { RENAME_MODAL_KEY, SAVE_AS_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY } from '@/constants';
+import { SAVE_AS_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
@@ -11,9 +11,6 @@ const module: Module<IUiState, IRootState> = {
 	state: {
 		modals: {
 			[SAVE_AS_MODAL_KEY]: {
-				open: false,
-			},
-			[RENAME_MODAL_KEY]: {
 				open: false,
 			},
 			[TAGS_MANAGER_MODAL_KEY]: {
@@ -59,9 +56,6 @@ const module: Module<IUiState, IRootState> = {
 		},
 		openWorklfowOpenModal: async (context: ActionContext<IUiState, IRootState>) => {
 			context.commit('openModal', WORKLOW_OPEN_MODAL_KEY);
-		},
-		openRenameModal: async (context: ActionContext<IUiState, IRootState>) => {
-			context.commit('openModal', RENAME_MODAL_KEY);
 		},
 		openSaveAsModal: async (context: ActionContext<IUiState, IRootState>) => {
 			context.commit('openModal', SAVE_AS_MODAL_KEY);
