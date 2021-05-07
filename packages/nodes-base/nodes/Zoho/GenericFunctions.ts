@@ -133,11 +133,12 @@ const adjustOtherAddressFields = adjustLocationFields('Other_Address');
 /**
  * Remove a date field's timestamp.
  */
-const adjustDateField = (dateType: DateType) => (allFields: DateField) => {
+const adjustDateField = (dateType: DateType) => (allFields: IDataObject) => {
 	const dateField = allFields[dateType];
 
 	if (!dateField) return allFields;
 
+	// @ts-ignore TODO
 	allFields[dateType] = dateField.split('T')[0];
 
 	return allFields;
@@ -145,14 +146,47 @@ const adjustDateField = (dateType: DateType) => (allFields: DateField) => {
 
 const adjustDateOfBirthField = adjustDateField('Date_of_Birth');
 const adjustClosingDateField = adjustDateField('Closing_Date');
+const adjustInvoiceDateField = adjustDateField('Invoice_Date');
+const adjustDueDateField = adjustDateField('Due_Date');
 
-export const adjustAccountFields = flow(adjustBillingAddressFields, adjustShippingAddressFields);
-export const adjustContactFields = flow(adjustMailingAddressFields, adjustOtherAddressFields, adjustDateOfBirthField);
+const adjustAccountField = (allFields: IDataObject) => {
+	if (!allFields.Account_Name) return allFields;
+
+	// @ts-ignore TODO
+	return { ...omit('Account_Name', allFields), ...allFields.Account_Name.account_name_fields };
+};
+
+// ----------------------------------------
+//       field adjusters per resource
+// ----------------------------------------
+
+export const adjustAccountFields = flow(
+	adjustBillingAddressFields,
+	adjustShippingAddressFields,
+);
+
+export const adjustContactFields = flow(
+	adjustMailingAddressFields,
+	adjustOtherAddressFields,
+	adjustDateOfBirthField,
+);
+
 export const adjustDealFields = adjustClosingDateField;
-export const adjustInvoiceFields = flow(adjustBillingAddressFields, adjustShippingAddressFields); // TODO: product details
+
+export const adjustInvoiceFields = flow(
+	adjustBillingAddressFields,
+	adjustShippingAddressFields,
+	adjustInvoiceDateField,
+	adjustDueDateField,
+	adjustAccountField,
+);
+
 export const adjustLeadFields = adjustAddressFields;
+
 export const adjustPurchaseOrderFields = adjustInvoiceFields;
+
 export const adjustQuoteFields = adjustInvoiceFields;
+
 export const adjustSalesOrderFields = adjustInvoiceFields;
 
 // ----------------------------------------
@@ -176,6 +210,6 @@ type LocationField = {
 	address_fields: { [key in LocationType]: string };
 };
 
-type DateType = 'Date_of_Birth' | 'Closing_Date';
+type DateType = 'Date_of_Birth' | 'Closing_Date' | 'Due_Date' | 'Invoice_Date';
 
-type DateField = { Date_of_Birth?: string; Closing_Date?: string; };
+type DateField = { Date_of_Birth?: string; Closing_Date?: string; Due_Date?: string; Invoice_Date?: string };

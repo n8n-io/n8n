@@ -222,87 +222,105 @@ export const address = {
 	],
 };
 
-export const productDetails = {
+export const productDetails = (resource: string, operation: string) => ({
 	displayName: 'Product Details',
 	name: 'Product_Details',
-	type: 'fixedCollection',
+	type: 'collection',
 	default: {},
-	placeholder: 'Add Product Details Field',
+	placeholder: 'Add Field',
+	displayOptions: {
+		show: {
+			resource: [
+				resource,
+			],
+			operation: [
+				operation,
+			],
+		},
+	},
 	options: [
 		{
-			displayName: 'Product Details Fields',
-			name: 'product_details_fields',
-			values: [
+			displayName: 'List Price',
+			name: 'list_price',
+			type: 'number',
+			default: '',
+		},
+		{
+			displayName: 'Net Total',
+			name: 'net_total',
+			type: 'number',
+			default: '',
+		},
+		{
+			displayName: 'Product',
+			name: 'product',
+			type: 'collection',
+			default: {},
+			options: [
 				{
-					displayName: 'Tax',
-					name: 'Tax',
+					displayName: 'ID',
+					name: 'id',
 					type: 'string',
 					default: '',
 				},
 				{
-					displayName: 'Book',
-					name: 'book',
+					displayName: 'Name',
+					name: 'name',
 					type: 'string',
 					default: '',
 				},
 				{
-					displayName: 'List Price',
-					name: 'list_price',
-					type: 'string',
-					default: '',
-				},
-				{
-					displayName: 'Net Total',
-					name: 'net_total',
-					type: 'string',
-					default: '',
-				},
-				{
-					displayName: 'Product',
-					name: 'product',
-					type: 'string',
-					default: '',
-				},
-				{
-					displayName: 'Product Description',
-					name: 'product_description',
-					type: 'string',
-					default: '',
-				},
-				{
-					displayName: 'Quantity',
-					name: 'quantity',
-					type: 'string',
-					default: '',
-				},
-				{
-					displayName: 'Quantity in Stock',
-					name: 'quantity_in_stock',
-					type: 'string',
-					default: '',
-				},
-				{
-					displayName: 'Total',
-					name: 'total',
-					type: 'string',
-					default: '',
-				},
-				{
-					displayName: 'Total After Discount',
-					name: 'total_after_discount',
-					type: 'string',
-					default: '',
-				},
-				{
-					displayName: 'Unit Price',
-					name: 'unit_price',
+					displayName: 'Product Code',
+					name: 'Product_Code',
 					type: 'string',
 					default: '',
 				},
 			],
 		},
+		{
+			displayName: 'Product Description',
+			name: 'product_description',
+			type: 'string',
+			default: '',
+		},
+		{
+			displayName: 'Quantity',
+			name: 'quantity',
+			type: 'number',
+			default: '',
+		},
+		{
+			displayName: 'Quantity in Stock',
+			name: 'quantity_in_stock',
+			type: 'number',
+			default: '',
+		},
+		{
+			displayName: 'Tax',
+			name: 'Tax',
+			type: 'number',
+			default: '',
+		},
+		{
+			displayName: 'Total',
+			name: 'total',
+			type: 'number',
+			default: '',
+		},
+		{
+			displayName: 'Total After Discount',
+			name: 'total_after_discount',
+			type: 'number',
+			default: '',
+		},
+		{
+			displayName: 'Unit Price',
+			name: 'unit_price',
+			type: 'number',
+			default: '',
+		},
 	],
-};
+});
 
 export const makeGetAllFields = (resource: string) => [
 	{

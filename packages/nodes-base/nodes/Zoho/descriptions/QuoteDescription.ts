@@ -53,23 +53,6 @@ export const quoteFields = [
 	//              quote: create
 	// ----------------------------------------
 	{
-		displayName: 'Product Details',
-		name: 'productDetails',
-		type: '',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'quote',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Subject',
 		name: 'subject',
 		description: 'Subject or title of the quote.',
@@ -318,7 +301,7 @@ export const quoteFields = [
 				default: '',
 				description: 'Total amount for the product after deducting tax and discounts.',
 			},
-			productDetails,
+			// productDetails,
 			{
 				displayName: 'Quote Stage',
 				name: 'Quote_Stage',

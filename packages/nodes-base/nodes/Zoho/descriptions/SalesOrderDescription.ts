@@ -212,7 +212,7 @@ export const salesOrderFields = [
 				default: '',
 				description: 'Total amount for the product after deducting tax and discounts.',
 			},
-			productDetails,
+			// productDetails,
 			{
 				displayName: 'Purchase Order',
 				name: 'Purchase_Order',
@@ -487,7 +487,7 @@ export const salesOrderFields = [
 				default: '',
 				description: 'Total amount for the product after deducting tax and discounts.',
 			},
-			productDetails,
+			// productDetails,
 			{
 				displayName: 'Purchase Order',
 				name: 'Purchase_Order',

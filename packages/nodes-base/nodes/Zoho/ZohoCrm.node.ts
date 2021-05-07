@@ -380,8 +380,10 @@ export class ZohoCrm implements INodeType {
 					// ----------------------------------------
 
 					const body: IDataObject = {
-						Product_Details: this.getNodeParameter('Product_Details', i),
-						Subject: this.getNodeParameter('Subject', i),
+						Product_Details: [
+							this.getNodeParameter('Product_Details', i),
+						],
+						Subject: this.getNodeParameter('subject', i),
 					};
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;

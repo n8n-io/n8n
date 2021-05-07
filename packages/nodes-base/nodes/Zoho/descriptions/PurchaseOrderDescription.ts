@@ -216,7 +216,7 @@ export const purchaseOrderFields = [
 				default: '',
 				description: 'ID of the purchase order after creating a case.',
 			},
-			productDetails,
+			// productDetails,
 			{
 				displayName: 'Sales Commission',
 				name: 'Sales_Commission',
@@ -417,7 +417,7 @@ export const purchaseOrderFields = [
 				default: '',
 				description: 'ID of the purchase order after creating a case.',
 			},
-			productDetails,
+			// productDetails,
 			{
 				displayName: 'Sales Commission',
 				name: 'Sales_Commission',

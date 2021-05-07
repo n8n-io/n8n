@@ -53,23 +53,6 @@ export const invoiceFields = [
 	//             invoice: create
 	// ----------------------------------------
 	{
-		displayName: 'Product Details',
-		name: 'productDetails',
-		type: '',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-	},
-	{
 		displayName: 'Subject',
 		name: 'subject',
 		description: 'Subject or title of the invoice.',
@@ -87,6 +70,7 @@ export const invoiceFields = [
 			},
 		},
 	},
+	productDetails('invoice', 'create'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -105,9 +89,10 @@ export const invoiceFields = [
 		},
 		options: [
 			{
-				displayName: 'Account Name',
+				displayName: 'Account',
 				name: 'Account_Name',
 				type: 'fixedCollection',
+				description: 'Account who the invoice is issued for.',
 				default: {},
 				placeholder: 'Add Account Name Field',
 				options: [
@@ -118,6 +103,12 @@ export const invoiceFields = [
 							{
 								displayName: 'ID',
 								name: 'id',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Name',
+								name: 'name',
 								type: 'string',
 								default: '',
 							},
@@ -149,7 +140,7 @@ export const invoiceFields = [
 			{
 				displayName: 'Due Date',
 				name: 'Due_Date',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 			},
 			{
@@ -169,7 +160,7 @@ export const invoiceFields = [
 			{
 				displayName: 'Invoice Date',
 				name: 'Invoice_Date',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 			},
 			{
@@ -181,7 +172,7 @@ export const invoiceFields = [
 			{
 				displayName: 'Sales Commission',
 				name: 'Sales_Commission',
-				type: 'string',
+				type: 'number',
 				default: '',
 				description: 'Commission of sales person on deal closure.',
 			},
@@ -320,6 +311,12 @@ export const invoiceFields = [
 								type: 'string',
 								default: '',
 							},
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+							},
 						],
 					},
 				],
@@ -348,7 +345,7 @@ export const invoiceFields = [
 			{
 				displayName: 'Due Date',
 				name: 'Due_Date',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 			},
 			{
@@ -368,7 +365,7 @@ export const invoiceFields = [
 			{
 				displayName: 'Invoice Date',
 				name: 'Invoice_Date',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 			},
 			{
@@ -377,11 +374,10 @@ export const invoiceFields = [
 				type: 'string',
 				default: '',
 			},
-			productDetails,
 			{
 				displayName: 'Sales Commission',
 				name: 'Sales_Commission',
-				type: 'string',
+				type: 'number',
 				default: '',
 				description: 'Commission of sales person on deal closure.',
 			},
