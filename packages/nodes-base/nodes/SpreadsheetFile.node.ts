@@ -27,7 +27,7 @@ import {
  * @param {IDataObject} data The object to flatten
  * @returns
  */
-function flattenObject (data: IDataObject) {
+function flattenObject(data: IDataObject) {
 	const returnData: IDataObject = {};
 	for (const key1 of Object.keys(data)) {
 		if (data[key1] !== null && (typeof data[key1]) === 'object') {
@@ -296,6 +296,20 @@ export class SpreadsheetFile implements INodeType {
 						default: 'Sheet',
 						description: 'Name of the sheet to create in the spreadsheet.',
 					},
+					{
+						displayName: 'Header Row',
+						name: 'headerRow',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'fromFile',
+								],
+							},
+						},
+						default: true,
+						description: 'Consider the first row as the header row or a data row.',
+					},
 				],
 			},
 		],
@@ -359,6 +373,9 @@ export class SpreadsheetFile implements INodeType {
 				if (options.includeEmptyCells) {
 					sheetToJsonOptions.defval = '';
 				}
+				if (!options.headerRow) {
+					sheetToJsonOptions.header = 1; // Consider the first row as a data row
+				}
 
 				const sheetJson = xlsxUtils.sheet_to_json(workbook.Sheets[sheetName], sheetToJsonOptions);
 
@@ -368,8 +385,15 @@ export class SpreadsheetFile implements INodeType {
 				}
 
 				// Add all the found data columns to the workflow data
-				for (const rowData of sheetJson) {
-					newItems.push({ json: rowData } as INodeExecutionData);
+				if (options.headerRow) {
+					for (const rowData of sheetJson) {
+						newItems.push({ json: rowData } as INodeExecutionData);
+					}
+				} else {
+					// Data was returned as an array - https://github.com/SheetJS/sheetjs#json
+					for (const rowData of sheetJson) {
+						newItems.push({ json: { row: rowData } } as INodeExecutionData);
+					}
 				}
 			}
 
