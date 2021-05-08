@@ -140,6 +140,27 @@ export class AwsLambda implements INodeType {
 						value: func.FunctionArn as string,
 					});
 				}
+
+				if (data.NextMarker) {
+					let marker: string = data.NextMarker;
+					while (true) {
+						const dataLoop = await awsApiRequestREST.call(this, 'lambda', 'GET', `/2015-03-31/functions/?MaxItems=50&Marker=${encodeURIComponent(marker)}`);
+				
+						for (const func of dataLoop.Functions!) {
+							returnData.push({
+								name: func.FunctionName as string,
+								value: func.FunctionArn as string,
+							});
+						}
+	
+						if (dataLoop.NextMarker) {
+							marker = dataLoop.NextMarker;
+						} else {
+							break;
+						}
+					}
+				}
+				
 				return returnData;
 			},
 		},
