@@ -208,6 +208,20 @@ export class SpreadsheetFile implements INodeType {
 						description: 'File name to set in binary data. By default will "spreadsheet.<fileFormat>" be used.',
 					},
 					{
+						displayName: 'Header Row',
+						name: 'headerRow',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'fromFile',
+								],
+							},
+						},
+						default: true,
+						description: 'The first row of the file contains the header names.',
+					},
+					{
 						displayName: 'Include Empty Cells',
 						name: 'includeEmptyCells',
 						type: 'boolean',
@@ -296,20 +310,6 @@ export class SpreadsheetFile implements INodeType {
 						default: 'Sheet',
 						description: 'Name of the sheet to create in the spreadsheet.',
 					},
-					{
-						displayName: 'Header Row',
-						name: 'headerRow',
-						type: 'boolean',
-						displayOptions: {
-							show: {
-								'/operation': [
-									'fromFile',
-								],
-							},
-						},
-						default: true,
-						description: 'Consider the first row as the header row or a data row.',
-					},
 				],
 			},
 		],
@@ -373,7 +373,7 @@ export class SpreadsheetFile implements INodeType {
 				if (options.includeEmptyCells) {
 					sheetToJsonOptions.defval = '';
 				}
-				if (!options.headerRow) {
+				if (options.headerRow === false) {
 					sheetToJsonOptions.header = 1; // Consider the first row as a data row
 				}
 
@@ -385,14 +385,14 @@ export class SpreadsheetFile implements INodeType {
 				}
 
 				// Add all the found data columns to the workflow data
-				if (options.headerRow) {
-					for (const rowData of sheetJson) {
-						newItems.push({ json: rowData } as INodeExecutionData);
-					}
-				} else {
+				if (options.headerRow === false) {
 					// Data was returned as an array - https://github.com/SheetJS/sheetjs#json
 					for (const rowData of sheetJson) {
 						newItems.push({ json: { row: rowData } } as INodeExecutionData);
+					}
+				} else {
+					for (const rowData of sheetJson) {
+						newItems.push({ json: rowData } as INodeExecutionData);
 					}
 				}
 			}

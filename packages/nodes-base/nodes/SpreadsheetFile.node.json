@@ -1,7 +1,7 @@
 {
 	"node": "n8n-nodes-base.spreadsheetFile",
-	"nodeVersion": "1.1",
-	"codexVersion": "1.1",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
 	"categories": [
 		"Data & Storage",
 		"Core Nodes"
