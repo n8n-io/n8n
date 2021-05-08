@@ -63,6 +63,11 @@ export class AwsComprehend implements INodeType {
 						value: 'detectSentiment',
 						description: 'Analyse the sentiment of the text',
 					},
+					{
+						name: 'Detect Entities',
+						value: 'detectEntities',
+						description: 'Inspects text for named entities, and returns information about them',
+					},
 				],
 				default: 'detectDominantLanguage',
 				description: 'The operation to perform.',
@@ -129,6 +134,7 @@ export class AwsComprehend implements INodeType {
 						],
 						operation: [
 							'detectSentiment',
+							'detectEntities',
 						],
 					},
 				},
@@ -167,6 +173,26 @@ export class AwsComprehend implements INodeType {
 				},
 				default: true,
 				description: 'When set to true a simplify version of the response will be used else the raw data.',
+			},
+			{
+				displayName: 'Endpoint Arn',
+				name: 'endpointArn',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				displayOptions: {
+					show: {
+						resource: [
+							'text',
+						],
+						operation: [
+							'detectEntities',
+						],
+					},
+				},
+				description: 'The Amazon Resource Name of an endpoint that is associated with a custom entity recognition model.',
 			},
 		],
 	};
@@ -207,6 +233,25 @@ export class AwsComprehend implements INodeType {
 						Text: text,
 						LanguageCode: languageCode,
 					};
+					responseData = await awsApiRequestREST.call(this, 'comprehend', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+				}
+
+				//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectEntities.html
+				if (operation === 'detectEntities') {
+					const action = 'Comprehend_20171127.DetectEntities';
+					const text = this.getNodeParameter('text', i) as string;
+					const languageCode = this.getNodeParameter('languageCode', i) as string;
+					const endpointArn = this.getNodeParameter('endpointArn', i) as string;
+
+					const body: IDataObject = {
+						Text: text,
+						LanguageCode: languageCode,
+					};
+
+					if (endpointArn && endpointArn !== '') {
+						body.EndpointArn = endpointArn;
+					}
+
 					responseData = await awsApiRequestREST.call(this, 'comprehend', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
 				}
 			}
