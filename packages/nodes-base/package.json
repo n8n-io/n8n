@@ -602,7 +602,7 @@
     "cheerio": "1.0.0-rc.6",
     "cron": "^1.7.2",
     "eventsource": "^1.0.7",
-    "fflate": "^0.4.8",
+    "fflate": "^0.6.9",
     "formidable": "^1.2.1",
     "get-system-fonts": "^2.0.2",
     "glob-promise": "^3.4.0",
