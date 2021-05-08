@@ -108,6 +108,8 @@ export function fullDocumentToJson(data: IDataObject): IDataObject {
 
 
 export function documentToJson(fields: IDataObject): IDataObject {
+	if (fields === undefined) return {};
+
 	const result = {};
 	for (const f of Object.keys(fields)) {
 		const key = f, value = fields[f],
