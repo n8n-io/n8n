@@ -112,9 +112,9 @@ export function documentToJson(fields: IDataObject): IDataObject {
 	for (const f of Object.keys(fields)) {
 		const key = f, value = fields[f],
 			isDocumentType = ['stringValue', 'booleanValue', 'doubleValue',
-				'integerValue', 'timestampValue', 'mapValue', 'arrayValue'].find(t => t === key);
+				'integerValue', 'timestampValue', 'mapValue', 'arrayValue', 'nullValue'].find(t => t === key);
 		if (isDocumentType) {
-			const item = ['stringValue', 'booleanValue', 'doubleValue', 'integerValue', 'timestampValue']
+			const item = ['stringValue', 'booleanValue', 'doubleValue', 'integerValue', 'timestampValue', 'nullValue']
 				.find(t => t === key);
 			if (item) {
 				return value as IDataObject;
