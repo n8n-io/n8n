@@ -12,6 +12,8 @@ import {
 	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
+import * as moment from 'moment-timezone';
+
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
 
 	const options: OptionsWithUri = {
@@ -31,7 +33,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-
+		// console.log(options.body);
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'googleFirebaseCloudFirestoreOAuth2Api', options);
 	} catch (error) {
@@ -58,6 +60,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	return returnData;
 }
 
+const isValidDate = (str: string) => moment(str, 'YYYY-MM-DD HH:mm:ss Z', true).isValid();
 
 // Both functions below were taken from Stack Overflow jsonToDocument was fixed as it was unable to handle null values correctly
 // https://stackoverflow.com/questions/62246410/how-to-convert-a-firestore-document-to-plain-json-and-vice-versa
@@ -73,7 +76,7 @@ export function jsonToDocument(value: string | number | IDataObject | IDataObjec
 		} else {
 			return { 'integerValue': value };
 		}
-	} else if (Date.parse(value as string)) {
+	} else if (isValidDate(value as string)) {
 		const date = new Date(Date.parse(value as string));
 		return { 'timestampValue': date.toISOString() };
 	} else if (typeof value === 'string') {
