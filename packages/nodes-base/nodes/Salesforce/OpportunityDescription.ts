@@ -26,6 +26,11 @@ export const opportunityOperations = [
 				description: 'Create an opportunity',
 			},
 			{
+				name: 'Create/Update',
+				value: 'upsert',
+				description: 'Create/Update an opportunity',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an opportunity',
@@ -62,6 +67,49 @@ export const opportunityFields = [
 	/*                                opportunity:create                          */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'External ID',
+		name: 'externalId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getExternalIdFields',
+			loadOptionsDependsOn: [
+				'resource',
+			],
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `If the external ID is not matched, then a new record is created.</br>
+						If the external ID is matched once, then the record is updated.</br>
+						If the external ID is matched multiple times, then a 300 error is reported, and the record is neither created nor updated.`,
+	},
+	{
+		displayName: 'External ID Value',
+		name: 'externalIdValue',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Name',
 		name: 'name',
 		type: 'string',
@@ -74,6 +122,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -92,6 +141,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -113,6 +163,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -131,6 +182,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},

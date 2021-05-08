@@ -31,6 +31,11 @@ export const leadOperations = [
 				description: 'Create a lead',
 			},
 			{
+				name: 'Create/Update',
+				value: 'upsert',
+				description: 'Create/Update a lead',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a lead',
@@ -67,6 +72,49 @@ export const leadFields = [
 	/*                                lead:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'External ID',
+		name: 'externalId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getExternalIdFields',
+			loadOptionsDependsOn: [
+				'resource',
+			],
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `If the external ID is not matched, then a new record is created.</br>
+						If the external ID is matched once, then the record is updated.</br>
+						If the external ID is matched multiple times, then a 300 error is reported, and the record is neither created nor updated.`,
+	},
+	{
+		displayName: 'External ID Value',
+		name: 'externalIdValue',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Company',
 		name: 'company',
 		type: 'string',
@@ -79,6 +127,7 @@ export const leadFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -97,6 +146,7 @@ export const leadFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -115,6 +165,7 @@ export const leadFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},

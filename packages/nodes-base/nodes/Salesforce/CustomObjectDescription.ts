@@ -21,6 +21,11 @@ export const customObjectOperations = [
 				description: 'Create a custom object record',
 			},
 			{
+				name: 'Create/Update',
+				value: 'upsert',
+				description: 'Create/Update a custom object record',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a custom object record',
@@ -67,10 +72,54 @@ export const customObjectFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
 		description: 'Name of the custom object.',
+	},
+	{
+		displayName: 'External ID',
+		name: 'externalId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getExternalIdFields',
+			loadOptionsDependsOn: [
+				'customObject',
+			],
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'customObject',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `If the external ID is not matched, then a new record is created.</br>
+						If the external ID is matched once, then the record is updated.</br>
+						If the external ID is matched multiple times, then a 300 error is reported, and the record is neither created nor updated.`,
+	},
+	{
+		displayName: 'External ID Value',
+		name: 'externalIdValue',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'customObject',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Fields',
@@ -87,6 +136,7 @@ export const customObjectFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},

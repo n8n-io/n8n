@@ -26,6 +26,11 @@ export const accountOperations = [
 				description: 'Create an account',
 			},
 			{
+				name: 'Create/Update',
+				value: 'upsert',
+				description: 'Create/Update an account',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an account',
@@ -62,6 +67,49 @@ export const accountFields = [
 	/*                                account:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'External ID',
+		name: 'externalId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getExternalIdFields',
+			loadOptionsDependsOn: [
+				'resource',
+			],
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'account',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `If the external ID is not matched, then a new record is created.</br>
+						If the external ID is matched once, then the record is updated.</br>
+						If the external ID is matched multiple times, then a 300 error is reported, and the record is neither created nor updated.`,
+	},
+	{
+		displayName: 'External ID Value',
+		name: 'externalIdValue',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'account',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Name',
 		name: 'name',
 		type: 'string',
@@ -74,6 +122,7 @@ export const accountFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -92,6 +141,7 @@ export const accountFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
