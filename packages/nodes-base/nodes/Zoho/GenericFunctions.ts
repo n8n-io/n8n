@@ -25,7 +25,7 @@ export async function zohoApiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 ) {
-	const { oauthTokenData: { api_domain: apiDomain } } = this.getCredentials('zohoOAuth2Api') as ZohoOAuth2ApiCredentials;
+	const { oauthTokenData: { api_domain } } = this.getCredentials('zohoOAuth2Api') as ZohoOAuth2ApiCredentials;
 
 	const options: OptionsWithUri = {
 		body: {
@@ -35,7 +35,7 @@ export async function zohoApiRequest(
 		},
 		method,
 		qs,
-		uri: uri ?? `${apiDomain}/crm/v2${endpoint}`,
+		uri: uri ?? `${api_domain}/crm/v2${endpoint}`,
 		json: true,
 	};
 
@@ -95,16 +95,15 @@ export async function handleListing(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	let responseData;
-
 	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
 	if (returnAll) {
 		return await zohoApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
+	const responseData = await zohoApiRequestAllItems.call(this, method, endpoint, body, qs);
 	const limit = this.getNodeParameter('limit', 0) as number;
-	responseData = await zohoApiRequestAllItems.call(this, method, endpoint, body, qs);
+
 	return responseData.slice(0, limit);
 }
 
@@ -162,9 +161,10 @@ const adjustClosingDateField = adjustDateField('Closing_Date');
 const adjustInvoiceDateField = adjustDateField('Invoice_Date');
 const adjustDueDateField = adjustDateField('Due_Date');
 const adjustPurchaseOrderDateField = adjustDateField('PO_Date');
+const adjustValidTillField = adjustDateField('Valid_Till');
 
 /**
- * Place an account name field's contents at the top level of the payload.
+ * Place an account field's subfields at the top level of the payload.
  */
  const adjustAccountField = (allFields: AllFields) => {
 	if (!allFields.Account) return allFields;
@@ -205,7 +205,11 @@ export const adjustPurchaseOrderFields = flow(
 	adjustPurchaseOrderDateField,
 );
 
-export const adjustQuoteFields = adjustInvoiceFields;
+export const adjustQuoteFields = flow(
+	adjustBillingAddressFields,
+	adjustShippingAddressFields,
+	adjustValidTillField,
+);
 
 export const adjustSalesOrderFields = adjustInvoiceFields;
 
@@ -221,7 +225,7 @@ const omit = (keyToOmit: string, { [keyToOmit]: _, ...omittedPropObj }) => omitt
 
 type LocationType = 'Address' | 'Billing_Address' | 'Mailing_Address' | 'Shipping_Address' | 'Other_Address';
 
-type DateType = 'Date_of_Birth' | 'Closing_Date' | 'Due_Date' | 'Invoice_Date' | 'PO_Date';
+type DateType = 'Date_of_Birth' | 'Closing_Date' | 'Due_Date' | 'Invoice_Date' | 'PO_Date' | 'Valid_Till';
 
 export type AllFields =
 	{ [Date in DateType]?: string } &

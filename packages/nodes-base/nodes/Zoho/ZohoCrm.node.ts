@@ -60,7 +60,7 @@ export class ZohoCrm implements INodeType {
 		description: 'Consume the Zoho API',
 		defaults: {
 			name: 'Zoho',
-			color: '\#CE2232',
+			color: '#CE2232',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -140,13 +140,13 @@ export class ZohoCrm implements INodeType {
 	methods = {
 		loadOptions: {
 			async getProducts(this: ILoadOptionsFunctions) {
-				const responseData = await zohoApiRequestAllItems.call(this, 'GET', '/products') as LoadedProducts;
-				return responseData.map((p) => ({ name: p.Product_Name, value: p.id }));
+				const products = await zohoApiRequestAllItems.call(this, 'GET', '/products') as LoadedProducts;
+				return products.map((p) => ({ name: p.Product_Name, value: p.id }));
 			},
 
 			async getVendors(this: ILoadOptionsFunctions) {
-				const responseData = await zohoApiRequestAllItems.call(this, 'GET', '/vendors') as LoadedVendors;
-				return responseData.map((v) => ({ name: v.Vendor_Name, value: v.id }));
+				const vendors = await zohoApiRequestAllItems.call(this, 'GET', '/vendors') as LoadedVendors;
+				return vendors.map((v) => ({ name: v.Vendor_Name, value: v.id }));
 			},
 		},
 	};
@@ -637,18 +637,12 @@ export class ZohoCrm implements INodeType {
 					// ----------------------------------------
 
 					const productDetails = this.getNodeParameter('Product_Details', i) as ProductDetails;
-					const vendorId = this.getNodeParameter('vendorId', i) as string;
 
 					const body: IDataObject = {
 						Product_Details: adjustProductDetails(productDetails),
 						Subject: this.getNodeParameter('subject', i),
-						Vendor_Name: { id: vendorId },
+						Vendor_Name: { id: this.getNodeParameter('vendorId', i) },
 					};
-
-					// const body: IDataObject = {
-					// 	Subject: this.getNodeParameter('subject', i),
-					// 	Vendor_Name: this.getNodeParameter('vendorName', i),
-					// };
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -722,9 +716,11 @@ export class ZohoCrm implements INodeType {
 					//              quote: create
 					// ----------------------------------------
 
+					const productDetails = this.getNodeParameter('Product_Details', i) as ProductDetails;
+
 					const body: IDataObject = {
-						Product_Details: this.getNodeParameter('Product_Details', i),
-						Subject: this.getNodeParameter('Subject', i),
+						Product_Details: adjustProductDetails(productDetails),
+						Subject: this.getNodeParameter('subject', i),
 					};
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;

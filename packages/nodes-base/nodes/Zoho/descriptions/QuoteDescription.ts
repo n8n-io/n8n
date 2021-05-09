@@ -70,6 +70,7 @@ export const quoteFields = [
 			},
 		},
 	},
+	productDetails('quote', 'create'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -91,7 +92,10 @@ export const quoteFields = [
 				displayName: 'Adjustment',
 				name: 'Adjustment',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Adjustment in the grand total, if any.',
 			},
 			billingAddress,
@@ -118,14 +122,20 @@ export const quoteFields = [
 				displayName: 'Exchange Rate',
 				name: 'Exchange_Rate',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Exchange rate of the default currency to the home currency.',
 			},
 			{
 				displayName: 'Grand Total',
 				name: 'Grand_Total',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Total amount for the product after deducting tax and discounts.',
 			},
 			{
@@ -139,14 +149,20 @@ export const quoteFields = [
 				displayName: 'Sub Total',
 				name: 'Sub_Total',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Total amount for the product excluding tax.',
 			},
 			{
 				displayName: 'Tax',
 				name: 'Tax',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Total amount as the sum of sales tax and value-added tax.',
 			},
 			{
@@ -166,7 +182,7 @@ export const quoteFields = [
 			{
 				displayName: 'Valid Till',
 				name: 'Valid_Till',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 				description: 'Date until when the quote is valid.',
 			},
@@ -264,7 +280,10 @@ export const quoteFields = [
 				displayName: 'Adjustment',
 				name: 'Adjustment',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Adjustment in the grand total, if any.',
 			},
 			billingAddress,
@@ -291,17 +310,22 @@ export const quoteFields = [
 				displayName: 'Exchange Rate',
 				name: 'Exchange_Rate',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Exchange rate of the default currency to the home currency.',
 			},
 			{
 				displayName: 'Grand Total',
 				name: 'Grand_Total',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Total amount for the product after deducting tax and discounts.',
 			},
-			// productDetails,
 			{
 				displayName: 'Quote Stage',
 				name: 'Quote_Stage',
@@ -313,7 +337,10 @@ export const quoteFields = [
 				displayName: 'Sub Total',
 				name: 'Sub_Total',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Total amount for the product excluding tax.',
 			},
 			{
@@ -327,7 +354,10 @@ export const quoteFields = [
 				displayName: 'Tax',
 				name: 'Tax',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Tax amount as the sum of sales tax and value-added tax.',
 			},
 			{
@@ -347,7 +377,7 @@ export const quoteFields = [
 			{
 				displayName: 'Valid Till',
 				name: 'Valid_Till',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 				description: 'Date until when the quote is valid.',
 			},
