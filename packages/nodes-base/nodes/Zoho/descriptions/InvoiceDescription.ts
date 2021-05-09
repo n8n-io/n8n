@@ -90,15 +90,15 @@ export const invoiceFields = [
 		options: [
 			{
 				displayName: 'Account',
-				name: 'Account_Name',
+				name: 'Account',
 				type: 'fixedCollection',
 				description: 'Account who the invoice is issued for.',
 				default: {},
-				placeholder: 'Add Account Name Field',
+				placeholder: 'Add Account Field',
 				options: [
 					{
-						displayName: 'Account Name Fields',
-						name: 'account_name_fields',
+						displayName: 'Account Fields',
+						name: 'subfields',
 						values: [
 							{
 								displayName: 'ID',
@@ -295,15 +295,15 @@ export const invoiceFields = [
 		},
 		options: [
 			{
-				displayName: 'Account Name',
-				name: 'Account_Name',
+				displayName: 'Account',
+				name: 'Account',
 				type: 'fixedCollection',
 				default: {},
-				placeholder: 'Add Account Name Field',
+				placeholder: 'Add Account Field',
 				options: [
 					{
-						displayName: 'Account Name Fields',
-						name: 'account_name_fields',
+						displayName: 'Account Fields',
+						name: 'subfields',
 						values: [
 							{
 								displayName: 'ID',

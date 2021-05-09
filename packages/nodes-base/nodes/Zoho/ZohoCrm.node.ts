@@ -22,6 +22,7 @@ import {
 	adjustSalesOrderFields,
 	handleListing,
 	LoadedProducts,
+	LoadedVendors,
 	ProductDetails,
 	zohoApiRequest,
 	zohoApiRequestAllItems,
@@ -141,6 +142,11 @@ export class ZohoCrm implements INodeType {
 			async getProducts(this: ILoadOptionsFunctions) {
 				const responseData = await zohoApiRequestAllItems.call(this, 'GET', '/products') as LoadedProducts;
 				return responseData.map((p) => ({ name: p.Product_Name, value: p.id }));
+			},
+
+			async getVendors(this: ILoadOptionsFunctions) {
+				const responseData = await zohoApiRequestAllItems.call(this, 'GET', '/vendors') as LoadedVendors;
+				return responseData.map((v) => ({ name: v.Vendor_Name, value: v.id }));
 			},
 		},
 	};
@@ -630,10 +636,19 @@ export class ZohoCrm implements INodeType {
 					//          purchaseOrder: create
 					// ----------------------------------------
 
+					const productDetails = this.getNodeParameter('Product_Details', i) as ProductDetails;
+					const vendorId = this.getNodeParameter('vendorId', i) as string;
+
 					const body: IDataObject = {
-						Subject: this.getNodeParameter('Subject', i),
-						Vendor_Name: this.getNodeParameter('vendorName', i),
+						Product_Details: adjustProductDetails(productDetails),
+						Subject: this.getNodeParameter('subject', i),
+						Vendor_Name: { id: vendorId },
 					};
+
+					// const body: IDataObject = {
+					// 	Subject: this.getNodeParameter('subject', i),
+					// 	Vendor_Name: this.getNodeParameter('vendorName', i),
+					// };
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -641,7 +656,7 @@ export class ZohoCrm implements INodeType {
 						Object.assign(body, adjustPurchaseOrderFields(additionalFields));
 					}
 
-					responseData = await zohoApiRequest.call(this, 'POST', '/purchaseorders', body);
+					responseData = await zohoApiRequest.call(this, 'POST', '/purchase_orders', body);
 
 				} else if (operation === 'delete') {
 
@@ -651,7 +666,7 @@ export class ZohoCrm implements INodeType {
 
 					const purchaseOrderId = this.getNodeParameter('purchaseOrderId', i);
 
-					const endpoint = `/purchaseorders/${purchaseOrderId}`;
+					const endpoint = `/purchase_orders/${purchaseOrderId}`;
 					responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
 
 				} else if (operation === 'get') {
@@ -662,7 +677,7 @@ export class ZohoCrm implements INodeType {
 
 					const purchaseOrderId = this.getNodeParameter('purchaseOrderId', i);
 
-					const endpoint = `/purchaseorders/${purchaseOrderId}`;
+					const endpoint = `/purchase_orders/${purchaseOrderId}`;
 					responseData = await zohoApiRequest.call(this, 'GET', endpoint);
 
 				} else if (operation === 'getAll') {
@@ -671,7 +686,7 @@ export class ZohoCrm implements INodeType {
 					//          purchaseOrder: getAll
 					// ----------------------------------------
 
-					responseData = await handleListing.call(this, 'GET', '/purchaseorders');
+					responseData = await handleListing.call(this, 'GET', '/purchase_orders');
 
 				} else if (operation === 'update') {
 
@@ -688,7 +703,7 @@ export class ZohoCrm implements INodeType {
 
 					const purchaseOrderId = this.getNodeParameter('purchaseOrderId', i);
 
-					const endpoint = `/purchaseorders/${purchaseOrderId}`;
+					const endpoint = `/purchase_orders/${purchaseOrderId}`;
 					responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
 
 				}

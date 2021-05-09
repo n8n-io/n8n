@@ -71,11 +71,14 @@ export const purchaseOrderFields = [
 		},
 	},
 	{
-		displayName: 'Vendor Name',
-		name: 'vendorName',
-		type: '',
-		required: true,
-		default: '',
+		displayName: 'Vendor ID',
+		name: 'vendorId',
+		type: 'options',
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getVendors',
+		},
+		description: 'ID of the vendor associated with the purchase order.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -87,6 +90,7 @@ export const purchaseOrderFields = [
 			},
 		},
 	},
+	productDetails('purchaseOrder', 'create'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -108,7 +112,10 @@ export const purchaseOrderFields = [
 				displayName: 'Adjustment',
 				name: 'Adjustment',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Adjustment in the grand total, if any.',
 			},
 			{
@@ -180,32 +187,41 @@ export const purchaseOrderFields = [
 				displayName: 'Discount',
 				name: 'Discount',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 			},
 			{
 				displayName: 'Due Date',
 				name: 'Due_Date',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 			},
 			{
 				displayName: 'Exchange Rate',
 				name: 'Exchange_Rate',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Exchange rate of the default currency to the home currency.',
 			},
 			{
 				displayName: 'Grand Total',
 				name: 'Grand_Total',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Total amount for the product after deducting tax and discounts.',
 			},
 			{
 				displayName: 'PO Date',
 				name: 'PO_Date',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 				description: 'Date on which the purchase order was issued.',
 			},
@@ -216,12 +232,14 @@ export const purchaseOrderFields = [
 				default: '',
 				description: 'ID of the purchase order after creating a case.',
 			},
-			// productDetails,
 			{
 				displayName: 'Sales Commission',
 				name: 'Sales_Commission',
-				type: 'string',
-				default: '',
+				type: 'number',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Commission of sales person on deal closure.',
 			},
 			shippingAddress,
@@ -236,14 +254,20 @@ export const purchaseOrderFields = [
 				displayName: 'Sub Total',
 				name: 'Sub_Total',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Total amount for the product excluding tax.',
 			},
 			{
 				displayName: 'Tax',
 				name: 'Tax',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Tax amount as the sum of sales tax and value-added tax.',
 			},
 			{
@@ -353,7 +377,10 @@ export const purchaseOrderFields = [
 				displayName: 'Adjustment',
 				name: 'Adjustment',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Adjustment in the grand total, if any.',
 			},
 			billingAddress,
@@ -381,32 +408,41 @@ export const purchaseOrderFields = [
 				displayName: 'Discount',
 				name: 'Discount',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 			},
 			{
 				displayName: 'Due Date',
 				name: 'Due_Date',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 			},
 			{
 				displayName: 'Exchange Rate',
 				name: 'Exchange_Rate',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Exchange rate of the default currency to the home currency.',
 			},
 			{
 				displayName: 'Grand Total',
 				name: 'Grand_Total',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Total amount for the product after deducting tax and discounts.',
 			},
 			{
 				displayName: 'PO Date',
 				name: 'PO_Date',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 				description: 'Date on which the purchase order was issued.',
 			},
@@ -417,12 +453,15 @@ export const purchaseOrderFields = [
 				default: '',
 				description: 'ID of the purchase order after creating a case.',
 			},
-			// productDetails,
+			// productDetails('purchaseOrder', 'update'),
 			{
 				displayName: 'Sales Commission',
 				name: 'Sales_Commission',
-				type: 'string',
-				default: '',
+				type: 'number',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Commission of sales person on deal closure.',
 			},
 			shippingAddress,
@@ -437,7 +476,10 @@ export const purchaseOrderFields = [
 				displayName: 'Sub Total',
 				name: 'Sub_Total',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Total amount for the product excluding tax.',
 			},
 			{
@@ -451,7 +493,10 @@ export const purchaseOrderFields = [
 				displayName: 'Tax',
 				name: 'Tax',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Tax amount as the sum of sales tax and value-added tax.',
 			},
 			{
@@ -466,33 +511,6 @@ export const purchaseOrderFields = [
 				name: 'Tracking_Number',
 				type: 'string',
 				default: '',
-			},
-			{
-				displayName: 'Vendor Name',
-				name: 'Vendor_Name',
-				type: 'fixedCollection',
-				default: {},
-				placeholder: 'Add Vendor Name Field',
-				options: [
-					{
-						displayName: 'Vendor Name Fields',
-						name: 'vendor_name_fields',
-						values: [
-							{
-								displayName: 'ID',
-								name: 'id',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-							},
-						],
-					},
-				],
 			},
 		],
 	},

@@ -161,16 +161,17 @@ const adjustDateOfBirthField = adjustDateField('Date_of_Birth');
 const adjustClosingDateField = adjustDateField('Closing_Date');
 const adjustInvoiceDateField = adjustDateField('Invoice_Date');
 const adjustDueDateField = adjustDateField('Due_Date');
+const adjustPurchaseOrderDateField = adjustDateField('PO_Date');
 
 /**
  * Place an account name field's contents at the top level of the payload.
  */
  const adjustAccountField = (allFields: AllFields) => {
-	if (!allFields.Account_Name) return allFields;
+	if (!allFields.Account) return allFields;
 
 	return {
-		...omit('Account_Name', allFields),
-		...allFields.Account_Name.account_name_fields,
+		...omit('Account', allFields),
+		...allFields.Account.subfields,
 	};
 };
 
@@ -197,7 +198,12 @@ export const adjustInvoiceFields = flow(
 
 export const adjustLeadFields = adjustAddressFields;
 
-export const adjustPurchaseOrderFields = adjustInvoiceFields;
+export const adjustPurchaseOrderFields = flow(
+	adjustBillingAddressFields,
+	adjustShippingAddressFields,
+	adjustDueDateField,
+	adjustPurchaseOrderDateField,
+);
 
 export const adjustQuoteFields = adjustInvoiceFields;
 
@@ -215,12 +221,12 @@ const omit = (keyToOmit: string, { [keyToOmit]: _, ...omittedPropObj }) => omitt
 
 type LocationType = 'Address' | 'Billing_Address' | 'Mailing_Address' | 'Shipping_Address' | 'Other_Address';
 
-type DateType = 'Date_of_Birth' | 'Closing_Date' | 'Due_Date' | 'Invoice_Date';
+type DateType = 'Date_of_Birth' | 'Closing_Date' | 'Due_Date' | 'Invoice_Date' | 'PO_Date';
 
 export type AllFields =
 	{ [Date in DateType]?: string } &
 	{ [Location in LocationType]?: { address_fields: { [key: string]: string } } } &
-	{ Account_Name?: { account_name_fields: { [key: string]: string } } } &
+	{ Account?: { subfields: { id: string; name: string; } } } &
 	IDataObject;
 
 export type ProductDetails = Array<{ id: string, quantity: number }>;
@@ -233,5 +239,10 @@ type ZohoOAuth2ApiCredentials = {
 
 export type LoadedProducts = Array<{
 	Product_Name: string;
+	id: string;
+}>;
+
+export type LoadedVendors = Array<{
+	Vendor_Name: string;
 	id: string;
 }>;
