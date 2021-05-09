@@ -101,7 +101,7 @@ export async function handleListing(
 ) {
 	let responseData;
 
-	const returnAll = this.getNodeParameter('returnAll', 0);
+	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
 	if (returnAll) {
 		return await zohoApiRequestAllItems.call(this, method, endpoint, body, qs);
@@ -119,11 +119,15 @@ export async function handleListing(
 /**
  * Place a location field's contents at the top level of the payload.
  */
-const adjustLocationFields = (locationType: LocationType) => (allFields: IDataObject) => {
+const adjustLocationFields = (locationType: LocationType) => (allFields: AllFields) => {
 	const locationField = allFields[locationType];
-	if (!locationField || !hasAddressFields(locationField)) return allFields;
 
-	return { ...omit(locationType, allFields), ...locationField.address_fields };
+	if (!locationField) return allFields;
+
+	return {
+		...omit(locationType, allFields),
+		...locationField.address_fields,
+	};
 };
 
 const adjustAddressFields = adjustLocationFields('Address');
@@ -133,14 +137,13 @@ const adjustShippingAddressFields = adjustLocationFields('Shipping_Address');
 const adjustOtherAddressFields = adjustLocationFields('Other_Address');
 
 /**
- * Remove a date field's timestamp.
+ * Remove the timestamp set by the datepicker from a date field.
  */
-const adjustDateField = (dateType: DateType) => (allFields: IDataObject) => {
+ const adjustDateField = (dateType: DateType) => (allFields: AllFields) => {
 	const dateField = allFields[dateType];
 
 	if (!dateField) return allFields;
 
-	// @ts-ignore TODO
 	allFields[dateType] = dateField.split('T')[0];
 
 	return allFields;
@@ -151,16 +154,17 @@ const adjustClosingDateField = adjustDateField('Closing_Date');
 const adjustInvoiceDateField = adjustDateField('Invoice_Date');
 const adjustDueDateField = adjustDateField('Due_Date');
 
-const adjustAccountField = (allFields: IDataObject) => {
+/**
+ * Place an account name field's contents at the top level of the payload.
+ */
+ const adjustAccountField = (allFields: AllFields) => {
 	if (!allFields.Account_Name) return allFields;
 
-	// @ts-ignore TODO
-	return { ...omit('Account_Name', allFields), ...allFields.Account_Name.account_name_fields };
+	return {
+		...omit('Account_Name', allFields),
+		...allFields.Account_Name.account_name_fields,
+	};
 };
-
-// ----------------------------------------
-//       field adjusters per resource
-// ----------------------------------------
 
 export const adjustAccountFields = flow(
 	adjustBillingAddressFields,
@@ -195,12 +199,7 @@ export const adjustSalesOrderFields = adjustInvoiceFields;
 //               helpers
 // ----------------------------------------
 
-export const omit = (keyToOmit: string, { [keyToOmit]: _, ...omittedPropObj }) => omittedPropObj;
-
-function hasAddressFields(locationField: unknown): locationField is LocationField {
-	if (typeof locationField !== 'object' || locationField === null) return false;
-	return locationField.hasOwnProperty('address_fields');
-}
+const omit = (keyToOmit: string, { [keyToOmit]: _, ...omittedPropObj }) => omittedPropObj;
 
 // ----------------------------------------
 //               types
@@ -208,10 +207,10 @@ function hasAddressFields(locationField: unknown): locationField is LocationFiel
 
 type LocationType = 'Address' | 'Billing_Address' | 'Mailing_Address' | 'Shipping_Address' | 'Other_Address';
 
-type LocationField = {
-	address_fields: { [key in LocationType]: string };
-};
-
 type DateType = 'Date_of_Birth' | 'Closing_Date' | 'Due_Date' | 'Invoice_Date';
 
-type DateField = { Date_of_Birth?: string; Closing_Date?: string; Due_Date?: string; Invoice_Date?: string };
+export type AllFields =
+	{ [Date in DateType]?: string } &
+	{ [Location in LocationType]?: { address_fields: { [key: string]: string } } } &
+	{ Account_Name?: { account_name_fields: { [key: string]: string } } } &
+	IDataObject;

@@ -294,7 +294,7 @@ export class ZohoCrm implements INodeType {
 			} else if (resource === 'deal') {
 
 				// **********************************************************************
-				//                                  deal
+				//                                deal
 				// **********************************************************************
 
 				// https://www.zoho.com/crm/developer/docs/api/v2/deals-response.html
