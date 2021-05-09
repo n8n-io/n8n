@@ -33,6 +33,8 @@ import {
 	invoiceOperations,
 	leadFields,
 	leadOperations,
+	productFields,
+	productOperations,
 	purchaseOrderFields,
 	purchaseOrderOperations,
 	quoteFields,
@@ -89,6 +91,10 @@ export class ZohoCrm implements INodeType {
 						value: 'lead',
 					},
 					{
+						name: 'Product',
+						value: 'product',
+					},
+					{
 						name: 'Purchase Order',
 						value: 'purchaseOrder',
 					},
@@ -114,6 +120,8 @@ export class ZohoCrm implements INodeType {
 			...invoiceFields,
 			...leadOperations,
 			...leadFields,
+			...productOperations,
+			...productFields,
 			...purchaseOrderOperations,
 			...purchaseOrderFields,
 			...quoteOperations,
@@ -515,6 +523,82 @@ export class ZohoCrm implements INodeType {
 					const leadId = this.getNodeParameter('leadId', i);
 
 					responseData = await zohoApiRequest.call(this, 'PUT', `/leads/${leadId}`, body);
+
+				}
+
+			} else if (resource === 'product') {
+
+				// **********************************************************************
+				//                              product
+				// **********************************************************************
+
+				// https://www.zoho.com/crm/developer/docs/api/v2/products-response.html
+
+				if (operation === 'create') {
+
+					// ----------------------------------------
+					//             product: create
+					// ----------------------------------------
+
+					const body: IDataObject = {
+						Product_Name: this.getNodeParameter('productName', i),
+					};
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (Object.keys(additionalFields).length) {
+						Object.assign(body, additionalFields);
+					}
+
+					responseData = await zohoApiRequest.call(this, 'POST', '/products', body);
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------------
+					//            product: delete
+					// ----------------------------------------
+
+					const productId = this.getNodeParameter('productId', i);
+
+					const endpoint = `/products/${productId}`;
+					responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
+
+				} else if (operation === 'get') {
+
+					// ----------------------------------------
+					//              product: get
+					// ----------------------------------------
+
+					const productId = this.getNodeParameter('productId', i);
+
+					const endpoint = `/products/${productId}`;
+					responseData = await zohoApiRequest.call(this, 'GET', endpoint);
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------------
+					//            product: getAll
+					// ----------------------------------------
+
+					responseData = await handleListing.call(this, 'GET', '/products');
+
+				} else if (operation === 'update') {
+
+					// ----------------------------------------
+					//            product: update
+					// ----------------------------------------
+
+					const body: IDataObject = {};
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (Object.keys(updateFields).length) {
+						Object.assign(body, updateFields);
+					}
+
+					const productId = this.getNodeParameter('productId', i);
+
+					const endpoint = `/products/${productId}`;
+					responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
 
 				}
 

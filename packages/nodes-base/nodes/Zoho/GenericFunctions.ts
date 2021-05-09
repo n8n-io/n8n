@@ -137,7 +137,7 @@ const adjustShippingAddressFields = adjustLocationFields('Shipping_Address');
 const adjustOtherAddressFields = adjustLocationFields('Other_Address');
 
 /**
- * Remove the timestamp set by the datepicker from a date field.
+ * Remove from a date field the timestamp set by the datepicker.
  */
  const adjustDateField = (dateType: DateType) => (allFields: AllFields) => {
 	const dateField = allFields[dateType];
