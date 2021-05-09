@@ -9,6 +9,7 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -17,16 +18,14 @@ import {
 } from 'lodash';
 
 export async function zohoApiRequest(
-	this: IExecuteFunctions | IHookFunctions,
+	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 ) {
-	const operation = this.getNodeParameter('operation', 0) as string;
-
-	const { oauthTokenData: { api_domain: apiDomain } } = this.getCredentials('zohoOAuth2Api') as { oauthTokenData: { api_domain: string} };
+	const { oauthTokenData: { api_domain: apiDomain } } = this.getCredentials('zohoOAuth2Api') as ZohoOAuth2ApiCredentials;
 
 	const options: OptionsWithUri = {
 		body: {
@@ -50,8 +49,7 @@ export async function zohoApiRequest(
 
 	try {
 		console.log(JSON.stringify(options, null, 2));
-		const responseData = await this.helpers.requestOAuth2.call(this, 'zohoOAuth2Api', options);
-		return operation === 'getAll' ? responseData : responseData.data;
+		return await this.helpers.requestOAuth2?.call(this, 'zohoOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -61,13 +59,12 @@ export async function zohoApiRequest(
  * Make an authenticated API request to Zoho CRM API and return all items.
  */
 export async function zohoApiRequestAllItems(
-	this: IHookFunctions | IExecuteFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	body: IDataObject,
-	qs: IDataObject,
+	body: IDataObject = {},
+	qs: IDataObject = {},
 ) {
-
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -86,7 +83,6 @@ export async function zohoApiRequestAllItems(
 	);
 
 	return returnData;
-
 }
 
 /**
@@ -115,6 +111,18 @@ export async function handleListing(
 // ----------------------------------------
 //            field adjusters
 // ----------------------------------------
+
+/**
+ * Place a product ID at a nested position in a product details field.
+ */
+export const adjustProductDetails = (productDetails: ProductDetails) => {
+	return productDetails.map(p => {
+		return {
+			...omit('product', p),
+			product: { id: p.id },
+		};
+	});
+};
 
 /**
  * Place a location field's contents at the top level of the payload.
@@ -214,3 +222,16 @@ export type AllFields =
 	{ [Location in LocationType]?: { address_fields: { [key: string]: string } } } &
 	{ Account_Name?: { account_name_fields: { [key: string]: string } } } &
 	IDataObject;
+
+export type ProductDetails = Array<{ id: string, quantity: number }>;
+
+type ZohoOAuth2ApiCredentials = {
+	oauthTokenData: {
+		api_domain: string;
+	};
+};
+
+export type LoadedProducts = Array<{
+	Product_Name: string;
+	id: string;
+}>;

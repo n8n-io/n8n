@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -15,11 +16,15 @@ import {
 	adjustDealFields,
 	adjustInvoiceFields,
 	adjustLeadFields,
+	adjustProductDetails,
 	adjustPurchaseOrderFields,
 	adjustQuoteFields,
 	adjustSalesOrderFields,
 	handleListing,
+	LoadedProducts,
+	ProductDetails,
 	zohoApiRequest,
+	zohoApiRequestAllItems,
 } from './GenericFunctions';
 
 import {
@@ -129,6 +134,15 @@ export class ZohoCrm implements INodeType {
 			...salesOrderOperations,
 			...salesOrderFields,
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			async getProducts(this: ILoadOptionsFunctions) {
+				const responseData = await zohoApiRequestAllItems.call(this, 'GET', '/products') as LoadedProducts;
+				return responseData.map((p) => ({ name: p.Product_Name, value: p.id }));
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -387,10 +401,10 @@ export class ZohoCrm implements INodeType {
 					//             invoice: create
 					// ----------------------------------------
 
+					const productDetails = this.getNodeParameter('Product_Details', i) as ProductDetails;
+
 					const body: IDataObject = {
-						Product_Details: [
-							this.getNodeParameter('Product_Details', i),
-						],
+						Product_Details: adjustProductDetails(productDetails),
 						Subject: this.getNodeParameter('subject', i),
 					};
 

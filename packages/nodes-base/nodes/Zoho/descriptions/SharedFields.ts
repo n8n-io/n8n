@@ -223,9 +223,13 @@ export const address = {
 };
 
 export const productDetails = (resource: string, operation: string) => ({
-	displayName: 'Product Details',
+	displayName: 'Products',
 	name: 'Product_Details',
 	type: 'collection',
+	typeOptions: {
+		multipleValues: true,
+		multipleValueButtonText: 'Add Product',
+	},
 	default: {},
 	placeholder: 'Add Field',
 	displayOptions: {
@@ -252,30 +256,13 @@ export const productDetails = (resource: string, operation: string) => ({
 			default: '',
 		},
 		{
-			displayName: 'Product',
-			name: 'product',
-			type: 'collection',
-			default: {},
-			options: [
-				{
-					displayName: 'ID',
-					name: 'id',
-					type: 'string',
-					default: '',
-				},
-				{
-					displayName: 'Name',
-					name: 'name',
-					type: 'string',
-					default: '',
-				},
-				{
-					displayName: 'Product Code',
-					name: 'Product_Code',
-					type: 'string',
-					default: '',
-				},
-			],
+			displayName: 'Product ID',
+			name: 'id',
+			type: 'options',
+			default: [],
+			typeOptions: {
+				loadOptionsMethod: 'getProducts',
+			},
 		},
 		{
 			displayName: 'Product Description',
