@@ -5,7 +5,7 @@
 		<el-button
 			v-if="node && !isReadOnly"
 			:disabled="workflowRunning"
-			@click.stop="runWorkflow(node.name)"
+			@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
 			class="execute-node-button"
 			:title="`Executes this ${node.name} node after executing any previous nodes that have not yet returned data`"
 		>
@@ -228,6 +228,7 @@ import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
 import NodeErrorView from '@/components/Error/NodeViewError.vue';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
+import { externalHooks } from "@/components/mixins/externalHooks";
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
@@ -239,6 +240,7 @@ const deselectedPlaceholder = '_!^&*';
 
 export default mixins(
 	copyPaste,
+	externalHooks,
 	genericHelpers,
 	nodeHelpers,
 	workflowRun,
@@ -617,8 +619,9 @@ export default mixins(
 			jsonData () {
 				this.refreshDataSize();
 			},
-			displayMode () {
+			displayMode (newValue, oldValue) {
 				this.closeBinaryDataDisplay();
+				this.$externalHooks().run('runData.displayModeChanged', { newValue, oldValue });
 			},
 			maxRunIndex () {
 				this.runIndex = Math.min(this.runIndex, this.maxRunIndex);
