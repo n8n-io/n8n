@@ -10,6 +10,7 @@ import {
 import {
 	getConnectionManager,
 	In,
+	Like,
 } from 'typeorm';
 import * as bodyParser from 'body-parser';
 require('body-parser-xml')(bodyParser);
@@ -112,7 +113,6 @@ import { Registry } from 'prom-client';
 import * as TagHelpers from './TagHelpers';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { validate } from 'class-validator';
 
 class App {
 
@@ -566,6 +566,20 @@ class App {
 			});
 			return workflows;
 		}));
+
+
+		this.app.get(`/${this.restEndpoint}/workflows/new`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ name: string }> => {
+			const DEFAULT_NEW_WORKFLOW_NAME = 'My Workflow'; // TODO: Place constant elsewhere?
+
+			const count = await Db.collections.Workflow!.count({
+				name: Like(`${DEFAULT_NEW_WORKFLOW_NAME}%`),
+			});
+
+			return count === 0
+				? { name: DEFAULT_NEW_WORKFLOW_NAME }
+				: { name: `${DEFAULT_NEW_WORKFLOW_NAME} ${count + 1}` };
+		}));
+
 
 		// Returns a specific workflow
 		this.app.get(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<WorkflowEntity | undefined> => {
