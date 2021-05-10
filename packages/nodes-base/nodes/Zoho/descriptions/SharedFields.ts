@@ -222,7 +222,7 @@ export const address = {
 	],
 };
 
-export const productDetails = (resource: string, operation: string) => ({
+export const makeProductDetails = (resource: string, operation: string) => ({
 	displayName: 'Products',
 	name: 'Product_Details',
 	type: 'collection',

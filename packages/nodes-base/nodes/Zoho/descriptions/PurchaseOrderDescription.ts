@@ -5,7 +5,7 @@ import {
 import {
 	billingAddress,
 	makeGetAllFields,
-	productDetails,
+	makeProductDetails,
 	shippingAddress,
 } from './SharedFields';
 
@@ -90,7 +90,7 @@ export const purchaseOrderFields = [
 			},
 		},
 	},
-	productDetails('purchaseOrder', 'create'),
+	makeProductDetails('purchaseOrder', 'create'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

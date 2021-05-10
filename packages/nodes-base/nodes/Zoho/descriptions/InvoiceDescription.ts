@@ -5,7 +5,7 @@ import {
 import {
 	billingAddress,
 	makeGetAllFields,
-	productDetails,
+	makeProductDetails,
 	shippingAddress,
 } from './SharedFields';
 
@@ -70,7 +70,7 @@ export const invoiceFields = [
 			},
 		},
 	},
-	productDetails('invoice', 'create'),
+	makeProductDetails('invoice', 'create'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -89,32 +89,14 @@ export const invoiceFields = [
 		},
 		options: [
 			{
-				displayName: 'Account',
-				name: 'Account',
-				type: 'fixedCollection',
-				description: 'Account who the invoice is issued for.',
-				default: {},
-				placeholder: 'Add Account Field',
-				options: [
-					{
-						displayName: 'Account Fields',
-						name: 'subfields',
-						values: [
-							{
-								displayName: 'ID',
-								name: 'id',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-							},
-						],
-					},
-				],
+				displayName: 'Account ID',
+				name: 'accountId',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getAccounts',
+				},
+				description: 'ID of the account associated with this invoice.',
 			},
 			{
 				displayName: 'Adjustment',
@@ -295,31 +277,14 @@ export const invoiceFields = [
 		},
 		options: [
 			{
-				displayName: 'Account',
-				name: 'Account',
-				type: 'fixedCollection',
-				default: {},
-				placeholder: 'Add Account Field',
-				options: [
-					{
-						displayName: 'Account Fields',
-						name: 'subfields',
-						values: [
-							{
-								displayName: 'ID',
-								name: 'id',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-							},
-						],
-					},
-				],
+				displayName: 'Account ID',
+				name: 'accountId',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getAccounts',
+				},
+				description: 'ID of the account associated with this invoice.',
 			},
 			{
 				displayName: 'Adjustment',

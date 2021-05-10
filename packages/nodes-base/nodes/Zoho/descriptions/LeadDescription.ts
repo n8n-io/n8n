@@ -137,6 +137,12 @@ export const leadFields = [
 				default: '',
 			},
 			{
+				displayName: 'Email Opt Ou',
+				name: 'Email_Opt_Out',
+				type: 'boolean',
+				default: false,
+			},
+			{
 				displayName: 'Fax',
 				name: 'Fax',
 				type: 'string',
@@ -360,6 +366,12 @@ export const leadFields = [
 				name: 'Email',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Email Opt Ou',
+				name: 'Email_Opt_Out',
+				type: 'boolean',
+				default: false,
 			},
 			{
 				displayName: 'Fax',

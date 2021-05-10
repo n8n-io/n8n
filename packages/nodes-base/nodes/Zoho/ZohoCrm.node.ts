@@ -21,12 +21,19 @@ import {
 	adjustQuoteFields,
 	adjustSalesOrderFields,
 	handleListing,
-	LoadedProducts,
-	LoadedVendors,
-	ProductDetails,
+	toLoadOptions,
 	zohoApiRequest,
 	zohoApiRequestAllItems,
 } from './GenericFunctions';
+
+import {
+	LoadedAccounts,
+	LoadedContacts,
+	LoadedDeals,
+	LoadedProducts,
+	LoadedVendors,
+	ProductDetails,
+} from './types';
 
 import {
 	accountFields,
@@ -139,14 +146,29 @@ export class ZohoCrm implements INodeType {
 
 	methods = {
 		loadOptions: {
+			async getAccounts(this: ILoadOptionsFunctions) {
+				const accounts = await zohoApiRequestAllItems.call(this, 'GET', '/accounts') as LoadedAccounts;
+				return toLoadOptions(accounts, 'Account_Name');
+			},
+
+			async getContacts(this: ILoadOptionsFunctions) {
+				const contacts = await zohoApiRequestAllItems.call(this, 'GET', '/contacts') as LoadedContacts;
+				return toLoadOptions(contacts, 'Full_Name');
+			},
+
+			async getDeals(this: ILoadOptionsFunctions) {
+				const deals = await zohoApiRequestAllItems.call(this, 'GET', '/deals') as LoadedDeals;
+				return toLoadOptions(deals, 'Deal_Name');
+			},
+
 			async getProducts(this: ILoadOptionsFunctions) {
 				const products = await zohoApiRequestAllItems.call(this, 'GET', '/products') as LoadedProducts;
-				return products.map((p) => ({ name: p.Product_Name, value: p.id }));
+				return toLoadOptions(products, 'Product_Name');
 			},
 
 			async getVendors(this: ILoadOptionsFunctions) {
 				const vendors = await zohoApiRequestAllItems.call(this, 'GET', '/vendors') as LoadedVendors;
-				return vendors.map((v) => ({ name: v.Vendor_Name, value: v.id }));
+				return toLoadOptions(vendors, 'Vendor_Name');
 			},
 		},
 	};
@@ -410,8 +432,8 @@ export class ZohoCrm implements INodeType {
 					const productDetails = this.getNodeParameter('Product_Details', i) as ProductDetails;
 
 					const body: IDataObject = {
-						Product_Details: adjustProductDetails(productDetails),
 						Subject: this.getNodeParameter('subject', i),
+						Product_Details: adjustProductDetails(productDetails),
 					};
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -639,9 +661,9 @@ export class ZohoCrm implements INodeType {
 					const productDetails = this.getNodeParameter('Product_Details', i) as ProductDetails;
 
 					const body: IDataObject = {
-						Product_Details: adjustProductDetails(productDetails),
 						Subject: this.getNodeParameter('subject', i),
 						Vendor_Name: { id: this.getNodeParameter('vendorId', i) },
+						Product_Details: adjustProductDetails(productDetails),
 					};
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -719,8 +741,8 @@ export class ZohoCrm implements INodeType {
 					const productDetails = this.getNodeParameter('Product_Details', i) as ProductDetails;
 
 					const body: IDataObject = {
-						Product_Details: adjustProductDetails(productDetails),
 						Subject: this.getNodeParameter('subject', i),
+						Product_Details: adjustProductDetails(productDetails),
 					};
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -792,9 +814,12 @@ export class ZohoCrm implements INodeType {
 					//            salesOrder: create
 					// ----------------------------------------
 
+					const productDetails = this.getNodeParameter('Product_Details', i) as ProductDetails;
+
 					const body: IDataObject = {
-						Account_Name: this.getNodeParameter('Account_Name', i),
-						Subject: this.getNodeParameter('Subject', i),
+						Account_Name: { id: this.getNodeParameter('accountId', i) },
+						Subject: this.getNodeParameter('subject', i),
+						Product_Details: adjustProductDetails(productDetails),
 					};
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -803,7 +828,7 @@ export class ZohoCrm implements INodeType {
 						Object.assign(body, adjustSalesOrderFields(additionalFields));
 					}
 
-					responseData = await zohoApiRequest.call(this, 'POST', '/salesorders', body);
+					responseData = await zohoApiRequest.call(this, 'POST', '/sales_orders', body);
 
 				} else if (operation === 'delete') {
 
@@ -813,7 +838,7 @@ export class ZohoCrm implements INodeType {
 
 					const salesOrderId = this.getNodeParameter('salesOrderId', i);
 
-					const endpoint = `/salesorders/${salesOrderId}`;
+					const endpoint = `/sales_orders/${salesOrderId}`;
 					responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
 
 				} else if (operation === 'get') {
@@ -824,7 +849,7 @@ export class ZohoCrm implements INodeType {
 
 					const salesOrderId = this.getNodeParameter('salesOrderId', i);
 
-					const endpoint = `/salesorders/${salesOrderId}`;
+					const endpoint = `/sales_orders/${salesOrderId}`;
 					responseData = await zohoApiRequest.call(this, 'GET', endpoint);
 
 				} else if (operation === 'getAll') {
@@ -833,7 +858,7 @@ export class ZohoCrm implements INodeType {
 					//            salesOrder: getAll
 					// ----------------------------------------
 
-					responseData = await handleListing.call(this, 'GET', '/salesorders');
+					responseData = await handleListing.call(this, 'GET', '/sales_orders');
 
 				} else if (operation === 'update') {
 
@@ -850,7 +875,7 @@ export class ZohoCrm implements INodeType {
 
 					const salesOrderId = this.getNodeParameter('salesOrderId', i);
 
-					const endpoint = `/salesorders/${salesOrderId}`;
+					const endpoint = `/sales_orders/${salesOrderId}`;
 					responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
 
 				}

@@ -17,6 +17,16 @@ import {
 	flow,
 } from 'lodash';
 
+import {
+	AllFields,
+	DateType,
+	IdType,
+	LocationType,
+	NameType,
+	ProductDetails,
+	ZohoOAuth2ApiCredentials,
+} from './types';
+
 export async function zohoApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: string,
@@ -25,7 +35,7 @@ export async function zohoApiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 ) {
-	const { oauthTokenData: { api_domain } } = this.getCredentials('zohoOAuth2Api') as ZohoOAuth2ApiCredentials;
+	const { oauthTokenData } = this.getCredentials('zohoOAuth2Api') as ZohoOAuth2ApiCredentials;
 
 	const options: OptionsWithUri = {
 		body: {
@@ -35,7 +45,7 @@ export async function zohoApiRequest(
 		},
 		method,
 		qs,
-		uri: uri ?? `${api_domain}/crm/v2${endpoint}`,
+		uri: uri ?? `${oauthTokenData.api_domain}/crm/v2${endpoint}`,
 		json: true,
 	};
 
@@ -164,16 +174,22 @@ const adjustPurchaseOrderDateField = adjustDateField('PO_Date');
 const adjustValidTillField = adjustDateField('Valid_Till');
 
 /**
- * Place an account field's subfields at the top level of the payload.
+ * Place an ID field's value nested inside the payload.
  */
- const adjustAccountField = (allFields: AllFields) => {
-	if (!allFields.Account) return allFields;
+const adjustIdField = (idType: IdType, nameProperty: NameType) => (allFields: AllFields) => {
+	const idValue = allFields[idType];
+
+	if (!idValue) return allFields;
 
 	return {
-		...omit('Account', allFields),
-		...allFields.Account.subfields,
+		...omit(idType, allFields),
+		[nameProperty]: { id: idValue },
 	};
 };
+
+const adjustAccountIdField = adjustIdField('accountId', 'Account_Name');
+const adjustContactIdField = adjustIdField('contactId', 'Full_Name');
+const adjustDealIdField = adjustIdField('dealId', 'Deal_Name');
 
 export const adjustAccountFields = flow(
 	adjustBillingAddressFields,
@@ -193,7 +209,7 @@ export const adjustInvoiceFields = flow(
 	adjustShippingAddressFields,
 	adjustInvoiceDateField,
 	adjustDueDateField,
-	adjustAccountField,
+	adjustAccountIdField,
 );
 
 export const adjustLeadFields = adjustAddressFields;
@@ -211,7 +227,14 @@ export const adjustQuoteFields = flow(
 	adjustValidTillField,
 );
 
-export const adjustSalesOrderFields = adjustInvoiceFields;
+export const adjustSalesOrderFields = flow(
+	adjustBillingAddressFields,
+	adjustShippingAddressFields,
+	adjustDueDateField,
+	adjustAccountIdField,
+	adjustContactIdField,
+	adjustDealIdField,
+);
 
 // ----------------------------------------
 //               helpers
@@ -219,34 +242,5 @@ export const adjustSalesOrderFields = adjustInvoiceFields;
 
 const omit = (keyToOmit: string, { [keyToOmit]: _, ...omittedPropObj }) => omittedPropObj;
 
-// ----------------------------------------
-//               types
-// ----------------------------------------
-
-type LocationType = 'Address' | 'Billing_Address' | 'Mailing_Address' | 'Shipping_Address' | 'Other_Address';
-
-type DateType = 'Date_of_Birth' | 'Closing_Date' | 'Due_Date' | 'Invoice_Date' | 'PO_Date' | 'Valid_Till';
-
-export type AllFields =
-	{ [Date in DateType]?: string } &
-	{ [Location in LocationType]?: { address_fields: { [key: string]: string } } } &
-	{ Account?: { subfields: { id: string; name: string; } } } &
-	IDataObject;
-
-export type ProductDetails = Array<{ id: string, quantity: number }>;
-
-type ZohoOAuth2ApiCredentials = {
-	oauthTokenData: {
-		api_domain: string;
-	};
-};
-
-export type LoadedProducts = Array<{
-	Product_Name: string;
-	id: string;
-}>;
-
-export type LoadedVendors = Array<{
-	Vendor_Name: string;
-	id: string;
-}>;
+export const toLoadOptions = (resourceItems: Array<{ [key: string]: string }>, nameProperty: NameType) =>
+	resourceItems.map((item) => ({ name: item[nameProperty], value: item.id }));

@@ -5,7 +5,7 @@ import {
 import {
 	billingAddress,
 	makeGetAllFields,
-	productDetails,
+	makeProductDetails,
 	shippingAddress,
 } from './SharedFields';
 
@@ -53,11 +53,14 @@ export const salesOrderFields = [
 	//            salesOrder: create
 	// ----------------------------------------
 	{
-		displayName: 'Account Name',
-		name: 'accountName',
-		type: '',
+		displayName: 'Account ID',
+		name: 'accountId',
 		required: true,
-		default: '',
+		type: 'options',
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getAccounts',
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -87,6 +90,7 @@ export const salesOrderFields = [
 			},
 		},
 	},
+	makeProductDetails('salesOrder', 'create'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -108,7 +112,10 @@ export const salesOrderFields = [
 				displayName: 'Adjustment',
 				name: 'Adjustment',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Adjustment in the grand total, if any.',
 			},
 			billingAddress,
@@ -120,31 +127,13 @@ export const salesOrderFields = [
 				description: 'Name of the carrier.',
 			},
 			{
-				displayName: 'Contact Name',
-				name: 'Contact_Name',
-				type: 'fixedCollection',
-				default: {},
-				placeholder: 'Add Contact Name Field',
-				options: [
-					{
-						displayName: 'Contact Name Fields',
-						name: 'contact_name_fields',
-						values: [
-							{
-								displayName: 'ID',
-								name: 'id',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-							},
-						],
-					},
-				],
+				displayName: 'Contact ID',
+				name: 'contactId',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getContacts',
+				},
 			},
 			{
 				displayName: 'Currency',
@@ -154,31 +143,13 @@ export const salesOrderFields = [
 				description: 'Symbol of the currency in which revenue is generated.',
 			},
 			{
-				displayName: 'Deal Name',
-				name: 'Deal_Name',
-				type: 'fixedCollection',
-				default: {},
-				placeholder: 'Add Deal Name Field',
-				options: [
-					{
-						displayName: 'Deal Name Fields',
-						name: 'deal_name_fields',
-						values: [
-							{
-								displayName: 'ID',
-								name: 'id',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-							},
-						],
-					},
-				],
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getDeals',
+				},
 			},
 			{
 				displayName: 'Description',
@@ -190,37 +161,39 @@ export const salesOrderFields = [
 				displayName: 'Discount',
 				name: 'Discount',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 			},
 			{
 				displayName: 'Due Date',
 				name: 'Due_Date',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 			},
 			{
 				displayName: 'Exchange Rate',
 				name: 'Exchange_Rate',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Exchange rate of the default currency to the home currency.',
 			},
 			{
 				displayName: 'Grand Total',
 				name: 'Grand_Total',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Total amount for the product after deducting tax and discounts.',
 			},
-			// productDetails,
 			{
-				displayName: 'Purchase Order',
-				name: 'Purchase_Order',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'SO Number',
+				displayName: 'Sales Order Number',
 				name: 'SO_Number',
 				type: 'string',
 				default: '',
@@ -229,8 +202,11 @@ export const salesOrderFields = [
 			{
 				displayName: 'Sales Commission',
 				name: 'Sales_Commission',
-				type: 'string',
-				default: '',
+				type: 'number',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Commission of sales person on deal closure.',
 			},
 			shippingAddress,
@@ -245,14 +221,20 @@ export const salesOrderFields = [
 				displayName: 'Sub Total',
 				name: 'Sub_Total',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Total amount for the product excluding tax.',
 			},
 			{
 				displayName: 'Tax',
 				name: 'Tax',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Tax amount as the sum of sales tax and value-added tax.',
 			},
 			{
@@ -291,7 +273,7 @@ export const salesOrderFields = [
 	//             salesOrder: get
 	// ----------------------------------------
 	{
-		displayName: 'salesOrder ID',
+		displayName: 'Sales Order ID',
 		name: 'salesOrderId',
 		description: 'ID of the sales order to retrieve.',
 		type: 'string',
@@ -353,37 +335,23 @@ export const salesOrderFields = [
 		},
 		options: [
 			{
-				displayName: 'Account Name',
-				name: 'Account_Name',
-				type: 'fixedCollection',
-				default: {},
-				placeholder: 'Add Account Name Field',
-				options: [
-					{
-						displayName: 'Account Name Fields',
-						name: 'account_name_fields',
-						values: [
-							{
-								displayName: 'ID',
-								name: 'id',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-							},
-						],
-					},
-				],
+				displayName: 'Account ID',
+				name: 'accountId',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getAccounts',
+				},
+				description: 'ID of the account associated with this invoice.',
 			},
 			{
 				displayName: 'Adjustment',
 				name: 'Adjustment',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Adjustment in the grand total, if any.',
 			},
 			billingAddress,
@@ -395,31 +363,13 @@ export const salesOrderFields = [
 				description: 'Name of the carrier.',
 			},
 			{
-				displayName: 'Contact Name',
-				name: 'Contact_Name',
-				type: 'fixedCollection',
-				default: {},
-				placeholder: 'Add Contact Name Field',
-				options: [
-					{
-						displayName: 'Contact Name Fields',
-						name: 'contact_name_fields',
-						values: [
-							{
-								displayName: 'ID',
-								name: 'id',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-							},
-						],
-					},
-				],
+				displayName: 'Contact ID',
+				name: 'contactId',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getContacts',
+				},
 			},
 			{
 				displayName: 'Currency',
@@ -429,31 +379,13 @@ export const salesOrderFields = [
 				description: 'Symbol of the currency in which revenue is generated.',
 			},
 			{
-				displayName: 'Deal Name',
-				name: 'Deal_Name',
-				type: 'fixedCollection',
-				default: {},
-				placeholder: 'Add Deal Name Field',
-				options: [
-					{
-						displayName: 'Deal Name Fields',
-						name: 'deal_name_fields',
-						values: [
-							{
-								displayName: 'ID',
-								name: 'id',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-							},
-						],
-					},
-				],
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getDeals',
+				},
 			},
 			{
 				displayName: 'Description',
@@ -465,37 +397,39 @@ export const salesOrderFields = [
 				displayName: 'Discount',
 				name: 'Discount',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 			},
 			{
 				displayName: 'Due Date',
 				name: 'Due_Date',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 			},
 			{
 				displayName: 'Exchange Rate',
 				name: 'Exchange_Rate',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Exchange rate of the default currency to the home currency.',
 			},
 			{
 				displayName: 'Grand Total',
 				name: 'Grand_Total',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Total amount for the product after deducting tax and discounts.',
 			},
-			// productDetails,
 			{
-				displayName: 'Purchase Order',
-				name: 'Purchase_Order',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'SO Number',
+				displayName: 'Sales Order Number',
 				name: 'SO_Number',
 				type: 'string',
 				default: '',
@@ -504,8 +438,11 @@ export const salesOrderFields = [
 			{
 				displayName: 'Sales Commission',
 				name: 'Sales_Commission',
-				type: 'string',
-				default: '',
+				type: 'number',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Commission of sales person on deal closure.',
 			},
 			shippingAddress,
@@ -520,7 +457,10 @@ export const salesOrderFields = [
 				displayName: 'Sub Total',
 				name: 'Sub_Total',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Total amount for the product excluding tax.',
 			},
 			{
@@ -534,7 +474,10 @@ export const salesOrderFields = [
 				displayName: 'Tax',
 				name: 'Tax',
 				type: 'number',
-				default: '',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+				},
 				description: 'Tax amount as the sum of sales tax and value-added tax.',
 			},
 			{
