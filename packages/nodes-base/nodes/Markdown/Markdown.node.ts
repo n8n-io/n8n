@@ -31,7 +31,7 @@ export class Markdown implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["mode"]==="markdownToHtml" ? "Markdown to HTML" : "HTML to Markdown"}}',
-		description: 'Move data between Markdown and HTML.',
+		description: 'Convert data between Markdown and HTML.',
 		defaults: {
 			name: 'Markdown',
 			color: '#000000',
@@ -48,16 +48,16 @@ export class Markdown implements INodeType {
 					{
 						name: 'Markdown to HTML',
 						value: 'markdownToHtml',
-						description: 'Move data from MarkdoWN to HTML',
+						description: 'Convert data from Markdown to HTML.',
 					},
 					{
 						name: 'HTML to Markdown',
 						value: 'htmlToMarkdown',
-						description: 'Move data from HTML to Markdown.',
+						description: 'Convert data from HTML to Markdown.',
 					},
 				],
 				default: 'htmlToMarkdown',
-				description: 'From and to where data should be moved.',
+				description: 'What to convert between.',
 			},
 			{
 				displayName: 'HTML',
@@ -104,7 +104,7 @@ export class Markdown implements INodeType {
 				default: 'data',
 				required: true,
 				placeholder: '',
-				description: 'The name the JSON key to copy data to. It is also possible<br />to define deep keys by using dot-notation like for example:<br />"level1.level2.newKey"',
+        description: 'The field to put the output in. Specify nested fields<br />using dots, e.g."level1.level2.newKey"',
 			},
 			{
 				displayName: 'Options',
@@ -114,24 +114,24 @@ export class Markdown implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Flavor',
+						displayName: 'Markdown Flavor',
 						name: 'flavor',
 						type: 'options',
 						options: [
 							{
 								name: 'Github',
 								value: 'github',
-								description: 'GFM (GitHub Flavored Markdown)',
+								description: 'GitHub Flavored Markdown (<a href="https://github.github.com/gfm/" target="_blank" rel="nofollow">more info</a>)',
 							},
 							{
-								name: 'Vanilla',
+								name: 'Default',
 								value: 'vanilla',
-								description: 'Showdown base flavor',
+								description: 'Defaults defined by Showdown library (<a href="https://github.com/showdownjs/showdown#valid-options" target="_blank">more info</a>)',
 							},
 							{
 								name: 'Original',
 								value: 'original',
-								description: `Original markdown flavor as in <a href="https://daringfireball.net/projects/markdown/" rel="nofollow">John Gruber's spec</ a >`,
+								description: `As first defined by John Gruber (<a href="https://daringfireball.net/projects/markdown/" target="_blank" rel="nofollow">more info</a>)`,
 							},
 						],
 						displayOptions: {
