@@ -60,7 +60,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	return returnData;
 }
 
-const isValidDate = (str: string) => moment(str, 'YYYY-MM-DD HH:mm:ss Z', true).isValid();
+const isValidDate = (str: string) => moment(str, ['YYYY-MM-DD HH:mm:ss Z', moment.ISO_8601], true).isValid();
 
 // Both functions below were taken from Stack Overflow jsonToDocument was fixed as it was unable to handle null values correctly
 // https://stackoverflow.com/questions/62246410/how-to-convert-a-firestore-document-to-plain-json-and-vice-versa
