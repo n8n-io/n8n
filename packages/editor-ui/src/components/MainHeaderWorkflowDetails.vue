@@ -2,7 +2,7 @@
 	<div class="container">
 		<InlineTextEdit 
 			:value="workflowName"
-			:isEditEnabled="true"
+			:isEditEnabled="isNameEditEnabled"
 			@toggle="onNameToggle"
 			@change="onNameChange"
 			placeholder="Enter workflow name"
