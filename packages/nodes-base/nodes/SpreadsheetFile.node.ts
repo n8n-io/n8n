@@ -387,8 +387,13 @@ export class SpreadsheetFile implements INodeType {
 				// Add all the found data columns to the workflow data
 				if (options.headerRow === false) {
 					// Data was returned as an array - https://github.com/SheetJS/sheetjs#json
-					for (const rowData of sheetJson) {
-						newItems.push({ json: { row: rowData } } as INodeExecutionData);
+					let itemJson:IDataObject;
+					for (const rowData of sheetJson as IDataObject[][]) {
+						itemJson = {};
+						for (let colIndex = 0; colIndex < rowData.length; colIndex++) {
+							itemJson[colIndex.toString()] = rowData[colIndex];
+						}
+						newItems.push({ json: itemJson } as INodeExecutionData);
 					}
 				} else {
 					for (const rowData of sheetJson) {
