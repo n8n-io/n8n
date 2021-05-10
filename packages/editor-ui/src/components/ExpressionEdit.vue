@@ -52,7 +52,11 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-export default Vue.extend({
+import { externalHooks } from '@/components/mixins/externalHooks';
+
+import mixins from 'vue-typed-mixins';
+
+export default mixins(externalHooks).extend({
 	name: 'ExpressionEdit',
 	props: [
 		'dialogVisible',
@@ -82,6 +86,11 @@ export default Vue.extend({
 
 		itemSelected (eventData: IVariableItemSelected) {
 			(this.$refs.inputFieldExpression as any).itemSelected(eventData); // tslint:disable-line:no-any
+		},
+	},
+	watch: {
+		dialogVisible (newValue) {
+			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value });
 		},
 	},
 });
