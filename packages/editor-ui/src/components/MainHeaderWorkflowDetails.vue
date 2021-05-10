@@ -10,13 +10,27 @@
 			</div>
 		</div>
 
+		<TagsDropdown
+			v-if="isTagsEditEnabled"
+			:createEnabled="true"
+			:currentTagIds="currentWorkflowTagIds"
+			@onUpdate="onTagsUpdate"
+			placeholder="Choose or create a tag"
+			ref="dropdown"
+			class="clickable tags"
+		/>
 		<div
-			class="add-tag"
+			class="add-tag clickable tags"
 			direction="vertical"
-			v-if="currentWorkflowTagIds.length === 0"
+			v-else-if="currentWorkflowTagIds.length === 0"
 		>+ Add tag</div>
-
-		<TagsContainer :tagIds="currentWorkflowTagIds" class="tags" />
+		<TagsContainer
+			v-else
+			:tagIds="currentWorkflowTagIds"
+			:clickable="true"
+			@click="onTagsPreviewClick"
+			class="tags"
+		/>
 
 		<PushConnectionTracker class="actions">
 			<template>
@@ -38,6 +52,7 @@ import TagsContainer from "@/components/TagsContainer.vue";
 import PushConnectionTracker from "@/components/PushConnectionTracker.vue";
 import WorkflowActivator from "@/components/WorkflowActivator.vue";
 import SaveWorkflowButton from "./SaveWorkflowButton.vue";
+import TagsDropdown from "./TagsDropdown.vue";
 
 export default Vue.extend({
 	name: "WorkflowDetails",
@@ -47,6 +62,12 @@ export default Vue.extend({
 		WorkflowNameShort,
 		WorkflowActivator,
 		SaveWorkflowButton,
+		TagsDropdown,
+	},
+	data() {
+		return {
+			isTagsEditEnabled: false,
+		};
 	},
 	computed: {
 		...mapGetters({
@@ -62,6 +83,14 @@ export default Vue.extend({
 			return this.$route.params.name;
 		},
 	},
+	methods: {
+		onTagsPreviewClick: function() {
+			this.$data.isTagsEditEnabled = !this.$data.isTagsEditEnabled;
+		},
+		onTagsUpdate: function() {
+			// todo
+		},
+	}
 });
 </script>
 
@@ -81,16 +110,6 @@ export default Vue.extend({
 	color: $--custom-font-dark;
 	font-weight: 400;
 	font-size: 13px;
-}
-
-.add-tag {
-	font-size: 12px;
-	color: $--custom-font-very-light;
-	font-weight: 600;
-
-	&:hover {
-		color: $--color-primary;
-	}
 }
 
 .tags {

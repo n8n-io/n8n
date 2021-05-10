@@ -2,23 +2,25 @@
 	<IntersectionObserver :threshold="1.0" @observed="onObserved" class="tags-container">
 		<template v-slot="{ observer }">
 			<div class="tags" v-if="observer">
-				<IntersectionObserved
-					v-for="tag in tags" 
-					:key="tag.id"
-					:observer="observer"
-					:ignore="tag.isCount"
-					:class="{'count-container': tag.isCount}"
-					:style="!tag.isCount ? 'visibility: hidden' : ''"
-				>
-					<el-tag 
-						:title="tag.title || tag.name"
-						type="info"
-						size="small"
+					<IntersectionObserved
+						v-for="tag in tags" 
+						:key="tag.id"
+						:observer="observer"
+						:ignore="tag.isCount"
+						:class="{'count-container': tag.isCount}"
+						:style="!tag.isCount ? 'visibility: hidden' : ''"
 					>
-						{{ tag.name }}
-					</el-tag>
-				</IntersectionObserved>
+					<div @click="onClick" class="clickable">
+						<el-tag 
+							:title="tag.title || tag.name"
+							type="info"
+							size="small"
+						>
+							{{ tag.name }}
+						</el-tag>
 			</div>
+					</IntersectionObserved>
+				</div>
 		</template>
 	</IntersectionObserver>
 </template>
@@ -36,6 +38,7 @@ export default Vue.extend({
 	props: [
 		"tagIds",
 		"limit",
+		"clickable",
 	],
 	data() {
 		return {
@@ -84,13 +87,16 @@ export default Vue.extend({
 				this.$data.lastTagXPosition = rect.right;
 			}
 		},
+		onClick() {
+			this.$emit('click');
+		},
 	},
 });
 </script>
 
 <style lang="scss" scoped>
 	.tags-container {
-		display: flex;
+		display: inline-flex;
 		flex-wrap: nowrap;
 		overflow: hidden;
 	}
