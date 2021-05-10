@@ -37,6 +37,7 @@
 </template>
 
 <script lang="ts">
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { ICredentialsResponse } from '@/Interface';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -47,6 +48,7 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
+	externalHooks,
 	genericHelpers,
 	nodeHelpers,
 	restApi,
@@ -75,6 +77,7 @@ export default mixins(
 				this.loadCredentials();
 				this.loadCredentialTypes();
 			}
+			this.$externalHooks().run('credentialsList.dialogVisibleChanged', { dialogVisible: newValue });
 		},
 	},
 	methods: {
