@@ -64,6 +64,7 @@ import {
 	WebhookServer,
 	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
+	WorkflowHelpers,
 	WorkflowRunner,
 } from './';
 
@@ -111,6 +112,7 @@ import { Registry } from 'prom-client';
 import * as TagHelpers from './TagHelpers';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { validate } from 'class-validator';
 
 class App {
 
@@ -505,7 +507,8 @@ class App {
 
 			await this.externalHooks.run('workflow.create', [newWorkflow]);
 
-			const savedWorkflow = await Db.collections.Workflow!.save(newWorkflow);
+			await WorkflowHelpers.validateWorkflow(newWorkflow);
+			const savedWorkflow = await Db.collections.Workflow!.save(newWorkflow).catch(WorkflowHelpers.throwDuplicateEntryError) as WorkflowEntity;
 			savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, incomingTagOrder);
 
 			// @ts-ignore
@@ -621,7 +624,8 @@ class App {
 
 			updateData.updatedAt = this.getCurrentDate(); // TODO: Set at DB level
 
-			await Db.collections.Workflow!.update(id, updateData);
+			await WorkflowHelpers.validateWorkflow(updateData);
+			await Db.collections.Workflow!.update(id, updateData).catch(WorkflowHelpers.throwDuplicateEntryError);
 
 			const tablePrefix = config.get('database.tablePrefix');
 			await TagHelpers.removeRelations(req.params.id, tablePrefix);

@@ -6,6 +6,7 @@ import {
 	IWorkflowErrorData,
 	IWorkflowExecutionDataProcess,
 	NodeTypes,
+	ResponseHelper,
 	WorkflowCredentials,
 	WorkflowRunner,
 } from './';
@@ -22,6 +23,8 @@ import {
 	Workflow,} from 'n8n-workflow';
 
 import * as config from '../config';
+import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { validate } from 'class-validator';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
@@ -356,4 +359,25 @@ export async function getStaticDataById(workflowId: string | number) {
 	}
 
 	return workflowData.staticData || {};
+}
+
+
+// TODO: Deduplicate `validateWorkflow` and `throwDuplicateEntryError` with TagHelpers?
+
+export async function validateWorkflow(newWorkflow: WorkflowEntity) {
+	const errors = await validate(newWorkflow);
+
+	if (errors.length) {
+		const validationErrorMessage = Object.values(errors[0].constraints!)[0];
+		throw new ResponseHelper.ResponseError(validationErrorMessage, undefined, 400);
+	}
+}
+
+export function throwDuplicateEntryError(error: Error) {
+	const errorMessage = error.message.toLowerCase();
+	if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
+		throw new ResponseHelper.ResponseError('Workflow name already exists', undefined, 400);
+	}
+
+	throw new ResponseHelper.ResponseError(errorMessage, undefined, 400);
 }

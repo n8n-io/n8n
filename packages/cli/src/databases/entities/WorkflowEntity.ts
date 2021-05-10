@@ -1,4 +1,8 @@
 import {
+	Length,
+} from 'class-validator';
+
+import {
 	IConnections,
 	IDataObject,
 	INode,
@@ -9,6 +13,7 @@ import {
 	Column,
 	ColumnOptions,
 	Entity,
+	Index,
 	JoinTable,
 	ManyToMany,
 	PrimaryGeneratedColumn,
@@ -32,9 +37,9 @@ export class WorkflowEntity implements IWorkflowDb {
 	@PrimaryGeneratedColumn()
 	id: number;
 
-	@Column({
-		length: 128,
-	})
+	@Index({ unique: true })
+	@Length(1, 128, { message: 'Workflow name must be 1 to 128 characters long.' })
+	@Column({ length: 128 })
 	name: string;
 
 	@Column()
