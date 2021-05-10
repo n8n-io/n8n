@@ -40,16 +40,16 @@
 							<span slot="title" class="item-title">Open</span>
 						</template>
 					</el-menu-item>
-					<el-menu-item index="workflow-save" :disabled="!currentWorkflow">
+					<el-menu-item index="workflow-save">
 						<template slot="title">
 							<font-awesome-icon icon="save"/>
 							<span slot="title" class="item-title">Save</span>
 						</template>
 					</el-menu-item>
-					<el-menu-item index="workflow-save-as">
+					<el-menu-item index="workflow-save-as" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="copy"/>
-							<span slot="title" class="item-title">Save As</span>
+							<span slot="title" class="item-title">Duplicate</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-delete" :disabled="!currentWorkflow">

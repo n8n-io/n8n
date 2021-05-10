@@ -1,6 +1,6 @@
 <template>
 	<div class="save-button">
-		<el-button v-if="isDirty" :disabled="isWorkflowSaving"  size="small" @click="save">
+		<el-button v-if="isDirty || isNewWorkflow" :disabled="isWorkflowSaving"  size="small" @click="save">
 			<font-awesome-icon v-if="isWorkflowSaving" icon="spinner" spin />
 			<span v-else>
 				Save
@@ -25,6 +25,9 @@ export default mixins(workflowHelpers).extend({
 		}),
 		isWorkflowSaving(): boolean {
 			return this.$store.getters.isActionActive("workflowSaving");
+		},
+		isNewWorkflow(): boolean {
+			return !this.$route.params.name;
 		},
 	},
 	methods: {

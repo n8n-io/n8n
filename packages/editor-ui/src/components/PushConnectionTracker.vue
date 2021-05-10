@@ -1,6 +1,6 @@
 <template>
 	<span>
-		<div class="push-connection-lost color-primary" v-if="!pushConnectionActive">
+		<div class="push-connection-lost primary-color" v-if="!pushConnectionActive">
 			<el-tooltip placement="bottom-end" effect="light">
 				<div slot="content">
 					Cannot connect to server.<br />
@@ -36,3 +36,9 @@ export default mixins(pushConnection).extend({
 	},
 });
 </script>
+
+<style lang="scss" scoped>
+.push-connection-lost {
+	margin-right: $--header-spacing;	
+}
+</style>
