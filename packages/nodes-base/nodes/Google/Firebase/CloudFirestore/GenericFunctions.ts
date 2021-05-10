@@ -33,7 +33,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		// console.log(options.body);
+
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'googleFirebaseCloudFirestoreOAuth2Api', options);
 	} catch (error) {
