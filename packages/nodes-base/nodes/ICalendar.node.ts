@@ -57,13 +57,6 @@ export class ICalendar implements INodeType {
 				description: 'Title of event.',
 			},
 			{
-				displayName: 'All Day',
-				name: 'allDay',
-				type: 'boolean',
-				default: false,
-				description: 'Where the event last all day or not',
-			},
-			{
 				displayName: 'Start',
 				name: 'start',
 				type: 'dateTime',
@@ -76,15 +69,15 @@ export class ICalendar implements INodeType {
 				name: 'end',
 				type: 'dateTime',
 				default: '',
-				displayOptions: {
-					show: {
-						allDay: [
-							false,
-						],
-					},
-				},
 				required: true,
 				description: 'Date and time at which the event ends.',
+			},
+			{
+				displayName: 'All Day',
+				name: 'allDay',
+				type: 'boolean',
+				default: false,
+				description: 'Where the event last all day or not.',
 			},
 			{
 				displayName: 'Binary Property',
@@ -169,7 +162,7 @@ export class ICalendar implements INodeType {
 						name: 'calName',
 						type: 'string',
 						default: '',
-						description: 'Specifies the calendar (not event) name. Used by Apple iCal and Microsoft Outlook; a see <a href="https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcical/1da58449-b97e-46bd-b018-a1ce576f3e6d" target="_blank">Open Specification</a>',
+						description: 'Specifies the calendar (not event) name. Used by Apple iCal and Microsoft Outlook; a see <a href="https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcical/1da58449-b97e-46bd-b018-a1ce576f3e6d" target="_blank">Open Specification</a>.',
 					},
 					{
 						displayName: 'Description',
@@ -182,7 +175,7 @@ export class ICalendar implements INodeType {
 						name: 'fileName',
 						type: 'string',
 						default: '',
-						description: 'Name that will be set to the file. Default value: event.ics',
+						description: 'Name that will be set to the file. Default value: event.ics.',
 					},
 					{
 						displayName: 'Geolocation',
@@ -300,7 +293,7 @@ export class ICalendar implements INodeType {
 						name: 'url',
 						type: 'string',
 						default: '',
-						description: 'URL associated with event',
+						description: 'URL associated with event.',
 					},
 				],
 			},
@@ -310,7 +303,6 @@ export class ICalendar implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const length = (items.length as unknown) as number;
-		const qs: IDataObject = {};
 		const returnData: INodeExecutionData[] = [];
 		const operation = this.getNodeParameter('operation', 0) as string;
 		if (operation === 'createEventFile') {
@@ -318,7 +310,8 @@ export class ICalendar implements INodeType {
 				const title = this.getNodeParameter('title', i) as string;
 				const allDay = this.getNodeParameter('allDay', i) as boolean;
 				const start = this.getNodeParameter('start', i) as string;
-				const end = (!allDay) ? this.getNodeParameter('end', i) as string : moment(start).add(1, 'day').format();
+				let end = this.getNodeParameter('end', i) as string;
+				end = (allDay) ? moment(end).utc().add(1, 'day').format() as string : end;
 				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 				let fileName = 'event.ics';
