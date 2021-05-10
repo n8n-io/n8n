@@ -70,6 +70,26 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 						value: 'analyzeSentiment',
 						description: 'Analyze Sentiment',
 					},
+					{
+						name: 'Analyze Entities',
+						value: 'analyzeEntities',
+						description: 'Analyze Entities',
+					},
+					{
+						name: 'Analyze Entity Sentiment',
+						value: 'analyzeEntitySentiment',
+						description: 'Analyze Entity Sentiment',
+					},
+					{
+						name: 'Analyze Syntax',
+						value: 'analyzeSyntax',
+						description: 'Analyze Syntax',
+					},
+					{
+						name: 'Classify Text',
+						value: 'classifyText',
+						description: 'Classify Text',
+					},
 				],
 				default: 'analyzeSentiment',
 				description: 'The operation to perform',
@@ -98,6 +118,10 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					show: {
 						operation: [
 							'analyzeSentiment',
+							'analyzeEntities',
+							'analyzeEntitySentiment',
+							'analyzeSyntax',
+							'classifyText'
 						],
 					},
 				},
@@ -113,6 +137,10 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					show: {
 						operation: [
 							'analyzeSentiment',
+							'analyzeEntities',
+							'analyzeEntitySentiment',
+							'analyzeSyntax',
+							'classifyText'
 						],
 						source: [
 							'content',
@@ -131,6 +159,10 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					show: {
 						operation: [
 							'analyzeSentiment',
+							'analyzeEntities',
+							'analyzeEntitySentiment',
+							'analyzeSyntax',
+							'classifyText'
 						],
 						source: [
 							'gcsContentUri',
@@ -146,6 +178,10 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					show: {
 						operation: [
 							'analyzeSentiment',
+							'analyzeEntities',
+							'analyzeEntitySentiment',
+							'analyzeSyntax',
+							'classifyText'
 						],
 					},
 				},
@@ -309,6 +345,116 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					}
 
 					const response = await googleApiRequest.call(this, 'POST', `/v1/documents:analyzeSentiment`, body);
+					responseData.push(response);
+				}
+				if (operation === 'analyzeEntities') {
+					const source = this.getNodeParameter('source', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const encodingType = (options.encodingType as string | undefined) || 'UTF16';
+					const documentType = (options.documentType as string | undefined) || 'PLAIN_TEXT';
+
+					const body: IData = {
+						document: {
+							type: documentType,
+						},
+						encodingType,
+					};
+
+					if (source === 'content') {
+						const content = this.getNodeParameter('content', i) as string;
+						body.document.content = content;
+					} else {
+						const gcsContentUri = this.getNodeParameter('gcsContentUri', i) as string;
+						body.document.gcsContentUri = gcsContentUri;
+					}
+
+					if (options.language) {
+						body.document.language = options.language as string;
+					}
+
+					const response = await googleApiRequest.call(this, 'POST', `/v1/documents:analyzeEntities`, body);
+					responseData.push(response);
+				}
+				if (operation === 'analyzeEntitySentiment') {
+					const source = this.getNodeParameter('source', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const encodingType = (options.encodingType as string | undefined) || 'UTF16';
+					const documentType = (options.documentType as string | undefined) || 'PLAIN_TEXT';
+
+					const body: IData = {
+						document: {
+							type: documentType,
+						},
+						encodingType,
+					};
+
+					if (source === 'content') {
+						const content = this.getNodeParameter('content', i) as string;
+						body.document.content = content;
+					} else {
+						const gcsContentUri = this.getNodeParameter('gcsContentUri', i) as string;
+						body.document.gcsContentUri = gcsContentUri;
+					}
+
+					if (options.language) {
+						body.document.language = options.language as string;
+					}
+
+					const response = await googleApiRequest.call(this, 'POST', `/v1/documents:analyzeEntitySentiment`, body);
+					responseData.push(response);
+				}
+				if (operation === 'analyzeSyntax') {
+					const source = this.getNodeParameter('source', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const encodingType = (options.encodingType as string | undefined) || 'UTF16';
+					const documentType = (options.documentType as string | undefined) || 'PLAIN_TEXT';
+
+					const body: IData = {
+						document: {
+							type: documentType,
+						},
+						encodingType,
+					};
+
+					if (source === 'content') {
+						const content = this.getNodeParameter('content', i) as string;
+						body.document.content = content;
+					} else {
+						const gcsContentUri = this.getNodeParameter('gcsContentUri', i) as string;
+						body.document.gcsContentUri = gcsContentUri;
+					}
+
+					if (options.language) {
+						body.document.language = options.language as string;
+					}
+
+					const response = await googleApiRequest.call(this, 'POST', `/v1/documents:analyzeSyntax`, body);
+					responseData.push(response);
+				}
+				if (operation === 'classifyText') {
+					const source = this.getNodeParameter('source', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const documentType = (options.documentType as string | undefined) || 'PLAIN_TEXT';
+
+					const body: IData = {
+						document: {
+							type: documentType,
+						}
+					};
+
+					if (source === 'content') {
+						const content = this.getNodeParameter('content', i) as string;
+						body.document.content = content;
+					} else {
+						const gcsContentUri = this.getNodeParameter('gcsContentUri', i) as string;
+						body.document.gcsContentUri = gcsContentUri;
+					}
+
+					if (options.language) {
+						body.document.language = options.language as string;
+					}
+
+					const response = await googleApiRequest.call(this, 'POST', `/v1/documents:classifyText`, body);
 					responseData.push(response);
 				}
 			}
