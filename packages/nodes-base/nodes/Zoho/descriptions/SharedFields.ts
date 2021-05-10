@@ -16,12 +16,6 @@ export const billingAddress = {
 					default: '',
 				},
 				{
-					displayName: 'Billing Code',
-					name: 'Billing_Code',
-					type: 'string',
-					default: '',
-				},
-				{
 					displayName: 'Billing Country',
 					name: 'Billing_Country',
 					type: 'string',
@@ -36,6 +30,12 @@ export const billingAddress = {
 				{
 					displayName: 'Billing Street',
 					name: 'Billing_Street',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Billing Zip Code',
+					name: 'Billing_Code',
 					type: 'string',
 					default: '',
 				},
@@ -62,12 +62,6 @@ export const shippingAddress = {
 					default: '',
 				},
 				{
-					displayName: 'Shipping Code',
-					name: 'Shipping_Code',
-					type: 'string',
-					default: '',
-				},
-				{
 					displayName: 'Shipping Country',
 					name: 'Shipping_Country',
 					type: 'string',
@@ -82,6 +76,12 @@ export const shippingAddress = {
 				{
 					displayName: 'Shipping Street',
 					name: 'Shipping_Street',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Shipping Zip Code',
+					name: 'Shipping_Code',
 					type: 'string',
 					default: '',
 				},
@@ -126,7 +126,7 @@ export const mailingAddress = {
 					default: '',
 				},
 				{
-					displayName: 'Mailing Zip',
+					displayName: 'Mailing Zip Code',
 					name: 'Mailing_Zip',
 					type: 'string',
 					default: '',
@@ -166,7 +166,7 @@ export const otherAddress = {
 					default: '',
 				},
 				{
-					displayName: 'Other Zip',
+					displayName: 'Other Zip Code',
 					name: 'Other_Zip',
 					type: 'string',
 					default: '',

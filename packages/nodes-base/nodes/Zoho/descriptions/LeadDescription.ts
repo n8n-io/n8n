@@ -70,7 +70,7 @@ export const leadFields = [
 	},
 	{
 		displayName: 'Last Name',
-		name: 'Last_Name',
+		name: 'lastName',
 		type: 'string',
 		required: true,
 		default: '',
@@ -137,7 +137,7 @@ export const leadFields = [
 				default: '',
 			},
 			{
-				displayName: 'Email Opt Ou',
+				displayName: 'Email Opt Out',
 				name: 'Email_Opt_Out',
 				type: 'boolean',
 				default: false,
@@ -368,7 +368,7 @@ export const leadFields = [
 				default: '',
 			},
 			{
-				displayName: 'Email Opt Ou',
+				displayName: 'Email Opt Out',
 				name: 'Email_Opt_Out',
 				type: 'boolean',
 				default: false,
