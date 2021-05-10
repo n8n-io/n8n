@@ -10,24 +10,30 @@
 			</div>
 		</div>
 
-		<TagsDropdown
+		<div
 			v-if="isTagsEditEnabled"
-			:createEnabled="true"
-			:currentTagIds="currentWorkflowTagIds"
-			@onUpdate="onTagsUpdate"
-			placeholder="Choose or create a tag"
-			ref="dropdown"
-			class="clickable tags"
-		/>
+			class="tags">
+			<TagsDropdown
+				:createEnabled="true"
+				:currentTagIds="appliedTagIds"
+				:eventBus="tagsEditBus"
+				@onUpdate="onTagsUpdate"
+				@blur="onTagsEditBlur"
+				placeholder="Choose or create a tag"
+				ref="dropdown"
+				class="tags-edit"
+			/>
+		</div>
 		<div
 			class="add-tag clickable tags"
-			direction="vertical"
+			@click="onTagsPreviewClick"
 			v-else-if="currentWorkflowTagIds.length === 0"
 		>+ Add tag</div>
 		<TagsContainer
 			v-else
 			:tagIds="currentWorkflowTagIds"
 			:clickable="true"
+			:limit="MAX_TAGS_TO_PREVIEW"
 			@click="onTagsPreviewClick"
 			class="tags"
 		/>
@@ -54,6 +60,8 @@ import WorkflowActivator from "@/components/WorkflowActivator.vue";
 import SaveWorkflowButton from "./SaveWorkflowButton.vue";
 import TagsDropdown from "./TagsDropdown.vue";
 
+const MAX_TAGS_TO_PREVIEW = 10; // random upper limit to minimize performance impact of observers
+
 export default Vue.extend({
 	name: "WorkflowDetails",
 	components: {
@@ -67,6 +75,9 @@ export default Vue.extend({
 	data() {
 		return {
 			isTagsEditEnabled: false,
+			appliedTagIds: [],
+			MAX_TAGS_TO_PREVIEW,
+			tagsEditBus: new Vue(),
 		};
 	},
 	computed: {
@@ -85,10 +96,17 @@ export default Vue.extend({
 	},
 	methods: {
 		onTagsPreviewClick: function() {
+			this.$data.appliedTagIds = this.currentWorkflowTagIds;
 			this.$data.isTagsEditEnabled = !this.$data.isTagsEditEnabled;
+			this.$nextTick(() => {
+				this.$data.tagsEditBus.$emit('focus');
+			});
 		},
-		onTagsUpdate: function() {
-			// todo
+		onTagsUpdate: function(appliedIds: string[]) {
+			this.$data.appliedTagIds = appliedIds;
+		},
+		onTagsEditBlur: function() {
+			this.$data.isTagsEditEnabled = false; //todo save
 		},
 	}
 });
@@ -112,8 +130,22 @@ export default Vue.extend({
 	font-size: 13px;
 }
 
+.add-tag {
+	font-size: 12px;
+	color: $--custom-font-very-light;
+	font-weight: 600;
+
+	&:hover {
+		color: $--color-primary;
+	}
+}
+
 .tags {
 	flex: 1;
+}
+
+.tags-edit {
+	max-width: 400px;
 }
 
 .actions,.container {

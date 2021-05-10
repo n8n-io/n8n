@@ -524,6 +524,7 @@ export interface IUiState {
 	modals: {
 		[key: string]: IModalState;
 	};
+	isPageLoading: boolean;
 }
 
 

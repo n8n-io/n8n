@@ -180,6 +180,7 @@ export default mixins(showMessage).extend({
 		onVisibleChange(visible: boolean) {
 			if (!visible) {
 				this.$data.filter = '';
+				this.$emit('blur');
 			}
 		},
 	},

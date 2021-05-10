@@ -22,6 +22,7 @@ const module: Module<IUiState, IRootState> = {
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
+		isPageLoading: true,
 	},
 	getters: {
 		isModalOpen: (state: IUiState) => {
