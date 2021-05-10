@@ -4,7 +4,7 @@
 			v-if="isEditEnabled"
 			:placeholder="placeholder"
 			:value="newValue"
-			:maxlength="128"
+			:maxlength="maxLength"
 			@change="onChange"
 			@input="onInput"
 		/>
@@ -21,7 +21,7 @@ import ExpandableInput from "./ExpandableInput.vue";
 export default Vue.extend({
 	name: "InlineTextEdit",
 	components: {ExpandableInput},
-	props: ['isEditEnabled', 'value', 'placeholder'],
+	props: ['isEditEnabled', 'value', 'placeholder', 'maxLength'],
 	data() {
 		return {
 			newValue: '',

@@ -12,6 +12,7 @@
 					v-model="name"
 					ref="nameInput"
 					placeholder="Enter workflow name"
+					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
 			</el-row>
 			<el-row>
@@ -36,6 +37,7 @@
 import Vue from "vue";
 import mixins from "vue-typed-mixins";
 
+import { DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH } from "@/constants";
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
 import TagsDropdown from "@/components/TagsDropdown.vue";
@@ -51,9 +53,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 		] as string[];
 
 		const currentWorkflowName  = this.$store.getters["workflowName"];
-		let name = '';
-		if (currentWorkflowName) {
-			name = `${currentWorkflowName} copy`;
+		let name = currentWorkflowName;
+		if (currentWorkflowName && currentWorkflowName.length <= (MAX_WORKFLOW_NAME_LENGTH - DUPLICATE_POSTFFIX.length)) {
+			name = `${currentWorkflowName}${DUPLICATE_POSTFFIX}`;
 		}
 
 		return {
@@ -62,6 +64,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			isSaving: false,
 			modalBus: new Vue(),
 			dropdownBus: new Vue(),
+			MAX_WORKFLOW_NAME_LENGTH,
 		};
 	},
 	mounted() {

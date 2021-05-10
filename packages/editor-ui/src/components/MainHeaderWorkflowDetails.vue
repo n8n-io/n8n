@@ -3,6 +3,7 @@
 		<InlineTextEdit 
 			:value="workflowName"
 			:isEditEnabled="isNameEditEnabled"
+			:maxLength="MAX_WORKFLOW_NAME_LENGTH"
 			@toggle="onNameToggle"
 			@change="onNameChange"
 			placeholder="Enter workflow name"
@@ -56,6 +57,8 @@
 <script lang="ts">
 import Vue from "vue";
 import { mapGetters } from "vuex";
+import { MAX_WORKFLOW_NAME_LENGTH } from "@/constants";
+
 import WorkflowNameShort from "@/components/WorkflowNameShort.vue";
 import TagsContainer from "@/components/TagsContainer.vue";
 import PushConnectionTracker from "@/components/PushConnectionTracker.vue";
@@ -84,6 +87,7 @@ export default Vue.extend({
 			appliedTagIds: [],
 			MAX_TAGS_TO_PREVIEW,
 			tagsEditBus: new Vue(),
+			MAX_WORKFLOW_NAME_LENGTH,
 		};
 	},
 	computed: {

@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<ModalRoot :name="SAVE_AS_MODAL_KEY">
+		<ModalRoot :name="DUPLICATE_MODAL_KEY">
 			<template v-slot:default="{ modalName, active }">
 				<SaveWorkflowDialog
 					:isActive="active"
@@ -30,7 +30,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { SAVE_AS_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY } from '@/constants';
+import { DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY } from '@/constants';
 
 import TagsManager from "@/components/TagsManager.vue";
 import SaveWorkflowDialog from "@/components/SaveWorkflowDialog.vue";
@@ -46,7 +46,7 @@ export default Vue.extend({
 		ModalRoot,
 	},
 	data: () => ({
-		SAVE_AS_MODAL_KEY,
+		DUPLICATE_MODAL_KEY,
 		TAGS_MANAGER_MODAL_KEY,
 		WORKLOW_OPEN_MODAL_KEY,
 	}),

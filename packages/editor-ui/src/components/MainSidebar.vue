@@ -46,7 +46,7 @@
 							<span slot="title" class="item-title">Save</span>
 						</template>
 					</el-menu-item>
-					<el-menu-item index="workflow-save-as" :disabled="!currentWorkflow">
+					<el-menu-item index="workflow-duplicate" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="copy"/>
 							<span slot="title" class="item-title">Duplicate</span>
@@ -417,8 +417,8 @@ export default mixins(
 					saveAs(blob, workflowName + '.json');
 				} else if (key === 'workflow-save') {
 					this.saveCurrentWorkflow();
-				} else if (key === 'workflow-save-as') {
-					this.$store.dispatch('ui/openSaveAsModal');
+				} else if (key === 'workflow-duplicate') {
+					this.$store.dispatch('ui/openDuplicateModal');
 				} else if (key === 'help-about') {
 					this.aboutDialogVisible = true;
 				} else if (key === 'workflow-settings') {
