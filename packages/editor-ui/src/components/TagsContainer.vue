@@ -33,7 +33,7 @@ import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
 
 export default Vue.extend({
-  components: { IntersectionObserver, IntersectionObserved },
+	components: { IntersectionObserver, IntersectionObserved },
 	name: 'TagsContainer',
 	props: [
 		"tagIds",
@@ -53,7 +53,7 @@ export default Vue.extend({
 			const toDisplay = this.$props.limit ? tags.slice(0, this.$props.limit) : tags;
 
 			if (this.visibleCount < tags.length) {
-				const hidden = tags.slice(this.visibleCount)
+				const hidden = tags.slice(this.visibleCount);
 				const hiddenTitle = hidden.reduce((accu: string, tag: ITag) => {
 					return accu ? `${accu}, ${tag.name}` : tag.name;
 				}, '');

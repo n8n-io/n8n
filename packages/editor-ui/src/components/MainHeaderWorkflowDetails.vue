@@ -95,20 +95,20 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onTagsPreviewClick: function() {
+		onTagsPreviewClick() {
 			this.$data.appliedTagIds = this.currentWorkflowTagIds;
 			this.$data.isTagsEditEnabled = !this.$data.isTagsEditEnabled;
 			this.$nextTick(() => {
 				this.$data.tagsEditBus.$emit('focus');
 			});
 		},
-		onTagsUpdate: function(appliedIds: string[]) {
+		onTagsUpdate(appliedIds: string[]) {
 			this.$data.appliedTagIds = appliedIds;
 		},
-		onTagsEditBlur: function() {
+		onTagsEditBlur() {
 			this.$data.isTagsEditEnabled = false; //todo save
 		},
-	}
+	},
 });
 </script>
 
