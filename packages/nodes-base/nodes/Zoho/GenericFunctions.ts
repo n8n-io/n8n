@@ -24,6 +24,7 @@ import {
 	LocationType,
 	NameType,
 	ProductDetails,
+	ResourceItems,
 	ZohoOAuth2ApiCredentials,
 } from './types';
 
@@ -58,7 +59,6 @@ export async function zohoApiRequest(
 	}
 
 	try {
-		console.log(JSON.stringify(options, null, 2));
 		return await this.helpers.requestOAuth2?.call(this, 'zohoOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -118,7 +118,7 @@ export async function handleListing(
 }
 
 // ----------------------------------------
-//            field adjusters
+//        required field adjusters
 // ----------------------------------------
 
 /**
@@ -132,6 +132,10 @@ export const adjustProductDetails = (productDetails: ProductDetails) => {
 		};
 	});
 };
+
+// ----------------------------------------
+//        additional field adjusters
+// ----------------------------------------
 
 /**
  * Place a location field's contents at the top level of the payload.
@@ -191,20 +195,24 @@ const adjustAccountIdField = adjustIdField('accountId', 'Account_Name');
 const adjustContactIdField = adjustIdField('contactId', 'Full_Name');
 const adjustDealIdField = adjustIdField('dealId', 'Deal_Name');
 
-export const adjustAccountFields = flow(
+// ----------------------------------------
+//           payload adjusters
+// ----------------------------------------
+
+export const adjustAccountPayload = flow(
 	adjustBillingAddressFields,
 	adjustShippingAddressFields,
 );
 
-export const adjustContactFields = flow(
+export const adjustContactPayload = flow(
 	adjustMailingAddressFields,
 	adjustOtherAddressFields,
 	adjustDateOfBirthField,
 );
 
-export const adjustDealFields = adjustClosingDateField;
+export const adjustDealPayload = adjustClosingDateField;
 
-export const adjustInvoiceFields = flow(
+export const adjustInvoicePayload = flow(
 	adjustBillingAddressFields,
 	adjustShippingAddressFields,
 	adjustInvoiceDateField,
@@ -212,22 +220,22 @@ export const adjustInvoiceFields = flow(
 	adjustAccountIdField,
 );
 
-export const adjustLeadFields = adjustAddressFields;
+export const adjustLeadPayload = adjustAddressFields;
 
-export const adjustPurchaseOrderFields = flow(
+export const adjustPurchaseOrderPayload = flow(
 	adjustBillingAddressFields,
 	adjustShippingAddressFields,
 	adjustDueDateField,
 	adjustPurchaseOrderDateField,
 );
 
-export const adjustQuoteFields = flow(
+export const adjustQuotePayload = flow(
 	adjustBillingAddressFields,
 	adjustShippingAddressFields,
 	adjustValidTillField,
 );
 
-export const adjustSalesOrderFields = flow(
+export const adjustSalesOrderPayload = flow(
 	adjustBillingAddressFields,
 	adjustShippingAddressFields,
 	adjustDueDateField,
@@ -236,11 +244,19 @@ export const adjustSalesOrderFields = flow(
 	adjustDealIdField,
 );
 
+export const adjustVendorPayload = adjustAddressFields;
+
 // ----------------------------------------
 //               helpers
 // ----------------------------------------
 
-const omit = (keyToOmit: string, { [keyToOmit]: _, ...omittedPropObj }) => omittedPropObj;
+/**
+ * Create a copy of an object without a specific property.
+ */
+const omit = (propertyToOmit: string, { [propertyToOmit]: _, ...remainingObject }) => remainingObject;
 
-export const toLoadOptions = (resourceItems: Array<{ [key: string]: string }>, nameProperty: NameType) =>
-	resourceItems.map((item) => ({ name: item[nameProperty], value: item.id }));
+/**
+ * Convert items in a Zoho CRM API response into n8n load options.
+ */
+export const toLoadOptions = (items: ResourceItems, nameProperty: NameType) =>
+	items.map((item) => ({ name: item[nameProperty], value: item.id }));

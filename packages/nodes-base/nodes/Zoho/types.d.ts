@@ -31,6 +31,8 @@ export type AllFields =
 
 export type ProductDetails = Array<{ id: string, quantity: number }>;
 
+export type ResourceItems = Array<{ [key: string]: string }>;
+
 // ----------------------------------------
 //         for resource loaders
 // ----------------------------------------
