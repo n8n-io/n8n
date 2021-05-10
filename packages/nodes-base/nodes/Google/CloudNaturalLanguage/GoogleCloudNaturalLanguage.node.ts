@@ -121,7 +121,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 							'analyzeEntities',
 							'analyzeEntitySentiment',
 							'analyzeSyntax',
-							'classifyText'
+							'classifyText',
 						],
 					},
 				},
@@ -140,7 +140,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 							'analyzeEntities',
 							'analyzeEntitySentiment',
 							'analyzeSyntax',
-							'classifyText'
+							'classifyText',
 						],
 						source: [
 							'content',
@@ -162,7 +162,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 							'analyzeEntities',
 							'analyzeEntitySentiment',
 							'analyzeSyntax',
-							'classifyText'
+							'classifyText',
 						],
 						source: [
 							'gcsContentUri',
@@ -181,7 +181,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 							'analyzeEntities',
 							'analyzeEntitySentiment',
 							'analyzeSyntax',
-							'classifyText'
+							'classifyText',
 						],
 					},
 				},
@@ -371,9 +371,8 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					if (options.language) {
 						body.document.language = options.language as string;
 					}
-
 					const response = await googleApiRequest.call(this, 'POST', `/v1/documents:analyzeEntities`, body);
-					responseData.push(response);
+					responseData.push.apply(responseData, response.entities);
 				}
 				if (operation === 'analyzeEntitySentiment') {
 					const source = this.getNodeParameter('source', i) as string;
@@ -401,7 +400,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					}
 
 					const response = await googleApiRequest.call(this, 'POST', `/v1/documents:analyzeEntitySentiment`, body);
-					responseData.push(response);
+					responseData.push.apply(responseData, response.entities);
 				}
 				if (operation === 'analyzeSyntax') {
 					const source = this.getNodeParameter('source', i) as string;
@@ -439,7 +438,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					const body: IData = {
 						document: {
 							type: documentType,
-						}
+						},
 					};
 
 					if (source === 'content') {
@@ -455,7 +454,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					}
 
 					const response = await googleApiRequest.call(this, 'POST', `/v1/documents:classifyText`, body);
-					responseData.push(response);
+					responseData.push.apply(responseData, response.categories);
 				}
 			}
 		}
