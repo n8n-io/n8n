@@ -34,23 +34,24 @@ export default Vue.extend({
 *,
 *::before,
 *::after { 
-  box-sizing: border-box;
+	box-sizing: border-box;
 }
 
 .input-sizer {
-  display: inline-grid;
+	display: inline-grid;
 
-  &::after,
-  input {
-    grid-area: 1 / 2;
-    font: inherit;
-    padding: 0 10px;
-  }
-  
-  &::after {
-    content: attr(data-value) ' ';
-    visibility: hidden;
-    white-space: pre-wrap;
-  }
+	&::after,
+	input {
+		grid-area: 1 / 2;
+		font: inherit;
+		padding: 0 10px;
+	}
+	
+	&::after {
+		content: attr(data-value) ' ';
+		visibility: hidden;
+		white-space: nowrap;
+		overflow: hidden;
+	}
 }
 </style>

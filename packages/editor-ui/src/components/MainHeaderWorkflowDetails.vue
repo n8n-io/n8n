@@ -2,7 +2,7 @@
 	<div class="container">
 		<InlineTextEdit 
 			:value="workflowName"
-			:isEditEnabled="isNameEditEnabled"
+			:isEditEnabled="true"
 			@toggle="onNameToggle"
 			@change="onNameChange"
 			placeholder="Enter workflow name"
@@ -151,6 +151,7 @@ export default Vue.extend({
 	font-size: 12px;
 	color: $--custom-font-very-light;
 	font-weight: 600;
+	white-space: nowrap;
 
 	&:hover {
 		color: $--color-primary;
