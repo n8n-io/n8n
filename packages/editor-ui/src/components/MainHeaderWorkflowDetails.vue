@@ -1,14 +1,17 @@
 <template>
 	<div class="container">
-		<div>
-			<div>
-				<div class="clickable name">
-					<WorkflowNameShort
-						:name="workflowName"
-					/>
-				</div>
-			</div>
-		</div>
+		<InlineTextEdit 
+			:value="workflowName"
+			:isEditEnabled="isNameEditEnabled"
+			@toggle="onNameToggle"
+			@change="onNameChange"
+			placeholder="Enter workflow name"
+		>
+			<WorkflowNameShort
+				:name="workflowName"
+			/>
+		</InlineTextEdit>
+		
 
 		<div
 			v-if="isTagsEditEnabled"
@@ -18,7 +21,7 @@
 				:currentTagIds="appliedTagIds"
 				:eventBus="tagsEditBus"
 				@onUpdate="onTagsUpdate"
-				@blur="onTagsEditBlur"
+				@blur="onTagsEditCancel"
 				placeholder="Choose or create a tag"
 				ref="dropdown"
 				class="tags-edit"
@@ -26,7 +29,7 @@
 		</div>
 		<div
 			class="add-tag clickable tags"
-			@click="onTagsPreviewClick"
+			@click="onTagsEditEnable"
 			v-else-if="currentWorkflowTagIds.length === 0"
 		>+ Add tag</div>
 		<TagsContainer
@@ -34,7 +37,7 @@
 			:tagIds="currentWorkflowTagIds"
 			:clickable="true"
 			:limit="MAX_TAGS_TO_PREVIEW"
-			@click="onTagsPreviewClick"
+			@click="onTagsEditEnable"
 			class="tags"
 		/>
 
@@ -59,6 +62,7 @@ import PushConnectionTracker from "@/components/PushConnectionTracker.vue";
 import WorkflowActivator from "@/components/WorkflowActivator.vue";
 import SaveWorkflowButton from "./SaveWorkflowButton.vue";
 import TagsDropdown from "./TagsDropdown.vue";
+import InlineTextEdit from "./InlineTextEdit.vue";
 
 const MAX_TAGS_TO_PREVIEW = 10; // random upper limit to minimize performance impact of observers
 
@@ -71,10 +75,12 @@ export default Vue.extend({
 		WorkflowActivator,
 		SaveWorkflowButton,
 		TagsDropdown,
+		InlineTextEdit,
 	},
 	data() {
 		return {
 			isTagsEditEnabled: false,
+			isNameEditEnabled: false,
 			appliedTagIds: [],
 			MAX_TAGS_TO_PREVIEW,
 			tagsEditBus: new Vue(),
@@ -95,19 +101,30 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onTagsPreviewClick() {
+		onTagsEditEnable() {
 			this.$data.appliedTagIds = this.currentWorkflowTagIds;
-			this.$data.isTagsEditEnabled = !this.$data.isTagsEditEnabled;
+			this.$data.isTagsEditEnabled = true;
+			this.$data.isNameEditEnabled = false;
 			this.$nextTick(() => {
 				this.$data.tagsEditBus.$emit('focus');
 			});
 		},
 		onTagsUpdate(appliedIds: string[]) {
 			this.$data.appliedTagIds = appliedIds;
+			// todo save
 		},
-		onTagsEditBlur() {
-			this.$data.isTagsEditEnabled = false; //todo save
+		onTagsEditCancel() {
+			this.$data.isTagsEditEnabled = false;
 		},
+		onNameToggle() {
+			this.$data.isNameEditEnabled = !this.$data.isNameEditEnabled;
+			if (this.$data.isNameEditEnabled) {
+				this.onTagsEditCancel();
+			}
+		},
+		onNameChange() {
+			// todo save
+		}
 	},
 });
 </script>

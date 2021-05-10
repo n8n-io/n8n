@@ -1,5 +1,5 @@
 <template>
-	<span>
+	<span :title="name">
 		{{ shortenedName }}
 	</span>
 </template>
