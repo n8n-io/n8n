@@ -1,25 +1,22 @@
 <template>
 	<div class="container">
-		<div class="details">
-			<span>
-				<div>
-					<div class="clickable name">
-						<WorkflowNameShort
-							:name="workflowName"
-						/>
-					</div>
+		<div>
+			<div>
+				<div class="clickable name">
+					<WorkflowNameShort
+						:name="workflowName"
+					/>
 				</div>
-			</span>
-
-			<span class="hidden-xs-only tags" >
-				<span
-					direction="vertical"
-					v-if="currentWorkflowTagIds.length === 0"
-				>+ Add tag</span>
-
-				<TagsContainerResponsive :tagIds="currentWorkflowTagIds" :limit="1000" />
-			</span>
+			</div>
 		</div>
+
+		<div
+			class="add-tag"
+			direction="vertical"
+			v-if="currentWorkflowTagIds.length === 0"
+		>+ Add tag</div>
+
+		<TagsContainer :tagIds="currentWorkflowTagIds" class="tags" />
 
 		<PushConnectionTracker class="actions">
 			<template>
@@ -37,16 +34,15 @@
 import Vue from "vue";
 import { mapGetters } from "vuex";
 import WorkflowNameShort from "@/components/WorkflowNameShort.vue";
-import TagsContainerResponsive from "@/components/TagsContainerResponsive.vue";
+import TagsContainer from "@/components/TagsContainer.vue";
 import PushConnectionTracker from "@/components/PushConnectionTracker.vue";
 import WorkflowActivator from "@/components/WorkflowActivator.vue";
 import SaveWorkflowButton from "./SaveWorkflowButton.vue";
-import TagsContainer from "./TagsContainer.vue";
 
 export default Vue.extend({
 	name: "WorkflowDetails",
 	components: {
-		TagsContainerResponsive,
+		TagsContainer,
 		PushConnectionTracker,
 		WorkflowNameShort,
 		WorkflowActivator,
@@ -73,11 +69,7 @@ export default Vue.extend({
 .container {
 	width: 100%;
 	display: flex;
-}
-
-.details {
 	margin-left: $--header-spacing;
-	flex: 1;
 }
 
 .name {
@@ -91,7 +83,21 @@ export default Vue.extend({
 	font-size: 13px;
 }
 
-.actions,.details {
+.add-tag {
+	font-size: 12px;
+	color: $--custom-font-very-light;
+	font-weight: 600;
+
+	&:hover {
+		color: $--color-primary;
+	}
+}
+
+.tags {
+	flex: 1;
+}
+
+.actions,.container {
 	display: flex;
 	align-items: center;
 

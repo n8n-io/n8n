@@ -232,6 +232,10 @@ $--max-input-height: 60px;
 		box-sizing: border-box;
 	}
 
+	.el-tag {
+		white-space: normal;
+	}
+
 	.el-scrollbar {
 		position: relative;
 		max-height: $--dropdown-height;

@@ -113,7 +113,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
-import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { NEW_WORKFLOW_NAME, NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -1396,6 +1396,7 @@ export default mixins(
 			},
 			async newWorkflow (): Promise<void> {
 				await this.resetWorkspace();
+				this.$store.commit('setWorkflowName', {newName: NEW_WORKFLOW_NAME, setStateDirty: false});
 
 				// Create start node
 				const defaultNodes = [

@@ -7,3 +7,4 @@ export const MAX_TAG_NAME_LENGTH = 24;
 export const SAVE_AS_MODAL_KEY = 'saveAs';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const WORKLOW_OPEN_MODAL_KEY = 'workflowOpen';
+export const NEW_WORKFLOW_NAME = 'My workflow';
