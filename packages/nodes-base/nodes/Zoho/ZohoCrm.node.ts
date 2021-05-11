@@ -8,6 +8,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -23,6 +25,7 @@ import {
 	adjustVendorPayload,
 	handleListing,
 	throwOnEmptyUpdate,
+	throwOnErrorStatus,
 	toLoadOptions,
 	zohoApiRequest,
 	zohoApiRequestAllItems,
@@ -1001,7 +1004,7 @@ export class ZohoCrm implements INodeType {
 
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
-				: returnData.push(...responseData.data);
+				: returnData.push(responseData);
 
 		}
 

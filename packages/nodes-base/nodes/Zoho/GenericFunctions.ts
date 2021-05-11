@@ -60,7 +60,19 @@ export async function zohoApiRequest(
 	}
 
 	try {
-		return await this.helpers.requestOAuth2?.call(this, 'zohoOAuth2Api', options);
+		let responseData = await this.helpers.requestOAuth2?.call(this, 'zohoOAuth2Api', options);
+
+		if (responseData === undefined) return [];
+
+		throwOnErrorStatus.call(this, responseData);
+
+		const operation = this.getNodeParameter('operation', 0) as string;
+
+		if (['create', 'delete', 'update', 'get'].includes(operation)) {
+			responseData = responseData.data[0];
+		}
+
+		return responseData;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -85,9 +97,9 @@ export async function zohoApiRequestAllItems(
 
 	do {
 		responseData = await zohoApiRequest.call(this, method, endpoint, body, qs, uri);
-		if (!responseData) return [];
+		if (Array.isArray(responseData) && !responseData.length) return returnData;
+		returnData.push(...responseData.data);
 		uri = responseData.info.more_records;
-		returnData.push.apply(returnData, responseData['data']);
 		qs.page++;
 	} while (
 		responseData.info.more_records !== undefined &&
@@ -124,6 +136,15 @@ export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: string) {
 		this.getNode(),
 		`Please enter at least one field to update for the ${resource}.`,
 	);
+}
+
+export function throwOnErrorStatus(
+	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
+	responseData: { data?: Array<{ status: string, message: string }> },
+) {
+	if (responseData?.data?.[0].status === 'error') {
+		throw new NodeOperationError(this.getNode(), responseData as Error);
+	}
 }
 
 // ----------------------------------------
