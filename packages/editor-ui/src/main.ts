@@ -105,7 +105,7 @@ import { store } from './store';
 Vue.use(Vue2TouchEvents);
 
 Vue.use(ElementUI, { locale });
-Vue.use(vClickOutside)
+Vue.use(vClickOutside);
 
 library.add(faAngleDoubleLeft);
 library.add(faAngleDown);

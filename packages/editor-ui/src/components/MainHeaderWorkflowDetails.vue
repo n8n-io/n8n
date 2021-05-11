@@ -148,7 +148,7 @@ export default mixins(workflowHelpers).extend({
 
 			const saved = await this.saveCurrentWorkflow({
 				name,
-				successMessage: 'Workflow name has been updated'
+				successMessage: 'Workflow name has been updated',
 			});
 			if (saved) {
 				this.$data.isNameEditEnabled = false;
