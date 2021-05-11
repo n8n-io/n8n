@@ -367,7 +367,7 @@ export const workflowHelpers = mixins(
 				return workflow.expression.getParameterValue(expression, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', true);
 			},
 
-			async saveCurrentWorkflow({name, tags}: {name?: string, tags?: string[]} = {}): boolean {
+			async saveCurrentWorkflow({name, tags}: {name?: string, tags?: string[]} = {}): Promise<boolean> {
 				const currentWorkflow = this.$route.params.name;
 				if (!currentWorkflow) {
 					return this.saveAsNewWorkflow({name, tags});
@@ -396,7 +396,7 @@ export const workflowHelpers = mixins(
 					if (tags) {
 						const createdTags = (workflowData.tags || []) as ITag[];
 						const tagIds = createdTags.map((tag: ITag): string => tag.id);
-						this.$store.commit('setWorkflowTagIds', tagIds || [])
+						this.$store.commit('setWorkflowTagIds', tagIds || []);
 					}
 
 					this.$store.commit('removeActiveAction', 'workflowSaving');
@@ -421,7 +421,7 @@ export const workflowHelpers = mixins(
 				}
 			},
 
-			async saveAsNewWorkflow ({name, tags}: {name?: string, tags?: string[]} = {}): boolean {
+			async saveAsNewWorkflow ({name, tags}: {name?: string, tags?: string[]} = {}): Promise<boolean> {
 				try {
 					this.$store.commit('addActiveAction', 'workflowSaving');
 

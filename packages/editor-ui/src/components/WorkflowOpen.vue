@@ -29,7 +29,10 @@
 					<el-table-column property="name" label="Name" class-name="clickable" sortable>
 						<template slot-scope="scope">
 							<div class="name" :key="scope.row.id">
-								<span>{{scope.row.name}}</span> <TagsContainer class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="2" />
+								<span>{{scope.row.name}}</span>
+								<div class="hidden-sm-and-down tags" >
+									<TagsContainer :tagIds="getIds(scope.row.tags)" :limit="2" />
+								</div>
 							</div>
 						</template>
 					</el-table-column>
@@ -220,8 +223,20 @@ export default mixins(
 	}
 }
 
-.search-table .name span {
-	font-weight: 400;
-	margin-right: 10px;
+.search-table .name {
+	display: flex;
+
+	.tags {
+		flex: 1;
+
+		.tags-container {
+			width: 100%;
+		}
+	}
+
+	span {
+		font-weight: 400;
+		margin-right: 10px;
+	}
 }
 </style>
