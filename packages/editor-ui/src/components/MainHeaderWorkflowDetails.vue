@@ -118,12 +118,13 @@ export default Vue.extend({
 		onNameToggle() {
 			this.$data.isNameEditEnabled = !this.$data.isNameEditEnabled;
 			if (this.$data.isNameEditEnabled) {
+				// @ts-ignore
 				this.onTagsEditCancel();
 			}
 		},
 		onNameChange() {
 			// todo save
-		}
+		},
 	},
 });
 </script>

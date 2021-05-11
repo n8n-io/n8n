@@ -26,10 +26,10 @@ export default Vue.extend({
 	},
 	methods: {
 		onInput() {
-			this.$emit('input', this.$refs.input.value);
+			this.$emit('input', (this.$refs.input as HTMLInputElement).value);
 		},
 		onChange() {
-			this.$emit('change', this.$refs.input.value);
+			this.$emit('change', (this.$refs.input as HTMLInputElement).value);
 		},
 	},
 });

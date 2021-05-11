@@ -36,7 +36,7 @@ export default Vue.extend({
 			this.$emit('toggle');
 		},
 		onChange() {
-			this.$emit('change', this.newValue)
+			this.$emit('change', this.newValue);
 			this.$emit('toggle');
 		},
 	},
