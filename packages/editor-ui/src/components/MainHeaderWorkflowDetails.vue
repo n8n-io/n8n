@@ -113,7 +113,10 @@ export default mixins(workflowHelpers).extend({
 		async onTagsUpdate(tags: string[]) {
 			this.$data.appliedTagIds = tags;
 
-			await this.saveCurrentWorkflow({ tags });
+			await this.saveCurrentWorkflow({ 
+				tags,
+				successMessage: 'Workflow tags have been updated',
+			});
 		},
 		onTagsEditCancel() {
 			this.$data.isTagsEditEnabled = false;
@@ -143,7 +146,10 @@ export default mixins(workflowHelpers).extend({
 				return;
 			}
 
-			const saved = await this.saveCurrentWorkflow({name});
+			const saved = await this.saveCurrentWorkflow({
+				name,
+				successMessage: 'Workflow name has been updated'
+			});
 			if (saved) {
 				this.$data.isNameEditEnabled = false;
 			}
