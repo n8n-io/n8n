@@ -16,27 +16,22 @@ export const monitorOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new monitor.',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a monitor.',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all monitors.',
 			},
 			{
 				name: 'Reset',
 				value: 'reset',
-				description: 'Reset a monitor.',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a monitor.',
 			},
 		],
 		default: 'getAll',
@@ -233,7 +228,7 @@ export const monitorFields = [
 				name: 'monitors',
 				type: 'string',
 				default: '',
-				description: 'Specify monitors IDs separated with dash, eg 15830-32696-83920.',
+				description: 'Specify monitors IDs separated with dash, e.g. 15830-32696-83920.',
 			},
 			{
 				displayName: 'Response Times',
@@ -285,7 +280,7 @@ export const monitorFields = [
 				default: '',
 				options: [
 					{
-						name: 'HTTP(s)',
+						name: 'HTTP(S)',
 						value: 1,
 					},
 					{
@@ -355,21 +350,21 @@ export const monitorFields = [
 				description: 'The friendly name of the monitor.',
 			},
 			{
-				displayName: 'Http Username',
+				displayName: 'HTTP Username',
 				name: 'http_username',
 				type: 'string',
 				default: '',
 				description: 'Specify the username used for password-protected web pages.',
 			},
 			{
-				displayName: 'Http Password',
+				displayName: 'HTTP Password',
 				name: 'http_password',
 				type: 'string',
 				default: '',
 				description: 'Specify the password used for password-protected web pages.',
 			},
 			{
-				displayName: 'Http Auth Type',
+				displayName: 'HTTP Auth Type',
 				name: 'http_auth_type',
 				type: 'options',
 				default: '',
@@ -386,7 +381,7 @@ export const monitorFields = [
 				description: 'Specify the authentication type for password-protected web pages.',
 			},
 			{
-				displayName: 'Http Method',
+				displayName: 'HTTP Method',
 				name: 'http_method',
 				type: 'options',
 				default: '',
@@ -443,11 +438,11 @@ export const monitorFields = [
 				default: '',
 				options: [
 					{
-						name: 'paused',
+						name: 'Paused',
 						value: 0,
 					},
 					{
-						name: 'resume',
+						name: 'Resume',
 						value: 1,
 					},
 				],

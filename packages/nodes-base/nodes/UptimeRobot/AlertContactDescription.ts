@@ -16,22 +16,18 @@ export const alertContactOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new alert contact.',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a alert contact.',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all alert contacts.',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a alert contact.',
 			},
 		],
 		default: 'getAll',
@@ -227,7 +223,7 @@ export const alertContactFields = [
 				name: 'alert_contacts',
 				type: 'string',
 				default: '',
-				description: 'Specify alert contacts IDs separated with dash, eg 236-1782-4790.',
+				description: 'Specify alert contacts IDs separated with dash, e.g. 236-1782-4790.',
 			},
 			{
 				displayName: 'Offset',

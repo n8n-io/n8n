@@ -6,8 +6,8 @@ import {
 
 export class UptimeRobotApi implements ICredentialType {
 	name = 'uptimeRobotApi';
-	displayName = 'UptimeRobotApi';
-	documentationUrl = 'uptimerobot';
+	displayName = 'Uptime Robot Api';
+	documentationUrl = 'uptimeRobot';
 	properties = [
 		{
 			displayName: 'API Key',

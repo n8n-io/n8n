@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const publicStatusPagesOperations = [
+export const maintenanceWindowOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -8,7 +8,7 @@ export const publicStatusPagesOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'mwindows',
 				],
 			},
 		},
@@ -16,22 +16,18 @@ export const publicStatusPagesOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new public status page.',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a public status page.',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all public status pages.',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a public status page.',
 			},
 		],
 		default: 'getAll',
@@ -39,10 +35,28 @@ export const publicStatusPagesOperations = [
 	},
 ] as INodeProperties[];
 
-export const publicStatusPagesFields = [
+export const maintenanceWindowFields = [
 	/* -------------------------------------------------------------------------- */
-	/*                            publicStatusPage:create                         */
+	/*                                maintenanceWindows:create                    */
 	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Duration',
+		name: 'duration',
+		type: 'number',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'mwindows',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		description: 'The maintenance window activation period (minutes).',
+	},
 	{
 		displayName: 'Friendly Name',
 		name: 'friendly_name',
@@ -52,93 +66,89 @@ export const publicStatusPagesFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'mwindows',
 				],
 				operation: [
 					'create',
 				],
 			},
 		},
-		description: 'The friendly name of the status page.',
+		description: 'The friendly name of the maintenance window.',
 	},
 	{
-		displayName: 'Monitors',
-		name: 'monitors',
+		displayName: 'Start Time',
+		name: 'start_time',
+		type: 'dateTime',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'mwindows',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		description: 'The maintenance window start datetime.',
+	},
+	{
+		displayName: 'Type',
+		name: 'type',
+		type: 'options',
+		required: true,
+		default: '',
+		options: [
+			{
+				name: 'Once',
+				value: 1,
+			},
+			{
+				name: 'Daily',
+				value: 2,
+			},
+			{
+				name: 'Weekly',
+				value: 3,
+			},
+			{
+				name: 'Monthly',
+				value: 4,
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'mwindows',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		description: 'The type of the maintenance window.',
+	},
+	{
+		displayName: 'Value',
+		name: 'value',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'mwindows',
 				],
 				operation: [
 					'create',
 				],
 			},
 		},
-		description: 'Specify monitors IDs  be displayed in status page (the values are seperated with a dash (-) or 0 for all monitors).',
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'psp',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Custom Domain',
-				name: 'custom_domain',
-				type: 'string',
-				default: '',
-				description: 'The domain or subdomain that the status page will run on.',
-			},
-			{
-				displayName: 'Password',
-				name: 'password',
-				type: 'string',
-				default: '',
-				description: 'The password for the status page.',
-			},
-			{
-				displayName: 'Sort',
-				name: 'sort',
-				type: 'options',
-				default: '',
-				options: [
-					{
-						name: 'friendly name (a-z)',
-						value: 1,
-					},
-					{
-						name: 'friendly name (z-a)',
-						value: 2,
-					},
-					{
-						name: 'status (up-down-paused)',
-						value: 3,
-					},
-					{
-						name: 'status (down-up-paused)',
-						value: 4,
-					},
-				],
-				description: 'The sorting of the status page',
-			},
-		],
+		description: 'The correspondent value for the maintenance window type.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                            publicStatusPage:delete                         */
+	/*                                maintenanceWindows:delete                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
@@ -149,17 +159,17 @@ export const publicStatusPagesFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'mwindows',
 				],
 				operation: [
 					'delete',
 				],
 			},
 		},
-		description: 'The ID of the public status page.',
+		description: 'The ID of the maintenance window.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                            publicStatusPage:getAll                         */
+	/*                                maintenanceWindows:getAll                   */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -168,7 +178,7 @@ export const publicStatusPagesFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'mwindows',
 				],
 				operation: [
 					'getAll',
@@ -185,7 +195,7 @@ export const publicStatusPagesFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'mwindows',
 				],
 				operation: [
 					'getAll',
@@ -211,7 +221,7 @@ export const publicStatusPagesFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'mwindows',
 				],
 				operation: [
 					'getAll',
@@ -220,11 +230,11 @@ export const publicStatusPagesFields = [
 		},
 		options: [
 			{
-				displayName: 'Public Status Pages',
-				name: 'psps',
+				displayName: 'Maintenance Window',
+				name: 'mwindows',
 				type: 'string',
 				default: '',
-				description: 'Specify public status pages IDs separated with dash, eg 236-1782-4790.',
+				description: 'Specify maintenance windows IDs separated with dash, e.g. 236-1782-4790.',
 			},
 			{
 				displayName: 'Offset',
@@ -236,7 +246,7 @@ export const publicStatusPagesFields = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                            publicStatusPage:update                         */
+	/*                                maintenanceWindows:update                    */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
@@ -247,14 +257,32 @@ export const publicStatusPagesFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'mwindows',
 				],
 				operation: [
 					'update',
 				],
 			},
 		},
-		description: 'The ID of the public status page.',
+		description: 'The ID of the maintenance window.',
+	},
+	{
+		displayName: 'Duration',
+		name: 'duration',
+		type: 'number',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'mwindows',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		description: 'The maintenance window activation period (minutes).',
 	},
 	{
 		displayName: 'Update Fields',
@@ -265,7 +293,7 @@ export const publicStatusPagesFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'mwindows',
 				],
 				operation: [
 					'update',
@@ -274,57 +302,50 @@ export const publicStatusPagesFields = [
 		},
 		options: [
 			{
-				displayName: 'Custom Domain',
-				name: 'custom_domain',
-				type: 'string',
-				default: '',
-				description: 'The domain or subdomain that the status page will run on.',
-			},
-			{
 				displayName: 'Friendly Name',
 				name: 'friendly_name',
 				type: 'string',
 				default: '',
-				description: 'The friendly name of the status page.',
+				description: 'The friendly name of the maintenance window.',
 			},
 			{
-				displayName: 'Monitors',
-				name: 'monitors',
-				type: 'string',
+				displayName: 'Start Time',
+				name: 'start_time',
+				type: 'dateTime',
 				default: '',
-				description: 'Specify monitors IDs  be displayed in status page (the values are seperated with a dash (-) or 0 for all monitors).',
+				description: 'The maintenance window start datetime.',
 			},
 			{
-				displayName: 'Password',
-				name: 'password',
-				type: 'string',
-				default: '',
-				description: 'The password for the status page.',
-			},
-			{
-				displayName: 'Sort',
-				name: 'sort',
+				displayName: 'Type',
+				name: 'type',
 				type: 'options',
 				default: '',
 				options: [
 					{
-						name: 'friendly name (a-z)',
+						name: 'Once',
 						value: 1,
 					},
 					{
-						name: 'friendly name (z-a)',
+						name: 'Daily',
 						value: 2,
 					},
 					{
-						name: 'status (up-down-paused)',
+						name: 'Weekly',
 						value: 3,
 					},
 					{
-						name: 'status (down-up-paused)',
+						name: 'Monthly',
 						value: 4,
 					},
 				],
-				description: 'The sorting of the status page',
+				description: 'The type of the maintenance window.',
+			},
+			{
+				displayName: 'Value',
+				name: 'value',
+				type: 'string',
+				default: '',
+				description: 'The correspondent value for the maintenance window type.',
 			},
 		],
 	},
