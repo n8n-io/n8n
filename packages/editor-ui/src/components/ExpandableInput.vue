@@ -10,6 +10,7 @@
 			@blur="onBlur"
 			@keydown.enter="onEnter"
 			@keydown.esc="onEscape"
+			v-click-outside="onBlur"
 			ref="input"
 		/>
 	</div>
