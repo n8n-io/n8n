@@ -33,7 +33,7 @@ import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
 
 // random upper limit if none is set to minimize performance impact of observers
-const DEFAULT_MAX_TAGS_LIMIT = 10;
+const DEFAULT_MAX_TAGS_LIMIT = 20;
 
 export default Vue.extend({
 	components: { IntersectionObserver, IntersectionObserved },
