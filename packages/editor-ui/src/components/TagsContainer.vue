@@ -32,6 +32,9 @@ import { ITag } from '@/Interface';
 import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
 
+// random upper limit if none is set to minimize performance impact of observers
+const DEFAULT_MAX_TAGS_LIMIT = 10;
+
 export default Vue.extend({
 	components: { IntersectionObserver, IntersectionObserved },
 	name: 'TagsContainer',
@@ -50,7 +53,8 @@ export default Vue.extend({
 			const tags = this.$props.tagIds.map((tagId: string) => this.$store.getters['tags/getTagById'](tagId))
 				.filter(Boolean); // todo update store
 
-			const toDisplay = this.$props.limit ? tags.slice(0, this.$props.limit) : tags;
+			const limit = this.$props.limit || DEFAULT_MAX_TAGS_LIMIT;
+			const toDisplay = limit ? tags.slice(0, limit) : tags;
 
 			if (this.visibleCount < tags.length) {
 				const hidden = tags.slice(this.visibleCount);

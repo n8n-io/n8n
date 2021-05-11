@@ -12,7 +12,6 @@
 				:name="workflowName"
 			/>
 		</InlineTextEdit>
-		
 
 		<div
 			v-if="isTagsEditEnabled"
@@ -37,7 +36,6 @@
 			v-else
 			:tagIds="currentWorkflowTagIds"
 			:clickable="true"
-			:limit="MAX_TAGS_TO_PREVIEW"
 			@click="onTagsEditEnable"
 			class="tags"
 		/>
@@ -67,8 +65,6 @@ import SaveWorkflowButton from "./SaveWorkflowButton.vue";
 import TagsDropdown from "./TagsDropdown.vue";
 import InlineTextEdit from "./InlineTextEdit.vue";
 
-const MAX_TAGS_TO_PREVIEW = 10; // random upper limit to minimize performance impact of observers
-
 export default Vue.extend({
 	name: "WorkflowDetails",
 	components: {
@@ -85,7 +81,6 @@ export default Vue.extend({
 			isTagsEditEnabled: false,
 			isNameEditEnabled: false,
 			appliedTagIds: [],
-			MAX_TAGS_TO_PREVIEW,
 			tagsEditBus: new Vue(),
 			MAX_WORKFLOW_NAME_LENGTH,
 		};

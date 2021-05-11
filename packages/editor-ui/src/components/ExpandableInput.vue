@@ -1,6 +1,6 @@
 <template>
 	<!-- mock el-input element to apply styles -->
-	<div class="input-sizer el-input" :data-value="value">
+	<div class="input-sizer el-input" :data-value="hiddenValue">
 		<input
 			class="el-input__inner"
 			:value="value"
@@ -19,6 +19,11 @@ import Vue from "vue";
 export default Vue.extend({
 	name: "InlineTextEdit",
 	props: ['value', 'placeholder', 'maxlength'],
+	computed: {
+		hiddenValue() {
+			return (this.value as string).replace(/\s/g, '.'); // force input to expand on space chars
+		},
+	},
 	methods: {
 		onInput() {
 			this.$emit('input', this.$refs.input.value);
