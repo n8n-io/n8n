@@ -61,8 +61,8 @@ import {
 
 export class ZohoCrm implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Zoho',
-		name: 'zoho',
+		displayName: 'Zoho CRM',
+		name: 'zohoCrm',
 		icon: 'file:zoho.svg',
 		group: ['transform'],
 		version: 1,
