@@ -381,3 +381,12 @@ export function throwDuplicateEntryError(error: Error) {
 
 	throw new ResponseHelper.ResponseError(errorMessage, undefined, 400);
 }
+
+export type WorkflowNameRequest = Express.Request & {
+	query: {
+		name?: string;
+		offset?: string;
+	}
+};
+
+export const DEFAULT_NEW_WORKFLOW_NAME = 'My Workflow';

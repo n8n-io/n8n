@@ -113,6 +113,7 @@ import { Registry } from 'prom-client';
 import * as TagHelpers from './TagHelpers';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { DEFAULT_NEW_WORKFLOW_NAME, WorkflowNameRequest } from './WorkflowHelpers';
 
 class App {
 
@@ -568,9 +569,12 @@ class App {
 		}));
 
 
-		this.app.get(`/${this.restEndpoint}/workflows/new`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ name: string } | undefined> => {
-			if (req.query.name) {
-				const DEFAULT_NEW_WORKFLOW_NAME = 'My Workflow'; // TODO: Place constant elsewhere?
+		this.app.get(`/${this.restEndpoint}/workflows/new`, ResponseHelper.send(async (req: WorkflowNameRequest, res: express.Response): Promise<{ name: string }> => {
+			const { name, offset } = req.query;
+
+			// return default workflow name
+			// increment if other default workflow names exist
+			if (!name && !offset) {
 
 				const count = await Db.collections.Workflow!.count({
 					name: Like(`${DEFAULT_NEW_WORKFLOW_NAME}%`),
@@ -579,15 +583,26 @@ class App {
 				return count === 0
 					? { name: DEFAULT_NEW_WORKFLOW_NAME }
 					: { name: `${DEFAULT_NEW_WORKFLOW_NAME} ${count + 1}` };
+
+			// return incoming name with offset
+			// increment if workflow name with offset exists
+			} else if (name && offset) {
+
+				const count = await Db.collections.Workflow!.count({
+					name: Like(`${name}%`),
+				 });
+
+				return count === 0
+					? { name: `${name} ${offset}` }
+					: { name: `${name} ${count + 1}` };
+
 			}
 
-			if (req.query.id) {
-				const workflow = await Db.collections.Workflow!.findOne({ where: { id: req.query.id } });
-				if (workflow === undefined) return undefined;
-				return { name: `${workflow.name} copy` };
-			}
-
-			throw new ResponseHelper.ResponseError('Query string parameter "name" or "id" required.', undefined, 400);
+			throw new ResponseHelper.ResponseError(
+				'Query string params "name" and "offset" must be either both present or both absent.',
+				undefined,
+				400
+			);
 		}));
 
 
