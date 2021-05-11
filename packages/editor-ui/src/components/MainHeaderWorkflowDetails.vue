@@ -189,6 +189,7 @@ export default mixins(workflowHelpers).extend({
 
 .tags {
 	flex: 1;
+	padding-right: 10px;
 }
 
 .tags-edit {

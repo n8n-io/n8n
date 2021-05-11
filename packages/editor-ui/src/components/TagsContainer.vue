@@ -118,6 +118,9 @@ export default Vue.extend({
 
 			> span {
 				position: fixed;
+				max-width: 40px;
+				text-overflow: ellipsis;
+				overflow: hidden;
 			}
 		}
 	}
