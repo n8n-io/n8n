@@ -75,8 +75,6 @@ export default mixins(externalHooks).extend({
 	methods: {
 		valueChanged (value: string) {
 			this.$emit('valueChanged', value);
-			// console.log('AHSAN valueChanged');
-			// console.log(value);
 		},
 
 		closeDialog () {
