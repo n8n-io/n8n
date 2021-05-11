@@ -568,16 +568,26 @@ class App {
 		}));
 
 
-		this.app.get(`/${this.restEndpoint}/workflows/new`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ name: string }> => {
-			const DEFAULT_NEW_WORKFLOW_NAME = 'My Workflow'; // TODO: Place constant elsewhere?
+		this.app.get(`/${this.restEndpoint}/workflows/new`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<{ name: string } | undefined> => {
+			if (req.query.name) {
+				const DEFAULT_NEW_WORKFLOW_NAME = 'My Workflow'; // TODO: Place constant elsewhere?
 
-			const count = await Db.collections.Workflow!.count({
-				name: Like(`${DEFAULT_NEW_WORKFLOW_NAME}%`),
-			});
+				const count = await Db.collections.Workflow!.count({
+					name: Like(`${DEFAULT_NEW_WORKFLOW_NAME}%`),
+				});
 
-			return count === 0
-				? { name: DEFAULT_NEW_WORKFLOW_NAME }
-				: { name: `${DEFAULT_NEW_WORKFLOW_NAME} ${count + 1}` };
+				return count === 0
+					? { name: DEFAULT_NEW_WORKFLOW_NAME }
+					: { name: `${DEFAULT_NEW_WORKFLOW_NAME} ${count + 1}` };
+			}
+
+			if (req.query.id) {
+				const workflow = await Db.collections.Workflow!.findOne({ where: { id: req.query.id } });
+				if (workflow === undefined) return undefined;
+				return { name: `${workflow.name} copy` };
+			}
+
+			throw new ResponseHelper.ResponseError('Query string parameter "name" or "id" required.', undefined, 400);
 		}));
 
 
