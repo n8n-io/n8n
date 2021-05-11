@@ -981,7 +981,7 @@ export class ZohoCrm implements INodeType {
 
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
-				: returnData.push(responseData);
+				: returnData.push(...responseData.data);
 
 		}
 
