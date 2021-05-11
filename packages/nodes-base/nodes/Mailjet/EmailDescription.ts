@@ -31,9 +31,9 @@ export const emailOperations = [
 
 export const emailFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                email:send                                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                email:send                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'From Email',
 		name: 'fromEmail',
@@ -163,10 +163,17 @@ export const emailFields = [
 				default: 2,
 			},
 			{
+				displayName: 'Reply To',
+				name: 'replyTo',
+				type: 'string',
+				description: 'The reply-to email address. Multiple ones can be separated by comma.',
+				default: '',
+			},
+			{
 				displayName: 'Template Language',
 				name: 'templateLanguage',
 				type: 'boolean',
-				default: true,
+				default: false,
 			},
 			{
 				displayName: 'Track Clicks',
@@ -258,9 +265,9 @@ export const emailFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                email:sendTemplate                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                email:sendTemplate                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'From Email',
 		name: 'fromEmail',
@@ -301,7 +308,10 @@ export const emailFields = [
 	{
 		displayName: 'Template ID',
 		name: 'templateId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTemplates',
+		},
 		required: true,
 		default: '',
 		displayOptions: {
@@ -336,7 +346,7 @@ export const emailFields = [
 				displayName: 'Bcc Email',
 				name: 'bccEmail',
 				type: 'string',
-				description: 'Bcc Recipients of the email separated by ,.',
+				description: 'BCC Recipients of the email separated by ,.',
 				default: '',
 			},
 			{
@@ -357,6 +367,13 @@ export const emailFields = [
 				name: 'priority',
 				type: 'number',
 				default: 2,
+			},
+			{
+				displayName: 'Reply To',
+				name: 'replyTo',
+				type: 'string',
+				description: 'The reply-to email address. Multiple ones can be separated by comma.',
+				default: '',
 			},
 			{
 				displayName: 'Subject',
@@ -382,7 +399,7 @@ export const emailFields = [
 				displayName: 'Template Language',
 				name: 'templateLanguage',
 				type: 'boolean',
-				default: true,
+				default: false,
 			},
 		],
 	},
