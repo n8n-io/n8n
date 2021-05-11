@@ -11,6 +11,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -116,6 +117,13 @@ export async function handleListing(
 	const limit = this.getNodeParameter('limit', 0) as number;
 
 	return responseData.slice(0, limit);
+}
+
+export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: string) {
+	throw new NodeOperationError(
+		this.getNode(),
+		`Please enter at least one field to update for the ${resource}.`,
+	);
 }
 
 // ----------------------------------------

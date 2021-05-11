@@ -22,6 +22,7 @@ import {
 	adjustSalesOrderPayload,
 	adjustVendorPayload,
 	handleListing,
+	throwOnEmptyUpdate,
 	toLoadOptions,
 	zohoApiRequest,
 	zohoApiRequestAllItems,
@@ -267,6 +268,8 @@ export class ZohoCrm implements INodeType {
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustAccountPayload(updateFields));
+						} else {
+							throwOnEmptyUpdate.call(this, resource);
 						}
 
 						const accountId = this.getNodeParameter('accountId', i);
@@ -343,6 +346,8 @@ export class ZohoCrm implements INodeType {
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustContactPayload(updateFields));
+						} else {
+							throwOnEmptyUpdate.call(this, resource);
 						}
 
 						const contactId = this.getNodeParameter('contactId', i);
@@ -418,6 +423,8 @@ export class ZohoCrm implements INodeType {
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustDealPayload(updateFields));
+						} else {
+							throwOnEmptyUpdate.call(this, resource);
 						}
 
 						const dealId = this.getNodeParameter('dealId', i);
@@ -496,6 +503,8 @@ export class ZohoCrm implements INodeType {
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustInvoicePayload(updateFields));
+						} else {
+							throwOnEmptyUpdate.call(this, resource);
 						}
 
 						const invoiceId = this.getNodeParameter('invoiceId', i);
@@ -571,6 +580,8 @@ export class ZohoCrm implements INodeType {
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustLeadPayload(updateFields));
+						} else {
+							throwOnEmptyUpdate.call(this, resource);
 						}
 
 						const leadId = this.getNodeParameter('leadId', i);
@@ -646,6 +657,8 @@ export class ZohoCrm implements INodeType {
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, updateFields);
+						} else {
+							throwOnEmptyUpdate.call(this, resource);
 						}
 
 						const productId = this.getNodeParameter('productId', i);
@@ -726,6 +739,8 @@ export class ZohoCrm implements INodeType {
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustPurchaseOrderPayload(updateFields));
+						} else {
+							throwOnEmptyUpdate.call(this, resource);
 						}
 
 						const purchaseOrderId = this.getNodeParameter('purchaseOrderId', i);
@@ -803,6 +818,8 @@ export class ZohoCrm implements INodeType {
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustQuotePayload(updateFields));
+						} else {
+							throwOnEmptyUpdate.call(this, resource);
 						}
 
 						const quoteId = this.getNodeParameter('quoteId', i);
@@ -882,6 +899,8 @@ export class ZohoCrm implements INodeType {
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustSalesOrderPayload(updateFields));
+						} else {
+							throwOnEmptyUpdate.call(this, resource);
 						}
 
 						const salesOrderId = this.getNodeParameter('salesOrderId', i);
@@ -958,6 +977,8 @@ export class ZohoCrm implements INodeType {
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustVendorPayload(updateFields));
+						} else {
+							throwOnEmptyUpdate.call(this, resource);
 						}
 
 						const vendorId = this.getNodeParameter('vendorId', i);
