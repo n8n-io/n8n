@@ -5,6 +5,7 @@
 			:placeholder="placeholder"
 			:value="newValue"
 			:maxlength="maxLength"
+			:autofocus="true"
 			@change="onChange"
 			@input="onInput"
 		/>

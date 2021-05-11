@@ -1,6 +1,6 @@
 <template>
 	<!-- mock el-input element to apply styles -->
-	<div class="input-sizer el-input" :data-value="hiddenValue">
+	<div class="el-input" :data-value="hiddenValue">
 		<input
 			class="el-input__inner"
 			:value="value"
@@ -18,7 +18,13 @@ import Vue from "vue";
 
 export default Vue.extend({
 	name: "InlineTextEdit",
-	props: ['value', 'placeholder', 'maxlength'],
+	props: ['value', 'placeholder', 'maxlength', 'autofocus'],
+	mounted() {
+		const elem = this as Vue;
+		if (elem.$props.autofocus && elem.$refs.input) {
+			(elem.$refs.input as HTMLInputElement).focus(); // autofocus on input element is not reliable
+		}
+	},
 	computed: {
 		hiddenValue() {
 			return (this.value as string).replace(/\s/g, '.'); // force input to expand on space chars
@@ -37,12 +43,15 @@ export default Vue.extend({
 
 <style lang="scss" scoped>
 *,
-*::before,
 *::after { 
 	box-sizing: border-box;
 }
 
-.input-sizer {
+.el-input input.el-input__inner {
+	border: 1px solid $--color-primary;
+}
+
+div {
 	display: inline-grid;
 
 	&::after,

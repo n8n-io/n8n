@@ -205,7 +205,7 @@ $--max-input-height: 60px;
 	}
 
 	.el-input.is-focus {
-		border: 1px solid #ff6d5a;
+		border: 1px solid $--color-primary;
 		border-radius: 20px;
 	}
 
