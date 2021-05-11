@@ -110,9 +110,10 @@ export default mixins(workflowHelpers).extend({
 				this.$data.tagsEditBus.$emit('focus');
 			});
 		},
-		onTagsUpdate(appliedIds: string[]) {
-			this.$data.appliedTagIds = appliedIds;
-			// todo save
+		async onTagsUpdate(tags: string[]) {
+			this.$data.appliedTagIds = tags;
+
+			await this.saveCurrentWorkflow({ tags });
 		},
 		onTagsEditCancel() {
 			this.$data.isTagsEditEnabled = false;
