@@ -5,7 +5,7 @@
 			:isEditEnabled="isNameEditEnabled"
 			:maxLength="MAX_WORKFLOW_NAME_LENGTH"
 			@toggle="onNameToggle"
-			@change="onNameChange"
+			@submit="onNameSubmit"
 			placeholder="Enter workflow name"
 		>
 			<WorkflowNameShort
@@ -54,6 +54,7 @@
 
 <script lang="ts">
 import Vue from "vue";
+import mixins from "vue-typed-mixins";
 import { mapGetters } from "vuex";
 import { MAX_WORKFLOW_NAME_LENGTH } from "@/constants";
 
@@ -61,11 +62,12 @@ import WorkflowNameShort from "@/components/WorkflowNameShort.vue";
 import TagsContainer from "@/components/TagsContainer.vue";
 import PushConnectionTracker from "@/components/PushConnectionTracker.vue";
 import WorkflowActivator from "@/components/WorkflowActivator.vue";
+import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import SaveWorkflowButton from "./SaveWorkflowButton.vue";
 import TagsDropdown from "./TagsDropdown.vue";
 import InlineTextEdit from "./InlineTextEdit.vue";
 
-export default Vue.extend({
+export default mixins(workflowHelpers).extend({
 	name: "WorkflowDetails",
 	components: {
 		TagsContainer,
@@ -122,8 +124,28 @@ export default Vue.extend({
 				this.onTagsEditCancel();
 			}
 		},
-		onNameChange() {
-			// todo save
+		async onNameSubmit(name: string) {
+			const newName = name.trim();
+			if (!newName) {
+				this.$showMessage({
+					title: "Name missing",
+					message: `No name for the workflow got entered and so could not be saved!`,
+					type: "error",
+				});
+
+				return;
+			}
+
+			if (newName === this.workflowName) {
+				this.$data.isNameEditEnabled = false;
+
+				return;
+			}
+
+			const saved = await this.saveCurrentWorkflow({name});
+			if (saved) {
+				this.$data.isNameEditEnabled = false;
+			}
 		},
 	},
 });

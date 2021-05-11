@@ -6,8 +6,10 @@
 			:value="newValue"
 			:maxlength="maxLength"
 			:autofocus="true"
-			@change="onChange"
 			@input="onInput"
+			@esc="onEscape"
+			@blur="onBlur"
+			@enter="submit"
 		/>
 		<span class="clickable" @click="onClick" v-else>
 			<slot></slot>
@@ -26,6 +28,7 @@ export default Vue.extend({
 	data() {
 		return {
 			newValue: '',
+			escPressed: false,
 		};
 	},
 	methods: {
@@ -36,8 +39,17 @@ export default Vue.extend({
 			this.$data.newValue = this.$props.value;
 			this.$emit('toggle');
 		},
-		onChange() {
-			this.$emit('change', this.newValue);
+		onBlur() {
+			if (!this.$data.escPressed) {
+				this.submit();
+			}
+			this.$data.escPressed = false;
+		},
+		submit() {
+			this.$emit('submit', this.newValue);
+		},
+		onEscape() {
+			this.$data.escPressed = true;
 			this.$emit('toggle');
 		},
 	},

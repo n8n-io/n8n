@@ -367,12 +367,10 @@ export const workflowHelpers = mixins(
 				return workflow.expression.getParameterValue(expression, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', true);
 			},
 
-			async saveCurrentWorkflow() {
+			async saveCurrentWorkflow({name, tags}: {name?: string, tags?: string[]} = {}): boolean {
 				const currentWorkflow = this.$route.params.name;
 				if (!currentWorkflow) {
-					this.saveAsNewWorkflow();
-
-					return;
+					return this.saveAsNewWorkflow({name, tags});
 				}
 
 				// Workflow exists already so update it
@@ -380,16 +378,36 @@ export const workflowHelpers = mixins(
 					this.$store.commit('addActiveAction', 'workflowSaving');
 
 					const workflowDataRequest: IWorkflowDataUpdate = await this.getWorkflowDataToSave();
+
+					if (name) {
+						workflowDataRequest.name = name.trim();
+					}
+
+					if (tags) {
+						workflowDataRequest.tags = tags;
+					}
+
 					const workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest);
 
+					if (name) {
+						this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
+					}
+
+					if (tags) {
+						const createdTags = (workflowData.tags || []) as ITag[];
+						const tagIds = createdTags.map((tag: ITag): string => tag.id);
+						this.$store.commit('setWorkflowTagIds', tagIds || [])
+					}
+
 					this.$store.commit('removeActiveAction', 'workflowSaving');
-					this.$store.commit('setStateDirty', false);
 					this.$showMessage({
 						title: 'Workflow saved',
 						message: `The workflow "${workflowData.name}" got saved!`,
 						type: 'success',
 					});
 					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+
+					return true;
 				} catch (e) {
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
@@ -398,10 +416,12 @@ export const workflowHelpers = mixins(
 						message: `There was a problem saving the workflow: "${e.message}"`,
 						type: 'error',
 					});
+
+					return false;
 				}
 			},
 
-			async saveAsNewWorkflow ({name, tags}: {name?: string, tags?: string[]} = {}) {
+			async saveAsNewWorkflow ({name, tags}: {name?: string, tags?: string[]} = {}): boolean {
 				try {
 					this.$store.commit('addActiveAction', 'workflowSaving');
 
@@ -441,6 +461,8 @@ export const workflowHelpers = mixins(
 						type: 'success',
 					});
 					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+
+					return true;
 				} catch (e) {
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
@@ -449,6 +471,8 @@ export const workflowHelpers = mixins(
 						message: `There was a problem saving the workflow: "${e.message}"`,
 						type: 'error',
 					});
+
+					return false;
 				}
 			},
 

@@ -7,7 +7,9 @@
 			:placeholder="placeholder"
 			:maxlength="maxlength"
 			@input="onInput"
-			@change="onChange"
+			@blur="onBlur"
+			@keydown.enter="onEnter"
+			@keydown.esc="onEscape"
 			ref="input"
 		/>
 	</div>
@@ -34,8 +36,14 @@ export default Vue.extend({
 		onInput() {
 			this.$emit('input', (this.$refs.input as HTMLInputElement).value);
 		},
-		onChange() {
-			this.$emit('change', (this.$refs.input as HTMLInputElement).value);
+		onEnter() {
+			this.$emit('enter', (this.$refs.input as HTMLInputElement).value);
+		},
+		onBlur() {
+			this.$emit('blur', (this.$refs.input as HTMLInputElement).value);
+		},
+		onEscape() {
+			this.$emit('esc');
 		},
 	},
 });
