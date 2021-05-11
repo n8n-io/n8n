@@ -5,11 +5,17 @@ import {
 	INodeExecutionData,
 	NodeOperationError,
 } from 'n8n-workflow';
+
 import {
 	IMongoCredentials,
 	IMongoCredentialsType,
 	IMongoParametricCredentials,
 } from './mongo.node.types';
+
+import {
+	get,
+	set,
+} from 'lodash';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
@@ -111,9 +117,9 @@ export function getItemCopy(
 export function handleDateFields(insertItems: IDataObject[], fields: string) {
 	const dateFields = (fields as string).split(',');
 	for (let i = 0; i < insertItems.length; i++) {
-		for (const key of Object.keys(insertItems[i])) {
-			if (dateFields.includes(key)) {
-				insertItems[i][key] = new Date(insertItems[i][key] as string);
+		for (const field of dateFields) {
+			if (get(insertItems[i], field) !== undefined) {
+				set(insertItems[i], field, new Date(get(insertItems[i], field) as string));
 			}
 		}
 	}
