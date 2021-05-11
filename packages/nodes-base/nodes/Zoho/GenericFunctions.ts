@@ -84,6 +84,7 @@ export async function zohoApiRequestAllItems(
 
 	do {
 		responseData = await zohoApiRequest.call(this, method, endpoint, body, qs, uri);
+		if (!responseData) return [];
 		uri = responseData.info.more_records;
 		returnData.push.apply(returnData, responseData['data']);
 		qs.page++;
