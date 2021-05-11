@@ -390,7 +390,7 @@ export const workflowHelpers = mixins(
 					const workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest);
 
 					if (name) {
-						this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
+						this.$store.commit('setWorkflowName', {newName: workflowData.name});
 					}
 
 					if (tags) {
@@ -399,6 +399,7 @@ export const workflowHelpers = mixins(
 						this.$store.commit('setWorkflowTagIds', tagIds || []);
 					}
 
+					this.$store.commit('setStateDirty', false);
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 					this.$showMessage({
 						title: 'Workflow saved',
