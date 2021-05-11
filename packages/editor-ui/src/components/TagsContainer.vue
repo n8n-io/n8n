@@ -10,15 +10,15 @@
 						:class="{'count-container': tag.isCount}"
 						:style="!tag.isCount ? 'visibility: hidden' : ''"
 					>
-					<div @click="onClick" class="clickable">
-						<el-tag 
-							:title="tag.title || tag.name"
-							type="info"
-							size="small"
-						>
-							{{ tag.name }}
-						</el-tag>
-			</div>
+						<div @click="onClick" class="clickable">
+							<el-tag 
+								:title="tag.title || tag.name"
+								type="info"
+								size="small"
+							>
+								{{ tag.name }}
+							</el-tag>
+						</div>
 					</IntersectionObserved>
 				</div>
 		</template>
@@ -105,10 +105,6 @@ export default Vue.extend({
 		overflow: hidden;
 	}
 
-	.hidden-count {
-		position: absolute;
-	}
-
 	.tags {
 		display: flex; 
 	}
@@ -117,9 +113,12 @@ export default Vue.extend({
 		max-width: 0;
 		position: relative;
 
-		.count-tag {
+		> div {
 			position: absolute;
-			white-space: nowrap !important;
+
+			> span {
+				position: fixed;
+			}
 		}
 	}
 
