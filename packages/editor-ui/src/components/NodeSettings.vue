@@ -325,6 +325,8 @@ export default mixins(
 
 				// Update the issues
 				this.updateNodeCredentialIssues(node);
+
+				this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 			},
 			valueChanged (parameterData: IUpdateInformation) {
 				let newValue: NodeParameterValue;
