@@ -89,6 +89,8 @@ export default mixins(externalHooks).extend({
 		itemSelected (eventData: IVariableItemSelected) {
 			// User inserted item from Expression Editor variable selector
 			(this.$refs.inputFieldExpression as any).itemSelected(eventData); // tslint:disable-line:no-any
+
+			this.$externalHooks().run('expressionEdit.itemSelected', { parameter: this.parameter, value: this.value, selectedItem: eventData });
 		},
 	},
 	watch: {
