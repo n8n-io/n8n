@@ -7,6 +7,7 @@
 			@toggle="onNameToggle"
 			@submit="onNameSubmit"
 			placeholder="Enter workflow name"
+			class="name"
 		>
 			<WorkflowNameShort
 				:name="workflowName"
@@ -190,6 +191,7 @@ export default mixins(workflowHelpers).extend({
 .tags {
 	flex: 1;
 	padding-right: 20px;
+	min-width: 200px;
 }
 
 .tags-edit {

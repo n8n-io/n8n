@@ -61,6 +61,7 @@ export default Vue.extend({
 }
 
 div {
+	min-width: 100px;
 	display: inline-grid;
 
 	&::after,

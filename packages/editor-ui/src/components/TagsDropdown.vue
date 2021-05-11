@@ -229,7 +229,7 @@ $--max-input-height: 60px;
 	min-width: $--dropdown-width !important;
 	max-width: $--dropdown-width;
 
-	* {
+	*,*:after {
 		box-sizing: border-box;
 	}
 
@@ -243,6 +243,7 @@ $--max-input-height: 60px;
 
 		> div {
 			overflow: auto;
+			margin-bottom: 0 !important;
 		}
 
 		ul {
@@ -254,10 +255,9 @@ $--max-input-height: 60px;
 			content: " ";
 			display: block;
 			min-height: $--item-height;
-			margin-top: $--item-vertical-padding - 1;
+			//margin-top: $--item-vertical-padding - 1;
 			width: $--dropdown-width;
 			padding: $--item-padding;
-			box-sizing: border-box;
 		}
 	}
 
