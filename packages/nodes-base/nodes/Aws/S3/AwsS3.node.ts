@@ -143,7 +143,6 @@ export class AwsS3 implements INodeType {
 					if (additionalFields.region) {
 						region = additionalFields.region as string;
 					}
-
 					const body: IDataObject = {
 						CreateBucketConfiguration: {
 							'$': {
@@ -159,8 +158,7 @@ export class AwsS3 implements INodeType {
 						const builder = new Builder();
 						data = builder.buildObject(body);
 					}
-					responseData = await awsApiRequestSOAP.call(this, `${name}.s3`, 'PUT', '', data, qs, headers);
-
+					responseData = await awsApiRequestSOAP.call(this, 's3', 'PUT', `/${name}`, data, qs, headers);
 					returnData.push({ success: true });
 				}
 				//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html
@@ -209,15 +207,15 @@ export class AwsS3 implements INodeType {
 					qs['list-type'] = 2;
 
 
-					responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'GET', '', '', { location: '' });
+					responseData = await awsApiRequestSOAP.call(this, 's3', 'GET', `/${bucketName}`, '', { location: '' });
 
 					const region = responseData.LocationConstraint._ as string;
 
 					if (returnAll) {
-						responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
+						responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', 's3', 'GET', `/${bucketName}`, '', qs, {}, {}, region);
 					} else {
 						qs['max-keys'] = this.getNodeParameter('limit', 0) as number;
-						responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
+						responseData = await awsApiRequestSOAP.call(this, 's3', 'GET', `/${bucketName}`, '', qs, {}, {}, region);
 						responseData = responseData.ListBucketResult.Contents;
 					}
 					if (Array.isArray(responseData)) {
@@ -244,11 +242,11 @@ export class AwsS3 implements INodeType {
 					if (additionalFields.storageClass) {
 						headers['x-amz-storage-class'] = (snakeCase(additionalFields.storageClass as string)).toUpperCase();
 					}
-					responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'GET', '', '', { location: '' });
+					responseData = await awsApiRequestSOAP.call(this, 's3', 'GET', `/${bucketName}`, '', { location: '' });
 
 					const region = responseData.LocationConstraint._;
 
-					responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'PUT', path, '', qs, headers, {}, region);
+					responseData = await awsApiRequestSOAP.call(this, 's3', 'PUT', `/${bucketName}${path}`, '', qs, headers, {}, region);
 					returnData.push({ success: true });
 				}
 				//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObjects.html
@@ -256,21 +254,21 @@ export class AwsS3 implements INodeType {
 					const bucketName = this.getNodeParameter('bucketName', i) as string;
 					const folderKey = this.getNodeParameter('folderKey', i) as string;
 
-					responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'GET', '', '', { location: '' });
+					responseData = await awsApiRequestSOAP.call(this, 's3', 'GET', `/${bucketName}`, '', { location: '' });
 
 					const region = responseData.LocationConstraint._;
 
-					responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', `${bucketName}.s3`, 'GET', '/', '', { 'list-type': 2, prefix: folderKey }, {}, {}, region);
+					responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', 's3', 'GET', `/${bucketName}`, '', { 'list-type': 2, prefix: folderKey }, {}, {}, region);
 
 					// folder empty then just delete it
 					if (responseData.length === 0) {
 
-						responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'DELETE', `/${folderKey}`, '', qs, {}, {}, region);
+						responseData = await awsApiRequestSOAP.call(this, 's3', 'DELETE', `/${bucketName}/${folderKey}`, '', qs, {}, {}, region);
 
-						responseData = { deleted: [ { 'Key': folderKey } ] };
+						responseData = { deleted: [{ 'Key': folderKey }] };
 
 					} else {
-					// delete everything inside the folder
+						// delete everything inside the folder
 						const body: IDataObject = {
 							Delete: {
 								'$': {
@@ -294,7 +292,7 @@ export class AwsS3 implements INodeType {
 
 						headers['Content-Type'] = 'application/xml';
 
-						responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'POST', '/', data, { delete: '' } , headers, {}, region);
+						responseData = await awsApiRequestSOAP.call(this, 's3', 'POST', `/${bucketName}`, data, { delete: '' }, headers, {}, region);
 
 						responseData = { deleted: responseData.DeleteResult.Deleted };
 					}
@@ -316,15 +314,15 @@ export class AwsS3 implements INodeType {
 
 					qs['list-type'] = 2;
 
-					responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'GET', '', '', { location: '' });
+					responseData = await awsApiRequestSOAP.call(this, 's3', 'GET', `/${bucketName}`, '', { location: '' });
 
 					const region = responseData.LocationConstraint._;
 
 					if (returnAll) {
-						responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
+						responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', 's3', 'GET', `/${bucketName}`, '', qs, {}, {}, region);
 					} else {
 						qs.limit = this.getNodeParameter('limit', 0) as number;
-						responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
+						responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', 's3', 'GET', `/${bucketName}`, '', qs, {}, {}, region);
 					}
 					if (Array.isArray(responseData)) {
 						responseData = responseData.filter((e: IDataObject) => (e.Key as string).endsWith('/') && e.Size === '0' && e.Key !== options.folderKey);
@@ -405,11 +403,11 @@ export class AwsS3 implements INodeType {
 
 					const destination = `/${destinationParts.slice(2, destinationParts.length).join('/')}`;
 
-					responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'GET', '', '', { location: '' });
+					responseData = await awsApiRequestSOAP.call(this, 's3', 'GET', `/${bucketName}`, '', { location: '' });
 
 					const region = responseData.LocationConstraint._;
 
-					responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'PUT', destination, '', qs, headers, {}, region);
+					responseData = await awsApiRequestSOAP.call(this, 's3', 'PUT', `/${bucketName}${destination}`, '', qs, headers, {}, region);
 					returnData.push(responseData.CopyObjectResult);
 
 				}
@@ -426,11 +424,11 @@ export class AwsS3 implements INodeType {
 						throw new NodeOperationError(this.getNode(), 'Downloding a whole directory is not yet supported, please provide a file key');
 					}
 
-					let region = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'GET', '', '', { location: '' });
+					let region = await awsApiRequestSOAP.call(this, 's3', 'GET', `/${bucketName}`, '', { location: '' });
 
 					region = region.LocationConstraint._;
 
-					const response = await awsApiRequestREST.call(this, `${bucketName}.s3`, 'GET', `/${fileKey}`, '', qs, {}, {  encoding: null, resolveWithFullResponse: true }, region);
+					const response = await awsApiRequestREST.call(this, 's3', 'GET', `/${bucketName}/${fileKey}`, '', qs, {}, { encoding: null, resolveWithFullResponse: true }, region);
 
 					let mimeType: string | undefined;
 					if (response.headers['content-type']) {
@@ -455,7 +453,7 @@ export class AwsS3 implements INodeType {
 
 					const data = Buffer.from(response.body as string, 'utf8');
 
-					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer,  fileName, mimeType);
+					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, fileName, mimeType);
 				}
 				//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObject.html
 				if (operation === 'delete') {
@@ -469,11 +467,11 @@ export class AwsS3 implements INodeType {
 						qs.versionId = options.versionId as string;
 					}
 
-					responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'GET', '', '', { location: '' });
+					responseData = await awsApiRequestSOAP.call(this, 's3', 'GET', `/${bucketName}`, '', { location: '' });
 
 					const region = responseData.LocationConstraint._;
 
-					responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'DELETE', `/${fileKey}`, '', qs, {}, {}, region);
+					responseData = await awsApiRequestSOAP.call(this, 's3', 'DELETE', `/${bucketName}/${fileKey}`, '', qs, {}, {}, region);
 
 					returnData.push({ success: true });
 				}
@@ -495,15 +493,15 @@ export class AwsS3 implements INodeType {
 
 					qs['list-type'] = 2;
 
-					responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'GET', '', '', { location: '' });
+					responseData = await awsApiRequestSOAP.call(this, 's3', 'GET', `/${bucketName}`, '', { location: '' });
 
 					const region = responseData.LocationConstraint._;
 
 					if (returnAll) {
-						responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
+						responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', 's3', 'GET', `/${bucketName}`, '', qs, {}, {}, region);
 					} else {
 						qs.limit = this.getNodeParameter('limit', 0) as number;
-						responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', `${bucketName}.s3`, 'GET', '', '', qs, {}, {}, region);
+						responseData = await awsApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', 's3', 'GET', `/${bucketName}`, '', qs, {}, {}, region);
 						responseData = responseData.splice(0, qs.limit);
 					}
 					if (Array.isArray(responseData)) {
@@ -581,7 +579,7 @@ export class AwsS3 implements INodeType {
 						headers['x-amz-tagging'] = tags.join('&');
 					}
 
-					responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'GET', '', '', { location: '' });
+					responseData = await awsApiRequestSOAP.call(this, 's3', 'GET', `/${bucketName}`, '', { location: '' });
 
 					const region = responseData.LocationConstraint._;
 
@@ -604,7 +602,7 @@ export class AwsS3 implements INodeType {
 
 						headers['Content-MD5'] = createHash('md5').update(body).digest('base64');
 
-						responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'PUT', `${path}${fileName || binaryData.fileName}`, body, qs, headers, {}, region);
+						responseData = await awsApiRequestSOAP.call(this, 's3', 'PUT', `/${bucketName}${path}${fileName || binaryData.fileName}`, body, qs, headers, {}, region);
 
 					} else {
 
@@ -616,7 +614,7 @@ export class AwsS3 implements INodeType {
 
 						headers['Content-MD5'] = createHash('md5').update(fileContent).digest('base64');
 
-						responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'PUT', `${path}${fileName}`, body, qs, headers, {}, region);
+						responseData = await awsApiRequestSOAP.call(this, 's3', 'PUT', `/${bucketName}${path}${fileName}`, body, qs, headers, {}, region);
 					}
 					returnData.push({ success: true });
 				}
