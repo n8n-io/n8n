@@ -13,7 +13,7 @@
 							placeholder="Filter by tags..."
 							:currentTagIds="filterTagIds"
 							:createEnabled="false"
-							@onUpdate="updateTagsFilter"
+							@update="updateTagsFilter"
 						/>
 					</div>
 					<div class="search-filter">

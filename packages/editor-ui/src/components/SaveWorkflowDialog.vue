@@ -20,7 +20,7 @@
 					:createEnabled="true"
 					:currentTagIds="currentTagIds"
 					:eventBus="dropdownBus"
-					@onUpdate="onTagsUpdate"
+					@update="onTagsUpdate"
 					placeholder="Choose or create a tag"
 					ref="dropdown"
 				/>

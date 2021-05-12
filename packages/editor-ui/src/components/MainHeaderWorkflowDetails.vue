@@ -26,7 +26,7 @@
 				:createEnabled="true"
 				:currentTagIds="appliedTagIds"
 				:eventBus="tagsEditBus"
-				@onUpdate="onTagsUpdate"
+				@update="onTagsUpdate"
 				@blur="onTagsEditCancel"
 				placeholder="Choose or create a tag"
 				ref="dropdown"

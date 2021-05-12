@@ -115,7 +115,7 @@ export default mixins(showMessage).extend({
 			const name = this.$data.filter;
 			try {
 				const newTag = await this.$store.dispatch("tags/create", name);
-				this.$emit("onUpdate", [...this.$props.currentTagIds, newTag.id]);
+				this.$emit("update", [...this.$props.currentTagIds, newTag.id]);
 				this.$nextTick(() => this.focusOnTag(newTag.id));
 
 				this.$showMessage({
@@ -142,7 +142,7 @@ export default mixins(showMessage).extend({
 			} else if (ops === CREATE_KEY) {
 				this.onCreate();
 			} else {
-				this.$emit("onUpdate", selected);
+				this.$emit("update", selected);
 			}
 		},
 		focusOnTopOption() {
@@ -189,7 +189,7 @@ export default mixins(showMessage).extend({
 			// keep applied tags in sync with store
 			// for example in case tag is deleted from store
 			if (this.currentTagIds.length !== this.appliedTags.length) {
-				this.$emit("onUpdate", this.appliedTags);
+				this.$emit("update", this.appliedTags);
 			}
 		},
 	},
