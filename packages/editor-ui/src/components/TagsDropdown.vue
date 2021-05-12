@@ -218,9 +218,10 @@ $--max-input-height: 60px;
 <style lang="scss">
 .tags-dropdown {
 	$--item-font-size: 14px;
-	$--item-vertical-padding: 12px;
+	$--item-line-height: 18px;
+	$--item-vertical-padding: 10px;
 	$--item-horizontal-padding: 20px;
-	$--item-height: $--item-font-size+ $--item-vertical-padding * 2;
+	$--item-height: $--item-line-height + $--item-vertical-padding * 2;
 	$--items-to-show: 7;
 	$--item-padding: $--item-vertical-padding $--item-horizontal-padding;
 	$--dropdown-height: $--item-height * $--items-to-show;
@@ -255,7 +256,6 @@ $--max-input-height: 60px;
 			content: " ";
 			display: block;
 			min-height: $--item-height;
-			//margin-top: $--item-vertical-padding - 1;
 			width: $--dropdown-width;
 			padding: $--item-padding;
 		}
@@ -266,7 +266,7 @@ $--max-input-height: 60px;
 		background-color: white;
 		padding: $--item-padding;
 		margin: 0;
-		line-height: $--item-font-size;
+		line-height: $--item-line-height;
 		font-weight: 400;
 		font-size: $--item-font-size;
 
