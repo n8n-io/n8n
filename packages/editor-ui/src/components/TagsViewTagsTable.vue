@@ -182,7 +182,7 @@ export default Vue.extend({
 	justify-content: flex-end;
 	align-items: center;
 	display: flex;
-	flex-wrap: wrap-reverse;
+	flex-wrap: nowrap;
 
 	> .el-button {
 		margin: 2px;
