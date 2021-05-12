@@ -12,6 +12,8 @@ import {
 	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
+import * as moment from 'moment-timezone';
+
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
 
 	const options: OptionsWithUri = {
@@ -58,6 +60,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	return returnData;
 }
 
+const isValidDate = (str: string) => moment(str, ['YYYY-MM-DD HH:mm:ss Z', moment.ISO_8601], true).isValid();
 
 // Both functions below were taken from Stack Overflow jsonToDocument was fixed as it was unable to handle null values correctly
 // https://stackoverflow.com/questions/62246410/how-to-convert-a-firestore-document-to-plain-json-and-vice-versa
@@ -73,7 +76,7 @@ export function jsonToDocument(value: string | number | IDataObject | IDataObjec
 		} else {
 			return { 'integerValue': value };
 		}
-	} else if (Date.parse(value as string)) {
+	} else if (isValidDate(value as string)) {
 		const date = new Date(Date.parse(value as string));
 		return { 'timestampValue': date.toISOString() };
 	} else if (typeof value === 'string') {
@@ -108,13 +111,14 @@ export function fullDocumentToJson(data: IDataObject): IDataObject {
 
 
 export function documentToJson(fields: IDataObject): IDataObject {
+	if (fields === undefined) return {};
 	const result = {};
 	for (const f of Object.keys(fields)) {
 		const key = f, value = fields[f],
 			isDocumentType = ['stringValue', 'booleanValue', 'doubleValue',
-				'integerValue', 'timestampValue', 'mapValue', 'arrayValue', 'nullValue'].find(t => t === key);
+				'integerValue', 'timestampValue', 'mapValue', 'arrayValue', 'nullValue', 'geoPointValue'].find(t => t === key);
 		if (isDocumentType) {
-			const item = ['stringValue', 'booleanValue', 'doubleValue', 'integerValue', 'timestampValue', 'nullValue']
+			const item = ['stringValue', 'booleanValue', 'doubleValue', 'integerValue', 'timestampValue', 'nullValue', 'geoPointValue']
 				.find(t => t === key);
 			if (item) {
 				return value as IDataObject;
