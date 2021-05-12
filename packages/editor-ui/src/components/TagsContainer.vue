@@ -8,18 +8,15 @@
 					:class="{clickable: !tag.hidden}"
 					@click="!tag.hidden && onClick()"
 				>
-					<span
+					<el-tag 
+						:title="tag.title"
+						type="info"
+						size="small"
 						v-if="tag.isCount"
 						class="count-container"
 					>
-						<el-tag 
-							:title="tag.title"
-							type="info"
-							size="small"
-						>
-							{{ tag.name }}
-						</el-tag>
-					</span>
+						{{ tag.name }}
+					</el-tag>
 					<IntersectionObserved
 						:class="{hidden: tag.hidden}"
 						:data-id="tag.id"
@@ -115,7 +112,6 @@ export default Vue.extend({
 <style lang="scss" scoped>
 	.tags-container {
 		display: inline-flex;
-		flex-wrap: nowrap;
 		overflow: hidden;
 	}
 
@@ -132,11 +128,9 @@ export default Vue.extend({
 	}
 
 	.count-container {
-		> span {
-			position: absolute;
-			max-width: 40px;
-			text-overflow: ellipsis;
-			overflow: hidden;
-		}
+		position: absolute;
+		max-width: 40px;
+		text-overflow: ellipsis;
+		overflow: hidden;
 	}
 </style>
