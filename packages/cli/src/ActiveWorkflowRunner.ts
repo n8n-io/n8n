@@ -517,8 +517,8 @@ export class ActiveWorkflowRunner {
 
 			if (workflowInstance.getTriggerNodes().length !== 0
 				|| workflowInstance.getPollNodes().length !== 0) {
-					await this.activeWorkflows.add(workflowId, workflowInstance, additionalData, mode, activation, getTriggerFunctions, getPollFunctions);
-				Logger.info(`Successfully activated workflow "${workflowData.name}"`);
+				await this.activeWorkflows.add(workflowId, workflowInstance, additionalData, mode, activation, getTriggerFunctions, getPollFunctions);
+				Logger.verbose(`Successfully activated workflow "${workflowData.name}"`, { workflowId, workflowName: workflowData.name });
 			}
 
 			if (this.activationErrors[workflowId] !== undefined) {
@@ -569,7 +569,8 @@ export class ActiveWorkflowRunner {
 			// if it's active in memory then it's a trigger
 			// so remove from list of actives workflows
 			if (this.activeWorkflows.isActive(workflowId)) {
-				this.activeWorkflows.remove(workflowId);
+				await this.activeWorkflows.remove(workflowId);
+				Logger.verbose(`Successfully deactivated workflow "${workflowId}"`, { workflowId });
 			}
 
 			return;
