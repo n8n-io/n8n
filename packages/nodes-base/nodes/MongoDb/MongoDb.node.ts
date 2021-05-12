@@ -94,10 +94,12 @@ export class MongoDb implements INodeType {
 				.filter(f => !!f);
 
 			const options = this.getNodeParameter('options', 0) as IDataObject;
-			const insertItems = getItemCopy(items, fields);
+			const dotNotation = options.dotNotation as boolean || false;
+			
+			const insertItems = getItemCopy(items, fields, dotNotation);
 
 			if (options.dateFields) {
-				handleDateFields(insertItems, options.dateFields as string);
+				handleDateFields(insertItems, options.dateFields as string, dotNotation);
 			}
 
 			const { insertedIds } = await mdb
@@ -124,6 +126,7 @@ export class MongoDb implements INodeType {
 				.filter(f => !!f);
 
 			const options = this.getNodeParameter('options', 0) as IDataObject;
+			const dotNotation = options.dotNotation as boolean || false;
 
 			let updateKey = this.getNodeParameter('updateKey', 0) as string;
 			updateKey = updateKey.trim();
@@ -136,10 +139,10 @@ export class MongoDb implements INodeType {
 			}
 
 			// Prepare the data to update and copy it to be returned
-			const updateItems = getItemCopy(items, fields);
+			const updateItems = getItemCopy(items, fields, dotNotation);
 
 			if (options.dateFields) {
-				handleDateFields(updateItems, options.dateFields as string);
+				handleDateFields(updateItems, options.dateFields as string, dotNotation);
 			}
 
 			for (const item of updateItems) {

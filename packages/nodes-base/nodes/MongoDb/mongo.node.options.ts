@@ -239,6 +239,16 @@ export const nodeDescription: INodeTypeDescription = {
 					default: '',
 					description: 'Comma separeted list of fields that will be parse as Mongo Date type.',
 				},
+				{
+					displayName: 'Dot Notation',
+					name: 'dotNotation',
+					type: 'boolean',
+					default: false,
+					description: `By default does dot-notation get used in property names..<br />
+						This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<br />
+						If that is not intended this can be deactivated, it will then set { "a.b": value } instead.
+						`,
+				},
 			],
 		},
 	],

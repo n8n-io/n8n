@@ -1,4 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import { 
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -98,28 +101,49 @@ export function validateAndResolveMongoCredentials(
 export function getItemCopy(
 	items: INodeExecutionData[],
 	properties: string[],
+	dotNotation: boolean,
 ): IDataObject[] {
 	// Prepare the data to insert and copy it to be returned
 	let newItem: IDataObject;
 	return items.map(item => {
 		newItem = {};
 		for (const property of properties) {
-			if (item.json[property] === undefined) {
-				newItem[property] = null;
+			if (dotNotation === false) {
+				if (item.json[property] === undefined) {
+					newItem[property] = null;
+				} else {
+					newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
+				}
 			} else {
-				newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
+				let writeTo = property;
+				let readFrom = property;
+				if (property.includes(':')) {
+					writeTo = property.split(':').pop() as string;
+					readFrom = property.split(':').shift() as string;
+				}
+				if (get(item.json, readFrom) === undefined) {
+					set(item.json, readFrom, null);
+				} else {
+					set(newItem, writeTo, JSON.parse(JSON.stringify(get(item.json, readFrom))));
+				}
 			}
 		}
 		return newItem;
 	});
 }
 
-export function handleDateFields(insertItems: IDataObject[], fields: string) {
+export function handleDateFields(insertItems: IDataObject[], fields: string, dotNotation: boolean) {
 	const dateFields = (fields as string).split(',');
 	for (let i = 0; i < insertItems.length; i++) {
 		for (const field of dateFields) {
-			if (get(insertItems[i], field) !== undefined) {
-				set(insertItems[i], field, new Date(get(insertItems[i], field) as string));
+			if (dotNotation) {
+				if (get(insertItems[i], field) !== undefined) {
+					set(insertItems[i], field, new Date(get(insertItems[i], field) as string));
+				}
+			} else {
+				if (insertItems[i][field] !== undefined) {
+					insertItems[i][field] = new Date(insertItems[i][field] as string);
+				}
 			}
 		}
 	}
