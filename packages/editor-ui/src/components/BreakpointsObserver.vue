@@ -5,13 +5,12 @@
 </template>
 
 <script lang="ts">
-
 import {
 	BREAKPOINT_SM,
 	BREAKPOINT_MD,
 	BREAKPOINT_LG,
-  BREAKPOINT_XL,
-} from '@/constants';
+	BREAKPOINT_XL,
+} from "@/constants";
 
 /**
  * matching element.io https://element.eleme.io/#/en-US/component/layout#col-attributes
@@ -22,31 +21,35 @@ import {
  * xl >= 1920
  */
 
-import mixins from 'vue-typed-mixins';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
+import mixins from "vue-typed-mixins";
+import { genericHelpers } from "@/components/mixins/genericHelpers";
 
-const sizes = ["XS", "XL", "LG", "MD", "SM", 'Default'];
+const sizes = ["XS", "XL", "LG", "MD", "SM", "Default"];
 
-export default mixins(
-	genericHelpers,
-)
-	.extend({
-	name: 'BreakpointsObserver',
-	props: ['valueXS', 'valueXL', 'valueLG', 'valueMD', 'valueSM', 'valueDefault'],
+export default mixins(genericHelpers).extend({
+	name: "BreakpointsObserver",
+	props: [
+		"valueXS",
+		"valueXL",
+		"valueLG",
+		"valueMD",
+		"valueSM",
+		"valueDefault",
+	],
 	data() {
 		return {
 			width: window.innerWidth,
 		};
 	},
 	created() {
-		window.addEventListener('resize', this.onResize);
+		window.addEventListener("resize", this.onResize);
 	},
 	beforeDestroy() {
-		window.removeEventListener('resize', this.onResize);
+		window.removeEventListener("resize", this.onResize);
 	},
 	methods: {
 		onResize() {
-			this.callDebounced('onResizeEnd', 250);
+			this.callDebounced("onResizeEnd", 250);
 		},
 		onResizeEnd() {
 			this.$data.width = window.innerWidth;
@@ -72,8 +75,8 @@ export default mixins(
 
 			return "SM";
 		},
-		value(): any | undefined {
-			for (const i in sizes) {
+		value(): any | undefined { // tslint:disable-line:no-any
+			for (let i = 0; i < sizes.length; i++) {
 				const key = `value${sizes[i]}`;
 				if (this.size === sizes[i] && this.$props.hasOwnProperty(key)) {
 					return this.$props[key];
