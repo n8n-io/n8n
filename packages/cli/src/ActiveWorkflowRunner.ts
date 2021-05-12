@@ -35,7 +35,7 @@ import {
 } from 'n8n-workflow';
 
 import * as express from 'express';
-import { 
+import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
@@ -67,15 +67,15 @@ export class ActiveWorkflowRunner {
 
 			for (const workflowData of workflowsData) {
 				console.log(`   - ${workflowData.name}`);
-				Logger.debug(`Initializing active workflow "${workflowData.name}" (startup)`, {workflowName: workflowData.name, workflowId: workflowData.id});
+				Logger.debug(`Initializing active workflow "${workflowData.name}" (startup)`, { workflowName: workflowData.name, workflowId: workflowData.id });
 				try {
 					await this.add(workflowData.id.toString(), 'init', workflowData);
-					Logger.verbose(`Successfully started workflow "${workflowData.name}"`, {workflowName: workflowData.name, workflowId: workflowData.id});
+					Logger.verbose(`Successfully started workflow "${workflowData.name}"`, { workflowName: workflowData.name, workflowId: workflowData.id });
 					console.log(`     => Started`);
 				} catch (error) {
 					console.log(`     => ERROR: Workflow could not be activated:`);
 					console.log(`               ${error.message}`);
-					Logger.error(`Unable to initialize workflow "${workflowData.name}" (startup)`, {workflowName: workflowData.name, workflowId: workflowData.id});
+					Logger.error(`Unable to initialize workflow "${workflowData.name}" (startup)`, { workflowName: workflowData.name, workflowId: workflowData.id });
 				}
 			}
 			Logger.verbose('Finished initializing active workflows (startup)');
@@ -188,7 +188,7 @@ export class ActiveWorkflowRunner {
 		}
 
 		const nodeTypes = NodeTypes();
-		const workflow = new Workflow({ id: webhook.workflowId.toString(), name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings});
+		const workflow = new Workflow({ id: webhook.workflowId.toString(), name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings });
 
 		const credentials = await WorkflowCredentials([workflow.getNode(webhook.node as string) as INode]);
 
@@ -225,8 +225,8 @@ export class ActiveWorkflowRunner {
 	 * @returns {Promise<string[]>}
 	 * @memberof ActiveWorkflowRunner
 	 */
-	async getWebhookMethods(path: string) : Promise<string[]> {
-		const webhooks = await Db.collections.Webhook?.find({ webhookPath: path}) as IWebhookDb[];
+	async getWebhookMethods(path: string): Promise<string[]> {
+		const webhooks = await Db.collections.Webhook?.find({ webhookPath: path }) as IWebhookDb[];
 
 		// Gather all request methods in string array
 		const webhookMethods: string[] = webhooks.map(webhook => webhook.method);
@@ -463,7 +463,7 @@ export class ActiveWorkflowRunner {
 	 * @returns {IGetExecuteTriggerFunctions}
 	 * @memberof ActiveWorkflowRunner
 	 */
-	getExecuteTriggerFunctions(workflowData: IWorkflowDb, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): IGetExecuteTriggerFunctions{
+	getExecuteTriggerFunctions(workflowData: IWorkflowDb, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): IGetExecuteTriggerFunctions {
 		return ((workflow: Workflow, node: INode) => {
 			const returnFunctions = NodeExecuteFunctions.getExecuteTriggerFunctions(workflow, node, additionalData, mode, activation);
 			returnFunctions.emit = (data: INodeExecutionData[][]): void => {
