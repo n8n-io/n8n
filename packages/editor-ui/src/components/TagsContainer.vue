@@ -5,11 +5,12 @@
 				<span
 					v-for="tag in tags" 
 					:key="tag.id"
+					:class="{clickable: !tag.hidden}"
+					@click="!tag.hidden && onClick()"
 				>
 					<div
 						v-if="tag.isCount"
-						class="count-container clickable"
-						@click="onClick"
+						class="count-container"
 					>
 						<el-tag 
 							:title="tag.title"
@@ -20,7 +21,7 @@
 						</el-tag>
 					</div>
 					<IntersectionObserved
-						:class="{hidden: tag.hidden, clickable: !tag.hidden}"
+						:class="{hidden: tag.hidden}"
 						:data-id="tag.id"
 						v-else
 					>
@@ -28,7 +29,6 @@
 							:title="tag.name"
 							type="info"
 							size="small"
-							@click="onClick"
 						>
 							{{ tag.name }}
 						</el-tag>
@@ -121,6 +121,10 @@ export default Vue.extend({
 
 	.tags {
 		display: flex; 
+
+		> span {
+			padding-right: 4px; // why not margin? for space between tags to be clickable
+		}
 	}
 
 	.hidden {
@@ -141,9 +145,5 @@ export default Vue.extend({
 				overflow: hidden;
 			}
 		}
-	}
-
-	.tags-container .el-tag {
-		margin-right: 4px;
 	}
 </style>
