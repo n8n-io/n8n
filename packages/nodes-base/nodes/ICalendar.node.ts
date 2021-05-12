@@ -47,14 +47,12 @@ export class ICalendar implements INodeType {
 					},
 				],
 				default: 'createEventFile',
-				description: 'Operation to perform.',
 			},
 			{
 				displayName: 'Event Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of event.',
 			},
 			{
 				displayName: 'Start',
@@ -62,7 +60,7 @@ export class ICalendar implements INodeType {
 				type: 'dateTime',
 				default: '',
 				required: true,
-				description: 'Date and time at which the event begins.',
+				description: 'Date and time at which the event begins. (For all-day events, the time will be ignored.)',
 			},
 			{
 				displayName: 'End',
@@ -70,14 +68,14 @@ export class ICalendar implements INodeType {
 				type: 'dateTime',
 				default: '',
 				required: true,
-				description: 'Date and time at which the event ends.',
+				description: 'Date and time at which the event ends. (For all-day events, the time will be ignored.)',
 			},
 			{
 				displayName: 'All Day',
 				name: 'allDay',
 				type: 'boolean',
 				default: false,
-				description: 'Where the event last all day or not.',
+				description: 'Whether the event lasts all day or not.',
 			},
 			{
 				displayName: 'Binary Property',
@@ -85,7 +83,7 @@ export class ICalendar implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'Name of the binary property to which to<br />write the data of the file.',
+        description: 'The field that your iCalendar file will be<br />available under in the output.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -134,7 +132,7 @@ export class ICalendar implements INodeType {
 										name: 'rsvp',
 										type: 'boolean',
 										default: false,
-										description: `Whether the attendee has to confirm if it's going to the event or not.`,
+										description: `Whether the attendee has to confirm attendance or not.`,
 									},
 								],
 							},
@@ -162,7 +160,7 @@ export class ICalendar implements INodeType {
 						name: 'calName',
 						type: 'string',
 						default: '',
-						description: 'Specifies the calendar (not event) name. Used by Apple iCal and Microsoft Outlook; a see <a href="https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcical/1da58449-b97e-46bd-b018-a1ce576f3e6d" target="_blank">Open Specification</a>.',
+						description: 'Specifies the calendar (not event) name. Used by Apple iCal and Microsoft Outlook (<a href="https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcical/1da58449-b97e-46bd-b018-a1ce576f3e6d" target="_blank">spec</a>).',
 					},
 					{
 						displayName: 'Description',
@@ -175,7 +173,7 @@ export class ICalendar implements INodeType {
 						name: 'fileName',
 						type: 'string',
 						default: '',
-						description: 'Name that will be set to the file. Default value: event.ics.',
+						description: 'The name of the file to be generated. Default value is event.ics.',
 					},
 					{
 						displayName: 'Geolocation',
@@ -212,15 +210,14 @@ export class ICalendar implements INodeType {
 						name: 'location',
 						type: 'string',
 						default: '',
-						description: 'Intended venue.',
+						description: 'The intended venue.',
 					},
 					{
 						displayName: 'Recurrence Rule',
 						name: 'recurrenceRule',
 						type: 'string',
 						default: '',
-						description: `A recurrence rule, commonly referred to as an RRULE, defines the repeat pattern or rule for to-dos, journal entries and events.</br>
-						For help, <a href="https://icalendar.org/rrule-tool.html" target="_blank">see</a>' the recurrence rule generator.`,
+						description: `A rule to define the repeat pattern of the event (RRULE). (<a href="https://icalendar.org/rrule-tool.html" target="_blank">Rule generator</a>)`,
 					},
 					{
 						displayName: 'Organizer',
@@ -259,7 +256,7 @@ export class ICalendar implements INodeType {
 						name: 'sequence',
 						type: 'number',
 						default: 0,
-						description: 'For sending an update for an event (with the same uid), defines the revision sequence number.',
+						description: 'When sending an update for an event (with the same uid), defines the revision sequence number.',
 					},
 					{
 						displayName: 'Status',
@@ -286,7 +283,7 @@ export class ICalendar implements INodeType {
 						name: 'uid',
 						type: 'string',
 						default: '',
-						description: `Universal unique id for event, produced by default with uuid/v1. Warning: This value must be globally unique.`,
+						description: `Universally unique id for the event (will be auto-generated if not specified here). Should be globally unique.`,
 					},
 					{
 						displayName: 'URL',
