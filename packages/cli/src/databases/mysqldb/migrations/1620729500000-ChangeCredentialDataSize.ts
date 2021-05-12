@@ -7,12 +7,12 @@ export class ChangeCredentialDataSize1620729500000 implements MigrationInterface
 	async up(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.get('database.tablePrefix');
 
-		await queryRunner.query('ALTER TABLE `' + tablePrefix + 'credentials_entity` MODIFY COLUMN `data` MEDIUMTEXT NOT NULL');
+		await queryRunner.query('ALTER TABLE `' + tablePrefix + 'credentials_entity` MODIFY COLUMN `type` varchar(128) NOT NULL');
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.get('database.tablePrefix');
 
-		await queryRunner.query('ALTER TABLE `' + tablePrefix + 'credentials_entity` MODIFY COLUMN `data` TEXT NOT NULL');
+		await queryRunner.query('ALTER TABLE `' + tablePrefix + 'credentials_entity` MODIFY COLUMN `type` varchar(32) NOT NULL');
 	}
 }
