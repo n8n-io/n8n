@@ -19,9 +19,25 @@ export const showMessage = mixins(externalHooks).extend({
 			return Notification(messageData);
 		},
 		$showError (error: Error, title: string, message: string) {
+
+			// @ts-ignore
+			if (error.description) {
+				error.description = error.description.length > 500 ? `${error.description.slice(0, 500)}...` : error.description;
+
+				// @ts-ignore
+				error.description = `
+					<br/>
+					<br/>
+					<details>
+						<summary style="color: #ff6d5a; font-weight: bold; cursor: pointer;">Show Details</summary>
+						<p>${error.description}</p>
+					</details>
+					`;
+			}
+
 			this.$showMessage({
 				title,
-				message: `${message}<br /><i>${error.message}</i>`,
+				message: `${message}<br /><i>${error.message}</i>${error.description || ''}`,
 				type: 'error',
 				duration: 0,
 			});

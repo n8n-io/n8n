@@ -119,6 +119,11 @@ export const restApi = Vue.extend({
 
 						const errorResponseData = error.response.data;
 						if (errorResponseData !== undefined && errorResponseData.message !== undefined) {
+							if (errorResponseData.name === 'NodeApiError') {
+								errorResponseData.httpStatusCode = error.response.status;
+								throw errorResponseData;
+							}
+
 							throw new ResponseError(errorResponseData.message, errorResponseData.code, error.response.status, errorResponseData.stack);
 						}
 

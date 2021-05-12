@@ -93,6 +93,10 @@ export function sendErrorResponse(res: Response, error: ResponseError) {
 		message: 'Unknown error',
 	};
 
+	if (error.name === 'NodeApiError') {
+		Object.assign(response, error);
+	}
+
 	if (error.errorCode) {
 		response.code = error.errorCode;
 	}
