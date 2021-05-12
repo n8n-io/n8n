@@ -9,9 +9,14 @@
 			placeholder="Enter workflow name"
 			class="name"
 		>
-			<WorkflowNameShort
-				:name="workflowName"
-			/>
+			<BreakpointsObserver valueDefault="25" valueLG="50">
+				<template v-slot="{ value }">
+					<WorkflowNameShort
+						:name="workflowName"
+						:limit="value"
+					/>
+				</template>
+			</BreakpointsObserver>
 		</InlineTextEdit>
 
 		<div
@@ -67,6 +72,7 @@ import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import SaveWorkflowButton from "./SaveWorkflowButton.vue";
 import TagsDropdown from "./TagsDropdown.vue";
 import InlineTextEdit from "./InlineTextEdit.vue";
+import BreakpointsObserver from "./BreakpointsObserver.vue";
 
 export default mixins(workflowHelpers).extend({
 	name: "WorkflowDetails",
@@ -78,6 +84,7 @@ export default mixins(workflowHelpers).extend({
 		SaveWorkflowButton,
 		TagsDropdown,
 		InlineTextEdit,
+		BreakpointsObserver,
 	},
 	data() {
 		return {

@@ -15,3 +15,8 @@ export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const WORKLOW_OPEN_MODAL_KEY = 'workflowOpen';
 
+export const BREAKPOINT_SM = 768;
+export const BREAKPOINT_MD = 992;
+export const BREAKPOINT_LG = 1200;
+export const BREAKPOINT_XL = 1920;
+

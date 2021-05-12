@@ -12,16 +12,17 @@ const WORKFLOW_NAME_END_COUNT_TO_KEEP = 4;
 
 export default Vue.extend({
 	name: "WorkflowNameShort",
-	props: ["name"],
+	props: ["name", "limit"],
 	computed: {
 		shortenedName(): string {
 			const name = this.$props.name;
 
-			if (name.length <= WORKFLOW_NAME_LIMIT) {
+			const limit = this.$props.limit || WORKFLOW_NAME_LIMIT;
+			if (name.length <= limit) {
 				return name;
 			}
 
-			const first = name.slice(0, WORKFLOW_NAME_LIMIT - WORKFLOW_NAME_END_COUNT_TO_KEEP);
+			const first = name.slice(0, limit - WORKFLOW_NAME_END_COUNT_TO_KEEP);
 			const last = name.slice(name.length - WORKFLOW_NAME_END_COUNT_TO_KEEP, name.length);
 
 			return `${first}...${last}`;
