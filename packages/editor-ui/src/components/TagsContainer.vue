@@ -1,14 +1,14 @@
 <template>
 	<IntersectionObserver :threshold="1.0" @observed="onObserved" class="tags-container">
 		<template>
-			<div class="tags">
+			<span class="tags">
 				<span
 					v-for="tag in tags" 
 					:key="tag.id"
 					:class="{clickable: !tag.hidden}"
 					@click="!tag.hidden && onClick()"
 				>
-					<div
+					<span
 						v-if="tag.isCount"
 						class="count-container"
 					>
@@ -19,7 +19,7 @@
 						>
 							{{ tag.name }}
 						</el-tag>
-					</div>
+					</span>
 					<IntersectionObserved
 						:class="{hidden: tag.hidden}"
 						:data-id="tag.id"
@@ -34,7 +34,7 @@
 						</el-tag>
 					</IntersectionObserved>
 				</span>
-				</div>
+				</span>
 		</template>
 	</IntersectionObserver>
 </template>
@@ -132,18 +132,11 @@ export default Vue.extend({
 	}
 
 	.count-container {
-		max-width: 0;
-		position: relative;
-
-		> div {
+		> span {
 			position: absolute;
-
-			> span {
-				// position: fixed;
-				max-width: 40px;
-				text-overflow: ellipsis;
-				overflow: hidden;
-			}
+			max-width: 40px;
+			text-overflow: ellipsis;
+			overflow: hidden;
 		}
 	}
 </style>
