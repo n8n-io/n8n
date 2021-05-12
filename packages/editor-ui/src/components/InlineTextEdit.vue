@@ -29,26 +29,52 @@ export default Vue.extend({
 		return {
 			newValue: '',
 			escPressed: false,
+			disabled: false,
 		};
 	},
 	methods: {
 		onInput(newValue: string) {
+			if (this.disabled) {
+				return;
+			}
+
 			this.newValue = newValue;
 		},
 		onClick() {
+			if (this.disabled) {
+				return;
+			}
+
 			this.$data.newValue = this.$props.value;
 			this.$emit('toggle');
 		},
 		onBlur() {
+			if (this.disabled) {
+				return;
+			}
+
 			if (!this.$data.escPressed) {
 				this.submit();
 			}
 			this.$data.escPressed = false;
 		},
 		submit() {
-			this.$emit('submit', this.newValue);
+			if (this.disabled) {
+				return;
+			}
+
+			const onSubmit = () => {
+				this.$data.disabled = false;
+			};
+
+			this.$data.disabled = true;
+			this.$emit('submit', this.newValue, onSubmit);
 		},
 		onEscape() {
+			if (this.disabled) {
+				return;
+			}
+
 			this.$data.escPressed = true;
 			this.$emit('toggle');
 		},

@@ -28,7 +28,7 @@ export default Vue.extend({
 			entries.forEach(({target, isIntersecting}) => {
 				this.$emit('observed', {
 					el: target,
-					isIntersecting: isIntersecting,
+					isIntersecting,
 				});
 			});
 		}, options);
