@@ -13,13 +13,20 @@ export default mixins(
 	emitter,
 ).extend({
 	name: 'IntersectionObserved',
+	props: ['enabled'],
 	mounted() {
+		if (!this.$props.enabled) {
+			return;
+		}
+
 		this.$nextTick(() => {
 			this.$dispatch('IntersectionObserver', 'observe', this.$refs.observed);
 		});
 	},
 	beforeDestroy() {
-		this.$dispatch('IntersectionObserver', 'unobserve', this.$refs.observed);
+		if (this.$props.enabled) {
+			this.$dispatch('IntersectionObserver', 'unobserve', this.$refs.observed);
+		}
 	},
 });
 </script>

@@ -42,6 +42,7 @@
 			v-else
 			:tagIds="currentWorkflowTagIds"
 			:clickable="true"
+			:responsive="true"
 			@click="onTagsEditEnable"
 			class="tags"
 		/>

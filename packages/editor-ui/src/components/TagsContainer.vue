@@ -1,5 +1,5 @@
 <template>
-	<IntersectionObserver :threshold="1.0" @observed="onObserved" class="tags-container">
+	<IntersectionObserver :threshold="1.0" @observed="onObserved" class="tags-container" :enabled="responsive">
 		<template>
 			<span class="tags">
 				<span
@@ -20,6 +20,7 @@
 					<IntersectionObserved
 						:class="{hidden: tag.hidden}"
 						:data-id="tag.id"
+						:enabled="responsive"
 						v-else
 					>
 						<el-tag 
@@ -31,7 +32,7 @@
 						</el-tag>
 					</IntersectionObserved>
 				</span>
-				</span>
+			</span>
 		</template>
 	</IntersectionObserver>
 </template>
@@ -59,6 +60,7 @@ export default Vue.extend({
 		"tagIds",
 		"limit",
 		"clickable",
+		"responsive",
 	],
 	data() {
 		return {
@@ -74,9 +76,12 @@ export default Vue.extend({
 			const limit = this.$props.limit || DEFAULT_MAX_TAGS_LIMIT;
 
 			let toDisplay: TagEl[] = limit ? tags.slice(0, limit) : tags;
-			toDisplay = toDisplay.map((tag: ITag) => ({...tag, hidden: !this.$data.visibility[tag.id]}));
+			toDisplay = toDisplay.map((tag: ITag) => ({...tag, hidden: this.$props.responsive && !this.$data.visibility[tag.id]}));
 
-			const visibleCount = Object.values(this.visibility).reduce((accu, val) => val ? accu + 1 : accu, 0);
+			let visibleCount = toDisplay.length;
+			if (this.$props.responsive) {
+				visibleCount = Object.values(this.visibility).reduce((accu, val) => val ? accu + 1 : accu, 0);
+			}
 
 			if (visibleCount < tags.length) {
 				const hidden = tags.slice(visibleCount);

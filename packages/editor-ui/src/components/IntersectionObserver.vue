@@ -11,13 +11,17 @@ import Vue from 'vue';
 
 export default Vue.extend({
 	name: 'IntersectionObserver',
-	props: ['threshold'],
+	props: ['threshold', 'enabled'],
 	data() {
 		return {
 			observer: null,
 		};
 	},
 	mounted() {
+		if (!this.$props.enabled) {
+			return;
+		}
+
 		const options = {
 			root: this.$refs.root as Element,
 			rootMargin: '0px',
@@ -44,7 +48,9 @@ export default Vue.extend({
 		});
 	},
 	beforeDestroy() {
-		this.$data.observer.disconnect();
+		if (this.$props.enabled) {
+			this.$data.observer.disconnect();
+		}
 	},
 });
 </script>
