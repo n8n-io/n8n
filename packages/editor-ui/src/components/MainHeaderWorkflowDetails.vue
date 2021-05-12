@@ -205,10 +205,10 @@ export default mixins(workflowHelpers).extend({
 .tags {
 	flex: 1;
 	padding-right: 20px;
-	min-width: 100px;
 }
 
 .tags-edit {
+	min-width: 100px;
 	max-width: 400px;
 }
 
