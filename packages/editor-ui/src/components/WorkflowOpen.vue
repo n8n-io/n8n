@@ -228,7 +228,6 @@ export default mixins(
 
 	.tags {
 		flex: 1;
-		max-width: 260px;
 
 		.tags-container {
 			width: 100%;

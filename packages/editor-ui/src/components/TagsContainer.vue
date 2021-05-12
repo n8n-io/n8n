@@ -1,25 +1,39 @@
 <template>
 	<IntersectionObserver :threshold="1.0" @observed="onObserved" class="tags-container">
-		<template v-slot="{ observer }">
-			<div class="tags" v-if="observer">
-					<IntersectionObserved
-						v-for="tag in tags" 
-						:key="tag.id"
-						:observer="observer"
-						:ignore="tag.isCount"
-						:class="{'count-container': tag.isCount}"
-						:style="!tag.isCount ? 'visibility: hidden' : ''"
+		<template>
+			<div class="tags">
+				<span
+					v-for="tag in tags" 
+					:key="tag.id"
+				>
+					<div
+						v-if="tag.isCount"
+						class="count-container clickable"
+						@click="onClick"
 					>
-						<div @click="onClick" class="clickable">
-							<el-tag 
-								:title="tag.title || tag.name"
-								type="info"
-								size="small"
-							>
-								{{ tag.name }}
-							</el-tag>
-						</div>
+						<el-tag 
+							:title="tag.title"
+							type="info"
+							size="small"
+						>
+							{{ tag.name }}
+						</el-tag>
+					</div>
+					<IntersectionObserved
+						:class="{hidden: tag.hidden, clickable: !tag.hidden}"
+						:data-id="tag.id"
+						v-else
+					>
+						<el-tag 
+							:title="tag.name"
+							type="info"
+							size="small"
+							@click="onClick"
+						>
+							{{ tag.name }}
+						</el-tag>
 					</IntersectionObserved>
+				</span>
 				</div>
 		</template>
 	</IntersectionObserver>
@@ -35,6 +49,12 @@ import IntersectionObserved from './IntersectionObserved.vue';
 // random upper limit if none is set to minimize performance impact of observers
 const DEFAULT_MAX_TAGS_LIMIT = 20;
 
+interface TagEl extends ITag {
+	hidden?: boolean;
+	title?: string;
+	isCount?: boolean;
+};
+
 export default Vue.extend({
 	components: { IntersectionObserver, IntersectionObserved },
 	name: 'TagsContainer',
@@ -45,7 +65,8 @@ export default Vue.extend({
 	],
 	data() {
 		return {
-			visibleCount: 0,
+			visibility: {} as {[id: string]: boolean},
+			lastXPosition: 0,
 		};
 	},
 	computed: {
@@ -54,20 +75,25 @@ export default Vue.extend({
 				.filter(Boolean); // if tag has been deleted from store
 
 			const limit = this.$props.limit || DEFAULT_MAX_TAGS_LIMIT;
-			const toDisplay = limit ? tags.slice(0, limit) : tags;
 
-			if (this.visibleCount < tags.length) {
-				const hidden = tags.slice(this.visibleCount);
+			let toDisplay: TagEl[] = limit ? tags.slice(0, limit) : tags;
+			toDisplay = toDisplay.map((tag: ITag) => ({...tag, hidden: !this.$data.visibility[tag.id]}));
+
+			const visibleCount = Object.values(this.visibility).reduce((accu, val) => val ? accu + 1 : accu, 0);
+
+			if (visibleCount < tags.length) {
+				const hidden = tags.slice(visibleCount);
 				const hiddenTitle = hidden.reduce((accu: string, tag: ITag) => {
 					return accu ? `${accu}, ${tag.name}` : tag.name;
 				}, '');
 
-				toDisplay.splice(this.visibleCount, 0, {
+				const countTag: TagEl = {
 					id: 'count',
 					name: `+${hidden.length}`,
 					title: hiddenTitle,
 					isCount: true,
-				});
+				};
+				toDisplay.splice(visibleCount, 0, countTag);
 			}
 
 			return toDisplay;
@@ -75,20 +101,8 @@ export default Vue.extend({
 	},
 	methods: {
 		onObserved({el, isIntersecting}: {el: HTMLElement, isIntersecting: boolean}) {
-			const visibility = isIntersecting ? 'visible' : 'hidden';
-			if (el.style.visibility === visibility) {
-				return;
-			}
-
-			const style = `visibility: ${visibility}`;
-			el.setAttribute('style', style);
-
-			const count = this.$data.visibleCount;
-			this.$data.visibleCount = isIntersecting ? count + 1 : count - 1;
-
-			const rect = el.getBoundingClientRect();
-			if (rect.right > this.$data.lastTagXPosition) {
-				this.$data.lastTagXPosition = rect.right;
+			if (el.dataset.id) {
+				Vue.set(this.$data.visibility, el.dataset.id, isIntersecting);
 			}
 		},
 		onClick() {
@@ -107,6 +121,10 @@ export default Vue.extend({
 
 	.tags {
 		display: flex; 
+	}
+
+	.hidden {
+		visibility: hidden;
 	}
 
 	.count-container {

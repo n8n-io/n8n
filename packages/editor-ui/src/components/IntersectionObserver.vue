@@ -1,6 +1,6 @@
 <template>
 	<div ref="root">
-		<slot :observer="observer"></slot>
+		<slot></slot>
 	</div>	
 </template>
 
@@ -24,7 +24,7 @@ export default Vue.extend({
 			threshold: this.$props.threshold,
 		};
 
-		this.$data.observer = new IntersectionObserver((entries) => {
+		const observer = new IntersectionObserver((entries) => {
 			entries.forEach(({target, isIntersecting}) => {
 				this.$emit('observed', {
 					el: target,
@@ -32,6 +32,16 @@ export default Vue.extend({
 				});
 			});
 		}, options);
+
+		this.$data.observer = observer;
+
+		this.$on('observe', (observed: Element) => {
+			observer.observe(observed);
+		});
+
+		this.$on('unobserve', (observed: Element) => {
+			observer.unobserve(observed);
+		});
 	},
 	beforeDestroy() {
 		this.$data.observer.disconnect();

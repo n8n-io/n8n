@@ -6,20 +6,20 @@
 
 <script lang="ts">
 
-import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
+import emitter from '@/components/mixins/emitter';
 
-export default Vue.extend({
+export default mixins(
+	emitter,
+).extend({
 	name: 'IntersectionObserved',
-	props: ['observer', 'ignore'],
 	mounted() {
-		if (this.$props.observer && !this.$props.ignore) {
-			this.$props.observer.observe(this.$refs.observed);
-		}
+		this.$nextTick(() => {
+			this.$dispatch('IntersectionObserver', 'observe', this.$refs.observed);
+		});
 	},
 	beforeDestroy() {
-		if (this.$props.observer && !this.$props.ignore) {
-			this.$props.observer.unobserve(this.$refs.observed);
-		}
+			this.$dispatch('IntersectionObserver', 'unobserve', this.$refs.observed);
 	},
 });
 </script>
