@@ -94,6 +94,7 @@ const module: Module<ITagsState, IRootState> = {
 
 			if (deleted) {
 				context.commit('deleteTag', id);
+				context.commit('removeWorkflowTagId', id, {root: true});
 			}
 
 			return deleted;

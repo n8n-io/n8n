@@ -185,7 +185,7 @@ export default mixins(showMessage).extend({
 		},
 	},
 	watch: {
-		tags() {
+		allTags() {
 			// keep applied tags in sync with store
 			// for example in case tag is deleted from store
 			this.$emit("onUpdate", this.appliedTags);

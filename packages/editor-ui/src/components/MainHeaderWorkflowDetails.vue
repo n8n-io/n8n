@@ -93,8 +93,8 @@ export default mixins(workflowHelpers).extend({
 			isWorkflowActive: "isActive", 
 			workflowName: "workflowName",
 			isDirty: "getStateIsDirty",
+			currentWorkflowTagIds: "workflowTags",
 		}),
-		...mapGetters("workflows", ["currentWorkflowTagIds"]),
 		isWorkflowSaving(): boolean {
 			return this.$store.getters.isActionActive("workflowSaving");
 		},
@@ -191,7 +191,7 @@ export default mixins(workflowHelpers).extend({
 
 .tags {
 	flex: 1;
-	// padding-right: 20px;
+	padding-right: 20px;
 	min-width: 100px;
 }
 

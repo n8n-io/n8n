@@ -36,7 +36,6 @@ import {
 
 import tags from './modules/tags';
 import ui from './modules/ui';
-import workflows from './modules/workflows';
 
 Vue.use(Vuex);
 
@@ -89,13 +88,14 @@ const state: IRootState = {
 	sidebarMenuItems: [],
 };
 
+const modules = {
+	tags,
+	ui,
+};
+
 export const store = new Vuex.Store({
 	strict: process.env.NODE_ENV !== 'production',
-	modules: {
-		tags,
-		ui,
-		workflows,
-	},
+	modules,
 	state,
 	mutations: {
 		// Active Actions
@@ -582,6 +582,13 @@ export const store = new Vuex.Store({
 
 		setWorkflowTagIds (state, tags: string[]) {
 			Vue.set(state.workflow, 'tags', tags);
+		},
+
+		removeWorkflowTagId (state, tagId: string) {
+			const tags = state.workflow.tags as string[];
+			const updated = tags.filter((id: string) => id !== tagId);
+
+			Vue.set(state.workflow, 'tags', updated);
 		},
 
 		// Workflow

@@ -49,7 +49,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 	props: ["dialogVisible", "title", "modalName", "isActive"],
 	data() {
 		const currentTagIds = this.$store.getters[
-			"workflows/currentWorkflowTagIds"
+			"workflowTags"
 		] as string[];
 
 		const currentWorkflowName  = this.$store.getters["workflowName"];

@@ -511,9 +511,6 @@ export interface ITagsState {
 	fetchedUsageCount: boolean;
 }
 
-export interface IWorkflowsState {
-}
-
 export interface IModalState {
 	open: boolean;
 }
