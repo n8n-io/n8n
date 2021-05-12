@@ -19,7 +19,7 @@ export default Vue.extend({
 	},
 	mounted() {
 		const options = {
-			root: (this.$refs.root  as Vue).$el,
+			root: this.$refs.root as Element,
 			rootMargin: '0px',
 			threshold: this.$props.threshold,
 		};
@@ -28,7 +28,7 @@ export default Vue.extend({
 			entries.forEach(({target, isIntersecting}) => {
 				this.$emit('observed', {
 					el: target,
-					isIntersecting,
+					isIntersecting: isIntersecting,
 				});
 			});
 		}, options);
