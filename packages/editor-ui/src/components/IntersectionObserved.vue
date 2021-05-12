@@ -19,7 +19,7 @@ export default mixins(
 		});
 	},
 	beforeDestroy() {
-			this.$dispatch('IntersectionObserver', 'unobserve', this.$refs.observed);
+		this.$dispatch('IntersectionObserver', 'unobserve', this.$refs.observed);
 	},
 });
 </script>

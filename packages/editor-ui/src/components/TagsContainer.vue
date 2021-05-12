@@ -50,7 +50,7 @@ interface TagEl extends ITag {
 	hidden?: boolean;
 	title?: string;
 	isCount?: boolean;
-};
+}
 
 export default Vue.extend({
 	components: { IntersectionObserver, IntersectionObserved },
