@@ -116,6 +116,9 @@ export class ClockifyTrigger implements INodeType {
 		result = await clockifyApiRequest.call(this, 'GET', resource, {}, qs);
 		webhookData.lastTimeChecked = qs.end;
 
-		return [ this.helpers.returnJsonArray(result) ];
+		if (Array.isArray(result) && result.length !== 0) {
+			return [ this.helpers.returnJsonArray(result) ];
+		}
+		return null;
 	}
 }
