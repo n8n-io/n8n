@@ -40,7 +40,7 @@ export default mixins(workflowHelpers).extend({
 
 <style lang="scss" scoped>
 .save-button {
-	min-width: 60px;
+	min-width: 65px;
 
 	> button {
 		width: 65px;
