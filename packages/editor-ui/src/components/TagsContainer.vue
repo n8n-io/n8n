@@ -50,7 +50,8 @@ export default Vue.extend({
 	},
 	computed: {
 		tags() {
-			const tags = this.$props.tagIds.map((tagId: string) => this.$store.getters['tags/getTagById'](tagId));
+			const tags = this.$props.tagIds.map((tagId: string) => this.$store.getters['tags/getTagById'](tagId))
+				.filter(Boolean); // if tag has been deleted from store
 
 			const limit = this.$props.limit || DEFAULT_MAX_TAGS_LIMIT;
 			const toDisplay = limit ? tags.slice(0, limit) : tags;
