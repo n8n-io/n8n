@@ -9,6 +9,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as basicAuth from 'basic-auth';
@@ -404,7 +406,7 @@ export class Webhook implements INodeType {
 		// @ts-ignore
 		const mimeType = headers['content-type'] || 'application/json';
 		if (mimeType.includes('multipart/form-data')) {
-			const form = new formidable.IncomingForm();
+			const form = new formidable.IncomingForm({});
 
 			return new Promise((resolve, reject) => {
 
@@ -427,7 +429,7 @@ export class Webhook implements INodeType {
 							binaryPropertyName = `${options.binaryPropertyName}${count}`;
 						}
 
-						const fileJson = (files[file] as formidable.File).toJSON() as IDataObject;
+						const fileJson = (files[file] as formidable.File).toJSON() as unknown as IDataObject;
 						const fileContent = await fs.promises.readFile((files[file] as formidable.File).path);
 
 						returnItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(Buffer.from(fileContent), fileJson.name as string, fileJson.type as string);
@@ -477,8 +479,8 @@ export class Webhook implements INodeType {
 					});
 				});
 
-				req.on('error', (err) => {
-					throw new Error(err.message);
+				req.on('error', (error) => {
+					throw new NodeOperationError(this.getNode(), error);
 				});
 			});
 		}

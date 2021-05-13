@@ -1,16 +1,25 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
-import { chunk, flatten } from '../../utils/utilities';
+import {
+	chunk,
+	flatten,
+} from '../../utils/utilities';
 
 import * as mssql from 'mssql';
 
-import { ITables } from './TableInterface';
+import {
+	ITables,
+} from './TableInterface';
 
 import {
 	copyInputItem,
@@ -26,13 +35,13 @@ export class MicrosoftSql implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft SQL',
 		name: 'microsoftSql',
-		icon: 'file:mssql.png',
+		icon: 'file:mssql.svg',
 		group: ['input'],
 		version: 1,
 		description: 'Gets, add and update data in Microsoft SQL.',
 		defaults: {
 			name: 'Microsoft SQL',
-			color: '#1d4bab',
+			color: '#bcbcbd',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -207,7 +216,7 @@ export class MicrosoftSql implements INodeType {
 		const credentials = this.getCredentials('microsoftSql');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		const config = {
@@ -217,6 +226,7 @@ export class MicrosoftSql implements INodeType {
 			user: credentials.user as string,
 			password: credentials.password as string,
 			domain: credentials.domain ? (credentials.domain as string) : undefined,
+			connectTimeout: credentials.connectTimeout as number,
 			options: {
 				encrypt: credentials.tls as boolean,
 			},
@@ -378,14 +388,14 @@ export class MicrosoftSql implements INodeType {
 				} as IDataObject);
 			} else {
 				await pool.close();
-				throw new Error(`The operation "${operation}" is not supported!`);
+				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 			}
-		} catch (err) {
+		} catch (error) {
 			if (this.continueOnFail() === true) {
 				returnItems = items;
 			} else {
 				await pool.close();
-				throw err;
+				throw error;
 			}
 		}
 

@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -38,7 +39,7 @@ import {
 
 import {
 	snakeCase,
- } from 'change-case';
+} from 'change-case';
 
 interface IGraphqlBody {
 	query: string;
@@ -49,7 +50,7 @@ export class MondayCom implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Monday.com',
 		name: 'mondayCom',
-		icon: 'file:mondayCom.png',
+		icon: 'file:mondayCom.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -64,9 +65,44 @@ export class MondayCom implements INodeType {
 			{
 				name: 'mondayComApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'mondayComOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The resource to operate on.',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -322,7 +358,7 @@ export class MondayCom implements INodeType {
 					if (returnAll === true) {
 						responseData = await mondayComApiRequestAllItems.call(this, 'data.boards', body);
 					} else {
-						body.variables.limit =  this.getNodeParameter('limit', i) as number;
+						body.variables.limit = this.getNodeParameter('limit', i) as number;
 						responseData = await mondayComApiRequest.call(this, body);
 						responseData = responseData.data.boards;
 					}
@@ -352,8 +388,8 @@ export class MondayCom implements INodeType {
 					if (additionalFields.defaults) {
 						try {
 							JSON.parse(additionalFields.defaults as string);
-						} catch (e) {
-							throw new Error('Defauls must be a valid JSON');
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), 'Defauls must be a valid JSON');
 						}
 						body.variables.defaults = JSON.stringify(JSON.parse(additionalFields.defaults as string));
 					}
@@ -497,8 +533,8 @@ export class MondayCom implements INodeType {
 
 					try {
 						JSON.parse(value);
-					} catch (e) {
-						throw new Error('Custom Values must be a valid JSON');
+					} catch (error) {
+						throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON');
 					}
 					body.variables.value = JSON.stringify(JSON.parse(value));
 
@@ -525,8 +561,8 @@ export class MondayCom implements INodeType {
 
 					try {
 						JSON.parse(columnValues);
-					} catch (e) {
-						throw new Error('Custom Values must be a valid JSON');
+					} catch (error) {
+						throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON');
 					}
 					body.variables.columnValues = JSON.stringify(JSON.parse(columnValues));
 
@@ -556,8 +592,8 @@ export class MondayCom implements INodeType {
 					if (additionalFields.columnValues) {
 						try {
 							JSON.parse(additionalFields.columnValues as string);
-						} catch (e) {
-							throw new Error('Custom Values must be a valid JSON');
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), 'Custom Values must be a valid JSON');
 						}
 						body.variables.columnValues = JSON.stringify(JSON.parse(additionalFields.columnValues as string));
 					}
@@ -694,6 +730,26 @@ export class MondayCom implements INodeType {
 						responseData = await mondayComApiRequest.call(this, body);
 						responseData = responseData.data.items_by_column_values;
 					}
+				}
+				if (operation === 'move') {
+					const groupId = this.getNodeParameter('groupId', i) as string;
+					const itemId = parseInt(this.getNodeParameter('itemId', i) as string, 10);
+
+					const body: IGraphqlBody = {
+						query:
+							`mutation ($groupId: String!, $itemId: Int!) {
+								move_item_to_group (group_id: $groupId, item_id: $itemId) {
+									id
+								}
+							}`,
+						variables: {
+							groupId,
+							itemId,
+						},
+					};
+
+					responseData = await mondayComApiRequest.call(this, body);
+					responseData = responseData.data.move_item_to_group;
 				}
 			}
 			if (Array.isArray(responseData)) {

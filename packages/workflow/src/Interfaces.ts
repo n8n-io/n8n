@@ -1,5 +1,7 @@
 import { Workflow } from './Workflow';
 import { WorkflowHooks } from './WorkflowHooks';
+import { WorkflowOperationError } from './WorkflowErrors';
+import { NodeApiError, NodeOperationError } from './NodeErrors';
 import * as express from 'express';
 
 export type IAllExecuteFunctions = IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions | IPollFunctions | ITriggerFunctions | IWebhookFunctions;
@@ -9,6 +11,7 @@ export interface IBinaryData {
 	data: string;
 	mimeType: string;
 	fileName?: string;
+	directory?: string;
 	fileExtension?: string;
 }
 
@@ -17,6 +20,7 @@ export interface IOAuth2Options {
 	property?: string;
 	tokenType?: string;
 	keepBearer?: boolean;
+	tokenExpiredStatusCode?: number;
 }
 
 export interface IConnection {
@@ -30,11 +34,7 @@ export interface IConnection {
 	index: number;
 }
 
-export interface IExecutionError {
-	message: string;
-	node?: string;
-	stack?: string;
-}
+export type ExecutionError = WorkflowOperationError | NodeOperationError | NodeApiError;
 
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
@@ -163,11 +163,11 @@ export interface IDataObject {
 
 
 export interface IGetExecutePollFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IPollFunctions;
+	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): IPollFunctions;
 }
 
 export interface IGetExecuteTriggerFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): ITriggerFunctions;
+	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): ITriggerFunctions;
 }
 
 
@@ -182,7 +182,7 @@ export interface IGetExecuteSingleFunctions {
 
 
 export interface IGetExecuteHookFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions;
+	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions;
 }
 
 
@@ -269,6 +269,7 @@ export interface ILoadOptionsFunctions {
 export interface IHookFunctions {
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
 	getMode(): WorkflowExecuteMode;
+	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
 	getNodeWebhookUrl: (name: string) => string | undefined;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
@@ -286,6 +287,7 @@ export interface IPollFunctions {
 	__emit(data: INodeExecutionData[][]): void;
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
 	getMode(): WorkflowExecuteMode;
+	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getRestApiUrl(): string;
@@ -301,6 +303,7 @@ export interface ITriggerFunctions {
 	emit(data: INodeExecutionData[][]): void;
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
 	getMode(): WorkflowExecuteMode;
+	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getRestApiUrl(): string;
@@ -441,7 +444,7 @@ export interface INodeProperties {
 	default: NodeParameterValue | INodeParameters | INodeParameters[] | NodeParameterValue[];
 	description?: string;
 	displayOptions?: IDisplayOptions;
-	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection >;
+	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>;
 	placeholder?: string;
 	isNodeSetting?: boolean;
 	noDataExpression?: boolean;
@@ -655,7 +658,7 @@ export interface IRunExecutionData {
 		runNodeFilter?: string[];
 	};
 	resultData: {
-		error?: IExecutionError;
+		error?: ExecutionError;
 		runData: IRunData;
 		lastNodeExecuted?: string;
 	};
@@ -678,7 +681,7 @@ export interface ITaskData {
 	startTime: number;
 	executionTime: number;
 	data?: ITaskDataConnections;
-	error?: IExecutionError;
+	error?: ExecutionError;
 }
 
 
@@ -735,7 +738,7 @@ export interface IWorkflowExecuteAdditionalData {
 	credentials: IWorkflowCredentials;
 	credentialsHelper: ICredentialsHelper;
 	encryptionKey: string;
-	executeWorkflow: (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[]) => Promise<any>; // tslint:disable-line:no-any
+	executeWorkflow: (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[], parentExecutionId?: string, loadedWorkflowData?: IWorkflowBase, loadedRunData?: any) => Promise<any>; // tslint:disable-line:no-any
 	// hooks?: IWorkflowExecuteHooks;
 	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;
@@ -744,10 +747,12 @@ export interface IWorkflowExecuteAdditionalData {
 	timezone: string;
 	webhookBaseUrl: string;
 	webhookTestBaseUrl: string;
-	currentNodeParameters? : INodeParameters;
+	currentNodeParameters?: INodeParameters;
+	executionTimeoutTimestamp?: number;
 }
 
 export type WorkflowExecuteMode = 'cli' | 'error' | 'integrated' | 'internal' | 'manual' | 'retry' | 'trigger' | 'webhook';
+export type WorkflowActivateMode = 'init' | 'create' | 'update' | 'activate' | 'manual';
 
 export interface IWorkflowHooksOptionalParameters {
 	parentProcessMode?: string;
@@ -755,7 +760,24 @@ export interface IWorkflowHooksOptionalParameters {
 	sessionId?: string;
 }
 
-
 export interface IWorkflowSettings {
 	[key: string]: IDataObject | string | number | boolean | undefined;
+}
+
+export type LogTypes = 'debug' | 'verbose' | 'info' | 'warn' | 'error';
+
+export interface ILogger {
+	log: (type: LogTypes, message: string, meta?: object) => void;
+	debug: (message: string, meta?: object) => void;
+	verbose: (message: string, meta?: object) => void;
+	info: (message: string, meta?: object) => void;
+	warn: (message: string, meta?: object) => void;
+	error: (message: string, meta?: object) => void;
+}
+export interface IRawErrorObject {
+	[key: string]: string | object | number | boolean | undefined | null | string[] | object[] | number[] | boolean[];
+}
+
+export interface IStatusCodeMessages {
+	[key: string]: string;
 }

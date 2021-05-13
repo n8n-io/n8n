@@ -10,6 +10,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -59,7 +60,7 @@ export class HelpScout implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HelpScout',
 		name: 'helpScout',
-		icon: 'file:helpScout.png',
+		icon: 'file:helpScout.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -139,7 +140,7 @@ export class HelpScout implements INodeType {
 					const tagId = tag.id;
 					returnData.push({
 						name: tagName,
-						value: tagId,
+						value: tagName,
 					});
 				}
 				return returnData;
@@ -203,12 +204,12 @@ export class HelpScout implements INodeType {
 						delete body.customerEmail;
 					}
 					if (body.customer === undefined) {
-						throw new Error('Either customer email or customer ID must be set');
+						throw new NodeOperationError(this.getNode(), 'Either customer email or customer ID must be set');
 					}
 					if (threads) {
 						for (let i = 0; i < threads.length; i++) {
 							if (threads[i].type === '' || threads[i].text === '') {
-								throw new Error('Chat Threads cannot be empty');
+								throw new NodeOperationError(this.getNode(), 'Chat Threads cannot be empty');
 							}
 							if (threads[i].type !== 'note') {
 								threads[i].customer = body.customer;
@@ -289,7 +290,7 @@ export class HelpScout implements INodeType {
 						body.websites = websites;
 					}
 					if (Object.keys(body).length === 0) {
-						throw new Error('You have to set at least one field');
+						throw new NodeOperationError(this.getNode(), 'You have to set at least one field');
 					}
 					responseData = await helpscoutApiRequest.call(this, 'POST', '/v2/customers', body, qs, undefined, { resolveWithFullResponse: true });
 					const id = responseData.headers['resource-id'];
@@ -335,7 +336,7 @@ export class HelpScout implements INodeType {
 						body.age = body.age.toString();
 					}
 					if (Object.keys(body).length === 0) {
-						throw new Error('You have to set at least one field');
+						throw new NodeOperationError(this.getNode(), 'You have to set at least one field');
 					}
 					responseData = await helpscoutApiRequest.call(this, 'PUT', `/v2/customers/${customerId}`, body, qs, undefined, { resolveWithFullResponse: true });
 					responseData = { success: true };
@@ -387,27 +388,27 @@ export class HelpScout implements INodeType {
 						delete body.customerEmail;
 					}
 					if (body.customer === undefined) {
-						throw new Error('Either customer email or customer ID must be set');
+						throw new NodeOperationError(this.getNode(), 'Either customer email or customer ID must be set');
 					}
 					if (attachments) {
 						if (attachments.attachmentsValues
-						&&	(attachments.attachmentsValues as IDataObject[]).length !== 0) {
+							&& (attachments.attachmentsValues as IDataObject[]).length !== 0) {
 							body.attachments?.push.apply(body.attachments, attachments.attachmentsValues as IAttachment[]);
 						}
 						if (attachments.attachmentsBinary
-						&& 	(attachments.attachmentsBinary as IDataObject[]).length !== 0
-						&&	items[i].binary) {
-							 const mapFunction = (value: IDataObject): IAttachment => {
-								 const binaryProperty = (items[i].binary as IBinaryKeyData)[value.property as string];
+							&& (attachments.attachmentsBinary as IDataObject[]).length !== 0
+							&& items[i].binary) {
+							const mapFunction = (value: IDataObject): IAttachment => {
+								const binaryProperty = (items[i].binary as IBinaryKeyData)[value.property as string];
 								if (binaryProperty) {
 									return {
 										fileName: binaryProperty.fileName || 'unknown',
 										data: binaryProperty.data,
 										mimeType: binaryProperty.mimeType,
-									 };
-									} else {
-										throw new Error(`Binary property ${value.property} does not exist on input`);
-									}
+									};
+								} else {
+									throw new NodeOperationError(this.getNode(), `Binary property ${value.property} does not exist on input`);
+								}
 							};
 							body.attachments?.push.apply(body.attachments, (attachments.attachmentsBinary as IDataObject[]).map(mapFunction) as IAttachment[]);
 						}

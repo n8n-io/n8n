@@ -82,6 +82,8 @@ export const alertFields = [
 				],
 				operation: [
 					'promote',
+					'markAsRead',
+					'markAsUnread',
 					'merge',
 					'update',
 					'executeResponder',
@@ -385,21 +387,10 @@ export const alertFields = [
 						name: 'dataType',
 						type: 'options',
 						default: '',
-						options: [
-							{
-								name: 'IP',
-								value: 'ip',
-							},
-							{
-								name: 'Domain',
-								value: 'domain',
-							},
-							{
-								name: 'File',
-								value: 'file',
-							},
-						],
-						description: '',
+						typeOptions: {
+							loadOptionsMethod: 'loadObservableTypes',
+						},
+						description: 'Type of the observable',
 					},
 					{
 						displayName: 'Data',
@@ -543,20 +534,10 @@ export const alertFields = [
 								name: 'dataType',
 								type: 'options',
 								default: '',
-								options: [
-									{
-										name: 'IP',
-										value: 'ip',
-									},
-									{
-										name: 'Domain',
-										value: 'domain',
-									},
-									{
-										name: 'File',
-										value: 'file',
-									},
-								],
+								typeOptions: {
+									loadOptionsMethod: 'loadObservableTypes',
+								},
+								description: 'Type of the observable',
 							},
 							{
 								displayName: 'Data',

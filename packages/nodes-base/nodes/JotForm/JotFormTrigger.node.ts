@@ -123,7 +123,7 @@ export class JotFormTrigger implements INodeType {
 
 					const webhookIds = Object.keys(responseData.content);
 					webhookData.webhookId = webhookIds[webhookUrls.indexOf(webhookUrl)];
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;
@@ -167,7 +167,7 @@ export class JotFormTrigger implements INodeType {
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
 		const onlyAnswers = this.getNodeParameter('onlyAnswers', false) as boolean;
 
-		const form = new formidable.IncomingForm();
+		const form = new formidable.IncomingForm({});
 
 		return new Promise((resolve, reject) => {
 

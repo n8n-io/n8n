@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -137,7 +138,7 @@ export class Airtable implements INodeType {
 			//         delete
 			// ----------------------------------
 			{
-				displayName: 'Id',
+				displayName: 'ID',
 				name: 'id',
 				type: 'string',
 				displayOptions: {
@@ -317,7 +318,7 @@ export class Airtable implements INodeType {
 			//         read
 			// ----------------------------------
 			{
-				displayName: 'Id',
+				displayName: 'ID',
 				name: 'id',
 				type: 'string',
 				displayOptions: {
@@ -336,7 +337,7 @@ export class Airtable implements INodeType {
 			//         update
 			// ----------------------------------
 			{
-				displayName: 'Id',
+				displayName: 'ID',
 				name: 'id',
 				type: 'string',
 				displayOptions: {
@@ -499,7 +500,7 @@ export class Airtable implements INodeType {
 			for (let i = 0; i < items.length; i++) {
 				id = this.getNodeParameter('id', i) as string;
 
-				endpoint = `${application}/${table}/${id}`;
+				endpoint = `${application}/${table}`;
 
 				// Make one request after another. This is slower but makes
 				// sure that we do not run into the rate limit they have in
@@ -507,9 +508,11 @@ export class Airtable implements INodeType {
 				// functionality in core should make it easy to make requests
 				// according to specific rules like not more than 5 requests
 				// per seconds.
+				qs.records = [id];
+
 				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-				returnData.push(responseData);
+				returnData.push(...responseData.records);
 			}
 
 		} else if (operation === 'list') {
@@ -586,7 +589,6 @@ export class Airtable implements INodeType {
 			let updateAllFields: boolean;
 			let fields: string[];
 			let options: IDataObject;
-
 			for (let i = 0; i < items.length; i++) {
 				updateAllFields = this.getNodeParameter('updateAllFields', i) as boolean;
 				options = this.getNodeParameter('options', i, {}) as IDataObject;
@@ -616,13 +618,9 @@ export class Airtable implements INodeType {
 					}
 				}
 
-				if (options.typecast === true) {
-					body['typecast'] = true;
-				}
-
 				id = this.getNodeParameter('id', i) as string;
 
-				endpoint = `${application}/${table}/${id}`;
+				endpoint = `${application}/${table}`;
 
 				// Make one request after another. This is slower but makes
 				// sure that we do not run into the rate limit they have in
@@ -631,13 +629,15 @@ export class Airtable implements INodeType {
 				// according to specific rules like not more than 5 requests
 				// per seconds.
 
-				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+				const data = { records: [{ id, fields: body.fields }], typecast: (options.typecast) ? true : false };
 
-				returnData.push(responseData);
+				responseData = await apiRequest.call(this, requestMethod, endpoint, data, qs);
+
+				returnData.push(...responseData.records);
 			}
 
 		} else {
-			throw new Error(`The operation "${operation}" is not known!`);
+			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

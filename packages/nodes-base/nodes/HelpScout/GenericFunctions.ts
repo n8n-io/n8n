@@ -1,12 +1,16 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
+
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
+
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -34,21 +38,11 @@ export async function helpscoutApiRequest(this: IExecuteFunctions | IExecuteSing
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'helpScoutOAuth2Api', options);
 	} catch (error) {
-		if (error.response && error.response.body
-		&&	error.response.body._embedded
-		&&	error.response.body._embedded.errors) {
-			// Try to return the error prettier
-			//@ts-ignore
-			throw new Error(`HelpScout error response [${error.statusCode}]: ${error.response.body.message} - ${error.response.body._embedded.errors.map(error => {
-				return `${error.path} ${error.message}`;
-			}).join('-')}`);
-		}
-
-		throw new Error(`HelpScout error response [${error.statusCode}]: ${error.message}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function helpscoutApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function helpscoutApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

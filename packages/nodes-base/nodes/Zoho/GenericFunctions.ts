@@ -1,14 +1,19 @@
-import { OptionsWithUri } from 'request';
+import { 
+	OptionsWithUri,
+} from 'request';
+
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 import {
-	IDataObject
+	IDataObject, NodeApiError
 } from 'n8n-workflow';
 
 export async function zohoApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	const { oauthTokenData: { api_domain } } = this.getCredentials('zohoOAuth2Api') as { [key: string]: IDataObject };
+
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -20,22 +25,18 @@ export async function zohoApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 			],
 		},
 		qs,
-		uri: uri || `https://www.zohoapis.com/crm/v2${resource}`,
+		uri: uri || `${api_domain}/crm/v2${resource}`,
 		json: true,
 	};
 	try {
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'zohoOAuth2Api', options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			throw new Error(`Zoho error response [${error.statusCode}]: ${error.response.body.message}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function zohoApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function zohoApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

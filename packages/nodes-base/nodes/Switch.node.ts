@@ -4,6 +4,7 @@ import {
 	INodeParameters,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 	NodeParameterValue,
 } from 'n8n-workflow';
 
@@ -88,6 +89,10 @@ export class Switch implements INodeType {
 						value: 'boolean',
 					},
 					{
+						name: 'Date & Time',
+						value: 'dateTime',
+					},
+					{
 						name: 'Number',
 						value: 'number',
 					},
@@ -167,6 +172,91 @@ export class Switch implements INodeType {
 								name: 'value2',
 								type: 'boolean',
 								default: false,
+								description: 'The value to compare with the first one.',
+							},
+							{
+								displayName: 'Output',
+								name: 'output',
+								type: 'number',
+								typeOptions: {
+									minValue: 0,
+									maxValue: 3,
+								},
+								default: 0,
+								description: 'The index of output to which to send data to if rule matches.',
+							},
+						],
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         dataType:dateTime
+			// ----------------------------------
+			{
+				displayName: 'Value 1',
+				name: 'value1',
+				type: 'dateTime',
+				displayOptions: {
+					show: {
+						dataType: [
+							'dateTime',
+						],
+						mode: [
+							'rules',
+						],
+					},
+				},
+				default: '',
+				description: 'The value to compare with the second one.',
+			},
+			{
+				displayName: 'Routing Rules',
+				name: 'rules',
+				placeholder: 'Add Routing Rule',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				displayOptions: {
+					show: {
+						dataType: [
+							'dateTime',
+						],
+						mode: [
+							'rules',
+						],
+					},
+				},
+				description: 'The routing rules.',
+				default: {},
+				options: [
+					{
+						name: 'rules',
+						displayName: 'Dates',
+						values: [
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								options: [
+									{
+										name: 'Occurred after',
+										value: 'after',
+									},
+									{
+										name: 'Occurred before',
+										value: 'before',
+									},
+								],
+								default: 'after',
+								description: 'Operation to decide where the the data should be mapped to.',
+							},
+							{
+								displayName: 'Value 2',
+								name: 'value2',
+								type: 'dateTime',
+								default: 0,
 								description: 'The value to compare with the first one.',
 							},
 							{
@@ -470,12 +560,14 @@ export class Switch implements INodeType {
 		let mode: string;
 		let outputIndex: number;
 		let ruleData: INodeParameters;
-		let value1: NodeParameterValue;
+		let value1: NodeParameterValue, value2: NodeParameterValue;
 
 		// The compare operations
 		const compareOperationFunctions: {
 			[key: string]: (value1: NodeParameterValue, value2: NodeParameterValue) => boolean;
 		} = {
+			after: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) > (value2 || 0),
+			before: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) < (value2 || 0),
 			contains: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || '').toString().includes((value2 || '').toString()),
 			notContains: (value1: NodeParameterValue, value2: NodeParameterValue) => !(value1 || '').toString().includes((value2 || '').toString()),
 			endsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 as string).endsWith(value2 as string),
@@ -502,11 +594,31 @@ export class Switch implements INodeType {
 			},
 		};
 
-		function checkIndexRange(index: number) {
-			if (index < 0 || index >= returnData.length) {
-				throw new Error(`The ouput ${index} is not allowed. It has to be between 0 and ${returnData.length - 1}!`);
+		// Converts the input data of a dateTime into a number for easy compare
+		const convertDateTime = (value: NodeParameterValue): number => {
+			let returnValue: number | undefined = undefined;
+			if (typeof value === 'string') {
+				returnValue = new Date(value).getTime();
+			} else if (typeof value === 'number') {
+				returnValue = value;
+			} if ((value as unknown as object) instanceof Date) {
+				returnValue = (value as unknown as Date).getTime();
 			}
-		}
+
+			if (returnValue === undefined || isNaN(returnValue)) {
+				throw new NodeOperationError(this.getNode(), `The value "${value}" is not a valid DateTime.`);
+			}
+
+			return returnValue;
+		};
+
+		const checkIndexRange = (index: number) => {
+			if (index < 0 || index >= returnData.length) {
+				throw new NodeOperationError(this.getNode(), `The ouput ${index} is not allowed. It has to be between 0 and ${returnData.length - 1}!`);
+			}
+		};
+
+		const dataType = this.getNodeParameter('dataType', 0) as string;
 
 		// Itterate over all items to check to which output they should be routed to
 		itemLoop:
@@ -525,10 +637,19 @@ export class Switch implements INodeType {
 				// Rules decide how to route item
 
 				value1 = this.getNodeParameter('value1', itemIndex) as NodeParameterValue;
+				if (dataType === 'dateTime') {
+					value1 = convertDateTime(value1);
+				}
 
 				for (ruleData of this.getNodeParameter('rules.rules', itemIndex, []) as INodeParameters[]) {
 					// Check if the values passes
-					compareOperationResult = compareOperationFunctions[ruleData.operation as string](value1, ruleData.value2 as NodeParameterValue);
+
+					value2 = ruleData.value2 as NodeParameterValue;
+					if (dataType === 'dateTime') {
+						value2 = convertDateTime(value2);
+					}
+
+					compareOperationResult = compareOperationFunctions[ruleData.operation as string](value1, value2);
 
 					if (compareOperationResult === true) {
 						// If rule matches add it to the correct output and continue with next item

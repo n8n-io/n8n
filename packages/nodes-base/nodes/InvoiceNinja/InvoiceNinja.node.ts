@@ -1,6 +1,7 @@
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -9,63 +10,77 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+
 import {
 	invoiceNinjaApiRequest,
 	invoiceNinjaApiRequestAllItems,
 } from './GenericFunctions';
+
 import {
 	clientFields,
 	clientOperations,
 } from './ClientDescription';
+
 import {
 	invoiceFields,
 	invoiceOperations,
 } from './InvoiceDescription';
+
 import {
 	IClient,
 	IContact,
 } from './ClientInterface';
+
 import {
 	countryCodes,
- } from './ISOCountryCodes';
+} from './ISOCountryCodes';
+
 import {
 	IInvoice,
 	IItem,
- } from './invoiceInterface';
+} from './invoiceInterface';
+
 import {
 	taskFields,
 	taskOperations,
- } from './TaskDescription';
- import {
+} from './TaskDescription';
+
+import {
 	ITask,
- } from './TaskInterface';
- import {
+} from './TaskInterface';
+
+import {
 	paymentFields,
 	paymentOperations,
- } from './PaymentDescription';
- import {
+} from './PaymentDescription';
+
+import {
 	IPayment,
- } from './PaymentInterface';
- import {
+} from './PaymentInterface';
+
+import {
 	expenseFields,
 	expenseOperations,
- } from './ExpenseDescription';
- import {
+} from './ExpenseDescription';
+
+import {
 	IExpense,
- } from './ExpenseInterface';
- import {
+} from './ExpenseInterface';
+
+import {
 	quoteFields,
 	quoteOperations,
- } from './QuoteDescription';
- import {
+} from './QuoteDescription';
+
+import {
 	IQuote,
- } from './QuoteInterface';
+} from './QuoteInterface';
 
 export class InvoiceNinja implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Invoice Ninja',
 		name: 'invoiceNinja',
-		icon: 'file:invoiceNinja.png',
+		icon: 'file:invoiceNinja.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -462,7 +477,7 @@ export class InvoiceNinja implements INodeType {
 						body.client_id = additionalFields.client as number;
 					}
 					if (additionalFields.project) {
-						body.project = additionalFields.project as number;
+						body.project_id = additionalFields.project as number;
 					}
 					if (additionalFields.customValue1) {
 						body.custom_value1 = additionalFields.customValue1 as string;
@@ -479,10 +494,10 @@ export class InvoiceNinja implements INodeType {
 						for (const logValue of timeLogsValues) {
 							let from = 0, to;
 							if (logValue.startDate) {
-								from = new Date(logValue.startDate as string).getTime()/1000 as number;
+								from = new Date(logValue.startDate as string).getTime() / 1000 as number;
 							}
 							if (logValue.endDate) {
-								to = new Date(logValue.endDate as string).getTime()/1000 as number;
+								to = new Date(logValue.endDate as string).getTime() / 1000 as number;
 							}
 							if (logValue.duration) {
 								to = from + (logValue.duration as number * 3600);

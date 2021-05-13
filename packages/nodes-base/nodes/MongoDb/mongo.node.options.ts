@@ -1,4 +1,6 @@
-import { INodeTypeDescription } from 'n8n-workflow';
+import {
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 /**
  * Options to be displayed
@@ -6,7 +8,7 @@ import { INodeTypeDescription } from 'n8n-workflow';
 export const nodeDescription: INodeTypeDescription = {
 	displayName: 'MongoDB',
 	name: 'mongoDb',
-	icon: 'file:mongoDb.png',
+	icon: 'file:mongodb.svg',
 	group: ['input'],
 	version: 1,
 	description: 'Find, insert and update documents in MongoDB.',
@@ -46,7 +48,7 @@ export const nodeDescription: INodeTypeDescription = {
 				{
 					name: 'Update',
 					value: 'update',
-					description: 'Updates documents.',
+					description: 'Update documents.',
 				},
 			],
 			default: 'find',
@@ -89,6 +91,47 @@ export const nodeDescription: INodeTypeDescription = {
 		//         find
 		// ----------------------------------
 		{
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
+			displayOptions: {
+				show: {
+					operation: ['find'],
+				},
+			},
+			default: {},
+			placeholder: 'Add options',
+			description: 'Add query options',
+			options: [
+				{
+					displayName: 'Limit',
+					name: 'limit',
+					type: 'number',
+					default: 0,
+					description: 'Use limit to specify the maximum number of documents or 0 for unlimited documents.',
+				},
+				{
+					displayName: 'Skip',
+					name: 'skip',
+					type: 'number',
+					default: 0,
+					description: 'The number of documents to skip in the results set.',
+				},
+				{
+					displayName: 'Sort (JSON format)',
+					name: 'sort',
+					type: 'json',
+					typeOptions: {
+						rows: 2,
+					},
+					default: '{}',
+					placeholder: '{ "field": -1 }',
+					required: true,
+					description: 'A json that defines the sort order of the result set.',
+				},
+			],
+		},
+		{
 			displayName: 'Query (JSON format)',
 			name: 'query',
 			type: 'json',
@@ -97,7 +140,9 @@ export const nodeDescription: INodeTypeDescription = {
 			},
 			displayOptions: {
 				show: {
-					operation: ['find'],
+					operation: [
+						'find',
+					],
 				},
 			},
 			default: '{}',
@@ -105,7 +150,6 @@ export const nodeDescription: INodeTypeDescription = {
 			required: true,
 			description: 'MongoDB Find query.',
 		},
-
 		// ----------------------------------
 		//         insert
 		// ----------------------------------
@@ -115,7 +159,9 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: ['insert'],
+					operation: [
+						'insert',
+					],
 				},
 			},
 			default: '',
@@ -133,7 +179,9 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: ['update'],
+					operation: [
+						'update',
+					],
 				},
 			},
 			default: 'id',
@@ -147,13 +195,51 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: ['update'],
+					operation: [
+						'update',
+					],
 				},
 			},
 			default: '',
 			placeholder: 'name,description',
 			description:
 				'Comma separated list of the fields to be included into the new document.',
+		},
+		{
+			displayName: 'Upsert',
+			name: 'upsert',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					operation: ['update'],
+				},
+			},
+			default: false,
+			description: `Perform an insert if no documents match the update key`,
+		},
+		{
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
+			displayOptions: {
+				show: {
+					operation: [
+						'update',
+						'insert',
+					],
+				},
+			},
+			placeholder: 'Add Option',
+			default: {},
+			options: [
+				{
+					displayName: 'Date Fields',
+					name: 'dateFields',
+					type: 'string',
+					default: '',
+					description: 'Comma separeted list of fields that will be parse as Mongo Date type.',
+				},
+			],
 		},
 	],
 };

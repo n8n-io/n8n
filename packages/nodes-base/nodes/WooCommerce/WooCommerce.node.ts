@@ -367,7 +367,7 @@ export class WooCommerce implements INodeType {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#retrieve-a-product
 				if (operation === 'get') {
 					const productId = this.getNodeParameter('productId', i) as string;
-					responseData = await woocommerceApiRequest.call(this,'GET', `/products/${productId}`, {}, qs);
+					responseData = await woocommerceApiRequest.call(this, 'GET', `/products/${productId}`, {}, qs);
 				}
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#list-all-products
 				if (operation === 'getAll') {
@@ -413,7 +413,7 @@ export class WooCommerce implements INodeType {
 						qs.status = options.status as string;
 					}
 					if (options.stockStatus) {
-						qs.stock_status	 = options.stockStatus as string;
+						qs.stock_status = options.stockStatus as string;
 					}
 					if (options.tag) {
 						qs.tag = options.tag as string;
@@ -434,7 +434,7 @@ export class WooCommerce implements INodeType {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#delete-a-product
 				if (operation === 'delete') {
 					const productId = this.getNodeParameter('productId', i) as string;
-					responseData = await woocommerceApiRequest.call(this,'DELETE', `/products/${productId}`, {}, { force: true });
+					responseData = await woocommerceApiRequest.call(this, 'DELETE', `/products/${productId}`, {}, { force: true });
 				}
 			}
 			if (resource === 'order') {
@@ -583,7 +583,7 @@ export class WooCommerce implements INodeType {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#retrieve-an-order
 				if (operation === 'get') {
 					const orderId = this.getNodeParameter('orderId', i) as string;
-					responseData = await woocommerceApiRequest.call(this,'GET', `/orders/${orderId}`, {}, qs);
+					responseData = await woocommerceApiRequest.call(this, 'GET', `/orders/${orderId}`, {}, qs);
 				}
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#list-all-orders
 				if (operation === 'getAll') {
@@ -629,7 +629,7 @@ export class WooCommerce implements INodeType {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#delete-an-order
 				if (operation === 'delete') {
 					const orderId = this.getNodeParameter('orderId', i) as string;
-					responseData = await woocommerceApiRequest.call(this,'DELETE', `/orders/${orderId}`, {}, { force: true });
+					responseData = await woocommerceApiRequest.call(this, 'DELETE', `/orders/${orderId}`, {}, { force: true });
 				}
 			}
 			if (Array.isArray(responseData)) {

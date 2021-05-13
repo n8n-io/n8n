@@ -12,6 +12,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -42,6 +43,11 @@ import {
 	INotify,
 	NotificationRecipientsRestrictions,
 } from './IssueInterface';
+
+import {
+	userFields,
+	userOperations,
+} from './UserDescription';
 
 export class Jira implements INodeType {
 	description: INodeTypeDescription = {
@@ -119,6 +125,11 @@ export class Jira implements INodeType {
 						value: 'issueComment',
 						description: 'Get, create, update, and delete a comment from an issue.',
 					},
+					{
+						name: 'User',
+						value: 'user',
+						description: 'Get, create and delete a user.',
+					},
 				],
 				default: 'issue',
 				description: 'Resource to consume.',
@@ -129,6 +140,8 @@ export class Jira implements INodeType {
 			...issueAttachmentFields,
 			...issueCommentOperations,
 			...issueCommentFields,
+			...userOperations,
+			...userFields,
 		],
 	};
 
@@ -176,31 +189,14 @@ export class Jira implements INodeType {
 			async getIssueTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const projectId = this.getCurrentNodeParameter('project');
 				const returnData: INodePropertyOptions[] = [];
-
-				const issueTypes = await jiraSoftwareCloudApiRequest.call(this, '/api/2/issuetype', 'GET');
-				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
-				if (jiraVersion === 'server') {
-					for (const issueType of issueTypes) {
-						const issueTypeName = issueType.name;
-						const issueTypeId = issueType.id;
-
-						returnData.push({
-							name: issueTypeName,
-							value: issueTypeId,
-						});
-					}
-				} else {
-					for (const issueType of issueTypes) {
-						if (issueType.scope !== undefined && issueType.scope.project.id === projectId) {
-							const issueTypeName = issueType.name;
-							const issueTypeId = issueType.id;
-
-							returnData.push({
-								name: issueTypeName,
-								value: issueTypeId,
-							});
-						}
-					}
+				const { issueTypes } = await jiraSoftwareCloudApiRequest.call(this, `/api/2/project/${projectId}`, 'GET');
+				for (const issueType of issueTypes) {
+					const issueTypeName = issueType.name;
+					const issueTypeId = issueType.id;
+					returnData.push({
+						name: issueTypeName,
+						value: issueTypeId,
+					});
 				}
 
 				returnData.sort((a, b) => {
@@ -370,7 +366,6 @@ export class Jira implements INodeType {
 					const { fields: { project: { id } } } = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'GET', {}, {});
 					projectId = id;
 				}
-
 				const fields = await jiraSoftwareCloudApiRequest.call(this, `/api/2/field`, 'GET');
 				for (const field of fields) {
 					if (field.custom === true && field.scope && field.scope.project && field.scope.project.id === projectId) {
@@ -436,6 +431,11 @@ export class Jira implements INodeType {
 							};
 						}
 					}
+					if (additionalFields.reporter) {
+						fields.reporter = {
+							id: additionalFields.reporter as string,
+						};
+					}
 					if (additionalFields.description) {
 						fields.description = additionalFields.description as string;
 					}
@@ -458,7 +458,7 @@ export class Jira implements INodeType {
 					}
 					if (!additionalFields.parentIssueKey
 						&& subtaskIssues.includes(issueTypeId)) {
-						throw new Error('You must define a Parent Issue Key when Issue type is sub-task');
+						throw new NodeOperationError(this.getNode(), 'You must define a Parent Issue Key when Issue type is sub-task');
 
 					} else if (additionalFields.parentIssueKey
 						&& subtaskIssues.includes(issueTypeId)) {
@@ -508,6 +508,11 @@ export class Jira implements INodeType {
 							};
 						}
 					}
+					if (updateFields.reporter) {
+						fields.reporter = {
+							id: updateFields.reporter as string,
+						};
+					}
 					if (updateFields.description) {
 						fields.description = updateFields.description as string;
 					}
@@ -527,7 +532,7 @@ export class Jira implements INodeType {
 					}
 					if (!updateFields.parentIssueKey
 						&& subtaskIssues.includes(updateFields.issueType)) {
-						throw new Error('You must define a Parent Issue Key when Issue type is sub-task');
+						throw new NodeOperationError(this.getNode(), 'You must define a Parent Issue Key when Issue type is sub-task');
 
 					} else if (updateFields.parentIssueKey
 						&& subtaskIssues.includes(updateFields.issueType)) {
@@ -733,7 +738,7 @@ export class Jira implements INodeType {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 
 					if (items[i].binary === undefined) {
-						throw new Error('No binary data exists on item!');
+						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 					}
 
 					const item = items[i].binary as IBinaryKeyData;
@@ -741,7 +746,7 @@ export class Jira implements INodeType {
 					const binaryData = item[binaryPropertyName] as IBinaryData;
 
 					if (binaryData === undefined) {
-						throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 					}
 
 					responseData = await jiraSoftwareCloudApiRequest.call(
@@ -856,7 +861,7 @@ export class Jira implements INodeType {
 						const commentJson = this.getNodeParameter('commentJson', i) as string;
 						const json = validateJSON(commentJson);
 						if (json === '') {
-							throw new Error('Document Format must be a valid JSON');
+							throw new NodeOperationError(this.getNode(), 'Document Format must be a valid JSON');
 						}
 
 						Object.assign(body, { body: json });
@@ -941,12 +946,53 @@ export class Jira implements INodeType {
 						const commentJson = this.getNodeParameter('commentJson', i) as string;
 						const json = validateJSON(commentJson);
 						if (json === '') {
-							throw new Error('Document Format must be a valid JSON');
+							throw new NodeOperationError(this.getNode(), 'Document Format must be a valid JSON');
 						}
 
 						Object.assign(body, { body: json });
 					}
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/issue/${issueKey}/comment/${commentId}`, 'PUT', body, qs);
+					returnData.push(responseData);
+				}
+			}
+		}
+
+		if (resource === 'user') {
+			if (operation === 'create') {
+				// https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-users/#api-rest-api-3-user-post
+				for (let i = 0; i < length; i++) {
+					const body = {
+						name: this.getNodeParameter('username', i),
+						emailAddress: this.getNodeParameter('emailAddress', i),
+						displayName: this.getNodeParameter('displayName', i),
+					};
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					Object.assign(body, additionalFields);
+
+					responseData = await jiraSoftwareCloudApiRequest.call(this, '/api/3/user', 'POST', body, {});
+					returnData.push(responseData);
+				}
+			} else if (operation === 'delete') {
+				// https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-users/#api-rest-api-3-user-delete
+				for (let i = 0; i < length; i++) {
+					qs.accountId = this.getNodeParameter('accountId', i);
+					responseData = await jiraSoftwareCloudApiRequest.call(this, '/api/3/user', 'DELETE', {}, qs);
+					returnData.push({ success: true });
+				}
+			} else if (operation === 'get') {
+				// https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-users/#api-rest-api-3-user-get
+				for (let i = 0; i < length; i++) {
+					qs.accountId = this.getNodeParameter('accountId', i);
+
+					const { expand } = this.getNodeParameter('additionalFields', i) as { expand: string[] };
+
+					if (expand) {
+						qs.expand = expand.join(',');
+					}
+
+					responseData = await jiraSoftwareCloudApiRequest.call(this, '/api/3/user', 'GET', {}, qs);
 					returnData.push(responseData);
 				}
 			}

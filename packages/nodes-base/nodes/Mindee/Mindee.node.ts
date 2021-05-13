@@ -10,6 +10,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -133,7 +134,7 @@ export class Mindee implements INodeType {
 					const rawData = this.getNodeParameter('rawData', i) as boolean;
 
 					if (items[i].binary === undefined) {
-						throw new Error('No binary data exists on item!');
+						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 					}
 
 					const item = items[i].binary as IBinaryKeyData;
@@ -141,7 +142,7 @@ export class Mindee implements INodeType {
 					const binaryData = item[binaryPropertyName] as IBinaryData;
 
 					if (binaryData === undefined) {
-						throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 					}
 
 					responseData = await mindeeApiRequest.call(
@@ -175,7 +176,7 @@ export class Mindee implements INodeType {
 					const rawData = this.getNodeParameter('rawData', i) as boolean;
 
 					if (items[i].binary === undefined) {
-						throw new Error('No binary data exists on item!');
+						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 					}
 
 					const item = items[i].binary as IBinaryKeyData;
@@ -183,7 +184,7 @@ export class Mindee implements INodeType {
 					const binaryData = item[binaryPropertyName] as IBinaryData;
 
 					if (binaryData === undefined) {
-						throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 					}
 
 					responseData = await mindeeApiRequest.call(
