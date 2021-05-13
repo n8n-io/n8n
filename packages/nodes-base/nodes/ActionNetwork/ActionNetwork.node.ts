@@ -98,6 +98,10 @@ export class ActionNetwork implements INodeType {
 			const resolveResource = resources.find(r => r.value === resource)?.module.resolve!
 			let responseData = await resolveResource(this, i) as any
 
+			if (!responseData['_embedded']) {
+				responseData['_embedded'] = []
+			}
+
 			// Identify where the list of data is
 			const firstDataKey = Object.keys(responseData['_embedded'])[0]
 

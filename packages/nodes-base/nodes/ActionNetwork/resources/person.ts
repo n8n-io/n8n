@@ -1,9 +1,11 @@
+
 import { createFields, createPaginationProperties, createFilterProperties } from '../helpers/fields';
 import { IDataObject } from '../../../../workflow/dist/src/Interfaces';
 import { INodeProperties } from 'n8n-workflow';
 import { createListOperations, createFilterFields } from '../helpers/fields';
 import { IExecuteFunctions } from 'n8n-core/dist/src/Interfaces';
-import { actionNetworkApiRequest } from '../helpers/request';
+import { actionNetworkApiRequest, iterateActionNetworkApiRequest } from '../helpers/request';
+import { OptionsWithUri } from 'request';
 
 /**
  * Adds person parameters.
@@ -250,7 +252,7 @@ export const createPersonSignupHelperFields = createFields([
 		],
 	},
 	{
-		displayName: 'Tags and Identifiers',
+		displayName: 'Add Tags and Identifiers',
 		name: 'tags_and_ids',
 		type: 'collection',
 		placeholder: 'Add Tag / ID',
@@ -280,6 +282,41 @@ export const createPersonSignupHelperFields = createFields([
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Add custom ID',
+				},
+			},
+		]
+	},
+	{
+		displayName: 'Remove Tags and Identifiers',
+		name: 'remove_tags_and_ids',
+		type: 'collection',
+		placeholder: 'Remove Tag / ID',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [ 'advocacy_campaign' ],
+				operation: [ 'POST', 'PUT' ]
+			}
+		},
+		options: [
+			{
+				name: 'remove_tags',
+				displayName: 'Tags',
+				type: 'string',
+				default: [],
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Remove tag',
+				},
+			},
+			{
+				name: 'remove_identifiers',
+				displayName: 'Custom IDs',
+				type: 'string',
+				default: [],
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Remove custom ID',
 				},
 			},
 		]
@@ -372,6 +409,56 @@ export function createPersonSignupHelperObject(node: IExecuteFunctions, i: numbe
 	return body
 }
 
+export async function removeTagsAndIdentifiers(
+	person: any,
+	node: IExecuteFunctions,
+	i: number
+) {
+	const { remove_tags, remove_identifiers } = node.getNodeParameter('remove_tags_and_ids', i, {}) as any
+	const credentials = node.getCredentials('ActionNetworkGroupApiToken');
+
+	if (remove_tags && remove_tags.length > 0) {
+		if (credentials === undefined) {
+			throw new Error('No credentials got returned!');
+		}
+		
+		console.log('removing tags', remove_tags, 'from', person)
+		const removedTagHrefs = await getUrlsForNamedTags(node, remove_tags)
+		console.log('-> hrefs', removedTagHrefs)
+	
+		// Get the taggings associated with the person
+		const taggingHref = person._links.self.href + '/taggings'
+
+		for await (const tagging of iterateActionNetworkApiRequest(node, 'GET', taggingHref, 'osdi:taggings')) {
+			if (removedTagHrefs.has(tagging._links['osdi:tag'].href)) {
+				const uri = tagging._links.self.href
+				console.log('DELETE', uri)
+
+				await actionNetworkApiRequest.call(node, 'DELETE', uri)
+			}
+		}
+
+		console.log('done')
+	}
+
+	if (remove_identifiers && remove_identifiers.length > 0) {
+		throw Error('Not implemented')
+	}
+}
+
+async function getUrlsForNamedTags(node: IExecuteFunctions, tagNames: string[]) {
+	const tagUrls = new Set<string>()
+
+	for await (const tag of iterateActionNetworkApiRequest(node, 'GET', '/api/v2/tags/', 'osdi:tags')) {
+		if (tagNames.includes(tag.name)) {
+			tagUrls.add(tag._links.self.href)
+		}
+	}
+
+	return tagUrls
+}
+
+
 // [DOCS](https://actionnetwork.org/docs/v2/person)
 // Scenario: Retrieving a collection of attendance resources (GET)
 // Scenario: Retrieving an individual attendance resource (GET)
@@ -451,6 +538,7 @@ export const fields = [
 	}),
 ] as INodeProperties[];
 
+
 export const resolve = async (node: IExecuteFunctions, i: number) => {
 	const person_id = node.getNodeParameter('person_id', i, null) as string;
 	const operation = node.getNodeParameter('operation', i) as 'GET' | 'POST' | 'GET_ALL';
@@ -462,7 +550,10 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 
 	if (operation === 'POST') {
 		let body = createPersonSignupHelperObject(node, i)
-		return actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>
+		const person = await actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>
+		await removeTagsAndIdentifiers(person, node, i)
+
+		return person
 	}
 
 	// Otherwise list all

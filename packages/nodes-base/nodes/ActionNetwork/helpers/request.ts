@@ -10,7 +10,7 @@ import {
 export async function actionNetworkApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: string,
-	path: string,
+	pathOrUri: string,
 	body?: any,
 	headers?: object,
 	qs?: any
@@ -28,7 +28,7 @@ export async function actionNetworkApiRequest(
 			...(headers || {}),
 		},
 		method,
-		uri: `https://actionnetwork.org${path}`,
+		uri: pathOrUri.startsWith('/') ? `https://actionnetwork.org${pathOrUri}` : pathOrUri,
 		body: JSON.stringify(body),
 		qs
 	};
@@ -49,4 +49,24 @@ export async function actionNetworkApiRequest(
 
 		throw new Error(`Action Network error response [${error.statusCode}]: ${errorMessage}`);
 	}
+}
+
+export async function *iterateActionNetworkApiRequest(
+	hook: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	method: string,
+	pathOrUri: string,
+	resource: string,
+	body?: any,
+	headers?: object,
+	qs?: any
+) {
+	let res
+
+	do {
+		res = await actionNetworkApiRequest.call(hook, method, pathOrUri, body, headers, qs)
+
+		for (const embedded of res._embedded[resource]) {
+			yield embedded
+		}
+	} while (res.page < res.total_pages)
 }
