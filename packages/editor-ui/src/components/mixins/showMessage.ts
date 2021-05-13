@@ -25,7 +25,7 @@ export const showMessage = mixins(externalHooks).extend({
 					${message}
 					<br>
 					<i>${error.message}</i>
-					${this.toHtml(error.description)}`,
+					${this.collapsibleDetails(error)}`,
 				type: 'error',
 				duration: 0,
 			});
@@ -36,7 +36,7 @@ export const showMessage = mixins(externalHooks).extend({
 			);
 		},
 
-		toHtml(description: string | undefined) {
+		collapsibleDetails ({ description, node }: Error) {
 			if (!description) return '';
 
 			const errorDescription = description.length > 500
@@ -52,7 +52,7 @@ export const showMessage = mixins(externalHooks).extend({
 					>
 						Show Details
 					</summary>
-					<p>${errorDescription}</p>
+					<p>${node.name}: ${errorDescription}</p>
 				</details>
 			`;
 		},
