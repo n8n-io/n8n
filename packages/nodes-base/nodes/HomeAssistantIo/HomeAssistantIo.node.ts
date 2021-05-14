@@ -52,14 +52,12 @@ import {
 	homeAssistantIoApiRequest,
 	validateJSON,
 } from './GenericFunctions';
-import moment = require('moment');
-
 export class HomeAssistantIo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Home Assistant Io',
 		name: 'homeAssistantIo',
 		icon: 'file:homeAssistantIo.svg',
-		group: ['output'],
+		group: [ 'output' ],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Home Assistant Io API',
@@ -67,8 +65,8 @@ export class HomeAssistantIo implements INodeType {
 			name: 'Home Assistant Io',
 			color: '#3578e5',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [ 'main' ],
+		outputs: [ 'main' ],
 		credentials: [
 			{
 				name: 'homeAssistantIoApi',
@@ -117,30 +115,30 @@ export class HomeAssistantIo implements INodeType {
 				default: 'config',
 				description: 'Resource to consume.',
 			},
+			// Camera proxy
+			...cameraProxyOperations,
+			...cameraProxyFields,
 			// Configuration
 			...configOperations,
 			...configFields,
+			// Event
+			...eventOperations,
+			...eventFields,
+			// History
+			...historyOperations,
+			...historyFields,
+			// Log
+			...logOperations,
+			...logFields,
 			// Service
 			...serviceOperations,
 			...serviceFields,
 			// State
 			...stateOperations,
 			...stateFields,
-			// Event
-			...eventOperations,
-			...eventFields,
-			// Log
-			...logOperations,
-			...logFields,
 			// Template
 			...templateOperations,
 			...templateFields,
-			// History
-			...historyOperations,
-			...historyFields,
-			// Camera proxy
-			...cameraProxyOperations,
-			...cameraProxyFields,
 		],
 	};
 
@@ -164,33 +162,33 @@ export class HomeAssistantIo implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/services');
-						if(!returnAll){
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
-							responseData = (responseData as IDataObject[]).slice(0,limit);
+							responseData = (responseData as IDataObject[]).slice(0, limit);
 						}
 					} else if (operation === 'call') {
 						const domain = this.getNodeParameter('domain', i) as string;
 						const service = this.getNodeParameter('service', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						let body = {}
+						let body = {};
 
 						if (additionalFields) {
 							const isJson = (additionalFields!.field as IDataObject).jsonParameters as boolean;
-							if (isJson){
+							if (isJson) {
 								const parseResult = validateJSON((additionalFields!.field as IDataObject).bodyParametersJson as string);
 								if (parseResult === undefined) {
 									throw new NodeOperationError(this.getNode(), 'Body Parameters: Invalid JSON');
 								}
-								body = {...parseResult}
+								body = { ...parseResult };
 							} else {
 								const serviceDataUi = ((additionalFields!.field as IDataObject).serviceDataUi as IDataObject);
-								if (serviceDataUi.field !== undefined){
+								if (serviceDataUi.field !== undefined) {
 									(serviceDataUi.field as IDataObject[]).map(
 										param => {
 											// @ts-ignore
-											body[param.name as string] = param.value;
-										}
+											body[ param.name as string ] = param.value;
+										},
 									);
 								}
 							}
@@ -198,17 +196,16 @@ export class HomeAssistantIo implements INodeType {
 
 						responseData = await homeAssistantIoApiRequest.call(this, 'POST', `/services/${domain}/${service}`, body);
 						if (Array.isArray(responseData) && responseData.length === 0) {
-							responseData = {sucess:true};
+							responseData = { sucess: true };
 						}
-
 					}
 				} else if (resource === 'state') {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/states');
-						if(!returnAll){
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
-							responseData = (responseData as IDataObject[]).slice(0,limit);
+							responseData = (responseData as IDataObject[]).slice(0, limit);
 						}
 					} else if (operation === 'get') {
 						const entityId = this.getNodeParameter('entityId', i) as string;
@@ -218,26 +215,26 @@ export class HomeAssistantIo implements INodeType {
 						const state = this.getNodeParameter('state', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						let body = {
+						const body = {
 							state,
 							attributes: {},
-						}
+						};
 
 						if (Object.entries(additionalFields).length !== 0) {
 							const stateAttributesUi = ((additionalFields!.attributes as IDataObject).stateAttributesUi as IDataObject);
-							if (stateAttributesUi.attribute !== undefined){
+							if (stateAttributesUi.attribute !== undefined) {
 								(stateAttributesUi.attribute as IDataObject[]).map(
 									attribute => {
 										// @ts-ignore
-										body.attributes[attribute.name as string] = attribute.value;
-									}
+										body.attributes[ attribute.name as string ] = attribute.value;
+									},
 								);
 							}
 						}
 
 						responseData = await homeAssistantIoApiRequest.call(this, 'POST', `/states/${entityId}`, body);
 						if (Array.isArray(responseData) && responseData.length === 0) {
-							responseData = {sucess:true};
+							responseData = { sucess: true };
 						}
 
 					}
@@ -245,25 +242,25 @@ export class HomeAssistantIo implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/events');
-						if(!returnAll){
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
-							responseData = (responseData as IDataObject[]).slice(0,limit);
+							responseData = (responseData as IDataObject[]).slice(0, limit);
 						}
 					} else if (operation === 'post') {
 						const eventType = this.getNodeParameter('eventType', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						let body = {
-						}
+						const body = {
+						};
 
 						if (Object.entries(additionalFields).length !== 0) {
 							const eventAttributesUi = ((additionalFields!.attributes as IDataObject).eventAttributesUi as IDataObject);
-							if (eventAttributesUi.attribute !== undefined){
+							if (eventAttributesUi.attribute !== undefined) {
 								(eventAttributesUi.attribute as IDataObject[]).map(
 									attribute => {
 										// @ts-ignore
-										body[attribute.name as string] = attribute.value;
-									}
+										body[ attribute.name as string ] = attribute.value;
+									},
 								);
 							}
 						}
@@ -274,23 +271,23 @@ export class HomeAssistantIo implements INodeType {
 				} else if (resource === 'log') {
 					if (operation === 'getErroLogs') {
 						responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/error_log');
-						if(responseData){
+						if (responseData) {
 							responseData = {
-								errorLog: responseData
-							}
+								errorLog: responseData,
+							};
 						}
 					} else if (operation === 'getLogbookEntries') {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						let endpoint = '/logbook';
 
 						if (Object.entries(additionalFields).length !== 0) {
-							if (additionalFields.startTime){
+							if (additionalFields.startTime) {
 								endpoint = `/logbook/${additionalFields.startTime}`;
 							}
-							if (additionalFields.endTime){
+							if (additionalFields.endTime) {
 								qs.end_time = additionalFields.endTime;
 							}
-							if (additionalFields.entityId){
+							if (additionalFields.entityId) {
 								qs.entity = additionalFields.entityId;
 							}
 						}
@@ -302,10 +299,10 @@ export class HomeAssistantIo implements INodeType {
 					if (operation === 'create') {
 						const body = {
 							template: this.getNodeParameter('template', i) as string,
-						}
+						};
 						responseData = await homeAssistantIoApiRequest.call(this, 'POST', '/template', body);
 						if (responseData) {
-							responseData = {renderedTemplate:responseData};
+							responseData = { renderedTemplate: responseData };
 						}
 					}
 				} else if (resource === 'history') {
@@ -315,70 +312,75 @@ export class HomeAssistantIo implements INodeType {
 						let endpoint = '/history/period';
 
 						if (Object.entries(additionalFields).length !== 0) {
-							if (additionalFields.startTime){
+							if (additionalFields.startTime) {
 								endpoint = `/history/period/${additionalFields.startTime}`;
 							}
-							if (additionalFields.endTime){
+							if (additionalFields.endTime) {
 								qs.end_time = additionalFields.endTime;
 							}
-							if (additionalFields.entityIds){
+							if (additionalFields.entityIds) {
 								qs.filter_entity_id = additionalFields.entityIds;
 							}
-							if (additionalFields.minimalResponse === true){
+							if (additionalFields.minimalResponse === true) {
 								qs.minimal_response = additionalFields.minimalResponse;
 							}
-							if (additionalFields.significantChangesOnly === true){
+							if (additionalFields.significantChangesOnly === true) {
 								qs.significant_changes_only = additionalFields.significantChangesOnly;
 							}
 						}
 
 						responseData = await homeAssistantIoApiRequest.call(this, 'GET', endpoint, {}, qs);
-						if(!returnAll){
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
-							responseData = (responseData as IDataObject[]).slice(0,limit);
+							responseData = (responseData as IDataObject[]).slice(0, limit);
 						}
 					}
 				} else if (resource === 'cameraProxy') {
 					if (operation === 'get') {
 						const cameraEntityId = this.getNodeParameter('cameraEntityId', i) as string;
 						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
-						let endpoint = `/camera_proxy/${cameraEntityId}`;
+						const endpoint = `/camera_proxy/${cameraEntityId}`;
 
 						let mimeType: string | undefined;
 
 						responseData = await homeAssistantIoApiRequest.call(this, 'GET', endpoint, {}, {}, undefined, {
 							encoding: null,
-							resolveWithFullResponse: true });
+							resolveWithFullResponse: true,
+						});
 
 						const newItem: INodeExecutionData = {
-							json: items[i].json,
+							json: items[ i ].json,
 							binary: {},
 						};
 
-						if (mimeType === undefined && responseData.headers['content-type']) {
-							mimeType = responseData.headers['content-type'];
+						if (mimeType === undefined && responseData.headers[ 'content-type' ]) {
+							mimeType = responseData.headers[ 'content-type' ];
 						}
 
-						if (items[i].binary !== undefined) {
+						if (items[ i ].binary !== undefined) {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
-							Object.assign(newItem.binary, items[i].binary);
+							Object.assign(newItem.binary, items[ i ].binary);
 						}
 
-						items[i] = newItem;
+						items[ i ] = newItem;
 
 						const data = Buffer.from(responseData.body as string);
 
-						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, `screenshot.jpg`, mimeType);
+						items[ i ].binary![ dataPropertyNameDownload ] = await this.helpers.prepareBinaryData(data as unknown as Buffer, `screenshot.jpg`, mimeType);
 					}
 				}
 			} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push({ error: error.message });
-				continue;
-			}
-			throw error;
+				if (this.continueOnFail()) {
+					if (resource === 'cameraProxy' && operation === 'get') {
+						items[i].json = { error: error.message };
+					} else {
+						returnData.push({ error: error.message });
+					}
+					continue;
+				}
+				throw error;
 			}
 
 			if (Array.isArray(responseData)) {
@@ -391,7 +393,7 @@ export class HomeAssistantIo implements INodeType {
 		if (resource === 'cameraProxy' && operation === 'get') {
 			return this.prepareOutputData(items);
 		} else {
-			return [this.helpers.returnJsonArray(returnData)];
+			return [ this.helpers.returnJsonArray(returnData) ];
 		}
 	}
 }

@@ -24,7 +24,7 @@ export const eventOperations = [
 				description: 'Post an event',
 			},
 		],
-		default: 'get',
+		default: 'getAll',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];

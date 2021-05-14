@@ -24,7 +24,7 @@ export const serviceOperations = [
 				description: 'Call a service within a specific domain',
 			},
 		],
-		default: 'get',
+		default: 'getAll',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];

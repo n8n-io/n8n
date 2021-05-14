@@ -19,7 +19,7 @@ export const historyOperations = [
 				description: 'Get All state changes',
 			},
 		],
-		default: 'get',
+		default: 'getAll',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];

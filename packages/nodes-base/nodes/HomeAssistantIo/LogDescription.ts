@@ -24,7 +24,7 @@ export const logOperations = [
 				description: 'Get all logs',
 			},
 		],
-		default: 'get',
+		default: 'getErroLogs',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
