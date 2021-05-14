@@ -4,7 +4,7 @@
 	>
 		<template>
 			<input
-				class="el-input__inner"
+				:class="{'el-input__inner': true, clickable: true}"
 				:value="value"
 				:disabled="true"
 				size="4"
@@ -27,5 +27,6 @@ export default Vue.extend({
 <style lang="scss" scoped>
 input, input:hover {
 	background-color: unset;
+	transition: unset;
 }
 </style>

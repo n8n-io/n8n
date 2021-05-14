@@ -31,9 +31,16 @@ export default Vue.extend({
 	box-sizing: border-box;
 }
 
+input {
+	padding: 0 13px; // -2px for borders
+}
+
+div
+
 div {
 	display: inline-grid;
 	font: inherit;
+	padding: 10px 0;
 
 	&::after,
 	input {
@@ -41,16 +48,18 @@ div {
 		font: inherit;
 	}
 
-	input {
-		padding: 0 13px; // -2px for borders
-	}
-	
 	&::after {
 		content: attr(data-value) ' ';
 		visibility: hidden;
 		white-space: nowrap;
 		overflow: hidden;
 		padding: 0 15px;
+	}
+
+	&:hover {
+		input {
+			border: $--custom-input-border-shadow
+		}
 	}
 }
 </style>
