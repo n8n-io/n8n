@@ -89,22 +89,3 @@ export default Vue.extend({
 	},
 });
 </script>
-
-<style lang="scss" scoped>
-// .el-input__inner {
-// 	background-color: unset;
-// 	transition: unset;
-// }
-
-// .inline-edit {
-// 	padding: 10px 0;
-
-// 	.preview {
-// 		border: 1px solid transparent;
-// 	}
-
-// 	&:hover .preview {
-// 		border: $--custom-input-border-shadow;
-// 	}
-// }
-</style>
