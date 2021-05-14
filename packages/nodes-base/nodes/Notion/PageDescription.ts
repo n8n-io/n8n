@@ -139,6 +139,23 @@ export const pageFields = [
 		description: 'Page title. Appears at the top of the page and can be found via Quick Find.',
 	},
 	{
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'page',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: true,
+		description: 'When set to true a simplify version of the response will be used else the raw data.',
+	},
+	{
 		displayName: 'Properties',
 		name: 'propertiesUi',
 		type: 'fixedCollection',
@@ -207,6 +224,23 @@ export const pageFields = [
 				],
 			},
 		},
+	},
+	{
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'page',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+		default: true,
+		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                page:update                                 */

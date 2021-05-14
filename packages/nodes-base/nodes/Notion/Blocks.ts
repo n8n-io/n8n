@@ -125,7 +125,7 @@ const annotation = [
 				description: 'Whether the text is code style.',
 			},
 			{
-				displayName: 'color',
+				displayName: 'Color',
 				name: 'color',
 				type: 'options',
 				options: colors,
@@ -213,8 +213,8 @@ const typeMention = [{
 	description: 'The id of the database being mentioned.',
 },
 {
-	displayName: 'Date',
-	name: 'date',
+	displayName: 'Start Date',
+	name: 'start',
 	type: 'dateTime',
 	displayOptions: {
 		show: {
@@ -225,6 +225,19 @@ const typeMention = [{
 	},
 	default: '',
 },
+	{
+		displayName: 'End Date',
+		name: 'end',
+		type: 'dateTime',
+		displayOptions: {
+			show: {
+				mentionType: [
+					'date',
+				],
+			},
+		},
+		default: '',
+	},
 ] as INodeProperties[];
 
 const typeEquation = [{

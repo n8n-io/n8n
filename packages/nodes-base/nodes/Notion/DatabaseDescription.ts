@@ -16,11 +16,6 @@ export const databaseOperations = [
 		},
 		options: [
 			{
-				name: 'Append',
-				value: 'append',
-				description: 'Append data to a database.',
-			},
-			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a database.',
@@ -34,11 +29,6 @@ export const databaseOperations = [
 				name: 'Query',
 				value: 'query',
 				description: 'Query a database.',
-			},
-			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a database.',
 			},
 		],
 		default: 'get',
@@ -132,4 +122,135 @@ export const databaseFields = [
 		default: 5,
 		description: 'How many results to return.',
 	},
+	// {
+	// 	displayName: 'Options',
+	// 	name: 'options',
+	// 	type: 'collection',
+	// 	displayOptions: {
+	// 		show: {
+	// 			operation: [
+	// 				'query',
+	// 			],
+	// 			resource: [
+	// 				'database',
+	// 			],
+	// 		},
+	// 	},
+	// 	default: {},
+	// 	placeholder: 'Add Field',
+	// 	options: [
+	// 		{
+	// 			displayName: 'Filters',
+	// 			name: 'filter',
+	// 			placeholder: 'Add Filter',
+	// 			type: 'fixedCollection',
+	// 			typeOptions: {
+	// 				multipleValues: false,
+	// 			},
+	// 			default: {},
+	// 			options: [
+	// 				{
+	// 					displayName: 'Single Condition',
+	// 					name: 'singleCondition',
+	// 					values: [
+	// 						{
+	// 							displayName: 'Property Name',
+	// 							name: 'propertyName',
+	// 							type: 'options',
+	// 							typeOptions: {
+	// 								loadOptionsMethod: 'getDatabaseProperties',
+	// 								loadOptionsDependsOn: [
+	// 									'datatabaseId',
+	// 								],
+	// 							},
+	// 							default: '',
+	// 							description: 'The name of the property to filter by.',
+	// 						},
+	// 						{
+	// 							displayName: 'Condition',
+	// 							name: 'condition',
+	// 							type: 'options',
+	// 							options: [
+	// 								{
+	// 									name: 'Equal',
+	// 									value: 'equal',
+	// 								},
+	// 								{
+	// 									name: 'Text',
+	// 									value: 'text',
+	// 								},
+	// 								{
+	// 									name: 'Number',
+	// 									value: 'number',
+	// 								},
+	// 								{
+	// 									name: 'Checkbox',
+	// 									value: 'checkbox',
+	// 								},
+	// 								{
+	// 									name: 'Select',
+	// 									value: 'select',
+	// 								},
+	// 								{
+	// 									name: 'Select',
+	// 									value: 'select',
+	// 								},
+	// 							],
+	// 							default: '',
+	// 							description: 'The value of the property to filter by.',
+	// 						},
+	// 					],
+	// 				},
+	// 			],
+	// 		},
+	// 		{
+	// 			displayName: 'Sort',
+	// 			name: 'sort',
+	// 			placeholder: 'Add Sort',
+	// 			type: 'fixedCollection',
+	// 			typeOptions: {
+	// 				multipleValues: false,
+	// 			},
+	// 			default: {},
+	// 			options: [
+	// 				{
+	// 					displayName: 'Sort',
+	// 					name: 'sortValue',
+	// 					values: [
+	// 						{
+	// 							displayName: 'Direction',
+	// 							name: 'direction',
+	// 							type: 'options',
+	// 							options: [
+	// 								{
+	// 									name: 'Ascending',
+	// 									value: 'ascending',
+	// 								},
+	// 								{
+	// 									name: 'descending',
+	// 									value: 'descending',
+	// 								},
+	// 							],
+	// 							default: 'database',
+	// 							description: 'The direction to sort.',
+	// 						},
+	// 						{
+	// 							displayName: 'Timestamp',
+	// 							name: 'timestamp',
+	// 							type: 'options',
+	// 							options: [
+	// 								{
+	// 									name: 'Last Edited Time',
+	// 									value: 'last_edited_time',
+	// 								},
+	// 							],
+	// 							default: '',
+	// 							description: `The name of the timestamp to sort against.`,
+	// 						},
+	// 					],
+	// 				},
+	// 			],
+	// 		},
+	// 	],
+	// },
 ] as INodeProperties[];
