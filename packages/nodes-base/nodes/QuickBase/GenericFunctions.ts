@@ -43,6 +43,8 @@ export async function quickbaseApiRequest(this: IExecuteFunctions | ILoadOptions
 			uri: `https://api.quickbase.com/v1${resource}`,
 			json: true,
 		};
+
+
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}

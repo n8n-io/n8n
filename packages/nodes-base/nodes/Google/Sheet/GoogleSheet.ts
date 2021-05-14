@@ -286,7 +286,7 @@ export class GoogleSheet {
 			throw new NodeOperationError(this.executeFunctions.getNode(), `The range "${range}" is not valid.`);
 		}
 
-		const keyRowRange = `${sheet ? sheet + '!' : ''}${rangeStartSplit[1]}${dataStartRowIndex}:${rangeEndSplit[1]}${dataStartRowIndex}`;
+		const keyRowRange = `${sheet ? sheet + '!' : ''}${rangeStartSplit[1]}${keyRowIndex + 1}:${rangeEndSplit[1]}${keyRowIndex + 1}`;
 
 		const sheetDatakeyRow = await this.getData(this.encodeRange(keyRowRange), valueRenderMode);
 
@@ -302,7 +302,7 @@ export class GoogleSheet {
 			throw new NodeOperationError(this.executeFunctions.getNode(), `Could not find column for key "${indexKey}"!`);
 		}
 
-		const startRowIndex = rangeStartSplit[2] || '';
+		const startRowIndex = rangeStartSplit[2] || dataStartRowIndex;
 		const endRowIndex = rangeEndSplit[2] || '';
 
 		const keyColumn = this.getColumnWithOffset(rangeStartSplit[1], keyIndex);
@@ -414,6 +414,12 @@ export class GoogleSheet {
 			if (inputData[rowIndex].length === 0) {
 				for (let i = 0; i < keys.length; i++) {
 					inputData[rowIndex][i] = '';
+				}
+			} else if (inputData[rowIndex].length < keys.length) {
+				for (let i = 0; i < keys.length; i++) {
+					if (inputData[rowIndex][i] === undefined) {
+						inputData[rowIndex].push('');
+					}
 				}
 			}
 		}

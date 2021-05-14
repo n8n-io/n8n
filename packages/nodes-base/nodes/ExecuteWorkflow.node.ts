@@ -1,9 +1,6 @@
 import {
 	readFile as fsReadFile,
-} from 'fs';
-import { promisify } from 'util';
-
-const fsReadFileAsync = promisify(fsReadFile);
+} from 'fs/promises';
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
@@ -162,7 +159,7 @@ export class ExecuteWorkflow implements INodeType {
 
 			let workflowJson;
 			try {
-				workflowJson = await fsReadFileAsync(workflowPath, { encoding: 'utf8' }) as string;
+				workflowJson = await fsReadFile(workflowPath, { encoding: 'utf8' }) as string;
 			} catch (error) {
 				if (error.code === 'ENOENT') {
 					throw new NodeOperationError(this.getNode(), `The file "${workflowPath}" could not be found.`);
