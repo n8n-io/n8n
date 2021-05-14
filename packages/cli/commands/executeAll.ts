@@ -4,7 +4,7 @@ import {
 	UserSettings,
 } from 'n8n-core';
 import {
-	INode,
+	INode, IRun,
 } from 'n8n-workflow';
 
 import {
@@ -35,6 +35,7 @@ export class ExecuteAll extends Command {
 	
 	static examples = [
 		`$ n8n executeAll`,
+		`$ n8n executeAll --concurrency=10`,
 		`$ n8n executeAll --debug --output=/data/output.json`,
 		`$ n8n executeAll --ids=10,13,15`,
 		`$ n8n executeAll --snapshot=/data/snapshots`,
@@ -48,6 +49,10 @@ export class ExecuteAll extends Command {
 		}),
 		ids: flags.string({
 			description: 'Specifies workflow IDs to get executed, separated by a comma.',
+		}),
+		concurrency: flags.integer({
+			default: 5,
+			description: 'How many workflows can run in parallel.',
 		}),
 		output: flags.string({
 			description: 'Enable execution saving, You must inform an existing folder to save execution via this param',
@@ -66,6 +71,7 @@ export class ExecuteAll extends Command {
 		
 		const debug = flags.debug !== undefined;
 		const ids: number[] = [];
+		const concurrency = flags.concurrency;
 
 		if (flags.snapshot !== undefined) {
 			if (fs.existsSync(flags.snapshot)) {
@@ -168,6 +174,7 @@ export class ExecuteAll extends Command {
 		// Check if the workflow contains the required "Start" node
 		// "requiredNodeTypes" are also defined in editor-ui/views/NodeView.vue
 		const requiredNodeTypes = ['n8n-nodes-base.start'];
+		let workflowsExecutionsPromises:Array<Promise<IRun | undefined>> = [];
 		for (let i = 0; i < allWorkflows.length; i++) {
 			const workflowData = allWorkflows[i];
 			
@@ -205,95 +212,111 @@ export class ExecuteAll extends Command {
 				continue;
 			}
 			
-			try {
-				const credentials = await WorkflowCredentials(workflowData!.nodes);
-				
-				const runData: IWorkflowExecutionDataProcess = {
-					credentials,
-					executionMode: 'cli',
-					startNodes: [startNode.name],
-					workflowData: workflowData!,
-				};
-				
-				const workflowRunner = new WorkflowRunner();
-				const executionId = await workflowRunner.run(runData);
-				
-				const activeExecutions = ActiveExecutions.getInstance();
-				const data = await activeExecutions.getPostExecutePromise(executionId);
-				
-				if (data === undefined) {
-					executionResult.error = 'Workflow did not return any data.';
-					result.summary.failedExecutions++;
-					result.executions.push(executionResult);
-					continue;
-				}
-				workflowData.nodes.forEach(node => {
-					result.coveredNodes[node.type] = (result.coveredNodes[node.type] || 0) +1; 
-				});
-				executionResult.executionTime = (Date.parse(data.stoppedAt as unknown as string) - Date.parse(data.startedAt as unknown as string))/1000; 
-				executionResult.finished = (data?.finished !== undefined) as boolean; 
+			workflowsExecutionsPromises.push(
+				new Promise(async (resolve,reject) => {
+					try {
+						const credentials = await WorkflowCredentials(workflowData!.nodes);
 
-				if (data.data.resultData.error) {
-					executionResult.error = data.data.resultData.error.message;
-					result.summary.failedExecutions++;
-					result.executions.push(executionResult);
-					if (debug === true) {
-						this.log(JSON.stringify(data, null, 2));
-						console.log(data.data.resultData.error);
-					}
-					continue;
-				}
+						const runData: IWorkflowExecutionDataProcess = {
+							credentials,
+							executionMode: 'cli',
+							startNodes: [startNode!.name],
+							workflowData: workflowData!,
+						};
 
-				const serializedData = JSON.stringify(data, null, 2);
-				if (flags.compare === undefined){
-					result.summary.succeededExecution++;
-					result.executions.push(executionResult);
-				} else {
-					const fileName = (flags.compare.endsWith(sep) ? flags.compare : flags.compare + sep) + `${workflowData.id}-snapshot.json`;
-					if (fs.existsSync(fileName) === true) {
+						const workflowRunner = new WorkflowRunner();
+						const executionId = await workflowRunner.run(runData);
 
-						const contents = fs.readFileSync(fileName, {encoding: 'utf-8'});
+						const activeExecutions = ActiveExecutions.getInstance();
+						const data = await activeExecutions.getPostExecutePromise(executionId);
 
-						//@ts-ignore
-						const changes = diff(JSON.parse(contents), data, {keysOnly: true}); // types are outdated here
-						
-						if (changes !== undefined) {
-							// we have structural changes. Report them.
-							executionResult.error = `Workflow may contain breaking changes`;
-							executionResult.changes = changes;
-							result.summary.failedExecutions++;
-							result.executions.push(executionResult);
-							if (debug === true) {
-								// @ts-ignore
-								console.log('Detailed changes: ', diffString(JSON.parse(contents), data, undefined, {keysOnly: true}));
-							}
+						if (data === undefined) {
+								executionResult.error = 'Workflow did not return any data.';
+								result.summary.failedExecutions++;
+								result.executions.push(executionResult);
+
 						}else{
-							result.summary.succeededExecution++;
-							result.executions.push(executionResult);
-						}
-					} else {
-						executionResult.error = 'Snapshot for not found.';
-						result.summary.failedExecutions++;
-						result.executions.push(executionResult);
-					}
-				}
-				// Save snapshots only after comparing - this is to make sure we're updating
-				// After comparing to existing verion.
-				if (flags.snapshot !== undefined) {
-					const fileName = (flags.snapshot.endsWith(sep) ? flags.snapshot : flags.snapshot + sep) + `${workflowData.id}-snapshot.json`;
-					fs.writeFileSync(fileName,serializedData);
-				}
 
-			} catch (e) {
-				executionResult.error = 'Workflow failed to execute.';
-				result.summary.exceptions++;
-				result.executions.push(executionResult);
-				if (debug === true) {
-					console.error(e.message);
-					console.error(e.stack);
-				}
+							workflowData.nodes.forEach(node => {
+								result.coveredNodes[node.type] = (result.coveredNodes[node.type] || 0) +1; 
+							});
+							executionResult.executionTime = (Date.parse(data.stoppedAt as unknown as string) - Date.parse(data.startedAt as unknown as string))/1000; 
+							executionResult.finished = (data?.finished !== undefined) as boolean; 
+
+							if (data.data.resultData.error) {
+								executionResult.error = data.data.resultData.error.message;
+								result.summary.failedExecutions++;
+								result.executions.push(executionResult);
+								if (debug === true) {
+									this.log(JSON.stringify(data, null, 2));
+									console.log(data.data.resultData.error);
+								}
+
+							}else{
+
+								const serializedData = JSON.stringify(data, null, 2);
+								if (flags.compare === undefined){
+									result.summary.succeededExecution++;
+									result.executions.push(executionResult);
+								} else {
+									const fileName = (flags.compare.endsWith(sep) ? flags.compare : flags.compare + sep) + `${workflowData.id}-snapshot.json`;
+									if (fs.existsSync(fileName) === true) {
+
+										const contents = fs.readFileSync(fileName, {encoding: 'utf-8'});
+
+										//@ts-ignore
+										const changes = diff(JSON.parse(contents), data, {keysOnly: true}); // types are outdated here
+
+										if (changes !== undefined) {
+											// we have structural changes. Report them.
+											executionResult.error = `Workflow may contain breaking changes`;
+											executionResult.changes = changes;
+											result.summary.failedExecutions++;
+											result.executions.push(executionResult);
+											if (debug === true) {
+												// @ts-ignore
+												console.log('Detailed changes: ', diffString(JSON.parse(contents), data, undefined, {keysOnly: true}));
+											}
+										}else{
+											result.summary.succeededExecution++;
+											result.executions.push(executionResult);
+										}
+									} else {
+										executionResult.error = 'Snapshot for not found.';
+										result.summary.failedExecutions++;
+										result.executions.push(executionResult);
+									}
+								}
+								// Save snapshots only after comparing - this is to make sure we're updating
+								// After comparing to existing verion.
+								if (flags.snapshot !== undefined) {
+									const fileName = (flags.snapshot.endsWith(sep) ? flags.snapshot : flags.snapshot + sep) + `${workflowData.id}-snapshot.json`;
+									fs.writeFileSync(fileName,serializedData);
+								}
+							}
+						}
+						resolve(data);
+					} catch (e) {
+						executionResult.error = 'Workflow failed to execute.';
+						result.summary.exceptions++;
+						result.executions.push(executionResult);
+						if (debug === true) {
+							console.error(e.message);
+							console.error(e.stack);
+						}
+						reject(e);
+					}
+				})
+			);
+			if(i !== 0 && i % concurrency === 0){
+				await Promise.allSettled(workflowsExecutionsPromises);
+				workflowsExecutionsPromises = [];
 			}
-			
+
+		}
+
+		if(workflowsExecutionsPromises.length!==0){
+			await Promise.allSettled(workflowsExecutionsPromises);
 		}
 		if(flags.output !== undefined){
 			fs.writeFileSync(flags.output,JSON.stringify(result, null, 2));
