@@ -41,16 +41,30 @@ export class Function implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		// const item = this.getInputData();
 		let items = this.getInputData();
+		
+		const returnData: INodeExecutionData[] = [];
+		
+		let item: INodeExecutionData;
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			item = items[itemIndex];
+			const newItem: INodeExecutionData = {
+				json: JSON.parse(JSON.stringify(item.json)),
+			};
 
-		// Copy the items as they may get changed in the functions
-		items = JSON.parse(JSON.stringify(items));
+			if (item.binary !== undefined) {
+				newItem.binary = {};
+				Object.assign(newItem.binary, item.binary);
+			}
+			
+			returnData.push(newItem);
+		}
 
 		// Define the global objects for the custom function
 		const sandbox = {
 			getNodeParameter: this.getNodeParameter,
 			getWorkflowStaticData: this.getWorkflowStaticData,
 			helpers: this.helpers,
-			items,
+			items: returnData,
 			// To be able to access data of other items
 			$item: (index: number) => this.getWorkflowDataProxy(index),
 		};
@@ -84,20 +98,20 @@ export class Function implements INodeType {
 
 		try {
 			// Execute the function code
-			items = (await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname));
+			returnData = (await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname));
 		} catch (e) {
 			return Promise.reject(e);
 		}
 
 
 		// Do very basic validation of the data
-		if (items === undefined) {
+		if (returnData === undefined) {
 			throw new Error('No data got returned. Always return an Array of items!');
 		}
-		if (!Array.isArray(items)) {
+		if (!Array.isArray(returnData)) {
 			throw new Error('Always an Array of items has to be returned!');
 		}
-		for (const item of items) {
+		for (const item of returnData) {
 			if (item.json === undefined) {
 				throw new Error('All returned items have to contain a property named "json"!');
 			}
@@ -111,6 +125,6 @@ export class Function implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(items);
+		return this.prepareOutputData(returnData);
 	}
 }
