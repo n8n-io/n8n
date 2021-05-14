@@ -1,4 +1,4 @@
-import { IExecuteSingleFunctions } from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	IBinaryKeyData,
 	IDataObject,
@@ -40,74 +40,86 @@ export class FunctionItem implements INodeType {
 		],
 	};
 
-	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
-		let item = this.getInputData();
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		let items = this.getInputData();
+		
+		const returnData: INodeExecutionData[] = [];
+		
+		let item: INodeExecutionData;
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			item = items[itemIndex];
+			
+			const newItem: INodeExecutionData = {
+				json: JSON.parse(JSON.stringify(item.json)),
+			};
 
-		// Copy the items as they may get changed in the functions
-		item = JSON.parse(JSON.stringify(item));
+			if (item.binary !== undefined) {
+				newItem.binary = {};
+				Object.assign(newItem.binary, item.binary);
+			}
+			
+				// Define the global objects for the custom function
+			const sandbox = {
+				getBinaryData: (): IBinaryKeyData | undefined => {
+					return newItem.binary;
+				},
+				getNodeParameter: this.getNodeParameter,
+				getWorkflowStaticData: this.getWorkflowStaticData,
+				helpers: this.helpers,
+				item: newItem.json,
+				setBinaryData: (data: IBinaryKeyData) => {
+					newItem.binary = data;
+				},
+				itemIndex: itemIndex,
+			};
 
-		// Define the global objects for the custom function
-		const sandbox = {
-			getBinaryData: (): IBinaryKeyData | undefined => {
-				return item.binary;
-			},
-			getNodeParameter: this.getNodeParameter,
-			getWorkflowStaticData: this.getWorkflowStaticData,
-			helpers: this.helpers,
-			item: item.json,
-			setBinaryData: (data: IBinaryKeyData) => {
-				item.binary = data;
-			},
-		};
+			// Make it possible to access data via $node, $parameter, ...
+			const dataProxy = this.getWorkflowDataProxy();
+			Object.assign(sandbox, dataProxy);
 
-		// Make it possible to access data via $node, $parameter, ...
-		const dataProxy = this.getWorkflowDataProxy();
-		Object.assign(sandbox, dataProxy);
+			const options = {
+				console: 'inherit',
+				sandbox,
+				require: {
+					external: false as boolean | { modules: string[] },
+					builtin: [] as string[],
+				},
+			};
 
-		const options = {
-			console: 'inherit',
-			sandbox,
-			require: {
-				external: false as boolean | { modules: string[] },
-				builtin: [] as string[],
-			},
-		};
+			if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
+				options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
+			}
 
-		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
-			options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
+			if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
+				options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
+			}
+
+			const vm = new NodeVM(options);
+
+			// Get the code to execute
+			const functionCode = this.getNodeParameter('functionCode') as string;
+
+			try {
+				// Execute the function code
+				newItem.json = await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname);
+			} catch (e) {
+				if (this.continueOnFail() === false) {
+					return Promise.reject(e);
+				}
+				newItem.json = {error: e.toString()};
+			}
+
+			// Do very basic validation of the data
+			if (jsonData === undefined) {
+				if (this.continueOnFail() === false) {
+					throw new Error('No data got returned. Always an object has to be returned!');
+				}
+				newItem.json = {error: 'No data got returned'};
+			}
+			
+			returnData.push(newItem);
 		}
 
-		if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
-			options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
-		}
-
-		const vm = new NodeVM(options);
-
-		// Get the code to execute
-		const functionCode = this.getNodeParameter('functionCode') as string;
-
-
-		let jsonData: IDataObject;
-		try {
-			// Execute the function code
-			jsonData = await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname);
-		} catch (e) {
-			return Promise.reject(e);
-		}
-
-		// Do very basic validation of the data
-		if (jsonData === undefined) {
-			throw new Error('No data got returned. Always an object has to be returned!');
-		}
-
-		const returnItem: INodeExecutionData = {
-			json: jsonData,
-		};
-
-		if (item.binary) {
-			returnItem.binary = item.binary;
-		}
-
-		return returnItem;
+		return this.prepareOutputData(returnData);
 	}
 }
