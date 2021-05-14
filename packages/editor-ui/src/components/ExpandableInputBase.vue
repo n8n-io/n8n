@@ -26,6 +26,8 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" scoped>
+$--horiz-padding: 15px;
+
 *,
 *::after { 
 	box-sizing: border-box;
@@ -33,7 +35,7 @@ export default Vue.extend({
 
 input {
 	border: 1px solid transparent;
-	padding: 0 13px; // -2px for borders
+	padding: 0 $--horiz-padding - 2px; // -2px for borders
 }
 
 div.el-input {
@@ -52,7 +54,7 @@ div.el-input {
 		visibility: hidden;
 		white-space: nowrap;
 		overflow: hidden;
-		padding: 0 15px;
+		padding: 0 $--horiz-padding;
 	}
 
 	&:hover {
