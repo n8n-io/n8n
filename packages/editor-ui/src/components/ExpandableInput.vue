@@ -11,6 +11,7 @@
 			@keydown.enter="onEnter"
 			@keydown.esc="onEscape"
 			ref="input"
+			size="4"
 		/>
 	</div>
 </template>
@@ -29,7 +30,13 @@ export default Vue.extend({
 	},
 	computed: {
 		hiddenValue() {
-			return (this.value as string).replace(/\s/g, '.'); // force input to expand on space chars
+			let value = (this.value as string).replace(/\s/g, '.'); // force input to expand on space chars
+			if (!value) {
+				// @ts-ignore
+				value = this.$props.placeholder as string;
+			}
+
+			return `${value}`;  // adjust for padding
 		},
 	},
 	methods: {
@@ -60,14 +67,13 @@ export default Vue.extend({
 }
 
 div {
-	min-width: 100px;
 	display: inline-grid;
+	font: inherit;
 
 	&::after,
 	input {
 		grid-area: 1 / 2;
 		font: inherit;
-		padding: 0 10px;
 	}
 	
 	&::after {
@@ -75,6 +81,7 @@ div {
 		visibility: hidden;
 		white-space: nowrap;
 		overflow: hidden;
+		padding: 0 15px;
 	}
 }
 </style>

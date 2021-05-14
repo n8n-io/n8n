@@ -37,7 +37,9 @@ $--custom-table-background-alternative2: lighten($--custom-table-background-main
 $--custom-input-background: #f0f0f0;
 $--custom-input-background-disabled: #ccc;
 $--custom-input-font: #333;
+$--custom-input-border-color: #DCDFE6;
 $--custom-input-font-disabled: #555;
+$--custom-input-border-shadow: 1px solid $--custom-input-border-color;
 
 $--table-row-hover-background: lighten( $--custom-table-background-alternative, 15% );
 $--table-current-row-background: $--table-row-hover-background;

@@ -1,5 +1,5 @@
 <template>
-	<span @keydown.stop>
+	<span @keydown.stop class="inline-edit">
 		<ExpandableInput
 			v-if="isEditEnabled"
 			:placeholder="placeholder"
@@ -12,7 +12,7 @@
 			@enter="submit"
 			v-click-outside="onBlur"
 		/>
-		<span class="clickable" @click="onClick" v-else>
+		<span class="clickable preview el-input__inner" @click="onClick" v-else>
 			<slot></slot>
 		</span>
 	</span>
@@ -82,3 +82,21 @@ export default Vue.extend({
 	},
 });
 </script>
+
+<style lang="scss" scoped>
+.el-input__inner {
+	background-color: unset;
+	transition: unset;
+}
+
+.inline-edit {
+	padding: 10px 0;
+	.preview {
+		border: 1px solid transparent;
+	}
+
+	&:hover .preview {
+		border: $--custom-input-border-shadow;
+	}
+}
+</style>
