@@ -50,7 +50,7 @@
 		<PushConnectionTracker class="actions">
 			<template>
 				<span class="activator">
-					Active:
+					<span>Active:</span>
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" :disabled="!currentWorkflowId"/>
 				</span>
 				<SaveWorkflowButton />
@@ -189,6 +189,13 @@ export default mixins(workflowHelpers).extend({
 	color: $--custom-font-dark;
 	font-weight: 400;
 	font-size: 13px;
+	line-height: 24px;
+	display: flex;
+	align-items: center;
+
+	> span {
+		margin-right: 5px;
+	}
 }
 
 .add-tag {
@@ -209,7 +216,7 @@ export default mixins(workflowHelpers).extend({
 
 .tags-edit {
 	min-width: 100px;
-	max-width: 400px;
+	max-width: 460px;
 }
 
 .actions,.container {

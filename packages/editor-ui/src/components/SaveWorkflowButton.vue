@@ -1,13 +1,11 @@
 <template>
-	<div class="save-button">
-		<el-button v-if="isDirty || isNewWorkflow || isWorkflowSaving" :disabled="isWorkflowSaving"  size="small" @click="save">
-			<font-awesome-icon v-if="isWorkflowSaving" icon="spinner" spin />
-			<span v-else>
-				Save
-			</span>
-		</el-button>
+	<el-button :disabled="isWorkflowSaving" :class="{saved: isSaved}" size="small" @click="save">
+		<font-awesome-icon v-if="isWorkflowSaving" icon="spinner" spin />
+		<span v-else-if="isDirty || isNewWorkflow">
+			Save
+		</span>
 		<span v-else>Saved</span>
-	</div>
+	</el-button>
 </template>
 
 
@@ -29,6 +27,9 @@ export default mixins(workflowHelpers).extend({
 		isNewWorkflow(): boolean {
 			return !this.$route.params.name;
 		},
+		isSaved(): boolean {
+			return !this.isWorkflowSaving && !this.isDirty && !this.isNewWorkflow;
+		},
 	},
 	methods: {
 		save() {
@@ -39,30 +40,26 @@ export default mixins(workflowHelpers).extend({
 </script>
 
 <style lang="scss" scoped>
-$--button-width: 65px;
+.el-button {
+	width: 65px;
 
-.save-button {
-	min-width: $--button-width;
+	// override disabled colors
+	color: white;
+	background-color: $--color-primary;
 
-	> button {
-		width: $--button-width;
-
-		// override disabled colors
+	&:hover:not(.saved) {
 		color: white;
 		background-color: $--color-primary;
-
-		&:hover {
-			color: white;
-			background-color: $--color-primary;
-		}
 	}
 
-	> span {
+	&.saved {
 		color: $--custom-font-very-light;
 		font-size: 12px;
 		font-weight: 600;
 		line-height: 12px;
 		text-align: center;
+		background-color: unset;
+		pointer-events: none;
 	}
 }
 </style>
