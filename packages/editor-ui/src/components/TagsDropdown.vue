@@ -220,6 +220,8 @@ $--max-input-height: 60px;
 		max-height: $--max-input-height;
 		overflow: scroll;
 		border-radius: 20px;
+		display: block;
+		padding-top: 5px;
 	}
 
 	.el-input.is-focus {
@@ -227,7 +229,7 @@ $--max-input-height: 60px;
 	}
 
 	input {
-		max-height: $--max-input-height + 4;
+		max-height: $--max-input-height;
 	}
 }
 </style>
