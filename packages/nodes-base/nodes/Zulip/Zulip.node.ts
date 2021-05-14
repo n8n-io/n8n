@@ -41,7 +41,7 @@ export class Zulip implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Zulip',
 		name: 'zulip',
-		icon: 'file:zulip.png',
+		icon: 'file:zulip.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
