@@ -55,7 +55,7 @@ import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
 
-const requestPromiseWithDefaults = requestPromise.defaults({
+export const requestPromiseWithDefaults = requestPromise.defaults({
 	timeout: 300000, // 5 minutes
 });
 

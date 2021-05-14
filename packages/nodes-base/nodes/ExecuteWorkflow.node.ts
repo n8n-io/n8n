@@ -5,6 +5,7 @@ import {
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IExecuteWorkflowInfo,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -12,6 +13,9 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
+import { NodeExecuteFunctions } from 'n8n-core';
+
+const request = NodeExecuteFunctions.requestPromiseWithDefaults;
 
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -65,7 +69,13 @@ export class ExecuteWorkflow implements INodeType {
 			{
 				displayName: 'Workflow ID',
 				name: 'workflowId',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsDependsOn: [
+						'source',
+					],
+					loadOptionsMethod: 'getWorkflows',
+				},
 				displayOptions: {
 					show: {
 						source: [
@@ -144,6 +154,27 @@ export class ExecuteWorkflow implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			async getWorkflows(this: ILoadOptionsFunctions) {
+				const requestOptions = {
+					headers: {
+						'accept': 'application/json',
+					},
+					method: 'GET',
+					uri: `${this.getRestApiUrl()}/workflows`,
+					json: true,
+				};
+
+				const response = await request(requestOptions) as {
+					data: Array<{ id: string; name: string; }>
+				};
+
+				return response.data.map(({ id, name }) => ({ name: `${id} - ${name}`, value: id }));
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const source = this.getNodeParameter('source', 0) as string;
@@ -177,7 +208,6 @@ export class ExecuteWorkflow implements INodeType {
 		} else if (source === 'url') {
 			// Read workflow from url
 			const workflowUrl = this.getNodeParameter('workflowUrl', 0) as string;
-
 
 			const requestOptions = {
 				headers: {
