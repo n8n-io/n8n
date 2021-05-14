@@ -113,7 +113,7 @@ export class WorkflowDataProxy {
 				name = name.toString();
 
 				let returnValue: INodeParameters | NodeParameterValue | NodeParameterValue[] | INodeParameters[];
-				if (name[0] === '/') {
+				if (name[0] === '&') {
 					const key = name.slice(1);
 					if (!that.siblingParameters.hasOwnProperty(key)) {
 						throw new Error(`Could not find sibling parameter "${key}" on node "${nodeName}"`);
