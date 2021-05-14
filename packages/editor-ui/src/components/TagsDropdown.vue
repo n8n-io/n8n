@@ -8,6 +8,7 @@
 			:filter-method="filterOptions"
 			@change="onTagsUpdated"
 			@visible-change="onVisibleChange"
+			@remove-tag="onRemoveTag"
 			filterable
 			multiple
 			ref="select"
@@ -92,12 +93,7 @@ export default mixins(showMessage).extend({
 
 		if (this.$props.eventBus) {
 			this.$props.eventBus.$on('focus', () => {
-				const select = this.$refs.select as Vue;
-				const input = select && select.$refs.input as HTMLElement;
-				if (input && input.focus) {
-					input.focus();
-					this.focused = true;
-				}
+				this.focusOnInput();
 				this.focusOnTopOption();
 			});
 		}
@@ -189,6 +185,14 @@ export default mixins(showMessage).extend({
 				}
 			}
 		},
+		focusOnInput() {
+			const select = this.$refs.select as Vue;
+			const input = select && select.$refs.input as HTMLElement;
+			if (input && input.focus) {
+				input.focus();
+				this.focused = true;
+			}
+		},
 		onVisibleChange(visible: boolean) {
 			if (!visible) {
 				this.$data.filter = '';
@@ -203,6 +207,11 @@ export default mixins(showMessage).extend({
 			else {
 				this.focused = true;
 			}
+		},
+		onRemoveTag() {
+			this.$nextTick(() => {
+				this.focusOnInput();
+			});
 		},
 	},
 	watch: {
