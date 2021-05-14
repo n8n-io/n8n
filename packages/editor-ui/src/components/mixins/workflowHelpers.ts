@@ -367,7 +367,7 @@ export const workflowHelpers = mixins(
 				return workflow.expression.getParameterValue(expression, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', true);
 			},
 
-			async saveCurrentWorkflow({name, tags, successMessage}: {name?: string, tags?: string[], successMessage?: string} = {}): Promise<boolean> {
+			async saveCurrentWorkflow({name, tags}: {name?: string, tags?: string[]} = {}): Promise<boolean> {
 				const currentWorkflow = this.$route.params.name;
 				if (!currentWorkflow) {
 					return this.saveAsNewWorkflow({name, tags});
@@ -401,11 +401,6 @@ export const workflowHelpers = mixins(
 
 					this.$store.commit('setStateDirty', false);
 					this.$store.commit('removeActiveAction', 'workflowSaving');
-					this.$showMessage({
-						title: 'Workflow saved',
-						message: successMessage || `The workflow "${workflowData.name}" got saved!`,
-						type: 'success',
-					});
 					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 					return true;
