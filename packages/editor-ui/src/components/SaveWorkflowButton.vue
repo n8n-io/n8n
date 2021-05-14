@@ -39,11 +39,13 @@ export default mixins(workflowHelpers).extend({
 </script>
 
 <style lang="scss" scoped>
+$--button-width: 65px;
+
 .save-button {
-	min-width: 65px;
+	min-width: $--button-width;
 
 	> button {
-		width: 65px;
+		width: $--button-width;
 
 		// override disabled colors
 		color: white;
@@ -56,11 +58,11 @@ export default mixins(workflowHelpers).extend({
 	}
 
 	> span {
-	  color: $--custom-font-very-light;
-  	font-size: 12px;
-  	font-weight: 600;
-  	line-height: 12px;
-  	text-align: center;
+		color: $--custom-font-very-light;
+		font-size: 12px;
+		font-weight: 600;
+		line-height: 12px;
+		text-align: center;
 	}
 }
 </style>

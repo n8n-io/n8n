@@ -45,7 +45,7 @@ import Modal from "./Modal.vue";
 
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { TagsDropdown, Modal },
-	name: "SaveWorkflow",
+	name: "DuplicateWorkflow",
 	props: ["dialogVisible", "title", "modalName", "isActive"],
 	data() {
 		const currentTagIds = this.$store.getters[
@@ -104,10 +104,12 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 			this.$data.isSaving = true;
 
-			await this.saveAsNewWorkflow({name, tags: this.currentTagIds});
+			const saved = await this.saveAsNewWorkflow({name, tags: this.currentTagIds});
 
-			this.closeDialog();
-			this.$data.isSaving = false;
+			if (saved) {
+				this.closeDialog();
+				this.$data.isSaving = false;
+			}
 		},
 		closeDialog(): void {
 			this.modalBus.$emit("close");

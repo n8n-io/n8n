@@ -112,10 +112,8 @@ export default Vue.extend({
 	margin-bottom: 15px;
 }
 
-.modal-footer {
-	> .el-button {
-		float: right;
-		margin-left: 5px;
-	}
+.modal-footer > .el-button {
+	float: right;
+	margin-left: 5px;
 }
 </style>

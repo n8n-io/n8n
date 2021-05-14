@@ -20,8 +20,6 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
-import WorkflowActivator from '@/components/WorkflowActivator.vue';
-import WorkflowNameShort from '@/components/WorkflowNameShort.vue';
 import WorkflowDetails from '@/components/MainHeaderWorkflowDetails.vue';
 import ExecutionDetails from './MainHeaderExecutionDetails.vue';
 
@@ -36,8 +34,6 @@ export default mixins(
 	.extend({
 		name: 'MainHeader',
 		components: {
-			WorkflowActivator,
-			WorkflowNameShort,
 			WorkflowDetails,
 			ExecutionDetails,
 		},

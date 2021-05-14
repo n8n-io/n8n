@@ -10,6 +10,7 @@
 			@esc="onEscape"
 			@blur="onBlur"
 			@enter="submit"
+			v-click-outside="onBlur"
 		/>
 		<span class="clickable" @click="onClick" v-else>
 			<slot></slot>

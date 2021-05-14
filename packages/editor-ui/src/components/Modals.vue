@@ -2,7 +2,7 @@
 	<div>
 		<ModalRoot :name="DUPLICATE_MODAL_KEY">
 			<template v-slot:default="{ modalName, active }">
-				<SaveWorkflowDialog
+				<DuplicateWorkflowDialog
 					:isActive="active"
 					:modalName="modalName"
 					title="Duplicate workflow"
@@ -33,7 +33,7 @@ import Vue from "vue";
 import { DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY } from '@/constants';
 
 import TagsManager from "@/components/TagsManager.vue";
-import SaveWorkflowDialog from "@/components/SaveWorkflowDialog.vue";
+import DuplicateWorkflowDialog from "@/components/DuplicateWorkflowDialog.vue";
 import WorkflowOpen from "@/components/WorkflowOpen.vue";
 import ModalRoot from "./ModalRoot.vue";
 
@@ -41,7 +41,7 @@ export default Vue.extend({
 	name: "Modals",
 	components: {
 		TagsManager,
-		SaveWorkflowDialog,
+		DuplicateWorkflowDialog,
 		WorkflowOpen,
 		ModalRoot,
 	},

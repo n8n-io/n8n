@@ -7,7 +7,7 @@
 <script lang="ts">
 import Vue from "vue";
 
-const WORKFLOW_NAME_LIMIT = 25;
+const DEFAULT_WORKFLOW_NAME_LIMIT = 25;
 const WORKFLOW_NAME_END_COUNT_TO_KEEP = 4;
 
 export default Vue.extend({
@@ -17,7 +17,7 @@ export default Vue.extend({
 		shortenedName(): string {
 			const name = this.$props.name;
 
-			const limit = this.$props.limit || WORKFLOW_NAME_LIMIT;
+			const limit = this.$props.limit || DEFAULT_WORKFLOW_NAME_LIMIT;
 			if (name.length <= limit) {
 				return name;
 			}

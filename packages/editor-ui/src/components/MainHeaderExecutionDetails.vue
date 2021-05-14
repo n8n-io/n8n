@@ -15,7 +15,7 @@
 					icon="times"
 					class="execution-icon error"
 					v-else
-					title="Execution did fail"
+					title="Execution failed"
 				/>
 			</span>
 			of
@@ -96,7 +96,7 @@ export default mixins(
 }
 
 .execution-icon.success {
-	color: #22FF44;
+	color: $--custom-success-text-light; 
 }	
 
 .container {

@@ -1,6 +1,6 @@
 <template>
 	<span>
-		<slot v-bind:size="size" v-bind:value="value" />
+		<slot v-bind:bp="bp" v-bind:value="value" />
 	</span>
 </template>
 
@@ -56,7 +56,7 @@ export default mixins(genericHelpers).extend({
 		},
 	},
 	computed: {
-		size(): string {
+		bp(): string {
 			if (this.$data.width < BREAKPOINT_SM) {
 				return "XS";
 			}
@@ -78,7 +78,7 @@ export default mixins(genericHelpers).extend({
 		value(): any | undefined { // tslint:disable-line:no-any
 			for (let i = 0; i < sizes.length; i++) {
 				const key = `value${sizes[i]}`;
-				if (this.size === sizes[i] && this.$props.hasOwnProperty(key)) {
+				if (this.bp === sizes[i] && this.$props.hasOwnProperty(key)) {
 					return this.$props[key];
 				}
 			}

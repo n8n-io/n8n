@@ -22,6 +22,7 @@ $--custom-error-text : #eb2222;
 $--custom-running-background : #ffffe5;
 $--custom-running-text : #eb9422;
 $--custom-success-background : #e3f0e4;
+$--custom-success-text-light: #22FF44;
 $--custom-success-text : #40c351;
 $--custom-warning-background : #ffffe5;
 $--custom-warning-text : #eb9422;
@@ -47,6 +48,7 @@ $--sidebar-width: 65px;
 $--sidebar-expanded-width: 200px;
 $--tags-manager-min-height: 300px;
 
+// based on element.io breakpoints
 $--breakpoint-xs: 768px;
 $--breakpoint-sm: 992px;
 $--breakpoint-md: 1200px;
