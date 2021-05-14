@@ -572,6 +572,7 @@ class App {
 
 			const newWorkflowData = req.body as IWorkflowBase;
 			const id = req.params.id;
+			newWorkflowData.id = id;
 
 			await this.externalHooks.run('workflow.update', [newWorkflowData]);
 
