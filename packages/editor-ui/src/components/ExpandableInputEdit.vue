@@ -20,7 +20,7 @@ import Vue from "vue";
 import ExpandableInputBase from "./ExpandableInputBase.vue";
 
 export default Vue.extend({
-  components: { ExpandableInputBase },
+	components: { ExpandableInputBase },
 	name: "ExpandableInputEdit",
 	props: ['value', 'placeholder', 'maxlength', 'autofocus'],
 	mounted() {
@@ -49,5 +49,9 @@ export default Vue.extend({
 <style lang="scss" scoped>
 .el-input input.el-input__inner {
 	border: 1px solid $--color-primary;
+
+	&:hover {
+		border: 1px solid $--color-primary;
+	}
 }
 </style>

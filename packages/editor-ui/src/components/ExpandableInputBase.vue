@@ -32,12 +32,11 @@ export default Vue.extend({
 }
 
 input {
+	border: 1px solid transparent;
 	padding: 0 13px; // -2px for borders
 }
 
-div
-
-div {
+div.el-input {
 	display: inline-grid;
 	font: inherit;
 	padding: 10px 0;

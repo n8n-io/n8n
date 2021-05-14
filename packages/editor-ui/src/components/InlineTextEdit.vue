@@ -1,21 +1,26 @@
 <template>
-	<span @keydown.stop class="inline-edit" @click="onClick">
-		<ExpandableInputEdit
+	<span @keydown.stop class="inline-edit" >
+		<span
 			v-if="isEditEnabled"
-			:placeholder="placeholder"
-			:value="newValue"
-			:maxlength="maxLength"
-			:autofocus="true"
-			@input="onInput"
-			@esc="onEscape"
-			@blur="onBlur"
-			@enter="submit"
-		/>
-		<ExpandableInputPreview
-			v-else
-			:clickable="true"
-			:value="previewValue || value"
-		/>
+			v-click-outside="onBlur"
+		>
+			<ExpandableInputEdit
+				:placeholder="placeholder"
+				:value="newValue"
+				:maxlength="maxLength"
+				:autofocus="true"
+				@input="onInput"
+				@esc="onEscape"
+				@blur="onBlur"
+				@enter="submit"
+			/>
+		</span>
+		<span @click="onClick"  v-else>
+			<ExpandableInputPreview
+				:clickable="true"
+				:value="previewValue || value"
+			/>
+		</span>
 	</span>
 </template>
 

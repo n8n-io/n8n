@@ -18,7 +18,7 @@ import Vue from "vue";
 import ExpandableInputBase from "./ExpandableInputBase.vue";
 
 export default Vue.extend({
-  components: { ExpandableInputBase },
+	components: { ExpandableInputBase },
 	name: "ExpandableInputPreview",
 	props: ['value'],
 });
