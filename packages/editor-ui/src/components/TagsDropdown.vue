@@ -246,6 +246,10 @@ $--border-radius: 20px;
 		overflow: scroll;
 		border-radius: $--border-radius;
 		padding-top: 5px;
+
+		&::-webkit-scrollbar {
+			display: none;
+		}
 	}
 
 	.el-input.is-focus {
