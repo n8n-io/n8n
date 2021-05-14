@@ -1,6 +1,7 @@
 <template>
 	<ExpandableInputBase
 		:value="value"
+		:staticSize="true"
 	>
 		<template>
 			<input

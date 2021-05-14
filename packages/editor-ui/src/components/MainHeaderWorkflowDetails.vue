@@ -1,6 +1,6 @@
 <template>
 	<div class="container" v-if="workflowName">
-		<BreakpointsObserver valueDefault="25" valueLG="50">
+		<BreakpointsObserver :valueXS="15" :valueSM="25" :valueMD="50" :valueLG="100">
 			<template v-slot="{ value }">
 				<WorkflowNameShort
 					:name="workflowName"

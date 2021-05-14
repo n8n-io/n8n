@@ -47,7 +47,7 @@ export default mixins(genericHelpers).extend({
 	},
 	methods: {
 		onResize() {
-			this.callDebounced("onResizeEnd", 250);
+			this.callDebounced("onResizeEnd", 50);
 		},
 		onResizeEnd() {
 			this.$data.width = window.innerWidth;
@@ -74,15 +74,27 @@ export default mixins(genericHelpers).extend({
 			return "SM";
 		},
 		value(): any | undefined { // tslint:disable-line:no-any
-			const sizes = ["XS", "XL", "LG", "MD", "SM"];
-			for (let i = 0; i < sizes.length; i++) {
-				const key = `value${sizes[i]}`;
-				if (this.bp === sizes[i] && this.$props[key] !== undefined) {
-					return this.$props[key];
-				}
+			if (this.$props.valueXS !== undefined && this.$data.width < BREAKPOINT_SM) {
+				return this.$props.valueXS;
 			}
 
-			return this.$props['valueDefault'];
+			if (this.$props.valueXL !== undefined && this.$data.width >= BREAKPOINT_XL) {
+				return this.$props.valueXL;
+			}
+
+			if (this.$props.valueLG !== undefined && this.$data.width >= BREAKPOINT_LG) {
+				return this.$props.valueLG;
+			}
+
+			if (this.$props.valueMD !== undefined && this.$data.width >= BREAKPOINT_MD) {
+				return this.$props.valueMD;
+			}
+
+			if (this.$props.valueSM !== undefined) {
+				return this.$props.valueSM;
+			}
+
+			return this.$props.valueDefault;
 		},
 	},
 });

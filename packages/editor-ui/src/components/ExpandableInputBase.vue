@@ -1,6 +1,6 @@
 <template>
 	<!-- mock el-input element to apply styles -->
-	<div class="el-input" :data-value="hiddenValue">
+	<div :class="{'el-input': true, 'static-size': staticSize}" :data-value="hiddenValue">
 		<slot></slot>
 	</div>
 </template>
@@ -10,7 +10,7 @@ import Vue from "vue";
 
 export default Vue.extend({
 	name: "ExpandableInputBase",
-	props: ['value', 'placeholder'],
+	props: ['value', 'placeholder', 'staticSize'],
 	computed: {
 		hiddenValue() {
 			let value = (this.value as string).replace(/\s/g, '.'); // force input to expand on space chars
@@ -49,12 +49,16 @@ div.el-input {
 		font: inherit;
 	}
 
+
 	&::after {
 		content: attr(data-value) ' ';
 		visibility: hidden;
 		white-space: nowrap;
-		overflow: hidden;
 		padding: 0 $--horiz-padding;
+	}
+
+	&:not(.static-size)::after {
+		overflow: hidden;
 	}
 
 	&:hover {

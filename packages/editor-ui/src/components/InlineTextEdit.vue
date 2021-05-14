@@ -1,7 +1,7 @@
 <template>
 	<span @keydown.stop class="inline-edit" >
 		<span
-			v-if="isEditEnabled"
+			v-if="true"
 			v-click-outside="onBlur"
 		>
 			<ExpandableInputEdit
