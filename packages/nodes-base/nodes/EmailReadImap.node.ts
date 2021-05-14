@@ -24,6 +24,10 @@ import {
 
 import * as lodash from 'lodash';
 
+import {
+	LoggerProxy as Logger
+} from 'n8n-workflow';
+
 export class EmailReadImap implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'EmailReadImap',
@@ -157,6 +161,13 @@ export class EmailReadImap implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'Do connect even if SSL certificate validation is not possible.',
+					},
+					{
+						displayName: 'Force reconnect',
+						name: 'forceReconnect',
+						type: 'number',
+						default: 60,
+						description: 'Sets an interval (in minutes) to force a reconnection.',
 					},
 				],
 			},
@@ -386,7 +397,9 @@ export class EmailReadImap implements INodeType {
 			return imapConnect(config).then(async conn => {
 				conn.on('error', async err => {
 					if (err.code.toUpperCase() === 'ECONNRESET') {
+						Logger.verbose('IMAP connection was reset - reconnecting.');
 						connection = await establishConnection();
+						await connection.openBox(mailbox);
 					}
 					throw err;
 				});
@@ -397,6 +410,15 @@ export class EmailReadImap implements INodeType {
 		let connection: ImapSimple = await establishConnection();
 
 		await connection.openBox(mailbox);
+
+		if (options.forceReconnect !== undefined) {
+			setInterval(async () => {
+				Logger.verbose('Forcing reconnection of IMAP node.');
+				await connection.end();
+				connection = await establishConnection();
+				await connection.openBox(mailbox);
+			}, options.forceReconnect as number * 1000 * 60);
+		}
 
 		// When workflow and so node gets set to inactive close the connectoin
 		async function closeFunction() {
