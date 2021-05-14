@@ -81,7 +81,7 @@ export const alertContactFields = [
 				value: 4,
 			},
 			{
-				name: 'Web-Hook',
+				name: 'Webhook',
 				value: 5,
 			},
 			{
@@ -284,7 +284,7 @@ export const alertContactFields = [
 				name: 'value',
 				type: 'string',
 				default: '',
-				description: 'The correspondent value for the alert contact type (can only be used if it is a web-hook alert contact).',
+				description: 'The correspondent value for the alert contact type (can only be used if it is a Webhook alert contact).',
 			},
 		],
 	},

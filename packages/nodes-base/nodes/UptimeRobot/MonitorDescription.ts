@@ -69,7 +69,7 @@ export const monitorFields = [
 		default: '',
 		options: [
 			{
-				name: 'HTTP(s)',
+				name: 'HTTP(S)',
 				value: 1,
 			},
 			{
@@ -217,8 +217,8 @@ export const monitorFields = [
 				description: 'Specify if the logs of each monitor will be returned.',
 			},
 			{
-				displayName: 'Maintenance Windows',
-				name: 'mwindows',
+				displayName: 'Maintenance Window',
+				name: 'mwindow',
 				type: 'boolean',
 				default: false,
 				description: 'Specify if the maintenance windows for the monitors to be returned.',
@@ -438,7 +438,7 @@ export const monitorFields = [
 				default: '',
 				options: [
 					{
-						name: 'Paused',
+						name: 'Pause',
 						value: 0,
 					},
 					{

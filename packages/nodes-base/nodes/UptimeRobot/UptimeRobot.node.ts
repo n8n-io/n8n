@@ -40,7 +40,7 @@ export class UptimeRobot implements INodeType {
 		displayName: 'UptimeRobot',
 		name: 'uptimeRobot',
 		icon: 'file:uptimerobot.png',
-		group: [ 'output' ],
+		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume UptimeRobot API',
@@ -48,8 +48,8 @@ export class UptimeRobot implements INodeType {
 			name: 'UptimeRobot',
 			color: '#3bd671',
 		},
-		inputs: [ 'main' ],
-		outputs: [ 'main' ],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'uptimeRobotApi',
@@ -71,8 +71,8 @@ export class UptimeRobot implements INodeType {
 						value: 'alertContact',
 					},
 					{
-						name: 'Maintenance Windows',
-						value: 'mwindows',
+						name: 'Maintenance Window',
+						value: 'mwindow',
 					},
 					{
 						name: 'Monitor',
@@ -121,12 +121,12 @@ export class UptimeRobot implements INodeType {
 			...alertContactOperations,
 			...alertContactFields,
 			/* -------------------------------------------------------------------------- */
-			/*                                Maintenance Windows                         */
+			/*                                Maintenance Window                          */
 			/* -------------------------------------------------------------------------- */
 			...maintenanceWindowOperations,
 			...maintenanceWindowFields,
 			/* -------------------------------------------------------------------------- */
-			/*                               Public Status Pages                          */
+			/*                               Public Status Page                           */
 			/* -------------------------------------------------------------------------- */
 			...publicStatusPageOperations,
 			...publicStatusPageFields,
@@ -136,7 +136,7 @@ export class UptimeRobot implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
 		for (let i = 0; i < length; i++) {
 			try {
@@ -192,7 +192,7 @@ export class UptimeRobot implements INodeType {
 						if (body.logs) {
 							body.logs = 1;
 						}
-						if (body.mwindows) {
+						if (body.mwindow) {
 							body.mwindows = 1;
 						}
 						if (body.response_times) {
@@ -272,17 +272,14 @@ export class UptimeRobot implements INodeType {
 						responseData = responseData.alert_contact;
 
 					}
-				} else if (resource === 'mwindows') {
+				} else if (resource === 'mwindow') {
 					if (operation === 'create') {
 						const startTime = this.getNodeParameter('start_time', i) as string;
 						const type = this.getNodeParameter('type', i) as number;
-						let parsedStartTime;
 
-						if (type === 1) {
-							parsedStartTime = moment(startTime).unix();
-						} else {
-							parsedStartTime = moment(startTime).format('HH:mm');
-						}
+						const parsedStartTime = type === 1
+							? moment(startTime).unix()
+							: moment(startTime).format('HH:mm');
 
 						body = {
 							duration: this.getNodeParameter('duration', i) as number,
@@ -390,6 +387,6 @@ export class UptimeRobot implements INodeType {
 				throw error;
 			}
 		}
-		return [ this.helpers.returnJsonArray(returnData) ];
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

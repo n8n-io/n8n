@@ -8,7 +8,7 @@ export const maintenanceWindowOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindows',
+					'mwindow',
 				],
 			},
 		},
@@ -37,7 +37,7 @@ export const maintenanceWindowOperations = [
 
 export const maintenanceWindowFields = [
 	/* -------------------------------------------------------------------------- */
-	/*                                maintenanceWindows:create                    */
+	/*                                maintenanceWindow:create                    */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Duration',
@@ -48,7 +48,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindows',
+					'mwindow',
 				],
 				operation: [
 					'create',
@@ -66,7 +66,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindows',
+					'mwindow',
 				],
 				operation: [
 					'create',
@@ -84,7 +84,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindows',
+					'mwindow',
 				],
 				operation: [
 					'create',
@@ -120,7 +120,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindows',
+					'mwindow',
 				],
 				operation: [
 					'create',
@@ -138,7 +138,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindows',
+					'mwindow',
 				],
 				operation: [
 					'create',
@@ -148,7 +148,7 @@ export const maintenanceWindowFields = [
 		description: 'The correspondent value for the maintenance window type.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                maintenanceWindows:delete                 */
+	/*                                maintenanceWindow:delete                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
@@ -159,7 +159,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindows',
+					'mwindow',
 				],
 				operation: [
 					'delete',
@@ -169,7 +169,7 @@ export const maintenanceWindowFields = [
 		description: 'The ID of the maintenance window.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                maintenanceWindows:getAll                   */
+	/*                                maintenanceWindow:getAll                   */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -178,7 +178,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindows',
+					'mwindow',
 				],
 				operation: [
 					'getAll',
@@ -195,7 +195,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindows',
+					'mwindow',
 				],
 				operation: [
 					'getAll',
@@ -221,7 +221,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindows',
+					'mwindow',
 				],
 				operation: [
 					'getAll',
@@ -231,7 +231,7 @@ export const maintenanceWindowFields = [
 		options: [
 			{
 				displayName: 'Maintenance Window',
-				name: 'mwindows',
+				name: 'mwindow',
 				type: 'string',
 				default: '',
 				description: 'Specify maintenance windows IDs separated with dash, e.g. 236-1782-4790.',
@@ -246,7 +246,7 @@ export const maintenanceWindowFields = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                maintenanceWindows:update                    */
+	/*                                maintenanceWindow:update                    */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
@@ -257,7 +257,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindows',
+					'mwindow',
 				],
 				operation: [
 					'update',
@@ -275,7 +275,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindows',
+					'mwindow',
 				],
 				operation: [
 					'update',
@@ -293,7 +293,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindows',
+					'mwindow',
 				],
 				operation: [
 					'update',
