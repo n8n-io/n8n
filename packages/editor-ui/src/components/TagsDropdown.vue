@@ -236,7 +236,6 @@ $--border-radius: 20px;
 		max-height: $--max-input-height;
 		overflow: scroll;
 		border-radius: $--border-radius;
-		display: block;
 		padding-top: 5px;
 	}
 
