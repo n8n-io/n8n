@@ -1,5 +1,5 @@
 <template>
-	<div class="tags-container" @keydown.stop>
+	<div :class="{'tags-container': true, focused}" @keydown.stop>
 		<el-select
 			:popperAppendToBody="false"
 			:value="appliedTags"
@@ -68,6 +68,7 @@ export default mixins(showMessage).extend({
 			filter: "",
 			MANAGE_KEY,
 			CREATE_KEY,
+			focused: false,
 		};
 	},
 	mounted() {
@@ -85,6 +86,7 @@ export default mixins(showMessage).extend({
 				const input = select && select.$refs.input as HTMLElement;
 				if (input && input.focus) {
 					input.focus();
+					this.focused = true;
 				}
 				this.focusOnTopOption();
 			});
@@ -180,7 +182,11 @@ export default mixins(showMessage).extend({
 		onVisibleChange(visible: boolean) {
 			if (!visible) {
 				this.$data.filter = '';
+				this.focused = false;
 				this.$emit('blur');
+			}
+			else {
+				this.focused = true;
 			}
 		},
 	},
@@ -199,15 +205,24 @@ export default mixins(showMessage).extend({
 <style lang="scss" scoped>
 $--max-input-height: 60px;
 
+.tags-container {
+	overflow: hidden;
+	border: 1px solid transparent;
+	border-radius: 20px;
+
+	&.focused {
+		border: 1px solid $--color-primary;
+	}
+}
+
 /deep/ .el-select {
 	.el-select__tags {
 		max-height: $--max-input-height;
-		overflow-y: auto;
+		overflow: scroll;
 		border-radius: 20px;
 	}
 
 	.el-input.is-focus {
-		border: 1px solid $--color-primary;
 		border-radius: 20px;
 	}
 
