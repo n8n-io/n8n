@@ -24,8 +24,6 @@ import {
 import mixins from "vue-typed-mixins";
 import { genericHelpers } from "@/components/mixins/genericHelpers";
 
-const sizes = ["XS", "XL", "LG", "MD", "SM", "Default"];
-
 export default mixins(genericHelpers).extend({
 	name: "BreakpointsObserver",
 	props: [
@@ -76,14 +74,15 @@ export default mixins(genericHelpers).extend({
 			return "SM";
 		},
 		value(): any | undefined { // tslint:disable-line:no-any
+			const sizes = ["XS", "XL", "LG", "MD", "SM"];
 			for (let i = 0; i < sizes.length; i++) {
 				const key = `value${sizes[i]}`;
-				if (this.bp === sizes[i] && this.$props.hasOwnProperty(key)) {
+				if (this.bp === sizes[i] && this.$props[key] !== undefined) {
 					return this.$props[key];
 				}
 			}
 
-			return;
+			return this.$props['valueDefault'];
 		},
 	},
 });

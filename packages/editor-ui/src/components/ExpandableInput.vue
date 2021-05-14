@@ -20,7 +20,7 @@
 import Vue from "vue";
 
 export default Vue.extend({
-	name: "InlineTextEdit",
+	name: "ExpandableInput",
 	props: ['value', 'placeholder', 'maxlength', 'autofocus'],
 	mounted() {
 		const elem = this as Vue;
@@ -74,6 +74,10 @@ div {
 	input {
 		grid-area: 1 / 2;
 		font: inherit;
+	}
+
+	input {
+		padding: 0 13px; // -2px for borders
 	}
 	
 	&::after {
