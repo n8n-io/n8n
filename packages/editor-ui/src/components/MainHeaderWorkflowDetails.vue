@@ -40,10 +40,16 @@
 			/>
 		</div>
 		<div
-			class="add-tag clickable tags"
-			@click="onTagsEditEnable"
+			class="tags"
 			v-else-if="currentWorkflowTagIds.length === 0"
-		>+ Add tag</div>
+		>
+			<span
+				class="add-tag clickable"
+				@click="onTagsEditEnable"
+			>	
+				+ Add tag
+			</span>
+		</div>
 		<TagsContainer
 			v-else
 			:tagIds="currentWorkflowTagIds"
@@ -204,7 +210,7 @@ $--text-line-height: 24px;
 
 .add-tag {
 	font-size: 12px;
-	line-height: $--text-line-height + 20px; // extra margin to be clickable
+	padding: 20px 0; // to be more clickable
 	color: $--custom-font-very-light;
 	font-weight: 600;
 	white-space: nowrap;
