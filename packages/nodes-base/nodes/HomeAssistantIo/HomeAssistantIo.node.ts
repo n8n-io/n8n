@@ -144,193 +144,200 @@ export class HomeAssistantIo implements INodeType {
 		const qs: IDataObject = {};
 		let responseData = {};
 		for (let i = 0; i < length; i++) {
-			if (resource === 'config') {
-				if (operation === 'get') {
-					responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/config');
-				} else if (operation === 'check') {
-					responseData = await homeAssistantIoApiRequest.call(this, 'POST', '/config/core/check_config');
-				}
-			} else if (resource === 'service') {
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/services');
-					if(!returnAll){
-						const limit = this.getNodeParameter('limit', i) as number;
-						responseData = (responseData as IDataObject[]).slice(0,limit);
+			try {
+				if (resource === 'config') {
+					if (operation === 'get') {
+						responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/config');
+					} else if (operation === 'check') {
+						responseData = await homeAssistantIoApiRequest.call(this, 'POST', '/config/core/check_config');
 					}
-				} else if (operation === 'call') {
-					const domain = this.getNodeParameter('domain', i) as string;
-					const service = this.getNodeParameter('service', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+				} else if (resource === 'service') {
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/services');
+						if(!returnAll){
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = (responseData as IDataObject[]).slice(0,limit);
+						}
+					} else if (operation === 'call') {
+						const domain = this.getNodeParameter('domain', i) as string;
+						const service = this.getNodeParameter('service', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					let body = {}
+						let body = {}
 
-					if (additionalFields) {
-						const isJson = (additionalFields!.field as IDataObject).jsonParameters as boolean;
-						if (isJson){
-							const parseResult = validateJSON((additionalFields!.field as IDataObject).bodyParametersJson as string);
-							if (parseResult === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Body Parameters: Invalid JSON');
+						if (additionalFields) {
+							const isJson = (additionalFields!.field as IDataObject).jsonParameters as boolean;
+							if (isJson){
+								const parseResult = validateJSON((additionalFields!.field as IDataObject).bodyParametersJson as string);
+								if (parseResult === undefined) {
+									throw new NodeOperationError(this.getNode(), 'Body Parameters: Invalid JSON');
+								}
+								body = {...parseResult}
+							} else {
+								const serviceDataUi = ((additionalFields!.field as IDataObject).serviceDataUi as IDataObject);
+								if (serviceDataUi.field !== undefined){
+									(serviceDataUi.field as IDataObject[]).map(
+										param => {
+											// @ts-ignore
+											body[param.name as string] = param.value;
+										}
+									);
+								}
 							}
-							body = {...parseResult}
-						} else {
-							const serviceDataUi = ((additionalFields!.field as IDataObject).serviceDataUi as IDataObject);
-							if (serviceDataUi.field !== undefined){
-								(serviceDataUi.field as IDataObject[]).map(
-									param => {
+						}
+
+						responseData = await homeAssistantIoApiRequest.call(this, 'POST', `/services/${domain}/${service}`, body);
+						if (Array.isArray(responseData) && responseData.length === 0) {
+							responseData = {sucess:true};
+						}
+
+					}
+				} else if (resource === 'state') {
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/states');
+						if(!returnAll){
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = (responseData as IDataObject[]).slice(0,limit);
+						}
+					} else if (operation === 'get') {
+						const entityId = this.getNodeParameter('entityId', i) as string;
+						responseData = await homeAssistantIoApiRequest.call(this, 'GET', `/states/${entityId}`);
+					} else if (operation === 'upsert') {
+						const entityId = this.getNodeParameter('entityId', i) as string;
+						const state = this.getNodeParameter('state', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						let body = {
+							state,
+							attributes: {},
+						}
+
+						if (Object.entries(additionalFields).length !== 0) {
+							const stateAttributesUi = ((additionalFields!.attributes as IDataObject).stateAttributesUi as IDataObject);
+							if (stateAttributesUi.attribute !== undefined){
+								(stateAttributesUi.attribute as IDataObject[]).map(
+									attribute => {
 										// @ts-ignore
-										body[param.name as string] = param.value;
+										body.attributes[attribute.name as string] = attribute.value;
 									}
 								);
 							}
 						}
-					}
 
-					responseData = await homeAssistantIoApiRequest.call(this, 'POST', `/services/${domain}/${service}`, body);
-					if (Array.isArray(responseData) && responseData.length === 0) {
-						responseData = {sucess:true};
-					}
+						responseData = await homeAssistantIoApiRequest.call(this, 'POST', `/states/${entityId}`, body);
+						if (Array.isArray(responseData) && responseData.length === 0) {
+							responseData = {sucess:true};
+						}
 
-				}
-			} else if (resource === 'state') {
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/states');
-					if(!returnAll){
-						const limit = this.getNodeParameter('limit', i) as number;
-						responseData = (responseData as IDataObject[]).slice(0,limit);
 					}
-				} else if (operation === 'get') {
-					const entityId = this.getNodeParameter('entityId', i) as string;
-					responseData = await homeAssistantIoApiRequest.call(this, 'GET', `/states/${entityId}`);
-				} else if (operation === 'upsert') {
-					const entityId = this.getNodeParameter('entityId', i) as string;
-					const state = this.getNodeParameter('state', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+				} else if (resource === 'event') {
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/events');
+						if(!returnAll){
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = (responseData as IDataObject[]).slice(0,limit);
+						}
+					} else if (operation === 'post') {
+						const eventType = this.getNodeParameter('eventType', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					let body = {
-						state,
-						attributes: {},
+						let body = {
+						}
+
+						if (Object.entries(additionalFields).length !== 0) {
+							const eventAttributesUi = ((additionalFields!.attributes as IDataObject).eventAttributesUi as IDataObject);
+							if (eventAttributesUi.attribute !== undefined){
+								(eventAttributesUi.attribute as IDataObject[]).map(
+									attribute => {
+										// @ts-ignore
+										body[attribute.name as string] = attribute.value;
+									}
+								);
+							}
+						}
+
+						responseData = await homeAssistantIoApiRequest.call(this, 'POST', `/events/${eventType}`, body);
+
 					}
+				} else if (resource === 'log') {
+					if (operation === 'getErroLogs') {
+						responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/error_log');
+						if(responseData){
+							responseData = {
+								errorLog: responseData
+							}
+						}
+					} else if (operation === 'getLogbookEntries') {
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						let endpoint = '/logbook';
 
-					if (Object.entries(additionalFields).length !== 0) {
-						const stateAttributesUi = ((additionalFields!.attributes as IDataObject).stateAttributesUi as IDataObject);
-						if (stateAttributesUi.attribute !== undefined){
-							(stateAttributesUi.attribute as IDataObject[]).map(
-								attribute => {
-									// @ts-ignore
-									body.attributes[attribute.name as string] = attribute.value;
-								}
-							);
+						if (Object.entries(additionalFields).length !== 0) {
+							if (additionalFields.startTime){
+								endpoint = `/logbook/${additionalFields.startTime}`;
+							}
+							if (additionalFields.endTime){
+								qs.end_time = additionalFields.endTime;
+							}
+							if (additionalFields.entityId){
+								qs.entity = additionalFields.entityId;
+							}
+						}
+
+						responseData = await homeAssistantIoApiRequest.call(this, 'GET', endpoint, {}, qs);
+
+					}
+				} else if (resource === 'template') {
+					if (operation === 'create') {
+						const body = {
+							template: this.getNodeParameter('template', i) as string,
+						}
+						responseData = await homeAssistantIoApiRequest.call(this, 'POST', '/template', body);
+						if (responseData) {
+							responseData = {renderedTemplate:responseData};
 						}
 					}
+				} else if (resource === 'history') {
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						let endpoint = '/history/period';
 
-					responseData = await homeAssistantIoApiRequest.call(this, 'POST', `/states/${entityId}`, body);
-					if (Array.isArray(responseData) && responseData.length === 0) {
-						responseData = {sucess:true};
-					}
-
-				}
-			} else if (resource === 'event') {
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/events');
-					if(!returnAll){
-						const limit = this.getNodeParameter('limit', i) as number;
-						responseData = (responseData as IDataObject[]).slice(0,limit);
-					}
-				} else if (operation === 'post') {
-					const eventType = this.getNodeParameter('eventType', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					let body = {
-					}
-
-					if (Object.entries(additionalFields).length !== 0) {
-						const eventAttributesUi = ((additionalFields!.attributes as IDataObject).eventAttributesUi as IDataObject);
-						if (eventAttributesUi.attribute !== undefined){
-							(eventAttributesUi.attribute as IDataObject[]).map(
-								attribute => {
-									// @ts-ignore
-									body[attribute.name as string] = attribute.value;
-								}
-							);
+						if (Object.entries(additionalFields).length !== 0) {
+							if (additionalFields.startTime){
+								endpoint = `/history/period/${additionalFields.startTime}`;
+							}
+							if (additionalFields.endTime){
+								qs.end_time = additionalFields.endTime;
+							}
+							if (additionalFields.entityIds){
+								qs.filter_entity_id = additionalFields.entityIds;
+							}
+							if (additionalFields.minimalResponse === true){
+								qs.minimal_response = additionalFields.minimalResponse;
+							}
+							if (additionalFields.significantChangesOnly === true){
+								qs.significant_changes_only = additionalFields.significantChangesOnly;
+							}
 						}
-					}
 
-					responseData = await homeAssistantIoApiRequest.call(this, 'POST', `/events/${eventType}`, body);
-
-				}
-			} else if (resource === 'log') {
-				if (operation === 'getErroLogs') {
-					responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/error_log');
-					if(responseData){
-						responseData = {
-							errorLog: responseData
+						responseData = await homeAssistantIoApiRequest.call(this, 'GET', endpoint, {}, qs);
+						if(!returnAll){
+							const limit = this.getNodeParameter('limit', i) as number;
+							responseData = (responseData as IDataObject[]).slice(0,limit);
 						}
-					}
-				} else if (operation === 'getLogbookEntries') {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					let endpoint = '/logbook';
 
-					if (Object.entries(additionalFields).length !== 0) {
-						if (additionalFields.startTime){
-							endpoint = `/logbook/${additionalFields.startTime}`;
-						}
-						if (additionalFields.endTime){
-							qs.end_time = additionalFields.endTime;
-						}
-						if (additionalFields.entityId){
-							qs.entity = additionalFields.entityId;
-						}
-					}
-
-					responseData = await homeAssistantIoApiRequest.call(this, 'GET', endpoint, {}, qs);
-
-				}
-			} else if (resource === 'template') {
-				if (operation === 'create') {
-					const body = {
-						template: this.getNodeParameter('template', i) as string,
-					}
-					responseData = await homeAssistantIoApiRequest.call(this, 'POST', '/template', body);
-					if (responseData) {
-						responseData = {renderedTemplate:responseData};
 					}
 				}
-			} else if (resource === 'history') {
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					let endpoint = '/history/period';
-
-					if (Object.entries(additionalFields).length !== 0) {
-						if (additionalFields.startTime){
-							endpoint = `/history/period/${additionalFields.startTime}`;
-						}
-						if (additionalFields.endTime){
-							qs.end_time = additionalFields.endTime;
-						}
-						if (additionalFields.entityIds){
-							qs.filter_entity_id = additionalFields.entityIds;
-						}
-						if (additionalFields.minimalResponse === true){
-							qs.minimal_response = additionalFields.minimalResponse;
-						}
-						if (additionalFields.significantChangesOnly === true){
-							qs.significant_changes_only = additionalFields.significantChangesOnly;
-						}
-					}
-
-					responseData = await homeAssistantIoApiRequest.call(this, 'GET', endpoint, {}, qs);
-					if(!returnAll){
-						const limit = this.getNodeParameter('limit', i) as number;
-						responseData = (responseData as IDataObject[]).slice(0,limit);
-					}
-
-				}
+			} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push({ error: error.message });
+				continue;
 			}
-
+			throw error;
+			}
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
