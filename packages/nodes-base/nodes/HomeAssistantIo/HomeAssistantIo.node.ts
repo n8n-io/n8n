@@ -44,9 +44,15 @@ import {
 } from './HistoryDescription';
 
 import {
+	cameraProxyFields,
+	cameraProxyOperations,
+} from './CameraProxyDescription';
+
+import {
 	homeAssistantIoApiRequest,
 	validateJSON,
 } from './GenericFunctions';
+import moment = require('moment');
 
 export class HomeAssistantIo implements INodeType {
 	description: INodeTypeDescription = {
@@ -77,7 +83,7 @@ export class HomeAssistantIo implements INodeType {
 				options: [
 					{
 						name: 'Camera Proxy',
-						value: 'camera',
+						value: 'cameraProxy',
 					},
 					{
 						name: 'Config',
@@ -132,6 +138,9 @@ export class HomeAssistantIo implements INodeType {
 			// History
 			...historyOperations,
 			...historyFields,
+			// Camera proxy
+			...cameraProxyOperations,
+			...cameraProxyFields,
 		],
 	};
 
@@ -142,7 +151,7 @@ export class HomeAssistantIo implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const qs: IDataObject = {};
-		let responseData = {};
+		let responseData;
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'config') {
@@ -328,7 +337,40 @@ export class HomeAssistantIo implements INodeType {
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = (responseData as IDataObject[]).slice(0,limit);
 						}
+					}
+				} else if (resource === 'cameraProxy') {
+					if (operation === 'get') {
+						const cameraEntityId = this.getNodeParameter('cameraEntityId', i) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+						let endpoint = `/camera_proxy/${cameraEntityId}`;
 
+						let mimeType: string | undefined;
+
+						responseData = await homeAssistantIoApiRequest.call(this, 'GET', endpoint, {}, {}, undefined, {
+							encoding: null,
+							resolveWithFullResponse: true });
+
+						const newItem: INodeExecutionData = {
+							json: items[i].json,
+							binary: {},
+						};
+
+						if (mimeType === undefined && responseData.headers['content-type']) {
+							mimeType = responseData.headers['content-type'];
+						}
+
+						if (items[i].binary !== undefined) {
+							// Create a shallow copy of the binary data so that the old
+							// data references which do not get changed still stay behind
+							// but the incoming data does not get changed.
+							Object.assign(newItem.binary, items[i].binary);
+						}
+
+						items[i] = newItem;
+
+						const data = Buffer.from(responseData.body as string);
+
+						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, `screenshot.jpg`, mimeType);
 					}
 				}
 			} catch (error) {
@@ -338,12 +380,18 @@ export class HomeAssistantIo implements INodeType {
 			}
 			throw error;
 			}
+
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
 				returnData.push(responseData as IDataObject);
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		if (resource === 'cameraProxy' && operation === 'get') {
+			return this.prepareOutputData(items);
+		} else {
+			return [this.helpers.returnJsonArray(returnData)];
+		}
 	}
 }
