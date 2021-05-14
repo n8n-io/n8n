@@ -25,13 +25,15 @@
 
 		<div
 			v-if="isTagsEditEnabled"
+			v-click-outside="onTagsBlur"
 			class="tags">
 			<TagsDropdown
 				:createEnabled="true"
 				:currentTagIds="appliedTagIds"
 				:eventBus="tagsEditBus"
 				@update="onTagsUpdate"
-				@blur="onTagsEditCancel"
+				@blur="onTagsBlur"
+				@esc="onTagsEditEsc"
 				placeholder="Choose or create a tag"
 				ref="dropdown"
 				class="tags-edit"
@@ -124,21 +126,23 @@ export default mixins(workflowHelpers).extend({
 			});
 		},
 		async onTagsUpdate(tags: string[]) {
-			const prev = this.$data.appliedTagIds;
 			this.$data.appliedTagIds = tags;
+		},
+
+		async onTagsBlur() {
+			const tags = this.$data.appliedTagIds;
 			const saved = await this.saveCurrentWorkflow({ tags });
-			if (!saved) { // revert applied changes in case request fails
-				this.$data.appliedTagIds = prev;
+			if (saved) {
+				this.$data.isTagsEditEnabled = false;
 			}
 		},
-		onTagsEditCancel() {
+		onTagsEditEsc() {
 			this.$data.isTagsEditEnabled = false;
 		},
 		onNameToggle() {
 			this.$data.isNameEditEnabled = !this.$data.isNameEditEnabled;
 			if (this.$data.isNameEditEnabled) {
-				// @ts-ignore
-				this.onTagsEditCancel();
+				this.$data.isTagsEditEnabled = false;
 			}
 		},
 		async onNameSubmit(name: string, cb: () => void) {

@@ -69,6 +69,7 @@ export default mixins(showMessage).extend({
 			MANAGE_KEY,
 			CREATE_KEY,
 			focused: false,
+			escPressed: false,
 		};
 	},
 	mounted() {
@@ -77,6 +78,15 @@ export default mixins(showMessage).extend({
 			const input = select.$refs.input as (Element | undefined);
 			if (input) {
 				input.setAttribute('maxlength', `${MAX_TAG_NAME_LENGTH}`);
+				input.addEventListener('keydown', (e: Event) => {
+					if ((e as KeyboardEvent).key === 'Escape') {
+						this.escPressed = true;
+						this.$emit('esc');
+					}
+					else {
+						this.escPressed = false;
+					}
+				});
 			}
 		}
 
@@ -183,7 +193,12 @@ export default mixins(showMessage).extend({
 			if (!visible) {
 				this.$data.filter = '';
 				this.focused = false;
-				this.$emit('blur');
+				setTimeout(() => {
+					if (!this.escPressed) {
+						this.$emit('blur');
+					}
+					this.escPressed = false;
+				}, 0);
 			}
 			else {
 				this.focused = true;
@@ -204,11 +219,12 @@ export default mixins(showMessage).extend({
 
 <style lang="scss" scoped>
 $--max-input-height: 60px;
+$--border-radius: 20px;
 
 .tags-container {
 	overflow: hidden;
 	border: 1px solid transparent;
-	border-radius: 20px;
+	border-radius: $--border-radius;
 
 	&.focused {
 		border: 1px solid $--color-primary;
@@ -219,13 +235,13 @@ $--max-input-height: 60px;
 	.el-select__tags {
 		max-height: $--max-input-height;
 		overflow: scroll;
-		border-radius: 20px;
+		border-radius: $--border-radius;
 		display: block;
 		padding-top: 5px;
 	}
 
 	.el-input.is-focus {
-		border-radius: 20px;
+		border-radius: $--border-radius;
 	}
 
 	input {
