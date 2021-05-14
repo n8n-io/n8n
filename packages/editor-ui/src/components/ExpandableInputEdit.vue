@@ -1,6 +1,5 @@
 <template>
-	<!-- mock el-input element to apply styles -->
-	<div class="el-input" :data-value="hiddenValue">
+	<ExpandableInputBase :value="value" :placeholder="placeholder">
 		<input
 			class="el-input__inner"
 			:value="value"
@@ -13,31 +12,22 @@
 			ref="input"
 			size="4"
 		/>
-	</div>
+	</ExpandableInputBase>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
+import ExpandableInputBase from "./ExpandableInputBase.vue";
 
 export default Vue.extend({
-	name: "ExpandableInput",
+  components: { ExpandableInputBase },
+	name: "ExpandableInputEdit",
 	props: ['value', 'placeholder', 'maxlength', 'autofocus'],
 	mounted() {
 		const elem = this as Vue;
 		if (elem.$props.autofocus && elem.$refs.input) {
 			(elem.$refs.input as HTMLInputElement).focus(); // autofocus on input element is not reliable
 		}
-	},
-	computed: {
-		hiddenValue() {
-			let value = (this.value as string).replace(/\s/g, '.'); // force input to expand on space chars
-			if (!value) {
-				// @ts-ignore
-				value = this.$props.placeholder as string;
-			}
-
-			return `${value}`;  // adjust for padding
-		},
 	},
 	methods: {
 		onInput() {
@@ -57,35 +47,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" scoped>
-*,
-*::after { 
-	box-sizing: border-box;
-}
-
 .el-input input.el-input__inner {
 	border: 1px solid $--color-primary;
-}
-
-div {
-	display: inline-grid;
-	font: inherit;
-
-	&::after,
-	input {
-		grid-area: 1 / 2;
-		font: inherit;
-	}
-
-	input {
-		padding: 0 13px; // -2px for borders
-	}
-	
-	&::after {
-		content: attr(data-value) ' ';
-		visibility: hidden;
-		white-space: nowrap;
-		overflow: hidden;
-		padding: 0 15px;
-	}
 }
 </style>

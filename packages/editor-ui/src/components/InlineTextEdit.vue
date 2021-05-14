@@ -1,31 +1,34 @@
 <template>
 	<span @keydown.stop class="inline-edit">
-		<ExpandableInput
-			v-if="isEditEnabled"
-			:placeholder="placeholder"
-			:value="newValue"
-			:maxlength="maxLength"
-			:autofocus="true"
-			@input="onInput"
-			@esc="onEscape"
-			@blur="onBlur"
-			@enter="submit"
-			v-click-outside="onBlur"
-		/>
-		<span class="clickable preview el-input__inner" @click="onClick" v-else>
-			<slot></slot>
+		<span :class="{clickable: !isEditEnabled, preview: !isEditEnabled}" @click="onClick">
+			<ExpandableInputEdit
+				v-if="isEditEnabled"
+				:placeholder="placeholder"
+				:value="newValue"
+				:maxlength="maxLength"
+				:autofocus="true"
+				@input="onInput"
+				@esc="onEscape"
+				@blur="onBlur"
+				@enter="submit"
+			/>
+			<ExpandableInputPreview
+				v-else
+				:value="previewValue"
+			/>
 		</span>
 	</span>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
-import ExpandableInput from "./ExpandableInput.vue";
+import ExpandableInputEdit from "./ExpandableInputEdit.vue";
+import ExpandableInputPreview from "./ExpandableInputPreview.vue";
 
 export default Vue.extend({
 	name: "InlineTextEdit",
-	components: {ExpandableInput},
-	props: ['isEditEnabled', 'value', 'placeholder', 'maxLength'],
+	components: {ExpandableInputEdit, ExpandableInputPreview},
+	props: ['isEditEnabled', 'value', 'placeholder', 'maxLength', 'previewValue'],
 	data() {
 		return {
 			newValue: '',
@@ -84,19 +87,20 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" scoped>
-.el-input__inner {
-	background-color: unset;
-	transition: unset;
-}
+// .el-input__inner {
+// 	background-color: unset;
+// 	transition: unset;
+// }
 
-.inline-edit {
-	padding: 10px 0;
-	.preview {
-		border: 1px solid transparent;
-	}
+// .inline-edit {
+// 	padding: 10px 0;
 
-	&:hover .preview {
-		border: $--custom-input-border-shadow;
-	}
-}
+// 	.preview {
+// 		border: 1px solid transparent;
+// 	}
+
+// 	&:hover .preview {
+// 		border: $--custom-input-border-shadow;
+// 	}
+// }
 </style>

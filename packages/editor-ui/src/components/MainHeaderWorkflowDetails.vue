@@ -1,23 +1,27 @@
 <template>
-	<div class="container">
-		<InlineTextEdit 
-			:value="workflowName"
-			:isEditEnabled="isNameEditEnabled"
-			:maxLength="MAX_WORKFLOW_NAME_LENGTH"
-			@toggle="onNameToggle"
-			@submit="onNameSubmit"
-			placeholder="Enter workflow name"
-			class="name"
-		>
-			<BreakpointsObserver valueDefault="25" valueLG="50">
-				<template v-slot="{ value }">
-					<WorkflowNameShort
-						:name="workflowName"
-						:limit="value"
-					/>
-				</template>
-			</BreakpointsObserver>
-		</InlineTextEdit>
+	<div class="container" v-if="workflowName">
+		<BreakpointsObserver valueDefault="25" valueLG="50">
+			<template v-slot="{ value }">
+				<WorkflowNameShort
+					:name="workflowName"
+					:limit="value"
+					:custom="true"
+				>
+					<template v-slot="{ shortenedName }">
+						<InlineTextEdit 
+							:value="workflowName"
+							:previewValue="shortenedName"
+							:isEditEnabled="isNameEditEnabled"
+							:maxLength="MAX_WORKFLOW_NAME_LENGTH"
+							@toggle="onNameToggle"
+							@submit="onNameSubmit"
+							placeholder="Enter workflow name"
+							class="name"
+						/>
+					</template>
+				</WorkflowNameShort>
+			</template>
+		</BreakpointsObserver>
 
 		<div
 			v-if="isTagsEditEnabled"
