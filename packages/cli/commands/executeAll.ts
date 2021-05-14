@@ -30,6 +30,14 @@ import {
 } from 'json-diff';
 import { ObjectID } from 'typeorm';
 
+import { 
+	getLogger,
+} from '../src/Logger';
+
+import {
+	LoggerProxy,
+} from 'n8n-workflow';
+
 export class ExecuteAll extends Command {
 	static description = '\nExecutes all workflows once';
 	
@@ -67,6 +75,11 @@ export class ExecuteAll extends Command {
 	
 	
 	async run() {
+
+		const logger = getLogger();
+		LoggerProxy.init(logger);
+				
+
 		const { flags } = this.parse(ExecuteAll);
 		
 		const debug = flags.debug !== undefined;
@@ -166,6 +179,7 @@ export class ExecuteAll extends Command {
 				failedExecutions:0,
 				succeededExecution:0,
 				exceptions:0,
+				errors: [],
 			},
 			coveredNodes:{},
 			executions:[],
@@ -234,6 +248,7 @@ export class ExecuteAll extends Command {
 								executionResult.error = 'Workflow did not return any data.';
 								result.summary.failedExecutions++;
 								result.executions.push(executionResult);
+								result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
 
 						}else{
 
@@ -244,9 +259,13 @@ export class ExecuteAll extends Command {
 							executionResult.finished = (data?.finished !== undefined) as boolean; 
 
 							if (data.data.resultData.error) {
-								executionResult.error = data.data.resultData.error.message;
+								executionResult.error = 
+									data.data.resultData.error.hasOwnProperty('description') ? 
+									// @ts-ignore
+									data.data.resultData.error.description : data.data.resultData.error.message;
 								result.summary.failedExecutions++;
 								result.executions.push(executionResult);
+								result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
 								if (debug === true) {
 									this.log(JSON.stringify(data, null, 2));
 									console.log(data.data.resultData.error);
@@ -273,6 +292,7 @@ export class ExecuteAll extends Command {
 											executionResult.changes = changes;
 											result.summary.failedExecutions++;
 											result.executions.push(executionResult);
+											result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
 											if (debug === true) {
 												// @ts-ignore
 												console.log('Detailed changes: ', diffString(JSON.parse(contents), data, undefined, {keysOnly: true}));
@@ -285,6 +305,7 @@ export class ExecuteAll extends Command {
 										executionResult.error = 'Snapshot for not found.';
 										result.summary.failedExecutions++;
 										result.executions.push(executionResult);
+										result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
 									}
 								}
 								// Save snapshots only after comparing - this is to make sure we're updating
@@ -346,6 +367,7 @@ interface IResult {
 		failedExecutions:number,
 		succeededExecution:number,
 		exceptions:number,
+		errors:IExecutionError[],
 	};
 	coveredNodes:{
 		[key:string]:number
@@ -363,4 +385,9 @@ interface IExecutionResult{
 	}>;
 	error: string;
 	changes: string;
+}
+
+interface IExecutionError {
+	workflowId: string | number | ObjectID;
+	error: string;
 }
