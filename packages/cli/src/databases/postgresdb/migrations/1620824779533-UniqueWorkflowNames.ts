@@ -15,14 +15,14 @@ export class UniqueWorkflowNames1620824779533 implements MigrationInterface {
 
 			const workflowNames = await queryRunner.query(`
 				SELECT name
-				FROM "${tablePrefix}workflow_entity"
+				FROM ${tablePrefix}workflow_entity
 			`);
 
 			for (const { name } of workflowNames) {
 
 				const duplicates = await queryRunner.query(`
 					SELECT id, name
-					FROM "${tablePrefix}workflow_entity"
+					FROM ${tablePrefix}workflow_entity
 					WHERE name = '${name}'
 					ORDER BY "createdAt" ASC
 				`);
@@ -32,7 +32,7 @@ export class UniqueWorkflowNames1620824779533 implements MigrationInterface {
 					await Promise.all(duplicates.map(({ id, name }: { id: number; name: string; }, index: number) => {
 						if (index === 0) return Promise.resolve();
 						return queryRunner.query(`
-							UPDATE "${tablePrefix}workflow_entity"
+							UPDATE ${tablePrefix}workflow_entity
 							SET name = '${name} ${index + 1}'
 							WHERE id = '${id}'
 						`);
@@ -42,7 +42,7 @@ export class UniqueWorkflowNames1620824779533 implements MigrationInterface {
 
 			}
 
-			await queryRunner.query(`CREATE UNIQUE INDEX "IDX_${tablePrefixPure}a252c527c4c89237221fe2c0ab" ON "public"."workflow_entity" ("name") `);
+			await queryRunner.query(`CREATE UNIQUE INDEX "IDX_${tablePrefixPure}a252c527c4c89237221fe2c0ab" ON ${tablePrefix}workflow_entity ("name") `);
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
