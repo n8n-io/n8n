@@ -172,6 +172,8 @@ export default mixins(workflowHelpers).extend({
 </script>
 
 <style scoped lang="scss">
+$--text-line-height: 24px;
+
 .container {
 	width: 100%;
 	display: flex;
@@ -187,7 +189,7 @@ export default mixins(workflowHelpers).extend({
 	color: $--custom-font-dark;
 	font-weight: 400;
 	font-size: 13px;
-	line-height: 24px;
+	line-height: $--text-line-height;
 	display: flex;
 	align-items: center;
 
@@ -198,6 +200,7 @@ export default mixins(workflowHelpers).extend({
 
 .add-tag {
 	font-size: 12px;
+	line-height: $--text-line-height + 20px; // extra margin to be clickable
 	color: $--custom-font-very-light;
 	font-weight: 600;
 	white-space: nowrap;
