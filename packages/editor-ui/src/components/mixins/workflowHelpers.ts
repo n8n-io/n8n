@@ -337,7 +337,6 @@ export const workflowHelpers = mixins(
 				return nodeData;
 			},
 
-			// Executes the given expression and returns its value
 			resolveExpression (expression: string, siblingParameters: INodeParameters = {}) {
 				const inputIndex = 0;
 				const itemIndex = 0;
