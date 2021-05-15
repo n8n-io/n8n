@@ -86,7 +86,7 @@ import { IUpdateInformation } from '@/Interface';
 
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
 import { get } from 'lodash';
@@ -95,7 +95,7 @@ import mixins from 'vue-typed-mixins';
 
 export default mixins(
 	genericHelpers,
-	nodeHelpers,
+	workflowHelpers,
 )
 	.extend({
 		name: 'ParameterInputList',
@@ -157,7 +157,41 @@ export default mixins(
 					// If it is not defined no need to do a proper check
 					return true;
 				}
-				return this.displayParameter(this.nodeValues, parameter, this.path);
+
+				const nodeValues = {};
+				let rawValues = this.nodeValues;
+				if (this.path) {
+					rawValues = get(this.nodeValues, this.path);
+				}
+
+				// Resolve expressions
+				const resolveKeys = Object.keys(rawValues);
+				let key: string;
+				let i = 0;
+				do {
+					key = resolveKeys.shift();
+					if (typeof rawValues[key] === 'string' && rawValues[key].charAt(0) === '=') {
+						// Contains an expression that
+						if (rawValues[key].includes('$parameter') && resolveKeys.some(parameterName => rawValues[key].includes(parameterName))) {
+							// Contains probably an expression of a missing parameter so skip
+							resolveKeys.push(key);
+							continue;
+						} else {
+							// Contains probably no expression with a missing parameter so resolve
+							nodeValues[key] = this.resolveExpression(rawValues[key], nodeValues);
+						}
+					} else {
+						// Does not contain an expression, add directly
+						nodeValues[key] = rawValues[key];
+					}
+					// TODO: Think about how to calculate this best
+					if (i++ > 50) {
+						// Make sure we do not get caught
+						break;
+					}
+				} while(resolveKeys.length !== 0);
+
+				return this.displayParameter(nodeValues, parameter, '');
 			},
 			valueChanged (parameterData: IUpdateInformation): void {
 				this.$emit('valueChanged', parameterData);
