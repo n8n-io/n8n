@@ -155,6 +155,55 @@ export const pageFields = [
 		default: true,
 		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
+	// {
+	// 	displayName: 'Properties',
+	// 	name: 'propertiesUi',
+	// 	type: 'fixedCollection',
+	// 	typeOptions: {
+	// 		multipleValues: true,
+	// 	},
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'page',
+	// 			],
+	// 			operation: [
+	// 				'create',
+	// 			],
+	// 			parentType: [
+	// 				'database',
+	// 			],
+	// 		},
+	// 	},
+	// 	default: '',
+	// 	placeholder: 'Add Property',
+	// 	options: [
+	// 		{
+	// 			name: 'propertyValues',
+	// 			displayName: 'Property',
+	// 			values: [
+	// 				{
+	// 					displayName: 'Key',
+	// 					name: 'key',
+	// 					type: 'options',
+	// 					typeOptions: {
+	// 						loadOptionsMethod: 'getDatabaseProperties',
+	// 						loadOptionsDependsOn: [
+	// 							'databaseId',
+	// 						],
+	// 					},
+	// 					default: '',
+	// 				},
+	// 				{
+	// 					displayName: 'Value',
+	// 					name: 'value',
+	// 					type: 'string',
+	// 					default: '',
+	// 				},
+	// 			],
+	// 		},
+	// 	],
+	// },
 	{
 		displayName: 'Properties',
 		name: 'propertiesUi',
@@ -195,8 +244,21 @@ export const pageFields = [
 						default: '',
 					},
 					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'hidden',
+						default: '={{$parameter["&key"].split("|")[1]}}',
+					},
+					{
 						displayName: 'Value',
 						name: 'value',
+						displayOptions: {
+							show: {
+								type: [
+									'title',
+								],
+							},
+						},
 						type: 'string',
 						default: '',
 					},

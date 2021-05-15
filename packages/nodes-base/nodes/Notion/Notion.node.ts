@@ -132,9 +132,10 @@ export class Notion implements INodeType {
 				for (const key of Object.keys(properties)) {
 					returnData.push({
 						name: `${key} - (${properties[key].type})`,
-						value: key,
+						value: `${key}|${properties[key].type}`,
 					});
 				}
+				console.log(returnData);
 				return returnData;
 			},
 			async getBlockTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -279,6 +280,7 @@ export class Notion implements INodeType {
 					if (parentType === 'database') {
 						body.parent['database_id'] = this.getNodeParameter('databaseId', i) as string;
 						const properties = this.getNodeParameter('propertiesUi.propertyValues', i, []) as IDataObject[];
+						console.log(properties);
 						if (properties.length !== 0) {
 							body.properties = mapProperties(properties) as IDataObject;
 						}

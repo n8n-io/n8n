@@ -12,7 +12,6 @@ import {
 import {
 	IDataObject,
 } from 'n8n-workflow';
-import get = require('lodash.get');
 
 export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	try {
