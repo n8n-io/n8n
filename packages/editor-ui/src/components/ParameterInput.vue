@@ -466,7 +466,7 @@ export default mixins(
 					} else if (typeof nodeParameters[key] === 'object') {
 						returnData[key] = this.getResolveNodeParameters(nodeParameters[key] as INodeParameters);
 					} else {
-						returnData[key] = this.resolveExpression(nodeParameters[key] as string);
+						returnData[key] = this.resolveExpression(nodeParameters[key] as string, nodeParameters);
 					}
 				}
 				return returnData;
