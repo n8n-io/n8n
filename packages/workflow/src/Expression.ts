@@ -59,7 +59,7 @@ export class Expression {
 	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])}
 	 * @memberof Workflow
 	 */
-	resolveSimpleParameterValue(parameterValue: NodeParameterValue, runExecutionData: IRunExecutionData | null, runIndex: number, itemIndex: number, activeNodeName: string, connectionInputData: INodeExecutionData[], mode: WorkflowExecuteMode, returnObjectAsString = false, selfData = {}): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+	resolveSimpleParameterValue(parameterValue: NodeParameterValue, siblingParameters: INodeParameters, runExecutionData: IRunExecutionData | null, runIndex: number, itemIndex: number, activeNodeName: string, connectionInputData: INodeExecutionData[], mode: WorkflowExecuteMode, returnObjectAsString = false, selfData = {}): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		// Check if it is an expression
 		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
 			// Is no expression so return value
@@ -72,7 +72,7 @@ export class Expression {
 		parameterValue = parameterValue.substr(1);
 
 		// Generate a data proxy which allows to query workflow data
-		const dataProxy = new WorkflowDataProxy(this.workflow, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, mode, -1, selfData);
+		const dataProxy = new WorkflowDataProxy(this.workflow, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, siblingParameters, mode, -1, selfData);
 		const data = dataProxy.getDataProxy();
 
 		// Execute the expression
@@ -179,17 +179,17 @@ export class Expression {
 		};
 
 		// Helper function which resolves a parameter value depending on if it is simply or not
-		const resolveParameterValue = (value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[]) => {
+		const resolveParameterValue = (value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[], siblingParameters: INodeParameters) => {
 			if (isComplexParameter(value)) {
 				return this.getParameterValue(value, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, mode, returnObjectAsString, selfData);
 			} else {
-				return this.resolveSimpleParameterValue(value as NodeParameterValue, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, mode, returnObjectAsString, selfData);
+				return this.resolveSimpleParameterValue(value as NodeParameterValue, siblingParameters, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, mode, returnObjectAsString, selfData);
 			}
 		};
 
 		// Check if it value is a simple one that we can get it resolved directly
 		if (!isComplexParameter(parameterValue)) {
-			return this.resolveSimpleParameterValue(parameterValue as NodeParameterValue, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, mode, returnObjectAsString, selfData);
+			return this.resolveSimpleParameterValue(parameterValue as NodeParameterValue, {}, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, mode, returnObjectAsString, selfData);
 		}
 
 		// The parameter value is complex so resolve depending on type
@@ -198,7 +198,7 @@ export class Expression {
 			// Data is an array
 			const returnData = [];
 			for (const item of parameterValue) {
-				returnData.push(resolveParameterValue(item));
+				returnData.push(resolveParameterValue(item, {}));
 			}
 
 			if (returnObjectAsString === true && typeof returnData === 'object') {
@@ -212,7 +212,7 @@ export class Expression {
 			// Data is an object
 			const returnData: INodeParameters = {};
 			for (const key of Object.keys(parameterValue)) {
-				returnData[key] = resolveParameterValue((parameterValue as INodeParameters)[key]);
+				returnData[key] = resolveParameterValue((parameterValue as INodeParameters)[key], parameterValue as INodeParameters);
 			}
 
 			if (returnObjectAsString === true && typeof returnData === 'object') {
