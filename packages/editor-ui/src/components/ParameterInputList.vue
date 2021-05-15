@@ -76,9 +76,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 
 import {
+	INodeParameters,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -158,7 +158,7 @@ export default mixins(
 					return true;
 				}
 
-				const nodeValues = {};
+				const nodeValues: INodeParameters = {};
 				let rawValues = this.nodeValues;
 				if (this.path) {
 					rawValues = get(this.nodeValues, this.path);
@@ -169,7 +169,7 @@ export default mixins(
 				let key: string;
 				let i = 0;
 				do {
-					key = resolveKeys.shift();
+					key = resolveKeys.shift() as string;
 					if (typeof rawValues[key] === 'string' && rawValues[key].charAt(0) === '=') {
 						// Contains an expression that
 						if (rawValues[key].includes('$parameter') && resolveKeys.some(parameterName => rawValues[key].includes(parameterName))) {
