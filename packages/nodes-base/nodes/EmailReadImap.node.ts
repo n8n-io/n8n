@@ -187,16 +187,8 @@ export class EmailReadImap implements INodeType {
 		const postProcessAction = this.getNodeParameter('postProcessAction') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
-		let searchCriteria = [
-			'UNSEEN',
-		];
-		if (options.customEmailConfig !== undefined) {
-			try {
-				searchCriteria = JSON.parse(options.customEmailConfig as string);
-			} catch (error) {
-				throw new NodeOperationError(this.getNode(), `Custom email config is not valid JSON.`);
-			}
-		}
+		const staticData = this.getWorkflowStaticData('node');
+		Logger.debug('Loaded static data for node "EmailReadImap"', {staticData});
 
 		// Returns the email text
 		const getText = async (parts: any[], message: Message, subtype: string) => { // tslint:disable-line:no-any
@@ -248,7 +240,7 @@ export class EmailReadImap implements INodeType {
 
 
 		// Returns all the new unseen messages
-		const getNewEmails = async (connection: ImapSimple, searchCriteria: string[]): Promise<INodeExecutionData[]> => {
+		const getNewEmails = async (connection: ImapSimple, searchCriteria: Array<string | string[]>): Promise<INodeExecutionData[]> => {
 			const format = this.getNodeParameter('format', 0) as string;
 
 			let fetchOptions = {};
@@ -288,6 +280,12 @@ export class EmailReadImap implements INodeType {
 				const dataPropertyAttachmentsPrefixName = this.getNodeParameter('dataPropertyAttachmentsPrefixName') as string;
 
 				for (const message of results) {
+					if (staticData.lastMessageUid !== undefined && message.attributes.uid <= (staticData.lastMessageUid as number)) {
+						continue;
+					}
+					if (staticData.lastMessageUid === undefined || staticData.lastMessageUid as number < message.attributes.uid) {
+						staticData.lastMessageUid = message.attributes.uid;
+					}
 					const part = lodash.find(message.parts, { which: '' });
 
 					if (part === undefined) {
@@ -306,6 +304,12 @@ export class EmailReadImap implements INodeType {
 				}
 
 				for (const message of results) {
+					if (staticData.lastMessageUid !== undefined && message.attributes.uid <= (staticData.lastMessageUid as number)) {
+						continue;
+					}
+					if (staticData.lastMessageUid === undefined || staticData.lastMessageUid as number < message.attributes.uid) {
+						staticData.lastMessageUid = message.attributes.uid;
+					}
 					const parts = getParts(message.attributes.struct!);
 
 					newEmail = {
@@ -346,6 +350,12 @@ export class EmailReadImap implements INodeType {
 				}
 			} else if (format === 'raw') {
 				for (const message of results) {
+					if (staticData.lastMessageUid !== undefined && message.attributes.uid <= (staticData.lastMessageUid as number)) {
+						continue;
+					}
+					if (staticData.lastMessageUid === undefined || staticData.lastMessageUid as number < message.attributes.uid) {
+						staticData.lastMessageUid = message.attributes.uid;
+					}
 					const part = lodash.find(message.parts, { which: 'TEXT' });
 
 					if (part === undefined) {
@@ -377,6 +387,33 @@ export class EmailReadImap implements INodeType {
 				},
 				onmail: async () => {
 					if (connection) {
+						let searchCriteria = [
+							'UNSEEN',
+						] as Array<string | string[]>;
+						if (options.customEmailConfig !== undefined) {
+							try {
+								searchCriteria = JSON.parse(options.customEmailConfig as string);
+							} catch (error) {
+								throw new NodeOperationError(this.getNode(), `Custom email config is not valid JSON.`);
+							}
+						}
+						if (staticData.lastMessageUid !== undefined) {
+							searchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
+							/** 
+							 * A short explanation about UIDs and how they work
+							 * can be found here: https://dev.to/kehers/imap-new-messages-since-last-check-44gm
+							 * TL;DR:
+							 * - You cannot filter using ['UID', 'CURRENT ID + 1:*'] because IMAP
+							 * won't return correct results if current id + 1 does not yet exist.
+							 * - UIDs can change but this is not being treated here.
+							 * If the mailbox is recreated (lets say you remove all emails, remove
+							 * the mail box and create another with same name, UIDs will change)
+							 * - You can check if UIDs changed in the above example
+							 * by checking UIDValidity.
+							 */
+							Logger.debug('Querying for new messages on node "EmailReadImap"', {searchCriteria});
+						}
+				
 						const returnData = await getNewEmails(connection, searchCriteria);
 
 						if (returnData.length) {
@@ -411,8 +448,10 @@ export class EmailReadImap implements INodeType {
 
 		await connection.openBox(mailbox);
 
+		let reconnectionInterval: NodeJS.Timeout | undefined;
+
 		if (options.forceReconnect !== undefined) {
-			setInterval(async () => {
+			reconnectionInterval = setInterval(async () => {
 				Logger.verbose('Forcing reconnection of IMAP node.');
 				await connection.end();
 				connection = await establishConnection();
@@ -422,6 +461,9 @@ export class EmailReadImap implements INodeType {
 
 		// When workflow and so node gets set to inactive close the connectoin
 		async function closeFunction() {
+			if (reconnectionInterval) {
+				clearInterval(reconnectionInterval);
+			}
 			await connection.end();
 		}
 
