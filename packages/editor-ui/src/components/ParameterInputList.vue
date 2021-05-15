@@ -80,6 +80,7 @@
 import {
 	INodeParameters,
 	INodeProperties,
+	NodeParameterValue,
 } from 'n8n-workflow';
 
 import { IUpdateInformation } from '@/Interface';
@@ -110,8 +111,11 @@ export default mixins(
 			'hideDelete', // boolean
 		],
 		computed: {
-			filteredParameters (): INodeProperties {
+			filteredParameters (): INodeProperties[] {
 				return this.parameters.filter((parameter: INodeProperties) => this.displayNodeParameter(parameter));
+			},
+			filteredParameterNames (): string[] {
+				return this.filteredParameters.map(parameter => parameter.name);
 			},
 		},
 		methods: {
@@ -178,7 +182,7 @@ export default mixins(
 							continue;
 						} else {
 							// Contains probably no expression with a missing parameter so resolve
-							nodeValues[key] = this.resolveExpression(rawValues[key], nodeValues);
+							nodeValues[key] = this.resolveExpression(rawValues[key], nodeValues) as NodeParameterValue;
 						}
 					} else {
 						// Does not contain an expression, add directly
@@ -195,6 +199,23 @@ export default mixins(
 			},
 			valueChanged (parameterData: IUpdateInformation): void {
 				this.$emit('valueChanged', parameterData);
+			},
+		},
+		watch: {
+			filteredParameterNames(newValue, oldValue) {
+				// After a parameter does not get displayed anymore make sure that its value gets removed
+				// Is only needed for the edge-case when a parameter gets displayed depending on another field
+				// which contains an expression.
+				for (const parameter of oldValue) {
+					if (!newValue.includes(parameter)) {
+						const parameterData = {
+							name: `${this.path}.${parameter}`,
+							node: this.$store.getters.activeNode.name,
+							value: undefined,
+						};
+						this.$emit('valueChanged', parameterData);
+					}
+				}
 			},
 		},
 		beforeCreate: function () { // tslint:disable-line
