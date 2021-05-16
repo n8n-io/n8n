@@ -291,7 +291,7 @@ export class Shopify implements INodeType {
 				let body: IProduct = {};
 				//https://shopify.dev/docs/admin-api/rest/reference/products/product#create-2020-04
 				if (operation === 'create') {
-					const title = this.getNodeParameter('title', i) as string;
+					const title = this.getNodeParameter('title', i);
 
 					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 

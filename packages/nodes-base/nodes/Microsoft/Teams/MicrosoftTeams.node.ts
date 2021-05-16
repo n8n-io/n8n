@@ -206,7 +206,7 @@ export class MicrosoftTeams implements INodeType {
 				//https://docs.microsoft.com/en-us/graph/api/channel-post?view=graph-rest-beta&tabs=http
 				if (operation === 'create') {
 					const teamId = this.getNodeParameter('teamId', i) as string;
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const body: IDataObject = {
 						displayName: name,
@@ -267,7 +267,7 @@ export class MicrosoftTeams implements INodeType {
 					const teamId = this.getNodeParameter('teamId', i) as string;
 					const channelId = this.getNodeParameter('channelId', i) as string;
 					const messageType = this.getNodeParameter('messageType', i) as string;
-					const message = this.getNodeParameter('message', i) as string;
+					const message = this.getNodeParameter('message', i);
 					const options = this.getNodeParameter('options', i) as IDataObject;
 
 					const body: IDataObject = {
@@ -303,7 +303,7 @@ export class MicrosoftTeams implements INodeType {
 				if (operation === 'create') {
 					const planId = this.getNodeParameter('planId', i) as string;
 					const bucketId = this.getNodeParameter('bucketId', i) as string;
-					const title = this.getNodeParameter('title', i) as string;
+					const title = this.getNodeParameter('title', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IDataObject = {
 						planId,

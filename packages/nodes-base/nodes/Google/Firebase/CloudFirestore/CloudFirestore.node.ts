@@ -303,7 +303,7 @@ export class CloudFirestore implements INodeType {
 
 
 				await Promise.all(items.map(async (item: IDataObject, i: number) => {
-					const query = this.getNodeParameter('query', i) as string;
+					const query = this.getNodeParameter('query', i);
 					responseData = await googleApiRequest.call(
 						this,
 						'POST',

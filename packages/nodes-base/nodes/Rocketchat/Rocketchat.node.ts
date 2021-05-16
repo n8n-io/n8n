@@ -409,7 +409,7 @@ export class Rocketchat implements INodeType {
 				//https://rocket.chat/docs/developer-guides/rest-api/chat/postmessage
 				if (operation === 'postMessage') {
 					const channel = this.getNodeParameter('channel', i) as string;
-					const text = this.getNodeParameter('text', i) as string;
+					const text = this.getNodeParameter('text', i);
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
 

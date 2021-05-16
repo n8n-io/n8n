@@ -209,7 +209,7 @@ export class Gmail implements INodeType {
 			if (resource === 'label') {
 				if (operation === 'create') {
 					//https://developers.google.com/gmail/api/v1/reference/users/labels/create
-					const labelName = this.getNodeParameter('name', i) as string;
+					const labelName = this.getNodeParameter('name', i);
 					const labelListVisibility = this.getNodeParameter('labelListVisibility', i) as string;
 					const messageListVisibility = this.getNodeParameter('messageListVisibility', i) as string;
 
@@ -356,8 +356,8 @@ export class Gmail implements INodeType {
 						to: toStr,
 						cc: ccStr,
 						bcc: bccStr,
-						subject: this.getNodeParameter('subject', i) as string,
-						body: this.getNodeParameter('message', i) as string,
+						subject: this.getNodeParameter('subject', i),
+						body: this.getNodeParameter('message', i),
 						attachments: attachmentsList,
 					};
 
@@ -455,8 +455,8 @@ export class Gmail implements INodeType {
 						to: toStr,
 						cc: ccStr,
 						bcc: bccStr,
-						subject: this.getNodeParameter('subject', i) as string,
-						body: this.getNodeParameter('message', i) as string,
+						subject: this.getNodeParameter('subject', i),
+						body: this.getNodeParameter('message', i),
 						attachments: attachmentsList,
 					};
 
@@ -660,8 +660,8 @@ export class Gmail implements INodeType {
 						to: toStr,
 						cc: ccStr,
 						bcc: bccStr,
-						subject: this.getNodeParameter('subject', i) as string,
-						body: this.getNodeParameter('message', i) as string,
+						subject: this.getNodeParameter('subject', i),
+						body: this.getNodeParameter('message', i),
 						attachments: attachmentsList,
 					};
 

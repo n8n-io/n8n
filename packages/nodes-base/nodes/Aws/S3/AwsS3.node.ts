@@ -115,7 +115,7 @@ export class AwsS3 implements INodeType {
 				//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html
 				if (operation === 'create') {
 					const credentials = this.getCredentials('aws');
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					if (additionalFields.acl) {
 						headers['x-amz-acl'] = paramCase(additionalFields.acl as string);
@@ -451,7 +451,7 @@ export class AwsS3 implements INodeType {
 
 					items[i] = newItem;
 
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 					const data = Buffer.from(response.body as string, 'utf8');
 

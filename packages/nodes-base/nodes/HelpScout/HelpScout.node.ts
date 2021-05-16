@@ -177,7 +177,7 @@ export class HelpScout implements INodeType {
 				if (operation === 'create') {
 					const mailboxId = this.getNodeParameter('mailboxId', i) as number;
 					const status = this.getNodeParameter('status', i) as string;
-					const subject = this.getNodeParameter('subject', i) as string;
+					const subject = this.getNodeParameter('subject', i);
 					const type = this.getNodeParameter('type', i) as string;
 					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -365,7 +365,7 @@ export class HelpScout implements INodeType {
 				if (operation === 'create') {
 					const conversationId = this.getNodeParameter('conversationId', i) as string;
 					const type = this.getNodeParameter('type', i) as string;
-					const text = this.getNodeParameter('text', i) as string;
+					const text = this.getNodeParameter('text', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const attachments = this.getNodeParameter('attachmentsUi', i) as IDataObject;
 					const body: IThread = {

@@ -221,7 +221,7 @@ export class PagerDuty implements INodeType {
 			if (resource === 'incident') {
 				//https://api-reference.pagerduty.com/#!/Incidents/post_incidents
 				if (operation === 'create') {
-					const title = this.getNodeParameter('title', i) as string;
+					const title = this.getNodeParameter('title', i);
 					const serviceId = this.getNodeParameter('serviceId', i) as string;
 					const email = this.getNodeParameter('email', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;

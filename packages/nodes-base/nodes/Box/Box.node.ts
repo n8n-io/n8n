@@ -119,7 +119,7 @@ export class Box implements INodeType {
 				// https://developer.box.com/reference/get-files-id-content
 				if (operation === 'download') {
 					const fileId = this.getNodeParameter('fileId', i) as string;
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 					responseData = await boxApiRequest.call(this, 'GET', `/files/${fileId}`);
 
 					const fileName = responseData.name;
@@ -162,7 +162,7 @@ export class Box implements INodeType {
 				}
 				// https://developer.box.com/reference/get-search/
 				if (operation === 'search') {
-					const query = this.getNodeParameter('query', i) as string;
+					const query = this.getNodeParameter('query', i);
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const timezone = this.getTimezone();
@@ -274,7 +274,7 @@ export class Box implements INodeType {
 			if (resource === 'folder') {
 				// https://developer.box.com/reference/post-folders
 				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 					const parentId = this.getNodeParameter('parentId', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const body: IDataObject = {
@@ -319,7 +319,7 @@ export class Box implements INodeType {
 				}
 				// https://developer.box.com/reference/get-search/
 				if (operation === 'search') {
-					const query = this.getNodeParameter('query', i) as string;
+					const query = this.getNodeParameter('query', i);
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const timezone = this.getTimezone();

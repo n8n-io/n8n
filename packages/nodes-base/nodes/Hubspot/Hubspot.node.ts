@@ -1350,7 +1350,7 @@ export class Hubspot implements INodeType {
 				if (resource === 'company') {
 					//https://developers.hubspot.com/docs/methods/companies/create_company
 					if (operation === 'create') {
-						const name = this.getNodeParameter('name', i) as string;
+						const name = this.getNodeParameter('name', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const body: IDataObject[] = [];
 						body.push({

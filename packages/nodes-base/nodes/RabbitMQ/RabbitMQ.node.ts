@@ -312,7 +312,7 @@ export class RabbitMQ implements INodeType {
 					if (sendInputData === true) {
 						message = JSON.stringify(items[i].json);
 					} else {
-						message = this.getNodeParameter('message', i) as string;
+						message = this.getNodeParameter('message', i);
 					}
 
 					let headers: IDataObject = {};
@@ -377,7 +377,7 @@ export class RabbitMQ implements INodeType {
 					if (sendInputData === true) {
 						message = JSON.stringify(items[i].json);
 					} else {
-						message = this.getNodeParameter('message', i) as string;
+						message = this.getNodeParameter('message', i);
 					}
 
 					let headers: IDataObject = {};

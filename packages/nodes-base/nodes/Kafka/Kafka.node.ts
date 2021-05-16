@@ -217,10 +217,10 @@ export class Kafka implements INodeType {
 			if (sendInputData === true) {
 				message = JSON.stringify(items[i].json);
 			} else {
-				message = this.getNodeParameter('message', i) as string;
+				message = this.getNodeParameter('message', i);
 			}
 
-			const topic = this.getNodeParameter('topic', i) as string;
+			const topic = this.getNodeParameter('topic', i);
 
 			const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 

@@ -287,7 +287,7 @@ export class Affinity implements INodeType {
 			if (resource === 'organization') {
 				//https://api-docs.affinity.co/#create-a-new-organization
 				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 					const domain = this.getNodeParameter('domain', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IOrganization = {

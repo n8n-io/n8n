@@ -2567,7 +2567,7 @@ export class Pipedrive implements INodeType {
 					requestMethod = 'POST';
 					endpoint = '/activities';
 
-					body.subject = this.getNodeParameter('subject', i) as string;
+					body.subject = this.getNodeParameter('subject', i);
 					body.done = this.getNodeParameter('done', i) as string;
 					body.type = this.getNodeParameter('type', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -2631,7 +2631,7 @@ export class Pipedrive implements INodeType {
 					requestMethod = 'POST';
 					endpoint = '/deals';
 
-					body.title = this.getNodeParameter('title', i) as string;
+					body.title = this.getNodeParameter('title', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					addAdditionalFields(body, additionalFields);
 
@@ -2711,7 +2711,7 @@ export class Pipedrive implements INodeType {
 						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 					}
 
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 					if (item.binary[binaryPropertyName] === undefined) {
 						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
@@ -2833,7 +2833,7 @@ export class Pipedrive implements INodeType {
 					requestMethod = 'POST';
 					endpoint = '/organizations';
 
-					body.name = this.getNodeParameter('name', i) as string;
+					body.name = this.getNodeParameter('name', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					addAdditionalFields(body, additionalFields);
 
@@ -2899,7 +2899,7 @@ export class Pipedrive implements INodeType {
 					requestMethod = 'POST';
 					endpoint = '/persons';
 
-					body.name = this.getNodeParameter('name', i) as string;
+					body.name = this.getNodeParameter('name', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					addAdditionalFields(body, additionalFields);
 
@@ -3048,7 +3048,7 @@ export class Pipedrive implements INodeType {
 
 				items[i] = newItem;
 
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData.data);
 			} else {

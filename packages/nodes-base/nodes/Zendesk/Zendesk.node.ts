@@ -239,7 +239,7 @@ export class Zendesk implements INodeType {
 			if (resource === 'ticket') {
 				//https://developer.zendesk.com/rest_api/docs/support/tickets
 				if (operation === 'create') {
-					const description = this.getNodeParameter('description', i) as string;
+					const description = this.getNodeParameter('description', i);
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 					const comment: IComment = {
 						body: description,
@@ -409,7 +409,7 @@ export class Zendesk implements INodeType {
 			if (resource === 'user') {
 				//https://developer.zendesk.com/rest_api/docs/support/users#create-user
 				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					const body: IDataObject = {

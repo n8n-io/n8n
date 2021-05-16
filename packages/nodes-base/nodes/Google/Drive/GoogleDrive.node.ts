@@ -1928,7 +1928,7 @@ export class GoogleDrive implements INodeType {
 					//         create
 					// ----------------------------------
 
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 
 					const body: IDataObject = {
 						name,
@@ -2026,7 +2026,7 @@ export class GoogleDrive implements INodeType {
 					const qs = {
 						supportsAllDrives: true,
 					};
-					
+
 					const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/copy`, body, qs);
 
 					returnData.push(response as IDataObject);
@@ -2071,7 +2071,7 @@ export class GoogleDrive implements INodeType {
 
 					items[i] = newItem;
 
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 					const data = Buffer.from(response.body as string);
 
@@ -2182,7 +2182,7 @@ export class GoogleDrive implements INodeType {
 							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
 
-						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 						if (item.binary[propertyNameUpload] === undefined) {
 							throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
@@ -2202,7 +2202,7 @@ export class GoogleDrive implements INodeType {
 						body = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');
 					}
 
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 					const parents = this.getNodeParameter('parents', i) as string[];
 
 					let qs: IDataObject = {
@@ -2270,7 +2270,7 @@ export class GoogleDrive implements INodeType {
 					//         folder:create
 					// ----------------------------------
 
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 
 					const body = {
 						name,

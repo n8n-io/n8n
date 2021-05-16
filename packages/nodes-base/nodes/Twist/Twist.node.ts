@@ -180,7 +180,7 @@ export class Twist implements INodeType {
 				//https://developer.twist.com/v3/#add-channel
 				if (operation === 'create') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IDataObject = {
 						workspace_id: workspaceId,
@@ -584,7 +584,7 @@ export class Twist implements INodeType {
 				//https://developer.twist.com/v3/#add-thread
 				if (operation === 'create') {
 					const channelId = this.getNodeParameter('channelId', i) as string;
-					const title = this.getNodeParameter('title', i) as string;
+					const title = this.getNodeParameter('title', i);
 					const content = this.getNodeParameter('content', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IDataObject = {

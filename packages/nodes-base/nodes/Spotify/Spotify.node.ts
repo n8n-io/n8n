@@ -953,7 +953,7 @@ export class Spotify implements INodeType {
 
 					// https://developer.spotify.com/console/post-playlists/
 
-					body.name = this.getNodeParameter('name', i) as string;
+					body.name = this.getNodeParameter('name', i);
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 

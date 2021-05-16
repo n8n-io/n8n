@@ -124,7 +124,7 @@ export class S3 implements INodeType {
 						throw new NodeApiError(this.getNode(), error);
 					}
 
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					if (additionalFields.acl) {
 						headers['x-amz-acl'] = paramCase(additionalFields.acl as string);
@@ -460,7 +460,7 @@ export class S3 implements INodeType {
 
 					items[i] = newItem;
 
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 					const data = Buffer.from(response.body as string, 'utf8');
 

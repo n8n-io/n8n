@@ -131,7 +131,7 @@ export class WooCommerce implements INodeType {
 			if (resource === 'product') {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#create-a-product
 				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IProduct = {
 						name,

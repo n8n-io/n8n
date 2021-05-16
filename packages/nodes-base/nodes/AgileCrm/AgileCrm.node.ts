@@ -495,7 +495,7 @@ export class AgileCrm implements INodeType {
 						body.expected_value = this.getNodeParameter('expectedValue', i) as number;
 						body.milestone = this.getNodeParameter('milestone', i) as string;
 						body.probability = this.getNodeParameter('probability', i) as number;
-						body.name = this.getNodeParameter('name', i) as string;
+						body.name = this.getNodeParameter('name', i);
 
 						if (additionalFields.contactIds) {
 							body.contactIds = additionalFields.contactIds as string[];

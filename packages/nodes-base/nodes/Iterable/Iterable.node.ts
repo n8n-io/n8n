@@ -120,7 +120,7 @@ export class Iterable implements INodeType {
 
 				for (let i = 0; i < length; i++) {
 
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 

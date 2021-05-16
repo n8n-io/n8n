@@ -243,7 +243,7 @@ export class GSuiteAdmin implements INodeType {
 
 					const lastName = this.getNodeParameter('lastName', i) as string;
 
-					const password = this.getNodeParameter('password', i) as string;
+					const password = this.getNodeParameter('password', i);
 
 					const username = this.getNodeParameter('username', i) as string;
 

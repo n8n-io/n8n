@@ -205,7 +205,7 @@ export class TheHive implements INodeType {
 					'GET',
 					endpoint as string,
 				);
-				
+
 				let returnData: INodePropertyOptions[] = [];
 
 				if (version === 'v1') {
@@ -219,7 +219,7 @@ export class TheHive implements INodeType {
 				else {
 					returnData = Object.keys(dataTypes).map(key => {
 						const dataType = dataTypes[key] as string;
-						
+
 						return {
 							name: dataType,
 							value: dataType,
@@ -854,7 +854,7 @@ export class TheHive implements INodeType {
 
 					let body: IDataObject = {
 						dataType: this.getNodeParameter('dataType', i) as string,
-						message: this.getNodeParameter('message', i) as string,
+						message: this.getNodeParameter('message', i),
 						startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
 						tlp: this.getNodeParameter('tlp', i) as number,
 						ioc: this.getNodeParameter('ioc', i) as boolean,
@@ -872,7 +872,7 @@ export class TheHive implements INodeType {
 							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
 
-						const binaryPropertyName = this.getNodeParameter('binaryProperty', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryProperty', i);
 
 						if (item.binary[binaryPropertyName] === undefined) {
 							throw new NodeOperationError(this.getNode(), `No binary data property '${binaryPropertyName}' does not exists on item!`);
@@ -1486,7 +1486,7 @@ export class TheHive implements INodeType {
 					const caseId = this.getNodeParameter('caseId', i) as string;
 
 					const body: IDataObject = {
-						title: this.getNodeParameter('title', i) as string,
+						title: this.getNodeParameter('title', i),
 						status: this.getNodeParameter('status', i) as string,
 						flag: this.getNodeParameter('flag', i),
 						...prepareOptional(this.getNodeParameter('options', i, {}) as INodeParameters),

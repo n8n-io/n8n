@@ -449,7 +449,7 @@ export class Slack implements INodeType {
 				//https://api.slack.com/methods/conversations.rename
 				if (operation === 'rename') {
 					const channel = this.getNodeParameter('channelId', i) as IDataObject;
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 					const body: IDataObject = {
 						channel,
 						name,
@@ -496,7 +496,7 @@ export class Slack implements INodeType {
 				//https://api.slack.com/methods/conversations.setTopic
 				if (operation === 'setTopic') {
 					const channel = this.getNodeParameter('channelId', i) as IDataObject;
-					const topic = this.getNodeParameter('topic', i) as string;
+					const topic = this.getNodeParameter('topic', i);
 					const body: IDataObject = {
 						channel,
 						topic,
@@ -518,7 +518,7 @@ export class Slack implements INodeType {
 				if (['post', 'postEphemeral'].includes(operation)) {
 					const channel = this.getNodeParameter('channel', i) as string;
 					const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
-					const text = this.getNodeParameter('text', i) as string;
+					const text = this.getNodeParameter('text', i);
 					const body: IDataObject = {
 						channel,
 						text,
@@ -766,7 +766,7 @@ export class Slack implements INodeType {
 				//https://api.slack.com/methods/chat.update
 				if (operation === 'update') {
 					const channel = this.getNodeParameter('channelId', i) as string;
-					const text = this.getNodeParameter('text', i) as string;
+					const text = this.getNodeParameter('text', i);
 					const ts = this.getNodeParameter('ts', i) as string;
 					const attachments = this.getNodeParameter('attachments', i, []) as unknown as IAttachment[];
 					const body: IDataObject = {
@@ -823,7 +823,7 @@ export class Slack implements INodeType {
 				const timestamp = this.getNodeParameter('timestamp', i) as string;
 				//https://api.slack.com/methods/reactions.add
 				if (operation === 'add') {
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 					const body: IDataObject = {
 						channel,
 						name,
@@ -833,7 +833,7 @@ export class Slack implements INodeType {
 				}
 				//https://api.slack.com/methods/reactions.remove
 				if (operation === 'remove') {
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 					const body: IDataObject = {
 						channel,
 						name,
@@ -919,7 +919,7 @@ export class Slack implements INodeType {
 						body.title = options.title as string;
 					}
 					if (binaryData) {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 						if (items[i].binary === undefined
 							//@ts-ignore
 							|| items[i].binary[binaryPropertyName] === undefined) {

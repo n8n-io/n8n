@@ -2051,7 +2051,7 @@ export class Mattermost implements INodeType {
 					endpoint = 'posts';
 
 					body.channel_id = this.getNodeParameter('channelId', i) as string;
-					body.message = this.getNodeParameter('message', i) as string;
+					body.message = this.getNodeParameter('message', i);
 
 					const attachments = this.getNodeParameter('attachments', i, []) as unknown as IAttachment[];
 
@@ -2208,7 +2208,7 @@ export class Mattermost implements INodeType {
 
 					if (authService === 'email') {
 						body.email = this.getNodeParameter('email', i) as string;
-						body.password = this.getNodeParameter('password', i) as string;
+						body.password = this.getNodeParameter('password', i);
 					} else {
 						body.auth_data = this.getNodeParameter('authData', i) as string;
 					}

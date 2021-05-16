@@ -476,10 +476,10 @@ export class Pushbullet implements INodeType {
 					}
 
 					if (['note', 'link'].includes(type)) {
-						body.title = this.getNodeParameter('title', i) as string;
+						body.title = this.getNodeParameter('title', i);
 
 						if (type === 'link') {
-							body.url = this.getNodeParameter('url', i) as string;
+							body.url = this.getNodeParameter('url', i);
 						}
 					}
 

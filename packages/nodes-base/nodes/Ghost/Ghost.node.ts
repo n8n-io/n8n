@@ -209,7 +209,7 @@ export class Ghost implements INodeType {
 			if (resource === 'post') {
 				if (operation === 'create') {
 					for (let i = 0; i < length; i++) {
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 
 						const contentFormat = this.getNodeParameter('contentFormat', i) as string;
 

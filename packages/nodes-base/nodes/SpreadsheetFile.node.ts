@@ -331,7 +331,7 @@ export class SpreadsheetFile implements INodeType {
 			for (let i = 0; i < items.length; i++) {
 				item = items[i];
 
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 				const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
 				if (item.binary === undefined || item.binary[binaryPropertyName] === undefined) {

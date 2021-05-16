@@ -110,7 +110,7 @@ export class MicrosoftOneDrive implements INodeType {
 				//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_list_children?view=odsp-graph-online
 				if (operation === 'download') {
 					const fileId = this.getNodeParameter('fileId', i) as string;
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 					responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${fileId}`);
 
 					const fileName = responseData.name;
@@ -156,7 +156,7 @@ export class MicrosoftOneDrive implements INodeType {
 				}
 				//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_search?view=odsp-graph-online
 				if (operation === 'search') {
-					const query = this.getNodeParameter('query', i) as string;
+					const query = this.getNodeParameter('query', i);
 					responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/drive/root/search(q='${query}')`);
 					responseData = responseData.filter((item: IDataObject) => item.file);
 					returnData.push.apply(returnData, responseData as IDataObject[]);
@@ -209,7 +209,7 @@ export class MicrosoftOneDrive implements INodeType {
 			if (resource === 'folder') {
 				//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_post_children?view=odsp-graph-online
 				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const body: IDataObject = {
 						name,
@@ -237,7 +237,7 @@ export class MicrosoftOneDrive implements INodeType {
 				}
 				//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_search?view=odsp-graph-online
 				if (operation === 'search') {
-					const query = this.getNodeParameter('query', i) as string;
+					const query = this.getNodeParameter('query', i);
 					responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/drive/root/search(q='${query}')`);
 					responseData = responseData.filter((item: IDataObject) => item.folder);
 					returnData.push.apply(returnData, responseData as IDataObject[]);

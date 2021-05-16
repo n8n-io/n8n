@@ -280,7 +280,7 @@ export class Automizy implements INodeType {
 			if (resource === 'list') {
 
 				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 
 					const body: IDataObject = {
 						name,
@@ -358,7 +358,7 @@ export class Automizy implements INodeType {
 				if (operation === 'update') {
 					const listId = this.getNodeParameter('listId', i) as string;
 
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 
 					const body: IDataObject = {
 						name,

@@ -136,8 +136,8 @@ export class SecurityScorecard implements INodeType {
 			if (resource === 'portfolio') {
 
 				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
-					const description = this.getNodeParameter('description', i) as string;
+					const name = this.getNodeParameter('name', i);
+					const description = this.getNodeParameter('description', i);
 					const privacy = this.getNodeParameter('privacy', i) as string;
 
 					const body: IDataObject = {
@@ -167,8 +167,8 @@ export class SecurityScorecard implements INodeType {
 
 				if (operation === 'update') {
 					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
-					const name = this.getNodeParameter('name', i) as string;
-					const description = this.getNodeParameter('description', i) as string;
+					const name = this.getNodeParameter('name', i);
+					const description = this.getNodeParameter('description', i);
 					const privacy = this.getNodeParameter('privacy', i) as string;
 
 					const body: IDataObject = {
@@ -252,7 +252,7 @@ export class SecurityScorecard implements INodeType {
 
 			if (resource === 'report') {
 				if (operation === 'download') {
-					const reportUrl = this.getNodeParameter('url', i) as string;
+					const reportUrl = this.getNodeParameter('url', i);
 
 					const response = await scorecardApiRequest.call(
 						this,
@@ -282,7 +282,7 @@ export class SecurityScorecard implements INodeType {
 
 					items[i] = newItem;
 
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 					const fileName = reportUrl.split('/').pop();
 

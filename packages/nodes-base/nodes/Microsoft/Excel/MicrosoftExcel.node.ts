@@ -385,7 +385,7 @@ export class MicrosoftExcel implements INodeType {
 				if (operation === 'getContent') {
 					const workbookId = this.getNodeParameter('workbook', i) as string;
 					const worksheetId = this.getNodeParameter('worksheet', i) as string;
-					const range = this.getNodeParameter('range', i) as string;
+					const range = this.getNodeParameter('range', i);
 					const rawData = this.getNodeParameter('rawData', i) as boolean;
 					if (rawData) {
 						const filters = this.getNodeParameter('filters', i) as IDataObject;

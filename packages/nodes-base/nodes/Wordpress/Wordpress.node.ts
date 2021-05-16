@@ -142,7 +142,7 @@ export class Wordpress implements INodeType {
 			if (resource === 'post') {
 				//https://developer.wordpress.org/rest-api/reference/posts/#create-a-post
 				if (operation === 'create') {
-					const title = this.getNodeParameter('title', i) as string;
+					const title = this.getNodeParameter('title', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IPost = {
 						title,
@@ -296,12 +296,12 @@ export class Wordpress implements INodeType {
 			if (resource === 'user') {
 				//https://developer.wordpress.org/rest-api/reference/users/#create-a-user
 				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 					const username = this.getNodeParameter('username', i) as string;
 					const firstName = this.getNodeParameter('firstName', i) as string;
 					const lastName = this.getNodeParameter('lastName', i) as string;
 					const email = this.getNodeParameter('email', i) as string;
-					const password = this.getNodeParameter('password', i) as string;
+					const password = this.getNodeParameter('password', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IUser = {
 						name,

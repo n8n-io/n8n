@@ -215,7 +215,7 @@ export class Storyblok implements INodeType {
 				if (resource === 'story') {
 					// if (operation === 'create') {
 					// 	const space = this.getNodeParameter('space', i) as string;
-					// 	const name = this.getNodeParameter('name', i) as string;
+					// 	const name = this.getNodeParameter('name', i);
 					// 	const slug = this.getNodeParameter('slug', i) as string;
 					// 	const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 					// 	const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;

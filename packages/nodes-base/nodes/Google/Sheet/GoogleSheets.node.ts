@@ -1268,7 +1268,7 @@ export class GoogleSheets implements INodeType {
 
 				for (let i = 0; i < this.getInputData().length; i++) {
 
-					const title = this.getNodeParameter('title', i) as string;
+					const title = this.getNodeParameter('title', i);
 					const sheetsUi = this.getNodeParameter('sheetsUi', i, {}) as IDataObject;
 
 					const body = {

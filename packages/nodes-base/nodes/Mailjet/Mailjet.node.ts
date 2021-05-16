@@ -122,8 +122,8 @@ export class Mailjet implements INodeType {
 				if (operation === 'send') {
 					const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 					const htmlBody = this.getNodeParameter('html', i) as string;
-					const textBody = this.getNodeParameter('text', i) as string;
-					const subject = this.getNodeParameter('subject', i) as string;
+					const textBody = this.getNodeParameter('text', i);
+					const subject = this.getNodeParameter('subject', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',') as string[];
 					const variables = (this.getNodeParameter('variablesUi', i) as IDataObject).variablesValues as IDataObject[];
@@ -200,7 +200,7 @@ export class Mailjet implements INodeType {
 				if (operation === 'sendTemplate') {
 					const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 					const templateId = parseInt(this.getNodeParameter('templateId', i) as string, 10);
-					const subject = this.getNodeParameter('subject', i) as string;
+					const subject = this.getNodeParameter('subject', i);
 					const variables = (this.getNodeParameter('variablesUi', i) as IDataObject).variablesValues as IDataObject[];
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',') as string[];
@@ -271,9 +271,9 @@ export class Mailjet implements INodeType {
 			if (resource === 'sms') {
 				//https://dev.mailjet.com/sms/reference/send-message#v4_post_sms-send
 				if (operation === 'send') {
-					const from = this.getNodeParameter('from', i) as string;
+					const from = this.getNodeParameter('from', i);
 					const to = this.getNodeParameter('to', i) as string;
-					const text = this.getNodeParameter('text', i) as string;
+					const text = this.getNodeParameter('text', i);
 					const body: IDataObject = {
 						From: from,
 						To: to,

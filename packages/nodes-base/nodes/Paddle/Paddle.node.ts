@@ -216,7 +216,7 @@ export class Paddle implements INodeType {
 						}
 
 						if (discountType === 'flat') {
-							body.currency = this.getNodeParameter('currency', i) as string;
+							body.currency = this.getNodeParameter('currency', i);
 						}
 
 						body.coupon_type = couponType;

@@ -213,7 +213,7 @@ export class Mautic implements INodeType {
 			if (resource === 'company') {
 				//https://developer.mautic.org/#create-company
 				if (operation === 'create') {
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IDataObject = {
@@ -299,9 +299,9 @@ export class Mautic implements INodeType {
 						body.email = this.getNodeParameter('email', i) as string;
 						body.firstname = this.getNodeParameter('firstName', i) as string;
 						body.lastname = this.getNodeParameter('lastName', i) as string;
-						body.company = this.getNodeParameter('company', i) as string;
+						body.company = this.getNodeParameter('company', i);
 						body.position = this.getNodeParameter('position', i) as string;
-						body.title = this.getNodeParameter('title', i) as string;
+						body.title = this.getNodeParameter('title', i);
 					} else {
 						const json = validateJSON(this.getNodeParameter('bodyJson', i) as string);
 						if (json !== undefined) {

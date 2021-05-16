@@ -436,7 +436,7 @@ export class Xero implements INodeType {
 			if (resource === 'contact') {
 				if (operation === 'create') {
 					const organizationId = this.getNodeParameter('organizationId', i) as string;
-					const name = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					// const addressesUi = additionalFields.addressesUi as IDataObject;
 					// const phonesUi = additionalFields.phonesUi as IDataObject;

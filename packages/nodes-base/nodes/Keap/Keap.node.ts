@@ -691,7 +691,7 @@ export class Keap implements INodeType {
 				if (operation === 'send') {
 					const userId = this.getNodeParameter('userId', i) as number;
 					const contactIds = ((this.getNodeParameter('contactIds', i) as string).split(',') as string[]).map((e) => (parseInt(e, 10)));
-					const subject = this.getNodeParameter('subject', i) as string;
+					const subject = this.getNodeParameter('subject', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IEmail = {
 						user_id: userId,
@@ -780,7 +780,7 @@ export class Keap implements INodeType {
 						body.contact_id = contactId;
 					}
 					if (binaryData) {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						if (items[i].binary === undefined) {
 							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');

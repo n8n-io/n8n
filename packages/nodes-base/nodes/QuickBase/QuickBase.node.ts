@@ -210,7 +210,7 @@ export class QuickBase implements INodeType {
 
 					items[i] = newItem;
 
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 					responseData = await quickbaseApiRequest.call(this, 'GET', `/files/${tableId}/${recordId}/${fieldId}/${versionNumber}`, {}, {}, { json: false, resolveWithFullResponse: true });
 

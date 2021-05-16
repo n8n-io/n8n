@@ -813,7 +813,7 @@ export class NextCloud implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'GET';
-					endpoint = this.getNodeParameter('path', i) as string;
+					endpoint = this.getNodeParameter('path', i);
 
 				} else if (operation === 'upload') {
 					// ----------------------------------
@@ -821,7 +821,7 @@ export class NextCloud implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'PUT';
-					endpoint = this.getNodeParameter('path', i) as string;
+					endpoint = this.getNodeParameter('path', i);
 
 					if (this.getNodeParameter('binaryDataUpload', i) === true) {
 						// Is binary file to upload
@@ -831,7 +831,7 @@ export class NextCloud implements INodeType {
 							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
 
-						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 
 						if (item.binary[propertyNameUpload] === undefined) {
@@ -851,7 +851,7 @@ export class NextCloud implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'MKCOL';
-					endpoint = this.getNodeParameter('path', i) as string;
+					endpoint = this.getNodeParameter('path', i);
 
 				} else if (operation === 'list') {
 					// ----------------------------------
@@ -859,7 +859,7 @@ export class NextCloud implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'PROPFIND';
-					endpoint = this.getNodeParameter('path', i) as string;
+					endpoint = this.getNodeParameter('path', i);
 
 				}
 			}
@@ -871,7 +871,7 @@ export class NextCloud implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'COPY';
-					endpoint = this.getNodeParameter('path', i) as string;
+					endpoint = this.getNodeParameter('path', i);
 					const toPath = this.getNodeParameter('toPath', i) as string;
 					headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
 
@@ -881,7 +881,7 @@ export class NextCloud implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'DELETE';
-					endpoint = this.getNodeParameter('path', i) as string;
+					endpoint = this.getNodeParameter('path', i);
 
 				} else if (operation === 'move') {
 					// ----------------------------------
@@ -889,7 +889,7 @@ export class NextCloud implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'MOVE';
-					endpoint = this.getNodeParameter('path', i) as string;
+					endpoint = this.getNodeParameter('path', i);
 					const toPath = this.getNodeParameter('toPath', i) as string;
 					headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
 
@@ -1023,7 +1023,7 @@ export class NextCloud implements INodeType {
 
 				items[i] = newItem;
 
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);
 

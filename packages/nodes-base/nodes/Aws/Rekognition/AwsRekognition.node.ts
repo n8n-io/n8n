@@ -480,7 +480,7 @@ export class AwsRekognition implements INodeType {
 
 							const bucket = this.getNodeParameter('bucket', i) as string;
 
-							const name = this.getNodeParameter('name', i) as string;
+							const name = this.getNodeParameter('name', i);
 
 							Object.assign(body, {
 								Image: {
