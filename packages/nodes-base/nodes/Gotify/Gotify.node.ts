@@ -191,8 +191,8 @@ export class Gotify implements INodeType {
 		const length = (items.length as unknown) as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < length; i++) {
 			if (resource === 'message') {
 				if (operation === 'create') {
@@ -226,7 +226,7 @@ export class Gotify implements INodeType {
 				}
 
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					if (returnAll) {
 						responseData = await gotifyApiRequestAllItems.call(
@@ -239,7 +239,7 @@ export class Gotify implements INodeType {
 						);
 
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await gotifyApiRequest.call(
 							this,
 							'GET',

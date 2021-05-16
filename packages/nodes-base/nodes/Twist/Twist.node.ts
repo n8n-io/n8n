@@ -173,8 +173,8 @@ export class Twist implements INodeType {
 		const length = (items.length as unknown) as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < length; i++) {
 			if (resource === 'channel') {
 				//https://developer.twist.com/v3/#add-channel
@@ -205,7 +205,7 @@ export class Twist implements INodeType {
 				//https://developer.twist.com/v3/#get-all-channels
 				if (operation === 'getAll') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					qs.workspace_id = workspaceId;
 					Object.assign(qs, filters);
@@ -213,7 +213,7 @@ export class Twist implements INodeType {
 					responseData = await twistApiRequest.call(this, 'GET', '/channels/get', {}, qs);
 
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = responseData.splice(0, limit);
 					}
 				}
@@ -326,13 +326,13 @@ export class Twist implements INodeType {
 				//https://developer.twist.com/v3/#get-all-comments
 				if (operation === 'getAll') {
 					const threadId = this.getNodeParameter('threadId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					qs.thread_id = threadId;
 
 					Object.assign(qs, filters);
 					if (!returnAll) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 					}
 					if (qs.older_than_ts) {
 						qs.older_than_ts = moment(qs.older_than_ts as string).unix();
@@ -666,13 +666,13 @@ export class Twist implements INodeType {
 				//https://developer.twist.com/v3/#get-all-threads
 				if (operation === 'getAll') {
 					const channelId = this.getNodeParameter('channelId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					qs.channel_id = channelId;
 
 					Object.assign(qs, filters);
 					if (!returnAll) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 					}
 					if (qs.older_than_ts) {
 						qs.older_than_ts = moment(qs.older_than_ts as string).unix();

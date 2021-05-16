@@ -1749,8 +1749,8 @@ export class Github implements INodeType {
 		let requestMethod: string;
 		let endpoint: string;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource');
 		const fullOperation = `${resource}:${operation}`;
 
 		for (let i = 0; i < items.length; i++) {
@@ -1971,10 +1971,10 @@ export class Github implements INodeType {
 
 					endpoint = `/repos/${owner}/${repository}/releases`;
 
-					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 
 					if (returnAll === false) {
-						qs.per_page = this.getNodeParameter('limit', 0) as number;
+						qs.per_page = this.getNodeParameter('limit');
 					}
 				}
 				if (operation === 'update') {
@@ -2034,10 +2034,10 @@ export class Github implements INodeType {
 
 					endpoint = `/repos/${owner}/${repository}/issues`;
 
-					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 
 					if (returnAll === false) {
-						qs.per_page = this.getNodeParameter('limit', 0) as number;
+						qs.per_page = this.getNodeParameter('limit');
 					}
 				}
 			} else if (resource === 'review') {
@@ -2059,12 +2059,12 @@ export class Github implements INodeType {
 					// ----------------------------------
 					requestMethod = 'GET';
 
-					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 
 					const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
 
 					if (returnAll === false) {
-						qs.per_page = this.getNodeParameter('limit', 0) as number;
+						qs.per_page = this.getNodeParameter('limit');
 					}
 
 					endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews`;
@@ -2107,10 +2107,10 @@ export class Github implements INodeType {
 
 					endpoint = `/users/${owner}/repos`;
 
-					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 
 					if (returnAll === false) {
-						qs.per_page = this.getNodeParameter('limit', 0) as number;
+						qs.per_page = this.getNodeParameter('limit');
 					}
 
 				} else if (operation === 'invite') {

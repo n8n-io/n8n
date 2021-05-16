@@ -210,8 +210,8 @@ export class Xero implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		for (let i = 0; i < length; i++) {
-			const resource = this.getNodeParameter('resource', 0) as string;
-			const operation = this.getNodeParameter('operation', 0) as string;
+			const resource = this.getNodeParameter('resource');
+			const operation = this.getNodeParameter('operation');
 			//https://developer.xero.com/documentation/api/invoices
 			if (resource === 'invoice') {
 				if (operation === 'create') {
@@ -409,7 +409,7 @@ export class Xero implements INodeType {
 				}
 				if (operation === 'getAll') {
 					const organizationId = this.getNodeParameter('organizationId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const options = this.getNodeParameter('options', i);
 					if (options.statuses) {
 						qs.statuses = (options.statuses as string[]).join(',');
@@ -426,7 +426,7 @@ export class Xero implements INodeType {
 					if (returnAll) {
 						responseData = await xeroApiRequestAllItems.call(this, 'Invoices', 'GET', '/Invoices', { organizationId }, qs);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = await xeroApiRequest.call(this, 'GET', `/Invoices`, { organizationId }, qs);
 						responseData = responseData.Invoices;
 						responseData = responseData.splice(0, limit);
@@ -544,7 +544,7 @@ export class Xero implements INodeType {
 				}
 				if (operation === 'getAll') {
 					const organizationId = this.getNodeParameter('organizationId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const options = this.getNodeParameter('options', i);
 					if (options.includeArchived) {
 						qs.includeArchived = options.includeArchived as boolean;
@@ -558,7 +558,7 @@ export class Xero implements INodeType {
 					if (returnAll) {
 						responseData = await xeroApiRequestAllItems.call(this, 'Contacts', 'GET', '/Contacts', { organizationId }, qs);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = await xeroApiRequest.call(this, 'GET', `/Contacts`, { organizationId }, qs);
 						responseData = responseData.Contacts;
 						responseData = responseData.splice(0, limit);

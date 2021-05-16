@@ -76,8 +76,8 @@ export class Oura implements INodeType {
 		let responseData;
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		for (let i = 0; i < length; i++) {
 
@@ -111,7 +111,7 @@ export class Oura implements INodeType {
 
 				const { start, end } = this.getNodeParameter('filters', i) as { start: string; end: string; };
 
-				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+				const returnAll = this.getNodeParameter('returnAll');
 
 				if (start) {
 					qs.start = moment(start).format('YYYY-MM-DD');
@@ -131,7 +131,7 @@ export class Oura implements INodeType {
 					responseData = responseData.activity;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -145,7 +145,7 @@ export class Oura implements INodeType {
 					responseData = responseData.readiness;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -159,7 +159,7 @@ export class Oura implements INodeType {
 					responseData = responseData.sleep;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = responseData.splice(0, limit);
 					}
 

@@ -153,8 +153,8 @@ export class Ghost implements INodeType {
 		const timezone = this.getTimezone();
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		const source = this.getNodeParameter('source', 0) as string;
 
 		if (source === 'contentApi') {
@@ -185,7 +185,7 @@ export class Ghost implements INodeType {
 				if (operation === 'getAll') {
 					for (let i = 0; i < items.length; i++) {
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll');
 
 						const options = this.getNodeParameter('options', i);
 
@@ -286,7 +286,7 @@ export class Ghost implements INodeType {
 				if (operation === 'getAll') {
 					for (let i = 0; i < length; i++) {
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll');
 
 						const options = this.getNodeParameter('options', i);
 

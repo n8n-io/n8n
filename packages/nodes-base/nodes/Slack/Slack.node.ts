@@ -285,8 +285,8 @@ export class Slack implements INodeType {
 		let qs: IDataObject;
 		let responseData;
 		const authentication = this.getNodeParameter('authentication', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		for (let i = 0; i < length; i++) {
 			responseData = { error: 'Resource ' + resource + ' / operation ' + operation + ' not found!' };
@@ -349,7 +349,7 @@ export class Slack implements INodeType {
 				}
 				//https://api.slack.com/methods/conversations.list
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					if (filters.types) {
 						qs.types = (filters.types as string[]).join(',');
@@ -360,7 +360,7 @@ export class Slack implements INodeType {
 					if (returnAll === true) {
 						responseData = await slackApiRequestAllItems.call(this, 'channels', 'GET', '/conversations.list', {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await slackApiRequest.call(this, 'GET', '/conversations.list', {}, qs);
 						responseData = responseData.channels;
 					}
@@ -368,7 +368,7 @@ export class Slack implements INodeType {
 				//https://api.slack.com/methods/conversations.history
 				if (operation === 'history') {
 					const channel = this.getNodeParameter('channelId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					qs.channel = channel;
 					if (filters.inclusive) {
@@ -383,7 +383,7 @@ export class Slack implements INodeType {
 					if (returnAll === true) {
 						responseData = await slackApiRequestAllItems.call(this, 'messages', 'GET', '/conversations.history', {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await slackApiRequest.call(this, 'GET', '/conversations.history', {}, qs);
 						responseData = responseData.messages;
 					}
@@ -409,14 +409,14 @@ export class Slack implements INodeType {
 				}
 				//https://api.slack.com/methods/conversations.members
 				if (operation === 'member') {
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const resolveData = this.getNodeParameter('resolveData', 0) as boolean;
 					qs.channel = this.getNodeParameter('channelId', i) as string;
 					if (returnAll) {
 						responseData = await slackApiRequestAllItems.call(this, 'members', 'GET', '/conversations.members', {}, qs);
 						responseData = responseData.map((member: string) => ({ member }));
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await slackApiRequest.call(this, 'GET', '/conversations.members', {}, qs);
 						responseData = responseData.members.map((member: string) => ({ member }));
 					}
@@ -461,7 +461,7 @@ export class Slack implements INodeType {
 				if (operation === 'replies') {
 					const channel = this.getNodeParameter('channelId', i) as string;
 					const ts = this.getNodeParameter('ts', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					qs.channel = channel;
 					qs.ts = ts;
@@ -477,7 +477,7 @@ export class Slack implements INodeType {
 					if (returnAll === true) {
 						responseData = await slackApiRequestAllItems.call(this, 'messages', 'GET', '/conversations.replies', {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await slackApiRequest.call(this, 'GET', '/conversations.replies', {}, qs);
 						responseData = responseData.messages;
 					}
@@ -887,11 +887,11 @@ export class Slack implements INodeType {
 				}
 				//https://api.slack.com/methods/stars.list
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					if (returnAll === true) {
 						responseData = await slackApiRequestAllItems.call(this, 'items', 'GET', '/stars.list', {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await slackApiRequest.call(this, 'GET', '/stars.list', {}, qs);
 						responseData = responseData.items;
 					}
@@ -946,7 +946,7 @@ export class Slack implements INodeType {
 				}
 				//https://api.slack.com/methods/files.list
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					if (filters.channelId) {
 						qs.channel = filters.channelId as string;
@@ -969,7 +969,7 @@ export class Slack implements INodeType {
 					if (returnAll === true) {
 						responseData = await slackApiRequestAllItems.call(this, 'files', 'GET', '/files.list', {}, qs);
 					} else {
-						qs.count = this.getNodeParameter('limit', i) as number;
+						qs.count = this.getNodeParameter('limit');
 						responseData = await slackApiRequest.call(this, 'GET', '/files.list', {}, qs);
 						responseData = responseData.files;
 					}

@@ -76,8 +76,8 @@ export class Vero implements INodeType {
 		const length = items.length as unknown as number;
 		let responseData;
 		for (let i = 0; i < length; i++) {
-			const resource = this.getNodeParameter('resource', 0) as string;
-			const operation = this.getNodeParameter('operation', 0) as string;
+			const resource = this.getNodeParameter('resource');
+			const operation = this.getNodeParameter('operation');
 			//https://developers.getvero.com/?bash#users
 			if (resource === 'user') {
 				//https://developers.getvero.com/?bash#users-identify

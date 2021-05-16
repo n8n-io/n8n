@@ -1906,8 +1906,8 @@ export class GoogleDrive implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		for (let i = 0; i < items.length; i++) {
 			const options = this.getNodeParameter('options', i, {});
@@ -1971,7 +1971,7 @@ export class GoogleDrive implements INodeType {
 					//         list
 					// ----------------------------------
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					const qs: IDataObject = {};
 
@@ -1982,7 +1982,7 @@ export class GoogleDrive implements INodeType {
 					if (returnAll === true) {
 						response = await googleApiRequestAllItems.call(this, 'drives', 'GET', `/drive/v3/drives`, {}, qs);
 					} else {
-						qs.pageSize = this.getNodeParameter('limit', i) as number;
+						qs.pageSize = this.getNodeParameter('limit');
 						const data = await googleApiRequest.call(this, 'GET', `/drive/v3/drives`, {}, qs);
 						response = data.drives as IDataObject[];
 					}
@@ -2147,7 +2147,7 @@ export class GoogleDrive implements INodeType {
 						}
 					}
 
-					const pageSize = this.getNodeParameter('limit', i) as number;
+					const pageSize = this.getNodeParameter('limit');
 
 					const qs = {
 						pageSize,

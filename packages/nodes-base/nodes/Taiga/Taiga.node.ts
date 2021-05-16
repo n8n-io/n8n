@@ -240,8 +240,8 @@ export class Taiga implements INodeType {
 		const returnData: IDataObject[] = [];
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		const qs: IDataObject = {};
 
@@ -303,7 +303,7 @@ export class Taiga implements INodeType {
 				if (operation === 'getAll') {
 
 					const projectId = this.getNodeParameter('projectId', i) as number;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					qs.project = projectId;
 
@@ -311,7 +311,7 @@ export class Taiga implements INodeType {
 						responseData = await taigaApiRequestAllItems.call(this, 'GET', '/issues', {}, qs);
 
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await taigaApiRequestAllItems.call(this, 'GET', '/issues', {}, qs);
 						responseData = responseData.splice(0, qs.limit);
 					}

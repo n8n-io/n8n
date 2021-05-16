@@ -2529,8 +2529,8 @@ export class Pipedrive implements INodeType {
 		let endpoint: string;
 		let returnAll = false;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		let customProperties: ICustomProperties | undefined;
 		if (['get', 'getAll', 'update'].includes(operation) && ['activity', 'deal', 'organization', 'person', 'product'].includes(resource)) {
@@ -2601,9 +2601,9 @@ export class Pipedrive implements INodeType {
 
 					requestMethod = 'GET';
 
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 					}
 
 					endpoint = `/activities`;
@@ -2672,9 +2672,9 @@ export class Pipedrive implements INodeType {
 
 					requestMethod = 'GET';
 
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 					}
 
 					endpoint = `/deals`;
@@ -2803,9 +2803,9 @@ export class Pipedrive implements INodeType {
 					requestMethod = 'GET';
 					endpoint = `/notes`;
 
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 					}
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					addAdditionalFields(qs, additionalFields);
@@ -2864,9 +2864,9 @@ export class Pipedrive implements INodeType {
 
 					requestMethod = 'GET';
 
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 					}
 
 					endpoint = `/organizations`;
@@ -2930,9 +2930,9 @@ export class Pipedrive implements INodeType {
 
 					requestMethod = 'GET';
 
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 					}
 
 					const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -2955,9 +2955,9 @@ export class Pipedrive implements INodeType {
 					requestMethod = 'GET';
 
 					qs.term = this.getNodeParameter('term', i) as string;
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 					}
 
 					const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -3006,9 +3006,9 @@ export class Pipedrive implements INodeType {
 
 					requestMethod = 'GET';
 
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 					}
 
 					endpoint = `/products`;

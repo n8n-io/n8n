@@ -139,8 +139,8 @@ export class Trello implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource');
 
 		// For Post
 		let body: IDataObject;
@@ -376,10 +376,10 @@ export class Trello implements INodeType {
 
 					requestMethod = 'GET';
 
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 
 					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 					}
 
 					const id = this.getNodeParameter('id', i) as string;
@@ -396,10 +396,10 @@ export class Trello implements INodeType {
 
 					requestMethod = 'GET';
 
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 
 					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 					}
 
 					const id = this.getNodeParameter('id', i) as string;

@@ -106,8 +106,8 @@ export class Raindrop implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		let responseData;
 		const returnData: IDataObject[] = [];
@@ -179,7 +179,7 @@ export class Raindrop implements INodeType {
 					// ----------------------------------
 					//         bookmark: getAll
 					// ----------------------------------
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					const collectionId = this.getNodeParameter('collectionId', i);
 					const endpoint = `/raindrops/${collectionId}`;
@@ -188,7 +188,7 @@ export class Raindrop implements INodeType {
 
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = responseData.slice(0, limit);
 					}
 
@@ -288,7 +288,7 @@ export class Raindrop implements INodeType {
 					//        collection: getAll
 					// ----------------------------------
 
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					const endpoint = this.getNodeParameter('type', i) === 'parent'
 						? '/collections'
@@ -298,7 +298,7 @@ export class Raindrop implements INodeType {
 					responseData = responseData.items;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = responseData.slice(0, limit);
 					}
 
@@ -424,7 +424,7 @@ export class Raindrop implements INodeType {
 
 					let endpoint = `/tags`;
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					const filter = this.getNodeParameter('filters', i) as IDataObject;
 
@@ -436,7 +436,7 @@ export class Raindrop implements INodeType {
 					responseData = responseData.items;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = responseData.slice(0, limit);
 					}
 				}

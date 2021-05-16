@@ -237,8 +237,8 @@ export class Wekan implements INodeType {
 		let returnAll;
 		let limit;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource');
 
 		// For Post
 		let body: IDataObject;
@@ -301,7 +301,7 @@ export class Wekan implements INodeType {
 
 					const userId = this.getNodeParameter('IdUser', i) as string;
 
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 
 					endpoint = `users/${userId}/boards`;
 
@@ -365,7 +365,7 @@ export class Wekan implements INodeType {
 
 					const boardId = this.getNodeParameter('boardId', i) as string;
 					const fromObject = this.getNodeParameter('fromObject', i) as string;
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 
 					if (fromObject === 'list') {
 						const listId = this.getNodeParameter('listId', i) as string;
@@ -505,7 +505,7 @@ export class Wekan implements INodeType {
 					requestMethod = 'GET';
 
 					const boardId = this.getNodeParameter('boardId', i) as string;
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 
 					endpoint = `boards/${boardId}/lists`;
 
@@ -566,7 +566,7 @@ export class Wekan implements INodeType {
 
 					const boardId = this.getNodeParameter('boardId', i) as string;
 					const cardId = this.getNodeParameter('cardId', i) as string;
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 
 
 					endpoint = `boards/${boardId}/cards/${cardId}/checklists`;
@@ -672,7 +672,7 @@ export class Wekan implements INodeType {
 			let responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
 			if (returnAll === false) {
-				limit = this.getNodeParameter('limit', i) as number;
+				limit = this.getNodeParameter('limit');
 				responseData = responseData.splice(0, limit);
 			}
 

@@ -244,7 +244,7 @@ export class MySql implements INodeType {
 
 		const connection = await mysql2.createConnection(baseCredentials);
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation');
 		let returnItems = [];
 
 		if (operation === 'executeQuery') {
@@ -288,7 +288,7 @@ export class MySql implements INodeType {
 
 			const insertSQL = `INSERT ${insertPriority || ''} ${insertIgnore ? 'IGNORE' : ''} INTO ${table}(${columnString}) VALUES ${items.map(item => insertPlaceholder).join(',')};`;
 			const queryItems = insertItems.reduce((collection, item) => collection.concat(Object.values(item as any)), []); // tslint:disable-line:no-any
-			
+
 			const queryResult = await connection.query(insertSQL, queryItems);
 
 			returnItems = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);

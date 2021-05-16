@@ -262,7 +262,7 @@ export class BitbucketTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				let endpoint = '';
 				const credentials = this.getCredentials('bitbucketApi');
-				const resource = this.getNodeParameter('resource', 0) as string;
+				const resource = this.getNodeParameter('resource');
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId === undefined) {
 					return false;
@@ -291,7 +291,7 @@ export class BitbucketTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const events = this.getNodeParameter('events') as string[];
-				const resource = this.getNodeParameter('resource', 0) as string;
+				const resource = this.getNodeParameter('resource');
 				const credentials = this.getCredentials('bitbucketApi');
 
 				if (resource === 'user') {
@@ -319,7 +319,7 @@ export class BitbucketTrigger implements INodeType {
 				let endpoint = '';
 				const webhookData = this.getWorkflowStaticData('node');
 				const credentials = this.getCredentials('bitbucketApi');
-				const resource = this.getNodeParameter('resource', 0) as string;
+				const resource = this.getNodeParameter('resource');
 				if (resource === 'user') {
 					endpoint = `/users/${credentials!.username}/hooks/${webhookData.webhookId}`;
 				}

@@ -192,8 +192,8 @@ export class ZohoCrm implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		for (let i = 0; i < length; i++) {
-			const resource = this.getNodeParameter('resource', 0) as string;
-			const operation = this.getNodeParameter('operation', 0) as string;
+			const resource = this.getNodeParameter('resource');
+			const operation = this.getNodeParameter('operation');
 			if (resource === 'lead') {
 				//https://www.zoho.com/crm/developer/docs/api/insert-records.html
 				if (operation === 'create') {
@@ -397,7 +397,7 @@ export class ZohoCrm implements INodeType {
 				}
 				//https://www.zoho.com/crm/developer/docs/api/get-records.html
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const options = this.getNodeParameter('options', i);
 					if (options.fields) {
 						qs.fields = (options.fields as string[]).join(',');
@@ -423,7 +423,7 @@ export class ZohoCrm implements INodeType {
 					if (returnAll) {
 						responseData = await zohoApiRequestAllItems.call(this, 'data', 'GET', '/leads', {}, qs);
 					} else {
-						qs.per_page = this.getNodeParameter('limit', i) as number;
+						qs.per_page = this.getNodeParameter('limit');
 						responseData = await zohoApiRequest.call(this, 'GET', '/leads', {}, qs);
 						responseData = responseData.data;
 					}

@@ -108,8 +108,8 @@ export class S3 implements INodeType {
 		const returnData: IDataObject[] = [];
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < items.length; i++) {
 			const headers: IDataObject = {};
 			if (resource === 'bucket') {
@@ -174,11 +174,11 @@ export class S3 implements INodeType {
 				}
 				//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					if (returnAll) {
 						responseData = await s3ApiRequestSOAPAllItems.call(this, 'ListAllMyBucketsResult.Buckets.Bucket', '', 'GET', '');
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await s3ApiRequestSOAPAllItems.call(this, 'ListAllMyBucketsResult.Buckets.Bucket', '', 'GET', '', '', qs);
 						responseData = responseData.slice(0, qs.limit);
 					}
@@ -188,7 +188,7 @@ export class S3 implements INodeType {
 				//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 				if (operation === 'search') {
 					const bucketName = this.getNodeParameter('bucketName', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 
 					if (additionalFields.prefix) {
@@ -225,7 +225,7 @@ export class S3 implements INodeType {
 					if (returnAll) {
 						responseData = await s3ApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', bucketName, 'GET', '', '', qs, {}, {}, region);
 					} else {
-						qs['max-keys'] = this.getNodeParameter('limit', 0) as number;
+						qs['max-keys'] = this.getNodeParameter('limit');
 						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', qs, {}, {}, region);
 						responseData = responseData.ListBucketResult.Contents;
 					}
@@ -312,7 +312,7 @@ export class S3 implements INodeType {
 				//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 				if (operation === 'getAll') {
 					const bucketName = this.getNodeParameter('bucketName', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const options = this.getNodeParameter('options', 0) as IDataObject;
 
 					if (options.folderKey) {
@@ -332,7 +332,7 @@ export class S3 implements INodeType {
 					if (returnAll) {
 						responseData = await s3ApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', bucketName, 'GET', '', '', qs, {}, {}, region);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await s3ApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', bucketName, 'GET', '', '', qs, {}, {}, region);
 					}
 					if (Array.isArray(responseData)) {
@@ -489,7 +489,7 @@ export class S3 implements INodeType {
 				//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 				if (operation === 'getAll') {
 					const bucketName = this.getNodeParameter('bucketName', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const options = this.getNodeParameter('options', 0) as IDataObject;
 
 					if (options.folderKey) {
@@ -511,7 +511,7 @@ export class S3 implements INodeType {
 					if (returnAll) {
 						responseData = await s3ApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', bucketName, 'GET', '', '', qs, {}, {}, region);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await s3ApiRequestSOAPAllItems.call(this, 'ListBucketResult.Contents', bucketName, 'GET', '', '', qs, {}, {}, region);
 						responseData = responseData.splice(0, qs.limit);
 					}

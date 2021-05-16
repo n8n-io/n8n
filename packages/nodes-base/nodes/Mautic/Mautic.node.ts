@@ -204,8 +204,8 @@ export class Mautic implements INodeType {
 		let qs: IDataObject;
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		for (let i = 0; i < length; i++) {
 			qs = {};
@@ -255,14 +255,14 @@ export class Mautic implements INodeType {
 				}
 				//https://developer.mautic.org/#list-contact-companies
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const simple = this.getNodeParameter('simple', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					qs = Object.assign(qs, additionalFields);
 					if (returnAll === true) {
 						responseData = await mauticApiRequestAllItems.call(this, 'companies', 'GET', '/companies', {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 						qs.start = 0;
 						responseData = await mauticApiRequest.call(this, 'GET', '/companies', {}, qs);
 						if (responseData.errors) {
@@ -508,7 +508,7 @@ export class Mautic implements INodeType {
 				}
 				//https://developer.mautic.org/?php#list-contacts
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const options = this.getNodeParameter('options', i);
 					qs = Object.assign(qs, options);
 					if (qs.orderBy) {
@@ -521,7 +521,7 @@ export class Mautic implements INodeType {
 					if (returnAll === true) {
 						responseData = await mauticApiRequestAllItems.call(this, 'contacts', 'GET', '/contacts', {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 						qs.start = 0;
 						responseData = await mauticApiRequest.call(this, 'GET', '/contacts', {}, qs);
 						if (responseData.errors) {

@@ -781,8 +781,8 @@ export class Dropbox implements INodeType {
 		const returnData: IDataObject[] = [];
 
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		let endpoint = '';
 		let requestMethod = '';
@@ -883,7 +883,7 @@ export class Dropbox implements INodeType {
 					//         list
 					// ----------------------------------
 
-					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
@@ -896,7 +896,7 @@ export class Dropbox implements INodeType {
 					};
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit');
 						body.limit = limit;
 					}
 
@@ -911,7 +911,7 @@ export class Dropbox implements INodeType {
 					//         query
 					// ----------------------------------
 
-					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 
 					simple = this.getNodeParameter('simple', 0) as boolean;
 
@@ -934,7 +934,7 @@ export class Dropbox implements INodeType {
 					Object.assign(body.options, filters);
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit');
 						Object.assign(body.options, { max_results: limit });
 					}
 

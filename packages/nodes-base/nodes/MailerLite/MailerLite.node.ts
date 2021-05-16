@@ -85,8 +85,8 @@ export class MailerLite implements INodeType {
 		const length = (items.length as unknown) as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < length; i++) {
 
 			if (resource === 'subscriber') {
@@ -129,7 +129,7 @@ export class MailerLite implements INodeType {
 				}
 				//https://developers.mailerlite.com/reference#subscribers
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
@@ -139,7 +139,7 @@ export class MailerLite implements INodeType {
 
 						responseData = await mailerliteApiRequestAllItems.call(this, 'GET', `/subscribers`, {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 
 						responseData = await mailerliteApiRequest.call(this, 'GET', `/subscribers`, {}, qs);
 					}

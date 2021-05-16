@@ -147,8 +147,8 @@ export class MicrosoftOutlook implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		if (['draft', 'message'].includes(resource)) {
 			if (operation === 'delete') {
@@ -422,7 +422,7 @@ export class MicrosoftOutlook implements INodeType {
 			if (operation === 'getAll') {
 				let additionalFields: IDataObject = {};
 				for (let i = 0; i < length; i++) {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.fields) {
@@ -445,7 +445,7 @@ export class MicrosoftOutlook implements INodeType {
 							qs,
 						);
 					} else {
-						qs['$top'] = this.getNodeParameter('limit', i) as number;
+						qs['$top'] = this.getNodeParameter('limit');
 						responseData = await microsoftApiRequest.call(
 							this,
 							'GET',
@@ -715,7 +715,7 @@ export class MicrosoftOutlook implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					const messageId = this.getNodeParameter('messageId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					// Have sane defaults so we don't fetch attachment data in this operation
@@ -739,7 +739,7 @@ export class MicrosoftOutlook implements INodeType {
 							qs,
 						);
 					} else {
-						qs['$top'] = this.getNodeParameter('limit', i) as number;
+						qs['$top'] = this.getNodeParameter('limit');
 						responseData = await microsoftApiRequest.call(
 							this,
 							'GET',
@@ -825,7 +825,7 @@ export class MicrosoftOutlook implements INodeType {
 
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.fields) {
@@ -846,7 +846,7 @@ export class MicrosoftOutlook implements INodeType {
 							qs,
 						);
 					} else {
-						qs['$top'] = this.getNodeParameter('limit', i) as number;
+						qs['$top'] = this.getNodeParameter('limit');
 						responseData = await microsoftApiRequest.call(
 							this,
 							'GET',
@@ -863,7 +863,7 @@ export class MicrosoftOutlook implements INodeType {
 			if (operation === 'getChildren') {
 				for (let i = 0; i < length; i++) {
 					const folderId = this.getNodeParameter('folderId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.fields) {
@@ -883,7 +883,7 @@ export class MicrosoftOutlook implements INodeType {
 							qs,
 						);
 					} else {
-						qs['$top'] = this.getNodeParameter('limit', i) as number;
+						qs['$top'] = this.getNodeParameter('limit');
 						responseData = await microsoftApiRequest.call(
 							this,
 							'GET',
@@ -921,7 +921,7 @@ export class MicrosoftOutlook implements INodeType {
 			for (let i = 0; i < length; i++) {
 				if (operation === 'getAll') {
 					const folderId = this.getNodeParameter('folderId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.fields) {
@@ -943,7 +943,7 @@ export class MicrosoftOutlook implements INodeType {
 						);
 					}
 					else {
-						qs['$top'] = this.getNodeParameter('limit', i) as number;
+						qs['$top'] = this.getNodeParameter('limit');
 						responseData = await microsoftApiRequest.call(
 							this,
 							'GET',

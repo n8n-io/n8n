@@ -81,8 +81,8 @@ export class Box implements INodeType {
 		const length = items.length as unknown as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < length; i++) {
 			if (resource === 'file') {
 				// https://developer.box.com/reference/post-files-id-copy
@@ -163,7 +163,7 @@ export class Box implements INodeType {
 				// https://developer.box.com/reference/get-search/
 				if (operation === 'search') {
 					const query = this.getNodeParameter('query', i);
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const timezone = this.getTimezone();
 					qs.type = 'file';
@@ -193,7 +193,7 @@ export class Box implements INodeType {
 					if (returnAll) {
 						responseData = await boxApiRequestAllItems.call(this, 'entries', 'GET', `/search`, {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
 						responseData = responseData.entries;
 					}
@@ -320,7 +320,7 @@ export class Box implements INodeType {
 				// https://developer.box.com/reference/get-search/
 				if (operation === 'search') {
 					const query = this.getNodeParameter('query', i);
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const timezone = this.getTimezone();
 					qs.type = 'folder';
@@ -350,7 +350,7 @@ export class Box implements INodeType {
 					if (returnAll) {
 						responseData = await boxApiRequestAllItems.call(this, 'entries', 'GET', `/search`, {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
 						responseData = responseData.entries;
 					}

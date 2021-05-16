@@ -83,8 +83,8 @@ export class PayPal implements INodeType {
 		let responseData;
 		const qs: IDataObject = {};
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		for (let i = 0; i < length; i++) {
 			if (resource === 'payout') {
@@ -135,11 +135,11 @@ export class PayPal implements INodeType {
 				}
 				if (operation === 'get') {
 					const payoutBatchId = this.getNodeParameter('payoutBatchId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					if (returnAll === true) {
 						responseData = await payPalApiRequestAllItems.call(this, 'items', `/payments/payouts/${payoutBatchId}`, 'GET', {}, qs);
 					} else {
-						qs.page_size = this.getNodeParameter('limit', i) as number;
+						qs.page_size = this.getNodeParameter('limit');
 						responseData = await payPalApiRequest.call(this, `/payments/payouts/${payoutBatchId}`, 'GET', {}, qs);
 						responseData = responseData.items;
 					}

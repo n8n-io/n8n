@@ -227,9 +227,9 @@ export class Clockify implements INodeType {
 
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const resource = this.getNodeParameter('resource');
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation');
 
 		for (let i = 0; i < length; i++) {
 
@@ -299,7 +299,7 @@ export class Clockify implements INodeType {
 
 				if (operation === 'getAll') {
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
@@ -318,7 +318,7 @@ export class Clockify implements INodeType {
 
 					} else {
 
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 
 						responseData = await clockifyApiRequestAllItems.call(
 							this,
@@ -401,7 +401,7 @@ export class Clockify implements INodeType {
 
 				if (operation === 'getAll') {
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
@@ -420,7 +420,7 @@ export class Clockify implements INodeType {
 
 					} else {
 
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 
 						responseData = await clockifyApiRequestAllItems.call(
 							this,

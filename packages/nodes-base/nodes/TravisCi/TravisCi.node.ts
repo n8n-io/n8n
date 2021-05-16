@@ -65,8 +65,8 @@ export class TravisCi implements INodeType {
 		const length = items.length as unknown as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		for (let i = 0; i < length; i++) {
 			if (resource === 'build') {
@@ -84,7 +84,7 @@ export class TravisCi implements INodeType {
 				//https://developer.travis-ci.com/resource/builds#for_current_user
 				if (operation === 'getAll') {
 					const additionalFields = this.getNodeParameter('additionalFields', i);
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					if (additionalFields.sortBy) {
 						qs.sort_by = additionalFields.sortBy;
@@ -102,7 +102,7 @@ export class TravisCi implements INodeType {
 						responseData = await travisciApiRequestAllItems.call(this, 'builds', 'GET', '/builds', {}, qs);
 
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await travisciApiRequest.call(this, 'GET', '/builds', {}, qs);
 						responseData = responseData.builds;
 					}

@@ -112,8 +112,8 @@ export class ERPNext implements INodeType {
 		const body: IDataObject = {};
 		const qs: IDataObject = {};
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		for (let i = 0; i < items.length; i++) {
 
@@ -183,10 +183,10 @@ export class ERPNext implements INodeType {
 						}));
 					}
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit');
 						qs.limit_page_length = limit;
 						qs.limit_start = 0;
 						responseData = await erpNextApiRequest.call(this, 'GET', endpoint, {}, qs);

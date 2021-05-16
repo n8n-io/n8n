@@ -116,8 +116,8 @@ export class Reddit implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		let responseData;
 		const returnData: IDataObject[] = [];
@@ -240,10 +240,10 @@ export class Reddit implements INodeType {
 
 					responseData = await handleListing.call(this, i, endpoint, qs);
 
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -412,12 +412,12 @@ export class Reddit implements INodeType {
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
 					if (filters.trending) {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll');
 						const endpoint = 'api/trending_subreddits.json';
 						responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
 						responseData = responseData.subreddit_names.map((name: string) => ({ name }));
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit');
 							responseData = responseData.splice(0, limit);
 						}
 
@@ -428,10 +428,10 @@ export class Reddit implements INodeType {
 						const endpoint = 'api/search_subreddits.json';
 						responseData = await redditApiRequest.call(this, 'POST', endpoint, qs);
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll');
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit');
 							responseData = responseData.subreddits.splice(0, limit);
 						}
 					} else {

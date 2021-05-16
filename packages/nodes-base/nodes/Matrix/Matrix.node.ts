@@ -155,8 +155,8 @@ export class Matrix implements INodeType {
 
 		const items = this.getInputData() as IDataObject[];
 		const returnData: IDataObject[] = [];
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		for (let i = 0; i < items.length; i++) {
 			const responseData = await handleMatrixCall.call(this, items[i], i, resource, operation);

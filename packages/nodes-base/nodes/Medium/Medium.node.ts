@@ -450,8 +450,8 @@ export class Medium implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			qs = {};
 
-			resource = this.getNodeParameter('resource', i) as string;
-			operation = this.getNodeParameter('operation', i) as string;
+			resource = this.getNodeParameter('resource');
+			operation = this.getNodeParameter('operation');
 
 			if (resource === 'post') {
 				//https://github.com/Medium/medium-api-docs
@@ -543,7 +543,7 @@ export class Medium implements INodeType {
 					//         publication:getAll
 					// ----------------------------------
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					const user = await mediumApiRequest.call(
 						this,
@@ -562,7 +562,7 @@ export class Medium implements INodeType {
 					responseData = responseData.data;
 
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = responseData.splice(0, limit);
 					}
 				}

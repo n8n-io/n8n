@@ -224,8 +224,8 @@ export class Coda implements INodeType {
 		const returnData: IDataObject[] = [];
 		const items = this.getInputData();
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		let qs: IDataObject = {};
 
 		if (resource === 'table') {
@@ -311,7 +311,7 @@ export class Coda implements INodeType {
 			// https://coda.io/developers/apis/v1beta1#operation/listRows
 			if (operation === 'getAllRows') {
 				const docId = this.getNodeParameter('docId', 0) as string;
-				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+				const returnAll = this.getNodeParameter('returnAll');
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const options = this.getNodeParameter('options', 0);
 				const endpoint = `/docs/${docId}/tables/${tableId}/rows`;
@@ -336,7 +336,7 @@ export class Coda implements INodeType {
 					if (returnAll === true) {
 						responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}
@@ -409,14 +409,14 @@ export class Coda implements INodeType {
 			//https://coda.io/developers/apis/v1beta1#operation/listColumns
 			if (operation === 'getAllColumns') {
 				for (let i = 0; i < items.length; i++) {
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const docId = this.getNodeParameter('docId', i) as string;
 					const tableId = this.getNodeParameter('tableId', i) as string;
 					const endpoint = `/docs/${docId}/tables/${tableId}/columns`;
 					if (returnAll) {
 						responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}
@@ -440,13 +440,13 @@ export class Coda implements INodeType {
 			//https://coda.io/developers/apis/v1beta1#operation/listFormulas
 			if (operation === 'getAll') {
 				for (let i = 0; i < items.length; i++) {
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const docId = this.getNodeParameter('docId', i) as string;
 					const endpoint = `/docs/${docId}/formulas`;
 					if (returnAll) {
 						responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}
@@ -470,13 +470,13 @@ export class Coda implements INodeType {
 			//https://coda.io/developers/apis/v1beta1#operation/listControls
 			if (operation === 'getAll') {
 				for (let i = 0; i < items.length; i++) {
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const docId = this.getNodeParameter('docId', i) as string;
 					const endpoint = `/docs/${docId}/controls`;
 					if (returnAll) {
 						responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}
@@ -500,13 +500,13 @@ export class Coda implements INodeType {
 			//https://coda.io/developers/apis/v1beta1#operation/listViews
 			if (operation === 'getAll') {
 				for (let i = 0; i < items.length; i++) {
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const docId = this.getNodeParameter('docId', i) as string;
 					const endpoint = `/docs/${docId}/tables?tableTypes=view`;
 					if (returnAll) {
 						responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}
@@ -516,7 +516,7 @@ export class Coda implements INodeType {
 			}
 			if (operation === 'getAllViewRows') {
 				const docId = this.getNodeParameter('docId', 0) as string;
-				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+				const returnAll = this.getNodeParameter('returnAll');
 				const viewId = this.getNodeParameter('viewId', 0) as string;
 				const options = this.getNodeParameter('options', 0);
 				const endpoint = `/docs/${docId}/tables/${viewId}/rows`;
@@ -538,7 +538,7 @@ export class Coda implements INodeType {
 					if (returnAll === true) {
 						responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}
@@ -585,14 +585,14 @@ export class Coda implements INodeType {
 			}
 			if (operation === 'getAllViewColumns') {
 				for (let i = 0; i < items.length; i++) {
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const docId = this.getNodeParameter('docId', i) as string;
 					const viewId = this.getNodeParameter('viewId', i) as string;
 					const endpoint = `/docs/${docId}/tables/${viewId}/columns`;
 					if (returnAll) {
 						responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}

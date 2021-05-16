@@ -247,7 +247,7 @@ export class Emelia implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit');
 							campaigns = campaigns.slice(0, limit);
 						}
 
@@ -362,7 +362,7 @@ export class Emelia implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit');
 							contactLists = contactLists.slice(0, limit);
 						}
 

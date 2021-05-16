@@ -41,8 +41,8 @@ export async function quickBooksApiRequest(
 	option: IDataObject = {},
 ): Promise<any> { // tslint:disable-line:no-any
 
-	const resource = this.getNodeParameter('resource', 0) as string;
-	const operation = this.getNodeParameter('operation', 0) as string;
+	const resource = this.getNodeParameter('resource');
+	const operation = this.getNodeParameter('operation');
 
 	let isDownload = false;
 
@@ -169,7 +169,7 @@ export async function handleListing(
 	if (returnAll) {
 		return await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 	} else {
-		const limit = this.getNodeParameter('limit', i) as number;
+		const limit = this.getNodeParameter('limit');
 		qs.query += ` MAXRESULTS ${limit}`;
 		responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, qs, {});
 		responseData = responseData.QueryResponse[capitalCase(resource)];

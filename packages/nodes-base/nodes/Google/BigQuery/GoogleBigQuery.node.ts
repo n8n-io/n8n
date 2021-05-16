@@ -129,8 +129,8 @@ export class GoogleBigQuery implements INodeType {
 		const length = (items.length as unknown) as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		if (resource === 'record') {
 
@@ -188,7 +188,7 @@ export class GoogleBigQuery implements INodeType {
 
 				// https://cloud.google.com/bigquery/docs/reference/rest/v2/tables/get
 
-				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+				const returnAll = this.getNodeParameter('returnAll');
 				const projectId = this.getNodeParameter('projectId', 0) as string;
 				const datasetId = this.getNodeParameter('datasetId', 0) as string;
 				const tableId = this.getNodeParameter('tableId', 0) as string;
@@ -231,7 +231,7 @@ export class GoogleBigQuery implements INodeType {
 						);
 						returnData.push.apply(returnData, (simple) ? simplify(responseData, fields) : responseData);
 					} else {
-						qs.maxResults = this.getNodeParameter('limit', i) as number;
+						qs.maxResults = this.getNodeParameter('limit');
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',

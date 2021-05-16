@@ -146,8 +146,8 @@ export class Orbit implements INodeType {
 		const length = items.length as unknown as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < length; i++) {
 			if (resource === 'activity') {
 				if (operation === 'create') {
@@ -182,7 +182,7 @@ export class Orbit implements INodeType {
 				}
 				if (operation === 'getAll') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					let endpoint = `/${workspaceId}/activities`;
 					if (filters.memberId) {
@@ -191,7 +191,7 @@ export class Orbit implements INodeType {
 					if (returnAll === true) {
 						responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', endpoint, {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', endpoint, {}, qs);
 						responseData = responseData.splice(0, qs.limit);
 					}
@@ -286,14 +286,14 @@ export class Orbit implements INodeType {
 				}
 				if (operation === 'getAll') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const options = this.getNodeParameter('options', i);
 					Object.assign(qs, options);
 					qs.resolveIdentities = this.getNodeParameter('resolveIdentities', 0) as boolean;
 					if (returnAll === true) {
 						responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', `/${workspaceId}/members`, {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', `/${workspaceId}/members`, {}, qs);
 						responseData = responseData.splice(0, qs.limit);
 					}
@@ -386,12 +386,12 @@ export class Orbit implements INodeType {
 				if (operation === 'getAll') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const memberId = this.getNodeParameter('memberId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					qs.resolveMember = this.getNodeParameter('resolveMember', 0) as boolean;
 					if (returnAll === true) {
 						responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', `/${workspaceId}/members/${memberId}/notes`, {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', `/${workspaceId}/members/${memberId}/notes`, {}, qs);
 						responseData = responseData.splice(0, qs.limit);
 					}
@@ -425,7 +425,7 @@ export class Orbit implements INodeType {
 				}
 				if (operation === 'getAll') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					let endpoint = `/${workspaceId}/activities`;
 					qs.type = 'content';
@@ -435,7 +435,7 @@ export class Orbit implements INodeType {
 					if (returnAll === true) {
 						responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', endpoint, {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', endpoint, {}, qs);
 						responseData = responseData.splice(0, qs.limit);
 					}

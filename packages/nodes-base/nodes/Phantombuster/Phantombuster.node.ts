@@ -119,8 +119,8 @@ export class Phantombuster implements INodeType {
 		const length = (items.length as unknown) as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		for (let i = 0; i < length; i++) {
 
 			if (resource === 'agent') {
@@ -187,7 +187,7 @@ export class Phantombuster implements INodeType {
 				}
 				//https://api.phantombuster.com/api/v2/agents/fetch-all
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					responseData = await phantombusterApiRequest.call(
 						this,
@@ -196,7 +196,7 @@ export class Phantombuster implements INodeType {
 					);
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = responseData.splice(0, limit);
 					}
 				}

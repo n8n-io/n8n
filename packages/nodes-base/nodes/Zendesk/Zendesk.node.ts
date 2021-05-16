@@ -233,8 +233,8 @@ export class Zendesk implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		for (let i = 0; i < length; i++) {
-			const resource = this.getNodeParameter('resource', 0) as string;
-			const operation = this.getNodeParameter('operation', 0) as string;
+			const resource = this.getNodeParameter('resource');
+			const operation = this.getNodeParameter('operation');
 			//https://developer.zendesk.com/rest_api/docs/support/introduction
 			if (resource === 'ticket') {
 				//https://developer.zendesk.com/rest_api/docs/support/tickets
@@ -353,7 +353,7 @@ export class Zendesk implements INodeType {
 				}
 				//https://developer.zendesk.com/rest_api/docs/support/search#list-search-results
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const options = this.getNodeParameter('options', i);
 					qs.query = 'type:ticket';
 					if (options.status) {
@@ -368,7 +368,7 @@ export class Zendesk implements INodeType {
 					if (returnAll) {
 						responseData = await zendeskApiRequestAllItems.call(this, 'results', 'GET', `/search`, {}, qs);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit');
 						qs.per_page = limit;
 						responseData = await zendeskApiRequest.call(this, 'GET', `/search`, {}, qs);
 						responseData = responseData.results;
@@ -394,11 +394,11 @@ export class Zendesk implements INodeType {
 				}
 				//https://developer.zendesk.com/rest_api/docs/support/ticket_fields#list-ticket-fields
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					if (returnAll) {
 						responseData = await zendeskApiRequestAllItems.call(this, 'ticket_fields', 'GET', '/ticket_fields', {}, qs);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit');
 						qs.limit = limit;
 						responseData = await zendeskApiRequestAllItems.call(this, 'ticket_fields', 'GET', '/ticket_fields', {}, qs);
 						responseData = responseData.slice(0, limit);
@@ -465,7 +465,7 @@ export class Zendesk implements INodeType {
 				}
 				//https://developer.zendesk.com/rest_api/docs/support/users#list-users
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const options = this.getNodeParameter('filters', i) as IDataObject;
 
 					Object.assign(qs, options);
@@ -473,7 +473,7 @@ export class Zendesk implements INodeType {
 					if (returnAll) {
 						responseData = await zendeskApiRequestAllItems.call(this, 'users', 'GET', `/users`, {}, qs);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit');
 						qs.per_page = limit;
 						responseData = await zendeskApiRequest.call(this, 'GET', `/users`, {}, qs);
 						responseData = responseData.users;
@@ -481,7 +481,7 @@ export class Zendesk implements INodeType {
 				}
 				//https://developer.zendesk.com/rest_api/docs/support/users#search-users
 				if (operation === 'search') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const options = this.getNodeParameter('filters', i) as IDataObject;
 
 					Object.assign(qs, options);
@@ -489,7 +489,7 @@ export class Zendesk implements INodeType {
 					if (returnAll) {
 						responseData = await zendeskApiRequestAllItems.call(this, 'users', 'GET', `/users/search`, {}, qs);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit');
 						qs.per_page = limit;
 						responseData = await zendeskApiRequest.call(this, 'GET', `/users/search`, {}, qs);
 						responseData = responseData.users;

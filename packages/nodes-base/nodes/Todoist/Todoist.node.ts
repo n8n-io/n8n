@@ -464,8 +464,8 @@ export class Todoist implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		for (let i = 0; i < length; i++) {
 
@@ -527,7 +527,7 @@ export class Todoist implements INodeType {
 				}
 				if (operation === 'getAll') {
 					//https://developer.todoist.com/rest/v1/#get-active-tasks
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					if (filters.projectId) {
 						qs.project_id = filters.projectId as string;
@@ -548,7 +548,7 @@ export class Todoist implements INodeType {
 					responseData = await todoistApiRequest.call(this, 'GET', '/tasks', {}, qs);
 
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = responseData.splice(0, limit);
 					}
 				}

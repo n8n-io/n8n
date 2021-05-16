@@ -135,14 +135,14 @@ export class QuickBase implements INodeType {
 		const qs: IDataObject = {};
 		const headers: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		if (resource === 'field') {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					const tableId = this.getNodeParameter('tableId', i) as string;
 
@@ -157,7 +157,7 @@ export class QuickBase implements INodeType {
 					responseData = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, qs);
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit');
 
 						responseData = responseData.splice(0, limit);
 					}
@@ -313,7 +313,7 @@ export class QuickBase implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					const tableId = this.getNodeParameter('tableId', i) as string;
 
@@ -340,7 +340,7 @@ export class QuickBase implements INodeType {
 					if (returnAll) {
 						responseData = await quickbaseApiRequestAllItems.call(this, 'POST', '/records/query', body, qs);
 					} else {
-						body.options = { top: this.getNodeParameter('limit', i) as number };
+						body.options = { top: this.getNodeParameter('limit') };
 
 						responseData = await quickbaseApiRequest.call(this, 'POST', '/records/query', body, qs);
 
@@ -524,7 +524,7 @@ export class QuickBase implements INodeType {
 			if (operation === 'run') {
 				for (let i = 0; i < length; i++) {
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					const tableId = this.getNodeParameter('tableId', i) as string;
 
@@ -535,7 +535,7 @@ export class QuickBase implements INodeType {
 					if (returnAll) {
 						responseData = await quickbaseApiRequestAllItems.call(this, 'POST', `/reports/${reportId}/run`, {}, qs);
 					} else {
-						qs.top = this.getNodeParameter('limit', i) as number;
+						qs.top = this.getNodeParameter('limit');
 
 						responseData = await quickbaseApiRequest.call(this, 'POST', `/reports/${reportId}/run`, {}, qs);
 

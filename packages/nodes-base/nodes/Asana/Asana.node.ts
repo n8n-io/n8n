@@ -1831,8 +1831,8 @@ export class Asana implements INodeType {
 		const returnData: IDataObject[] = [];
 		const timezone = this.getTimezone();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		let endpoint = '';
 		let requestMethod = '';
@@ -1872,7 +1872,7 @@ export class Asana implements INodeType {
 					// ----------------------------------
 					const taskId = this.getNodeParameter('taskId', i) as string;
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					const options = this.getNodeParameter('options', i);
 
@@ -1895,7 +1895,7 @@ export class Asana implements INodeType {
 					responseData = responseData.data;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = responseData.splice(0, limit);
 					}
 				}
@@ -1952,7 +1952,7 @@ export class Asana implements INodeType {
 					// ----------------------------------
 
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					requestMethod = 'GET';
 					endpoint = `/tasks`;
@@ -1980,7 +1980,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2219,7 +2219,7 @@ export class Asana implements INodeType {
 					// ----------------------------------
 					const workspaceId = this.getNodeParameter('workspace', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i);
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					requestMethod = 'GET';
 					endpoint = `/projects`;
@@ -2240,7 +2240,7 @@ export class Asana implements INodeType {
 
 					} else {
 
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 

@@ -69,8 +69,8 @@ export class Strapi implements INodeType {
 		const qs: IDataObject = {};
 		const headers: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		const { jwt } = await getToken.call(this);
 
@@ -114,7 +114,7 @@ export class Strapi implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					const contentType = this.getNodeParameter('contentType', i) as string;
 
@@ -141,7 +141,7 @@ export class Strapi implements INodeType {
 					if (returnAll) {
 						responseData = await strapiApiRequestAllItems.call(this, 'GET', `/${contentType}`, {}, qs, headers);
 					} else {
-						qs._limit = this.getNodeParameter('limit', i) as number;
+						qs._limit = this.getNodeParameter('limit');
 
 						responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}`, {}, qs, undefined, headers);
 					}

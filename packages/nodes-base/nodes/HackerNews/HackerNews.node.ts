@@ -298,8 +298,8 @@ export class HackerNews implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		let returnAll = false;
 
 		for (let i = 0; i < items.length; i++) {
@@ -320,10 +320,10 @@ export class HackerNews implements INodeType {
 						tags: tags ? tags.join() : '',
 					};
 
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 
 					if (!returnAll) {
-						qs.hitsPerPage = this.getNodeParameter('limit', i) as number;
+						qs.hitsPerPage = this.getNodeParameter('limit');
 					}
 
 					endpoint = 'search?';

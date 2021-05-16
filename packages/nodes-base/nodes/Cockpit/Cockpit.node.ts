@@ -114,8 +114,8 @@ export class Cockpit implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		let responseData;
 
@@ -129,10 +129,10 @@ export class Cockpit implements INodeType {
 					responseData = await createCollectionEntry.call(this, collectionName, data);
 				} else if (operation === 'getAll') {
 					const options = this.getNodeParameter('options', i);
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 
 					if (!returnAll) {
-						options.limit = this.getNodeParameter('limit', i) as number;
+						options.limit = this.getNodeParameter('limit');
 					}
 
 					responseData = await getAllCollectionEntries.call(this, collectionName, options);

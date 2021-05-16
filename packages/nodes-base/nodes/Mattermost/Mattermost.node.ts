@@ -1952,8 +1952,8 @@ export class Mattermost implements INodeType {
 		let returnAll = false;
 		let userIds: string[] = [];
 
-		resource = this.getNodeParameter('resource', 0) as string;
-		operation = this.getNodeParameter('operation', 0) as string;
+		resource = this.getNodeParameter('resource');
+		operation = this.getNodeParameter('operation');
 
 		// For Post
 		let body: IDataObject;
@@ -1997,10 +1997,10 @@ export class Mattermost implements INodeType {
 
 					requestMethod = 'GET';
 					const channelId = this.getNodeParameter('channelId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					endpoint = `channels/${channelId}/members`;
 					if (returnAll === false) {
-						qs.per_page = this.getNodeParameter('limit', i) as number;
+						qs.per_page = this.getNodeParameter('limit');
 					}
 
 				} else if (operation === 'restore') {
@@ -2247,7 +2247,7 @@ export class Mattermost implements INodeType {
 
 					requestMethod = 'GET';
 
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.inTeam) {
@@ -2308,7 +2308,7 @@ export class Mattermost implements INodeType {
 					}
 
 					if (returnAll === false) {
-						qs.per_page = this.getNodeParameter('limit', i) as number;
+						qs.per_page = this.getNodeParameter('limit');
 					}
 
 					endpoint = `/users`;

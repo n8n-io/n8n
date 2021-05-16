@@ -149,8 +149,8 @@ export class Msg91 implements INodeType {
 			body = {};
 			qs = {};
 
-			resource = this.getNodeParameter('resource', i) as string;
-			operation = this.getNodeParameter('operation', i) as string;
+			resource = this.getNodeParameter('resource');
+			operation = this.getNodeParameter('operation');
 
 			if (resource === 'sms') {
 				if (operation === 'send') {

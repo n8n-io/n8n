@@ -93,8 +93,8 @@ export class GoogleTasks implements INodeType {
 		const length = (items.length as unknown) as number;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 		let body: IDataObject = {};
 		for (let i = 0; i < length; i++) {
 			if (resource === 'task') {
@@ -169,7 +169,7 @@ export class GoogleTasks implements INodeType {
 				}
 				if (operation === 'getAll') {
 					//https://developers.google.com/tasks/v1/reference/tasks/list
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const taskListId = this.getNodeParameter('task', i) as string;
 					const options = this.getNodeParameter(
 						'additionalFields',
@@ -210,7 +210,7 @@ export class GoogleTasks implements INodeType {
 							qs,
 						);
 					} else {
-						qs.maxResults = this.getNodeParameter('limit', i) as number;
+						qs.maxResults = this.getNodeParameter('limit');
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',

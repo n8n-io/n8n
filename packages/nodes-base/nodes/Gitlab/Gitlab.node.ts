@@ -1147,8 +1147,8 @@ export class Gitlab implements INodeType {
 		let endpoint: string;
 		let returnAll = false;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource');
 		const fullOperation = `${resource}:${operation}`;
 
 		for (let i = 0; i < items.length; i++) {
@@ -1294,10 +1294,10 @@ export class Gitlab implements INodeType {
 
 					qs = this.getNodeParameter('additionalFields', i, {});
 
-					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					returnAll = this.getNodeParameter('returnAll');
 
 					if (returnAll === false) {
-						qs.per_page = this.getNodeParameter('limit', 0) as number;
+						qs.per_page = this.getNodeParameter('limit');
 					}
 
 					endpoint = `/projects/${id}/releases`;

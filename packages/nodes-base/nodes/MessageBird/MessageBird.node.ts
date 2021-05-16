@@ -315,8 +315,8 @@ export class MessageBird implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			qs = {};
 
-			resource = this.getNodeParameter('resource', i) as string;
-			operation = this.getNodeParameter('operation', i) as string;
+			resource = this.getNodeParameter('resource');
+			operation = this.getNodeParameter('operation');
 
 			if (resource === 'sms') {
 				//https://developers.messagebird.com/api/sms-messaging/#sms-api

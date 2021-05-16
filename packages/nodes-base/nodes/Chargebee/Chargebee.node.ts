@@ -504,8 +504,8 @@ export class Chargebee implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 
 			item = items[i];
-			const resource = this.getNodeParameter('resource', i) as string;
-			const operation = this.getNodeParameter('operation', i) as string;
+			const resource = this.getNodeParameter('resource');
+			const operation = this.getNodeParameter('operation');
 
 			let requestMethod = 'GET';
 			let endpoint = '';

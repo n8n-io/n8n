@@ -161,8 +161,8 @@ export class Rundeck implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation');
+		const resource = this.getNodeParameter('resource');
 
 		for (let i = 0; i < length; i++) {
 			const rundeckApi = new RundeckApi(this);

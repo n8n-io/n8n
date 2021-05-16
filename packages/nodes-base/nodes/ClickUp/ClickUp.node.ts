@@ -478,8 +478,8 @@ export class ClickUp implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		for (let i = 0; i < length; i++) {
 			if (resource === 'checklist') {
@@ -577,7 +577,7 @@ export class ClickUp implements INodeType {
 				if (operation === 'getAll') {
 					const resource = this.getNodeParameter('commentsOn', i) as string;
 					const id = this.getNodeParameter('id', i) as string;
-					qs.limit = this.getNodeParameter('limit', i) as number;
+					qs.limit = this.getNodeParameter('limit');
 					responseData = await clickupApiRequest.call(this, 'GET', `/${resource}/${id}/comment`, {}, qs);
 					responseData = responseData.comments;
 					responseData = responseData.splice(0, qs.limit);
@@ -623,7 +623,7 @@ export class ClickUp implements INodeType {
 					if (filters.archived) {
 						qs.archived = filters.archived as boolean;
 					}
-					qs.limit = this.getNodeParameter('limit', i) as number;
+					qs.limit = this.getNodeParameter('limit');
 					responseData = await clickupApiRequest.call(this, 'GET', `/space/${spaceId}/folder`, {}, qs);
 					responseData = responseData.folders;
 					responseData = responseData.splice(0, qs.limit);
@@ -676,7 +676,7 @@ export class ClickUp implements INodeType {
 				}
 				if (operation === 'getAll') {
 					const teamId = this.getNodeParameter('team', i) as string;
-					qs.limit = this.getNodeParameter('limit', i) as number;
+					qs.limit = this.getNodeParameter('limit');
 					responseData = await clickupApiRequest.call(this, 'GET', `/team/${teamId}/goal`, {}, qs);
 					responseData = responseData.goals;
 					responseData = responseData.splice(0, qs.limit);
@@ -953,7 +953,7 @@ export class ClickUp implements INodeType {
 					responseData = await clickupApiRequest.call(this, 'GET', `/task/${taskId}`);
 				}
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					if (filters.archived) {
 						qs.archived = filters.archived as boolean;
@@ -1014,19 +1014,19 @@ export class ClickUp implements INodeType {
 					if (returnAll === true) {
 						responseData = await clickupApiRequestAllItems.call(this, 'tasks', 'GET', `/list/${listId}/task`, {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await clickupApiRequestAllItems.call(this, 'tasks', 'GET', `/list/${listId}/task`, {}, qs);
 						responseData = responseData.splice(0, qs.limit);
 					}
 				}
 				if (operation === 'member') {
 					const taskId = this.getNodeParameter('id', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					if (returnAll === true) {
 						responseData = await clickupApiRequest.call(this, 'GET', `/task/${taskId}/member`, {}, qs);
 						responseData = responseData.members;
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await clickupApiRequest.call(this, 'GET', `/task/${taskId}/member`, {}, qs);
 						responseData = responseData.members;
 						responseData = responseData.splice(0, qs.limit);
@@ -1141,7 +1141,7 @@ export class ClickUp implements INodeType {
 				}
 				if (operation === 'getAll') {
 					const teamId = this.getNodeParameter('team', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					const timezone = this.getTimezone();
 					Object.assign(qs, filters);
@@ -1157,7 +1157,7 @@ export class ClickUp implements INodeType {
 					responseData = responseData.data;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -1243,13 +1243,13 @@ export class ClickUp implements INodeType {
 				}
 				if (operation === 'getAll') {
 					const teamId = this.getNodeParameter('team', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					responseData = await clickupApiRequest.call(this, 'GET', `/team/${teamId}/time_entries/tags`);
 
 					responseData = responseData.data;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -1290,11 +1290,11 @@ export class ClickUp implements INodeType {
 				}
 				if (operation === 'getAll') {
 					const spaceId = this.getNodeParameter('space', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					responseData = await clickupApiRequest.call(this, 'GET', `/space/${spaceId}/tag`);
 					responseData = responseData.tags;
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit');
 						responseData = responseData.splice(0, limit);
 					}
 				}
@@ -1351,12 +1351,12 @@ export class ClickUp implements INodeType {
 				}
 				if (operation === 'member') {
 					const listId = this.getNodeParameter('id', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					if (returnAll === true) {
 						responseData = await clickupApiRequest.call(this, 'GET', `/list/${listId}/member`, {}, qs);
 						responseData = responseData.members;
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 						responseData = await clickupApiRequest.call(this, 'GET', `/list/${listId}/member`, {}, qs);
 						responseData = responseData.members;
 						responseData = responseData.splice(0, qs.limit);
@@ -1389,7 +1389,7 @@ export class ClickUp implements INodeType {
 						endpoint = `/folder/${folderId}/list`;
 					}
 
-					qs.limit = this.getNodeParameter('limit', i) as number;
+					qs.limit = this.getNodeParameter('limit');
 					responseData = await clickupApiRequest.call(this, 'GET', endpoint, {}, qs);
 					responseData = responseData.lists;
 					responseData = responseData.splice(0, qs.limit);

@@ -794,8 +794,8 @@ export class NextCloud implements INodeType {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource');
+		const operation = this.getNodeParameter('operation');
 
 		let endpoint = '';
 		let requestMethod = '';
@@ -951,10 +951,10 @@ export class NextCloud implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'GET';
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll');
 					qs = this.getNodeParameter('options', i);
 					if (!returnAll) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit');
 					}
 					endpoint = `ocs/v1.php/cloud/users`;
 
