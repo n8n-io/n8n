@@ -518,7 +518,7 @@ export class AwsS3 implements INodeType {
 				if (operation === 'upload') {
 					const bucketName = this.getNodeParameter('bucketName', i) as string;
 					const fileName = this.getNodeParameter('fileName', i) as string;
-					const isBinaryData = this.getNodeParameter('binaryData', i) as boolean;
+					const isBinaryData = this.getNodeParameter('binaryData', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const tagsValues = (this.getNodeParameter('tagsUi', i) as IDataObject).tagsValues as IDataObject[];
 					let path = '/';

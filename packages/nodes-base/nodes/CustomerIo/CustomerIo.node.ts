@@ -120,7 +120,7 @@ export class CustomerIo implements INodeType {
 
 				if (operation === 'getMetrics') {
 					const campaignId = this.getNodeParameter('campaignId', i) as number;
-					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 					if (jsonParameters) {
 						const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
@@ -164,7 +164,7 @@ export class CustomerIo implements INodeType {
 
 				if (operation === 'upsert') {
 					const id = this.getNodeParameter('id', i) as number;
-					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 					if (jsonParameters) {
 						const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
@@ -227,7 +227,7 @@ export class CustomerIo implements INodeType {
 				if (operation === 'track') {
 					const customerId = this.getNodeParameter('customerId', i) as number;
 					const eventName = this.getNodeParameter('eventName', i) as string;
-					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 					body.name = eventName;
 
@@ -270,7 +270,7 @@ export class CustomerIo implements INodeType {
 
 				if (operation === 'trackAnonymous') {
 					const eventName = this.getNodeParameter('eventName', i) as string;
-					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 					body.name = eventName;
 

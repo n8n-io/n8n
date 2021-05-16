@@ -179,7 +179,7 @@ export class HelpScout implements INodeType {
 					const status = this.getNodeParameter('status', i) as string;
 					const subject = this.getNodeParameter('subject', i);
 					const type = this.getNodeParameter('type', i) as string;
-					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+					const resolveData = this.getNodeParameter('resolveData', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const threads = (this.getNodeParameter('threadsUi', i) as IDataObject).threadsValues as IDataObject[];
 					const body: IConversation = {
@@ -257,7 +257,7 @@ export class HelpScout implements INodeType {
 			if (resource === 'customer') {
 				//https://developer.helpscout.com/mailbox-api/endpoints/customers/create
 				if (operation === 'create') {
-					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+					const resolveData = this.getNodeParameter('resolveData', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const chats = (this.getNodeParameter('chatsUi', i) as IDataObject).chatsValues as IDataObject[];
 					const address = (this.getNodeParameter('addressUi', i) as IDataObject).addressValue as IDataObject;

@@ -214,7 +214,7 @@ export class Mautic implements INodeType {
 				//https://developer.mautic.org/#create-company
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i);
-					const simple = this.getNodeParameter('simple', i) as boolean;
+					const simple = this.getNodeParameter('simple', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IDataObject = {
 						companyname: name,
@@ -229,7 +229,7 @@ export class Mautic implements INodeType {
 				//https://developer.mautic.org/#edit-company
 				if (operation === 'update') {
 					const companyId = this.getNodeParameter('companyId', i) as string;
-					const simple = this.getNodeParameter('simple', i) as boolean;
+					const simple = this.getNodeParameter('simple', i);
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: IDataObject = {};
 					Object.assign(body, updateFields);
@@ -246,7 +246,7 @@ export class Mautic implements INodeType {
 				//https://developer.mautic.org/#get-company
 				if (operation === 'get') {
 					const companyId = this.getNodeParameter('companyId', i) as string;
-					const simple = this.getNodeParameter('simple', i) as boolean;
+					const simple = this.getNodeParameter('simple', i);
 					responseData = await mauticApiRequest.call(this, 'GET', `/companies/${companyId}`);
 					responseData = responseData.company;
 					if (simple === true) {
@@ -256,7 +256,7 @@ export class Mautic implements INodeType {
 				//https://developer.mautic.org/#list-contact-companies
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const simple = this.getNodeParameter('simple', i) as boolean;
+					const simple = this.getNodeParameter('simple', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					qs = Object.assign(qs, additionalFields);
 					if (returnAll === true) {
@@ -278,7 +278,7 @@ export class Mautic implements INodeType {
 				}
 				//https://developer.mautic.org/#delete-company
 				if (operation === 'delete') {
-					const simple = this.getNodeParameter('simple', i) as boolean;
+					const simple = this.getNodeParameter('simple', i);
 					const companyId = this.getNodeParameter('companyId', i) as string;
 					responseData = await mauticApiRequest.call(this, 'DELETE', `/companies/${companyId}/delete`);
 					responseData = responseData.company;
@@ -293,7 +293,7 @@ export class Mautic implements INodeType {
 				if (operation === 'create') {
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonActive = this.getNodeParameter('jsonParameters', i);
 					let body: IDataObject = {};
 					if (!jsonActive) {
 						body.email = this.getNodeParameter('email', i) as string;

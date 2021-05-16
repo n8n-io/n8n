@@ -531,7 +531,7 @@ export class Slack implements INodeType {
 						action = 'postEphemeral';
 					}
 
-					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 					if (authentication === 'accessToken' && sendAsUser !== '') {
 						body.username = sendAsUser;
@@ -901,7 +901,7 @@ export class Slack implements INodeType {
 				//https://api.slack.com/methods/files.upload
 				if (operation === 'upload') {
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const binaryData = this.getNodeParameter('binaryData', i) as boolean;
+					const binaryData = this.getNodeParameter('binaryData', i);
 					const body: IDataObject = {};
 					if (options.channelIds) {
 						body.channels = (options.channelIds as string[]).join(',');

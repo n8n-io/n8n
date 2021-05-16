@@ -768,7 +768,7 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/File/createFileUsingPOST
 				if (operation === 'upload') {
-					const binaryData = this.getNodeParameter('binaryData', i) as boolean;
+					const binaryData = this.getNodeParameter('binaryData', i);
 					const fileAssociation = this.getNodeParameter('fileAssociation', i) as string;
 					const isPublic = this.getNodeParameter('isPublic', i) as boolean;
 					const body: IFile = {

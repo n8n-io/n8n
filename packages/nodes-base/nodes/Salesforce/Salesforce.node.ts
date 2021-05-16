@@ -2443,7 +2443,7 @@ export class Salesforce implements INodeType {
 				//https://developer.salesforce.com/docs/atlas.en-us.api_action.meta/api_action/actions_obj_flow.htm
 				if (operation === 'invoke') {
 					const apiName = this.getNodeParameter('apiName', i) as string;
-					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i);
 					let variables = {};
 					if (jsonParameters) {
 						variables = this.getNodeParameter('variablesJson', i) as object;

@@ -202,7 +202,7 @@ export class Box implements INodeType {
 				// https://developer.box.com/reference/post-files-content
 				if (operation === 'upload') {
 					const parentId = this.getNodeParameter('parentId', i) as string;
-					const isBinaryData = this.getNodeParameter('binaryData', i) as boolean;
+					const isBinaryData = this.getNodeParameter('binaryData', i);
 					const fileName = this.getNodeParameter('fileName', i) as string;
 
 					const attributes: IDataObject = {};

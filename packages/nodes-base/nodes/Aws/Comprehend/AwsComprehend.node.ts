@@ -217,7 +217,7 @@ export class AwsComprehend implements INodeType {
 				//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectDominantLanguage.html
 				if (operation === 'detectDominantLanguage') {
 					const text = this.getNodeParameter('text', i);
-					const simple = this.getNodeParameter('simple', i) as boolean;
+					const simple = this.getNodeParameter('simple', i);
 
 					const body: IDataObject = {
 						Text: text,

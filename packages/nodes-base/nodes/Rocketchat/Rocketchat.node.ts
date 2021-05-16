@@ -411,7 +411,7 @@ export class Rocketchat implements INodeType {
 					const channel = this.getNodeParameter('channel', i) as string;
 					const text = this.getNodeParameter('text', i);
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonActive = this.getNodeParameter('jsonParameters', i);
 
 					const body: IPostMessageBody = {
 						channel,

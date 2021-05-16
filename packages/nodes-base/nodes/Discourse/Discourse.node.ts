@@ -367,7 +367,7 @@ export class Discourse implements INodeType {
 			// 	if (operation === 'query') {
 			// 		qs.term = this.getNodeParameter('term', i) as string;
 
-			// 		const simple = this.getNodeParameter('simple', i) as boolean;
+			// 		const simple = this.getNodeParameter('simple', i);
 
 			// 		const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 

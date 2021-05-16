@@ -210,7 +210,7 @@ export class MicrosoftExcel implements INodeType {
 					const worksheetId = this.getNodeParameter('worksheet', i) as string;
 					const tableId = this.getNodeParameter('table', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const rawData = this.getNodeParameter('rawData', i) as boolean;
+					const rawData = this.getNodeParameter('rawData', i);
 					if (rawData) {
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						if (filters.fields) {
@@ -246,7 +246,7 @@ export class MicrosoftExcel implements INodeType {
 					const worksheetId = this.getNodeParameter('worksheet', i) as string;
 					const tableId = this.getNodeParameter('table', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const rawData = this.getNodeParameter('rawData', i) as boolean;
+					const rawData = this.getNodeParameter('rawData', i);
 					if (rawData) {
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						if (filters.fields) {
@@ -386,7 +386,7 @@ export class MicrosoftExcel implements INodeType {
 					const workbookId = this.getNodeParameter('workbook', i) as string;
 					const worksheetId = this.getNodeParameter('worksheet', i) as string;
 					const range = this.getNodeParameter('range', i);
-					const rawData = this.getNodeParameter('rawData', i) as boolean;
+					const rawData = this.getNodeParameter('rawData', i);
 					if (rawData) {
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						if (filters.fields) {

@@ -240,7 +240,7 @@ export class Zendesk implements INodeType {
 				//https://developer.zendesk.com/rest_api/docs/support/tickets
 				if (operation === 'create') {
 					const description = this.getNodeParameter('description', i);
-					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i);
 					const comment: IComment = {
 						body: description,
 					};
@@ -296,7 +296,7 @@ export class Zendesk implements INodeType {
 				//https://developer.zendesk.com/rest_api/docs/support/tickets#update-ticket
 				if (operation === 'update') {
 					const ticketId = this.getNodeParameter('id', i) as string;
-					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i);
 					const body: ITicket = {};
 
 					if (jsonParameters) {

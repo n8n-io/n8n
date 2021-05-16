@@ -2372,7 +2372,7 @@ export class Mattermost implements INodeType {
 					responseData = responseData.slice(0, qs.limit);
 				}
 				if (resource === 'channel' && operation === 'members') {
-					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+					const resolveData = this.getNodeParameter('resolveData', i);
 					if (resolveData) {
 						const userIds: string[] = [];
 						for (const data of responseData) {

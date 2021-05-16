@@ -442,7 +442,7 @@ export class ApiTemplateIo implements INodeType {
 
 				// https://docs.apitemplate.io/reference/api-reference.html#create-an-image-jpeg-and-png
 				for (let i = 0; i < length; i++) {
-					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 					const options = this.getNodeParameter('options', i) as IDataObject;
 
@@ -511,7 +511,7 @@ export class ApiTemplateIo implements INodeType {
 				const download = this.getNodeParameter('download', 0) as boolean;
 
 				for (let i = 0; i < length; i++) {
-					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 					const options = this.getNodeParameter('options', i) as IDataObject;
 
