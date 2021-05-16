@@ -80,6 +80,7 @@
 import {
 	INodeParameters,
 	INodeProperties,
+	NodeParameterValue,
 } from 'n8n-workflow';
 
 import { IUpdateInformation } from '@/Interface';
@@ -89,7 +90,7 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
-import { get } from 'lodash';
+import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 
@@ -110,8 +111,11 @@ export default mixins(
 			'hideDelete', // boolean
 		],
 		computed: {
-			filteredParameters (): INodeProperties {
+			filteredParameters (): INodeProperties[] {
 				return this.parameters.filter((parameter: INodeProperties) => this.displayNodeParameter(parameter));
+			},
+			filteredParameterNames (): string[] {
+				return this.filteredParameters.map(parameter => parameter.name);
 			},
 		},
 		methods: {
@@ -168,6 +172,7 @@ export default mixins(
 				const resolveKeys = Object.keys(rawValues);
 				let key: string;
 				let i = 0;
+				let parameterGotResolved = false;
 				do {
 					key = resolveKeys.shift() as string;
 					if (typeof rawValues[key] === 'string' && rawValues[key].charAt(0) === '=') {
@@ -178,7 +183,8 @@ export default mixins(
 							continue;
 						} else {
 							// Contains probably no expression with a missing parameter so resolve
-							nodeValues[key] = this.resolveExpression(rawValues[key], nodeValues);
+							nodeValues[key] = this.resolveExpression(rawValues[key], nodeValues) as NodeParameterValue;
+							parameterGotResolved = true;
 						}
 					} else {
 						// Does not contain an expression, add directly
@@ -191,10 +197,37 @@ export default mixins(
 					}
 				} while(resolveKeys.length !== 0);
 
-				return this.displayParameter(nodeValues, parameter, '');
+				if (parameterGotResolved === true) {
+					if (this.path) {
+						rawValues = JSON.parse(JSON.stringify(this.nodeValues));
+						set(rawValues, this.path, nodeValues);
+						return this.displayParameter(rawValues, parameter, this.path);
+					} else {
+						return this.displayParameter(nodeValues, parameter, '');
+					}
+				}
+
+				return this.displayParameter(this.nodeValues, parameter, this.path);
 			},
 			valueChanged (parameterData: IUpdateInformation): void {
 				this.$emit('valueChanged', parameterData);
+			},
+		},
+		watch: {
+			filteredParameterNames(newValue, oldValue) {
+				// After a parameter does not get displayed anymore make sure that its value gets removed
+				// Is only needed for the edge-case when a parameter gets displayed depending on another field
+				// which contains an expression.
+				for (const parameter of oldValue) {
+					if (!newValue.includes(parameter)) {
+						const parameterData = {
+							name: `${this.path}.${parameter}`,
+							node: this.$store.getters.activeNode.name,
+							value: undefined,
+						};
+						this.$emit('valueChanged', parameterData);
+					}
+				}
 			},
 		},
 		beforeCreate: function () { // tslint:disable-line
