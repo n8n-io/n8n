@@ -913,7 +913,7 @@ export class NextCloud implements INodeType {
 
 					body = `userid=${userid}&email=${email}`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.displayName) {
 						body += `&displayName=${additionalFields.displayName}`;
@@ -952,7 +952,7 @@ export class NextCloud implements INodeType {
 
 					requestMethod = 'GET';
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					qs = this.getNodeParameter('options', i) as IDataObject;
+					qs = this.getNodeParameter('options', i);
 					if (!returnAll) {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
@@ -971,7 +971,7 @@ export class NextCloud implements INodeType {
 					const userid = this.getNodeParameter('userId', i) as string;
 					endpoint = `ocs/v1.php/cloud/users/${userid}`;
 
-					body = Object.entries((this.getNodeParameter('updateFields', i) as IDataObject).field as IDataObject).map(entry => {
+					body = Object.entries((this.getNodeParameter('updateFields', i)).field as IDataObject).map(entry => {
 						const [key, value] = entry;
 						return `${key}=${value}`;
 					}).join('&');

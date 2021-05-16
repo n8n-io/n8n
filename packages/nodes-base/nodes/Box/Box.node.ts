@@ -89,7 +89,7 @@ export class Box implements INodeType {
 				if (operation === 'copy') {
 					const fileId = this.getNodeParameter('fileId', i) as string;
 					const parentId = this.getNodeParameter('parentId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IDataObject = {};
 					if (additionalFields.name) {
 						body.name = additionalFields.name as string;
@@ -153,7 +153,7 @@ export class Box implements INodeType {
 				// https://developer.box.com/reference/get-files-id
 				if (operation === 'get') {
 					const fileId = this.getNodeParameter('fileId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					if (additionalFields.fields) {
 						qs.fields = additionalFields.fields as string;
 					}
@@ -164,7 +164,7 @@ export class Box implements INodeType {
 				if (operation === 'search') {
 					const query = this.getNodeParameter('query', i);
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const timezone = this.getTimezone();
 					qs.type = 'file';
 					qs.query = query;
@@ -276,7 +276,7 @@ export class Box implements INodeType {
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i);
 					const parentId = this.getNodeParameter('parentId', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					const body: IDataObject = {
 						name,
 					};
@@ -321,7 +321,7 @@ export class Box implements INodeType {
 				if (operation === 'search') {
 					const query = this.getNodeParameter('query', i);
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const timezone = this.getTimezone();
 					qs.type = 'folder';
 					qs.query = query;

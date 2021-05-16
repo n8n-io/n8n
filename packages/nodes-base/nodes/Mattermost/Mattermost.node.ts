@@ -2213,7 +2213,7 @@ export class Mattermost implements INodeType {
 						body.auth_data = this.getNodeParameter('authData', i) as string;
 					}
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					body.username = username;
 
@@ -2248,7 +2248,7 @@ export class Mattermost implements INodeType {
 					requestMethod = 'GET';
 
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.inTeam) {
 						qs.in_team = additionalFields.inTeam;
@@ -2328,7 +2328,7 @@ export class Mattermost implements INodeType {
 					//          user:getById
 					// ----------------------------------
 					userIds = (this.getNodeParameter('userIds', i) as string).split(',') as string[];
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.since) {
 						qs.since = new Date(additionalFields.since as string).getTime();

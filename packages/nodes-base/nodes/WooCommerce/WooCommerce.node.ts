@@ -132,7 +132,7 @@ export class WooCommerce implements INodeType {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#create-a-product
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IProduct = {
 						name,
 					};
@@ -249,7 +249,7 @@ export class WooCommerce implements INodeType {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#update-a-product
 				if (operation === 'update') {
 					const productId = this.getNodeParameter('productId', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IProduct = {};
 					if (updateFields.name) {
 						body.name = updateFields.name as string;
@@ -372,7 +372,7 @@ export class WooCommerce implements INodeType {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#list-all-products
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.after) {
 						qs.after = options.after as string;
 					}
@@ -440,7 +440,7 @@ export class WooCommerce implements INodeType {
 			if (resource === 'order') {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#create-an-order
 				if (operation === 'create') {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IOrder = {};
 					if (additionalFields.currency) {
 						body.currency = additionalFields.currency as string;
@@ -513,7 +513,7 @@ export class WooCommerce implements INodeType {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#update-an-order
 				if (operation === 'update') {
 					const orderId = this.getNodeParameter('orderId', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IOrder = {};
 					if (updateFields.currency) {
 						body.currency = updateFields.currency as string;
@@ -588,7 +588,7 @@ export class WooCommerce implements INodeType {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#list-all-orders
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.after) {
 						qs.after = options.after as string;
 					}

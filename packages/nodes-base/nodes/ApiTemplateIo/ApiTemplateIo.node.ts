@@ -444,7 +444,7 @@ export class ApiTemplateIo implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					const qs = {
 						template_id: this.getNodeParameter('imageTemplateId', i),
@@ -513,7 +513,7 @@ export class ApiTemplateIo implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					const qs = {
 						template_id: this.getNodeParameter('pdfTemplateId', i),

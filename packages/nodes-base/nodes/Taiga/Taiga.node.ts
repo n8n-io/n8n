@@ -252,7 +252,7 @@ export class Taiga implements INodeType {
 
 					const subject = this.getNodeParameter('subject', i);
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {
 						project: projectId,
@@ -272,7 +272,7 @@ export class Taiga implements INodeType {
 
 					const issueId = this.getNodeParameter('issueId', i) as string;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 
 					const body: IDataObject = {};
 

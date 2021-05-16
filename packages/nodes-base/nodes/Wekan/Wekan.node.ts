@@ -267,7 +267,7 @@ export class Wekan implements INodeType {
 					body.title = this.getNodeParameter('title', i);
 					body.owner = this.getNodeParameter('owner', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(body, additionalFields);
 
 				} else if (operation === 'delete') {
@@ -327,7 +327,7 @@ export class Wekan implements INodeType {
 					body.swimlaneId = this.getNodeParameter('swimlaneId', i) as string;
 					body.authorId = this.getNodeParameter('authorId', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(body, additionalFields);
 
 				} else if (operation === 'delete') {
@@ -392,7 +392,7 @@ export class Wekan implements INodeType {
 
 					endpoint = `boards/${boardId}/lists/${listId}/cards/${cardId}`;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					Object.assign(body, updateFields);
 
 				} else {
@@ -613,7 +613,7 @@ export class Wekan implements INodeType {
 
 					endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					Object.assign(body, updateFields);
 
 
@@ -665,7 +665,7 @@ export class Wekan implements INodeType {
 
 					endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					Object.assign(body, updateFields);
 				}
 			}

@@ -499,7 +499,7 @@ export class ClickUp implements INodeType {
 				}
 				if (operation === 'update') {
 					const checklistId = this.getNodeParameter('checklist', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IDataObject = {};
 					if (updateFields.name) {
 						body.name = updateFields.name as string;
@@ -515,7 +515,7 @@ export class ClickUp implements INodeType {
 				if (operation === 'create') {
 					const checklistId = this.getNodeParameter('checklist', i) as string;
 					const name = this.getNodeParameter('name', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IDataObject = {
 						name,
 					};
@@ -534,7 +534,7 @@ export class ClickUp implements INodeType {
 				if (operation === 'update') {
 					const checklistId = this.getNodeParameter('checklist', i) as string;
 					const checklistItemId = this.getNodeParameter('checklistItem', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IDataObject = {};
 					if (updateFields.name) {
 						body.name = updateFields.name as string;
@@ -557,7 +557,7 @@ export class ClickUp implements INodeType {
 					const resource = this.getNodeParameter('commentOn', i) as string;
 					const id = this.getNodeParameter('id', i) as string;
 					const commentText = this.getNodeParameter('commentText', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IDataObject = {
 						comment_text: commentText,
 					};
@@ -584,7 +584,7 @@ export class ClickUp implements INodeType {
 				}
 				if (operation === 'update') {
 					const commentId = this.getNodeParameter('comment', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IDataObject = {};
 					if (updateFields.commentText) {
 						body.comment_text = updateFields.commentText as string;
@@ -630,7 +630,7 @@ export class ClickUp implements INodeType {
 				}
 				if (operation === 'update') {
 					const folderId = this.getNodeParameter('folder', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IDataObject = {};
 					if (updateFields.name) {
 						body.name = updateFields.name as string;
@@ -642,7 +642,7 @@ export class ClickUp implements INodeType {
 				if (operation === 'create') {
 					const teamId = this.getNodeParameter('team', i) as string;
 					const name = this.getNodeParameter('name', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IDataObject = {
 						name,
 					};
@@ -684,7 +684,7 @@ export class ClickUp implements INodeType {
 				}
 				if (operation === 'update') {
 					const goalId = this.getNodeParameter('goal', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IDataObject = {};
 					if (updateFields.name) {
 						body.name = updateFields.name as string;
@@ -713,7 +713,7 @@ export class ClickUp implements INodeType {
 					const goalId = this.getNodeParameter('goal', i) as string;
 					const name = this.getNodeParameter('name', i);
 					const type = this.getNodeParameter('type', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IDataObject = {
 						name,
 						type,
@@ -758,7 +758,7 @@ export class ClickUp implements INodeType {
 				}
 				if (operation === 'update') {
 					const keyResultId = this.getNodeParameter('keyResult', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IDataObject = {};
 					if (updateFields.name) {
 						body.name = updateFields.name as string;
@@ -786,7 +786,7 @@ export class ClickUp implements INodeType {
 				if (operation === 'create') {
 					const teamId = this.getNodeParameter('team', i) as string;
 					const email = this.getNodeParameter('email', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IDataObject = {
 						email,
 					};
@@ -817,7 +817,7 @@ export class ClickUp implements INodeType {
 				if (operation === 'update') {
 					const teamId = this.getNodeParameter('team', i) as string;
 					const guestId = this.getNodeParameter('guest', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IDataObject = {};
 					if (updateFields.username) {
 						body.username = updateFields.username as string;
@@ -839,7 +839,7 @@ export class ClickUp implements INodeType {
 				if (operation === 'create') {
 					const listId = this.getNodeParameter('list', i) as string;
 					const name = this.getNodeParameter('name', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: ITask = {
 						name,
 					};
@@ -894,7 +894,7 @@ export class ClickUp implements INodeType {
 				}
 				if (operation === 'update') {
 					const taskId = this.getNodeParameter('id', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: ITask = {
 						assignees: {
 							add: [],
@@ -1063,7 +1063,7 @@ export class ClickUp implements INodeType {
 				if (operation === 'add') {
 					const taskId = this.getNodeParameter('taskId', i) as string;
 					const name = this.getNodeParameter('tagName', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const qs: IDataObject = {};
 					Object.assign(qs, additionalFields);
 					responseData = await clickupApiRequest.call(this, 'POST', `/task/${taskId}/tag/${name}`, {}, qs);
@@ -1072,7 +1072,7 @@ export class ClickUp implements INodeType {
 				if (operation === 'remove') {
 					const taskId = this.getNodeParameter('taskId', i) as string;
 					const name = this.getNodeParameter('tagName', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const qs: IDataObject = {};
 					Object.assign(qs, additionalFields);
 					responseData = await clickupApiRequest.call(this, 'DELETE', `/task/${taskId}/tag/${name}`, {}, qs);
@@ -1118,7 +1118,7 @@ export class ClickUp implements INodeType {
 				if (operation === 'update') {
 					const teamId = this.getNodeParameter('team', i) as string;
 					const timeEntryId = this.getNodeParameter('timeEntry', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const timezone = this.getTimezone();
 					const body: IDataObject = {};
 					Object.assign(body, updateFields);
@@ -1181,7 +1181,7 @@ export class ClickUp implements INodeType {
 					const taskId = this.getNodeParameter('task', i) as string;
 					const start = this.getNodeParameter('start', i) as string;
 					const duration = this.getNodeParameter('duration', i) as number;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const timezone = this.getTimezone();
 					const body: IDataObject = {
 						start: moment.tz(start, timezone).valueOf(),
@@ -1202,7 +1202,7 @@ export class ClickUp implements INodeType {
 					const taskId = this.getNodeParameter('task', i) as string;
 					const body: IDataObject = {};
 					body.tid = taskId;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(body, additionalFields);
 					responseData = await clickupApiRequest.call(this, 'POST', `/team/${teamId}/time_entries/start`, body);
 					responseData = responseData.data;
@@ -1320,7 +1320,7 @@ export class ClickUp implements INodeType {
 					const spaceId = this.getNodeParameter('space', i) as string;
 					const folderless = this.getNodeParameter('folderless', i) as string;
 					const name = this.getNodeParameter('name', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IList = {
 						name,
 					};
@@ -1396,7 +1396,7 @@ export class ClickUp implements INodeType {
 				}
 				if (operation === 'update') {
 					const listId = this.getNodeParameter('list', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IList = {};
 					if (updateFields.name) {
 						body.name = updateFields.name as string;

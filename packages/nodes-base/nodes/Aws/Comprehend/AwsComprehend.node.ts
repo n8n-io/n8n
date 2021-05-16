@@ -250,7 +250,7 @@ export class AwsComprehend implements INodeType {
 					const action = 'Comprehend_20171127.DetectEntities';
 					const text = this.getNodeParameter('text', i);
 					const languageCode = this.getNodeParameter('languageCode', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {
 						Text: text,

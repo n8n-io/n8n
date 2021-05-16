@@ -147,7 +147,7 @@ export class OpenThesaurus implements INodeType {
 		for (let i = 0; i < length; i++) {
 			if (operation === 'getSynonyms') {
 				const text = this.getNodeParameter('text', i);
-				const options = this.getNodeParameter('options', i) as IDataObject;
+				const options = this.getNodeParameter('options', i);
 
 				qs.q = text;
 

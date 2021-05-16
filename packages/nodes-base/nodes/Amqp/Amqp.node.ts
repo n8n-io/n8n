@@ -104,7 +104,7 @@ export class Amqp implements INodeType {
 
 		const sink = this.getNodeParameter('sink', 0, '') as string;
 		const applicationProperties = this.getNodeParameter('headerParametersJson', 0, {}) as string | object;
-		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+		const options = this.getNodeParameter('options', 0, {});
 		const containerId = options.containerId as string;
 		const containerReconnect = options.reconnect as boolean || true;
 		const containerReconnectLimit = options.reconnectLimit as number || 50;

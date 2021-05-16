@@ -118,7 +118,7 @@ export class Contentful implements INodeType {
 
 					const id = this.getNodeParameter('contentTypeId', 0) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/content_types/${id}`);
 
@@ -137,7 +137,7 @@ export class Contentful implements INodeType {
 
 					const id = this.getNodeParameter('entryId', 0) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/entries/${id}`, {}, qs);
 
@@ -150,7 +150,7 @@ export class Contentful implements INodeType {
 
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const rawData = additionalFields.rawData;
 					additionalFields.rawData = undefined;
 
@@ -219,7 +219,7 @@ export class Contentful implements INodeType {
 
 					const id = this.getNodeParameter('assetId', 0) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/assets/${id}`, {}, qs);
 
@@ -233,7 +233,7 @@ export class Contentful implements INodeType {
 
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const rawData = additionalFields.rawData;
 					additionalFields.rawData = undefined;
 

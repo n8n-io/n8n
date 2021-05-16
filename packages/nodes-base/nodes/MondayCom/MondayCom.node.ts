@@ -284,7 +284,7 @@ export class MondayCom implements INodeType {
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i);
 					const kind = this.getNodeParameter('kind', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IGraphqlBody = {
 						query:
@@ -369,7 +369,7 @@ export class MondayCom implements INodeType {
 					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
 					const title = this.getNodeParameter('title', i);
 					const columnType = this.getNodeParameter('columnType', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IGraphqlBody = {
 						query:
@@ -573,7 +573,7 @@ export class MondayCom implements INodeType {
 					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
 					const groupId = this.getNodeParameter('groupId', i) as string;
 					const itemName = this.getNodeParameter('name', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IGraphqlBody = {
 						query:

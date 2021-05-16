@@ -313,7 +313,7 @@ export class SecurityScorecard implements INodeType {
 						body = { params: body };
 					}
 					if (reportType === 'scorecard-footprint') {
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						Object.assign(body, options);
 					}
 
@@ -403,7 +403,7 @@ export class SecurityScorecard implements INodeType {
 					const simple = this.getNodeParameter('simple', 0) as boolean;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const industry = this.getNodeParameter('industry', i);
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					// Convert to YYYY-MM-DD
 					if (options['from']) {
 						options['from'] = moment(options['from'] as Date).format('YYYY-MM-DD');
@@ -471,7 +471,7 @@ export class SecurityScorecard implements INodeType {
 					const simple = this.getNodeParameter('simple', 0) as boolean;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					// Convert to YYYY-MM-DD
 					if (options['date_from']) {
 						options['date_from'] = moment(options['date_from'] as Date).format('YYYY-MM-DD');
@@ -506,7 +506,7 @@ export class SecurityScorecard implements INodeType {
 					const simple = this.getNodeParameter('simple', 0) as boolean;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i);
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					// for some reason the params are different between these two APis :/
 					if (options['date_from']) {

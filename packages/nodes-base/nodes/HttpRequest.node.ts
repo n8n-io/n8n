@@ -652,7 +652,7 @@ export class HttpRequest implements INodeType {
 		const returnItems: INodeExecutionData[] = [];
 		const requestPromises = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			const options = this.getNodeParameter('options', itemIndex, {});
 			const url = this.getNodeParameter('url', itemIndex) as string;
 
 			if (itemIndex > 0 && options.batchSize as number >= 0 && options.batchInterval as number > 0) {
@@ -904,7 +904,7 @@ export class HttpRequest implements INodeType {
 
 			response = response.value;
 
-			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			const options = this.getNodeParameter('options', itemIndex, {});
 			const url = this.getNodeParameter('url', itemIndex) as string;
 
 			const fullResponse = !!options.fullResponse as boolean;

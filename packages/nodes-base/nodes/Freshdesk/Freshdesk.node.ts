@@ -1156,7 +1156,7 @@ export class Freshdesk implements INodeType {
 					const status = this.getNodeParameter('status', i) as string;
 					const priority = this.getNodeParameter('priority', i) as string;
 					const source = this.getNodeParameter('source', i);
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					//const jsonActive = this.getNodeParameter('jsonParameters') as boolean;
 					const body: ICreateTicketBody = {
 						// @ts-ignore
@@ -1247,7 +1247,7 @@ export class Freshdesk implements INodeType {
 				//https://developers.freshdesk.com/api/#update_ticket
 				if (operation === 'update') {
 					const ticketId = this.getNodeParameter('ticketId', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: ICreateTicketBody = {};
 
 					if (updateFields.requester) {
@@ -1325,7 +1325,7 @@ export class Freshdesk implements INodeType {
 				//https://developers.freshdesk.com/api/#list_all_tickets
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.requesterId) {
 						qs.requester_id = options.requesterId as string;
 					}
@@ -1366,7 +1366,7 @@ export class Freshdesk implements INodeType {
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i);
 					const email = this.getNodeParameter('email', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 					if (additionalFields.customFields) {
 						const metadata = (additionalFields.customFields as IDataObject).customField as IDataObject[];
@@ -1398,7 +1398,7 @@ export class Freshdesk implements INodeType {
 				//https://developers.freshdesk.com/api/#update_contact
 				} else if (operation === 'update') {
 					const contactId = this.getNodeParameter('contactId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 					if (additionalFields.customFields) {
 						const metadata = (additionalFields.customFields as IDataObject).customField as IDataObject[];

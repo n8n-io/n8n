@@ -1884,7 +1884,7 @@ export class Mailchimp implements INodeType {
 					const listId = this.getNodeParameter('list', i) as string;
 					const email = this.getNodeParameter('email', i) as string;
 					const status = this.getNodeParameter('status', i) as Status;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					const jsonActive = this.getNodeParameter('jsonParameters', i);
 
 					const body: ICreateMemberBody = {
@@ -1979,7 +1979,7 @@ export class Mailchimp implements INodeType {
 
 					const listId = this.getNodeParameter('list', i) as string;
 					const email = this.getNodeParameter('email', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					if (options.fields) {
 						qs.fields = options.fields as string;
@@ -1995,7 +1995,7 @@ export class Mailchimp implements INodeType {
 				if (operation === 'getAll') {
 					const listId = this.getNodeParameter('list', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					if (options.beforeLastChanged) {
 						qs.before_last_changed = options.beforeLastChanged as string;
@@ -2035,7 +2035,7 @@ export class Mailchimp implements INodeType {
 
 					const listId = this.getNodeParameter('list', i) as string;
 					const email = this.getNodeParameter('email', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const jsonActive = this.getNodeParameter('jsonParameters', i);
 					const body: ICreateMemberBody = {
 						listId,
@@ -2129,7 +2129,7 @@ export class Mailchimp implements INodeType {
 					const listId = this.getNodeParameter('list', i) as string;
 					const email = this.getNodeParameter('email', i) as string;
 					const tags = this.getNodeParameter('tags', i) as string[];
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					const body: IDataObject = {
 						tags: [],
@@ -2156,7 +2156,7 @@ export class Mailchimp implements INodeType {
 					const listId = this.getNodeParameter('list', i) as string;
 					const email = this.getNodeParameter('email', i) as string;
 					const tags = this.getNodeParameter('tags', i) as string[];
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					const body: IDataObject = {
 						tags: [],
@@ -2181,7 +2181,7 @@ export class Mailchimp implements INodeType {
 				//https://mailchimp.com/developer/api/marketing/campaigns/list-campaigns/
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.status) {
 						qs.status = options.status as string;
 					}

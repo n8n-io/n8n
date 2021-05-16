@@ -2570,7 +2570,7 @@ export class Pipedrive implements INodeType {
 					body.subject = this.getNodeParameter('subject', i);
 					body.done = this.getNodeParameter('done', i) as string;
 					body.type = this.getNodeParameter('type', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					addAdditionalFields(body, additionalFields);
 
 				} else if (operation === 'delete') {
@@ -2618,7 +2618,7 @@ export class Pipedrive implements INodeType {
 					const activityId = this.getNodeParameter('activityId', i) as number;
 					endpoint = `/activities/${activityId}`;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					addAdditionalFields(body, updateFields);
 
 				}
@@ -2632,7 +2632,7 @@ export class Pipedrive implements INodeType {
 					endpoint = '/deals';
 
 					body.title = this.getNodeParameter('title', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					addAdditionalFields(body, additionalFields);
 
 				} else if (operation === 'delete') {
@@ -2689,7 +2689,7 @@ export class Pipedrive implements INodeType {
 					const dealId = this.getNodeParameter('dealId', i) as number;
 					endpoint = `/deals/${dealId}`;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					addAdditionalFields(body, updateFields);
 
 					if (body.label === 'null') {
@@ -2727,7 +2727,7 @@ export class Pipedrive implements INodeType {
 						},
 					};
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					addAdditionalFields(formData, additionalFields);
 
 				} else if (operation === 'delete') {
@@ -2772,7 +2772,7 @@ export class Pipedrive implements INodeType {
 					endpoint = '/notes';
 
 					body.content = this.getNodeParameter('content', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					addAdditionalFields(body, additionalFields);
 
 				} else if (operation === 'delete') {
@@ -2807,7 +2807,7 @@ export class Pipedrive implements INodeType {
 					if (returnAll === false) {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					addAdditionalFields(qs, additionalFields);
 
 				} else if (operation === 'update') {
@@ -2820,7 +2820,7 @@ export class Pipedrive implements INodeType {
 					const noteId = this.getNodeParameter('noteId', i) as number;
 					endpoint = `/notes/${noteId}`;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					addAdditionalFields(body, updateFields);
 
 				}
@@ -2834,7 +2834,7 @@ export class Pipedrive implements INodeType {
 					endpoint = '/organizations';
 
 					body.name = this.getNodeParameter('name', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					addAdditionalFields(body, additionalFields);
 
 				} else if (operation === 'delete') {
@@ -2882,7 +2882,7 @@ export class Pipedrive implements INodeType {
 					requestMethod = 'PUT';
 					endpoint = `/organizations/${id}`;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					addAdditionalFields(body, updateFields);
 
 					if (body.label === 'null') {
@@ -2900,7 +2900,7 @@ export class Pipedrive implements INodeType {
 					endpoint = '/persons';
 
 					body.name = this.getNodeParameter('name', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					addAdditionalFields(body, additionalFields);
 
 				} else if (operation === 'delete') {
@@ -2935,7 +2935,7 @@ export class Pipedrive implements INodeType {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.filterId) {
 						qs.filter_id = additionalFields.filterId as string;
@@ -2960,7 +2960,7 @@ export class Pipedrive implements INodeType {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.fields) {
 						qs.fields = additionalFields.fields as string;
@@ -2990,7 +2990,7 @@ export class Pipedrive implements INodeType {
 					const personId = this.getNodeParameter('personId', i) as number;
 					endpoint = `/persons/${personId}`;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					addAdditionalFields(body, updateFields);
 
 					if (body.label === 'null') {
@@ -3059,7 +3059,7 @@ export class Pipedrive implements INodeType {
 
 				if (operation === 'search' && responseData.data && responseData.data.items) {
 					responseData.data = responseData.data.items;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					if (additionalFields.rawData !== true) {
 						responseData.data = responseData.data.map((item: { result_score: number, item: object }) => {
 							return {

@@ -77,7 +77,7 @@ export class PhilipsHue implements INodeType {
 					'GET',
 					`/bridge/${user}/lights`,
 				);
-				
+
 				const groups = await philipsHueApiRequest.call(
 					this,
 					'GET',
@@ -87,13 +87,13 @@ export class PhilipsHue implements INodeType {
 				for (const light of Object.keys(lights)) {
 					let lightName = lights[light].name;
 					const lightId = light;
-					
+
 					for (const groupId of Object.keys(groups)) {
 						if(groups[groupId].type === 'Room' && groups[groupId].lights.includes(lightId)) {
 							lightName = `${groups[groupId].name}: ${lightName}`;
 						}
 					}
-					
+
 					returnData.push({
 						name: lightName,
 						value: lightId,
@@ -120,7 +120,7 @@ export class PhilipsHue implements INodeType {
 
 					const on = this.getNodeParameter('on', i) as boolean;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body = {
 						on,

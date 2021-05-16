@@ -142,7 +142,7 @@ export class Demio implements INodeType {
 			if (resource === 'event') {
 				if (operation === 'get') {
 					const id = this.getNodeParameter('eventId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.date_id !== undefined) {
 						responseData = await demioApiRequest.call(this, 'GET', `/event/${id}/date/${additionalFields.date_id}`);
@@ -169,7 +169,7 @@ export class Demio implements INodeType {
 					const eventId = this.getNodeParameter('eventId', i) as string;
 					const firstName = this.getNodeParameter('firstName', i) as string;
 					const email = this.getNodeParameter('email', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {
 						name: firstName,

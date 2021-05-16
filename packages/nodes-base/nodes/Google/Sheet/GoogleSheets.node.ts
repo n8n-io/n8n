@@ -1025,7 +1025,7 @@ export class GoogleSheets implements INodeType {
 				range = this.getNodeParameter('range', 0) as string;
 			}
 
-			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			const options = this.getNodeParameter('options', 0, {});
 
 			const valueInputMode = (options.valueInputMode || 'RAW') as ValueInputOption;
 			const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
@@ -1066,7 +1066,7 @@ export class GoogleSheets implements INodeType {
 				let responseData;
 				for (let i = 0; i < this.getInputData().length; i++) {
 					const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
-					const options = this.getNodeParameter('options', i, {}) as IDataObject;
+					const options = this.getNodeParameter('options', i, {});
 					const simple = this.getNodeParameter('simple', 0) as boolean;
 					const properties = { ...options };
 
@@ -1280,7 +1280,7 @@ export class GoogleSheets implements INodeType {
 						sheets: [] as IDataObject[],
 					};
 
-					const options = this.getNodeParameter('options', i, {}) as IDataObject;
+					const options = this.getNodeParameter('options', i, {});
 
 					if (Object.keys(sheetsUi).length) {
 						const data = [];

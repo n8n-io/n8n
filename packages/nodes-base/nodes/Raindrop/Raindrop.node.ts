@@ -134,7 +134,7 @@ export class Raindrop implements INodeType {
 						},
 					};
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (!isEmpty(additionalFields)) {
 						Object.assign(body, additionalFields);
@@ -202,7 +202,7 @@ export class Raindrop implements INodeType {
 
 					const body = {} as IDataObject;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 
 					if (isEmpty(updateFields)) {
 						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
@@ -243,7 +243,7 @@ export class Raindrop implements INodeType {
 						title: this.getNodeParameter('title', i),
 					} as IDataObject;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (!isEmpty(additionalFields)) {
 						Object.assign(body, additionalFields);
@@ -312,7 +312,7 @@ export class Raindrop implements INodeType {
 
 					const body = {} as IDataObject;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 
 					if (isEmpty(updateFields)) {
 						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
@@ -408,7 +408,7 @@ export class Raindrop implements INodeType {
 						tags: (this.getNodeParameter('tags', i) as string).split(',') as string[],
 					};
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.collectionId) {
 						endpoint += `/${additionalFields.collectionId}`;

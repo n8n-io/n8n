@@ -324,7 +324,7 @@ export class AwsSqs implements INodeType {
 				`Action=${pascalCase(operation)}`,
 			];
 
-			const options = this.getNodeParameter('options', i, {}) as IDataObject;
+			const options = this.getNodeParameter('options', i, {});
 			const sendInputData = this.getNodeParameter('sendInputData', i) as boolean;
 
 			const message = sendInputData ? JSON.stringify(items[i].json) : this.getNodeParameter('message', i);

@@ -467,7 +467,7 @@ export class Airtable implements INodeType {
 
 			for (let i = 0; i < items.length; i++) {
 				addAllFields = this.getNodeParameter('addAllFields', i) as boolean;
-				options = this.getNodeParameter('options', i, {}) as IDataObject;
+				options = this.getNodeParameter('options', i, {});
 
 				if (addAllFields === true) {
 					// Add all the fields the item has
@@ -591,7 +591,7 @@ export class Airtable implements INodeType {
 			let options: IDataObject;
 			for (let i = 0; i < items.length; i++) {
 				updateAllFields = this.getNodeParameter('updateAllFields', i) as boolean;
-				options = this.getNodeParameter('options', i, {}) as IDataObject;
+				options = this.getNodeParameter('options', i, {});
 
 				if (updateAllFields === true) {
 					// Update all the fields the item has

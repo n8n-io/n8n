@@ -198,7 +198,7 @@ export class ZohoCrm implements INodeType {
 				//https://www.zoho.com/crm/developer/docs/api/insert-records.html
 				if (operation === 'create') {
 					const lastName = this.getNodeParameter('lastName', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: ILead = {
 						Last_Name: lastName,
 					};
@@ -293,7 +293,7 @@ export class ZohoCrm implements INodeType {
 				//https://www.zoho.com/crm/developer/docs/api/update-specific-record.html
 				if (operation === 'update') {
 					const leadId = this.getNodeParameter('leadId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: ILead = {};
 					if (additionalFields.lastName) {
 						body.Last_Name = additionalFields.lastName as string;
@@ -398,7 +398,7 @@ export class ZohoCrm implements INodeType {
 				//https://www.zoho.com/crm/developer/docs/api/get-records.html
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.fields) {
 						qs.fields = (options.fields as string[]).join(',');
 					}

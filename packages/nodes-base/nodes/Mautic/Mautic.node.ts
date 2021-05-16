@@ -215,7 +215,7 @@ export class Mautic implements INodeType {
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i);
 					const simple = this.getNodeParameter('simple', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IDataObject = {
 						companyname: name,
 					};
@@ -230,7 +230,7 @@ export class Mautic implements INodeType {
 				if (operation === 'update') {
 					const companyId = this.getNodeParameter('companyId', i) as string;
 					const simple = this.getNodeParameter('simple', i);
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IDataObject = {};
 					Object.assign(body, updateFields);
 					if (body.name) {
@@ -257,7 +257,7 @@ export class Mautic implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const simple = this.getNodeParameter('simple', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					qs = Object.assign(qs, additionalFields);
 					if (returnAll === true) {
 						responseData = await mauticApiRequestAllItems.call(this, 'companies', 'GET', '/companies', {}, qs);
@@ -291,8 +291,8 @@ export class Mautic implements INodeType {
 			if (resource === 'contact') {
 				//https://developer.mautic.org/?php#create-contact
 				if (operation === 'create') {
-					const options = this.getNodeParameter('options', i) as IDataObject;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const jsonActive = this.getNodeParameter('jsonParameters', i);
 					let body: IDataObject = {};
 					if (!jsonActive) {
@@ -389,8 +389,8 @@ export class Mautic implements INodeType {
 				}
 				//https://developer.mautic.org/?php#edit-contact
 				if (operation === 'update') {
-					const options = this.getNodeParameter('options', i) as IDataObject;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const contactId = this.getNodeParameter('contactId', i) as string;
 					let body: IDataObject = {};
 					if (updateFields.email) {
@@ -498,7 +498,7 @@ export class Mautic implements INodeType {
 				}
 				//https://developer.mautic.org/?php#get-contact
 				if (operation === 'get') {
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					const contactId = this.getNodeParameter('contactId', i) as string;
 					responseData = await mauticApiRequest.call(this, 'GET', `/contacts/${contactId}`);
 					responseData = [responseData.contact];
@@ -509,7 +509,7 @@ export class Mautic implements INodeType {
 				//https://developer.mautic.org/?php#list-contacts
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					qs = Object.assign(qs, options);
 					if (qs.orderBy) {
 						// For some reason does camelCase get used in the returned data
@@ -537,7 +537,7 @@ export class Mautic implements INodeType {
 				}
 				//https://developer.mautic.org/?php#delete-contact
 				if (operation === 'delete') {
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					const contactId = this.getNodeParameter('contactId', i) as string;
 					responseData = await mauticApiRequest.call(this, 'DELETE', `/contacts/${contactId}/delete`);
 					responseData = [responseData.contact];

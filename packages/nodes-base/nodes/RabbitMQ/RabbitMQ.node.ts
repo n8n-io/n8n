@@ -299,7 +299,7 @@ export class RabbitMQ implements INodeType {
 			if (mode === 'queue') {
 				const queue = this.getNodeParameter('queue', 0) as string;
 
-				options = this.getNodeParameter('options', 0, {}) as IDataObject;
+				options = this.getNodeParameter('options', 0, {});
 
 				channel = await rabbitmqConnectQueue.call(this, queue, options);
 
@@ -317,7 +317,7 @@ export class RabbitMQ implements INodeType {
 
 					let headers: IDataObject = {};
 					if (options.headers && ((options.headers as IDataObject).header! as IDataObject[]).length) {
-						const itemOptions = this.getNodeParameter('options', i, {}) as IDataObject;
+						const itemOptions = this.getNodeParameter('options', i, {});
 						const additionalHeaders: IDataObject = {};
 						((itemOptions.headers as IDataObject).header as IDataObject[]).forEach((header: IDataObject) => {
 							additionalHeaders[header.key as string] = header.value;
@@ -364,7 +364,7 @@ export class RabbitMQ implements INodeType {
 				const type = this.getNodeParameter('exchangeType', 0) as string;
 				const routingKey = this.getNodeParameter('routingKey', 0) as string;
 
-				options = this.getNodeParameter('options', 0, {}) as IDataObject;
+				options = this.getNodeParameter('options', 0, {});
 
 				channel = await rabbitmqConnectExchange.call(this, exchange, type, options);
 
@@ -382,7 +382,7 @@ export class RabbitMQ implements INodeType {
 
 					let headers: IDataObject = {};
 					if (options.headers && ((options.headers as IDataObject).header! as IDataObject[]).length) {
-						const itemOptions = this.getNodeParameter('options', i, {}) as IDataObject;
+						const itemOptions = this.getNodeParameter('options', i, {});
 						const additionalHeaders: IDataObject = {};
 						((itemOptions.headers as IDataObject).header as IDataObject[]).forEach((header: IDataObject) => {
 							additionalHeaders[header.key as string] = header.value;

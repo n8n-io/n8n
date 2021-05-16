@@ -197,7 +197,7 @@ export class Discourse implements INodeType {
 
 					const name = this.getNodeParameter('name', i);
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 
 					const body: IDataObject = {
 						name,
@@ -290,7 +290,7 @@ export class Discourse implements INodeType {
 				if (operation === 'create') {
 					const content = this.getNodeParameter('content', i) as string;
 					const title = this.getNodeParameter('title', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {
 						title,
@@ -343,7 +343,7 @@ export class Discourse implements INodeType {
 
 					const content = this.getNodeParameter('content', i) as string;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 
 					const body: IDataObject = {
 						raw: content,
@@ -369,7 +369,7 @@ export class Discourse implements INodeType {
 
 			// 		const simple = this.getNodeParameter('simple', i);
 
-			// 		const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+			// 		const updateFields = this.getNodeParameter('updateFields', i);
 
 			// 		Object.assign(qs, updateFields);
 
@@ -402,7 +402,7 @@ export class Discourse implements INodeType {
 					const email = this.getNodeParameter('email', i) as string;
 					const password = this.getNodeParameter('password', i);
 					const username = this.getNodeParameter('username', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {
 						name,

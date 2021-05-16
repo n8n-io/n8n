@@ -221,7 +221,7 @@ export class HtmlExtract implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
 			const extractionValues = this.getNodeParameter('extractionValues', itemIndex) as IDataObject;
-			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			const options = this.getNodeParameter('options', itemIndex, {});
 			const sourceData = this.getNodeParameter('sourceData', itemIndex) as string;
 
 			item = items[itemIndex];

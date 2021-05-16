@@ -331,7 +331,7 @@ export class Pushover implements INodeType {
 
 					const priority = this.getNodeParameter('priority', i) as number;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {
 						user: userKey,

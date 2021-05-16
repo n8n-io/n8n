@@ -113,7 +113,7 @@ export class PostHog implements INodeType {
 
 					const alias = this.getNodeParameter('alias', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const context = (additionalFields.contextUi as IDataObject || {}).contextValues as IDataObject[] || [];
 
@@ -148,7 +148,7 @@ export class PostHog implements INodeType {
 
 					const distinctId = this.getNodeParameter('distinctId', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const properties = (additionalFields.propertiesUi as IDataObject || {}).propertyValues as IDataObject[] || [];
 
@@ -181,7 +181,7 @@ export class PostHog implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const distinctId = this.getNodeParameter('distinctId', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const properties = (additionalFields.propertiesUi as IDataObject || {}).propertyValues as IDataObject[] || [];
 
@@ -213,7 +213,7 @@ export class PostHog implements INodeType {
 
 					const name = this.getNodeParameter('name', i);
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const context = (additionalFields.contextUi as IDataObject || {}).contextValues as IDataObject[] || [];
 

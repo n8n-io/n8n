@@ -1015,7 +1015,7 @@ export class AwsSes implements INodeType {
 
 					const templateName = this.getNodeParameter('templateName', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const params = [
 						`Action=SendCustomVerificationEmail`,
@@ -1036,7 +1036,7 @@ export class AwsSes implements INodeType {
 
 					const templateName = this.getNodeParameter('templateName', i) as string;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 
 					const params = [
 						`Action=UpdateCustomVerificationEmailTemplate`,
@@ -1083,7 +1083,7 @@ export class AwsSes implements INodeType {
 
 					const isBodyHtml = this.getNodeParameter('isBodyHtml', i) as boolean;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const params = [
 						`Message.Subject.Data=${subject}`,
@@ -1140,7 +1140,7 @@ export class AwsSes implements INodeType {
 
 					const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const templateDataUi = this.getNodeParameter('templateDataUi', i) as IDataObject;
 
@@ -1211,7 +1211,7 @@ export class AwsSes implements INodeType {
 
 					const htmlPart = this.getNodeParameter('htmlPart', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const params = [
 						`Template.TemplateName=${templateName}`,
@@ -1274,7 +1274,7 @@ export class AwsSes implements INodeType {
 
 					const templateName = this.getNodeParameter('templateName', i) as string;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 
 					const params = [
 						`Template.TemplateName=${templateName}`,

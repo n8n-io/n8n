@@ -1742,7 +1742,7 @@ export class Telegram implements INodeType {
 					body.callback_query_id = this.getNodeParameter('queryId', i) as string;
 
 					// Add additional fields
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(body, additionalFields);
 
 				} else if (operation === 'answerInlineQuery') {
@@ -1756,7 +1756,7 @@ export class Telegram implements INodeType {
 					body.results = this.getNodeParameter('results', i) as string;
 
 					// Add additional fields
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(body, additionalFields);
 				}
 
@@ -1859,7 +1859,7 @@ export class Telegram implements INodeType {
 					body.chat_id = this.getNodeParameter('chatId', i) as string;
 					body.message_id = this.getNodeParameter('messageId', i) as string;
 
-					const { disable_notification } = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const { disable_notification } = this.getNodeParameter('additionalFields', i);
 					if (disable_notification) {
 						body.disable_notification = true;
 					}
@@ -1960,7 +1960,7 @@ export class Telegram implements INodeType {
 
 					body.chat_id = this.getNodeParameter('chatId', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(body, additionalFields);
 
 					const mediaItems = this.getNodeParameter('media', i) as IDataObject;

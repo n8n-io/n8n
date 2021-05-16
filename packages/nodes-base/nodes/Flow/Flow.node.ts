@@ -83,7 +83,7 @@ export class Flow implements INodeType {
 				if (operation === 'create') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const name = this.getNodeParameter('name', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: ITask = {
 						organization_id: credentials.organizationId as number,
 					};
@@ -145,7 +145,7 @@ export class Flow implements INodeType {
 				if (operation === 'update') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const taskId = this.getNodeParameter('taskId', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: ITask = {
 						organization_id: credentials.organizationId as number,
 					};

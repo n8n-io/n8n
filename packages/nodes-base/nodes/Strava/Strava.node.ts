@@ -82,7 +82,7 @@ export class Strava implements INodeType {
 
 					const elapsedTime = this.getNodeParameter('elapsedTime', i) as number;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.trainer === true) {
 						additionalFields.trainer = 1;
@@ -146,7 +146,7 @@ export class Strava implements INodeType {
 				if (operation === 'update') {
 					const activityId = this.getNodeParameter('activityId', i) as string;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 
 					if (updateFields.trainer === true) {
 						updateFields.trainer = 1;

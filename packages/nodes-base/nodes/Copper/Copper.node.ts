@@ -150,7 +150,7 @@ export class Copper implements INodeType {
 							name: this.getNodeParameter('name', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustCompanyFields(additionalFields));
@@ -210,7 +210,7 @@ export class Copper implements INodeType {
 						const companyId = this.getNodeParameter('companyId', i);
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustCompanyFields(updateFields));
@@ -254,7 +254,7 @@ export class Copper implements INodeType {
 							name: this.getNodeParameter('name', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustLeadFields(additionalFields));
@@ -312,7 +312,7 @@ export class Copper implements INodeType {
 						const leadId = this.getNodeParameter('leadId', i);
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustLeadFields(updateFields));
@@ -396,7 +396,7 @@ export class Copper implements INodeType {
 						const opportunityId = this.getNodeParameter('opportunityId', i);
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, updateFields);
@@ -424,7 +424,7 @@ export class Copper implements INodeType {
 							name: this.getNodeParameter('name', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustPersonFields(additionalFields));
@@ -482,7 +482,7 @@ export class Copper implements INodeType {
 						const personId = this.getNodeParameter('personId', i);
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustPersonFields(updateFields));
@@ -510,7 +510,7 @@ export class Copper implements INodeType {
 							name: this.getNodeParameter('name', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -570,7 +570,7 @@ export class Copper implements INodeType {
 						const projectId = this.getNodeParameter('projectId', i);
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, updateFields);
@@ -598,7 +598,7 @@ export class Copper implements INodeType {
 							name: this.getNodeParameter('name', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -658,7 +658,7 @@ export class Copper implements INodeType {
 						const taskId = this.getNodeParameter('taskId', i);
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, updateFields);

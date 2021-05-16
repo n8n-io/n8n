@@ -188,7 +188,7 @@ export class GoogleCalendar implements INodeType {
 						const calendarId = this.getNodeParameter('calendar', i) as string;
 						const timeMin = this.getNodeParameter('timeMin', i) as string;
 						const timeMax = this.getNodeParameter('timeMax', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const outputFormat = options.outputFormat || 'availability';
 
 						const body: IDataObject = {
@@ -381,7 +381,7 @@ export class GoogleCalendar implements INodeType {
 					if (operation === 'delete') {
 						const calendarId = this.getNodeParameter('calendar', i) as string;
 						const eventId = this.getNodeParameter('eventId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.sendUpdates) {
 							qs.sendUpdates = options.sendUpdates as number;
 						}
@@ -397,7 +397,7 @@ export class GoogleCalendar implements INodeType {
 					if (operation === 'get') {
 						const calendarId = this.getNodeParameter('calendar', i) as string;
 						const eventId = this.getNodeParameter('eventId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.maxAttendees) {
 							qs.maxAttendees = options.maxAttendees as number;
 						}
@@ -416,7 +416,7 @@ export class GoogleCalendar implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const calendarId = this.getNodeParameter('calendar', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.iCalUID) {
 							qs.iCalUID = options.iCalUID as string;
 						}

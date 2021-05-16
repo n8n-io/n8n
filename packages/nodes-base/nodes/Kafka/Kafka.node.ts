@@ -167,7 +167,7 @@ export class Kafka implements INodeType {
 
 		let responseData: IDataObject[];
 
-		const options = this.getNodeParameter('options', 0) as IDataObject;
+		const options = this.getNodeParameter('options', 0);
 		const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
 		const timeout = options.timeout as number;

@@ -223,7 +223,7 @@ export class Reddit implements INodeType {
 						restrict_sr: location === 'subreddit',
 					} as IDataObject;
 
-					const { sort } = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const { sort } = this.getNodeParameter('additionalFields', i);
 
 					if (sort) {
 						qs.sort = sort;

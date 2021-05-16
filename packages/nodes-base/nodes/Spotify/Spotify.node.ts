@@ -955,7 +955,7 @@ export class Spotify implements INodeType {
 
 					body.name = this.getNodeParameter('name', i);
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (Object.keys(additionalFields).length) {
 						Object.assign(body, additionalFields);

@@ -164,7 +164,7 @@ export class LingvaNex implements INodeType {
 			if (operation === 'translate') {
 				const text = this.getNodeParameter('text', i);
 				const translateTo = this.getNodeParameter('translateTo', i) as string;
-				const options = this.getNodeParameter('options', i) as IDataObject;
+				const options = this.getNodeParameter('options', i);
 
 				const body: IDataObject = {
 					data: text,

@@ -84,7 +84,7 @@ export class Clearbit implements INodeType {
 			if (resource === 'person') {
 				if (operation === 'enrich') {
 					const email = this.getNodeParameter('email', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					qs.email = email;
 					if (additionalFields.givenName) {
 						qs.given_name = additionalFields.givenName as string;
@@ -119,7 +119,7 @@ export class Clearbit implements INodeType {
 			if (resource === 'company') {
 				if (operation === 'enrich') {
 					const domain = this.getNodeParameter('domain', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					qs.domain = domain;
 					if (additionalFields.companyName) {
 						qs.company_name = additionalFields.companyName as string;

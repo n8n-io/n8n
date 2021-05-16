@@ -98,7 +98,7 @@ export class Sendy implements INodeType {
 
 					const sendCampaign = this.getNodeParameter('sendCampaign', i) as boolean;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {
 						from_name: fromName,
@@ -173,7 +173,7 @@ export class Sendy implements INodeType {
 
 					const listId = this.getNodeParameter('listId', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {
 						email,

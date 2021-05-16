@@ -252,7 +252,7 @@ export class Zoom implements INodeType {
 				}
 				if (operation === 'create') {
 					//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingcreate
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {};
 

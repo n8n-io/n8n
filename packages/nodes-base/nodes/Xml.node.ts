@@ -230,7 +230,7 @@ export class Xml implements INodeType {
 
 		const mode = this.getNodeParameter('mode', 0) as string;
 		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
-		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+		const options = this.getNodeParameter('options', 0, {});
 
 
 		let item: INodeExecutionData;

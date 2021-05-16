@@ -224,7 +224,7 @@ export class PagerDuty implements INodeType {
 					const title = this.getNodeParameter('title', i);
 					const serviceId = this.getNodeParameter('serviceId', i) as string;
 					const email = this.getNodeParameter('email', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const conferenceBridge = (this.getNodeParameter('conferenceBridgeUi', i) as IDataObject).conferenceBridgeValues as IDataObject;
 					const body: IIncident = {
 						type: 'incident',
@@ -303,7 +303,7 @@ export class PagerDuty implements INodeType {
 					const incidentId = this.getNodeParameter('incidentId', i) as string;
 					const email = this.getNodeParameter('email', i) as string;
 					const conferenceBridge = (this.getNodeParameter('conferenceBridgeUi', i) as IDataObject).conferenceBridgeValues as IDataObject;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IIncident = {
 						type: 'incident',
 					};
@@ -383,7 +383,7 @@ export class PagerDuty implements INodeType {
 				}
 				//https://api-reference.pagerduty.com/#!/Log_Entries/get_log_entries
 				if (operation === 'getAll') {
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					Object.assign(qs, options);
 					keysToSnakeCase(qs);
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;

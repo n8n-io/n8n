@@ -87,7 +87,7 @@ export class MicrosoftOneDrive implements INodeType {
 				//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_copy?view=odsp-graph-online
 				if (operation === 'copy') {
 					const fileId = this.getNodeParameter('fileId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const parentReference = this.getNodeParameter('parentReference', i) as IDataObject;
 					const body: IDataObject = {};
 					if (parentReference) {
@@ -210,7 +210,7 @@ export class MicrosoftOneDrive implements INodeType {
 				//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_post_children?view=odsp-graph-online
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i);
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					const body: IDataObject = {
 						name,
 						folder: {},

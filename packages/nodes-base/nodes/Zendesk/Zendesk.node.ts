@@ -263,7 +263,7 @@ export class Zendesk implements INodeType {
 
 					} else {
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.type) {
 							body.type = additionalFields.type as string;
@@ -315,7 +315,7 @@ export class Zendesk implements INodeType {
 
 					} else {
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (updateFields.type) {
 							body.type = updateFields.type as string;
@@ -354,7 +354,7 @@ export class Zendesk implements INodeType {
 				//https://developer.zendesk.com/rest_api/docs/support/search#list-search-results
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					qs.query = 'type:ticket';
 					if (options.status) {
 						qs.query += ` status:${options.status}`;
@@ -410,7 +410,7 @@ export class Zendesk implements INodeType {
 				//https://developer.zendesk.com/rest_api/docs/support/users#create-user
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {
 						name,
@@ -436,7 +436,7 @@ export class Zendesk implements INodeType {
 				//https://developer.zendesk.com/rest_api/docs/support/tickets#update-ticket
 				if (operation === 'update') {
 					const userId = this.getNodeParameter('id', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 
 					const body: IDataObject = {};
 

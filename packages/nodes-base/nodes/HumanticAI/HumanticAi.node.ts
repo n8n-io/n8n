@@ -122,7 +122,7 @@ export class HumanticAi implements INodeType {
 				}
 				if (operation === 'get') {
 					const userId = this.getNodeParameter('userId', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					qs.userid = userId;
 

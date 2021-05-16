@@ -125,7 +125,7 @@ export class S3 implements INodeType {
 					}
 
 					const name = this.getNodeParameter('name', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					if (additionalFields.acl) {
 						headers['x-amz-acl'] = paramCase(additionalFields.acl as string);
 					}
@@ -241,7 +241,7 @@ export class S3 implements INodeType {
 				if (operation === 'create') {
 					const bucketName = this.getNodeParameter('bucketName', i) as string;
 					const folderName = this.getNodeParameter('folderName', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					let path = `/${folderName}/`;
 
 					if (additionalFields.requesterPays) {
@@ -349,7 +349,7 @@ export class S3 implements INodeType {
 				if (operation === 'copy') {
 					const sourcePath = this.getNodeParameter('sourcePath', i) as string;
 					const destinationPath = this.getNodeParameter('destinationPath', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					headers['x-amz-copy-source'] = sourcePath;
 
@@ -472,7 +472,7 @@ export class S3 implements INodeType {
 
 					const fileKey = this.getNodeParameter('fileKey', i) as string;
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					if (options.versionId) {
 						qs.versionId = options.versionId as string;
@@ -528,7 +528,7 @@ export class S3 implements INodeType {
 					const bucketName = this.getNodeParameter('bucketName', i) as string;
 					const fileName = this.getNodeParameter('fileName', i) as string;
 					const isBinaryData = this.getNodeParameter('binaryData', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const tagsValues = (this.getNodeParameter('tagsUi', i) as IDataObject).tagsValues as IDataObject[];
 					let path = '/';
 					let body;

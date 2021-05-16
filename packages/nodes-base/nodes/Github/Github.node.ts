@@ -1934,7 +1934,7 @@ export class Github implements INodeType {
 
 					requestMethod = 'POST';
 
-					body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+					body = this.getNodeParameter('additionalFields', i, {});
 
 					body.tag_name = this.getNodeParameter('releaseTag', i) as string;
 
@@ -1986,7 +1986,7 @@ export class Github implements INodeType {
 
 					const releaseId = this.getNodeParameter('release_id', i) as string;
 
-					body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+					body = this.getNodeParameter('additionalFields', i, {});
 
 					endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
 				}
@@ -2075,7 +2075,7 @@ export class Github implements INodeType {
 					requestMethod = 'POST';
 
 					const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(body, additionalFields);
 
 					body.event = snakeCase(this.getNodeParameter('event', i)).toUpperCase();

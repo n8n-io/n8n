@@ -136,7 +136,7 @@ export class GSuiteAdmin implements INodeType {
 				if (operation === 'create') {
 					const email = this.getNodeParameter('email', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {
 						email,
@@ -182,7 +182,7 @@ export class GSuiteAdmin implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					Object.assign(qs, options);
 
@@ -219,7 +219,7 @@ export class GSuiteAdmin implements INodeType {
 				if (operation === 'update') {
 					const groupId = this.getNodeParameter('groupId', i) as string;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 
 					const body: IDataObject = {};
 
@@ -249,7 +249,7 @@ export class GSuiteAdmin implements INodeType {
 
 					const makeAdmin = this.getNodeParameter('makeAdmin', i) as boolean;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {
 						name: {
@@ -318,7 +318,7 @@ export class GSuiteAdmin implements INodeType {
 
 					const projection = this.getNodeParameter('projection', i) as string;
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					qs.projection = projection;
 
@@ -347,7 +347,7 @@ export class GSuiteAdmin implements INodeType {
 
 					const projection = this.getNodeParameter('projection', i) as string;
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					qs.projection = projection;
 
@@ -394,7 +394,7 @@ export class GSuiteAdmin implements INodeType {
 				if (operation === 'update') {
 					const userId = this.getNodeParameter('userId', i) as string;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 
 					const body: { name: { givenName?: string, familyName?: string }, emails?: IDataObject[], phones?: IDataObject[] } = { name: {} };
 

@@ -1910,7 +1910,7 @@ export class GoogleDrive implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < items.length; i++) {
-			const options = this.getNodeParameter('options', i, {}) as IDataObject;
+			const options = this.getNodeParameter('options', i, {});
 
 			let queryFields = 'id, name';
 			if (options && options.fields) {
@@ -2037,7 +2037,7 @@ export class GoogleDrive implements INodeType {
 					// ----------------------------------
 
 					const fileId = this.getNodeParameter('fileId', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					const requestOptions = {
 						resolveWithFullResponse: true,
@@ -2246,7 +2246,7 @@ export class GoogleDrive implements INodeType {
 					// ----------------------------------
 
 					const id = this.getNodeParameter('fileId', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i, {});
 
 					const qs: IDataObject = {
 						supportsAllDrives: true,
@@ -2310,7 +2310,7 @@ export class GoogleDrive implements INodeType {
 
 					const permissions = this.getNodeParameter('permissionsUi', i) as IDataObject;
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					const body: IDataObject = {};
 

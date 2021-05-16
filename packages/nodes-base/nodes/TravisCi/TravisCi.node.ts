@@ -73,7 +73,7 @@ export class TravisCi implements INodeType {
 				//https://developer.travis-ci.com/resource/build#find
 				if (operation === 'get') {
 					const buildId = this.getNodeParameter('buildId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.include) {
 						qs.include = additionalFields.include as string;
@@ -83,7 +83,7 @@ export class TravisCi implements INodeType {
 				}
 				//https://developer.travis-ci.com/resource/builds#for_current_user
 				if (operation === 'getAll') {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					if (additionalFields.sortBy) {
@@ -121,7 +121,7 @@ export class TravisCi implements INodeType {
 				if (operation === 'trigger') {
 					let slug = this.getNodeParameter('slug', i) as string;
 					const branch = this.getNodeParameter('branch', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					slug = slug.replace(new RegExp(/\//g), '%2F');
 

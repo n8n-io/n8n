@@ -115,7 +115,7 @@ export class Emelia implements INodeType {
 							email: this.getNodeParameter('contactEmail', i) as string,
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (!isEmpty(additionalFields)) {
 							Object.assign(contact, additionalFields);
@@ -309,7 +309,7 @@ export class Emelia implements INodeType {
 							email: this.getNodeParameter('contactEmail', i) as string,
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (!isEmpty(additionalFields)) {
 							Object.assign(contact, additionalFields);

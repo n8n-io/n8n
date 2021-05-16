@@ -1251,7 +1251,7 @@ export class Gitlab implements INodeType {
 
 					requestMethod = 'POST';
 
-					body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+					body = this.getNodeParameter('additionalFields', i, {});
 
 					body.tag_name = this.getNodeParameter('releaseTag', i) as string;
 
@@ -1292,7 +1292,7 @@ export class Gitlab implements INodeType {
 
 					const id = this.getNodeParameter('projectId', i) as string;
 
-					qs = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+					qs = this.getNodeParameter('additionalFields', i, {});
 
 					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
@@ -1313,7 +1313,7 @@ export class Gitlab implements INodeType {
 
 					const tagName = this.getNodeParameter('tag_name', i) as string;
 
-					body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+					body = this.getNodeParameter('additionalFields', i, {});
 					if(body.milestones){
 						body.milestones = (body.milestones as string).split(',');
 					}

@@ -122,7 +122,7 @@ export class Iterable implements INodeType {
 
 					const name = this.getNodeParameter('name', i);
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (!additionalFields.email && !additionalFields.id) {
 						throw new NodeOperationError(this.getNode(), 'Either email or userId must be passed in to identify the user. Please add one of both via "Additional Fields". If both are passed in, email takes precedence.');
@@ -166,7 +166,7 @@ export class Iterable implements INodeType {
 
 					const value = this.getNodeParameter('value', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {};
 

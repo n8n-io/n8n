@@ -303,7 +303,7 @@ export class Keap implements INodeType {
 					const faxes = (this.getNodeParameter('faxesUi', i) as IDataObject).faxesValues as IDataObject[];
 					const phones = (this.getNodeParameter('phonesUi', i) as IDataObject).phonesValues as IDataObject[];
 					const companyName = this.getNodeParameter('companyName', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: ICompany = {
 						company_name: companyName,
 					};
@@ -323,7 +323,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Company/listCompaniesUsingGET
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					keysToSnakeCase(options);
 					Object.assign(qs, options);
 					if (qs.fields) {
@@ -348,7 +348,7 @@ export class Keap implements INodeType {
 					const faxes = (this.getNodeParameter('faxesUi', i) as IDataObject).faxesValues as IDataObject[];
 					const socialAccounts = (this.getNodeParameter('socialAccountsUi', i) as IDataObject).socialAccountsValues as IDataObject[];
 					const phones = (this.getNodeParameter('phonesUi', i) as IDataObject).phonesValues as IDataObject[];
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IContact = {
 						duplicate_option: pascalCase(duplicateOption),
 					};
@@ -436,7 +436,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/getContactUsingGET
 				if (operation === 'get') {
 					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.fields) {
 						qs.optional_properties = options.fields as string;
 					}
@@ -445,7 +445,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/listContactsUsingGET
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.email) {
 						qs.email = options.email as boolean;
 					}
@@ -481,7 +481,7 @@ export class Keap implements INodeType {
 				if (operation === 'create') {
 					const userId = this.getNodeParameter('userId', i) as number;
 					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: INote = {
 						user_id: userId,
 						contact_id: contactId,
@@ -521,7 +521,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Note/updatePropertiesOnNoteUsingPATCH
 				if (operation === 'update') {
 					const noteId = this.getNodeParameter('noteId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: INote = {};
 					keysToSnakeCase(additionalFields);
 					if (additionalFields.type) {
@@ -571,7 +571,7 @@ export class Keap implements INodeType {
 					const orderType = this.getNodeParameter('orderType', i) as string;
 					const orderItems = (this.getNodeParameter('orderItemsUi', i) as IDataObject).orderItemsValues as IDataObject[];
 					const shippingAddress = (this.getNodeParameter('addressUi', i) as IDataObject).addressValues as IDataObject;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IEcommerceOrder = {
 						contact_id: contactId,
 						order_date: orderDate,
@@ -603,7 +603,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/listOrdersUsingGET
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					keysToSnakeCase(options);
 					Object.assign(qs, options);
 					if (returnAll) {
@@ -619,7 +619,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/createProductUsingPOST
 				if (operation === 'create') {
 					const productName = this.getNodeParameter('productName', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IEcommerceProduct = {
 						product_name: productName,
 					};
@@ -658,7 +658,7 @@ export class Keap implements INodeType {
 				if (operation === 'createRecord') {
 					const sentFromAddress = this.getNodeParameter('sentFromAddress', i) as string;
 					const sendToAddress = this.getNodeParameter('sentToAddress', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IDataObject = {
 						sent_to_address: sendToAddress,
 						sent_from_address: sentFromAddress,
@@ -692,7 +692,7 @@ export class Keap implements INodeType {
 					const userId = this.getNodeParameter('userId', i) as number;
 					const contactIds = ((this.getNodeParameter('contactIds', i) as string).split(',') as string[]).map((e) => (parseInt(e, 10)));
 					const subject = this.getNodeParameter('subject', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IEmail = {
 						user_id: userId,
 						contacts: contactIds,

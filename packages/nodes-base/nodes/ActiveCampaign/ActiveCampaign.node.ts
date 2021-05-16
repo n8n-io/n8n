@@ -363,7 +363,7 @@ export class ActiveCampaign implements INodeType {
 						email: this.getNodeParameter('email', i) as string,
 					} as IDataObject;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					addAdditionalFields(body.contact as IDataObject, additionalFields);
 
 				} else if (operation === 'delete') {
@@ -395,7 +395,7 @@ export class ActiveCampaign implements INodeType {
 
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const simple = this.getNodeParameter('simple', i, true) as boolean;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (returnAll === false) {
 						qs.limit = this.getNodeParameter('limit', i) as number;
@@ -428,7 +428,7 @@ export class ActiveCampaign implements INodeType {
 
 					body.contact = {} as IDataObject;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					addAdditionalFields(body.contact as IDataObject, updateFields);
 
 				} else {
@@ -450,7 +450,7 @@ export class ActiveCampaign implements INodeType {
 						name: this.getNodeParameter('name', i),
 					} as IDataObject;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					addAdditionalFields(body.account as IDataObject, additionalFields);
 
 				} else if (operation === 'delete') {
@@ -509,7 +509,7 @@ export class ActiveCampaign implements INodeType {
 
 					body.account = {} as IDataObject;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					addAdditionalFields(body.account as IDataObject, updateFields);
 
 				} else {
@@ -532,7 +532,7 @@ export class ActiveCampaign implements INodeType {
 						account: this.getNodeParameter('account', i) as string,
 					} as IDataObject;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					addAdditionalFields(body.account as IDataObject, additionalFields);
 
 				} else if (operation === 'update') {
@@ -549,7 +549,7 @@ export class ActiveCampaign implements INodeType {
 
 					body.accountContact = {} as IDataObject;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					addAdditionalFields(body.accountContact as IDataObject, updateFields);
 
 				} else if (operation === 'delete') {
@@ -673,7 +673,7 @@ export class ActiveCampaign implements INodeType {
 						tagType: this.getNodeParameter('tagType', i) as string,
 					} as IDataObject;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					addAdditionalFields(body.tag as IDataObject, additionalFields);
 
 				} else if (operation === 'delete') {
@@ -729,7 +729,7 @@ export class ActiveCampaign implements INodeType {
 
 					body.tag = {} as IDataObject;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					addAdditionalFields(body.tag as IDataObject, updateFields);
 
 				} else {
@@ -767,7 +767,7 @@ export class ActiveCampaign implements INodeType {
 						addAdditionalFields(body.deal as IDataObject, { stage });
 					}
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					addAdditionalFields(body.deal as IDataObject, additionalFields);
 
 				} else if (operation === 'update') {
@@ -782,7 +782,7 @@ export class ActiveCampaign implements INodeType {
 
 					body.deal = {} as IDataObject;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					addAdditionalFields(body.deal as IDataObject, updateFields);
 
 				} else if (operation === 'delete') {
@@ -884,7 +884,7 @@ export class ActiveCampaign implements INodeType {
 
 					body.connection = {} as IDataObject;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					addAdditionalFields(body.connection as IDataObject, updateFields);
 
 				} else if (operation === 'delete') {
@@ -967,7 +967,7 @@ export class ActiveCampaign implements INodeType {
 					const orderProducts = this.getNodeParameter('orderProducts', i) as unknown as IProduct[];
 					addAdditionalFields(body.ecomOrder as IDataObject, { orderProducts });
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					addAdditionalFields(body.ecomOrder as IDataObject, additionalFields);
 
 				} else if (operation === 'update') {
@@ -982,7 +982,7 @@ export class ActiveCampaign implements INodeType {
 
 					body.ecomOrder = {} as IDataObject;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					addAdditionalFields(body.ecomOrder as IDataObject, updateFields);
 
 				} else if (operation === 'delete') {
@@ -1043,7 +1043,7 @@ export class ActiveCampaign implements INodeType {
 						email: this.getNodeParameter('email', i) as string,
 					} as IDataObject;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					if (additionalFields.acceptsMarketing !== undefined) {
 						if (additionalFields.acceptsMarketing === true) {
 							additionalFields.acceptsMarketing = '1';
@@ -1065,7 +1065,7 @@ export class ActiveCampaign implements INodeType {
 
 					body.ecomCustomer = {} as IDataObject;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					if (updateFields.acceptsMarketing !== undefined) {
 						if (updateFields.acceptsMarketing === true) {
 							updateFields.acceptsMarketing = '1';

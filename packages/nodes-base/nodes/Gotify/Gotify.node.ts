@@ -199,7 +199,7 @@ export class Gotify implements INodeType {
 
 					const message = this.getNodeParameter('message', i);
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {
 						message,

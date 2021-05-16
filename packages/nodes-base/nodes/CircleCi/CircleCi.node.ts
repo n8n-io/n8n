@@ -110,7 +110,7 @@ export class CircleCi implements INodeType {
 					const vcs = this.getNodeParameter('vcs', i) as string;
 					let slug = this.getNodeParameter('projectSlug', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					slug = slug.replace(new RegExp(/\//g), '%2F');
 

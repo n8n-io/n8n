@@ -252,7 +252,7 @@ export class InvoiceNinja implements INodeType {
 			//Routes: https://github.com/invoiceninja/invoiceninja/blob/ff455c8ed9fd0c0326956175ecd509efa8bad263/routes/api.php
 			if (resource === 'client') {
 				if (operation === 'create') {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IClient = {};
 					if (additionalFields.clientName) {
 						body.name = additionalFields.clientName as string;
@@ -315,7 +315,7 @@ export class InvoiceNinja implements INodeType {
 				}
 				if (operation === 'get') {
 					const clientId = this.getNodeParameter('clientId', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.include) {
 						qs.include = options.include as string;
 					}
@@ -324,7 +324,7 @@ export class InvoiceNinja implements INodeType {
 				}
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.include) {
 						qs.include = options.include as string;
 					}
@@ -344,7 +344,7 @@ export class InvoiceNinja implements INodeType {
 			}
 			if (resource === 'invoice') {
 				if (operation === 'create') {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IInvoice = {};
 					if (additionalFields.email) {
 						body.email = additionalFields.email as string;
@@ -439,7 +439,7 @@ export class InvoiceNinja implements INodeType {
 				}
 				if (operation === 'get') {
 					const invoiceId = this.getNodeParameter('invoiceId', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.include) {
 						qs.include = options.include as string;
 					}
@@ -448,7 +448,7 @@ export class InvoiceNinja implements INodeType {
 				}
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.include) {
 						qs.include = options.include as string;
 					}
@@ -471,7 +471,7 @@ export class InvoiceNinja implements INodeType {
 			}
 			if (resource === 'task') {
 				if (operation === 'create') {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: ITask = {};
 					if (additionalFields.client) {
 						body.client_id = additionalFields.client as number;
@@ -511,7 +511,7 @@ export class InvoiceNinja implements INodeType {
 				}
 				if (operation === 'get') {
 					const taskId = this.getNodeParameter('taskId', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.include) {
 						qs.include = options.include as string;
 					}
@@ -520,7 +520,7 @@ export class InvoiceNinja implements INodeType {
 				}
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.include) {
 						qs.include = options.include as string;
 					}
@@ -540,7 +540,7 @@ export class InvoiceNinja implements INodeType {
 			}
 			if (resource === 'payment') {
 				if (operation === 'create') {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const invoice = this.getNodeParameter('invoice', i) as number;
 					const amount = this.getNodeParameter('amount', i) as number;
 					const body: IPayment = {
@@ -561,7 +561,7 @@ export class InvoiceNinja implements INodeType {
 				}
 				if (operation === 'get') {
 					const paymentId = this.getNodeParameter('paymentId', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.include) {
 						qs.include = options.include as string;
 					}
@@ -570,7 +570,7 @@ export class InvoiceNinja implements INodeType {
 				}
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.include) {
 						qs.include = options.include as string;
 					}
@@ -590,7 +590,7 @@ export class InvoiceNinja implements INodeType {
 			}
 			if (resource === 'expense') {
 				if (operation === 'create') {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IExpense = {};
 					if (additionalFields.amount) {
 						body.amount = additionalFields.amount as number;
@@ -669,7 +669,7 @@ export class InvoiceNinja implements INodeType {
 			}
 			if (resource === 'quote') {
 				if (operation === 'create') {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IQuote = {
 						is_quote: true,
 					};
@@ -766,7 +766,7 @@ export class InvoiceNinja implements INodeType {
 				}
 				if (operation === 'get') {
 					const quoteId = this.getNodeParameter('quoteId', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.include) {
 						qs.include = options.include as string;
 					}
@@ -775,7 +775,7 @@ export class InvoiceNinja implements INodeType {
 				}
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.include) {
 						qs.include = options.include as string;
 					}

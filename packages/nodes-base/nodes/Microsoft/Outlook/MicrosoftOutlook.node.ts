@@ -167,7 +167,7 @@ export class MicrosoftOutlook implements INodeType {
 			if (operation === 'get') {
 				for (let i = 0; i < length; i++) {
 					const messageId = this.getNodeParameter('messageId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.fields) {
 						qs['$select'] = additionalFields.fields;
@@ -203,7 +203,7 @@ export class MicrosoftOutlook implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const messageId = this.getNodeParameter('messageId', i) as string;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 
 					// Create message from optional fields
 					const body: IDataObject = createMessage(updateFields);
@@ -225,7 +225,7 @@ export class MicrosoftOutlook implements INodeType {
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const subject = this.getNodeParameter('subject', i);
 
@@ -277,7 +277,7 @@ export class MicrosoftOutlook implements INodeType {
 			if (operation === 'send') {
 				for (let i = 0; i < length; i++) {
 					const messageId = this.getNodeParameter('messageId', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 					if (additionalFields && additionalFields.recipients) {
 						const recipients = ((additionalFields.recipients as string).split(',') as string[]).filter(email => !!email);
@@ -310,7 +310,7 @@ export class MicrosoftOutlook implements INodeType {
 					const replyType = this.getNodeParameter('replyType', i) as string;
 					const comment = this.getNodeParameter('comment', i) as string;
 					const send = this.getNodeParameter('send', i, false) as boolean;
-					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 					const body: IDataObject = {};
 
@@ -423,7 +423,7 @@ export class MicrosoftOutlook implements INodeType {
 				let additionalFields: IDataObject = {};
 				for (let i = 0; i < length; i++) {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.fields) {
 						qs['$select'] = additionalFields.fields;
@@ -490,7 +490,7 @@ export class MicrosoftOutlook implements INodeType {
 
 			if (operation === 'send') {
 				for (let i = 0; i < length; i++) {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const toRecipients = this.getNodeParameter('toRecipients', i) as string;
 
@@ -557,7 +557,7 @@ export class MicrosoftOutlook implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const messageId = this.getNodeParameter('messageId', i) as string;
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (items[i].binary === undefined) {
 						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
@@ -693,7 +693,7 @@ export class MicrosoftOutlook implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const messageId = this.getNodeParameter('messageId', i) as string;
 					const attachmentId = this.getNodeParameter('attachmentId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					// Have sane defaults so we don't fetch attachment data in this operation
 					qs['$select'] = 'id,lastModifiedDateTime,name,contentType,size,isInline';
@@ -716,7 +716,7 @@ export class MicrosoftOutlook implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const messageId = this.getNodeParameter('messageId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					// Have sane defaults so we don't fetch attachment data in this operation
 					qs['$select'] = 'id,lastModifiedDateTime,name,contentType,size,isInline';
@@ -803,7 +803,7 @@ export class MicrosoftOutlook implements INodeType {
 			if (operation === 'get') {
 				for (let i = 0; i < length; i++) {
 					const folderId = this.getNodeParameter('folderId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.fields) {
 						qs['$select'] = additionalFields.fields;
@@ -826,7 +826,7 @@ export class MicrosoftOutlook implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.fields) {
 						qs['$select'] = additionalFields.fields;
@@ -864,7 +864,7 @@ export class MicrosoftOutlook implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const folderId = this.getNodeParameter('folderId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.fields) {
 						qs['$select'] = additionalFields.fields;
@@ -900,7 +900,7 @@ export class MicrosoftOutlook implements INodeType {
 			if (operation === 'update') {
 				for (let i = 0; i < length; i++) {
 					const folderId = this.getNodeParameter('folderId', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 
 					const body: IDataObject = {
 						...updateFields,
@@ -922,7 +922,7 @@ export class MicrosoftOutlook implements INodeType {
 				if (operation === 'getAll') {
 					const folderId = this.getNodeParameter('folderId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.fields) {
 						qs['$select'] = additionalFields.fields;

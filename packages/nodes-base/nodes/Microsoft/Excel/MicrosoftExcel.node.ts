@@ -289,7 +289,7 @@ export class MicrosoftExcel implements INodeType {
 					const tableId = this.getNodeParameter('table', i) as string;
 					const lookupColumn = this.getNodeParameter('lookupColumn', i) as string;
 					const lookupValue = this.getNodeParameter('lookupValue', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					responseData = await microsoftApiRequestAllItemsSkip.call(this, 'value', 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows`, {}, {});
 
@@ -331,7 +331,7 @@ export class MicrosoftExcel implements INodeType {
 				//https://docs.microsoft.com/en-us/graph/api/worksheetcollection-add?view=graph-rest-1.0&tabs=http
 				if (operation === 'addWorksheet') {
 					const workbookId = this.getNodeParameter('workbook', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IDataObject = {};
 					if (additionalFields.name) {
 						body.name = additionalFields.name;

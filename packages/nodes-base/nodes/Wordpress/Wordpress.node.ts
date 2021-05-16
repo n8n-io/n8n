@@ -143,7 +143,7 @@ export class Wordpress implements INodeType {
 				//https://developer.wordpress.org/rest-api/reference/posts/#create-a-post
 				if (operation === 'create') {
 					const title = this.getNodeParameter('title', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IPost = {
 						title,
 					};
@@ -185,7 +185,7 @@ export class Wordpress implements INodeType {
 				//https://developer.wordpress.org/rest-api/reference/posts/#update-a-post
 				if (operation === 'update') {
 					const postId = this.getNodeParameter('postId', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IPost = {
 						id: parseInt(postId, 10),
 					};
@@ -230,7 +230,7 @@ export class Wordpress implements INodeType {
 				//https://developer.wordpress.org/rest-api/reference/posts/#retrieve-a-post
 				if (operation === 'get') {
 					const postId = this.getNodeParameter('postId', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.password) {
 						qs.password = options.password as string;
 					}
@@ -242,7 +242,7 @@ export class Wordpress implements INodeType {
 				//https://developer.wordpress.org/rest-api/reference/posts/#list-posts
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.context) {
 						qs.context = options.context as string;
 					}
@@ -286,7 +286,7 @@ export class Wordpress implements INodeType {
 				//https://developer.wordpress.org/rest-api/reference/posts/#delete-a-post
 				if (operation === 'delete') {
 					const postId = this.getNodeParameter('postId', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.force) {
 						qs.force = options.force as boolean;
 					}
@@ -302,7 +302,7 @@ export class Wordpress implements INodeType {
 					const lastName = this.getNodeParameter('lastName', i) as string;
 					const email = this.getNodeParameter('email', i) as string;
 					const password = this.getNodeParameter('password', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IUser = {
 						name,
 						username,
@@ -328,7 +328,7 @@ export class Wordpress implements INodeType {
 				//https://developer.wordpress.org/rest-api/reference/users/#update-a-user
 				if (operation === 'update') {
 					const userId = this.getNodeParameter('userId', i) as number;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IUser = {
 						id: userId,
 					};
@@ -367,7 +367,7 @@ export class Wordpress implements INodeType {
 				//https://developer.wordpress.org/rest-api/reference/users/#retrieve-a-user
 				if (operation === 'get') {
 					const userId = this.getNodeParameter('userId', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.context) {
 						qs.context = options.context as string;
 					}
@@ -376,7 +376,7 @@ export class Wordpress implements INodeType {
 				//https://developer.wordpress.org/rest-api/reference/users/#list-users
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.context) {
 						qs.context = options.context as string;
 					}

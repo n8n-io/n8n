@@ -171,7 +171,7 @@ export class Trello implements INodeType {
 					qs.name = this.getNodeParameter('name', i);
 					qs.desc = this.getNodeParameter('description', i);
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 
 				} else if (operation === 'delete') {
@@ -196,7 +196,7 @@ export class Trello implements INodeType {
 
 					endpoint = `boards/${id}`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 
 				} else if (operation === 'update') {
@@ -210,7 +210,7 @@ export class Trello implements INodeType {
 
 					endpoint = `boards/${id}`;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					Object.assign(qs, updateFields);
 
 				} else {
@@ -232,7 +232,7 @@ export class Trello implements INodeType {
 					qs.name = this.getNodeParameter('name', i);
 					qs.desc = this.getNodeParameter('description', i);
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 
 				} else if (operation === 'delete') {
@@ -257,7 +257,7 @@ export class Trello implements INodeType {
 
 					endpoint = `cards/${id}`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 
 				} else if (operation === 'update') {
@@ -271,7 +271,7 @@ export class Trello implements INodeType {
 
 					endpoint = `cards/${id}`;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					Object.assign(qs, updateFields);
 
 				} else {
@@ -352,7 +352,7 @@ export class Trello implements INodeType {
 
 					qs.name = this.getNodeParameter('name', i);
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 
 				} else if (operation === 'get') {
@@ -366,7 +366,7 @@ export class Trello implements INodeType {
 
 					endpoint = `lists/${id}`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 
 				} else if (operation === 'getAll') {
@@ -386,7 +386,7 @@ export class Trello implements INodeType {
 
 					endpoint = `boards/${id}/lists`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 
 				} else if (operation === 'getCards') {
@@ -406,7 +406,7 @@ export class Trello implements INodeType {
 
 					endpoint = `lists/${id}/cards`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 
 				} else if (operation === 'update') {
@@ -420,7 +420,7 @@ export class Trello implements INodeType {
 
 					endpoint = `lists/${id}`;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					Object.assign(qs, updateFields);
 
 				} else {
@@ -443,7 +443,7 @@ export class Trello implements INodeType {
 						url,
 					});
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 
 					endpoint = `cards/${cardId}/attachments`;
@@ -472,7 +472,7 @@ export class Trello implements INodeType {
 
 					endpoint = `cards/${cardId}/attachments/${id}`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 
 				} else if (operation === 'getAll') {
@@ -486,7 +486,7 @@ export class Trello implements INodeType {
 
 					endpoint = `cards/${cardId}/attachments`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 				} else {
 					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
@@ -506,7 +506,7 @@ export class Trello implements INodeType {
 
 					Object.assign(qs, { name });
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 
 					endpoint = `cards/${cardId}/checklists`;
@@ -534,7 +534,7 @@ export class Trello implements INodeType {
 
 					endpoint = `checklists/${id}`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 
 				} else if (operation === 'getAll') {
@@ -548,7 +548,7 @@ export class Trello implements INodeType {
 
 					endpoint = `cards/${cardId}/checklists`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 
 				} else if (operation === 'getCheckItem') {
@@ -563,7 +563,7 @@ export class Trello implements INodeType {
 
 					endpoint = `cards/${cardId}/checkItem/${checkItemId}`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 
 				} else if (operation === 'createCheckItem') {
@@ -578,7 +578,7 @@ export class Trello implements INodeType {
 					endpoint = `checklists/${checklistId}/checkItems`;
 
 					const name = this.getNodeParameter('name', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, { name, ...additionalFields });
 
 				} else if (operation === 'deleteCheckItem') {
@@ -605,7 +605,7 @@ export class Trello implements INodeType {
 
 					endpoint = `cards/${cardId}/checkItem/${checkItemId}`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 
 				} else if (operation === 'completedCheckItems') {
@@ -619,7 +619,7 @@ export class Trello implements INodeType {
 
 					endpoint = `cards/${cardId}/checkItemStates`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 
 				} else {
@@ -668,7 +668,7 @@ export class Trello implements INodeType {
 
 					endpoint = `labels/${id}`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(qs, additionalFields);
 
 				} else if (operation === 'getAll') {
@@ -682,7 +682,7 @@ export class Trello implements INodeType {
 
 					endpoint = `board/${idBoard}/labels`;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					Object.assign(qs, additionalFields);
 				} else if (operation === 'update') {
@@ -696,7 +696,7 @@ export class Trello implements INodeType {
 
 					endpoint = `labels/${id}`;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					Object.assign(qs, updateFields);
 
 				} else if (operation === 'addLabel') {

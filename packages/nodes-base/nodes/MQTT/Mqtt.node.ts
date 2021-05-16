@@ -141,7 +141,7 @@ export class Mqtt implements INodeType {
 
 					let message;
 					const topic = (this.getNodeParameter('topic', i));
-					const options = (this.getNodeParameter('options', i) as IDataObject);
+					const options = (this.getNodeParameter('options', i));
 
 					try {
 						if (sendInputData === true) {

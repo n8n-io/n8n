@@ -117,7 +117,7 @@ export class Tapfiliate implements INodeType {
 					const firstname = this.getNodeParameter('firstname', i) as string;
 					const lastname = this.getNodeParameter('lastname', i) as string;
 					const email = this.getNodeParameter('email', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IDataObject = {
 						firstname,
 						lastname,
@@ -219,7 +219,7 @@ export class Tapfiliate implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const programId = this.getNodeParameter('programId', i) as string;
 					const affiliateId = this.getNodeParameter('affiliateId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IDataObject = {
 						affiliate: {
 							id: affiliateId,

@@ -183,7 +183,7 @@ export class Affinity implements INodeType {
 				if (operation === 'create') {
 					const listId = this.getNodeParameter('listId', i) as string;
 					const entityId = this.getNodeParameter('entityId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IDataObject = {
 						entity_id: parseInt(entityId, 10),
 					};
@@ -221,7 +221,7 @@ export class Affinity implements INodeType {
 					const firstName = this.getNodeParameter('firstName', i) as string;
 					const lastName = this.getNodeParameter('lastName', i) as string;
 					const emails = this.getNodeParameter('emails', i) as string[];
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IPerson = {
 						first_name: firstName,
 						last_name: lastName,
@@ -235,7 +235,7 @@ export class Affinity implements INodeType {
 				//https://api-docs.affinity.co/#update-a-person
 				if (operation === 'update') {
 					const personId = this.getNodeParameter('personId', i) as number;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const emails = this.getNodeParameter('emails', i) as string[];
 					const body: IPerson = {
 						emails,
@@ -254,7 +254,7 @@ export class Affinity implements INodeType {
 				//https://api-docs.affinity.co/#get-a-specific-person
 				if (operation === 'get') {
 					const personId = this.getNodeParameter('personId', i) as number;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.withInteractionDates) {
 						qs.with_interaction_dates = options.withInteractionDates as boolean;
 					}
@@ -263,7 +263,7 @@ export class Affinity implements INodeType {
 				//https://api-docs.affinity.co/#search-for-persons
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.term) {
 						qs.term = options.term as string;
 					}
@@ -289,7 +289,7 @@ export class Affinity implements INodeType {
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i);
 					const domain = this.getNodeParameter('domain', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IOrganization = {
 						name,
 						domain,
@@ -302,7 +302,7 @@ export class Affinity implements INodeType {
 				//https://api-docs.affinity.co/#update-an-organization
 				if (operation === 'update') {
 					const organizationId = this.getNodeParameter('organizationId', i) as number;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IOrganization = {};
 					if (updateFields.name) {
 						body.name = updateFields.name as string;
@@ -318,7 +318,7 @@ export class Affinity implements INodeType {
 				//https://api-docs.affinity.co/#get-a-specific-organization
 				if (operation === 'get') {
 					const organizationId = this.getNodeParameter('organizationId', i) as number;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.withInteractionDates) {
 						qs.with_interaction_dates = options.withInteractionDates as boolean;
 					}
@@ -327,7 +327,7 @@ export class Affinity implements INodeType {
 				//https://api-docs.affinity.co/#search-for-organizations
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					if (options.term) {
 						qs.term = options.term as string;
 					}
