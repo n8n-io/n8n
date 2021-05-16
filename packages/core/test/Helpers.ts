@@ -3,7 +3,6 @@ import { set } from 'lodash';
 import {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
-	IDataObject,
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	INodeParameters,
