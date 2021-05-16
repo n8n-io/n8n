@@ -30,13 +30,14 @@ import {
 	IWebhookData,
 	IWebhookResponseData,
 	IWorkflowExecuteAdditionalData,
+	LoggerProxy as Logger,
 	NodeHelpers,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-const activeExecutions = ActiveExecutions.getInstance();
 
+const activeExecutions = ActiveExecutions.getInstance();
 
 /**
  * Returns all the webhooks which should be created for the give workflow
@@ -144,7 +145,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 
 		try {
 			webhookResultData = await workflow.runWebhook(webhookData, workflowStartNode, additionalData, NodeExecuteFunctions, executionMode);
-		} catch (e) {
+		} catch (err) {
 			// Send error response to webhook caller
 			const errorMessage = 'Workflow Webhook Error: Workflow could not be started!';
 			responseCallback(new Error(errorMessage), {});
@@ -156,8 +157,9 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 					runData: {},
 					lastNodeExecuted: workflowStartNode.name,
 					error: {
-						message: e.message,
-						stack: e.stack,
+						...err,
+						message: err.message,
+						stack: err.stack,
 					},
 				},
 			};
@@ -284,6 +286,8 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 		// Start now to run the workflow
 		const workflowRunner = new WorkflowRunner();
 		const executionId = await workflowRunner.run(runData, true, !didSendResponse);
+
+		Logger.verbose(`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`, { executionId });
 
 		// Get a promise which resolves when the workflow did execute and send then response
 		const executePromise = activeExecutions.getPostExecutePromise(executionId) as Promise<IExecutionDb | undefined>;

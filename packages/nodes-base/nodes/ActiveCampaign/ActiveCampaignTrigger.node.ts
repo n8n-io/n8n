@@ -116,7 +116,7 @@ export class ActiveCampaignTrigger implements INodeType {
 				const endpoint = `/api/3/webhooks/${webhookData.webhookId}`;
 				try {
 					await activeCampaignApiRequest.call(this, 'GET', endpoint, {});
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;

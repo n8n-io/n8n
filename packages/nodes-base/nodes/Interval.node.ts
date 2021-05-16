@@ -3,6 +3,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 
@@ -62,7 +63,7 @@ export class Interval implements INodeType {
 		const unit = this.getNodeParameter('unit') as string;
 
 		if (interval <= 0) {
-			throw new Error('The interval has to be set to at least 1 or higher!');
+			throw new NodeOperationError(this.getNode(), 'The interval has to be set to at least 1 or higher!');
 		}
 
 		let intervalValue = interval;

@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
  } from 'n8n-workflow';
 
 export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, qs: IDataObject = {} ,headers?: object): Promise<any> { // tslint:disable-line:no-any
@@ -38,13 +38,13 @@ export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctio
 			const credentials = this.getCredentials('mailchimpApi');
 
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			options.headers = Object.assign({}, headers, { Authorization: `apikey ${credentials.apiKey}` });
 
 			if (!(credentials.apiKey as string).includes('-')) {
-				throw new Error('The API key is not valid!');
+				throw new NodeOperationError(this.getNode(), 'The API key is not valid!');
 			}
 
 			const datacenter = (credentials.apiKey as string).split('-').pop();
@@ -61,10 +61,7 @@ export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctio
 			return await this.helpers.requestOAuth2!.call(this, 'mailchimpOAuth2Api', options, { tokenType: 'Bearer' });
 		}
 	} catch (error) {
-		if (error.respose && error.response.body && error.response.body.detail) {
-			throw new Error(`Mailchimp Error response [${error.statusCode}]: ${error.response.body.detail}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

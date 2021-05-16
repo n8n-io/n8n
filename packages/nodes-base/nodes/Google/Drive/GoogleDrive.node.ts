@@ -8,6 +8,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -272,6 +273,32 @@ export class GoogleDrive implements INodeType {
 					},
 				},
 				description: 'Name of the binary property to which to<br />write the data of the read file.',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'download',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'File Name',
+						name: 'fileName',
+						type: 'string',
+						default: '',
+						description: 'File name. Ex: data.pdf',
+					},
+				],
 			},
 
 
@@ -1996,7 +2023,11 @@ export class GoogleDrive implements INodeType {
 						}
 					}
 
-					const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/copy`, body);
+					const qs = {
+						supportsAllDrives: true,
+					};
+					
+					const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/copy`, body, qs);
 
 					returnData.push(response as IDataObject);
 
@@ -2006,6 +2037,7 @@ export class GoogleDrive implements INodeType {
 					// ----------------------------------
 
 					const fileId = this.getNodeParameter('fileId', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
 					const requestOptions = {
 						resolveWithFullResponse: true,
@@ -2016,8 +2048,13 @@ export class GoogleDrive implements INodeType {
 					const response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}`, {}, { alt: 'media' }, undefined, requestOptions);
 
 					let mimeType: string | undefined;
+					let fileName: string | undefined = undefined;
 					if (response.headers['content-type']) {
 						mimeType = response.headers['content-type'];
+					}
+
+					if (options.fileName) {
+						fileName = options.fileName as string;
 					}
 
 					const newItem: INodeExecutionData = {
@@ -2038,7 +2075,7 @@ export class GoogleDrive implements INodeType {
 
 					const data = Buffer.from(response.body as string);
 
-					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, undefined, mimeType);
+					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, fileName, mimeType);
 
 				} else if (operation === 'list') {
 					// ----------------------------------
@@ -2142,13 +2179,13 @@ export class GoogleDrive implements INodeType {
 						const item = items[i];
 
 						if (item.binary === undefined) {
-							throw new Error('No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
 
 						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
 						if (item.binary[propertyNameUpload] === undefined) {
-							throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
 						}
 
 						if (item.binary[propertyNameUpload].mimeType) {
@@ -2243,6 +2280,7 @@ export class GoogleDrive implements INodeType {
 
 					const qs = {
 						fields: queryFields,
+						supportsAllDrives: true,
 					};
 
 					const response = await googleApiRequest.call(this, 'POST', '/drive/v3/files', body, qs);
@@ -2289,7 +2327,7 @@ export class GoogleDrive implements INodeType {
 					returnData.push(response as IDataObject);
 				}
 			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 			}
 		}
 
