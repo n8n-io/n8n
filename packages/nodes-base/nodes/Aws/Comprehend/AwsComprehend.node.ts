@@ -59,6 +59,11 @@ export class AwsComprehend implements INodeType {
 						description: 'Identify the dominant language',
 					},
 					{
+						name: 'Detect Entities',
+						value: 'detectEntities',
+						description: 'Inspects text for named entities, and returns information about them',
+					},
+					{
 						name: 'Detect Sentiment',
 						value: 'detectSentiment',
 						description: 'Analyse the sentiment of the text',
@@ -129,6 +134,7 @@ export class AwsComprehend implements INodeType {
 						],
 						operation: [
 							'detectSentiment',
+							'detectEntities',
 						],
 					},
 				},
@@ -167,6 +173,35 @@ export class AwsComprehend implements INodeType {
 				},
 				default: true,
 				description: 'When set to true a simplify version of the response will be used else the raw data.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						resource: [
+							'text',
+						],
+						operation: [
+							'detectEntities',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Endpoint Arn',
+						name: 'endpointArn',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'The Amazon Resource Name of an endpoint that is associated with a custom entity recognition model.',
+					},
+				],
 			},
 		],
 	};
@@ -208,6 +243,26 @@ export class AwsComprehend implements INodeType {
 						LanguageCode: languageCode,
 					};
 					responseData = await awsApiRequestREST.call(this, 'comprehend', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+				}
+
+				//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectEntities.html
+				if (operation === 'detectEntities') {
+					const action = 'Comprehend_20171127.DetectEntities';
+					const text = this.getNodeParameter('text', i) as string;
+					const languageCode = this.getNodeParameter('languageCode', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body: IDataObject = {
+						Text: text,
+						LanguageCode: languageCode,
+					};
+
+					if (additionalFields.endpointArn) {
+						body.EndpointArn = additionalFields.endpointArn;
+					}
+
+					responseData = await awsApiRequestREST.call(this, 'comprehend', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+					responseData = responseData.Entities;
 				}
 			}
 

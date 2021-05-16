@@ -445,6 +445,37 @@ export class Spotify implements INodeType {
 				placeholder: 'spotify:track:0xE4LEFzSNGsz1F6kvXsHU',
 				description: `The track's Spotify URI or its ID. The track to add/delete from the playlist.`,
 			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'playlist',
+						],
+						operation: [
+							'add',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Position',
+						name: 'position',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+						},
+						default: 0,
+						placeholder: '0',
+						description: `The new track's position in the playlist.`,
+					},
+				],
+			},
+
 			// -----------------------------------------------------
 			//         Track Operations
 			//		   Get a Track, Get a Track's Audio Features
@@ -918,15 +949,19 @@ export class Spotify implements INodeType {
 						requestMethod = 'POST';
 
 						const trackId = this.getNodeParameter('trackID', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						qs = {
 							uris: trackId,
 						};
 
+						if (additionalFields.position !== undefined) {
+							qs.position = additionalFields.position;
+						}
+
 						endpoint = `/playlists/${id}/tracks`;
 
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-
 					}
 				} else if (operation === 'getUserPlaylists') {
 					requestMethod = 'GET';

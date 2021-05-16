@@ -3,14 +3,12 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	readFile as fsReadFile,
-} from 'fs';
-import { promisify } from 'util';
-
-const fsReadFileAsync = promisify(fsReadFile);
+} from 'fs/promises';
 
 
 export class ReadBinaryFile implements INodeType {
@@ -63,10 +61,10 @@ export class ReadBinaryFile implements INodeType {
 
 			let data;
 			try {
-				data = await fsReadFileAsync(filePath) as Buffer;
+				data = await fsReadFile(filePath) as Buffer;
 			} catch (error) {
 				if (error.code === 'ENOENT') {
-					throw new Error(`The file "${filePath}" could not be found.`);
+					throw new NodeOperationError(this.getNode(), `The file "${filePath}" could not be found.`);
 				}
 
 				throw error;

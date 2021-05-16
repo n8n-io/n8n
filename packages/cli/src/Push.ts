@@ -7,6 +7,10 @@ import {
 	IPushDataType,
 } from '.';
 
+import {
+	LoggerProxy as Logger,
+} from 'n8n-workflow';
+
 export class Push {
 	private channel: sseChannel;
 	private connections: {
@@ -24,6 +28,7 @@ export class Push {
 
 		this.channel.on('disconnect', (channel: string, res: express.Response) => {
 			if (res.req !== undefined) {
+				Logger.debug(`Remove editor-UI session`, { sessionId: res.req.query.sessionId });
 				delete this.connections[res.req.query.sessionId as string];
 			}
 		});
@@ -39,6 +44,8 @@ export class Push {
 	 * @memberof Push
 	 */
 	add(sessionId: string, req: express.Request, res: express.Response) {
+		Logger.debug(`Add editor-UI session`, { sessionId });
+
 		if (this.connections[sessionId] !== undefined) {
 			// Make sure to remove existing connection with the same session
 			// id if one exists already
@@ -64,10 +71,11 @@ export class Push {
 
 	send(type: IPushDataType, data: any, sessionId?: string) { // tslint:disable-line:no-any
 		if (sessionId !== undefined && this.connections[sessionId] === undefined) {
-			// TODO: Log that properly!
-			console.error(`The session "${sessionId}" is not registred.`);
+			Logger.error(`The session "${sessionId}" is not registred.`, { sessionId });
 			return;
 		}
+
+		Logger.debug(`Send data of type "${type}" to editor-UI`, { dataType: type, sessionId });
 
 		const sendData: IPushData = {
 			type,

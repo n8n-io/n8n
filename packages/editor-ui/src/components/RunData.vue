@@ -5,7 +5,7 @@
 		<el-button
 			v-if="node && !isReadOnly"
 			:disabled="workflowRunning"
-			@click.stop="runWorkflow(node.name)"
+			@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
 			class="execute-node-button"
 			:title="`Executes this ${node.name} node after executing any previous nodes that have not yet returned data`"
 		>
@@ -81,8 +81,7 @@
 		<div class="data-display-content">
 			<span v-if="node && workflowRunData !== null && workflowRunData.hasOwnProperty(node.name)">
 				<div v-if="workflowRunData[node.name][runIndex].error" class="error-display">
-					<div class="error-message">ERROR: {{workflowRunData[node.name][runIndex].error.message}}</div>
-					<pre><code>{{workflowRunData[node.name][runIndex].error.stack}}</code></pre>
+					<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
 				</div>
 				<span v-else>
 					<div v-if="showData === false" class="to-much-data">
@@ -226,8 +225,10 @@ import {
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
+import NodeErrorView from '@/components/Error/NodeViewError.vue';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
+import { externalHooks } from "@/components/mixins/externalHooks";
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
@@ -239,6 +240,7 @@ const deselectedPlaceholder = '_!^&*';
 
 export default mixins(
 	copyPaste,
+	externalHooks,
 	genericHelpers,
 	nodeHelpers,
 	workflowRun,
@@ -247,6 +249,7 @@ export default mixins(
 		name: 'RunData',
 		components: {
 			BinaryDataDisplay,
+			NodeErrorView,
 			VueJsonPretty,
 		},
 		data () {
@@ -616,8 +619,9 @@ export default mixins(
 			jsonData () {
 				this.refreshDataSize();
 			},
-			displayMode () {
+			displayMode (newValue, oldValue) {
 				this.closeBinaryDataDisplay();
+				this.$externalHooks().run('runData.displayModeChanged', { newValue, oldValue });
 			},
 			maxRunIndex () {
 				this.runIndex = Math.min(this.runIndex, this.maxRunIndex);
@@ -736,13 +740,6 @@ export default mixins(
 
 			.text {
 				margin-bottom: 1em;
-			}
-		}
-
-		.error-display {
-			.error-message {
-				color: #ff0000;
-				font-weight: bold;
 			}
 		}
 
