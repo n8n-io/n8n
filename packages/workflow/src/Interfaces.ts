@@ -231,11 +231,10 @@ export interface IExecuteFunctions {
 	getNodeParameter(parameterName: 'operation', itemIndex?: number): string;
 	getNodeParameter(parameterName: StringReturnTypeParam, itemIndex: number): string;
 	getNodeParameter(parameterName: BooleanReturnTypeParam, itemIndex: number): boolean;
-	getNodeParameter(parameterName: IDataObjectReturnTypeParam, itemIndex: number): IDataObject;
+	getNodeParameter(parameterName: IDataObjectReturnTypeParam, itemIndex: number, fallbackValue?: object): IDataObject;
 	getNodeParameter<T extends string | IDataObject>(parameterName: 'filters', itemIndex?: number): T;
 	getNodeParameter<T extends string | string[]>(parameterName: 'email', itemIndex?: number): T;
 	getNodeParameter<T extends string | string[]>(parameterName: 'to', itemIndex?: number): T;
-	getNodeParameter(parameterName: 'options', itemIndex?: number, fallbackValue?: object): IDataObject;
 	getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
