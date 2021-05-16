@@ -2,9 +2,11 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 
 import {
 	IConnections,
+	IDataObject,
 	INode,
 	INodeExecutionData,
 	INodeIssues,
+	INodeParameters,
 	INodeType,
 	INodeTypes,
 	INodeTypeData,
@@ -335,8 +337,7 @@ export const workflowHelpers = mixins(
 				return nodeData;
 			},
 
-			// Executes the given expression and returns its value
-			resolveExpression (expression: string) {
+			resolveExpression (expression: string, siblingParameters: INodeParameters = {}) {
 				const inputIndex = 0;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -362,7 +363,16 @@ export const workflowHelpers = mixins(
 					connectionInputData = [];
 				}
 
-				return workflow.expression.getParameterValue(expression, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', true);
+				const parameters = {
+					'__xxxxxxx__': expression,
+					...siblingParameters,
+				};
+				const returnData =  workflow.expression.getParameterValue(parameters, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', false) as IDataObject;
+
+				if (typeof returnData['__xxxxxxx__'] === 'object') {
+					return workflow.expression.convertObjectValueToString(returnData['__xxxxxxx__'] as object);
+				}
+				return returnData['__xxxxxxx__'];
 			},
 
 			// Saves the currently loaded workflow to the database.

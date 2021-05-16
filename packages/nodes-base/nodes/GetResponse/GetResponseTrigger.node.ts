@@ -180,7 +180,7 @@ export class GetResponseTrigger implements INodeType {
 						}
 					}
 				} catch (error) {
-					if (error.message.includes('[404]')) {
+					if (error.httpCode === '404') {
 						return false;
 					}
 				}

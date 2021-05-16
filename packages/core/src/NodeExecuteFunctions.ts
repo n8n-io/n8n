@@ -51,6 +51,9 @@ import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
 import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
+import {
+	LoggerProxy as Logger,
+} from 'n8n-workflow';
 
 const requestPromiseWithDefaults = requestPromise.defaults({
 	timeout: 300000, // 5 minutes
@@ -188,7 +191,11 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 					};
 				}
 
+				Logger.debug(`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`);
+
 				const newToken = await token.refresh(tokenRefreshOptions);
+
+				Logger.debug(`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`);
 
 				credentials.oauthTokenData = newToken.data;
 
@@ -200,6 +207,8 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 
 				// Save the refreshed token
 				await additionalData.credentialsHelper.updateCredentials(name, credentialsType, credentials);
+
+				Logger.debug(`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`);
 
 				// Make the request again with the new token
 				const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
@@ -682,7 +691,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				return continueOnFail(node);
 			},
 			evaluateExpression: (expression: string, itemIndex: number) => {
-				return workflow.expression.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, mode);
+				return workflow.expression.resolveSimpleParameterValue('=' + expression, {}, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, mode);
 			},
 			async executeWorkflow(workflowInfo: IExecuteWorkflowInfo, inputData?: INodeExecutionData[]): Promise<any> { // tslint:disable-line:no-any
 				return additionalData.executeWorkflow(workflowInfo, additionalData, inputData);
@@ -733,7 +742,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				return getWorkflowMetadata(workflow);
 			},
 			getWorkflowDataProxy: (itemIndex: number): IWorkflowDataProxyData => {
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, mode);
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, {}, mode);
 				return dataProxy.getDataProxy();
 			},
 			getWorkflowStaticData(type: string): IDataObject {
@@ -780,7 +789,7 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 			},
 			evaluateExpression: (expression: string, evaluateItemIndex: number | undefined) => {
 				evaluateItemIndex = evaluateItemIndex === undefined ? itemIndex : evaluateItemIndex;
-				return workflow.expression.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, evaluateItemIndex, node.name, connectionInputData, mode);
+				return workflow.expression.resolveSimpleParameterValue('=' + expression, {}, runExecutionData, runIndex, evaluateItemIndex, node.name, connectionInputData, mode);
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
@@ -832,7 +841,7 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 				return getWorkflowMetadata(workflow);
 			},
 			getWorkflowDataProxy: (): IWorkflowDataProxyData => {
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, mode);
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, {}, mode);
 				return dataProxy.getDataProxy();
 			},
 			getWorkflowStaticData(type: string): IDataObject {
