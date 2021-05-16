@@ -723,7 +723,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				// TODO: Maybe do clone of data only here so it only clones the data that is really needed
 				return inputData[inputName][inputIndex] as INodeExecutionData[];
 			},
-			getNodeParameter: (parameterName: string, itemIndex: number, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object => { //tslint:disable-line:no-any
+			getNodeParameter: (parameterName: string, itemIndex = 0, fallbackValue?: any): any => { //tslint:disable-line:no-any
 				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, fallbackValue);
 			},
 			getMode: (): WorkflowExecuteMode => {

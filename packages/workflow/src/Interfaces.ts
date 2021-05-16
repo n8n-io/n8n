@@ -206,6 +206,15 @@ export interface IExecuteContextData {
 	[key: string]: IContextObject;
 }
 
+type StringReturnTypeParam =  'binaryPropertyName' | 'binaryProperty' | 'company' | 'currency' | 'description' | 'event' | 'from' | 'message' | 'name' | 'password' | 'path' | 'query' | 'range' | 'source' | 'subject' | 'text' | 'title' | 'topic' | 'url';
+
+// type StringEndPattern = 'Id' | 'Url' | 'Name' | 'name' | 'Color' | 'Path' | 'Key' | 'Ui' | 'Date' | 'Email' | 'Json' | 'Type' | 'Email' | 'Slug'; // blocked until upgrade to TS 4.1
+
+// getNodeParameter<T extends `${string}{StringEndPattern}`>(parameterName: T, itemIndex: number): string; // blocked until upgrade to TS 4.1
+
+type BooleanReturnTypeParam = 'binaryData' | 'download' | 'jsonParameters' | 'rawData' | 'resolveData' | 'simple';
+
+type IDataObjectReturnTypeParam = 'additionalFields' | 'options' | 'updateFields';
 
 export interface IExecuteFunctions {
 	continueOnFail(): boolean;
@@ -216,7 +225,20 @@ export interface IExecuteFunctions {
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
+	getNodeParameter(parameterName: 'limit', itemIndex?: number): number;
+	getNodeParameter(parameterName: 'returnAll', itemIndex?: number): boolean;
+	getNodeParameter(parameterName: 'resource', itemIndex?: number): string;
+	getNodeParameter(parameterName: 'operation', itemIndex?: number): string;
+	getNodeParameter(parameterName: StringReturnTypeParam, itemIndex: number): string;
+	getNodeParameter(parameterName: BooleanReturnTypeParam, itemIndex: number): boolean;
+	getNodeParameter(parameterName: IDataObjectReturnTypeParam, itemIndex: number): IDataObject;
+	getNodeParameter<T extends string | IDataObject>(parameterName: 'filters', itemIndex?: number): T;
+	getNodeParameter<T extends string | string[]>(parameterName: 'email', itemIndex?: number): T;
+	getNodeParameter<T extends string | string[]>(parameterName: 'to', itemIndex?: number): T;
+	getNodeParameter<T>(parameterName: 'updateFields', itemIndex: number): T;
+	getNodeParameter<T>(parameterName: 'options', itemIndex: number): T;
 	getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
 	getRestApiUrl(): string;
