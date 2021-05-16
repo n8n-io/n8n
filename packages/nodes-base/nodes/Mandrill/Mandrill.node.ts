@@ -70,7 +70,7 @@ interface Body {
 	send_at?: string;
 }
 
-interface Options {
+interface Options extends IDataObject {
 	html: string;
 	fromName?: string;
 	text: string;

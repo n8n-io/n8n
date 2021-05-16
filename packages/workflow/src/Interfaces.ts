@@ -235,8 +235,6 @@ export interface IExecuteFunctions {
 	getNodeParameter<T extends string | IDataObject>(parameterName: 'filters', itemIndex?: number): T;
 	getNodeParameter<T extends string | string[]>(parameterName: 'email', itemIndex?: number): T;
 	getNodeParameter<T extends string | string[]>(parameterName: 'to', itemIndex?: number): T;
-	getNodeParameter<T>(parameterName: 'updateFields', itemIndex: number): T;
-	getNodeParameter<T>(parameterName: 'options', itemIndex: number): T;
 	getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;

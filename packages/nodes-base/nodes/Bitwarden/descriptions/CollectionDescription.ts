@@ -1,4 +1,5 @@
 import {
+	IDataObject,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -146,7 +147,7 @@ export const collectionFields = [
 	},
 ] as INodeProperties[];
 
-export interface CollectionUpdateFields {
+export interface CollectionUpdateFields extends IDataObject {
 	groups: string[];
 	externalId: string;
 }
