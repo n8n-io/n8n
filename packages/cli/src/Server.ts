@@ -572,6 +572,7 @@ class App {
 
 			const newWorkflowData = req.body as IWorkflowBase;
 			const id = req.params.id;
+			newWorkflowData.id = id;
 
 			await this.externalHooks.run('workflow.update', [newWorkflowData]);
 
@@ -1732,6 +1733,7 @@ class App {
 						}
 					);
 				}
+				returnData.sort((a, b) => parseInt(b.id, 10) - parseInt(a.id, 10));
 
 				return returnData;
 			}

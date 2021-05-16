@@ -438,7 +438,8 @@ export default mixins(
 
 			this.$store.commit('setActiveExecutions', results[1]);
 
-			const alreadyPresentExecutionIds = this.finishedExecutions.map(exec => exec.id);
+			// execution IDs are typed as string, int conversion is necessary so we can order.
+			const alreadyPresentExecutionIds = this.finishedExecutions.map(exec => parseInt(exec.id, 10));
 			let lastId = 0;
 			const gaps = [] as number[];
 			for(let i = results[0].results.length - 1; i >= 0; i--) {
@@ -459,7 +460,7 @@ export default mixins(
 
 				// Check new results from end to start
 				// Add new items accordingly.
-				const executionIndex = alreadyPresentExecutionIds.indexOf(currentItem.id);
+				const executionIndex = alreadyPresentExecutionIds.indexOf(currentId);
 				if (executionIndex !== -1) {
 					// Execution that we received is already present.
 
@@ -477,7 +478,7 @@ export default mixins(
 				// Find the correct position to place this newcomer
 				let j;
 				for (j = this.finishedExecutions.length - 1; j >= 0; j--) {
-					if (currentItem.id < this.finishedExecutions[j].id) {
+					if (currentId < parseInt(this.finishedExecutions[j].id, 10)) {
 						this.finishedExecutions.splice(j + 1, 0, currentItem);
 						break;
 					}
