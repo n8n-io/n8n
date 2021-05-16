@@ -21,7 +21,7 @@ export async function redditApiRequest(
 	qs: IDataObject,
 ): Promise<any> { // tslint:disable-line:no-any
 
-	const resource = this.getNodeParameter('resource');
+	const resource = this.getNodeParameter('resource') as string;
 
 	const authRequired = ['profile', 'post', 'postComment'].includes(resource);
 

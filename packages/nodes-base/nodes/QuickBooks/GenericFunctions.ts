@@ -41,7 +41,7 @@ export async function quickBooksApiRequest(
 	option: IDataObject = {},
 ): Promise<any> { // tslint:disable-line:no-any
 
-	const resource = this.getNodeParameter('resource');
+	const resource = this.getNodeParameter('resource') as string;
 	const operation = this.getNodeParameter('operation');
 
 	let isDownload = false;

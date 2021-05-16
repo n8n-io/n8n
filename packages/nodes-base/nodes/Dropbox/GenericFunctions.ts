@@ -57,7 +57,7 @@ export async function dropboxApiRequest(this: IHookFunctions | IExecuteFunctions
 
 export async function dropboxpiRequestAllItems(this: IExecuteFunctions | IHookFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const resource = this.getNodeParameter('resource');
+	const resource = this.getNodeParameter('resource') as string;
 
 	const returnData: IDataObject[] = [];
 
