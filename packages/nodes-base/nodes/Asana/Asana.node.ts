@@ -1895,7 +1895,7 @@ export class Asana implements INodeType {
 					responseData = responseData.data;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as boolean;
+						const limit = this.getNodeParameter('limit', i) as number;
 						responseData = responseData.splice(0, limit);
 					}
 				}
@@ -1980,7 +1980,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as boolean;
+						qs.limit = this.getNodeParameter('limit', i) as number;
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2240,7 +2240,7 @@ export class Asana implements INodeType {
 
 					} else {
 
-						qs.limit = this.getNodeParameter('limit', i) as boolean;
+						qs.limit = this.getNodeParameter('limit', i) as number;
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 

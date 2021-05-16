@@ -272,7 +272,7 @@ export class Mailjet implements INodeType {
 				//https://dev.mailjet.com/sms/reference/send-message#v4_post_sms-send
 				if (operation === 'send') {
 					const from = this.getNodeParameter('from', i) as string;
-					const to = this.getNodeParameter('to', i) as boolean;
+					const to = this.getNodeParameter('to', i) as string;
 					const text = this.getNodeParameter('text', i) as string;
 					const body: IDataObject = {
 						From: from,

@@ -191,7 +191,7 @@ export class Orbit implements INodeType {
 					if (returnAll === true) {
 						responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', endpoint, {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as boolean;
+						qs.limit = this.getNodeParameter('limit', 0) as number;
 						responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', endpoint, {}, qs);
 						responseData = responseData.splice(0, qs.limit);
 					}
@@ -293,7 +293,7 @@ export class Orbit implements INodeType {
 					if (returnAll === true) {
 						responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', `/${workspaceId}/members`, {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as boolean;
+						qs.limit = this.getNodeParameter('limit', 0) as number;
 						responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', `/${workspaceId}/members`, {}, qs);
 						responseData = responseData.splice(0, qs.limit);
 					}
@@ -391,7 +391,7 @@ export class Orbit implements INodeType {
 					if (returnAll === true) {
 						responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', `/${workspaceId}/members/${memberId}/notes`, {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as boolean;
+						qs.limit = this.getNodeParameter('limit', 0) as number;
 						responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', `/${workspaceId}/members/${memberId}/notes`, {}, qs);
 						responseData = responseData.splice(0, qs.limit);
 					}
@@ -435,7 +435,7 @@ export class Orbit implements INodeType {
 					if (returnAll === true) {
 						responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', endpoint, {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as boolean;
+						qs.limit = this.getNodeParameter('limit', 0) as number;
 						responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', endpoint, {}, qs);
 						responseData = responseData.splice(0, qs.limit);
 					}

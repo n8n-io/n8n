@@ -168,7 +168,7 @@ export class CloudFirestore implements INodeType {
 				const projectId = this.getNodeParameter('projectId', 0) as string;
 				const database = this.getNodeParameter('database', 0) as string;
 				const collection = this.getNodeParameter('collection', 0) as string;
-				const returnAll = this.getNodeParameter('returnAll', 0) as string;
+				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 
 				if (returnAll) {
@@ -179,7 +179,7 @@ export class CloudFirestore implements INodeType {
 						`/${projectId}/databases/${database}/documents/${collection}`,
 					);
 				} else {
-					const limit = this.getNodeParameter('limit', 0) as string;
+					const limit = this.getNodeParameter('limit', 0) as number;
 					const getAllResponse = await googleApiRequest.call(
 						this,
 						'GET',
@@ -332,7 +332,7 @@ export class CloudFirestore implements INodeType {
 			if (operation === 'getAll') {
 				const projectId = this.getNodeParameter('projectId', 0) as string;
 				const database = this.getNodeParameter('database', 0) as string;
-				const returnAll = this.getNodeParameter('returnAll', 0) as string;
+				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
 				if (returnAll) {
 					const getAllResponse = await googleApiRequestAllItems.call(
@@ -344,7 +344,7 @@ export class CloudFirestore implements INodeType {
 					// @ts-ignore
 					responseData = getAllResponse.map(o => ({ name: o }));
 				} else {
-					const limit = this.getNodeParameter('limit', 0) as string;
+					const limit = this.getNodeParameter('limit', 0) as number;
 					const getAllResponse = await googleApiRequest.call(
 						this,
 						'POST',

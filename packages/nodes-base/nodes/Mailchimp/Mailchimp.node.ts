@@ -1885,7 +1885,7 @@ export class Mailchimp implements INodeType {
 					const email = this.getNodeParameter('email', i) as string;
 					const status = this.getNodeParameter('status', i) as Status;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const jsonActive = this.getNodeParameter('jsonParameters', i) as IDataObject;
+					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
 
 					const body: ICreateMemberBody = {
 						listId,
@@ -2036,7 +2036,7 @@ export class Mailchimp implements INodeType {
 					const listId = this.getNodeParameter('list', i) as string;
 					const email = this.getNodeParameter('email', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					const jsonActive = this.getNodeParameter('jsonParameters', i) as IDataObject;
+					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
 					const body: ICreateMemberBody = {
 						listId,
 						email_address: email,

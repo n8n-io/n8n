@@ -242,7 +242,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as boolean;
+						const limit = this.getNodeParameter('limit', 0) as number;
 						responseData = responseData.splice(0, limit);
 					}
 
