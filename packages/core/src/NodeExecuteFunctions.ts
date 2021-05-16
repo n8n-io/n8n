@@ -871,18 +871,20 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
  * @param {IWorkflowExecuteAdditionalData} additionalData
  * @returns {ILoadOptionsFunctions}
  */
-export function getLoadOptionsFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData): ILoadOptionsFunctions {
-	return ((workflow: Workflow, node: INode) => {
+export function getLoadOptionsFunctions(workflow: Workflow, node: INode, path: string, additionalData: IWorkflowExecuteAdditionalData): ILoadOptionsFunctions {
+	return ((workflow: Workflow, node: INode, path: string) => {
 		const that = {
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
 				return getCredentials(workflow, node, type, additionalData, 'internal');
 			},
-			getCurrentNodeParameter: (parameterName: string): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object | undefined => {
+			getCurrentNodeParameter: (parameterPath: string): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object | undefined => {
 				const nodeParameters = additionalData.currentNodeParameters;
-				if (nodeParameters && nodeParameters[parameterName]) {
-					return nodeParameters[parameterName];
+
+				if (parameterPath.charAt(0) === '&') {
+					parameterPath = `${path.split('.').slice(1, -1).join('.')}.${parameterPath.slice(1)}`;
 				}
-				return undefined;
+
+				return get(nodeParameters, parameterPath);
 			},
 			getCurrentNodeParameters: (): INodeParameters | undefined => {
 				return additionalData.currentNodeParameters;
@@ -915,7 +917,7 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, additio
 			},
 		};
 		return that;
-	})(workflow, node);
+	})(workflow, node, path);
 
 }
 
