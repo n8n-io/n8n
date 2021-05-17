@@ -10,6 +10,7 @@ import {
 import {
 	getConnectionManager,
 	In,
+	Like,
 } from 'typeorm';
 import * as bodyParser from 'body-parser';
 require('body-parser-xml')(bodyParser);
@@ -64,6 +65,7 @@ import {
 	WebhookServer,
 	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
+	WorkflowHelpers,
 	WorkflowRunner,
 } from './';
 
@@ -111,6 +113,7 @@ import { Registry } from 'prom-client';
 import * as TagHelpers from './TagHelpers';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { DEFAULT_NEW_WORKFLOW_NAME, WorkflowNameRequest } from './WorkflowHelpers';
 
 class App {
 
@@ -505,7 +508,8 @@ class App {
 
 			await this.externalHooks.run('workflow.create', [newWorkflow]);
 
-			const savedWorkflow = await Db.collections.Workflow!.save(newWorkflow);
+			await WorkflowHelpers.validateWorkflow(newWorkflow);
+			const savedWorkflow = await Db.collections.Workflow!.save(newWorkflow).catch(WorkflowHelpers.throwDuplicateEntryError) as WorkflowEntity;
 			savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, incomingTagOrder);
 
 			// @ts-ignore
@@ -564,6 +568,44 @@ class App {
 			return workflows;
 		}));
 
+
+		this.app.get(`/${this.restEndpoint}/workflows/new`, ResponseHelper.send(async (req: WorkflowNameRequest, res: express.Response): Promise<{ name: string }> => {
+			const { name, offset } = req.query;
+
+			// return default workflow name
+			// increment if other default workflow names exist
+			if (!name && !offset) {
+
+				const count = await Db.collections.Workflow!.count({
+					name: Like(`${DEFAULT_NEW_WORKFLOW_NAME}%`),
+				});
+
+				return count === 0
+					? { name: DEFAULT_NEW_WORKFLOW_NAME }
+					: { name: `${DEFAULT_NEW_WORKFLOW_NAME} ${count + 1}` };
+
+			// return incoming name with offset
+			// increment if workflow name with offset exists
+			} else if (name && offset) {
+
+				const count = await Db.collections.Workflow!.count({
+					name: Like(`${name}%`),
+				 });
+
+				return count === 0
+					? { name: `${name} ${offset}` }
+					: { name: `${name} ${count + 1}` };
+
+			}
+
+			throw new ResponseHelper.ResponseError(
+				'Query string params "name" and "offset" must be either both present or both absent.',
+				undefined,
+				400
+			);
+		}));
+
+
 		// Returns a specific workflow
 		this.app.get(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<WorkflowEntity | undefined> => {
 			const workflow = await Db.collections.Workflow!.findOne(req.params.id, { relations: ['tags'] });
@@ -621,7 +663,8 @@ class App {
 
 			updateData.updatedAt = this.getCurrentDate(); // TODO: Set at DB level
 
-			await Db.collections.Workflow!.update(id, updateData);
+			await WorkflowHelpers.validateWorkflow(updateData);
+			await Db.collections.Workflow!.update(id, updateData).catch(WorkflowHelpers.throwDuplicateEntryError);
 
 			const tablePrefix = config.get('database.tablePrefix');
 			await TagHelpers.removeRelations(req.params.id, tablePrefix);
