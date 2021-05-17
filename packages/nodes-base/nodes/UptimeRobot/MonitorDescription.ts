@@ -251,23 +251,23 @@ export const monitorFields = [
 				default: '',
 				options: [
 					{
-						name: 'paused',
+						name: 'Paused',
 						value: 0,
 					},
 					{
-						name: 'not checked yet',
+						name: 'Not Checked Yet',
 						value: 1,
 					},
 					{
-						name: 'up',
+						name: 'Up',
 						value: 2,
 					},
 					{
-						name: 'seems down',
+						name: 'Seems Down',
 						value: 8,
 					},
 					{
-						name: 'down',
+						name: 'Down',
 						value: 9,
 					},
 				],

@@ -113,23 +113,23 @@ export const publicStatusPageFields = [
 				default: '',
 				options: [
 					{
-						name: 'friendly name (a-z)',
+						name: 'Friendly Name (A-Z)',
 						value: 1,
 					},
 					{
-						name: 'friendly name (z-a)',
+						name: 'Friendly Name (Z-A)',
 						value: 2,
 					},
 					{
-						name: 'status (up-down-paused)',
+						name: 'Status (Up-Down-Paused)',
 						value: 3,
 					},
 					{
-						name: 'status (down-up-paused)',
+						name: 'Status (Down-Up-Paused)',
 						value: 4,
 					},
 				],
-				description: 'The sorting of the status page',
+				description: 'The sorting of the status page.',
 			},
 		],
 	},
@@ -304,19 +304,19 @@ export const publicStatusPageFields = [
 				default: '',
 				options: [
 					{
-						name: 'friendly name (a-z)',
+						name: 'Friendly Name (A-Z)',
 						value: 1,
 					},
 					{
-						name: 'friendly name (z-a)',
+						name: 'Friendly Name (Z-A)',
 						value: 2,
 					},
 					{
-						name: 'status (up-down-paused)',
+						name: 'Status (Up-Down-Paused)',
 						value: 3,
 					},
 					{
-						name: 'status (down-up-paused)',
+						name: 'Status (Down-Up-Paused)',
 						value: 4,
 					},
 				],
