@@ -1,10 +1,10 @@
 <template>
 	<Modal
-		:title="title"	
 		:name="modalName"
 		:eventBus="modalBus"
 		@enter="save"
 		size="sm"
+		title="Duplicate Workflow"	
 	>
 		<template slot="content">
 			<el-row>
@@ -48,7 +48,7 @@ import Modal from "./Modal.vue";
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { TagsDropdown, Modal },
 	name: "DuplicateWorkflow",
-	props: ["dialogVisible", "title", "modalName", "isActive"],
+	props: ["dialogVisible", "modalName", "isActive"],
 	data() {
 		const currentTagIds = this.$store.getters[
 			"workflowTags"

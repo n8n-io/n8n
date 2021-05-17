@@ -5,7 +5,6 @@
 				<DuplicateWorkflowDialog
 					:isActive="active"
 					:modalName="modalName"
-					title="Duplicate workflow"
 				/>
 			</template>
 		</ModalRoot>
