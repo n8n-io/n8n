@@ -40,7 +40,6 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 		};
 
 		options = Object.assign({}, options, option);
-		// console.log(options);
 		return await this.helpers.request!(options);
 	} catch (error) {
 
@@ -439,7 +438,7 @@ export function getFormattedChildren(children: IDataObject[]) {
 	return results;
 }
 
-export function getFilters() {
+export function getConditions() {
 
 	const elements: INodeProperties[] = [];
 
@@ -532,6 +531,12 @@ export function getFilters() {
 			'is_empty',
 			'is_not_empty',
 		],
+		formula: [
+			'contains',
+			'does_not_contain',
+			'is_empty',
+			'is_not_empty',
+		],
 	};
 
 	for (const [index, type] of Object.keys(types).entries()) {
@@ -556,6 +561,5 @@ export function getFilters() {
 			} as INodeProperties,
 		);
 	}
-	console.log(JSON.stringify(elements[1]));
 	return elements;
 }

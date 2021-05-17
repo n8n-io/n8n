@@ -146,13 +146,11 @@ export class Notion implements INodeType {
 				const databaseId = this.getCurrentNodeParameter('databaseId') as string;
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				for (const key of Object.keys(properties)) {
-					//remove formula as it's still not supported.
-					if (!['formula'].includes(properties[key].type)) {
-						returnData.push({
-							name: `${key} - (${properties[key].type})`,
-							value: `${key}|${properties[key].type}`,
-						});
-					}
+					returnData.push({
+						name: `${key} - (${properties[key].type})`,
+						value: `${key}|${properties[key].type}`,
+					});
+					
 				}
 				return returnData;
 			},
@@ -267,13 +265,21 @@ export class Notion implements INodeType {
 					const databaseId = this.getNodeParameter('databaseId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const filters = this.getNodeParameter('options.filter', i) as IDataObject;
-					console.log(filters);
-					const body: IDataObject = {};
+					const body: IDataObject = {
+						filter: {},
+					};
 					if (filters.singleCondition) {
-						body['filter'] = mapFilters([filters.singleCondition] as IDataObject[], timezone) ;
+						body['filter'] = mapFilters([filters.singleCondition] as IDataObject[], timezone);
 					}
-					console.log(body.filter);
-
+					if (filters.multipleCondition) {
+						const { or, and } = (filters.multipleCondition as IDataObject).condition as IDataObject;
+						if (Array.isArray(or) && or.length !== 0) {
+							Object.assign(body.filter, { or: (or as IDataObject[]).map((data) => mapFilters([data], timezone)) });
+						}
+						if (Array.isArray(and) && and.length !== 0) {
+							Object.assign(body.filter, { and: (and as IDataObject[]).map((data) => mapFilters([data], timezone)) });
+						}
+					}
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(this, 'results', 'POST', `/databases/${databaseId}/query`, body, {});
 					} else {
@@ -284,9 +290,9 @@ export class Notion implements INodeType {
 					if (simple === true) {
 						for (let i = 0; i < responseData.length; i++) {
 							responseData[i].properties = simplifyProperties(responseData[i].properties);
-						} 
+						}
 					}
-					
+
 					returnData.push.apply(returnData, responseData);
 				}
 			}
