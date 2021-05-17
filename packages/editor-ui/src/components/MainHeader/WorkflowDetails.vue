@@ -54,6 +54,7 @@
 			:tagIds="currentWorkflowTagIds"
 			:clickable="true"
 			:responsive="true"
+			:key="currentWorkflowId"
 			@click="onTagsEditEnable"
 			class="tags"
 		/>
