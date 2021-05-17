@@ -157,9 +157,10 @@ export const restApi = Vue.extend({
 				},
 
 				// Returns all the parameter options from the server
-				getNodeParameterOptions: (nodeType: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]> => {
+				getNodeParameterOptions: (nodeType: string, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]> => {
 					const sendData = {
 						nodeType,
+						path,
 						methodName,
 						credentials,
 						currentNodeParameters,
