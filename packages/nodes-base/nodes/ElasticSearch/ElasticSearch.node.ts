@@ -11,6 +11,7 @@ import {
 
 import {
 	elasticSearchApiRequest,
+	// handleListing,
 } from './GenericFunctions';
 
 import {
@@ -35,6 +36,12 @@ export class ElasticSearch implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		credentials: [
+			{
+				name: 'elasticSearchApi',
+				required: true,
+			},
+		],
 		properties: [
 			{
 				displayName: 'Resource',
@@ -77,16 +84,20 @@ export class ElasticSearch implements INodeType {
 				//                                document
 				// **********************************************************************
 
+				// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs.html
+
 				if (operation === 'get') {
 
 					// ----------------------------------------
 					//              document: get
 					// ----------------------------------------
 
+					// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-get.html
+
 					const indexId = this.getNodeParameter('indexId', i);
 					const documentId = this.getNodeParameter('documentId', i);
 
-					const qs: IDataObject = {};
+					const qs = {} as IDataObject;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (Object.keys(additionalFields).length) {
@@ -94,7 +105,7 @@ export class ElasticSearch implements INodeType {
 					}
 
 					const endpoint = `/${indexId}/_doc/${documentId}`;
-					responseData = await elasticSearchApiRequest.call(this, 'GET', endpoint);
+					responseData = await elasticSearchApiRequest.call(this, 'GET', endpoint, {}, qs);
 
 				} else if (operation === 'delete') {
 
@@ -102,10 +113,12 @@ export class ElasticSearch implements INodeType {
 					//             document: delete
 					// ----------------------------------------
 
+					// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-delete.html
+
 					const indexId = this.getNodeParameter('indexId', i);
 					const documentId = this.getNodeParameter('documentId', i);
 
-					const qs: IDataObject = {};
+					const qs = {} as IDataObject;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (Object.keys(additionalFields).length) {
@@ -113,7 +126,7 @@ export class ElasticSearch implements INodeType {
 					}
 
 					const endpoint = `/${indexId}/_doc/${documentId}`;
-					responseData = await elasticSearchApiRequest.call(this, 'DELETE', endpoint);
+					responseData = await elasticSearchApiRequest.call(this, 'DELETE', endpoint, {}, qs);
 
 				} else if (operation === 'getAll') {
 
@@ -121,7 +134,9 @@ export class ElasticSearch implements INodeType {
 					//             document: getAll
 					// ----------------------------------------
 
-					const body: IDataObject = {};
+					// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-multi-get.html
+
+					const body = {} as IDataObject;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
 					if (Object.keys(filters).length) {
@@ -130,14 +145,14 @@ export class ElasticSearch implements INodeType {
 
 					const indexId = this.getNodeParameter('indexId', i);
 
-					const qs: IDataObject = {};
+					const qs = {} as IDataObject;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (Object.keys(additionalFields).length) {
 						Object.assign(qs, additionalFields);
 					}
 
-					// responseData = await handleListing.call(this, i, 'GET', `/${indexId}/_mget`, body);
+					// responseData = await handleListing.call(this, i, 'GET', `/${indexId}/_mget`, body, qs);
 
 				} else if (operation === 'update') {
 
@@ -145,9 +160,11 @@ export class ElasticSearch implements INodeType {
 					//             document: update
 					// ----------------------------------------
 
-					const body: IDataObject = {
+					// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-update.html
+
+					const body = {
 						script: this.getNodeParameter('script', i),
-					};
+					} as IDataObject;
 
 					const indexId = this.getNodeParameter('indexId', i);
 					const documentId = this.getNodeParameter('documentId', i);
@@ -161,14 +178,16 @@ export class ElasticSearch implements INodeType {
 					//             document: index
 					// ----------------------------------------
 
-					const body: IDataObject = {
+					// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-index_.html
+
+					const body = {
 						field: this.getNodeParameter('field', i),
-					};
+					} as IDataObject;
 
 					const indexId = this.getNodeParameter('indexId', i);
 					const documentId = this.getNodeParameter('documentId', i);
 
-					const qs: IDataObject = {};
+					const qs = {} as IDataObject;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (Object.keys(additionalFields).length) {
@@ -176,7 +195,7 @@ export class ElasticSearch implements INodeType {
 					}
 
 					const endpoint = `/${indexId}/_doc/${documentId}`;
-					responseData = await elasticSearchApiRequest.call(this, 'PUT', endpoint, body);
+					responseData = await elasticSearchApiRequest.call(this, 'PUT', endpoint, body, qs);
 
 				}
 
@@ -186,22 +205,29 @@ export class ElasticSearch implements INodeType {
 				//                                 index
 				// **********************************************************************
 
-				if (operation === 'get') {
+				// https://www.elastic.co/guide/en/elasticsearch/reference/current/indices.html
+
+				if (operation === 'create') {
 
 					// ----------------------------------------
-					//                index: get
+					//              index: create
 					// ----------------------------------------
+
+					// https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-create-index.html
 
 					const indexId = this.getNodeParameter('indexId', i);
 
-					const qs: IDataObject = {};
+					const body = {} as IDataObject;
+					const qs = {} as IDataObject;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (Object.keys(additionalFields).length) {
-						Object.assign(qs, additionalFields);
+						const { aliases, mappings, settings, ...rest } = additionalFields;
+						Object.assign(body, aliases, mappings, settings);
+						Object.assign(qs, rest);
 					}
 
-					responseData = await elasticSearchApiRequest.call(this, 'GET', `/${indexId}`);
+					responseData = await elasticSearchApiRequest.call(this, 'PUT', `/${indexId}`);
 
 				} else if (operation === 'delete') {
 
@@ -209,26 +235,30 @@ export class ElasticSearch implements INodeType {
 					//              index: delete
 					// ----------------------------------------
 
+					// https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-delete-index.html
+
 					const indexId = this.getNodeParameter('indexId', i);
 
-					const qs: IDataObject = {};
+					responseData = await elasticSearchApiRequest.call(this, 'DELETE', `/${indexId}`);
+
+				} else if (operation === 'get') {
+
+					// ----------------------------------------
+					//              index: get
+					// ----------------------------------------
+
+					// https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-get-index.html
+
+					const indexId = this.getNodeParameter('indexId', i);
+
+					const qs = {} as IDataObject;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (Object.keys(additionalFields).length) {
 						Object.assign(qs, additionalFields);
 					}
 
-					responseData = await elasticSearchApiRequest.call(this, 'DELETE', `/${indexId}`);
-
-				} else if (operation === 'create') {
-
-					// ----------------------------------------
-					//              index: create
-					// ----------------------------------------
-
-					const indexId = this.getNodeParameter('indexId', i);
-
-					responseData = await elasticSearchApiRequest.call(this, 'PUT', `/${indexId}`);
+					responseData = await elasticSearchApiRequest.call(this, 'GET', `/${indexId}`, {}, qs);
 
 				} else if (operation === 'getAll') {
 
@@ -236,17 +266,17 @@ export class ElasticSearch implements INodeType {
 					//              index: getAll
 					// ----------------------------------------
 
-					const qs: IDataObject = {
-						allow_no_indices: this.getNodeParameter('allow_no_indices', i),
-						expand_wildcards: this.getNodeParameter('expand_wildcards', i),
-						flat_settings: this.getNodeParameter('flat_settings', i),
-						ignore_unavailable: this.getNodeParameter('ignore_unavailable', i),
-						include_defaults: this.getNodeParameter('include_defaults', i),
-						local: this.getNodeParameter('local', i),
-						master_timeout: this.getNodeParameter('master_timeout', i),
-					};
+					// https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html
 
-					// responseData = await handleListing.call(this, i, 'GET', '/_all', {}, qs);
+					responseData = await elasticSearchApiRequest.call(this, 'GET', '/_aliases');
+					responseData = Object.keys(responseData).map(i => ({ indexId: i }));
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.slice(0, limit);
+					}
 
 				} else if (operation === 'search') {
 
@@ -254,9 +284,19 @@ export class ElasticSearch implements INodeType {
 					//              index: search
 					// ----------------------------------------
 
+					// https://www.elastic.co/guide/en/elasticsearch/reference/current/search-search.html
+
 					const indexId = this.getNodeParameter('indexId', i);
 
-					const qs: IDataObject = {};
+					const body = {} as IDataObject;
+					const qs = {} as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (Object.keys(additionalFields).length) {
+						const { query, ...rest } = additionalFields;
+						Object.assign(body, query);
+						Object.assign(qs, rest);
+					}
 
 					responseData = await elasticSearchApiRequest.call(this, 'GET', `/${indexId}/_search`, {}, qs);
 

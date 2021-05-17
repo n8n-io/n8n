@@ -36,52 +36,12 @@ export const documentOperations = [
 				value: 'update',
 			},
 		],
-		default: 'get',
+		default: 'delete',
 		description: 'Operation to perform',
 	},
 ] as INodeProperties[];
 
 export const documentFields = [
-	// ----------------------------------------
-	//              document: get
-	// ----------------------------------------
-	{
-		displayName: 'Index ID',
-		name: 'indexId',
-		description: 'ID of the document to retrieve.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'get',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Document ID',
-		name: 'documentId',
-		description: 'ID of the document to retrieve.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'get',
-				],
-			},
-		},
-	},
-
 	// ----------------------------------------
 	//             document: delete
 	// ----------------------------------------
@@ -117,6 +77,46 @@ export const documentFields = [
 				],
 				operation: [
 					'delete',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------------
+	//              document: get
+	// ----------------------------------------
+	{
+		displayName: 'Index ID',
+		name: 'indexId',
+		description: 'ID of the document to retrieve.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Document ID',
+		name: 'documentId',
+		description: 'ID of the document to retrieve.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'get',
 				],
 			},
 		},
@@ -211,64 +211,6 @@ export const documentFields = [
 	},
 
 	// ----------------------------------------
-	//             document: update
-	// ----------------------------------------
-	{
-		displayName: 'Index ID',
-		name: 'indexId',
-		description: 'ID of the document to update.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Document ID',
-		name: 'documentId',
-		description: 'ID of the document to update.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Script',
-		name: 'script',
-		description: 'Script to update the document. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-scripting-using.html">guide to writing scripts</a>.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-
-	// ----------------------------------------
 	//             document: index
 	// ----------------------------------------
 	{
@@ -321,6 +263,64 @@ export const documentFields = [
 				],
 				operation: [
 					'index',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------------
+	//             document: update
+	// ----------------------------------------
+	{
+		displayName: 'Index ID',
+		name: 'indexId',
+		description: 'ID of the document to update.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Document ID',
+		name: 'documentId',
+		description: 'ID of the document to update.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Script',
+		name: 'script',
+		description: 'Script to update the document. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-scripting-using.html" target="_blank"> ElasticSearch guide to writing scripts</a>.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'update',
 				],
 			},
 		},

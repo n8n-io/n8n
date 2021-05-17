@@ -17,12 +17,16 @@ import {
 
 export async function elasticSearchApiRequest(
 	this: IExecuteFunctions,
-	method: string,
+	method: 'GET' | 'PUT' | 'POST' | 'DELETE',
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { username, password, baseUrl } = this.getCredentials('elasticSearchApi') as ElasticSearchApiCredentials;
+	const {
+		username,
+		password,
+		baseUrl,
+	} = this.getCredentials('elasticSearchApi') as ElasticSearchApiCredentials;
 
 	const token = Buffer.from(`${username}:${password}`).toString('base64');
 
