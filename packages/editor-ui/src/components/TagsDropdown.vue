@@ -239,7 +239,6 @@ $--border-radius: 20px;
 		max-height: $--max-input-height;
 		overflow: scroll;
 		border-radius: $--border-radius;
-		padding-top: 5px;
 
 		&::-webkit-scrollbar {
 			display: none;
