@@ -6,11 +6,11 @@
 			:placeholder="placeholder"
 			:maxlength="maxlength"
 			@input="onInput"
-			@blur="onBlur"
 			@keydown.enter="onEnter"
 			@keydown.esc="onEscape"
 			ref="input"
 			size="4"
+			v-click-outside="onBlur"
 		/>
 	</ExpandableInputBase>
 </template>
@@ -22,14 +22,25 @@ import ExpandableInputBase from "./ExpandableInputBase.vue";
 export default Vue.extend({
 	components: { ExpandableInputBase },
 	name: "ExpandableInputEdit",
-	props: ['value', 'placeholder', 'maxlength', 'autofocus'],
+	props: ['value', 'placeholder', 'maxlength', 'autofocus', 'eventBus'],
 	mounted() {
-		const elem = this as Vue;
-		if (elem.$props.autofocus && elem.$refs.input) {
-			(elem.$refs.input as HTMLInputElement).focus(); // autofocus on input element is not reliable
+		// autofocus on input element is not reliable
+		if (this.$props.autofocus && this.$refs.input) {
+			this.focus();
+		}
+
+		if (this.$props.eventBus) {
+			this.$props.eventBus.$on('focus', () => {
+				this.focus();
+			});
 		}
 	},
 	methods: {
+		focus() {
+			if (this.$refs.input) {
+				(this.$refs.input as HTMLInputElement).focus();
+			}
+		},
 		onInput() {
 			this.$emit('input', (this.$refs.input as HTMLInputElement).value);
 		},

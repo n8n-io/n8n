@@ -167,7 +167,7 @@ export default mixins(workflowHelpers).extend({
 				this.$data.isTagsEditEnabled = false;
 			}
 		},
-		async onNameSubmit(name: string, cb: () => void) {
+		async onNameSubmit(name: string, cb: (saved: boolean) => void) {
 			const newName = name.trim();
 			if (!newName) {
 				this.$showMessage({
@@ -176,14 +176,14 @@ export default mixins(workflowHelpers).extend({
 					type: "error",
 				});
 
-				cb();
+				cb(false);
 				return;
 			}
 
 			if (newName === this.workflowName) {
 				this.$data.isNameEditEnabled = false;
 
-				cb();
+				cb(true);
 				return;
 			}
 
@@ -191,7 +191,13 @@ export default mixins(workflowHelpers).extend({
 			if (saved) {
 				this.$data.isNameEditEnabled = false;
 			}
-			cb();
+			cb(saved);
+		},
+	},
+	watch: {
+		currentWorkflowId() {
+			this.$data.isTagsEditEnabled = false;
+			this.$data.isNameEditEnabled = false;
 		},
 	},
 });

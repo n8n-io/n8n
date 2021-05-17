@@ -2,13 +2,13 @@
 	<span @keydown.stop class="inline-edit" >
 		<span
 			v-if="isEditEnabled"
-			v-click-outside="onBlur"
 		>
 			<ExpandableInputEdit
 				:placeholder="placeholder"
 				:value="newValue"
 				:maxlength="maxLength"
 				:autofocus="true"
+				:eventBus="inputBus"
 				@input="onInput"
 				@esc="onEscape"
 				@blur="onBlur"
@@ -37,6 +37,7 @@ export default Vue.extend({
 			newValue: '',
 			escPressed: false,
 			disabled: false,
+			inputBus: new Vue(),
 		};
 	},
 	methods: {
@@ -70,8 +71,12 @@ export default Vue.extend({
 				return;
 			}
 
-			const onSubmit = () => {
+			const onSubmit = (updated: boolean) => {
 				this.$data.disabled = false;
+
+				if (!updated) {
+					this.$data.inputBus.$emit('focus');
+				}
 			};
 
 			this.$data.disabled = true;
