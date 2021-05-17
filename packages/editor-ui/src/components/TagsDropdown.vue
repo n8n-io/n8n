@@ -1,5 +1,5 @@
 <template>
-	<div :class="{'tags-container': true, focused}" @keydown.stop>
+	<div :class="{'tags-container': true, focused}" @keydown.stop v-click-outside="onBlur">
 		<el-select
 			:popperAppendToBody="false"
 			:value="appliedTags"
@@ -63,14 +63,14 @@ const CREATE_KEY = "__create";
 
 export default mixins(showMessage).extend({
 	name: "TagsDropdown",
-	props: ["placeholder", "currentTagIds", "createEnabled", "eventBus"],
+	props: ["placeholder", "currentTagIds", "createEnabled", "eventBus", "saveOnEnter"],
 	data() {
 		return {
 			filter: "",
 			MANAGE_KEY,
 			CREATE_KEY,
 			focused: false,
-			escPressed: false,
+			preventUpdate: false,
 		};
 	},
 	mounted() {
@@ -80,12 +80,14 @@ export default mixins(showMessage).extend({
 			if (input) {
 				input.setAttribute('maxlength', `${MAX_TAG_NAME_LENGTH}`);
 				input.addEventListener('keydown', (e: Event) => {
-					if ((e as KeyboardEvent).key === 'Escape') {
-						this.escPressed = true;
+					const keyboardEvent = e as KeyboardEvent;
+					// events don't bubble outside of select, so need to hook onto input
+					if (keyboardEvent.key === 'Escape') {
 						this.$emit('esc');
 					}
-					else {
-						this.escPressed = false;
+					else if (keyboardEvent.key === 'Enter' && this.$props.saveOnEnter && this.filter.length === 0) {
+						this.$data.preventUpdate = true;
+						this.$emit('save');
 					}
 				});
 			}
@@ -150,7 +152,12 @@ export default mixins(showMessage).extend({
 			} else if (ops === CREATE_KEY) {
 				this.onCreate();
 			} else {
-				this.$emit("update", selected);
+				setTimeout(() => {
+					if (!this.$data.preventUpdate) {
+						this.$emit("update", selected);
+					}
+					this.$data.preventUpdate = false;
+				}, 0);
 			}
 		},
 		focusOnTopOption() {
@@ -206,6 +213,9 @@ export default mixins(showMessage).extend({
 			this.$nextTick(() => {
 				this.focusOnInput();
 			});
+		},
+		onBlur() {
+			this.$emit('blur');
 		},
 	},
 	watch: {

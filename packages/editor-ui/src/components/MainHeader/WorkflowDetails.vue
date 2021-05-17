@@ -25,12 +25,14 @@
 
 		<div
 			v-if="isTagsEditEnabled"
-			v-click-outside="onTagsBlur"
 			class="tags">
 			<TagsDropdown
 				:createEnabled="true"
 				:currentTagIds="appliedTagIds"
 				:eventBus="tagsEditBus"
+				:saveOnEnter="true"
+				@save="onTagsBlur"
+				@blur="onTagsBlur"
 				@update="onTagsUpdate"
 				@esc="onTagsEditEsc"
 				placeholder="Choose or create a tag"
@@ -86,6 +88,15 @@ import TagsDropdown from "@/components/TagsDropdown.vue";
 import InlineTextEdit from "@/components/InlineTextEdit.vue";
 import BreakpointsObserver from "@/components/BreakpointsObserver.vue";
 
+const hasChanged = (prev: string[], curr: string[]) => {
+	if (prev.length !== curr.length) {
+		return true;
+	}
+
+	const set = new Set(prev);
+	return curr.reduce((accu, val) => accu || !set.has(val), false);
+};
+
 export default mixins(workflowHelpers).extend({
 	name: "WorkflowDetails",
 	components: {
@@ -135,7 +146,14 @@ export default mixins(workflowHelpers).extend({
 		},
 
 		async onTagsBlur() {
+			const current = this.currentWorkflowTagIds;
 			const tags = this.$data.appliedTagIds;
+			if (!hasChanged(current, tags)) {
+				this.$data.isTagsEditEnabled = false;
+
+				return;
+			}
+
 			const saved = await this.saveCurrentWorkflow({ tags });
 			if (saved) {
 				this.$data.isTagsEditEnabled = false;
