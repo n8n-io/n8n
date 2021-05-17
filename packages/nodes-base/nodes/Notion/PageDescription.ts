@@ -350,9 +350,12 @@ export const pageFields = [
 						Multiples can be defined separated by comma.`,
 					},
 					{
-						displayName: 'Select',
+						displayName: 'Option',
 						name: 'selectValue',
-						type: 'string',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getPropertySelectValues',
+						},
 						displayOptions: {
 							show: {
 								type: [

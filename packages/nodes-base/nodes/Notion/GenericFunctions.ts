@@ -221,7 +221,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			break;
 		case 'multi_select':
 			result = {
-				type: 'multi_select', multi_select: value.multiSelectValue.map((option: string) => ({ name: option })),
+				type: 'multi_select', multi_select: value.multiSelectValue.filter((id: any) => id !== null).map((option: string) => ({ id: option })),
 			};
 			break;
 		case 'email':
@@ -243,8 +243,9 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			break;
 		case 'select':
 			result = {
-				type: 'select', select: { name: value.selectValue },
+				type: 'select', select: { id: value.selectValue },
 			};
+			break;
 		case 'date':
 			if (value.range === true) {
 				result = {
@@ -255,6 +256,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 					type: 'date', date: { start: moment.tz(value.date, timezone).utc().format(), end: null },
 				};
 			}
+			break;
 		default:
 	}
 	return result;
