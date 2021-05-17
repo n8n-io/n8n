@@ -30,8 +30,6 @@
 				:createEnabled="true"
 				:currentTagIds="appliedTagIds"
 				:eventBus="tagsEditBus"
-				:saveOnEnter="true"
-				@save="onTagsBlur"
 				@blur="onTagsBlur"
 				@update="onTagsUpdate"
 				@esc="onTagsEditEsc"

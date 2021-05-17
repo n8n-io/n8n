@@ -63,7 +63,7 @@ const CREATE_KEY = "__create";
 
 export default mixins(showMessage).extend({
 	name: "TagsDropdown",
-	props: ["placeholder", "currentTagIds", "createEnabled", "eventBus", "saveOnEnter"],
+	props: ["placeholder", "currentTagIds", "createEnabled", "eventBus"],
 	data() {
 		return {
 			filter: "",
@@ -85,9 +85,15 @@ export default mixins(showMessage).extend({
 					if (keyboardEvent.key === 'Escape') {
 						this.$emit('esc');
 					}
-					else if (keyboardEvent.key === 'Enter' && this.$props.saveOnEnter && this.filter.length === 0) {
+					else if (keyboardEvent.key === 'Enter' && this.filter.length === 0) {
 						this.$data.preventUpdate = true;
-						this.$emit('save');
+						this.$emit('blur');
+
+						// @ts-ignore
+						if (this.$refs.select && typeof this.$refs.select.blur === 'function') {
+							// @ts-ignore
+							this.$refs.select.blur();
+						}
 					}
 				});
 			}
