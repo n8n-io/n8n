@@ -26,8 +26,8 @@
 
 <script lang="ts">
 import Vue from "vue";
-import ExpandableInputEdit from "./ExpandableInputEdit.vue";
-import ExpandableInputPreview from "./ExpandableInputPreview.vue";
+import ExpandableInputEdit from "./ExpandableInput/ExpandableInputEdit.vue";
+import ExpandableInputPreview from "./ExpandableInput/ExpandableInputPreview.vue";
 
 export default Vue.extend({
 	name: "InlineTextEdit",

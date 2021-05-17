@@ -32,7 +32,7 @@
 import Vue from "vue";
 import { DUPLICATE_MODAL_KEY, TAGS_MANAGER_MODAL_KEY, WORKLOW_OPEN_MODAL_KEY } from '@/constants';
 
-import TagsManager from "@/components/TagsManager.vue";
+import TagsManager from "@/components/TagsManager/TagsManager.vue";
 import DuplicateWorkflowDialog from "@/components/DuplicateWorkflowDialog.vue";
 import WorkflowOpen from "@/components/WorkflowOpen.vue";
 import ModalRoot from "./ModalRoot.vue";

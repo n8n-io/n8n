@@ -29,8 +29,8 @@
 import Vue from "vue";
 
 import { ITag, ITagRow } from "@/Interface";
-import TagsTableHeader from "@/components/TagsTableHeader.vue";
-import TagsTable from "@/components/TagsViewTagsTable.vue";
+import TagsTableHeader from "@/components/TagsManager/TagsView/TagsTableHeader.vue";
+import TagsTable from "@/components/TagsManager/TagsView/TagsTable.vue";
 
 const matches = (name: string, filter: string) => name.toLowerCase().trim().includes(filter.toLowerCase().trim());
 const getUsage = (count: number | undefined) => count && count > 0 ? `${count} workflow${count > 1 ? "s" : ""}` : 'Not being used';

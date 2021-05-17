@@ -82,10 +82,10 @@ import TagsContainer from "@/components/TagsContainer.vue";
 import PushConnectionTracker from "@/components/PushConnectionTracker.vue";
 import WorkflowActivator from "@/components/WorkflowActivator.vue";
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
-import SaveWorkflowButton from "./SaveWorkflowButton.vue";
-import TagsDropdown from "./TagsDropdown.vue";
-import InlineTextEdit from "./InlineTextEdit.vue";
-import BreakpointsObserver from "./BreakpointsObserver.vue";
+import SaveWorkflowButton from "@/components/SaveWorkflowButton.vue";
+import TagsDropdown from "@/components/TagsDropdown.vue";
+import InlineTextEdit from "@/components/InlineTextEdit.vue";
+import BreakpointsObserver from "@/components/BreakpointsObserver.vue";
 
 export default mixins(workflowHelpers).extend({
 	name: "WorkflowDetails",

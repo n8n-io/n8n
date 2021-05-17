@@ -20,8 +20,8 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
-import WorkflowDetails from '@/components/MainHeaderWorkflowDetails.vue';
-import ExecutionDetails from './MainHeaderExecutionDetails.vue';
+import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
+import ExecutionDetails from '@/components/MainHeader/ExecutionDetails/ExecutionDetails.vue';
 
 export default mixins(
 	genericHelpers,

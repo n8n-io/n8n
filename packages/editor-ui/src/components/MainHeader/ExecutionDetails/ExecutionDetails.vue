@@ -36,18 +36,18 @@ import mixins from 'vue-typed-mixins';
 
 import {
 	IExecutionResponse,
-} from '../Interface';
+} from '../../../Interface';
 
 import { titleChange } from '@/components/mixins/titleChange';
 
 import WorkflowNameShort from '@/components/WorkflowNameShort.vue';
-import ReadOnly from '@/components/ExecutionDetailsReadOnly.vue';
+import ReadOnly from '@/components/MainHeader/ExecutionDetails/ReadOnly.vue';
 
 export default mixins(
 	titleChange,
 )
 	.extend({
-		name: 'MainHeader',
+		name: 'ExecutionDetails',
 		components: {
 			WorkflowNameShort,
 			ReadOnly,

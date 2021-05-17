@@ -37,8 +37,8 @@ import { mapGetters } from "vuex";
 import { ITag } from "@/Interface";
 
 import { showMessage } from "@/components/mixins/showMessage";
-import TagsView from "@/components/TagsManagerTagsView.vue";
-import NoTagsView from "@/components/TagsManagerNoTagsView.vue";
+import TagsView from "@/components/TagsManager/TagsView/TagsView.vue";
+import NoTagsView from "@/components/TagsManager/NoTagsView.vue";
 import Modal from "@/components/Modal.vue";
 
 export default mixins(showMessage).extend({
