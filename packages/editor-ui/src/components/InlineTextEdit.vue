@@ -17,7 +17,6 @@
 		</span>
 		<span @click="onClick"  v-else>
 			<ExpandableInputPreview
-				:clickable="true"
 				:value="previewValue || value"
 			/>
 		</span>
@@ -26,12 +25,12 @@
 
 <script lang="ts">
 import Vue from "vue";
-import ExpandableInputEdit from "./ExpandableInput/ExpandableInputEdit.vue";
-import ExpandableInputPreview from "./ExpandableInput/ExpandableInputPreview.vue";
+import ExpandableInputEdit from "@/components/ExpandableInput/ExpandableInputEdit.vue";
+import ExpandableInputPreview from "@/components/ExpandableInput/ExpandableInputPreview.vue";
 
 export default Vue.extend({
 	name: "InlineTextEdit",
-	components: {ExpandableInputEdit, ExpandableInputPreview},
+	components: { ExpandableInputEdit, ExpandableInputPreview },
 	props: ['isEditEnabled', 'value', 'placeholder', 'maxLength', 'previewValue'],
 	data() {
 		return {
