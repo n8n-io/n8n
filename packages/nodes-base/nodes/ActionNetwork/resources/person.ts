@@ -181,18 +181,6 @@ export const createPersonSignupHelperFields = createFields([
 						default: null
 					},
 					{
-						displayName: 'Type',
-						name: 'number_type',
-						type: 'options',
-						options: [
-							{
-								name: 'Mobile',
-								value: 'Mobile',
-							},
-						],
-						default: 'Mobile',
-					},
-					{
 						displayName: 'Primary',
 						name: 'primary',
 						type: 'boolean',
@@ -388,7 +376,7 @@ export function createPersonSignupHelperObject(node: IExecuteFunctions, i: numbe
 		)
 	}
 	if (postal_addresses !== undefined && postal_addresses?.length > 0) {
-		body.postal_addresses = postal_addresses.map(
+		body.person.postal_addresses = postal_addresses.map(
 			// @ts-ignore
 			({ street_address, latitude, longitude, accuracy, ...a }) => {
 				let location = undefined
@@ -421,11 +409,11 @@ export async function removeTagsAndIdentifiers(
 		if (credentials === undefined) {
 			throw new Error('No credentials got returned!');
 		}
-		
+
 		console.log('removing tags', remove_tags, 'from', person)
 		const removedTagHrefs = await getUrlsForNamedTags(node, remove_tags)
 		console.log('-> hrefs', removedTagHrefs)
-	
+
 		// Get the taggings associated with the person
 		const taggingHref = person._links.self.href + '/taggings'
 
