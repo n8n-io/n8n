@@ -1,6 +1,7 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
+import { getFilters } from './GenericFunctions';
 
 export const databaseOperations = [
 	{
@@ -65,7 +66,10 @@ export const databaseFields = [
 	{
 		displayName: 'Database ID',
 		name: 'databaseId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getDatabases',
+		},
 		default: '',
 		required: true,
 		displayOptions: {
@@ -167,55 +171,38 @@ export const databaseFields = [
 								description: 'The name of the property to filter by.',
 							},
 							{
-								displayName: 'Property Type',
-								name: 'propertyType',
-								type: 'options',
-								options: [
-									{
-										name: 'Text',
-										value: 'text',
-									},
-									{
-										name: 'Text',
-										value: 'text',
-									},
-								],
-								default: '',
-								description: 'The name of the property to filter by.',
+								displayName: 'Type',
+								name: 'type',
+								type: 'hidden',
+								default: '={{$parameter["&propertyName"].split("|")[1]}}',
 							},
 							{
-								displayName: 'Condition',
-								name: 'condition',
-								type: 'options',
-								options: [
-									{
-										name: 'Equal',
-										value: 'equal',
+								displayName: "Condition",
+								name: "condition",
+								type: "options",
+								displayOptions:{
+									show:{
+										type: [
+											'title',
+										],
 									},
+								},
+								"options": [
+									{ "name": "Equals", "value": "equals" },
+									{ "name": "Does Not Equal", "value": "does_not_equal" },
+									{ "name": "Contains", "value": "contains" },
+									{ "name": "Does Not Contain", "value": "does_not_contain" },
+									{ "name": "Starts With", "value": "starts_with" },
+									{ "name": "Ends With", "value": "ends_with" },
+									{ "name": "Is Empty", "value": "is_empty" },
 									{
-										name: 'Text',
-										value: 'text',
-									},
-									{
-										name: 'Number',
-										value: 'number',
-									},
-									{
-										name: 'Checkbox',
-										value: 'checkbox',
-									},
-									{
-										name: 'Select',
-										value: 'select',
-									},
-									{
-										name: 'Select',
-										value: 'select',
+										"name": "Is Not Empty", "value": "is_not_empty"
 									},
 								],
-								default: '',
-								description: 'The value of the property to filter by.',
+								"default": 'equals',
+								"description": "The value of the property to filter by."
 							},
+							//...getFilters(),
 						],
 					},
 				],

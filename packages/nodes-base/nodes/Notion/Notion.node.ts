@@ -46,6 +46,7 @@ import {
 	searchFields,
 	searchOperations,
 } from './SearchDescription';
+import { isDate } from 'util';
 
 export class Notion implements INodeType {
 	description: INodeTypeDescription = {
@@ -130,16 +131,25 @@ export class Notion implements INodeType {
 				const databaseId = this.getCurrentNodeParameter('databaseId') as string;
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				for (const key of Object.keys(properties)) {
-					returnData.push({
-						name: `${key} - (${properties[key].type})`,
-						value: `${key}|${properties[key].type}`,
-					});
+					//remove parameters that cannot be set from the API.
+					if (!['created_time', 'last_edited_time', 'created_by', 'last_edited_by', 'formula', 'files'].includes(properties[key].type)) {
+						returnData.push({
+							name: `${key} - (${properties[key].type})`,
+							value: `${key}|${properties[key].type}`,
+						});
+					}
 				}
-				console.log(returnData);
 				return returnData;
 			},
 			async getBlockTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return getBlockTypes();
+			},
+			async getPropertySelectValues(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const [name, type] = (this.getCurrentNodeParameter('&key') as string).split('|');
+				const databaseId = this.getCurrentNodeParameter('databaseId') as string;
+				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
+				console.log((properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: option.id })));
+				return (properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: option.id }));
 			},
 		},
 	};
@@ -150,6 +160,7 @@ export class Notion implements INodeType {
 		const length = items.length as unknown as number;
 		let responseData;
 		const qs: IDataObject = {};
+		const timezone = this.getTimezone();
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -191,7 +202,7 @@ export class Notion implements INodeType {
 					const body: { [key: string]: any } = {
 						properties: {},
 					};
-					body.properties = mapProperties(properties) as IDataObject;
+					body.properties = mapProperties(properties, timezone) as IDataObject;
 					const page = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
 					if (simple === true) {
 						page.properties = simplifyProperties(page.properties);
@@ -280,16 +291,17 @@ export class Notion implements INodeType {
 					if (parentType === 'database') {
 						body.parent['database_id'] = this.getNodeParameter('databaseId', i) as string;
 						const properties = this.getNodeParameter('propertiesUi.propertyValues', i, []) as IDataObject[];
-						console.log(properties);
+						//console.log(properties);
 						if (properties.length !== 0) {
-							body.properties = mapProperties(properties) as IDataObject;
+							body.properties = mapProperties(properties, timezone) as IDataObject;
+							console.log(body.properties);
 						}
 					} else {
 						body.parent['page_id'] = this.getNodeParameter('pageId', i) as string;
 						body.properties = formatTitle(this.getNodeParameter('title', i) as string);
 					}
 					body.children = formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]);
-					console.log(JSON.stringify(body.children));
+					//console.log(JSON.stringify(body.children));
 					//console.log(JSON.stringify(body.children));
 					// body.children = [
 					// 	{
@@ -360,7 +372,7 @@ export class Notion implements INodeType {
 					const body: { [key: string]: any } = {
 						properties: {},
 					};
-					body.properties = mapProperties(properties) as IDataObject;
+					body.properties = mapProperties(properties, timezone) as IDataObject;
 					const page = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
 					if (simple === true) {
 						page.properties = simplifyProperties(page.properties);

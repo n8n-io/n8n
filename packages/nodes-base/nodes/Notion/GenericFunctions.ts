@@ -10,8 +10,14 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, IDisplayOptions, INodeProperties, INodePropertyOptions,
 } from 'n8n-workflow';
+
+import {
+	capitalCase,
+} from 'change-case';
+
+import * as moment from 'moment-timezone';
 
 export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	try {
@@ -130,7 +136,7 @@ function getLink(text: { textLink: string, isLink: boolean }) {
 	return {};
 }
 
-function getTexts( texts : [{ textType: string, textContent: string, isLink: boolean, textLink: string, mentionType: string, annotationUi: IDataObject, expression: string }]) {
+function getTexts(texts: [{ textType: string, textContent: string, isLink: boolean, textLink: string, mentionType: string, annotationUi: IDataObject, expression: string }]) {
 	const results = [];
 	for (const text of texts) {
 		if (text.textType === 'text') {
@@ -182,8 +188,83 @@ export function formatBlocks(blocks: IDataObject[]) {
 	return results;
 }
 
-export function mapProperties(properties: IDataObject[]) {
-	return properties.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }), {});
+function getPropertyKeyValue(value: any, type: string, timezone: string) {
+	console.log(value);
+	console.log(type);
+	let result = {};
+	switch (type) {
+		case 'rich_text':
+			if (value.onlyContent) {
+				result = [{ type: 'text', text: { content: value.content } }];
+			} else {
+				result = getTexts(value);
+			}
+			break;
+		case 'title':
+			result = [{ type: 'text', text: { content: value.content } }];
+			break;
+		case 'number':
+			result = { type: 'number', number: value.numberValue };
+			break;
+		case 'url':
+			result = { type: 'url', url: value.urlValue };
+			break;
+		case 'checkbox':
+			result = { type: 'checkbox', checkbox: value.checkboxValue };
+			break;
+		case 'relation':
+			result = {
+				type: 'relation', relation: (value.relationValue).reduce((acc: [], cur: any) => {
+					return acc.concat(cur.split(',').map((relation: string) => ({ id: relation })));
+				}, []),
+			};
+			break;
+		case 'multi_select':
+			result = {
+				type: 'multi_select', multi_select: value.multiSelectValue.map((option: string) => ({ name: option })),
+			};
+			break;
+		case 'email':
+			result = {
+				type: 'email', email: value.emailValue,
+			};
+			break;
+		case 'people':
+			result = {
+				type: 'people', people: (value.peopleValue).reduce((acc: [], cur: any) => {
+					return acc.concat(cur.split(',').map((user: string) => ({ id: user })));
+				}, []),
+			};
+			break;
+		case 'phone_number':
+			result = {
+				type: 'phone_number', phone_number: value.phoneValue,
+			};
+			break;
+		case 'select':
+			result = {
+				type: 'select', select: { name: value.selectValue },
+			};
+		case 'date':
+			if (value.range === true) {
+				result = {
+					type: 'date', date: { start: moment.tz(value.dateStart, timezone).utc().format(), end: moment.tz(value.dateEnd, timezone).utc().format() },
+				};
+			} else {
+				result = {
+					type: 'date', date: { start: moment.tz(value.date, timezone).utc().format(), end: null },
+				};
+			}
+		default:
+	}
+	return result;
+}
+
+
+export function mapProperties(properties: IDataObject[], timezone: string) {
+	return properties.reduce((obj, value) => Object.assign(obj, {
+		[`${(value.key as string).split('|')[0]}`]: getPropertyKeyValue(value, (value.key as string).split('|')[1], timezone),
+	}), {});
 }
 
 // tslint:disable-next-line: no-any
@@ -205,7 +286,7 @@ export function simplifyProperties(properties: any) {
 			}
 		} else if (['created_by', 'last_edited_by', 'select'].includes(properties[key].type)) {
 			results[`${key}`] = properties[key][type].name;
-		}  else if (['people'].includes(properties[key].type)) {
+		} else if (['people'].includes(properties[key].type)) {
 			// tslint:disable-next-line: no-any
 			results[`${key}`] = properties[key][type].map((person: any) => person.person.email || {});
 		} else if (['multi_select'].includes(properties[key].type)) {
@@ -248,4 +329,106 @@ export function getFormattedChildren(children: IDataObject[]) {
 		results.push({ [`${type}`]: child, object: 'block', type });
 	}
 	return results;
+}
+
+export function getFilters() {
+
+	const elements: INodeProperties[] = [];
+
+	const types: { [key: string]: string } = {
+		title: 'text',
+		text: 'text',
+	};
+
+	const typeConditions: { [key: string]: string[] } = {
+		text: [
+			'equals',
+			'does_not_equal',
+			'contains',
+			'does_not_contain',
+			'starts_with',
+			'ends_with',
+			'is_empty',
+			'is_not_empty',
+		],
+		number: [
+			'equals',
+			'does_not_equal',
+			'grater_than',
+			'less_than',
+			'greater_than_or_equal_to',
+			'less_than_or_equal_to',
+			'is_empty',
+			'is_not_empty',
+		],
+		checkbox: [
+			'equals',
+			'does_not_equal',
+		],
+		select: [
+			'equals',
+			'does_not_equal',
+			'is_empty',
+			'is_not_empty',
+		],
+		multi_select: [
+			'contains',
+			'does_not_equal',
+			'is_empty',
+			'is_not_empty',
+		],
+		date: [
+			'equals',
+			'before',
+			'after',
+			'on_or_before',
+			'is_empty',
+			'is_not_empty',
+			'on_or_after',
+			'past_week',
+			'past_month',
+			'past_year',
+			'next_week',
+			'next_month',
+			'next_year',
+		],
+		people: [
+			'equals',
+			'does_not_equal',
+			'is_empty',
+			'is_not_empty',
+		],
+		files: [
+			'is_empty',
+			'is_not_empty',
+		],
+		relation: [
+			'contains',
+			'does_not_contain',
+			'is_empty',
+			'is_not_empty',
+		],
+	};
+
+	for (const [index, type] of Object.keys(types).entries()) {
+		elements.push(
+			{
+				displayName: 'Condition',
+				name: `condition${index}`,
+				type: 'options',
+				displayOptions: {
+					show: {
+						type: [
+							type,
+						],
+					},
+				} as IDisplayOptions,
+				options: (typeConditions[types[type]] as string[]).map((type: string) => ({ name: capitalCase(type), value: type })),
+				default: '',
+				description: 'The value of the property to filter by.',
+			} as INodeProperties,
+		);
+	}
+	console.log(JSON.stringify(elements[0]));
+	return elements;
 }

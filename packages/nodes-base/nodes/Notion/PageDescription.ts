@@ -4,6 +4,7 @@ import {
 
 import { 
 	blocks,
+	text
 } from './Blocks';
 
 export const pageOperations = [
@@ -250,8 +251,9 @@ export const pageFields = [
 						default: '={{$parameter["&key"].split("|")[1]}}',
 					},
 					{
-						displayName: 'Value',
-						name: 'value',
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
 						displayOptions: {
 							show: {
 								type: [
@@ -259,8 +261,253 @@ export const pageFields = [
 								],
 							},
 						},
-						type: 'string',
 						default: '',
+					},
+					{
+						displayName: 'Only Content',
+						name: 'onlyContent',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								type: [
+									'rich_text',
+								],
+							},
+						},
+						default: true,
+					},
+					{
+						displayName: 'Text Content',
+						name: 'content',
+						type: 'string',
+						displayOptions: {
+							show: {
+								type: [
+									'rich_text',
+								],
+								onlyContent: [
+									true,
+								],
+							},
+						},
+						default: '',
+					},
+					...text({
+						show: {
+							type: [
+								'rich_text',
+							],
+							onlyContent: [
+								false,
+							],
+						},
+					}),
+					{
+						displayName: 'Phone Number',
+						name: 'phoneValue',
+						type: 'string',
+						displayOptions: {
+							show: {
+								type: [
+									'phone_number',
+								],
+							},
+						},
+						default: '',
+						description: `Phone number. No structure is enforced.`,
+					},
+					// {
+					// 	displayName: 'Multi Select',
+					// 	name: 'multiSelectValue',
+					// 	type: 'string',
+					// 	displayOptions: {
+					// 		show: {
+					// 			type: [
+					// 				'multi_select',
+					// 			],
+					// 		},
+					// 	},
+					// 	default: '',
+					// 	description: `Name of the options you want to set.
+					// 	Multiples can be defined separated by comma.`,
+					// },
+					{
+						displayName: 'Options',
+						name: 'multiSelectValue',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getPropertySelectValues',
+						},
+						displayOptions: {
+							show: {
+								type: [
+									'multi_select',
+								],
+							},
+						},
+						default: [],
+						description: `Name of the options you want to set.
+						Multiples can be defined separated by comma.`,
+					},
+					{
+						displayName: 'Select',
+						name: 'selectValue',
+						type: 'string',
+						displayOptions: {
+							show: {
+								type: [
+									'select',
+								],
+							},
+						},
+						default: '',
+						description: `Name of the option you want to set.`,
+					},
+					{
+						displayName: 'Email',
+						name: 'emailValue',
+						type: 'string',
+						displayOptions: {
+							show: {
+								type: [
+									'email',
+								],
+							},
+						},
+						default: '',
+						description: 'Email address.',
+					},
+					{
+						displayName: 'User IDs',
+						name: 'peopleValue',
+						type: 'string',
+						typeOptions: {
+							multipleValues: true,
+						},
+						displayOptions: {
+							show: {
+								type: [
+									'people',
+								],
+							},
+						},
+						default: '',
+						description: 'List of users. Multiples can be defined separated by comma.',
+					},
+					{
+						displayName: 'Relation IDs',
+						name: 'relationValue',
+						type: 'string',
+						typeOptions: {
+							multipleValues: true,
+						},
+						displayOptions: {
+							show: {
+								type: [
+									'relation',
+								],
+							},
+						},
+						default: '',
+						description: 'List of pages that belong to another database. Multiples can be defined separated by comma.',
+					},
+					{
+						displayName: 'Checkbox',
+						name: 'checkboxValue',
+						displayOptions: {
+							show: {
+								type: [
+									'checkbox',
+								],
+							},
+						},
+						type: 'boolean',
+						default: false,
+						description: `
+						Whether or not the checkbox is checked.</br>
+						true represents checked.</br>
+						false represents unchecked.
+						`,
+					},
+					{
+						displayName: 'Number',
+						name: 'numberValue',
+						displayOptions: {
+							show: {
+								type: [
+									'number',
+								],
+							},
+						},
+						type: 'number',
+						default: 0,
+						description: 'Number value.',
+					},
+					{
+						displayName: 'Range',
+						name: 'range',
+						displayOptions: {
+							show: {
+								type: [
+									'date',
+								],
+							},
+						},
+						type: 'boolean',
+						default: false,
+						description: 'Weather or not you want to define a date range.',
+					},
+					{
+						displayName: 'Date',
+						name: 'date',
+						displayOptions: {
+							show: {
+								range: [
+									false,
+								],
+								type: [
+									'date',
+								],
+							},
+						},
+						type: 'dateTime',
+						default: '',
+						description: 'An ISO 8601 format date, with optional time.',
+					},
+					{
+						displayName: 'Date Start',
+						name: 'dateStart',
+						displayOptions: {
+							show: {
+								range: [
+									true,
+								],
+								type: [
+									'date',
+								],
+							},
+						},
+						type: 'dateTime',
+						default: '',
+						description: 'An ISO 8601 format date, with optional time.',
+					},
+					{
+						displayName: 'Date End',
+						name: 'dateEnd',
+						displayOptions: {
+							show: {
+								range: [
+									true,
+								],
+								type: [
+									'date',
+								],
+							},
+						},
+						type: 'dateTime',
+						default: '',
+						description: `
+						An ISO 8601 formatted date, with optional time. Represents the end of a date range.`,
 					},
 				],
 			},

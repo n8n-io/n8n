@@ -1,4 +1,5 @@
 import {
+	IDisplayOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -304,7 +305,7 @@ const typeText = [
 	},
 ] as INodeProperties[];
 
-const text = (type: string) => [{
+export const text = (displayOptions: IDisplayOptions) => [{
 	displayName: 'Text',
 	name: 'text',
 	placeholder: 'Add Text',
@@ -313,13 +314,7 @@ const text = (type: string) => [{
 	typeOptions: {
 		multipleValues: true,
 	},
-	displayOptions: {
-		show: {
-			type: [
-				type,
-			],
-		},
-	},
+	displayOptions,
 	options: [
 		{
 			name: 'text',
@@ -394,13 +389,25 @@ const block = (blockType: string) => {
 	switch (blockType) {
 		case 'to_do':
 			data.push(...todo(blockType));
-			data.push(...text(blockType));
+			data.push(...text({
+				show: {
+					type: [
+						blockType,
+					],
+				},
+			}));
 			break;
 		case 'child_page':
 			data.push(...title(blockType));
 			break;
 		default:
-			data.push(...text(blockType));
+			data.push(...text({
+				show: {
+					type: [
+						blockType,
+					],
+				},
+			}));
 			break;
 	}
 	return data;
