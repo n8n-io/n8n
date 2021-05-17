@@ -195,9 +195,9 @@ export const documentFields = [
 								displayOptions: {
 									show: {
 										locationChoice: [
-											'location'
-										]
-									}
+											'location',
+										],
+									},
 								},
 								default: '',
 							},
@@ -241,9 +241,9 @@ export const documentFields = [
 								displayOptions: {
 									show: {
 										locationChoice: [
-											'location'
-										]
-									}
+											'location',
+										],
+									},
 								},
 								default: '',
 							},
@@ -361,7 +361,7 @@ export const documentFields = [
 								type: 'number',
 								description: 'The zero-based end index of this range.',
 								default: '',
-							}
+							},
 						],
 					},
 					{
@@ -387,7 +387,7 @@ export const documentFields = [
 								type: 'number',
 								description: 'The zero-based end index of this range.',
 								default: '',
-							}
+							},
 						],
 					},
 					{
@@ -420,7 +420,7 @@ export const documentFields = [
 								type: 'number',
 								description: 'The zero-based end index of this range.',
 								default: '',
-							}
+							},
 						],
 					},
 					{
@@ -434,11 +434,11 @@ export const documentFields = [
 								options: [
 									{
 										name: 'Name',
-										value: 'name'
+										value: 'name',
 									},
 									{
 										name: 'Named Range ID',
-										value: 'namedRangeId'
+										value: 'namedRangeId',
 									},
 								],
 								description: 'The value that determines which range or ranges to delete..',
@@ -450,7 +450,7 @@ export const documentFields = [
 								type: 'string',
 								description: 'The value of the range reference.',
 								default: '',
-							}
+							},
 						],
 					},
 					{
@@ -463,7 +463,7 @@ export const documentFields = [
 								type: 'string',
 								description: 'The ID of the positioned object to delete.',
 								default: '',
-							}
+							},
 						],
 					},
 					{
@@ -484,7 +484,7 @@ export const documentFields = [
 										name: 'Unspecified',
 										value: 'HEADER_FOOTER_TYPE_UNSPECIFIED',
 										description: 'The header type is unspecified.',
-									}
+									},
 								],
 								description: 'The type of header to create.',
 								default: '',
@@ -523,7 +523,7 @@ export const documentFields = [
 										name: 'Unspecified',
 										value: 'HEADER_FOOTER_TYPE_UNSPECIFIED',
 										description: 'The footer type is unspecified.',
-									}
+									},
 								],
 								description: 'The type of fooster to create.',
 								default: '',
@@ -622,9 +622,9 @@ export const documentFields = [
 								displayOptions: {
 									show: {
 										locationChoice: [
-											'location'
-										]
-									}
+											'location',
+										],
+									},
 								},
 								default: '',
 							},

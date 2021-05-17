@@ -75,7 +75,7 @@ export class GoogleDocs implements INodeType {
 						const title = this.getNodeParameter('title', i) as string;
 
 						const body: IDataObject = {
-							title
+							title,
 						};
 
 						responseData = await googleApiRequest.call(
@@ -117,29 +117,29 @@ export class GoogleDocs implements INodeType {
 						if (updateFields.writeControl){
 							const writeControl = (updateFields.writeControl as IDataObject).writeControlObject as IDataObject;
 							body.writeControl = {
-								[writeControl.control as string]:writeControl.value as string
-							}
+								[writeControl.control as string]:writeControl.value as string,
+							};
 						}
 
 						if (updateFields.requestsUi) {
 							const {
-								replaceAllTextValues,
-								insertTextValues,
+								createFooterValues,
+								createHeaderValues,
+								createNamedRangeValues,
+								createParagraphBulletsValues,
+								deleteFooterValues,
+								deleteHeaderValues,
+								deleteNamedRangeValues,
+								deleteParagraphBulletsValues,
+								deletePositionedObjectValues,
+								deleteTableColumnValues,
+								deleteTableRowValues,
 								insertPageBreakValues,
 								insertTableValues,
-								insertTableRowValues,
 								insertTableColumnValues,
-								createParagraphBulletsValues,
-								deleteParagraphBulletsValues,
-								createNamedRangeValues,
-								deleteNamedRangeValues,
-								deletePositionedObjectValues,
-								deleteTableRowValues,
-								deleteTableColumnValues,
-								createHeaderValues,
-								createFooterValues,
-								deleteHeaderValues,
-								deleteFooterValues,
+								insertTableRowValues,
+								insertTextValues,
+								replaceAllTextValues,
 							} = updateFields.requestsUi as IDataObject;
 
 							// handle replace all text request
@@ -151,10 +151,10 @@ export class GoogleDocs implements INodeType {
 											containsText:{
 												text: replaceAllTextValue.text,
 												matchCase: replaceAllTextValue.matchCase,
-											}
-										}
-									})
-								})
+											},
+										},
+									});
+								});
 							}
 							// handle insert text request
 							if (insertTextValues){
@@ -165,12 +165,12 @@ export class GoogleDocs implements INodeType {
 											[insertTextValue.locationChoice as string]:{
 												segmentId: insertTextValue.segmentId,
 												...(insertTextValue.locationChoice === 'location') ?{
-													index: parseInt(insertTextValue.index as string),
+													index: parseInt(insertTextValue.index as string, 10),
 												}:{},
-											}
-										}
-									})
-								})
+											},
+										},
+									});
+								});
 							}
 							// handle insert age break request
 							if (insertPageBreakValues){
@@ -180,12 +180,12 @@ export class GoogleDocs implements INodeType {
 											[insertPageBreakValue.locationChoice as string]:{
 												segmentId: insertPageBreakValue.segmentId,
 												...(insertPageBreakValue.locationChoice === 'location') ?{
-													index: parseInt(insertPageBreakValue.index as string),
+													index: parseInt(insertPageBreakValue.index as string, 10),
 												}:{},
-											}
-										}
-									})
-								})
+											},
+										},
+									});
+								});
 							}
 							// handle insert table request
 							if (insertTableValues){
@@ -197,12 +197,12 @@ export class GoogleDocs implements INodeType {
 											[insertTableValue.locationChoice as string]:{
 												segmentId: insertTableValue.segmentId,
 												...(insertTableValue.locationChoice === 'location') ?{
-													index: parseInt(insertTableValue.index as string),
+													index: parseInt(insertTableValue.index as string, 10),
 												}:{},
-											}
-										}
-									})
-								})
+											},
+										},
+									});
+								});
 							}
 							// handle insert table row request
 							if (insertTableRowValues){
@@ -216,11 +216,11 @@ export class GoogleDocs implements INodeType {
 												tableStartLocation: {
 													segmentId: insertTableRowValue.segmentId,
 													index: insertTableRowValue.index,
-												}
-											}
-										}
-									})
-								})
+												},
+											},
+										},
+									});
+								});
 							}
 							// handle insert table column request
 							if (insertTableColumnValues){
@@ -234,11 +234,11 @@ export class GoogleDocs implements INodeType {
 												tableStartLocation: {
 													segmentId: insertTableColumnValue.segmentId,
 													index: insertTableColumnValue.index,
-												}
-											}
-										}
-									})
-								})
+												},
+											},
+										},
+									});
+								});
 							}
 							// handle create paragraph bullets request
 							if (createParagraphBulletsValues){
@@ -250,10 +250,10 @@ export class GoogleDocs implements INodeType {
 												segmentId: createParagraphBulletsValue.segmentId,
 												startIndex: createParagraphBulletsValue.startIndex,
 												endIndex: createParagraphBulletsValue.endIndex,
-											}
-										}
-									})
-								})
+											},
+										},
+									});
+								});
 							}
 							// handle delete paragraph bullets request
 							if (deleteParagraphBulletsValues){
@@ -264,10 +264,10 @@ export class GoogleDocs implements INodeType {
 												segmentId: deleteParagraphBulletsValue.segmentId,
 												startIndex: deleteParagraphBulletsValue.startIndex,
 												endIndex: deleteParagraphBulletsValue.endIndex,
-											}
-										}
-									})
-								})
+											},
+										},
+									});
+								});
 							}
 							// handle create name range request
 							if (createNamedRangeValues){
@@ -279,10 +279,10 @@ export class GoogleDocs implements INodeType {
 												segmentId: createNamedRangeValue.segmentId,
 												startIndex: createNamedRangeValue.startIndex,
 												endIndex: createNamedRangeValue.endIndex,
-											}
-										}
-									})
-								})
+											},
+										},
+									});
+								});
 							}
 							// handle delete name range request
 							if (deleteNamedRangeValues){
@@ -290,9 +290,9 @@ export class GoogleDocs implements INodeType {
 									(body.requests as IDataObject[]).push({
 										deleteNamedRange: {
 											[deleteNamedRangeValue.namedRangeReference as string]:deleteNamedRangeValue.value ,
-										}
-									})
-								})
+										},
+									});
+								});
 							}
 							// handle delete positioned object request
 							if (deletePositionedObjectValues){
@@ -300,9 +300,9 @@ export class GoogleDocs implements INodeType {
 									(body.requests as IDataObject[]).push({
 										deletePositionedObject: {
 											objectId:deletePositionedObjectValue.objectId,
-										}
-									})
-								})
+										},
+									});
+								});
 							}
 							// handle delete table row request
 							if (deleteTableRowValues){
@@ -315,11 +315,11 @@ export class GoogleDocs implements INodeType {
 												tableStartLocation: {
 													segmentId: deleteTableRowValue.segmentId,
 													index: deleteTableRowValue.index,
-												}
-											}
-										}
-									})
-								})
+												},
+											},
+										},
+									});
+								});
 							}
 							// handle delete table column request
 							if (deleteTableColumnValues){
@@ -332,11 +332,11 @@ export class GoogleDocs implements INodeType {
 												tableStartLocation: {
 													segmentId: deleteTableColumnValue.segmentId,
 													index: deleteTableColumnValue.index,
-												}
-											}
-										}
-									})
-								})
+												},
+											},
+										},
+									});
+								});
 							}
 							// handle create header request
 							if (createHeaderValues){
@@ -346,11 +346,11 @@ export class GoogleDocs implements INodeType {
 											type:createHeaderValue.type,
 											sectionBreakLocation:{
 												segmentId:createHeaderValue.segmentId,
-												index:parseInt(createHeaderValue.index as string),
-											}
-										}
-									})
-								})
+												index:parseInt(createHeaderValue.index as string, 10),
+											},
+										},
+									});
+								});
 							}
 							// handle create footer request
 							if (createFooterValues){
@@ -360,11 +360,11 @@ export class GoogleDocs implements INodeType {
 											type:createFooterValue.type,
 											sectionBreakLocation:{
 												segmentId:createFooterValue.segmentId,
-												index:parseInt(createFooterValue.index as string),
-											}
-										}
-									})
-								})
+												index:parseInt(createFooterValue.index as string, 10),
+											},
+										},
+									});
+								});
 							}
 							// handle delete header request
 							if (deleteHeaderValues){
@@ -372,9 +372,9 @@ export class GoogleDocs implements INodeType {
 									(body.requests as IDataObject[]).push({
 										deleteHeader: {
 											headerId:deleteHeaderValue.headerId,
-										}
-									})
-								})
+										},
+									});
+								});
 							}
 							// handle delete footer request
 							if (deleteFooterValues){
@@ -382,9 +382,9 @@ export class GoogleDocs implements INodeType {
 									(body.requests as IDataObject[]).push({
 										deleteFooter: {
 											footerId:deleteFooterValue.footerId,
-										}
-									})
-								})
+										},
+									});
+								});
 							}
 						}
 
