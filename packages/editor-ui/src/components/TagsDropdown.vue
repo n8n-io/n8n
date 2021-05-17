@@ -197,12 +197,6 @@ export default mixins(showMessage).extend({
 			if (!visible) {
 				this.$data.filter = '';
 				this.focused = false;
-				setTimeout(() => {
-					if (!this.escPressed) {
-						this.$emit('blur');
-					}
-					this.escPressed = false;
-				}, 0);
 			}
 			else {
 				this.focused = true;

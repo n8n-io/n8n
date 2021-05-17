@@ -32,7 +32,6 @@
 				:currentTagIds="appliedTagIds"
 				:eventBus="tagsEditBus"
 				@update="onTagsUpdate"
-				@blur="onTagsBlur"
 				@esc="onTagsEditEsc"
 				placeholder="Choose or create a tag"
 				ref="dropdown"
