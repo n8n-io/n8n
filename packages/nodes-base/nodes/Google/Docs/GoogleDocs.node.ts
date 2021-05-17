@@ -62,7 +62,7 @@ export class GoogleDocs implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -81,7 +81,7 @@ export class GoogleDocs implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/documents`,
+							'/documents',
 							body,
 							qs,
 						);
@@ -107,17 +107,17 @@ export class GoogleDocs implements INodeType {
 
 						const documentId = this.getNodeParameter('documentId', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i) as { writeControl?: IDataObject, requestsUi?: IDataObject };
 
 						const body: IDataObject = {
 							documentId,
-							requests:[],
+							requests: [],
 						};
 
-						if (updateFields.writeControl){
-							const writeControl = (updateFields.writeControl as IDataObject).writeControlObject as IDataObject;
+						if (updateFields.writeControl) {
+							const writeControl = updateFields.writeControl.writeControlObject as IDataObject;
 							body.writeControl = {
-								[writeControl.control as string]:writeControl.value as string,
+								[writeControl.control as string]: writeControl.value as string,
 							};
 						}
 
@@ -143,12 +143,12 @@ export class GoogleDocs implements INodeType {
 							} = updateFields.requestsUi as IDataObject;
 
 							// handle replace all text request
-							if (replaceAllTextValues){
+							if (replaceAllTextValues) {
 								(replaceAllTextValues as IDataObject[]).forEach( replaceAllTextValue => {
 									(body.requests as IDataObject[]).push({
-										replaceAllText:{
+										replaceAllText: {
 											replaceText: replaceAllTextValue.replaceText,
-											containsText:{
+											containsText: {
 												text: replaceAllTextValue.text,
 												matchCase: replaceAllTextValue.matchCase,
 											},
@@ -157,58 +157,58 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 							// handle insert text request
-							if (insertTextValues){
+							if (insertTextValues) {
 								(insertTextValues as IDataObject[]).forEach( insertTextValue => {
 									(body.requests as IDataObject[]).push({
-										insertText:{
+										insertText: {
 											text: insertTextValue.text,
-											[insertTextValue.locationChoice as string]:{
+											[insertTextValue.locationChoice as string]: {
 												segmentId: insertTextValue.segmentId,
 												...(insertTextValue.locationChoice === 'location') ?{
 													index: parseInt(insertTextValue.index as string, 10),
-												}:{},
+												}: {},
 											},
 										},
 									});
 								});
 							}
 							// handle insert age break request
-							if (insertPageBreakValues){
+							if (insertPageBreakValues) {
 								(insertPageBreakValues as IDataObject[]).forEach( insertPageBreakValue => {
 									(body.requests as IDataObject[]).push({
-										insertPageBreak:{
-											[insertPageBreakValue.locationChoice as string]:{
+										insertPageBreak: {
+											[insertPageBreakValue.locationChoice as string]: {
 												segmentId: insertPageBreakValue.segmentId,
 												...(insertPageBreakValue.locationChoice === 'location') ?{
 													index: parseInt(insertPageBreakValue.index as string, 10),
-												}:{},
+												}: {},
 											},
 										},
 									});
 								});
 							}
 							// handle insert table request
-							if (insertTableValues){
+							if (insertTableValues) {
 								(insertTableValues as IDataObject[]).forEach( insertTableValue => {
 									(body.requests as IDataObject[]).push({
-										insertTable:{
+										insertTable: {
 											rows: insertTableValue.rows,
 											columns: insertTableValue.columns,
-											[insertTableValue.locationChoice as string]:{
+											[insertTableValue.locationChoice as string]: {
 												segmentId: insertTableValue.segmentId,
 												...(insertTableValue.locationChoice === 'location') ?{
 													index: parseInt(insertTableValue.index as string, 10),
-												}:{},
+												}: {},
 											},
 										},
 									});
 								});
 							}
 							// handle insert table row request
-							if (insertTableRowValues){
+							if (insertTableRowValues) {
 								(insertTableRowValues as IDataObject[]).forEach( insertTableRowValue => {
 									(body.requests as IDataObject[]).push({
-										insertTableRow:{
+										insertTableRow: {
 											insertBelow: insertTableRowValue.insertBelow,
 											tableCellLocation: {
 												rowIndex: insertTableRowValue.rowIndex,
@@ -223,10 +223,10 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 							// handle insert table column request
-							if (insertTableColumnValues){
+							if (insertTableColumnValues) {
 								(insertTableColumnValues as IDataObject[]).forEach( insertTableColumnValue => {
 									(body.requests as IDataObject[]).push({
-										insertTableColumn:{
+										insertTableColumn: {
 											insertRight: insertTableColumnValue.insertRight,
 											tableCellLocation: {
 												rowIndex: insertTableColumnValue.rowIndex,
@@ -241,12 +241,12 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 							// handle create paragraph bullets request
-							if (createParagraphBulletsValues){
+							if (createParagraphBulletsValues) {
 								(createParagraphBulletsValues as IDataObject[]).forEach( createParagraphBulletsValue => {
 									(body.requests as IDataObject[]).push({
-										createParagraphBullets:{
+										createParagraphBullets: {
 											bulletPreset: createParagraphBulletsValue.bulletPreset,
-											range:{
+											range: {
 												segmentId: createParagraphBulletsValue.segmentId,
 												startIndex: createParagraphBulletsValue.startIndex,
 												endIndex: createParagraphBulletsValue.endIndex,
@@ -256,11 +256,11 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 							// handle delete paragraph bullets request
-							if (deleteParagraphBulletsValues){
+							if (deleteParagraphBulletsValues) {
 								(deleteParagraphBulletsValues as IDataObject[]).forEach( deleteParagraphBulletsValue => {
 									(body.requests as IDataObject[]).push({
 										deleteParagraphBullets: {
-											range:{
+											range: {
 												segmentId: deleteParagraphBulletsValue.segmentId,
 												startIndex: deleteParagraphBulletsValue.startIndex,
 												endIndex: deleteParagraphBulletsValue.endIndex,
@@ -270,12 +270,12 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 							// handle create name range request
-							if (createNamedRangeValues){
+							if (createNamedRangeValues) {
 								(createNamedRangeValues as IDataObject[]).forEach( createNamedRangeValue => {
 									(body.requests as IDataObject[]).push({
 										createNamedRange: {
 											name: createNamedRangeValue.name,
-											range:{
+											range: {
 												segmentId: createNamedRangeValue.segmentId,
 												startIndex: createNamedRangeValue.startIndex,
 												endIndex: createNamedRangeValue.endIndex,
@@ -285,30 +285,30 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 							// handle delete name range request
-							if (deleteNamedRangeValues){
+							if (deleteNamedRangeValues) {
 								(deleteNamedRangeValues as IDataObject[]).forEach( deleteNamedRangeValue => {
 									(body.requests as IDataObject[]).push({
 										deleteNamedRange: {
-											[deleteNamedRangeValue.namedRangeReference as string]:deleteNamedRangeValue.value ,
+											[deleteNamedRangeValue.namedRangeReference as string]: deleteNamedRangeValue.value ,
 										},
 									});
 								});
 							}
 							// handle delete positioned object request
-							if (deletePositionedObjectValues){
+							if (deletePositionedObjectValues) {
 								(deletePositionedObjectValues as IDataObject[]).forEach( deletePositionedObjectValue => {
 									(body.requests as IDataObject[]).push({
 										deletePositionedObject: {
-											objectId:deletePositionedObjectValue.objectId,
+											objectId: deletePositionedObjectValue.objectId,
 										},
 									});
 								});
 							}
 							// handle delete table row request
-							if (deleteTableRowValues){
+							if (deleteTableRowValues) {
 								(deleteTableRowValues as IDataObject[]).forEach( deleteTableRowValue => {
 									(body.requests as IDataObject[]).push({
-										deleteTableRow:{
+										deleteTableRow: {
 											tableCellLocation: {
 												rowIndex: deleteTableRowValue.rowIndex,
 												columnIndex: deleteTableRowValue.columnIndex,
@@ -322,10 +322,10 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 							// handle delete table column request
-							if (deleteTableColumnValues){
+							if (deleteTableColumnValues) {
 								(deleteTableColumnValues as IDataObject[]).forEach( deleteTableColumnValue => {
 									(body.requests as IDataObject[]).push({
-										deleteTableColumn:{
+										deleteTableColumn: {
 											tableCellLocation: {
 												rowIndex: deleteTableColumnValue.rowIndex,
 												columnIndex: deleteTableColumnValue.columnIndex,
@@ -339,49 +339,49 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 							// handle create header request
-							if (createHeaderValues){
+							if (createHeaderValues) {
 								(createHeaderValues as IDataObject[]).forEach( createHeaderValue => {
 									(body.requests as IDataObject[]).push({
 										createHeader: {
-											type:createHeaderValue.type,
-											sectionBreakLocation:{
-												segmentId:createHeaderValue.segmentId,
-												index:parseInt(createHeaderValue.index as string, 10),
+											type: createHeaderValue.type,
+											sectionBreakLocation: {
+												segmentId: createHeaderValue.segmentId,
+												index: parseInt(createHeaderValue.index as string, 10),
 											},
 										},
 									});
 								});
 							}
 							// handle create footer request
-							if (createFooterValues){
+							if (createFooterValues) {
 								(createFooterValues as IDataObject[]).forEach( createFooterValue => {
 									(body.requests as IDataObject[]).push({
 										createFooter: {
-											type:createFooterValue.type,
-											sectionBreakLocation:{
-												segmentId:createFooterValue.segmentId,
-												index:parseInt(createFooterValue.index as string, 10),
+											type: createFooterValue.type,
+											sectionBreakLocation: {
+												segmentId: createFooterValue.segmentId,
+												index: parseInt(createFooterValue.index as string, 10),
 											},
 										},
 									});
 								});
 							}
 							// handle delete header request
-							if (deleteHeaderValues){
+							if (deleteHeaderValues) {
 								(deleteHeaderValues as IDataObject[]).forEach( deleteHeaderValue => {
 									(body.requests as IDataObject[]).push({
 										deleteHeader: {
-											headerId:deleteHeaderValue.headerId,
+											headerId: deleteHeaderValue.headerId,
 										},
 									});
 								});
 							}
 							// handle delete footer request
-							if (deleteFooterValues){
+							if (deleteFooterValues) {
 								(deleteFooterValues as IDataObject[]).forEach( deleteFooterValue => {
 									(body.requests as IDataObject[]).push({
 										deleteFooter: {
-											footerId:deleteFooterValue.footerId,
+											footerId: deleteFooterValue.footerId,
 										},
 									});
 								});
