@@ -20,6 +20,8 @@
 					:createEnabled="true"
 					:currentTagIds="currentTagIds"
 					:eventBus="dropdownBus"
+					@blur="onTagsBlur"
+					@esc="onTagsEsc"
 					@update="onTagsUpdate"
 					placeholder="Choose or create a tag"
 					ref="dropdown"
@@ -65,6 +67,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			modalBus: new Vue(),
 			dropdownBus: new Vue(),
 			MAX_WORKFLOW_NAME_LENGTH,
+			prevTagIds: currentTagIds,
 		};
 	},
 	mounted() {
@@ -86,6 +89,13 @@ export default mixins(showMessage, workflowHelpers).extend({
 			if (input && input.focus) {
 				input.focus();
 			}
+		},
+		onTagsBlur() {
+			this.prevTagIds = this.currentTagIds;
+		},
+		onTagsEsc() {
+			// revert last changes
+			this.currentTagIds = this.prevTagIds;
 		},
 		onTagsUpdate(tagIds: string[]) {
 			this.currentTagIds = tagIds;

@@ -14,6 +14,8 @@
 							:currentTagIds="filterTagIds"
 							:createEnabled="false"
 							@update="updateTagsFilter"
+							@esc="onTagsFilterEsc"
+							@blur="onTagsFilterBlur"
 						/>
 					</div>
 					<div class="search-filter">
@@ -82,6 +84,7 @@ export default mixins(
 			isDataLoading: false,
 			workflows: [] as IWorkflowShortResponse[],
 			filterTagIds: [] as string[],
+			prevFilterTagIds: [] as string[],
 		};
 	},
 	computed: {
@@ -192,6 +195,13 @@ export default mixins(
 					workflow.active = data.active;
 				}
 			}
+		},
+		onTagsFilterBlur() {
+			this.prevFilterTagIds = this.filterTagIds;
+		},
+		onTagsFilterEsc() {
+			// revert last applied tags
+			this.filterTagIds = this.prevFilterTagIds;
 		},
 	},
 });
