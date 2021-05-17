@@ -316,21 +316,6 @@ export const pageFields = [
 						default: '',
 						description: `Phone number. No structure is enforced.`,
 					},
-					// {
-					// 	displayName: 'Multi Select',
-					// 	name: 'multiSelectValue',
-					// 	type: 'string',
-					// 	displayOptions: {
-					// 		show: {
-					// 			type: [
-					// 				'multi_select',
-					// 			],
-					// 		},
-					// 	},
-					// 	default: '',
-					// 	description: `Name of the options you want to set.
-					// 	Multiples can be defined separated by comma.`,
-					// },
 					{
 						displayName: 'Options',
 						name: 'multiSelectValue',
@@ -397,9 +382,9 @@ export const pageFields = [
 					{
 						displayName: 'User IDs',
 						name: 'peopleValue',
-						type: 'string',
+						type: 'multiOptions',
 						typeOptions: {
-							multipleValues: true,
+							loadOptionsMethod: 'getUsers',
 						},
 						displayOptions: {
 							show: {
@@ -408,7 +393,7 @@ export const pageFields = [
 								],
 							},
 						},
-						default: '',
+						default: [],
 						description: 'List of users. Multiples can be defined separated by comma.',
 					},
 					{

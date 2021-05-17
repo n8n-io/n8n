@@ -17,6 +17,7 @@ import {
 	getBlockTypes,
 	getFormattedChildren,
 	mapProperties,
+	mapFilters,
 	notionApiRequest,
 	notionApiRequestAllItems,
 	simplifyProperties,
@@ -46,7 +47,6 @@ import {
 	searchFields,
 	searchOperations,
 } from './SearchDescription';
-import { isDate } from 'util';
 
 export class Notion implements INodeType {
 	description: INodeTypeDescription = {
@@ -141,6 +141,21 @@ export class Notion implements INodeType {
 				}
 				return returnData;
 			},
+			async getFilterProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const databaseId = this.getCurrentNodeParameter('databaseId') as string;
+				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
+				for (const key of Object.keys(properties)) {
+					//remove formula as it's still not supported.
+					if (!['formula'].includes(properties[key].type)) {
+						returnData.push({
+							name: `${key} - (${properties[key].type})`,
+							value: `${key}|${properties[key].type}`,
+						});
+					}
+				}
+				return returnData;
+			},
 			async getBlockTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return getBlockTypes();
 			},
@@ -148,8 +163,18 @@ export class Notion implements INodeType {
 				const [name, type] = (this.getCurrentNodeParameter('&key') as string).split('|');
 				const databaseId = this.getCurrentNodeParameter('databaseId') as string;
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
-				console.log((properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: option.id })));
-				return (properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: option.id }));
+				return (properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: (['multi_select', 'select'].includes(type)) ? option.name : option.id }));
+			},
+			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const users = await notionApiRequestAllItems.call(this, 'results', 'GET', '/users');
+				for (const user of users) {
+					returnData.push({
+						name: user.name,
+						value: user.id,
+					});
+				}
+				return returnData;
 			},
 		},
 	};
@@ -238,16 +263,30 @@ export class Notion implements INodeType {
 
 			if (operation === 'query') {
 				for (let i = 0; i < length; i++) {
+					const simple = this.getNodeParameter('simple', 0) as boolean;
 					const databaseId = this.getNodeParameter('databaseId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					//const options = this.getNodeParameter('options', i) as IDataObject;
+					const filters = this.getNodeParameter('options.filter', i) as IDataObject;
+					console.log(filters);
+					const body: IDataObject = {};
+					if (filters.singleCondition) {
+						body['filter'] = mapFilters([filters.singleCondition] as IDataObject[], timezone) ;
+					}
+					console.log(body.filter);
+
 					if (returnAll) {
-						responseData = await notionApiRequestAllItems.call(this, 'results', 'POST', `/databases/${databaseId}/query`, {});
+						responseData = await notionApiRequestAllItems.call(this, 'results', 'POST', `/databases/${databaseId}/query`, body, {});
 					} else {
 						qs.limit = this.getNodeParameter('limit', i) as number;
-						responseData = await notionApiRequestAllItems.call(this, 'results', 'POST', `/databases/${databaseId}/query`, qs);
+						responseData = await notionApiRequestAllItems.call(this, 'results', 'POST', `/databases/${databaseId}/query`, body, qs);
 						responseData = responseData.splice(0, qs.limit);
 					}
+					if (simple === true) {
+						for (let i = 0; i < responseData.length; i++) {
+							responseData[i].properties = simplifyProperties(responseData[i].properties);
+						} 
+					}
+					
 					returnData.push.apply(returnData, responseData);
 				}
 			}
@@ -291,7 +330,6 @@ export class Notion implements INodeType {
 					if (parentType === 'database') {
 						body.parent['database_id'] = this.getNodeParameter('databaseId', i) as string;
 						const properties = this.getNodeParameter('propertiesUi.propertyValues', i, []) as IDataObject[];
-						//console.log(properties);
 						if (properties.length !== 0) {
 							body.properties = mapProperties(properties, timezone) as IDataObject;
 							console.log(body.properties);

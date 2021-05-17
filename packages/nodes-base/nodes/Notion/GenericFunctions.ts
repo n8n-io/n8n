@@ -10,11 +10,14 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, IDisplayOptions, INodeProperties, INodePropertyOptions,
+	IDataObject,
+	IDisplayOptions,
+	INodeProperties,
 } from 'n8n-workflow';
 
 import {
 	capitalCase,
+	camelCase,
 } from 'change-case';
 
 import * as moment from 'moment-timezone';
@@ -37,7 +40,7 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 		};
 
 		options = Object.assign({}, options, option);
-
+		// console.log(options);
 		return await this.helpers.request!(options);
 	} catch (error) {
 
@@ -190,8 +193,6 @@ export function formatBlocks(blocks: IDataObject[]) {
 
 // tslint:disable-next-line: no-any
 function getPropertyKeyValue(value: any, type: string, timezone: string) {
-	console.log(value);
-	console.log(type);
 	let result = {};
 	switch (type) {
 		case 'rich_text':
@@ -234,10 +235,80 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			break;
 		case 'people':
 			result = {
+				type: 'people', people: value.peopleValue.map((option: string) => ({ id: option })), 
+			};
+			break;
+		case 'phone_number':
+			result = {
+				type: 'phone_number', phone_number: value.phoneValue,
+			};
+			break;
+		case 'select':
+			result = {
+				type: 'select', select: { id: value.selectValue },
+			};
+			break;
+		case 'date':
+			if (value.range === true) {
+				result = {
+					type: 'date', date: { start: moment.tz(value.dateStart, timezone).utc().format(), end: moment.tz(value.dateEnd, timezone).utc().format() },
+				};
+			} else {
+				result = {
+					type: 'date', date: { start: moment.tz(value.date, timezone).utc().format(), end: null },
+				};
+			}
+			break;
+		default:
+	}
+	return result;
+}
+
+// tslint:disable-next-line: no-any
+function getPropertyKeyValueaja(value: any, type: string, timezone: string) {
+	let result = {};
+	switch (type) {
+		case 'rich_text':
+			if (value.onlyContent) {
+				result = [{ type: 'text', text: { content: value.content } }];
+			} else {
+				result = getTexts(value);
+			}
+			break;
+		case 'title':
+			result = [{ type: 'text', text: { content: value.content } }];
+			break;
+		case 'number':
+			result = { type: 'number', number: value.numberValue };
+			break;
+		case 'url':
+			result = { type: 'url', url: value.urlValue };
+			break;
+		case 'checkbox':
+			result = { type: 'checkbox', checkbox: value.checkboxValue };
+			break;
+		case 'relation':
+			result = {
 				// tslint:disable-next-line: no-any
-				type: 'people', people: (value.peopleValue).reduce((acc: [], cur: any) => {
-					return acc.concat(cur.split(',').map((user: string) => ({ id: user })));
+				type: 'relation', relation: (value.relationValue).reduce((acc: [], cur: any) => {
+					return acc.concat(cur.split(',').map((relation: string) => ({ id: relation })));
 				}, []),
+			};
+			break;
+		case 'multi_select':
+			result = {
+				// tslint:disable-next-line: no-any
+				type: 'multi_select', multi_select: value.multiSelectValue.filter((id: any) => id !== null).map((option: string) => ({ id: option })),
+			};
+			break;
+		case 'email':
+			result = {
+				type: 'email', email: value.emailValue,
+			};
+			break;
+		case 'people':
+			result = {
+				type: 'people', people: value.peopleValue.map((option: string) => ({ id: option })),
 			};
 			break;
 		case 'phone_number':
@@ -267,10 +338,41 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 }
 
 
+function getNameAndType(key: string) {
+	const [name, type] = key.split('|');
+	return {
+		name,
+		type,
+	};
+}
+
 export function mapProperties(properties: IDataObject[], timezone: string) {
 	return properties.reduce((obj, value) => Object.assign(obj, {
 		[`${(value.key as string).split('|')[0]}`]: getPropertyKeyValue(value, (value.key as string).split('|')[1], timezone),
 	}), {});
+}
+
+export function mapFilters(filters: IDataObject[], timezone: string) {
+	return filters.reduce((obj, value: { [key: string]: any }) => {
+		let key = getNameAndType(value.key).type;
+		let valuePropertyName = value[`${camelCase(key)}Value`];
+		if (['is_empty', 'is_not_empty'].includes(value.condition as string)) {
+			valuePropertyName = true;
+		} else if (['past_week', 'past_month', 'past_year', 'next_week', 'next_month', 'next_year'].includes(value.condition as string)) {
+			valuePropertyName = {};
+		}
+		if (key === 'rich_text') {
+			key = 'text';
+		} else if (key === 'phone_number') {
+			key = 'phone';
+		} else if (key === 'date') {
+			valuePropertyName = (valuePropertyName !== undefined && !Object.keys(valuePropertyName).length) ? {} : moment.tz(value.date, timezone).utc().format();
+		}
+		return Object.assign(obj, {
+			['property']: getNameAndType(value.key).name,
+			[key]: { [`${value.condition}`]: valuePropertyName  },
+		});
+	}, {});
 }
 
 // tslint:disable-next-line: no-any
@@ -342,12 +444,28 @@ export function getFilters() {
 	const elements: INodeProperties[] = [];
 
 	const types: { [key: string]: string } = {
-		title: 'text',
-		text: 'text',
+		title: 'rich_text',
+		rich_text: 'rich_text',
+		number: 'number',
+		checkbox: 'checkbox',
+		select: 'select',
+		multi_select: 'multi_select',
+		date: 'date',
+		people: 'people',
+		files: 'files',
+		url: 'rich_text',
+		email: 'rich_text',
+		phone_number: 'rich_text',
+		relation: 'relation',
+		//formula: 'formula',
+		created_by: 'people',
+		created_time: 'date',
+		last_edited_by: 'people',
+		last_edited_time: 'date',
 	};
 
 	const typeConditions: { [key: string]: string[] } = {
-		text: [
+		rich_text: [
 			'equals',
 			'does_not_equal',
 			'contains',
@@ -399,8 +517,8 @@ export function getFilters() {
 			'next_year',
 		],
 		people: [
-			'equals',
-			'does_not_equal',
+			'contains',
+			'does_not_contain',
 			'is_empty',
 			'is_not_empty',
 		],
@@ -417,10 +535,13 @@ export function getFilters() {
 	};
 
 	for (const [index, type] of Object.keys(types).entries()) {
+		// console.log(type);
+		// console.log(typeConditions[types[type]] as string[]);
 		elements.push(
 			{
 				displayName: 'Condition',
-				name: `condition${index}`,
+				//name: `condition${type.charAt(0).toUpperCase() + type}`,
+				name: 'condition',
 				type: 'options',
 				displayOptions: {
 					show: {
@@ -435,6 +556,6 @@ export function getFilters() {
 			} as INodeProperties,
 		);
 	}
-	console.log(JSON.stringify(elements[0]));
+	console.log(JSON.stringify(elements[1]));
 	return elements;
 }
