@@ -381,6 +381,20 @@ export const pageFields = [
 						description: 'Email address.',
 					},
 					{
+						displayName: 'URL',
+						name: 'urlValue',
+						type: 'string',
+						displayOptions: {
+							show: {
+								type: [
+									'url',
+								],
+							},
+						},
+						default: '',
+						description: 'Web address.',
+					},
+					{
 						displayName: 'User IDs',
 						name: 'peopleValue',
 						type: 'string',
