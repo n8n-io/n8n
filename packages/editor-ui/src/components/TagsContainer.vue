@@ -65,7 +65,6 @@ export default Vue.extend({
 	data() {
 		return {
 			visibility: {} as {[id: string]: boolean},
-			lastXPosition: 0,
 		};
 	},
 	computed: {

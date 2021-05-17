@@ -3,7 +3,7 @@
 		<div :class="{'main-header': true, expanded: !sidebarMenuCollapsed}">
 			<div class="top-menu">
 				<ExecutionDetails v-if="isExecutionPage" />
-				<WorkflowDetails v-else />
+				<WorkflowDetails :key="currentWorkflowId" v-else />
 			</div>
 		</div>
 	</div>
@@ -41,6 +41,9 @@ export default mixins(
 			...mapGetters('ui', [
 				'sidebarMenuCollapsed',
 			]),
+			currentWorkflowId() {
+				return this.$route.params.name;
+			},
 			isExecutionPage (): boolean {
 				return ['ExecutionById'].includes(this.$route.name as string);
 			},
