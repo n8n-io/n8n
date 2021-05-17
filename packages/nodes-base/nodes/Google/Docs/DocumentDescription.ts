@@ -57,25 +57,6 @@ export const documentFields = [
 		},
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 document:delete                             */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Document ID',
-		name: 'documentId',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'document',
-				],
-			},
-		},
-	},
-	/* -------------------------------------------------------------------------- */
 	/*                                 document:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
@@ -585,6 +566,216 @@ export const documentFields = [
 								name: 'footerId',
 								type: 'string',
 								description: 'The id of the footer to delete.',
+								default: '',
+							},
+						],
+					},
+					{
+						name: 'insertTableValues',
+						displayName: 'Insert Table',
+						values: [
+							{
+								displayName: 'Rows',
+								name: 'rows',
+								type: 'number',
+								description: 'The number of rows in the table.',
+								default: '',
+							},
+							{
+								displayName: 'Columns',
+								name: 'columns',
+								type: 'number',
+								description: 'The number of columns in the table.',
+								default: '',
+							},
+							{
+								displayName: 'Insertion Location',
+								name: 'locationChoice',
+								type: 'options',
+								options: [
+									{
+										name: 'End Of Segment Location',
+										value: 'endOfSegmentLocation',
+										description: 'Inserts the text at the end of a header, footer, footnote or the document body.',
+									},
+									{
+										name: 'Location',
+										value: 'location',
+										description: 'Inserts the text at a specific index in the document.',
+									},
+								],
+								description: 'The location where the text will be inserted.',
+								default: '',
+							},
+							{
+								displayName: 'Segment ID',
+								name: 'segmentId',
+								type: 'string',
+								description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
+								default: '',
+							},
+							{
+								displayName: 'Index',
+								name: 'index',
+								type: 'number',
+								description: 'The zero-based index, relative to the beginning of the specified segment.',
+								displayOptions: {
+									show: {
+										locationChoice: [
+											'location'
+										]
+									}
+								},
+								default: '',
+							},
+						],
+					},
+					{
+						name: 'insertTableRowValues',
+						displayName: 'Insert Table Row',
+						values: [
+							{
+								displayName: 'Insert Below',
+								name: 'insertBelow',
+								type: 'boolean',
+								description: 'Whether to insert new row below the reference cell location.',
+								default: true,
+							},
+							{
+								displayName: 'Table Cell Row Index',
+								name: 'rowIndex',
+								type: 'number',
+								description: 'The zero-based row index.',
+								default: '',
+							},
+							{
+								displayName: 'Table Cell Column Index',
+								name: 'columnIndex',
+								type: 'number',
+								description: 'The zero-based column index.',
+								default: '',
+							},
+							{
+								displayName: 'Segment ID',
+								name: 'segmentId',
+								type: 'string',
+								description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
+								default: '',
+							},
+							{
+								displayName: 'Index',
+								name: 'index',
+								type: 'number',
+								description: 'The zero-based index, relative to the beginning of the specified segment.',
+								default: '',
+							},
+						],
+					},
+					{
+						name: 'insertTableColumnValues',
+						displayName: 'Insert Table Column',
+						values: [
+							{
+								displayName: 'Insert Right',
+								name: 'insertRight',
+								type: 'boolean',
+								description: 'Whether to insert new column to the right of the reference cell location.',
+								default: true,
+							},
+							{
+								displayName: 'Table Cell Row Index',
+								name: 'rowIndex',
+								type: 'number',
+								description: 'The zero-based row index.',
+								default: '',
+							},
+							{
+								displayName: 'Table Cell Column Index',
+								name: 'columnIndex',
+								type: 'number',
+								description: 'The zero-based column index.',
+								default: '',
+							},
+							{
+								displayName: 'Segment ID',
+								name: 'segmentId',
+								type: 'string',
+								description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
+								default: '',
+							},
+							{
+								displayName: 'Index',
+								name: 'index',
+								type: 'number',
+								description: 'The zero-based index, relative to the beginning of the specified segment.',
+								default: '',
+							},
+						],
+					},
+					{
+						name: 'deleteTableRowValues',
+						displayName: 'Delete Table Row',
+						values: [
+							{
+								displayName: 'Table Cell Row Index',
+								name: 'rowIndex',
+								type: 'number',
+								description: 'The zero-based row index.',
+								default: '',
+							},
+							{
+								displayName: 'Table Cell Column Index',
+								name: 'columnIndex',
+								type: 'number',
+								description: 'The zero-based column index.',
+								default: '',
+							},
+							{
+								displayName: 'Segment ID',
+								name: 'segmentId',
+								type: 'string',
+								description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
+								default: '',
+							},
+							{
+								displayName: 'Index',
+								name: 'index',
+								type: 'number',
+								description: 'The zero-based index, relative to the beginning of the specified segment.',
+								default: '',
+							},
+						],
+					},
+					{
+						name: 'deleteTableColumnValues',
+						displayName: 'Delete Table Column',
+						values: [
+							{
+								displayName: 'Table Cell Row Index',
+								name: 'rowIndex',
+								type: 'number',
+								description: 'The zero-based row index.',
+								default: '',
+							},
+							{
+								displayName: 'Table Cell Column Index',
+								name: 'columnIndex',
+								type: 'number',
+								description: 'The zero-based column index.',
+								default: '',
+							},
+							{
+								displayName: 'Segment ID',
+								name: 'segmentId',
+								type: 'string',
+								description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
+								default: '',
+							},
+							{
+								displayName: 'Index',
+								name: 'index',
+								type: 'number',
+								description: 'The zero-based index, relative to the beginning of the specified segment.',
 								default: '',
 							},
 						],

@@ -126,11 +126,16 @@ export class GoogleDocs implements INodeType {
 								replaceAllTextValues,
 								insertTextValues,
 								insertPageBreakValues,
+								insertTableValues,
+								insertTableRowValues,
+								insertTableColumnValues,
 								createParagraphBulletsValues,
 								deleteParagraphBulletsValues,
 								createNamedRangeValues,
 								deleteNamedRangeValues,
 								deletePositionedObjectValues,
+								deleteTableRowValues,
+								deleteTableColumnValues,
 								createHeaderValues,
 								createFooterValues,
 								deleteHeaderValues,
@@ -177,6 +182,59 @@ export class GoogleDocs implements INodeType {
 												...(insertPageBreakValue.locationChoice === 'location') ?{
 													index: parseInt(insertPageBreakValue.index as string),
 												}:{},
+											}
+										}
+									})
+								})
+							}
+							// handle insert table request
+							if (insertTableValues){
+								(insertTableValues as IDataObject[]).forEach( insertTableValue => {
+									(body.requests as IDataObject[]).push({
+										insertTable:{
+											rows: insertTableValue.rows,
+											columns: insertTableValue.columns,
+											[insertTableValue.locationChoice as string]:{
+												segmentId: insertTableValue.segmentId,
+												...(insertTableValue.locationChoice === 'location') ?{
+													index: parseInt(insertTableValue.index as string),
+												}:{},
+											}
+										}
+									})
+								})
+							}
+							// handle insert table row request
+							if (insertTableRowValues){
+								(insertTableRowValues as IDataObject[]).forEach( insertTableRowValue => {
+									(body.requests as IDataObject[]).push({
+										insertTableRow:{
+											insertBelow: insertTableRowValue.insertBelow,
+											tableCellLocation: {
+												rowIndex: insertTableRowValue.rowIndex,
+												columnIndex: insertTableRowValue.columnIndex,
+												tableStartLocation: {
+													segmentId: insertTableRowValue.segmentId,
+													index: insertTableRowValue.index,
+												}
+											}
+										}
+									})
+								})
+							}
+							// handle insert table column request
+							if (insertTableColumnValues){
+								(insertTableColumnValues as IDataObject[]).forEach( insertTableColumnValue => {
+									(body.requests as IDataObject[]).push({
+										insertTableColumn:{
+											insertRight: insertTableColumnValue.insertRight,
+											tableCellLocation: {
+												rowIndex: insertTableColumnValue.rowIndex,
+												columnIndex: insertTableColumnValue.columnIndex,
+												tableStartLocation: {
+													segmentId: insertTableColumnValue.segmentId,
+													index: insertTableColumnValue.index,
+												}
 											}
 										}
 									})
@@ -242,6 +300,40 @@ export class GoogleDocs implements INodeType {
 									(body.requests as IDataObject[]).push({
 										deletePositionedObject: {
 											objectId:deletePositionedObjectValue.objectId,
+										}
+									})
+								})
+							}
+							// handle delete table row request
+							if (deleteTableRowValues){
+								(deleteTableRowValues as IDataObject[]).forEach( deleteTableRowValue => {
+									(body.requests as IDataObject[]).push({
+										deleteTableRow:{
+											tableCellLocation: {
+												rowIndex: deleteTableRowValue.rowIndex,
+												columnIndex: deleteTableRowValue.columnIndex,
+												tableStartLocation: {
+													segmentId: deleteTableRowValue.segmentId,
+													index: deleteTableRowValue.index,
+												}
+											}
+										}
+									})
+								})
+							}
+							// handle delete table column request
+							if (deleteTableColumnValues){
+								(deleteTableColumnValues as IDataObject[]).forEach( deleteTableColumnValue => {
+									(body.requests as IDataObject[]).push({
+										deleteTableColumn:{
+											tableCellLocation: {
+												rowIndex: deleteTableColumnValue.rowIndex,
+												columnIndex: deleteTableColumnValue.columnIndex,
+												tableStartLocation: {
+													segmentId: deleteTableColumnValue.segmentId,
+													index: deleteTableColumnValue.index,
+												}
+											}
 										}
 									})
 								})
@@ -313,11 +405,9 @@ export class GoogleDocs implements INodeType {
 				}
 				throw error;
 			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else if (responseData !== undefined) {
-				returnData.push(responseData as IDataObject);
-			}
+			Array.isArray(responseData)
+				? returnData.push(...responseData)
+				: returnData.push(responseData);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
