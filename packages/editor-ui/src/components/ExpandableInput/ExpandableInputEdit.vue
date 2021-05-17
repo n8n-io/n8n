@@ -59,10 +59,6 @@ export default Vue.extend({
 
 <style lang="scss" scoped>
 .el-input input.el-input__inner {
-	border: 1px solid $--color-primary;
-
-	&:hover {
-		border: 1px solid $--color-primary;
-	}
+	border: 1px solid $--color-primary !important;
 }
 </style>

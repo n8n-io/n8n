@@ -135,10 +135,12 @@ export default mixins(workflowHelpers).extend({
 		onTagsEditEnable() {
 			this.$data.appliedTagIds = this.currentWorkflowTagIds;
 			this.$data.isTagsEditEnabled = true;
-			this.$data.isNameEditEnabled = false;
-			this.$nextTick(() => {
+
+			setTimeout(() => {
+				// allow name update to occur before disabling name edit
+				this.$data.isNameEditEnabled = false;
 				this.$data.tagsEditBus.$emit('focus');
-			});
+			}, 0);
 		},
 		async onTagsUpdate(tags: string[]) {
 			this.$data.appliedTagIds = tags;
@@ -164,6 +166,11 @@ export default mixins(workflowHelpers).extend({
 		onNameToggle() {
 			this.$data.isNameEditEnabled = !this.$data.isNameEditEnabled;
 			if (this.$data.isNameEditEnabled) {
+				if (this.$data.isTagsEditEnabled) {
+					// @ts-ignore
+					this.onTagsBlur();
+				}
+
 				this.$data.isTagsEditEnabled = false;
 			}
 		},
