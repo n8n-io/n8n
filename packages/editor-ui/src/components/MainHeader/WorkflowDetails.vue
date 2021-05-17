@@ -1,6 +1,6 @@
 <template>
 	<div class="container" v-if="workflowName">
-		<BreakpointsObserver :valueXS="15" :valueSM="25" :valueMD="50" :valueLG="100">
+		<BreakpointsObserver :valueXS="15" :valueSM="25" :valueMD="50" :valueLG="100" class="name-container">
 			<template v-slot="{ value }">
 				<WorkflowNameShort
 					:name="workflowName"
@@ -199,11 +199,16 @@ export default mixins(workflowHelpers).extend({
 
 <style scoped lang="scss">
 $--text-line-height: 24px;
+$--header-spacing: 30px;
 
 .container {
 	width: 100%;
 	display: flex;
-	margin-left: $--header-spacing;
+	align-items: center;
+}
+
+.name-container {
+	margin-right: $--header-spacing;
 }
 
 .name {
@@ -218,6 +223,7 @@ $--text-line-height: 24px;
 	line-height: $--text-line-height;
 	display: flex;
 	align-items: center;
+	margin-right: $--header-spacing;
 
 	> span {
 		margin-right: 5px;
@@ -239,6 +245,7 @@ $--text-line-height: 24px;
 .tags {
 	flex: 1;
 	padding-right: 20px;
+	margin-right: $--header-spacing;
 }
 
 .tags-edit {
@@ -246,12 +253,8 @@ $--text-line-height: 24px;
 	max-width: 460px;
 }
 
-.actions,.container {
+.actions {
 	display: flex;
 	align-items: center;
-
-	> * {
-		margin-right: $--header-spacing;	
-	}
 }
 </style>

@@ -36,9 +36,3 @@ export default mixins(pushConnection).extend({
 	},
 });
 </script>
-
-<style lang="scss" scoped>
-.push-connection-lost {
-	margin-right: $--header-spacing;	
-}
-</style>

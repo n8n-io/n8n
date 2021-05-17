@@ -111,6 +111,5 @@ export default mixins(
 
 .read-only {
 	align-self: flex-end;
-	margin-right: $--header-spacing;
 }
 </style>

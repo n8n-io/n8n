@@ -91,5 +91,6 @@ export default mixins(
 	font-size: 0.9em;
 	height: $--header-height;
 	font-weight: 400;
+	padding: 0 20px;
 }
 </style>
