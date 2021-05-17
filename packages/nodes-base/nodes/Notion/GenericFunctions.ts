@@ -188,6 +188,7 @@ export function formatBlocks(blocks: IDataObject[]) {
 	return results;
 }
 
+// tslint:disable-next-line: no-any
 function getPropertyKeyValue(value: any, type: string, timezone: string) {
 	console.log(value);
 	console.log(type);
@@ -214,6 +215,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			break;
 		case 'relation':
 			result = {
+				// tslint:disable-next-line: no-any
 				type: 'relation', relation: (value.relationValue).reduce((acc: [], cur: any) => {
 					return acc.concat(cur.split(',').map((relation: string) => ({ id: relation })));
 				}, []),
@@ -221,6 +223,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			break;
 		case 'multi_select':
 			result = {
+				// tslint:disable-next-line: no-any
 				type: 'multi_select', multi_select: value.multiSelectValue.filter((id: any) => id !== null).map((option: string) => ({ id: option })),
 			};
 			break;
@@ -231,6 +234,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			break;
 		case 'people':
 			result = {
+				// tslint:disable-next-line: no-any
 				type: 'people', people: (value.peopleValue).reduce((acc: [], cur: any) => {
 					return acc.concat(cur.split(',').map((user: string) => ({ id: user })));
 				}, []),

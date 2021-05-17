@@ -176,32 +176,32 @@ export const databaseFields = [
 								type: 'hidden',
 								default: '={{$parameter["&propertyName"].split("|")[1]}}',
 							},
-							{
-								displayName: "Condition",
-								name: "condition",
-								type: "options",
-								displayOptions:{
-									show:{
-										type: [
-											'title',
-										],
-									},
-								},
-								"options": [
-									{ "name": "Equals", "value": "equals" },
-									{ "name": "Does Not Equal", "value": "does_not_equal" },
-									{ "name": "Contains", "value": "contains" },
-									{ "name": "Does Not Contain", "value": "does_not_contain" },
-									{ "name": "Starts With", "value": "starts_with" },
-									{ "name": "Ends With", "value": "ends_with" },
-									{ "name": "Is Empty", "value": "is_empty" },
-									{
-										"name": "Is Not Empty", "value": "is_not_empty"
-									},
-								],
-								"default": 'equals',
-								"description": "The value of the property to filter by."
-							},
+							// {
+							// 	displayName: "Condition",
+							// 	name: "condition",
+							// 	type: "options",
+							// 	displayOptions:{
+							// 		show:{
+							// 			type: [
+							// 				'title',
+							// 			],
+							// 		},
+							// 	},
+							// 	"options": [
+							// 		{ "name": "Equals", "value": "equals" },
+							// 		{ "name": "Does Not Equal", "value": "does_not_equal" },
+							// 		{ "name": "Contains", "value": "contains" },
+							// 		{ "name": "Does Not Contain", "value": "does_not_contain" },
+							// 		{ "name": "Starts With", "value": "starts_with" },
+							// 		{ "name": "Ends With", "value": "ends_with" },
+							// 		{ "name": "Is Empty", "value": "is_empty" },
+							// 		{
+							// 			"name": "Is Not Empty", "value": "is_not_empty"
+							// 		},
+							// 	],
+							// 	"default": 'equals',
+							// 	"description": "The value of the property to filter by."
+							// },
 							//...getFilters(),
 						],
 					},
