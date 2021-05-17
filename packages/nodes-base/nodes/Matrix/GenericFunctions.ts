@@ -50,7 +50,7 @@ export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleF
 
 		let response: any; // tslint:disable-line:no-any
 
-		const credentials = this.getCredentials('matrixApi');
+		const credentials = await this.getCredentials('matrixApi');
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}

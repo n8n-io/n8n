@@ -141,10 +141,7 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 			},
 		};
 
-		const credentials = await WorkflowCredentials(workflowData.nodes);
-
 		const runData: IWorkflowExecutionDataProcess = {
-			credentials,
 			executionMode,
 			executionData: runExecutionData,
 			workflowData,

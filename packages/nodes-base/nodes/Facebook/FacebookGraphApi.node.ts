@@ -295,7 +295,7 @@ export class FacebookGraphApi implements INodeType {
 		const returnItems: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const graphApiCredentials = this.getCredentials('facebookGraphApi');
+			const graphApiCredentials = await this.getCredentials('facebookGraphApi');
 
 			const hostUrl = this.getNodeParameter('hostUrl', itemIndex) as string;
 			const httpRequestMethod = this.getNodeParameter('httpRequestMethod', itemIndex) as string;

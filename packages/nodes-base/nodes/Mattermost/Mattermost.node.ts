@@ -1940,7 +1940,7 @@ export class Mattermost implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const credentials = this.getCredentials('mattermostApi');
+		const credentials = await this.getCredentials('mattermostApi');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

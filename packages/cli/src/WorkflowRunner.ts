@@ -174,7 +174,7 @@ export class WorkflowRunner {
 		}
 
 		const workflow = new Workflow({ id: data.workflowData.id as string | undefined, name: data.workflowData.name, nodes: data.workflowData!.nodes, connections: data.workflowData!.connections, active: data.workflowData!.active, nodeTypes, staticData: data.workflowData!.staticData });
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(data.credentials, undefined, workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(undefined, workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000);
 
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, undefined);
@@ -385,43 +385,14 @@ export class WorkflowRunner {
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, subprocess);
 
-		// Check if workflow contains a "executeWorkflow" Node as in this
-		// case we can not know which nodeTypes and credentialTypes will
-		// be needed and so have to load all of them in the workflowRunnerProcess
-		let loadAllNodeTypes = false;
-		for (const node of data.workflowData.nodes) {
-			if (node.type === 'n8n-nodes-base.executeWorkflow') {
-				loadAllNodeTypes = true;
-				break;
-			}
-		}
-
-		let nodeTypeData: ITransferNodeTypes;
-		let credentialTypeData: ICredentialsTypeData;
-		let credentialsOverwrites = this.credentialsOverwrites;
-
-		if (loadAllNodeTypes === true) {
-			// Supply all nodeTypes and credentialTypes
-			nodeTypeData = WorkflowHelpers.getAllNodeTypeData();
-			const credentialTypes = CredentialTypes();
-			credentialTypeData = credentialTypes.credentialTypes;
-		} else {
-			// Supply only nodeTypes, credentialTypes and overwrites that the workflow needs
-			nodeTypeData = WorkflowHelpers.getNodeTypeData(data.workflowData.nodes);
-			credentialTypeData = WorkflowHelpers.getCredentialsData(data.credentials);
-
-			credentialsOverwrites = {};
-			for (const credentialName of Object.keys(credentialTypeData)) {
-				if (this.credentialsOverwrites[credentialName] !== undefined) {
-					credentialsOverwrites[credentialName] = this.credentialsOverwrites[credentialName];
-				}
-			}
-		}
+		// Supply all nodeTypes and credentialTypes
+		const nodeTypeData = WorkflowHelpers.getAllNodeTypeData() as ITransferNodeTypes;
+		const credentialTypes = CredentialTypes();
 
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).nodeTypeData = nodeTypeData;
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite = credentialsOverwrites;
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsTypeData = credentialTypeData; // TODO: Still needs correct value
+		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite = this.credentialsOverwrites;
+		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsTypeData = credentialTypes.credentialTypes; // TODO: Still needs correct value
 
 		const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
 

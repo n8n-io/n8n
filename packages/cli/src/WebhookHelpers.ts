@@ -129,8 +129,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 	}
 
 	// Prepare everything that is needed to run the workflow
-	const credentials = await WorkflowCredentials(workflowData.nodes);
-	const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
+	const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 	// Add the Response and Request so that this data can be accessed in the node
 	additionalData.httpRequest = req;
@@ -276,7 +275,6 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 		}
 
 		const runData: IWorkflowExecutionDataProcess = {
-			credentials,
 			executionMode,
 			executionData: runExecutionData,
 			sessionId,

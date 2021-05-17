@@ -66,9 +66,9 @@ export async function taigaApiRequest(
 	let credentials;
 
 	if (version === 'server') {
-		credentials = this.getCredentials('taigaServerApi') as ICredentialDataDecryptedObject;
+		credentials = await this.getCredentials('taigaServerApi') as ICredentialDataDecryptedObject;
 	} else {
-		credentials = this.getCredentials('taigaCloudApi') as ICredentialDataDecryptedObject;
+		credentials = await this.getCredentials('taigaCloudApi') as ICredentialDataDecryptedObject;
 	}
 
 	const authToken = await getAuthorization.call(this, credentials);

@@ -29,7 +29,7 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 		if (authenticationMethod === 'jwt') {
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_jwt_flow.htm&type=5
 			const credentialsType = 'salesforceJwtApi';
-			const credentials = this.getCredentials(credentialsType);
+			const credentials = await this.getCredentials(credentialsType);
 			const response = await getAccessToken.call(this, credentials as IDataObject);
 			const { instance_url, access_token } = response;
 			const options = getOptions.call(this, method, (uri || endpoint), body, qs, instance_url as string);
@@ -40,7 +40,7 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 		} else {
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_web_server_flow.htm&type=5
 			const credentialsType = 'salesforceOAuth2Api';
-			const credentials = this.getCredentials(credentialsType);
+			const credentials = await this.getCredentials(credentialsType);
 			const subdomain = ((credentials!.accessTokenUrl as string).match(/https:\/\/(.+).salesforce\.com/) || [])[1];
 			const options = getOptions.call(this, method, (uri || endpoint), body, qs, `https://${subdomain}.salesforce.com`);
 			Logger.debug(`Authentication for "Salesforce" node is using "OAuth2". Invoking URI ${options.uri}`);

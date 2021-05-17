@@ -152,10 +152,7 @@ export class Execute extends Command {
 		}
 
 		try {
-			const credentials = await WorkflowCredentials(workflowData!.nodes);
-
 			const runData: IWorkflowExecutionDataProcess = {
-				credentials,
 				executionMode: 'cli',
 				startNodes: [startNode.name],
 				workflowData: workflowData!,

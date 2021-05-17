@@ -796,7 +796,7 @@ export class Dropbox implements INodeType {
 		let simple = false;
 
 
-		const { accessType } = getCredentials.call(this);
+		const { accessType } = await getCredentials.call(this);
 
 		if (accessType === 'full') {
 			// get the root directory to set it as the default for all operations

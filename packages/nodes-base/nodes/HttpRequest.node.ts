@@ -619,11 +619,11 @@ export class HttpRequest implements INodeType {
 		const parametersAreJson = this.getNodeParameter('jsonParameters', 0) as boolean;
 		const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 
-		const httpBasicAuth = this.getCredentials('httpBasicAuth');
-		const httpDigestAuth = this.getCredentials('httpDigestAuth');
-		const httpHeaderAuth = this.getCredentials('httpHeaderAuth');
-		const oAuth1Api = this.getCredentials('oAuth1Api');
-		const oAuth2Api = this.getCredentials('oAuth2Api');
+		const httpBasicAuth = await this.getCredentials('httpBasicAuth');
+		const httpDigestAuth = await this.getCredentials('httpDigestAuth');
+		const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+		const oAuth1Api = await this.getCredentials('oAuth1Api');
+		const oAuth2Api = await this.getCredentials('oAuth2Api');
 
 		let requestOptions: OptionsWithUri;
 		let setUiParameter: IDataObject;

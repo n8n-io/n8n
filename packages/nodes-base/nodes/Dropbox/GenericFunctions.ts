@@ -42,7 +42,7 @@ export async function dropboxApiRequest(this: IHookFunctions | IExecuteFunctions
 	try {
 		if (authenticationMethod === 'accessToken') {
 
-			const credentials = this.getCredentials('dropboxApi') as IDataObject;
+			const credentials = await this.getCredentials('dropboxApi') as IDataObject;
 
 			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
 
@@ -101,12 +101,12 @@ export function simplify(data: IDataObject[]) {
 	return results;
 }
 
-export function getCredentials(this: IExecuteFunctions) {
+export async function getCredentials(this: IExecuteFunctions) {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 	if (authenticationMethod === 'accessToken') {
-		return this.getCredentials('dropboxApi') as IDataObject;
+		return await this.getCredentials('dropboxApi') as IDataObject;
 	} else {
-		return this.getCredentials('dropboxOAuth2Api') as IDataObject;
+		return await this.getCredentials('dropboxOAuth2Api') as IDataObject;
 	}
 }
 

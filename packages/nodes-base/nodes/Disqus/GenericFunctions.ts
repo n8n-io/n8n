@@ -16,7 +16,7 @@ export async function disqusApiRequest(
 		option: IDataObject = {},
 	): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('disqusApi') as IDataObject;
+	const credentials = await this.getCredentials('disqusApi') as IDataObject;
 	qs.api_key = credentials.accessToken;
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

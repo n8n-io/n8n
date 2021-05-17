@@ -44,7 +44,7 @@ export async function copperApiRequest(
 	uri = '',
 	option: IDataObject = {},
 ) {
-	const credentials = this.getCredentials('copperApi') as { apiKey: string, email: string };
+	const credentials = await this.getCredentials('copperApi') as { apiKey: string, email: string };
 
 	let options: OptionsWithUri = {
 		headers: {

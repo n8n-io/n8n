@@ -190,9 +190,7 @@ export class ActiveWorkflowRunner {
 		const nodeTypes = NodeTypes();
 		const workflow = new Workflow({ id: webhook.workflowId.toString(), name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings });
 
-		const credentials = await WorkflowCredentials([workflow.getNode(webhook.node as string) as INode]);
-
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 		const webhookData = NodeHelpers.getNodeWebhooks(workflow, workflow.getNode(webhook.node as string) as INode, additionalData).filter((webhook) => {
 			return (webhook.httpMethod === httpMethod && webhook.path === path);
@@ -367,8 +365,7 @@ export class ActiveWorkflowRunner {
 
 		const mode = 'internal';
 
-		const credentials = await WorkflowCredentials(workflowData.nodes);
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData);
 
@@ -420,7 +417,6 @@ export class ActiveWorkflowRunner {
 
 		// Start the workflow
 		const runData: IWorkflowExecutionDataProcess = {
-			credentials: additionalData.credentials,
 			executionMode: mode,
 			executionData,
 			workflowData,
@@ -507,8 +503,7 @@ export class ActiveWorkflowRunner {
 			}
 
 			const mode = 'trigger';
-			const credentials = await WorkflowCredentials(workflowData.nodes);
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
+			const additionalData = await WorkflowExecuteAdditionalData.getBase();
 			const getTriggerFunctions = this.getExecuteTriggerFunctions(workflowData, additionalData, mode, activation);
 			const getPollFunctions = this.getExecutePollFunctions(workflowData, additionalData, mode, activation);
 

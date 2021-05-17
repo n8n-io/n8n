@@ -42,7 +42,7 @@ export async function deepLApiRequest(
 			delete options.body;
 		}
 
-		const credentials = this.getCredentials('deepLApi');
+		const credentials = await this.getCredentials('deepLApi');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

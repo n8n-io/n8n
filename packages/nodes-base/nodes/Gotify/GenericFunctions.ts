@@ -14,7 +14,7 @@ import {
 
 export async function gotifyApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, uri?: string | undefined, option = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('gotifyApi') as IDataObject;
+	const credentials = await this.getCredentials('gotifyApi') as IDataObject;
 
 	const options: OptionsWithUri = {
 		method,

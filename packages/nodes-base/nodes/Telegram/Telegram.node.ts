@@ -2023,7 +2023,7 @@ export class Telegram implements INodeType {
 				if (this.getNodeParameter('download', i, false) as boolean === true) {
 					const filePath = responseData.result.file_path;
 
-					const credentials = this.getCredentials('telegramApi');
+					const credentials = await this.getCredentials('telegramApi');
 
 					if (credentials === undefined) {
 						throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

@@ -26,12 +26,14 @@ import {
 
 
 export class CredentialsHelper extends ICredentialsHelper {
-	getDecrypted(name: string, type: string): ICredentialDataDecryptedObject {
-		return {};
+	getDecrypted(name: string, type: string): Promise<ICredentialDataDecryptedObject> {
+		return new Promise(res => res({}));
 	}
 
-	getCredentials(name: string, type: string): Credentials {
-		return new Credentials('', '', [], '');
+	getCredentials(name: string, type: string): Promise<Credentials> {
+		return new Promise(res => {
+			res(new Credentials('', '', [], ''));
+		});
 	}
 
 	async updateCredentials(name: string, type: string, data: ICredentialDataDecryptedObject): Promise<void> {}
@@ -748,8 +750,7 @@ export function WorkflowExecuteAdditionalData(waitPromise: IDeferredPromise<IRun
 	};
 
 	return {
-		credentials: {},
-		credentialsHelper: new CredentialsHelper({}, ''),
+		credentialsHelper: new CredentialsHelper(''),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
 		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {}, // tslint:disable-line:no-any
 		restApiUrl: '',

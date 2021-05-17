@@ -785,9 +785,9 @@ export class NextCloud implements INodeType {
 		let credentials;
 
 		if (authenticationMethod === 'accessToken') {
-			credentials = this.getCredentials('nextCloudApi');
+			credentials = await this.getCredentials('nextCloudApi');
 		} else {
-			credentials = this.getCredentials('nextCloudOAuth2Api');
+			credentials = await this.getCredentials('nextCloudOAuth2Api');
 		}
 
 		if (credentials === undefined) {

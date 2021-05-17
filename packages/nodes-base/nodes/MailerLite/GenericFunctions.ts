@@ -15,7 +15,7 @@ import {
 
 export async function mailerliteApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('mailerLiteApi') as IDataObject;
+	const credentials = await this.getCredentials('mailerLiteApi') as IDataObject;
 
 	const options: OptionsWithUri = {
 		headers: {

@@ -32,7 +32,7 @@ export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFuncti
 
 	try {
 		if (authenticationMethod === 'privateKey') {
-			const credentials = this.getCredentials('eventbriteApi');
+			const credentials = await this.getCredentials('eventbriteApi');
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}

@@ -64,7 +64,6 @@ import {
 	TestWebhooks,
 	WebhookHelpers,
 	WebhookServer,
-	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
 	WorkflowRunner,
 } from './';
@@ -76,7 +75,6 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
@@ -84,7 +82,6 @@ import {
 	INodePropertyOptions,
 	INodeTypeDescription,
 	IRunData,
-	IWorkflowCredentials,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -677,8 +674,7 @@ class App {
 
 			// If webhooks nodes exist and are active we have to wait for till we receive a call
 			if (runData === undefined || startNodes === undefined || startNodes.length === 0 || destinationNode === undefined) {
-				const credentials = await WorkflowCredentials(workflowData.nodes);
-				const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
+				const additionalData = await WorkflowExecuteAdditionalData.getBase();
 				const nodeTypes = NodeTypes();
 				const workflowInstance = new Workflow({ id: workflowData.id, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: false, nodeTypes, staticData: undefined, settings: workflowData.settings });
 				const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, activationMode, sessionId, destinationNode);
@@ -692,11 +688,8 @@ class App {
 			// For manual testing always set to not active
 			workflowData.active = false;
 
-			const credentials = await WorkflowCredentials(workflowData.nodes);
-
 			// Start the workflow
 			const data: IWorkflowExecutionDataProcess = {
-				credentials,
 				destinationNode,
 				executionMode,
 				runData,
@@ -729,9 +722,7 @@ class App {
 
 			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, path, JSON.parse('' + req.query.currentNodeParameters), credentials!);
 
-			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
-			const workflowCredentials = await WorkflowCredentials(workflowData.nodes);
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowCredentials, currentNodeParameters);
+			const additionalData = await WorkflowExecuteAdditionalData.getBase(currentNodeParameters);
 
 			return loadDataInstance.getOptions(methodName, additionalData);
 		}));
@@ -1102,15 +1093,9 @@ class App {
 				return '';
 			}
 
-			// Decrypt the currently saved credentials
-			const workflowCredentials: IWorkflowCredentials = {
-				[result.type as string]: {
-					[result.name as string]: result as ICredentialsEncrypted,
-				},
-			};
 			const mode: WorkflowExecuteMode = 'internal';
-			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const credentialsHelper = new CredentialsHelper(encryptionKey);
+			const decryptedDataOriginal = await credentialsHelper.getDecrypted(result.name, result.type, mode, true);
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
@@ -1193,15 +1178,9 @@ class App {
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
-			// Decrypt the currently saved credentials
-			const workflowCredentials: IWorkflowCredentials = {
-				[result.type as string]: {
-					[result.name as string]: result as ICredentialsEncrypted,
-				},
-			};
 			const mode: WorkflowExecuteMode = 'internal';
-			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const credentialsHelper = new CredentialsHelper(encryptionKey);
+			const decryptedDataOriginal = await credentialsHelper.getDecrypted(result.name, result.type, mode, true);
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const options: OptionsWithUrl = {
@@ -1265,15 +1244,9 @@ class App {
 				return '';
 			}
 
-			// Decrypt the currently saved credentials
-			const workflowCredentials: IWorkflowCredentials = {
-				[result.type as string]: {
-					[result.name as string]: result as ICredentialsEncrypted,
-				},
-			};
 			const mode: WorkflowExecuteMode = 'internal';
-			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const credentialsHelper = new CredentialsHelper(encryptionKey);
+			const decryptedDataOriginal = await credentialsHelper.getDecrypted(result.name, result.type, mode, true);
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const token = new csrf();
@@ -1365,15 +1338,9 @@ class App {
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
-			// Decrypt the currently saved credentials
-			const workflowCredentials: IWorkflowCredentials = {
-				[result.type as string]: {
-					[result.name as string]: result as ICredentialsEncrypted,
-				},
-			};
 			const mode: WorkflowExecuteMode = 'internal';
-			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const credentialsHelper = new CredentialsHelper(encryptionKey);
+			const decryptedDataOriginal = await credentialsHelper.getDecrypted(result.name, result.type, mode, true);
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const token = new csrf();
@@ -1568,13 +1535,10 @@ class App {
 
 			const executionMode = 'retry';
 
-			const credentials = await WorkflowCredentials(fullExecutionData.workflowData.nodes);
-
 			fullExecutionData.workflowData.active = false;
 
 			// Start the workflow
 			const data: IWorkflowExecutionDataProcess = {
-				credentials,
 				executionMode,
 				executionData: fullExecutionData.data,
 				retryOf: req.params.id,

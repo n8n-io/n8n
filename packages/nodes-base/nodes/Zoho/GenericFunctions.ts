@@ -1,4 +1,4 @@
-import { 
+import {
 	OptionsWithUri,
 } from 'request';
 
@@ -12,7 +12,7 @@ import {
 } from 'n8n-workflow';
 
 export async function zohoApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const { oauthTokenData: { api_domain } } = this.getCredentials('zohoOAuth2Api') as { [key: string]: IDataObject };
+	const { oauthTokenData: { api_domain } } = await this.getCredentials('zohoOAuth2Api') as { [key: string]: IDataObject };
 
 	const options: OptionsWithUri = {
 		headers: {

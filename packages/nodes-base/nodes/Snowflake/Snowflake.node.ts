@@ -176,7 +176,7 @@ export class Snowflake implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('snowflake') as unknown as snowflake.ConnectionOptions;
+		const credentials = await this.getCredentials('snowflake') as unknown as snowflake.ConnectionOptions;
 		const returnData: IDataObject[] = [];
 		let responseData;
 

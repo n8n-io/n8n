@@ -213,7 +213,7 @@ export class MicrosoftSql implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('microsoftSql');
+		const credentials = await this.getCredentials('microsoftSql');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

@@ -34,7 +34,7 @@ export async function getresponseApiRequest(this: IWebhookFunctions | IHookFunct
 		}
 
 		if (authentication === 'apiKey') {
-			const credentials = this.getCredentials('getResponseApi') as IDataObject;
+			const credentials = await this.getCredentials('getResponseApi') as IDataObject;
 			options!.headers!['X-Auth-Token'] = `api-key ${credentials.apiKey}`;
 			//@ts-ignore
 			return await this.helpers.request.call(this, options);

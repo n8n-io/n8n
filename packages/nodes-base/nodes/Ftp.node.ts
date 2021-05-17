@@ -374,9 +374,9 @@ export class Ftp implements INodeType {
 		const protocol = this.getNodeParameter('protocol', 0) as string;
 
 		if (protocol === 'sftp') {
-			credentials = this.getCredentials('sftp');
+			credentials = await this.getCredentials('sftp');
 		} else {
-			credentials = this.getCredentials('ftp');
+			credentials = await this.getCredentials('ftp');
 		}
 
 		if (credentials === undefined) {

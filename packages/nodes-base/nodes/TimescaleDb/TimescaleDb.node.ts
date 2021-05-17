@@ -274,7 +274,7 @@ export class TimescaleDb implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('timescaleDb');
+		const credentials = await this.getCredentials('timescaleDb');
 
 		if (credentials === undefined) {
 			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

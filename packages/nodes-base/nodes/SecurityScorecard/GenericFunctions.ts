@@ -13,7 +13,7 @@ import {
 } from 'n8n-workflow';
 
 export async function scorecardApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('securityScorecardApi');
+	const credentials = await this.getCredentials('securityScorecardApi');
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');

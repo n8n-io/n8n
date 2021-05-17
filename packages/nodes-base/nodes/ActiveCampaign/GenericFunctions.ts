@@ -26,7 +26,7 @@ export interface IProduct {
  * @returns {Promise<any>}
  */
 export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKey?: string): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('activeCampaignApi');
+	const credentials = await this.getCredentials('activeCampaignApi');
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}

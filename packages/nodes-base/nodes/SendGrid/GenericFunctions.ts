@@ -14,7 +14,7 @@ import {
 } from 'n8n-workflow';
 
 export async function sendGridApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('sendGridApi') as IDataObject;
+	const credentials = await this.getCredentials('sendGridApi') as IDataObject;
 
 	const host = 'api.sendgrid.com/v3';
 
