@@ -524,6 +524,8 @@ export interface IUiState {
 	isPageLoading: boolean;
 }
 
+export interface IWorkflowsState {
+}
 
 export interface IRestApiContext {
 	baseUrl: string;

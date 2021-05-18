@@ -1396,7 +1396,7 @@ export default mixins(
 			},
 			async newWorkflow (): Promise<void> {
 				await this.resetWorkspace();
-				this.$store.commit('setWorkflowName', {newName: NEW_WORKFLOW_NAME, setStateDirty: false});
+				await this.$store.dispatch('workflows/setNewWorkflowName');
 
 				// Create start node
 				const defaultNodes = [
