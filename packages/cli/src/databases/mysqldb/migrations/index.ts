@@ -9,7 +9,6 @@ import { CreateTagEntity1617268711084 } from './1617268711084-CreateTagEntity';
 import { UniqueWorkflowNames1620826335440 } from './1620826335440-UniqueWorkflowNames';
 import { SetDefaultDates1620313300228 } from './1620313300228-SetDefaultDates';
 
-
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
 	WebhookModel1592447867632,
