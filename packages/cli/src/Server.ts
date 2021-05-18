@@ -113,7 +113,7 @@ import { Registry } from 'prom-client';
 import * as TagHelpers from './TagHelpers';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { DEFAULT_NEW_WORKFLOW_NAME, WorkflowNameRequest } from './WorkflowHelpers';
+import { DEFAULT_NEW_WORKFLOW_NAME, isNotNumeric, WorkflowNameRequest } from './WorkflowHelpers';
 
 class App {
 
@@ -572,13 +572,36 @@ class App {
 		this.app.get(`/${this.restEndpoint}/workflows/new`, ResponseHelper.send(async (req: WorkflowNameRequest, res: express.Response): Promise<{ name: string }> => {
 			const nameToReturn = req.query.name ?? DEFAULT_NEW_WORKFLOW_NAME;
 
-			const count = await Db.collections.Workflow!.count({
-				name: Like(`${nameToReturn}%`),
+			const workflows = await Db.collections.Workflow!.find({
+				select: ['name'],
+				where: { name: Like(`${nameToReturn}%`) },
 			});
 
-			return count === 0
-				? { name: nameToReturn }
-				: { name: `${nameToReturn} ${count + 1}` };
+			// name is unique
+			if (workflows.length === 0) {
+				return { name: nameToReturn };
+			}
+
+			const numericSuffixes = workflows.reduce((acc: number[], { name }) => {
+				const lastWhitespaceIndex = name.lastIndexOf(' ');
+				if (lastWhitespaceIndex === -1) return acc;
+
+				const suffix = name.slice(lastWhitespaceIndex + 1);
+				if (isNotNumeric(suffix)) return acc;
+
+				acc.push(Number(suffix));
+
+				return acc;
+			}, []);
+
+			// name is duplicate but no numeric suffixes exist yet
+			if (numericSuffixes.length === 0) {
+				return { name: `${nameToReturn} 2` };
+			}
+
+			const maxSuffix = Math.max(...numericSuffixes);
+
+			return { name: `${nameToReturn} ${maxSuffix + 1}` };
 		}));
 
 
