@@ -194,9 +194,9 @@ export class WorkflowRunnerProcess {
 	 * @param {any[]} parameters
 	 * @memberof WorkflowRunnerProcess
 	 */
-	sendHookToParentProcess(hook: string, parameters: any[]) { // tslint:disable-line:no-any
+	async sendHookToParentProcess(hook: string, parameters: any[]) { // tslint:disable-line:no-any
 		try {
-			sendToParentProcess('processHook', {
+			await sendToParentProcess('processHook', {
 				hook,
 				parameters,
 			});
@@ -217,22 +217,22 @@ export class WorkflowRunnerProcess {
 		const hookFunctions: IWorkflowExecuteHooks = {
 			nodeExecuteBefore: [
 				async (nodeName: string): Promise<void> => {
-					this.sendHookToParentProcess('nodeExecuteBefore', [nodeName]);
+					await this.sendHookToParentProcess('nodeExecuteBefore', [nodeName]);
 				},
 			],
 			nodeExecuteAfter: [
 				async (nodeName: string, data: ITaskData): Promise<void> => {
-					this.sendHookToParentProcess('nodeExecuteAfter', [nodeName, data]);
+					await this.sendHookToParentProcess('nodeExecuteAfter', [nodeName, data]);
 				},
 			],
 			workflowExecuteBefore: [
 				async (): Promise<void> => {
-					this.sendHookToParentProcess('workflowExecuteBefore', []);
+					await this.sendHookToParentProcess('workflowExecuteBefore', []);
 				},
 			],
 			workflowExecuteAfter: [
 				async (fullRunData: IRun, newStaticData?: IDataObject): Promise<void> => {
-					this.sendHookToParentProcess('workflowExecuteAfter', [fullRunData, newStaticData]);
+					await this.sendHookToParentProcess('workflowExecuteAfter', [fullRunData, newStaticData]);
 				},
 			],
 		};

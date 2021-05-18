@@ -76,9 +76,7 @@ export async function hubspotApiRequestAllItems(this: IHookFunctions | IExecuteF
 			return returnData;
 		}
 	} while (
-		responseData['has-more'] !== undefined &&
-		responseData['has-more'] !== null &&
-		responseData['has-more'] !== false
+		responseData['hasMore'] || responseData['has-more']
 	);
 	return returnData;
 }
