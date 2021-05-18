@@ -1,5 +1,5 @@
 import { getNewWorkflow } from '@/api/workflows';
-import { NEW_WORKFLOW_NAME } from '@/constants';
+import { DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH, NEW_WORKFLOW_NAME } from '@/constants';
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,
@@ -10,18 +10,37 @@ const module: Module<IWorkflowsState, IRootState> = {
 	namespaced: true,
 	state: {},
 	actions: {
-		setNewWorkflowName: async (context: ActionContext<IWorkflowsState, IRootState>) => {
+		setNewWorkflowName: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<void> => {
 			let newName = NEW_WORKFLOW_NAME;
 
 			try {
-				const newWorkflow = await getNewWorkflow(context.rootGetters.getRestApiContext, { name: NEW_WORKFLOW_NAME, offset: 0});
+				const newWorkflow = await getNewWorkflow(context.rootGetters.getRestApiContext, NEW_WORKFLOW_NAME );
 				newName = newWorkflow.name;
 			}
 			catch (e) {
 				// in case of error, default to original name
 			}
 
-			context.commit('setWorkflowName', { newName, setStateDirty: false }, { root: true });
+			context.commit('setWorkflowName', { newName }, { root: true });
+		},
+
+		getDuplicateCurrentWorkflowName: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<string> => {
+			const currentWorkflowName = context.rootGetters.workflowName;
+
+			if (currentWorkflowName && (currentWorkflowName.length + DUPLICATE_POSTFFIX.length) >= MAX_WORKFLOW_NAME_LENGTH) {
+				return currentWorkflowName;
+			}
+
+			let newName = `${currentWorkflowName}${DUPLICATE_POSTFFIX}`;
+
+			try {
+				const newWorkflow = await getNewWorkflow(context.rootGetters.getRestApiContext, newName );
+				newName = newWorkflow.name;
+			}
+			catch (e) {
+			}			
+
+			return newName;
 		},
 	},
 };
