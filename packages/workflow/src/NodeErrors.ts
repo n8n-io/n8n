@@ -72,7 +72,9 @@ abstract class NodeError extends Error {
 	 * (2) if an array,
 	 * 		its string or number elements are collected as a long string,
 	 * 		its object elements are traversed recursively (restart this function
-	 *    with each object as a starting point)
+	 *    with each object as a starting point), or
+	 * (3) if it is an object, it traverses the object and nested ones recursively
+	 * 		based on the `potentialKeys` and returns a string if found.
 	 *
 	 * If nothing found via `potentialKeys` this method iterates over `traversalKeys` and
 	 * if the value at the key is a traversable object, it restarts with the object as the
@@ -91,7 +93,7 @@ abstract class NodeError extends Error {
 	protected findProperty(
 		error: IRawErrorObject,
 		potentialKeys: string[],
-		traversalKeys: string[],
+		traversalKeys: string[] = [],
 	): string | null {
 		for(const key of potentialKeys) {
 			if (error[key]) {
@@ -103,7 +105,7 @@ abstract class NodeError extends Error {
 							if (typeof error === 'string') return error;
 							if (typeof error === 'number') return error.toString();
 							if (this.isTraversableObject(error)) {
-								return this.findProperty(error, potentialKeys, traversalKeys);
+								return this.findProperty(error, potentialKeys);
 							}
 							return null;
 						})
@@ -113,6 +115,12 @@ abstract class NodeError extends Error {
 						return null;
 					}
 					return resolvedErrors.join(' | ');
+				}
+				if (this.isTraversableObject(error[key])) {
+					const property = this.findProperty(error[key] as IRawErrorObject, potentialKeys);
+					if (property) {
+						return property;
+					}
 				}
 			}
 		}
