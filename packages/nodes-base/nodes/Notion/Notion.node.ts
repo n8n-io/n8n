@@ -319,7 +319,7 @@ export class Notion implements INodeType {
 						//@ts-expect-error
 						body['sort'] = mapSorting(sort);
 					}
-					console.log(body.sort)
+					console.log(body.sort);
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(this, 'results', 'POST', `/databases/${databaseId}/query`, body, {});
 					} else {
@@ -377,7 +377,6 @@ export class Notion implements INodeType {
 						const properties = this.getNodeParameter('propertiesUi.propertyValues', i, []) as IDataObject[];
 						if (properties.length !== 0) {
 							body.properties = mapProperties(properties, timezone) as IDataObject;
-							console.log(body.properties);
 						}
 					} else {
 						body.parent['page_id'] = this.getNodeParameter('pageId', i) as string;
@@ -404,7 +403,7 @@ export class Notion implements INodeType {
 				}
 			}
 
-			if (operation === 'update') {
+			if (operation === 'updateProperties') {
 				for (let i = 0; i < length; i++) {
 					const pageId = this.getNodeParameter('pageId', i) as string;
 					const simple = this.getNodeParameter('simple', i) as boolean;
@@ -415,7 +414,6 @@ export class Notion implements INodeType {
 					};
 					if (properties.length !== 0) {
 						body.properties = mapProperties(properties, timezone) as IDataObject;
-						console.log(body.properties);
 					}
 					const page = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
 					if (simple === true) {

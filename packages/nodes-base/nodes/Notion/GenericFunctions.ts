@@ -13,6 +13,7 @@ import {
 	IDataObject,
 	IDisplayOptions,
 	INodeProperties,
+	IPollFunctions,
 } from 'n8n-workflow';
 
 import {
@@ -22,7 +23,7 @@ import {
 
 import * as moment from 'moment-timezone';
 
-export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	try {
 		const credentials = this.getCredentials('notionApi');
 		if (credentials === undefined) {
@@ -53,7 +54,7 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 	}
 }
 
-export async function notionApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function notionApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -361,6 +362,7 @@ export function mapSorting(data: [{ key: string, type: string, direction: string
 }
 
 export function mapFilters(filters: IDataObject[], timezone: string) {
+	// tslint:disable-next-line: no-any
 	return filters.reduce((obj, value: { [key: string]: any }) => {
 		let key = getNameAndType(value.key).type;
 		let valuePropertyName = value[`${camelCase(key)}Value`];

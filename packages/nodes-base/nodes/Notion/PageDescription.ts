@@ -31,8 +31,8 @@ export const pageOperations = [
 				description: 'Get a page.',
 			},
 			{
-				name: 'Update',
-				value: 'update',
+				name: 'Update Properties',
+				value: 'updateProperties',
 				description: 'Update page properties.',
 			},
 		],
@@ -74,7 +74,7 @@ export const pageFields = [
 		},
 	},
 	{
-		displayName: 'Page ID',
+		displayName: 'Parent Page ID',
 		name: 'pageId',
 		type: 'string',
 		default: '',
@@ -554,7 +554,7 @@ export const pageFields = [
 		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                page:update                                 */
+	/*                                page:updateProperties                       */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Page ID',
@@ -568,7 +568,7 @@ export const pageFields = [
 					'page',
 				],
 				operation: [
-					'update',
+					'updateProperties',
 				],
 			},
 		},
@@ -584,7 +584,7 @@ export const pageFields = [
 					'page',
 				],
 				operation: [
-					'update',
+					'updateProperties',
 				],
 			},
 		},
@@ -604,7 +604,7 @@ export const pageFields = [
 					'page',
 				],
 				operation: [
-					'update',
+					'updateProperties',
 				],
 			},
 		},
