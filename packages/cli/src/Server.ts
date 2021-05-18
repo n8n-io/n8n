@@ -570,39 +570,15 @@ class App {
 
 
 		this.app.get(`/${this.restEndpoint}/workflows/new`, ResponseHelper.send(async (req: WorkflowNameRequest, res: express.Response): Promise<{ name: string }> => {
-			const { name, offset } = req.query;
+			const nameToReturn = req.query.name ?? DEFAULT_NEW_WORKFLOW_NAME;
 
-			// return default workflow name
-			// increment if other default workflow names exist
-			if (!name && !offset) {
+			const count = await Db.collections.Workflow!.count({
+				name: Like(`${nameToReturn}%`),
+			});
 
-				const count = await Db.collections.Workflow!.count({
-					name: Like(`${DEFAULT_NEW_WORKFLOW_NAME}%`),
-				});
-
-				return count === 0
-					? { name: DEFAULT_NEW_WORKFLOW_NAME }
-					: { name: `${DEFAULT_NEW_WORKFLOW_NAME} ${count + 1}` };
-
-			// return incoming name with offset
-			// increment if workflow name with offset exists
-			} else if (name && offset) {
-
-				const count = await Db.collections.Workflow!.count({
-					name: Like(`${name}%`),
-				 });
-
-				return count === 0
-					? { name: `${name} ${offset}` }
-					: { name: `${name} ${count + 1}` };
-
-			}
-
-			throw new ResponseHelper.ResponseError(
-				'Query string params "name" and "offset" must be either both present or both absent.',
-				undefined,
-				400
-			);
+			return count === 0
+				? { name: nameToReturn }
+				: { name: `${nameToReturn} ${count + 1}` };
 		}));
 
 
