@@ -23,11 +23,11 @@ export async function googleApiRequest(this: IExecuteFunctions, method: string, 
 		uri: uri || `https://docs.googleapis.com/v1${resource}`,
 		json: true,
 	};
-	try {
-		if (Object.keys(body).length === 0) {
-			delete options.body;
-		}
+	if (Object.keys(body).length === 0) {
+		delete options.body;
+	}
 
+	try {
 		return await this.helpers.requestOAuth2.call(this, 'googleDocsOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
