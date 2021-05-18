@@ -102,7 +102,7 @@ export const filters = [{
 	},
 	default: [],
 	description: `Name of the options you want to set.
-								Multiples can be defined separated by comma.`,
+	Multiples can be defined separated by comma.`,
 },
 {
 	displayName: 'Option',

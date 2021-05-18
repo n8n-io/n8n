@@ -182,7 +182,7 @@ export const searchFields = [
 										value: 'descending',
 									},
 								],
-								default: 'database',
+								default: '',
 								description: 'The direction to sort.',
 							},
 							{
@@ -195,7 +195,7 @@ export const searchFields = [
 										value: 'last_edited_time',
 									},
 								],
-								default: '',
+								default: 'last_edited_time',
 								description: `The name of the timestamp to sort against.`,
 							},
 						],

@@ -16,8 +16,8 @@ import {
 } from 'n8n-workflow';
 
 import {
-	capitalCase,
 	camelCase,
+	capitalCase,
 } from 'change-case';
 
 import * as moment from 'moment-timezone';
@@ -202,7 +202,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			}
 			break;
 		case 'title':
-			result = [{ type: 'text', text: { content: value.content } }];
+			result = [{ type: 'text', text: { content: value.title } }];
 			break;
 		case 'number':
 			result = { type: 'number', number: value.numberValue };
@@ -349,6 +349,15 @@ export function mapProperties(properties: IDataObject[], timezone: string) {
 	return properties.reduce((obj, value) => Object.assign(obj, {
 		[`${(value.key as string).split('|')[0]}`]: getPropertyKeyValue(value, (value.key as string).split('|')[1], timezone),
 	}), {});
+}
+
+export function mapSorting(data: [{ key: string, type: string, direction: string  } ]) {
+	return data.map((sort) => {
+		return {
+			direction: sort.direction,
+			[(['last_edited_time', 'created_time'].includes(sort.type)) ? 'timestamp' : 'property']: sort.key.split('|')[0],
+		};
+	});
 }
 
 export function mapFilters(filters: IDataObject[], timezone: string) {

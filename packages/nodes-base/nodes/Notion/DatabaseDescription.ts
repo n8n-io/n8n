@@ -220,7 +220,7 @@ export const databaseFields = [
 				placeholder: 'Add Sort',
 				type: 'fixedCollection',
 				typeOptions: {
-					multipleValues: false,
+					multipleValues: true,
 				},
 				default: {},
 				options: [
@@ -228,6 +228,25 @@ export const databaseFields = [
 						displayName: 'Sort',
 						name: 'sortValue',
 						values: [
+							{
+								displayName: 'Property Name',
+								name: 'key',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getFilterProperties',
+									loadOptionsDependsOn: [
+										'datatabaseId',
+									],
+								},
+								default: '',
+								description: 'The name of the property to filter by.',
+							},
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'hidden',
+								default: '={{$parameter["&key"].split("|")[1]}}',
+							},
 							{
 								displayName: 'Direction',
 								name: 'direction',
@@ -238,26 +257,26 @@ export const databaseFields = [
 										value: 'ascending',
 									},
 									{
-										name: 'descending',
+										name: 'Descending',
 										value: 'descending',
 									},
 								],
-								default: 'database',
+								default: '',
 								description: 'The direction to sort.',
 							},
-							{
-								displayName: 'Timestamp',
-								name: 'timestamp',
-								type: 'options',
-								options: [
-									{
-										name: 'Last Edited Time',
-										value: 'last_edited_time',
-									},
-								],
-								default: '',
-								description: `The name of the timestamp to sort against.`,
-							},
+							// {
+							// 	displayName: 'Timestamp',
+							// 	name: 'timestamp',
+							// 	type: 'options',
+							// 	options: [
+							// 		{
+							// 			name: 'Last Edited Time',
+							// 			value: 'last_edited_time',
+							// 		},
+							// 	],
+							// 	default: 'last_edited_time',
+							// 	description: `The name of the timestamp to sort against.`,
+							// },
 						],
 					},
 				],
