@@ -8,6 +8,7 @@ import { ChangeCredentialDataSize1620729500000 } from './1620729500000-ChangeCre
 import { CreateTagEntity1617268711084 } from './1617268711084-CreateTagEntity';
 import { UniqueWorkflowNames1620826335440 } from './1620826335440-UniqueWorkflowNames';
 
+
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
 	WebhookModel1592447867632,
