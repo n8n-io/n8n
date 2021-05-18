@@ -16,10 +16,62 @@ export class TwilioApi implements ICredentialType {
 			default: '',
 		},
 		{
+			displayName: 'Auth Type',
+			name: 'authType',
+			type: 'options' as NodePropertyTypes,
+			default: 'authToken',
+			options: [
+				{
+					name: 'Auth Token',
+					value: 'authToken',
+				},
+				{
+					name: 'API Key',
+					value: 'apiKey',
+				},
+			],
+		},
+		{
 			displayName: 'Auth Token',
 			name: 'authToken',
 			type: 'string' as NodePropertyTypes,
 			default: '',
+			displayOptions: {
+				show: {
+					authType: [
+						'authToken',
+					],
+				},
+			},
+		},
+		{
+			displayName: 'API Key SID',
+			name: 'apiKeySid',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+			displayOptions: {
+				show: {
+					authType: [
+						'apiKey',
+					],
+				},
+			},
+		},
+		{
+			displayName: 'API Key Secret',
+			name: 'apiKeySecret',
+			type: 'string' as NodePropertyTypes,
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			displayOptions: {
+				show: {
+					authType: [
+						'apiKey',
+					],
+				},
+			},
 		},
 	];
 }
