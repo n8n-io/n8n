@@ -296,6 +296,10 @@ export function displayParameter(nodeValues: INodeParameters, parameter: INodePr
 				values.push.apply(values, value);
 			}
 
+			if (values.some(v => (typeof v) === 'string' && (v as string).charAt(0) === '=')) {
+				return true;
+			}
+
 			if (values.length === 0 || !parameter.displayOptions.show[propertyName].some(v => values.includes(v))) {
 				return false;
 			}

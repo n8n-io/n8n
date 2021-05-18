@@ -55,6 +55,11 @@ export class Redis implements INodeType {
 						description: 'Returns generic information about the Redis instance.',
 					},
 					{
+						name: 'Increment',
+						value: 'incr',
+						description: 'Atomically increments a key by 1. Creates the key if it does not exist.',
+					},
+					{
 						name: 'Keys',
 						value: 'keys',
 						description: 'Returns all the keys matching a pattern.',
@@ -184,6 +189,60 @@ export class Redis implements INodeType {
 						`,
 					},
 				],
+			},
+
+
+			// ----------------------------------
+			//         incr
+			// ----------------------------------
+			{
+				displayName: 'Key',
+				name: 'key',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'incr',
+						],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Name of the key to increment.',
+			},
+			{
+				displayName: 'Expire',
+				name: 'expire',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'incr',
+						],
+					},
+				},
+				default: false,
+				description: 'Set a timeout on key?',
+			},
+			{
+				displayName: 'TTL',
+				name: 'ttl',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'incr',
+						],
+						expire: [
+							true,
+						],
+					},
+				},
+				default: 60,
+				description: 'Number of seconds before key expiration.',
 			},
 
 			// ----------------------------------
@@ -459,7 +518,7 @@ export class Redis implements INodeType {
 						resolve(this.prepareOutputData([{ json: convertInfoToObject(result as unknown as string) }]));
 						client.quit();
 
-					} else if (['delete', 'get', 'keys', 'set'].includes(operation)) {
+					} else if (['delete', 'get', 'keys', 'set', 'incr'].includes(operation)) {
 						const items = this.getInputData();
 						const returnItems: INodeExecutionData[] = [];
 
@@ -517,6 +576,19 @@ export class Redis implements INodeType {
 
 								await setValue(client, keySet, value, expire, ttl, keyType);
 								returnItems.push(items[itemIndex]);
+							} else if (operation === 'incr') {
+
+								const keyIncr = this.getNodeParameter('key', itemIndex) as string;
+								const expire = this.getNodeParameter('expire', itemIndex, false) as boolean;
+								const ttl = this.getNodeParameter('ttl', itemIndex, -1) as number;
+								const clientIncr = util.promisify(client.incr).bind(client);
+								// @ts-ignore
+								const incrementVal = await clientIncr(keyIncr);
+								if (expire === true && ttl > 0) {
+									const clientExpire = util.promisify(client.expire).bind(client);
+									await clientExpire(keyIncr, ttl);
+								}
+								returnItems.push({json: {[keyIncr]: incrementVal}});
 							}
 						}
 
