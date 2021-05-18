@@ -61,17 +61,6 @@ export class Webhook extends Command {
 				process.exit(processExistCode);
 			}, 30000);
 
-			const removePromises = [];
-			if (activeWorkflowRunner !== undefined) {
-				removePromises.push(activeWorkflowRunner.removeAll());
-			}
-
-			// Remove all test webhooks
-			const testWebhooks = TestWebhooks.getInstance();
-			removePromises.push(testWebhooks.removeAll());
-
-			await Promise.all(removePromises);
-
 			// Wait for active workflow executions to finish
 			const activeExecutionsInstance = ActiveExecutions.getInstance();
 			let executingWorkflows = activeExecutionsInstance.getActiveExecutions();

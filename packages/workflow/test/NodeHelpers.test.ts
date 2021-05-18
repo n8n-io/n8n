@@ -2677,7 +2677,7 @@ describe('Workflow', () => {
 					},
 				},
 				{
-				description: 'complex type "fixedCollection" with "multipleValues: true". Which contains complex type "fixedCollection" with "multipleValues: true". One value set.',
+					description: 'complex type "fixedCollection" with "multipleValues: true". Which contains complex type "fixedCollection" with "multipleValues: true". One value set.',
 					input: {
 						nodePropertiesArray: [
 							{
@@ -2807,6 +2807,131 @@ describe('Workflow', () => {
 													},
 												],
 											},
+										},
+									],
+								},
+							},
+						},
+					},
+				},
+				{
+					description: 'complex type "fixedCollection" with "multipleValues: true". Which contains parameters which get displayed on a parameter with a default expression with relative parameter references.',
+					input: {
+						nodePropertiesArray: [
+							{
+								displayName: 'Values1',
+								name: 'values1',
+								type: 'fixedCollection',
+								typeOptions: {
+									multipleValues: true,
+								},
+								description: 'The value to set.',
+								default: {},
+								options: [
+									{
+										displayName: 'Options1',
+										name: 'options1',
+										values: [
+											{
+												displayName: 'Key',
+												name: 'key',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Type',
+												name: 'type',
+												type: 'hidden',
+												default: '={{$parameter["&key"].split("|")[1]}}',
+											},
+											{
+												displayName: 'Title Value',
+												name: 'titleValue',
+												displayOptions: {
+													show: {
+														type: [
+															'title',
+														],
+													},
+												},
+												type: 'string',
+												default: 'defaultTitle',
+											},
+											{
+												displayName: 'Title Number',
+												name: 'numberValue',
+												displayOptions: {
+													show: {
+														type: [
+															'number',
+														],
+													},
+												},
+												type: 'number',
+												default: 1,
+											},
+										],
+									},
+								],
+							},
+						],
+						nodeValues: {
+							values1: {
+								options1: [
+									{
+										key: 'asdf|title',
+										titleValue: 'different',
+									},
+								],
+							},
+						},
+					},
+					output: {
+						noneDisplayedFalse: {
+							defaultsFalse: {
+								values1: {
+									options1: [
+										{
+											key: 'asdf|title',
+											titleValue: 'different',
+										},
+									],
+								},
+							},
+							defaultsTrue: {
+								values1: {
+									options1: [
+										{
+											key: 'asdf|title',
+											type: '={{$parameter["&key"].split("|")[1]}}',
+											// This is not great that it displays this theoretically hidden parameter
+											// but because we can not resolve the values for now
+											numberValue: 1,
+											titleValue: 'different',
+										},
+									],
+								},
+							},
+						},
+						noneDisplayedTrue: {
+							defaultsFalse: {
+								values1: {
+									options1: [
+										{
+											key: 'asdf|title',
+											titleValue: 'different',
+										},
+									],
+								},
+							},
+							defaultsTrue: {
+								values1: {
+									options1: [
+										{
+											key: 'asdf|title',
+											type: '={{$parameter["&key"].split("|")[1]}}',
+											titleValue: 'different',
+											numberValue: 1,
 										},
 									],
 								},

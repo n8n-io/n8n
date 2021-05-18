@@ -626,6 +626,7 @@ class App {
 			const { tags, ...updateData } = req.body;
 
 			const id = req.params.id;
+			updateData.id = id;
 
 			await this.externalHooks.run('workflow.update', [updateData]);
 
@@ -848,6 +849,7 @@ class App {
 		// get generated dynamically
 		this.app.get(`/${this.restEndpoint}/node-parameter-options`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodePropertyOptions[]> => {
 			const nodeType = req.query.nodeType as string;
+			const path = req.query.path as string;
 			let credentials: INodeCredentials | undefined = undefined;
 			const currentNodeParameters = JSON.parse('' + req.query.currentNodeParameters) as INodeParameters;
 			if (req.query.credentials !== undefined) {
@@ -857,7 +859,7 @@ class App {
 
 			const nodeTypes = NodeTypes();
 
-			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, JSON.parse('' + req.query.currentNodeParameters), credentials!);
+			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, path, JSON.parse('' + req.query.currentNodeParameters), credentials!);
 
 			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
 			const workflowCredentials = await WorkflowCredentials(workflowData.nodes);
@@ -1864,6 +1866,7 @@ class App {
 						}
 					);
 				}
+				returnData.sort((a, b) => parseInt(b.id, 10) - parseInt(a.id, 10));
 
 				return returnData;
 			}

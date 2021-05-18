@@ -21,21 +21,7 @@
 					</a>
 				</el-menu-item>
 
-				<el-menu-item
-					v-for="item in sidebarMenuTopItems"
-					:key="item.id"
-					:index="item.id"
-				>
-					<a
-						v-if="item.type === 'link'"
-						:href="item.properties.href"
-						:target="item.properties.newWindow ? '_blank' : '_self'"
-						class="primary-item"
-					>
-						<font-awesome-icon :icon="item.properties.icon" />
-						<span slot="title" class="item-title-root">{{ item.properties.title }}</span>
-					</a>
-				</el-menu-item>
+				<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
 				<el-submenu index="workflow" title="Workflow">
 					<template slot="title">
@@ -136,30 +122,8 @@
 						<span slot="title" class="item-title-root">Help</span>
 					</template>
 
-					<el-menu-item index="help-documentation">
-						<template slot="title">
-							<a href="https://docs.n8n.io" target="_blank">
-								<font-awesome-icon icon="book"/>
-								<span slot="title" class="item-title">Documentation</span>
-							</a>
-						</template>
-					</el-menu-item>
-					<el-menu-item index="help-forum">
-						<template slot="title">
-							<a href="https://community.n8n.io" target="_blank">
-								<font-awesome-icon icon="users"/>
-								<span slot="title" class="item-title">Forum</span>
-							</a>
-						</template>
-					</el-menu-item>
-					<el-menu-item index="help-examples">
-						<template slot="title">
-							<a href="https://n8n.io/workflows" target="_blank">
-								<font-awesome-icon icon="network-wired"/>
-								<span slot="title" class="item-title">Workflows</span>
-							</a>
-						</template>
-					</el-menu-item>
+					<MenuItemsIterator :items="helpMenuItems" />
+
 					<el-menu-item index="help-about">
 						<template slot="title">
 							<font-awesome-icon class="about-icon" icon="info"/>
@@ -168,21 +132,7 @@
 					</el-menu-item>
 				</el-submenu>
 
-				<el-menu-item
-					v-for="item in sidebarMenuBottomItems"
-					:key="item.id"
-					:index="item.id"
-				>
-					<a
-						v-if="item.type === 'link'"
-						:href="item.properties.href"
-						:target="item.properties.newWindow ? '_blank' : '_self'"
-						class="primary-item"
-					>
-						<font-awesome-icon :icon="item.properties.icon" />
-						<span slot="title" class="item-title-root">{{ item.properties.title }}</span>
-					</a>
-				</el-menu-item>
+				<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
 
 			</el-menu>
 
@@ -192,6 +142,7 @@
 </template>
 
 <script lang="ts">
+
 import Vue from 'vue';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 
@@ -219,6 +170,40 @@ import { workflowRun } from '@/components/mixins/workflowRun';
 import { saveAs } from 'file-saver';
 
 import mixins from 'vue-typed-mixins';
+import MenuItemsIterator from './MainSidebarMenuItemsIterator.vue';
+
+const helpMenuItems: IMenuItem[] = [
+	{
+		id: 'docs',
+		type: 'link',
+		properties: {
+			href: 'https://docs.n8n.io',
+			title: 'Documentation',
+			icon: 'book',
+			newWindow: true,
+		},
+	},
+	{
+		id: 'forum',
+		type: 'link',
+		properties: {
+			href: 'https://community.n8n.io',
+			title: 'Forum',
+			icon: 'users',
+			newWindow: true,
+		},
+	},
+	{
+		id: 'examples',
+		type: 'link',
+		properties: {
+			href: 'https://n8n.io/workflows',
+			title: 'Workflows',
+			icon: 'network-wired',
+			newWindow: true,
+		},
+	},
+];
 
 export default mixins(
 	genericHelpers,
@@ -237,6 +222,7 @@ export default mixins(
 			ExecutionsList,
 			WorkflowOpen,
 			WorkflowSettings,
+			MenuItemsIterator,
 		},
 		data () {
 			return {
@@ -250,6 +236,7 @@ export default mixins(
 				stopExecutionInProgress: false,
 				workflowOpenDialogVisible: false,
 				workflowSettingsDialogVisible: false,
+				helpMenuItems,
 			};
 		},
 		computed: {

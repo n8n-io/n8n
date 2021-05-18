@@ -23,7 +23,7 @@ export class DateTime implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Date & Time',
 		name: 'dateTime',
-		icon: 'fa:calendar',
+		icon: 'fa:clock',
 		group: ['transform'],
 		version: 1,
 		description: 'Allows you to manipulate date and time values',
