@@ -135,10 +135,12 @@ export default mixins(workflowHelpers).extend({
 		onTagsEditEnable() {
 			this.$data.appliedTagIds = this.currentWorkflowTagIds;
 			this.$data.isTagsEditEnabled = true;
-			this.$data.isNameEditEnabled = false;
-			this.$nextTick(() => {
+
+			setTimeout(() => {
+				// allow name update to occur before disabling name edit
+				this.$data.isNameEditEnabled = false;
 				this.$data.tagsEditBus.$emit('focus');
-			});
+			}, 0);
 		},
 		async onTagsUpdate(tags: string[]) {
 			this.$data.appliedTagIds = tags;
@@ -164,10 +166,15 @@ export default mixins(workflowHelpers).extend({
 		onNameToggle() {
 			this.$data.isNameEditEnabled = !this.$data.isNameEditEnabled;
 			if (this.$data.isNameEditEnabled) {
+				if (this.$data.isTagsEditEnabled) {
+					// @ts-ignore
+					this.onTagsBlur();
+				}
+
 				this.$data.isTagsEditEnabled = false;
 			}
 		},
-		async onNameSubmit(name: string, cb: () => void) {
+		async onNameSubmit(name: string, cb: (saved: boolean) => void) {
 			const newName = name.trim();
 			if (!newName) {
 				this.$showMessage({
@@ -176,14 +183,14 @@ export default mixins(workflowHelpers).extend({
 					type: "error",
 				});
 
-				cb();
+				cb(false);
 				return;
 			}
 
 			if (newName === this.workflowName) {
 				this.$data.isNameEditEnabled = false;
 
-				cb();
+				cb(true);
 				return;
 			}
 
@@ -191,7 +198,13 @@ export default mixins(workflowHelpers).extend({
 			if (saved) {
 				this.$data.isNameEditEnabled = false;
 			}
-			cb();
+			cb(saved);
+		},
+	},
+	watch: {
+		currentWorkflowId() {
+			this.$data.isTagsEditEnabled = false;
+			this.$data.isNameEditEnabled = false;
 		},
 	},
 });
