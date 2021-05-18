@@ -7,6 +7,7 @@ import { ChangeDataSize1615306975123 } from './1615306975123-ChangeDataSize';
 import { ChangeCredentialDataSize1620729500000 } from './1620729500000-ChangeCredentialDataSize';
 import { CreateTagEntity1617268711084 } from './1617268711084-CreateTagEntity';
 import { UniqueWorkflowNames1620826335440 } from './1620826335440-UniqueWorkflowNames';
+import { SetDefaultDates1620313300228 } from './1620313300228-SetDefaultDates';
 
 
 export const mysqlMigrations = [
@@ -19,4 +20,5 @@ export const mysqlMigrations = [
 	ChangeCredentialDataSize1620729500000,
 	CreateTagEntity1617268711084,
 	UniqueWorkflowNames1620826335440,
+	SetDefaultDates1620313300228,
 ];
