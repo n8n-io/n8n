@@ -235,7 +235,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			break;
 		case 'people':
 			result = {
-				type: 'people', people: value.peopleValue.map((option: string) => ({ id: option })), 
+				type: 'people', people: value.peopleValue.map((option: string) => ({ id: option })),
 			};
 			break;
 		case 'phone_number':
@@ -352,11 +352,11 @@ export function mapProperties(properties: IDataObject[], timezone: string) {
 	}), {});
 }
 
-export function mapSorting(data: [{ key: string, type: string, direction: string  } ]) {
+export function mapSorting(data: [{ key: string, type: string, direction: string, timestamp: boolean }]) {
 	return data.map((sort) => {
 		return {
 			direction: sort.direction,
-			[(['last_edited_time', 'created_time'].includes(sort.type)) ? 'timestamp' : 'property']: sort.key.split('|')[0],
+			[(sort.timestamp) ? 'timestamp' : 'property']: sort.key.split('|')[0],
 		};
 	});
 }
@@ -380,7 +380,7 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 		}
 		return Object.assign(obj, {
 			['property']: getNameAndType(value.key).name,
-			[key]: { [`${value.condition}`]: valuePropertyName  },
+			[key]: { [`${value.condition}`]: valuePropertyName },
 		});
 	}, {});
 }
@@ -421,24 +421,6 @@ export function simplifyProperties(properties: any) {
 	}
 	return results;
 }
-
-// if (properties[key] !== undefined) {
-// 	const type = (properties[key] as IDataObject).type as string;
-// 	//@ts-expect-error
-// 	if (properties[key][type].type !== undefined) {
-// 		console.log(`condition-1 ${key}`);
-// 		//@ts-ignore
-// 		results[`${key}`] = simplifyProperties(properties[key][type])
-// 		//@ts-ignore
-// 	} else if (Array.isArray(properties[key][type])) {
-// 		console.log(`condition-2 ${key}`);
-// 		//@ts-expect-error
-// 		results[`${key}`] = simplifyProperties(properties[key][type] as IDataObject)
-// 	} else {
-// 		//@ts-expect-error
-// 		results[`${key}`] = properties[key][type] as any;
-// 	}
-// }
 
 export function getFormattedChildren(children: IDataObject[]) {
 	const results: IDataObject[] = [];
@@ -550,13 +532,10 @@ export function getConditions() {
 		],
 	};
 
-	for (const [index, type] of Object.keys(types).entries()) {
-		// console.log(type);
-		// console.log(typeConditions[types[type]] as string[]);
+	for (const type of Object.keys(types)) {
 		elements.push(
 			{
 				displayName: 'Condition',
-				//name: `condition${type.charAt(0).toUpperCase() + type}`,
 				name: 'condition',
 				type: 'options',
 				displayOptions: {

@@ -9,7 +9,6 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -49,9 +48,13 @@ export class NotionTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'On New Record',
-						value: 'OnNewRecord',
+						name: 'Record Added',
+						value: 'recordAdded',
 					},
+					// {
+					// 	name: 'Record Updated',
+					// 	value: 'recordUpdated',
+					// },
 				],
 				required: true,
 				default: '',
@@ -66,7 +69,8 @@ export class NotionTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						event: [
-							'OnNewRecord',
+							'recordAdded',
+							'recordUpdated',
 						],
 					},
 				},
@@ -81,7 +85,8 @@ export class NotionTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						event: [
-							'OnNewRecord',
+							'recordAdded',
+							'recordUpdated',
 						],
 					},
 				},
@@ -111,6 +116,7 @@ export class NotionTrigger implements INodeType {
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const webhookData = this.getWorkflowStaticData('node');
 		const databaseId = this.getNodeParameter('databaseId') as string;
+		const event = this.getNodeParameter('event') as string;
 		const simple = this.getNodeParameter('simple') as boolean;
 
 		const now = moment().utc().format();
@@ -119,23 +125,41 @@ export class NotionTrigger implements INodeType {
 
 		const endDate = now;
 
+		const maxPageSize = 10;
+
+		const sortProperty = (event === 'recordAdded') ? 'created_time' : 'last_edited_time';
+
 		const body: IDataObject = {
-			filter: {
-				property: 'timestamp',
-				created_time: { after: startDate },
-			},
+			page_size: maxPageSize,
+			sorts: [
+				{
+					timestamp: sortProperty,
+					direction: 'descending',
+				},
+			],
 		};
 
 		if (this.getMode() === 'manual') {
-			delete body.filter;
+			body.page_size = 1;
 		}
 
-		let records = await notionApiRequestAllItems.call(this, 'results', 'POST', `/databases/${databaseId}/query`, body);
+		let records: IDataObject[] = [];
 
-		if (this.getMode() === 'manual') {
-			records = records.splice(0, 1);
+		let hasMore = true;
+
+		do {
+			const { results, has_more, next_cursor } = await notionApiRequest.call(this, 'POST', `/databases/${databaseId}/query`, body);
+			records.push.apply(records, results);
+			hasMore = has_more;
+			if (next_cursor !== null) {
+				body['start_cursor'] = next_cursor;
+			}
+		} while (!moment(records[records.length - 1][sortProperty] as string).isSameOrBefore(startDate) && hasMore === true );
+
+		if (this.getMode() !== 'manual') {
+			records = records.filter((record: IDataObject) => moment(record[sortProperty] as string).isBetween(moment(startDate), moment(endDate)));
 		}
-
+		
 		if (simple === true) {
 			for (let i = 0; i < records.length; i++) {
 				records[i].properties = simplifyProperties(records[i].properties);

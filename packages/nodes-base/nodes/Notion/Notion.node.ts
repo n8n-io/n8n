@@ -44,11 +44,6 @@ import {
 	blockOperations,
 } from './BlockDescription';
 
-import {
-	searchFields,
-	searchOperations,
-} from './SearchDescription';
-
 export class Notion implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Notion',
@@ -89,15 +84,11 @@ export class Notion implements INodeType {
 						value: 'page',
 					},
 					{
-						name: 'Search',
-						value: 'search',
-					},
-					{
 						name: 'User',
 						value: 'user',
 					},
 				],
-				default: 'database',
+				default: 'page',
 				description: 'Resource to consume.',
 			},
 			...blockOperations,
@@ -106,8 +97,6 @@ export class Notion implements INodeType {
 			...databaseFields,
 			...pageOperations,
 			...pageFields,
-			...searchOperations,
-			...searchFields,
 			...userOperations,
 			...userFields,
 		],
@@ -187,7 +176,7 @@ export class Notion implements INodeType {
 			async getDatbaseIdFromPage(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const pageId = this.getCurrentNodeParameter('pageId') as string;
-				const { parent: { database_id: databaseId }  } = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
+				const { parent: { database_id: databaseId } } = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				for (const key of Object.keys(properties)) {
 					//remove parameters that cannot be set from the API.
@@ -317,15 +306,14 @@ export class Notion implements INodeType {
 					}
 					if (sort) {
 						//@ts-expect-error
-						body['sort'] = mapSorting(sort);
+						body['sorts'] = mapSorting(sort);
 					}
-					console.log(body.sort);
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(this, 'results', 'POST', `/databases/${databaseId}/query`, body, {});
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
-						responseData = await notionApiRequestAllItems.call(this, 'results', 'POST', `/databases/${databaseId}/query`, body, qs);
-						responseData = responseData.splice(0, qs.limit);
+						body.page_size = this.getNodeParameter('limit', i) as number;
+						responseData = await notionApiRequest.call(this, 'POST', `/databases/${databaseId}/query`, body, qs);
+						responseData = responseData.results;
 					}
 					if (simple === true) {
 						for (let i = 0; i < responseData.length; i++) {
@@ -422,9 +410,6 @@ export class Notion implements INodeType {
 					returnData.push(page);
 				}
 			}
-		}
-
-		if (resource === 'search') {
 
 			if (operation === 'query') {
 				for (let i = 0; i < length; i++) {
@@ -444,7 +429,6 @@ export class Notion implements INodeType {
 						const sort = (options.sort as IDataObject || {}).sortValue as IDataObject || {};
 						body['sort'] = sort;
 					}
-
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(this, 'results', 'POST', '/search', body);
 					} else {

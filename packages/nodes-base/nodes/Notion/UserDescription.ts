@@ -92,9 +92,9 @@ export const userFields = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 500,
+			maxValue: 100,
 		},
-		default: 100,
+		default: 50,
 		description: 'How many results to return.',
 	},
 ] as INodeProperties[];

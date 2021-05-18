@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { 
+import {
 	filters,
 } from './Filters';
 
@@ -124,9 +124,9 @@ export const databaseFields = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 500,
+			maxValue: 100,
 		},
-		default: 100,
+		default: 50,
 		description: 'How many results to return.',
 	},
 	{
@@ -229,9 +229,23 @@ export const databaseFields = [
 						name: 'sortValue',
 						values: [
 							{
+								displayName: 'Timestamp',
+								name: 'timestamp',
+								type: 'boolean',
+								default: false,
+								description: `Whether or not to use the record's timestamp to sort the response.`,
+							},
+							{
 								displayName: 'Property Name',
 								name: 'key',
 								type: 'options',
+								displayOptions: {
+									show: {
+										timestamp: [
+											false,
+										],
+									},
+								},
 								typeOptions: {
 									loadOptionsMethod: 'getFilterProperties',
 									loadOptionsDependsOn: [
@@ -242,9 +256,40 @@ export const databaseFields = [
 								description: 'The name of the property to filter by.',
 							},
 							{
+								displayName: 'Property Name',
+								name: 'key',
+								type: 'options',
+								options: [
+									{
+										name: 'Created Time',
+										value: 'created_time',
+									},
+									{
+										name: 'Last Edited Time',
+										value: 'last_edited_time',
+									},
+								],
+								displayOptions: {
+									show: {
+										timestamp: [
+											true,
+										],
+									},
+								},
+								default: '',
+								description: 'The name of the property to filter by.',
+							},
+							{
 								displayName: 'Type',
 								name: 'type',
 								type: 'hidden',
+								displayOptions: {
+									show: {
+										timestamp: [
+											true,
+										],
+									},
+								},
 								default: '={{$parameter["&key"].split("|")[1]}}',
 							},
 							{
@@ -264,19 +309,6 @@ export const databaseFields = [
 								default: '',
 								description: 'The direction to sort.',
 							},
-							// {
-							// 	displayName: 'Timestamp',
-							// 	name: 'timestamp',
-							// 	type: 'options',
-							// 	options: [
-							// 		{
-							// 			name: 'Last Edited Time',
-							// 			value: 'last_edited_time',
-							// 		},
-							// 	],
-							// 	default: 'last_edited_time',
-							// 	description: `The name of the timestamp to sort against.`,
-							// },
 						],
 					},
 				],

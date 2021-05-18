@@ -31,10 +31,16 @@ export const pageOperations = [
 				description: 'Get a page.',
 			},
 			{
+				name: 'Query',
+				value: 'query',
+				description: 'Text search of pages',
+			},
+			{
 				name: 'Update Properties',
 				value: 'updateProperties',
 				description: 'Update page properties.',
 			},
+			
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -156,55 +162,6 @@ export const pageFields = [
 		default: true,
 		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
-	// {
-	// 	displayName: 'Properties',
-	// 	name: 'propertiesUi',
-	// 	type: 'fixedCollection',
-	// 	typeOptions: {
-	// 		multipleValues: true,
-	// 	},
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'page',
-	// 			],
-	// 			operation: [
-	// 				'create',
-	// 			],
-	// 			parentType: [
-	// 				'database',
-	// 			],
-	// 		},
-	// 	},
-	// 	default: '',
-	// 	placeholder: 'Add Property',
-	// 	options: [
-	// 		{
-	// 			name: 'propertyValues',
-	// 			displayName: 'Property',
-	// 			values: [
-	// 				{
-	// 					displayName: 'Key',
-	// 					name: 'key',
-	// 					type: 'options',
-	// 					typeOptions: {
-	// 						loadOptionsMethod: 'getDatabaseProperties',
-	// 						loadOptionsDependsOn: [
-	// 							'databaseId',
-	// 						],
-	// 					},
-	// 					default: '',
-	// 				},
-	// 				{
-	// 					displayName: 'Value',
-	// 					name: 'value',
-	// 					type: 'string',
-	// 					default: '',
-	// 				},
-	// 			],
-	// 		},
-	// 	],
-	// },
 	{
 		displayName: 'Properties',
 		name: 'propertiesUi',
@@ -893,6 +850,183 @@ export const pageFields = [
 						default: '',
 						description: `
 						An ISO 8601 formatted date, with optional time. Represents the end of a date range.`,
+					},
+				],
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                page:query                                  */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Query',
+		name: 'query',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'page',
+				],
+				operation: [
+					'query',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'page',
+				],
+				operation: [
+					'query',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'page',
+				],
+				operation: [
+					'query',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: [
+					'page',
+				],
+				operation: [
+					'query',
+				],
+			},
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: [
+			{
+				displayName: 'Filters',
+				name: 'filter',
+				placeholder: 'Add Filter',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Filter',
+						name: 'filters',
+						values: [
+							{
+								displayName: 'Property',
+								name: 'property',
+								type: 'options',
+								options: [
+									{
+										name: 'Object',
+										value: 'object',
+									},
+								],
+								default: 'object',
+								description: 'The name of the property to filter by.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'options',
+								options: [
+									{
+										name: 'Database',
+										value: 'database',
+									},
+									{
+										name: 'Page',
+										value: 'page',
+									},
+								],
+								default: '',
+								description: 'The value of the property to filter by.',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Sort',
+				name: 'sort',
+				placeholder: 'Add Sort',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Sort',
+						name: 'sortValue',
+						values: [
+							{
+								displayName: 'Direction',
+								name: 'direction',
+								type: 'options',
+								options: [
+									{
+										name: 'Ascending',
+										value: 'ascending',
+									},
+									{
+										name: 'Descending',
+										value: 'descending',
+									},
+								],
+								default: '',
+								description: 'The direction to sort.',
+							},
+							{
+								displayName: 'Timestamp',
+								name: 'timestamp',
+								type: 'options',
+								options: [
+									{
+										name: 'Last Edited Time',
+										value: 'last_edited_time',
+									},
+								],
+								default: 'last_edited_time',
+								description: `The name of the timestamp to sort against.`,
+							},
+						],
 					},
 				],
 			},

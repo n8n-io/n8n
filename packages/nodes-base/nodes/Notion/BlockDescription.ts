@@ -56,7 +56,7 @@ export const blockFields = [
 				],
 			},
 		},
-		description: 'The ID of block.',
+		description: `The ID of block. A page it is also considered a block. Hence, a Page ID can be used as well.`,
 	},
 	...blocks('block', 'append'),
 	/* -------------------------------------------------------------------------- */
@@ -115,9 +115,9 @@ export const blockFields = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 500,
+			maxValue: 100,
 		},
-		default: 100,
+		default: 50,
 		description: 'How many results to return.',
 	},
 ] as INodeProperties[];
