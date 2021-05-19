@@ -73,6 +73,7 @@ export default mixins(
 	background-color: #fff;
 	height: 65px;
 	width: 100%;
+	box-sizing: border-box;
 
 	padding-left: $--sidebar-width;
 
