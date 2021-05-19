@@ -35,7 +35,7 @@
 			<el-option
 				v-for="(tag, i) in options"
 				:value="tag.id"
-				:key="tag.id + i"
+				:key="tag.id + '_' + i"
 				:label="tag.name"
 				class="tag"
 				ref="tag"
