@@ -168,6 +168,11 @@ export class Webhook implements INodeType {
 						value: 'lastNode',
 						description: 'Returns data of the last executed node',
 					},
+					{
+						name: 'No Body Response',
+						value: 'noBodyResponse',
+						description: 'Returns data without a body',
+					},
 				],
 				default: 'onReceived',
 				description: 'When and how to respond to the webhook.',

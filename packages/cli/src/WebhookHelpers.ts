@@ -119,7 +119,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 	 const responseMode = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseMode'], executionMode, 'onReceived');
 	 const responseCode = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseCode'], executionMode, 200) as number;
 
-	if (!['onReceived', 'lastNode'].includes(responseMode as string)) {
+	if (!['onReceived', 'lastNode', 'noBodyResponse'].includes(responseMode as string)) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
@@ -239,6 +239,22 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 					data: {
 						message: 'Workflow got started.',
 					},
+					responseCode,
+				});
+			}
+
+			didSendResponse = true;
+		}
+
+		if (responseMode === 'noBodyResponse' && didSendResponse === false) {
+			if (webhookResultData.webhookResponse !== undefined) {
+				// Data to respond with is given
+				responseCallback(null, {
+					data: webhookResultData.webhookResponse,
+					responseCode,
+				});
+			} else {
+				responseCallback(null, {
 					responseCode,
 				});
 			}
