@@ -20,9 +20,13 @@
 			</span>
 			of
 			<span class="primary-color clickable" title="Open Workflow">
-				<span @click="openWorkflow(workflowExecution.workflowId)">
-					<WorkflowNameShort :name="workflowName"/>
-				</span>
+				<WorkflowNameShort :name="workflowName">
+					<template v-slot="{ shortenedName }">
+						<span @click="openWorkflow(workflowExecution.workflowId)">
+							"{{ shortenedName }}"
+						</span>
+					</template>
+				</WorkflowNameShort>
 			</span>
 			workflow
 		</span>
