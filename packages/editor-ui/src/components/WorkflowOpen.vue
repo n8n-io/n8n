@@ -227,7 +227,7 @@ export default mixins(
 	}
 
 	.tags-filter {
-		min-width: 220px;
+		min-width: 270px;
 	}
 }
 

@@ -315,6 +315,11 @@ $--border-radius: 20px;
 			width: $--dropdown-width;
 			padding: $--item-padding;
 		}
+
+		// override theme scrollbars in safari when overscrolling
+		::-webkit-scrollbar-thumb {
+			display: none;
+		}
 	}
 
 	li {
