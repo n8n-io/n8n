@@ -63,7 +63,8 @@ export async function notionApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	do {
 		responseData = await notionApiRequest.call(this, method, endpoint, body, query);
 		const { next_cursor } = responseData;
-		query.start_cursor = next_cursor;
+		query['start_cursor'] = next_cursor;
+		body['start_cursor'] = next_cursor;
 		returnData.push.apply(returnData, responseData[propertyName]);
 		if (query.limit && query.limit <= returnData.length) {
 			return returnData;
@@ -116,14 +117,26 @@ export function getBlockTypes() {
 	];
 }
 
-export function formatTitle(title: string) {
+function textContent(content: string) {
+	return {
+		text: {
+			content,
+		},
+	};
+}
+
+export function formatTitle(content: string) {
 	return {
 		title: [
-			{
-				text: {
-					content: title,
-				},
-			},
+			textContent(content),
+		],
+	};
+}
+
+export function formatText(content: string) {
+	return {
+		text: [
+			textContent(content),
 		],
 	};
 }
@@ -184,7 +197,7 @@ export function formatBlocks(blocks: IDataObject[]) {
 				...(block.type === 'to_do') ? { checked: block.checked } : { checked: false },
 				//@ts-expect-error
 				// tslint:disable-next-line: no-any
-				text: getTexts(block.text.text as any || []),
+				text: (block.onlyContent) ? formatText(block.content).text : getTexts(block.text.text as any || []),
 			},
 		});
 	}
@@ -263,80 +276,6 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 	}
 	return result;
 }
-
-// tslint:disable-next-line: no-any
-function getPropertyKeyValueaja(value: any, type: string, timezone: string) {
-	let result = {};
-	switch (type) {
-		case 'rich_text':
-			if (value.onlyContent) {
-				result = [{ type: 'text', text: { content: value.content } }];
-			} else {
-				result = getTexts(value);
-			}
-			break;
-		case 'title':
-			result = [{ type: 'text', text: { content: value.content } }];
-			break;
-		case 'number':
-			result = { type: 'number', number: value.numberValue };
-			break;
-		case 'url':
-			result = { type: 'url', url: value.urlValue };
-			break;
-		case 'checkbox':
-			result = { type: 'checkbox', checkbox: value.checkboxValue };
-			break;
-		case 'relation':
-			result = {
-				// tslint:disable-next-line: no-any
-				type: 'relation', relation: (value.relationValue).reduce((acc: [], cur: any) => {
-					return acc.concat(cur.split(',').map((relation: string) => ({ id: relation })));
-				}, []),
-			};
-			break;
-		case 'multi_select':
-			result = {
-				// tslint:disable-next-line: no-any
-				type: 'multi_select', multi_select: value.multiSelectValue.filter((id: any) => id !== null).map((option: string) => ({ id: option })),
-			};
-			break;
-		case 'email':
-			result = {
-				type: 'email', email: value.emailValue,
-			};
-			break;
-		case 'people':
-			result = {
-				type: 'people', people: value.peopleValue.map((option: string) => ({ id: option })),
-			};
-			break;
-		case 'phone_number':
-			result = {
-				type: 'phone_number', phone_number: value.phoneValue,
-			};
-			break;
-		case 'select':
-			result = {
-				type: 'select', select: { id: value.selectValue },
-			};
-			break;
-		case 'date':
-			if (value.range === true) {
-				result = {
-					type: 'date', date: { start: moment.tz(value.dateStart, timezone).utc().format(), end: moment.tz(value.dateEnd, timezone).utc().format() },
-				};
-			} else {
-				result = {
-					type: 'date', date: { start: moment.tz(value.date, timezone).utc().format(), end: null },
-				};
-			}
-			break;
-		default:
-	}
-	return result;
-}
-
 
 function getNameAndType(key: string) {
 	const [name, type] = key.split('|');

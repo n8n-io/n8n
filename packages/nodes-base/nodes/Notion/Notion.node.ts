@@ -103,17 +103,21 @@ export class Notion implements INodeType {
 	};
 
 	methods = {
-
 		loadOptions: {
 			async getDatabases(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const databases = await notionApiRequestAllItems.call(this, 'results', 'GET', `/databases`);
+				const { results: databases } = await notionApiRequest.call(this, 'POST', `/search`, { page_size: 100, filter: { property: 'object', value: 'database' } });
 				for (const database of databases) {
 					returnData.push({
 						name: database.title[0].plain_text,
 						value: database.id,
 					});
 				}
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
 				return returnData;
 			},
 			async getDatabaseProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -416,9 +420,11 @@ export class Notion implements INodeType {
 					const query = this.getNodeParameter('query', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const body: IDataObject = {
-						query,
-					};
+					const body: IDataObject = {};
+
+					if (query) {
+						body['query'] = query;
+					}
 
 					if (options.filter) {
 						const filter = (options.filter as IDataObject || {}).filters as IDataObject[] || [];

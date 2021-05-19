@@ -226,19 +226,19 @@ const typeMention = [{
 	},
 	default: '',
 },
-	{
-		displayName: 'End Date',
-		name: 'end',
-		type: 'dateTime',
-		displayOptions: {
-			show: {
-				mentionType: [
-					'date',
-				],
-			},
+{
+	displayName: 'End Date',
+	name: 'end',
+	type: 'dateTime',
+	displayOptions: {
+		show: {
+			mentionType: [
+				'date',
+			],
 		},
-		default: '',
 	},
+	default: '',
+},
 ] as INodeProperties[];
 
 const typeEquation = [{
@@ -305,52 +305,53 @@ const typeText = [
 	},
 ] as INodeProperties[];
 
-export const text = (displayOptions: IDisplayOptions) => [{
-	displayName: 'Text',
-	name: 'text',
-	placeholder: 'Add Text',
-	type: 'fixedCollection',
-	default: '',
-	typeOptions: {
-		multipleValues: true,
-	},
-	displayOptions,
-	options: [
-		{
-			name: 'text',
-			displayName: 'Text',
-			values: [
-				{
-					displayName: 'Type',
-					name: 'textType',
-					type: 'options',
-					options: [
-						{
-							name: 'Text',
-							value: 'text',
-						},
-						{
-							name: 'Mention',
-							value: 'mention',
-						},
-						{
-							name: 'Equation',
-							value: 'equation',
-						},
-					],
-					default: 'text',
-					description: '',
-				},
-				...typeText,
-				...typeMention,
-				...typeEquation,
-
-				...annotation,
-			],
+export const text = (displayOptions: IDisplayOptions) => [
+	{
+		displayName: 'Text',
+		name: 'text',
+		placeholder: 'Add Text',
+		type: 'fixedCollection',
+		default: '',
+		typeOptions: {
+			multipleValues: true,
 		},
-	],
-	description: 'Rich text in the block.',
-}] as INodeProperties[];
+		displayOptions,
+		options: [
+			{
+				name: 'text',
+				displayName: 'Text',
+				values: [
+					{
+						displayName: 'Type',
+						name: 'textType',
+						type: 'options',
+						options: [
+							{
+								name: 'Text',
+								value: 'text',
+							},
+							{
+								name: 'Mention',
+								value: 'mention',
+							},
+							{
+								name: 'Equation',
+								value: 'equation',
+							},
+						],
+						default: 'text',
+						description: '',
+					},
+					...typeText,
+					...typeMention,
+					...typeEquation,
+
+					...annotation,
+				],
+			},
+		],
+		description: 'Rich text in the block.',
+	}] as INodeProperties[];
 
 
 const todo = (type: string) => [{
@@ -383,16 +384,55 @@ const title = (type: string) => [{
 	description: 'Plain text of page title.',
 }] as INodeProperties[];
 
+const onlyContent = (displayOptions: IDisplayOptions) => [
+	{
+		displayName: 'Only Content',
+		name: 'onlyContent',
+		type: 'boolean',
+		displayOptions,
+		default: true,
+	},
+] as INodeProperties[];
+
+const textContent = (displayOptions: IDisplayOptions) => [
+	{
+		displayName: 'Text Content',
+		name: 'content',
+		type: 'string',
+		displayOptions,
+		default: '',
+	},
+] as INodeProperties[];
 
 const block = (blockType: string) => {
 	const data: INodeProperties[] = [];
 	switch (blockType) {
 		case 'to_do':
 			data.push(...todo(blockType));
+			data.push(...onlyContent({
+				show: {
+					type: [
+						blockType,
+					],
+				},
+			}));
+			data.push(...textContent({
+				show: {
+					type: [
+						blockType,
+					],
+					onlyContent: [
+						true,
+					],
+				},
+			}));
 			data.push(...text({
 				show: {
 					type: [
 						blockType,
+					],
+					onlyContent: [
+						false,
 					],
 				},
 			}));
@@ -401,10 +441,30 @@ const block = (blockType: string) => {
 			data.push(...title(blockType));
 			break;
 		default:
+			data.push(...onlyContent({
+				show: {
+					type: [
+						blockType,
+					],
+				},
+			}));
+			data.push(...textContent({
+				show: {
+					type: [
+						blockType,
+					],
+					onlyContent: [
+						true,
+					],
+				},
+			}));
 			data.push(...text({
 				show: {
 					type: [
 						blockType,
+					],
+					onlyContent: [
+						false,
 					],
 				},
 			}));

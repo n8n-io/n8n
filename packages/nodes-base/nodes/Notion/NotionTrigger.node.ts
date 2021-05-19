@@ -97,17 +97,21 @@ export class NotionTrigger implements INodeType {
 	};
 
 	methods = {
-
 		loadOptions: {
 			async getDatabases(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const databases = await notionApiRequestAllItems.call(this, 'results', 'GET', `/databases`);
+				const { results: databases } = await notionApiRequest.call(this, 'POST', `/search`, { page_size: 100, filter: { property: 'object', value: 'database' } });
 				for (const database of databases) {
 					returnData.push({
 						name: database.title[0].plain_text,
 						value: database.id,
 					});
 				}
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
 				return returnData;
 			},
 		},
@@ -154,12 +158,12 @@ export class NotionTrigger implements INodeType {
 			if (next_cursor !== null) {
 				body['start_cursor'] = next_cursor;
 			}
-		} while (!moment(records[records.length - 1][sortProperty] as string).isSameOrBefore(startDate) && hasMore === true );
+		} while (!moment(records[records.length - 1][sortProperty] as string).isSameOrBefore(startDate) && hasMore === true);
 
 		if (this.getMode() !== 'manual') {
 			records = records.filter((record: IDataObject) => moment(record[sortProperty] as string).isBetween(moment(startDate), moment(endDate)));
 		}
-		
+
 		if (simple === true) {
 			for (let i = 0; i < records.length; i++) {
 				records[i].properties = simplifyProperties(records[i].properties);

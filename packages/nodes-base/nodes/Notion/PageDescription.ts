@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { 
+import {
 	blocks,
 	text
 } from './Blocks';
@@ -40,7 +40,7 @@ export const pageOperations = [
 				value: 'updateProperties',
 				description: 'Update page properties.',
 			},
-			
+
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -864,7 +864,6 @@ export const pageFields = [
 		name: 'query',
 		type: 'string',
 		default: '',
-		required: true,
 		displayOptions: {
 			show: {
 				resource: [
