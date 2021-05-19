@@ -210,13 +210,13 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 	switch (type) {
 		case 'rich_text':
 			if (value.onlyContent) {
-				result = { rich_text: [ { text: { content: value.content } }] };
+				result = { rich_text: [{ text: { content: value.content } }] };
 			} else {
 				result = { rich_text: getTexts(value.text.text) };
 			}
 			break;
 		case 'title':
-			result = { title: [ { text:  { content: value.title } } ] };
+			result = { title: [{ text: { content: value.title } }] };
 			break;
 		case 'number':
 			result = { type: 'number', number: value.numberValue };

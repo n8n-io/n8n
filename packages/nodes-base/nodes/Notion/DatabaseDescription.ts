@@ -22,17 +22,17 @@ export const databaseOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a database.',
+				description: 'Get a database',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all databases.',
+				description: 'Get all databases',
 			},
 			{
 				name: 'Query',
 				value: 'query',
-				description: 'Query a database.',
+				description: 'Query a database',
 			},
 		],
 		default: 'get',

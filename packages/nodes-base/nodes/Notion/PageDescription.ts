@@ -23,12 +23,12 @@ export const pageOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a page.',
+				description: 'Create a page',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a page.',
+				description: 'Get a page',
 			},
 			{
 				name: 'Query',

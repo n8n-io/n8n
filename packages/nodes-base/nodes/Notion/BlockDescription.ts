@@ -22,12 +22,12 @@ export const blockOperations = [
 			{
 				name: 'Append',
 				value: 'append',
-				description: 'Append a block.',
+				description: 'Append a block',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all children blocks.',
+				description: 'Get all children blocks',
 			},
 		],
 		default: 'append',

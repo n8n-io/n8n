@@ -23,12 +23,12 @@ export const databaseRecordOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a record in a database.',
+				description: 'Create a record in a database',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update record in a database.',
+				description: 'Update record in a database',
 			},
 		],
 		default: 'create',
