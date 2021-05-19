@@ -30,4 +30,10 @@ input, input:hover {
 	background-color: unset;
 	transition: unset;
 }
+
+input[disabled] {
+   -webkit-text-fill-color: $--custom-font-black; 
+   -webkit-opacity: 1; 
+   color: $--custom-font-black;
+}
 </style>
