@@ -854,6 +854,7 @@ class App {
 
 			const nodeTypes = NodeTypes();
 
+			// @ts-ignore
 			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, path, JSON.parse('' + req.query.currentNodeParameters), credentials!);
 
 			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
