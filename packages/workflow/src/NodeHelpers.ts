@@ -612,9 +612,8 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 				if (nodeValues[nodeProperties.name] !== undefined) {
 					nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name];
 				} else if (returnDefaults === true) {
-					// Does not have values defined but defaults should be returned which is in the
-					// case of a collection with multipleValues always an empty array
-					nodeParameters[nodeProperties.name] = [];
+					// Does not have values defined but defaults should be returned
+					nodeParameters[nodeProperties.name] = JSON.parse(JSON.stringify(nodeProperties.default));
 				}
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 			} else {
