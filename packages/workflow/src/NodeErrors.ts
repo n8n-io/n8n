@@ -261,6 +261,6 @@ export class NodeApiError extends NodeError {
 	}
 }
 
-export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
 
-export type JsonObject = { [key: string]: JsonValue };
+type JsonObject = { [key: string]: JsonValue };
