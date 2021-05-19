@@ -2174,7 +2174,7 @@ describe('Workflow', () => {
 								typeOptions: {
 									multipleValues: true,
 								},
-								default: {},
+								default: [],
 								options: [
 									{
 										displayName: 'string1',
@@ -2195,17 +2195,13 @@ describe('Workflow', () => {
 					},
 					output: {
 						noneDisplayedFalse: {
-							defaultsFalse: {
-								// collection1: [],
-							},
+							defaultsFalse: {},
 							defaultsTrue: {
 								collection1: [],
 							},
 						},
 						noneDisplayedTrue: {
-							defaultsFalse: {
-								// collection1: [],
-							},
+							defaultsFalse: {},
 							defaultsTrue: {
 								collection1: [],
 							},
@@ -2940,7 +2936,7 @@ describe('Workflow', () => {
 					},
 				},
 				{
-					description: 'complex type "fixedCollection" with "multipleValues: true". Which contains parameter of type multiOptions and has so an array default value.',
+					description: 'complex type "fixedCollection" with "multipleValues: true". Which contains parameter of type "multiOptions" and has so an array default value',
 					input: {
 						nodePropertiesArray: [
 							{
@@ -3021,6 +3017,88 @@ describe('Workflow', () => {
 									propertyValues: [
 										{
 											multiSelectValue: [],
+										}
+									],
+								},
+							},
+						},
+					},
+				},
+				{
+					description: 'complex type "fixedCollection" with "multipleValues: true". Which contains parameter of type "string" with "multipleValues: true" and a custom default value',
+					input: {
+						nodePropertiesArray: [
+							{
+								name: 'values',
+								displayName: 'Values',
+								type: 'fixedCollection',
+								typeOptions: {
+									multipleValues: true,
+								},
+								default: {},
+								options: [
+									{
+										name: 'propertyValues',
+										displayName: 'Property',
+										values: [
+											{
+												displayName: 'MultiString',
+												name: 'multiString',
+												type: 'string',
+												typeOptions: {
+													multipleValues: true,
+												},
+												default: ['value1'],
+											},
+										],
+									},
+								],
+							},
+						],
+						nodeValues: {
+							values: {
+								propertyValues: [
+									{
+										multiString: ['value1'],
+									}
+								]
+							},
+						},
+					},
+					output: {
+						noneDisplayedFalse: {
+							defaultsFalse: {
+								values: {
+									propertyValues: [
+										{
+										}
+									],
+								},
+							},
+							defaultsTrue: {
+								values: {
+									propertyValues: [
+										{
+											multiString: ['value1'],
+										}
+									],
+								},
+							},
+						},
+						noneDisplayedTrue: {
+							defaultsFalse: {
+								values: {
+									propertyValues: [
+										{
+										}
+									],
+								},
+							},
+							defaultsTrue: {
+								values: {
+									propertyValues: [
+										{
+											multiString: ['value1'],
 										}
 									],
 								},
