@@ -389,7 +389,7 @@ export type WorkflowNameRequest = Express.Request & {
 	}
 };
 
-export const DEFAULT_NEW_WORKFLOW_NAME = 'My Workflow';
+export const DEFAULT_NEW_WORKFLOW_NAME = 'My workflow';
 
 /**
  * Check if a string is _not_ an all-digit string.
