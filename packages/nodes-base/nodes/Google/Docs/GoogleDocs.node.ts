@@ -11,6 +11,7 @@ import {
 
 import {
 	googleApiRequest,
+	hasKeys,
 } from './GenericFunctions';
 
 import {
@@ -19,18 +20,10 @@ import {
 } from './DocumentDescription';
 
 import {
-	isEmpty,
-} from 'lodash';
+	IUpdateBody,
+	IUpdateFields,
+} from './interfaces';
 
-interface IUpdateFields {
-	writeControl?: { writeControlObject: { control: string, value: string }  };
-	requestsUi?: IDataObject;
-};
-
-interface IUpdateBody extends IDataObject{
-	requests?: IDataObject[];
-	writeControl?: IDataObject;
-};
 export class GoogleDocs implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Docs',
@@ -75,61 +68,54 @@ export class GoogleDocs implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
+
 		let responseData;
+
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+
 		for (let i = 0; i < length; i++) {
+
 			try {
+
 				if (resource === 'document') {
-					//https://developers.google.com/docs/api/reference/rest/v1/documents/create
+
 					if (operation === 'create') {
+
+						// https://developers.google.com/docs/api/reference/rest/v1/documents/create
 
 						const body: IDataObject = {
 							title: this.getNodeParameter('title', i) as string,
 						};
 
-						responseData = await googleApiRequest.call(
-							this,
-							'POST',
-							'/documents',
-							body,
-							qs,
-						);
+						responseData = await googleApiRequest.call(this, 'POST', '/documents', body);
 
-					}
-					//https://developers.google.com/docs/api/reference/rest/v1/documents/get
-					if (operation === 'get') {
+					} else if (operation === 'get') {
+
+						// https://developers.google.com/docs/api/reference/rest/v1/documents/get
 
 						const documentId = this.getNodeParameter('documentId', i) as string;
+						responseData = await googleApiRequest.call(this, 'GET', `/documents/${documentId}`);
 
-						responseData = await googleApiRequest.call(
-							this,
-							'GET',
-							`/documents/${documentId}`,
-							{},
-							qs,
-						);
+					} else if (operation === 'update') {
 
-					}
-					//https://developers.google.com/docs/api/reference/rest/v1/documents/batchUpdate
-					if (operation === 'update') {
+						// https://developers.google.com/docs/api/reference/rest/v1/documents/batchUpdate
 
 						const documentId = this.getNodeParameter('documentId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IUpdateFields;
+						const { writeControl, requestsUi } = this.getNodeParameter('updateFields', i) as IUpdateFields;
 
-						const body: IUpdateBody = {
+						const body = {
 							requests: [],
-						};
+						} as IUpdateBody;
 
-						if (!isEmpty(updateFields.writeControl)) {
-							const writeControl = updateFields.writeControl?.writeControlObject;
+						if (hasKeys(writeControl)) {
+							const { control, value } = writeControl.writeControlObject;
 							body.writeControl = {
-								[writeControl!.control]: writeControl!.value,
+								[control]: value,
 							};
 						}
 
-						if (!isEmpty(updateFields.requestsUi)) {
+						if (hasKeys(requestsUi)) {
 							const {
 								createFooterValues,
 								createHeaderValues,
@@ -148,281 +134,237 @@ export class GoogleDocs implements INodeType {
 								insertTableRowValues,
 								insertTextValues,
 								replaceAllTextValues,
-							} = updateFields.requestsUi as IDataObject;
+							} = requestsUi;
 
-							// handle replace all text request
-							if (!isEmpty(replaceAllTextValues)) {
-								(replaceAllTextValues as IDataObject[]).forEach(replaceAllTextValue => {
-									const { replaceText, text, matchCase } = replaceAllTextValue;
-									(body.requests as IDataObject[]).push({
+							// ----------------------------------
+							//         replace values
+							// ----------------------------------
+
+							if (hasKeys(replaceAllTextValues)) {
+								replaceAllTextValues.forEach(({ replaceText, text, matchCase }) => {
+									body.requests.push({
 										replaceAllText: {
 											replaceText,
-											containsText: {
-												text,
-												matchCase,
-											},
+											containsText: { text, matchCase },
 										},
 									});
 								});
 							}
-							// handle insert text request
-							if (!isEmpty(insertTextValues)) {
-								(insertTextValues as IDataObject[]).forEach(insertTextValue => {
-									const { text, locationChoice, segmentId, index } = insertTextValue;
-									(body.requests as IDataObject[]).push({
+
+							// ----------------------------------
+							//         insert values
+							// ----------------------------------
+
+							if (hasKeys(insertTextValues)) {
+								insertTextValues.forEach(({ text, locationChoice, segmentId, index }) => {
+									body.requests.push({
 										insertText: {
 											text,
-											[locationChoice as string]: {
+											[locationChoice]: {
 												segmentId,
-												...(locationChoice === 'location') ?{
-													index: parseInt(index as string, 10),
-												}: {},
+												...(locationChoice === 'location') ? { index }: {},
 											},
 										},
 									});
 								});
 							}
-							// handle insert age break request
-							if (!isEmpty(insertPageBreakValues)) {
-								(insertPageBreakValues as IDataObject[]).forEach(insertPageBreakValue => {
-									const { locationChoice, segmentId, index } = insertPageBreakValue;
-									(body.requests as IDataObject[]).push({
+
+							if (hasKeys(insertPageBreakValues)) {
+								insertPageBreakValues.forEach(({ locationChoice, segmentId, index }) => {
+									body.requests.push({
 										insertPageBreak: {
-											[locationChoice as string]: {
+											[locationChoice]: {
 												segmentId,
-												...(locationChoice === 'location') ?{
-													index: parseInt(index as string, 10),
-												}: {},
+												...(locationChoice === 'location') ? { index }: {},
 											},
 										},
 									});
 								});
 							}
-							// handle insert table request
-							if (!isEmpty(insertTableValues)) {
-								(insertTableValues as IDataObject[]).forEach(insertTableValue => {
-									const { rows, columns, locationChoice, segmentId, index } = insertTableValue;
-									(body.requests as IDataObject[]).push({
+
+							if (hasKeys(insertTableValues)) {
+								insertTableValues.forEach(value => {
+									const { rows, columns, locationChoice, segmentId, index } = value;
+									body.requests.push({
 										insertTable: {
 											rows,
 											columns,
-											[locationChoice as string]: {
+											[locationChoice]: {
 												segmentId,
-												...(locationChoice === 'location') ?{
-													index: parseInt(index as string, 10),
-												}: {},
+												...(locationChoice === 'location') ? { index }: {},
 											},
 										},
 									});
 								});
 							}
-							// handle insert table row request
-							if (!isEmpty(insertTableRowValues)) {
-								(insertTableRowValues as IDataObject[]).forEach(insertTableRowValue => {
-									const { insertBelow, rowIndex, columnIndex, segmentId, index } = insertTableRowValue;
-									(body.requests as IDataObject[]).push({
+
+							if (hasKeys(insertTableRowValues)) {
+								insertTableRowValues.forEach(value => {
+									const { insertBelow, rowIndex, columnIndex, segmentId, index } = value;
+									body.requests.push({
 										insertTableRow: {
 											insertBelow,
 											tableCellLocation: {
 												rowIndex,
 												columnIndex,
-												tableStartLocation: {
-													segmentId,
-													index,
-												},
+												tableStartLocation: { segmentId, index },
 											},
 										},
 									});
 								});
 							}
-							// handle insert table column request
-							if (!isEmpty(insertTableColumnValues)) {
-								(insertTableColumnValues as IDataObject[]).forEach(insertTableColumnValue => {
-									const { insertRight, rowIndex, columnIndex, segmentId, index } = insertTableColumnValue;
-									(body.requests as IDataObject[]).push({
+
+							if (hasKeys(insertTableColumnValues)) {
+								insertTableColumnValues.forEach(value => {
+									const { insertRight, rowIndex, columnIndex, segmentId, index } = value;
+									body.requests.push({
 										insertTableColumn: {
 											insertRight,
 											tableCellLocation: {
 												rowIndex,
 												columnIndex,
-												tableStartLocation: {
-													segmentId,
-													index,
-												},
+												tableStartLocation: { segmentId, index },
 											},
 										},
 									});
 								});
 							}
-							// handle create paragraph bullets request
-							if (!isEmpty(createParagraphBulletsValues)) {
-								(createParagraphBulletsValues as IDataObject[]).forEach(createParagraphBulletsValue => {
-									const { bulletPreset, segmentId, startIndex, endIndex } = createParagraphBulletsValue;
-									(body.requests as IDataObject[]).push({
+
+							// ----------------------------------
+							//         create values
+							// ----------------------------------
+
+							if (hasKeys(createParagraphBulletsValues)) {
+								createParagraphBulletsValues.forEach(value => {
+									const { bulletPreset, segmentId, startIndex, endIndex } = value;
+									body.requests.push({
 										createParagraphBullets: {
 											bulletPreset,
-											range: {
-												segmentId,
-												startIndex,
-												endIndex,
-											},
+											range: { segmentId, startIndex, endIndex },
 										},
 									});
 								});
 							}
-							// handle delete paragraph bullets request
-							if (!isEmpty(deleteParagraphBulletsValues)) {
-								(deleteParagraphBulletsValues as IDataObject[]).forEach(deleteParagraphBulletsValue => {
-									const { segmentId, startIndex, endIndex } = deleteParagraphBulletsValue;
-									(body.requests as IDataObject[]).push({
-										deleteParagraphBullets: {
-											range: {
-												segmentId,
-												startIndex,
-												endIndex,
-											},
-										},
-									});
-								});
-							}
-							// handle create name range request
-							if (!isEmpty(createNamedRangeValues)) {
-								(createNamedRangeValues as IDataObject[]).forEach(createNamedRangeValue => {
-									const { name, segmentId, startIndex, endIndex } = createNamedRangeValue;
-									(body.requests as IDataObject[]).push({
+
+							if (hasKeys(createNamedRangeValues)) {
+								createNamedRangeValues.forEach(value => {
+									const { name, segmentId, startIndex, endIndex } = value;
+									body.requests.push({
 										createNamedRange: {
 											name,
-											range: {
-												segmentId,
-												startIndex,
-												endIndex,
-											},
+											range: { segmentId, startIndex, endIndex },
 										},
 									});
 								});
 							}
-							// handle delete name range request
-							if (!isEmpty(deleteNamedRangeValues)) {
-								(deleteNamedRangeValues as IDataObject[]).forEach(deleteNamedRangeValue => {
-									const { namedRangeReference, value } = deleteNamedRangeValue;
-									(body.requests as IDataObject[]).push({
+
+							if (hasKeys(createHeaderValues)) {
+								createHeaderValues.forEach(({ type, segmentId, index }) => {
+									body.requests.push({
+										createHeader: {
+											type,
+											sectionBreakLocation: { segmentId, index },
+										},
+									});
+								});
+							}
+
+							if (hasKeys(createFooterValues)) {
+								createFooterValues.forEach(({ type, segmentId, index }) => {
+									body.requests.push({
+										createFooter: {
+											type,
+											sectionBreakLocation: { segmentId, index },
+										},
+									});
+								});
+							}
+
+							// ----------------------------------
+							//         delete values
+							// ----------------------------------
+
+							if (hasKeys(deleteParagraphBulletsValues)) {
+								deleteParagraphBulletsValues.forEach(value => {
+									const { segmentId, startIndex, endIndex } = value;
+									body.requests.push({
+										deleteParagraphBullets: {
+											range: { segmentId, startIndex, endIndex },
+										},
+									});
+								});
+							}
+
+							if (hasKeys(deleteNamedRangeValues)) {
+								deleteNamedRangeValues.forEach(({ namedRangeReference, value }) => {
+									body.requests.push({
 										deleteNamedRange: {
-											[namedRangeReference as string]: value ,
+											[namedRangeReference]: value,
 										},
 									});
 								});
 							}
-							// handle delete positioned object request
-							if (!isEmpty(deletePositionedObjectValues)) {
-								(deletePositionedObjectValues as IDataObject[]).forEach(deletePositionedObjectValue => {
-									const { objectId } = deletePositionedObjectValue;
-									(body.requests as IDataObject[]).push({
-										deletePositionedObject: {
-											objectId,
-										},
+
+							if (hasKeys(deletePositionedObjectValues)) {
+								deletePositionedObjectValues.forEach(({ objectId }) => {
+									body.requests.push({
+										deletePositionedObject: { objectId },
 									});
 								});
 							}
-							// handle delete table row request
-							if (!isEmpty(deleteTableRowValues)) {
-								(deleteTableRowValues as IDataObject[]).forEach(deleteTableRowValue => {
-									const { rowIndex, columnIndex, segmentId, index } = deleteTableRowValue;
-									(body.requests as IDataObject[]).push({
+
+							if (hasKeys(deleteTableRowValues)) {
+								deleteTableRowValues.forEach(value => {
+									const { rowIndex, columnIndex, segmentId, index } = value;
+									body.requests.push({
 										deleteTableRow: {
 											tableCellLocation: {
 												rowIndex,
 												columnIndex,
-												tableStartLocation: {
-													segmentId,
-													index,
-												},
+												tableStartLocation: { segmentId, index },
 											},
 										},
 									});
 								});
 							}
-							// handle delete table column request
-							if (!isEmpty(deleteTableColumnValues)) {
-								(deleteTableColumnValues as IDataObject[]).forEach(deleteTableColumnValue => {
-									const { rowIndex, columnIndex, segmentId, index } = deleteTableColumnValue;
-									(body.requests as IDataObject[]).push({
+
+							if (hasKeys(deleteTableColumnValues)) {
+								deleteTableColumnValues.forEach(value => {
+									const { rowIndex, columnIndex, segmentId, index } = value;
+									body.requests.push({
 										deleteTableColumn: {
 											tableCellLocation: {
 												rowIndex,
 												columnIndex,
-												tableStartLocation: {
-													segmentId,
-													index,
-												},
+												tableStartLocation: { segmentId, index },
 											},
 										},
 									});
 								});
 							}
-							// handle create header request
-							if (!isEmpty(createHeaderValues)) {
-								(createHeaderValues as IDataObject[]).forEach(createHeaderValue => {
-									const { type, segmentId, index } = createHeaderValue;
-									(body.requests as IDataObject[]).push({
-										createHeader: {
-											type,
-											sectionBreakLocation: {
-												segmentId,
-												index: parseInt(index as string, 10),
-											},
-										},
+
+							if (hasKeys(deleteHeaderValues)) {
+								deleteHeaderValues.forEach(({ headerId }) => {
+									body.requests.push({
+										deleteHeader: { headerId },
 									});
 								});
 							}
-							// handle create footer request
-							if (!isEmpty(createFooterValues)) {
-								(createFooterValues as IDataObject[]).forEach(createFooterValue => {
-									const { type, segmentId, index } = createFooterValue;
-									(body.requests as IDataObject[]).push({
-										createFooter: {
-											type,
-											sectionBreakLocation: {
-												segmentId,
-												index: parseInt(index as string, 10),
-											},
-										},
-									});
-								});
-							}
-							// handle delete header request
-							if (!isEmpty(deleteHeaderValues)) {
-								(deleteHeaderValues as IDataObject[]).forEach(deleteHeaderValue => {
-									const { headerId } = deleteHeaderValue;
-									(body.requests as IDataObject[]).push({
-										deleteHeader: {
-											headerId,
-										},
-									});
-								});
-							}
-							// handle delete footer request
-							if (!isEmpty(deleteFooterValues)) {
-								(deleteFooterValues as IDataObject[]).forEach(deleteFooterValue => {
-									const { footerId } = deleteFooterValue;
-									(body.requests as IDataObject[]).push({
-										deleteFooter: {
-											footerId,
-										},
+
+							if (hasKeys(deleteFooterValues)) {
+								deleteFooterValues.forEach(({ footerId }) => {
+									body.requests.push({
+										deleteFooter: { footerId },
 									});
 								});
 							}
 						}
 
-						responseData = await googleApiRequest.call(
-							this,
-							'POST',
-							`/documents/${documentId}:batchUpdate`,
-							body,
-							qs,
-						);
+						responseData = await googleApiRequest.call(this, 'POST', `/documents/${documentId}:batchUpdate`, body);
 
 					}
 				}
+
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
@@ -430,9 +372,11 @@ export class GoogleDocs implements INodeType {
 				}
 				throw error;
 			}
+
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
 				: returnData.push(responseData);
+
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

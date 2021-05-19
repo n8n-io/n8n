@@ -4,26 +4,30 @@ import {
 
 import {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError,
+	IDataObject,
+	NodeApiError,
 } from 'n8n-workflow';
 
-export async function googleApiRequest(this: IExecuteFunctions, method: string, resource: string, body: IDataObject = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}) {
+export async function googleApiRequest(
+	this: IExecuteFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject = {},
+) {
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
-		qs,
-		uri: uri || `https://docs.googleapis.com/v1${resource}`,
+		uri: `https://docs.googleapis.com/v1${endpoint}`,
 		json: true,
 	};
-	if (Object.keys(body).length === 0) {
+
+	if (!Object.keys(body).length) {
 		delete options.body;
 	}
 
@@ -33,3 +37,5 @@ export async function googleApiRequest(this: IExecuteFunctions, method: string, 
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
+
+export const hasKeys = (obj = {}) => Object.keys(obj).length > 0;

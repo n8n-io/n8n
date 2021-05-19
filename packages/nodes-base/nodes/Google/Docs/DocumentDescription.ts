@@ -53,6 +53,7 @@ export const documentFields = [
 			},
 		},
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 document:get                                */
 	/* -------------------------------------------------------------------------- */
@@ -73,6 +74,7 @@ export const documentFields = [
 		},
 		default: '',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 document:update                             */
 	/* -------------------------------------------------------------------------- */
@@ -113,6 +115,7 @@ export const documentFields = [
 			{
 				displayName: 'Requests',
 				name: 'requestsUi',
+				description: 'Requests to update a document.',
 				type: 'fixedCollection',
 				default: '',
 				placeholder: 'Add Request',
@@ -152,11 +155,18 @@ export const documentFields = [
 						displayName: 'Insert Text',
 						values: [
 							{
-								displayName: 'Text',
-								name: 'text',
-								type: 'string',
-								description: 'The text to search for in the document.',
-								default: '',
+								displayName: 'Index',
+								name: 'index',
+								type: 'number',
+								description: 'The zero-based index, relative to the beginning of the specified segment.',
+								displayOptions: {
+									show: {
+										locationChoice: [
+											'location',
+										],
+									},
+								},
+								default: 0,
 							},
 							{
 								displayName: 'Insertion Location',
@@ -185,18 +195,11 @@ export const documentFields = [
 								default: '',
 							},
 							{
-								displayName: 'Index',
-								name: 'index',
-								type: 'number',
-								description: 'The zero-based index, relative to the beginning of the specified segment.',
-								displayOptions: {
-									show: {
-										locationChoice: [
-											'location',
-										],
-									},
-								},
-								default: 0,
+								displayName: 'Text',
+								name: 'text',
+								type: 'string',
+								description: 'The text to search for in the document.',
+								default: '',
 							},
 						],
 					},
@@ -205,6 +208,20 @@ export const documentFields = [
 						displayName: 'Insert Page Break',
 						values: [
 							{
+								displayName: 'Index',
+								name: 'index',
+								type: 'number',
+								description: 'The zero-based index, relative to the beginning of the specified segment.',
+								displayOptions: {
+									show: {
+										locationChoice: [
+											'location',
+										],
+									},
+								},
+								default: 0,
+							},
+							{
 								displayName: 'Insertion Location',
 								name: 'locationChoice',
 								type: 'options',
@@ -229,20 +246,6 @@ export const documentFields = [
 								type: 'string',
 								description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
 								default: '',
-							},
-							{
-								displayName: 'Index',
-								name: 'index',
-								type: 'number',
-								description: 'The zero-based index, relative to the beginning of the specified segment.',
-								displayOptions: {
-									show: {
-										locationChoice: [
-											'location',
-										],
-									},
-								},
-								default: 0,
 							},
 						],
 					},
@@ -449,7 +452,7 @@ export const documentFields = [
 								name: 'value',
 								type: 'string',
 								description: 'The value of the range reference.',
-								default: 'name',
+								default: '',
 							},
 						],
 					},
@@ -787,6 +790,7 @@ export const documentFields = [
 				name: 'writeControl',
 				placeholder: 'Add Write Control',
 				type: 'fixedCollection',
+				description: 'Settings for how to execute update requests.',
 				default: {},
 				options: [
 					{
@@ -794,17 +798,19 @@ export const documentFields = [
 						name: 'writeControlObject',
 						values: [
 							{
-								displayName: 'Control field',
+								displayName: 'Control Field',
 								name: 'control',
 								type: 'options',
 								options: [
 									{
 										name: 'Target Revision ID',
 										value: 'targetRevisionId',
+										description: 'The revision ID of the document that the write request will be applied to.',
 									},
 									{
 										name: 'Required Revision ID',
 										value: 'requiredRevisionId',
+										description: 'The target revision ID of the document that the write request will be applied to.',
 									},
 								],
 								default: 'requiredRevisionId',
@@ -813,8 +819,7 @@ export const documentFields = [
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
-								default: 'targetRevisionId',
-								description: 'Revision ID value.',
+								default: '',
 							},
 						],
 					},
