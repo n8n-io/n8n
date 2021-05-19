@@ -88,11 +88,11 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-* {
-	box-sizing: border-box;
-}
-
 .dialog-wrapper {
+	* {
+		box-sizing: border-box;
+	}
+
 	&.xl > div, &.md > div {
 		min-width: 620px;
 	}
