@@ -46,8 +46,10 @@ export async function twilioApiRequest(this: IHookFunctions | IExecuteFunctions,
 	};
 
 	if (credentials.authType === 'apiKey') {
-		const token = Buffer.from(`${credentials.apiKeySid}:${credentials.apiKeySecret}`).toString('base64');
-		options.headers = { Authorization: `Basic ${token}` };
+		options.auth = {
+			user: credentials.apiKeySid,
+			password: credentials.apiKeySecret,
+		};
 	} else if (credentials.authType === 'authToken') {
 		options.auth = {
 			user: credentials.accountSid,

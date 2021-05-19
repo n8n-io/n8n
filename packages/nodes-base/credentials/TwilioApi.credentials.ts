@@ -10,12 +10,6 @@ export class TwilioApi implements ICredentialType {
 	documentationUrl = 'twilio';
 	properties = [
 		{
-			displayName: 'Account SID',
-			name: 'accountSid',
-			type: 'string' as NodePropertyTypes,
-			default: '',
-		},
-		{
 			displayName: 'Auth Type',
 			name: 'authType',
 			type: 'options' as NodePropertyTypes,
@@ -30,6 +24,12 @@ export class TwilioApi implements ICredentialType {
 					value: 'apiKey',
 				},
 			],
+		},
+		{
+			displayName: 'Account SID',
+			name: 'accountSid',
+			type: 'string' as NodePropertyTypes,
+			default: '',
 		},
 		{
 			displayName: 'Auth Token',
