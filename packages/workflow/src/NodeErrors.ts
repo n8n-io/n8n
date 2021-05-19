@@ -132,7 +132,7 @@ abstract class NodeError extends Error {
 	/**
 	 * Check if a value is an object with at least one key, i.e. it can be traversed.
 	 */
-	private isTraversableObject(value: any): value is IRawErrorObject { // tslint:disable-line:no-any
+	protected isTraversableObject(value: any): value is IRawErrorObject { // tslint:disable-line:no-any
 		return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
 	}
 }
@@ -198,6 +198,28 @@ export class NodeApiError extends NodeError {
 		}
 
 		this.description = this.findProperty(error, ERROR_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES);
+
+		this.removeCircular();
+	}
+
+	/**
+	 * Remove circular references from error objects to prevent `JSON.stringify()`
+	 * from throwing a conversion error in post-execution workflow hooks.
+	 */
+	removeCircular() {
+		const seen = new Set();
+
+		const findCircular = (obj: JsonObject) => {
+			seen.add(obj);
+			Object.entries(obj).forEach(([key, value]) => {
+				if (this.isTraversableObject(value)) {
+					if (seen.has(value)) delete obj[key];
+					findCircular(value);
+				}
+			});
+		};
+
+		findCircular(this.cause as JsonObject);
 	}
 
 	private setDescriptionFromXml(xml: string) {
@@ -215,7 +237,6 @@ export class NodeApiError extends NodeError {
 	 * @returns {void}
 	 */
 	private setMessage() {
-
 		if (!this.httpCode) {
 			this.httpCode = null;
 			this.message = UNKNOWN_ERROR_MESSAGE;
@@ -239,3 +260,7 @@ export class NodeApiError extends NodeError {
 		}
 	}
 }
+
+export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+
+export type JsonObject = { [key: string]: JsonValue };
