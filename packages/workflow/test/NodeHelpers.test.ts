@@ -2939,6 +2939,95 @@ describe('Workflow', () => {
 						},
 					},
 				},
+				{
+					description: 'complex type "fixedCollection" with "multipleValues: true". Which contains parameter of type multiOptions and has so an array default value.',
+					input: {
+						nodePropertiesArray: [
+							{
+								name: 'values',
+								displayName: 'Values',
+								type: 'fixedCollection',
+								typeOptions: {
+									multipleValues: true,
+								},
+								default: {},
+								options: [
+									{
+										name: 'propertyValues',
+										displayName: 'Property',
+										values: [
+											{
+												displayName: 'Options',
+												name: 'multiSelectValue',
+												type: 'multiOptions',
+												options: [
+													{
+														name: 'Value1',
+														value: 'value1',
+													},
+													{
+														name: 'Value2',
+														value: 'value2',
+													},
+												],
+												default: [],
+											},
+										],
+									},
+								],
+							},
+						],
+						nodeValues: {
+							values: {
+								propertyValues: [
+									{
+										multiSelectValue: [],
+									}
+								]
+							},
+						},
+					},
+					output: {
+						noneDisplayedFalse: {
+							defaultsFalse: {
+								values: {
+									propertyValues: [
+										{
+										}
+									],
+								},
+							},
+							defaultsTrue: {
+								values: {
+									propertyValues: [
+										{
+											multiSelectValue: [],
+										}
+									],
+								},
+							},
+						},
+						noneDisplayedTrue: {
+							defaultsFalse: {
+								values: {
+									propertyValues: [
+										{
+										}
+									],
+								},
+							},
+							defaultsTrue: {
+								values: {
+									propertyValues: [
+										{
+											multiSelectValue: [],
+										}
+									],
+								},
+							},
+						},
+					},
+				},
 			];
 
 

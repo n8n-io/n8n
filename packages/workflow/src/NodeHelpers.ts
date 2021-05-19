@@ -21,7 +21,7 @@ import {
 	Workflow
 } from './Workflow';
 
-import { get } from 'lodash';
+import { get, isEqual } from 'lodash';
 
 
 
@@ -585,7 +585,9 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 					nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name] || nodeProperties.default;
 				}
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
-			} else if (nodeValues[nodeProperties.name] !== nodeProperties.default || (nodeValues[nodeProperties.name] !== undefined && parentType === 'collection')) {
+			} else if ((nodeValues[nodeProperties.name] !== nodeProperties.default && typeof nodeValues[nodeProperties.name] !== 'object') ||
+				(typeof nodeValues[nodeProperties.name] === 'object' && !isEqual(nodeValues[nodeProperties.name], nodeProperties.default)) ||
+				(nodeValues[nodeProperties.name] !== undefined && parentType === 'collection')) {
 				// Set only if it is different to the default value
 				nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name];
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
