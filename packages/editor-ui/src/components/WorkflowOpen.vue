@@ -5,7 +5,7 @@
 	>
 			<template slot="header">
 				<div class="workflows-header">
-					<div>
+					<div class="title">
 						<h1>Open Workflow</h1>
 					</div>
 					<div class="tags-filter">
@@ -211,7 +211,7 @@ export default mixins(
 .workflows-header {
 	display: flex;
 
-	> div:first-of-type {
+	.title {
 		flex-grow: 1;
 
 		h1 {
@@ -227,7 +227,9 @@ export default mixins(
 	}
 
 	.tags-filter {
-		min-width: 270px;
+		flex-grow: 1;
+		max-width: 270px;
+		min-width: 220px;
 	}
 }
 
