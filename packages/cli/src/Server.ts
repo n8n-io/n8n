@@ -113,7 +113,7 @@ import { Registry } from 'prom-client';
 import * as TagHelpers from './TagHelpers';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { DEFAULT_NEW_WORKFLOW_NAME, WorkflowNameRequest } from './WorkflowHelpers';
+import { DEFAULT_NEW_WORKFLOW_NAME, isNotNumeric, WorkflowNameRequest } from './WorkflowHelpers';
 
 class App {
 
@@ -494,8 +494,6 @@ class App {
 			const incomingData = req.body;
 
 			const newWorkflow = new WorkflowEntity();
-			newWorkflow.createdAt = this.getCurrentDate();
-			newWorkflow.updatedAt = this.getCurrentDate();
 
 			Object.assign(newWorkflow, incomingData);
 			newWorkflow.name = incomingData.name.trim();
@@ -572,13 +570,36 @@ class App {
 		this.app.get(`/${this.restEndpoint}/workflows/new`, ResponseHelper.send(async (req: WorkflowNameRequest, res: express.Response): Promise<{ name: string }> => {
 			const nameToReturn = req.query.name ?? DEFAULT_NEW_WORKFLOW_NAME;
 
-			const count = await Db.collections.Workflow!.count({
-				name: Like(`${nameToReturn}%`),
+			const workflows = await Db.collections.Workflow!.find({
+				select: ['name'],
+				where: { name: Like(`${nameToReturn}%`) },
 			});
 
-			return count === 0
-				? { name: nameToReturn }
-				: { name: `${nameToReturn} ${count + 1}` };
+			// name is unique
+			if (workflows.length === 0) {
+				return { name: nameToReturn };
+			}
+
+			const numericSuffixes = workflows.reduce((acc: number[], { name }) => {
+				const lastWhitespaceIndex = name.lastIndexOf(' ');
+				if (lastWhitespaceIndex === -1) return acc;
+
+				const suffix = name.slice(lastWhitespaceIndex + 1);
+				if (isNotNumeric(suffix)) return acc;
+
+				acc.push(Number(suffix));
+
+				return acc;
+			}, []);
+
+			// name is duplicate but no numeric suffixes exist yet
+			if (numericSuffixes.length === 0) {
+				return { name: `${nameToReturn} 2` };
+			}
+
+			const maxSuffix = Math.max(...numericSuffixes);
+
+			return { name: `${nameToReturn} ${maxSuffix + 1}` };
 		}));
 
 
@@ -603,6 +624,7 @@ class App {
 			const { tags, ...updateData } = req.body;
 
 			const id = req.params.id;
+			updateData.id = id;
 
 			await this.externalHooks.run('workflow.update', [updateData]);
 
@@ -771,8 +793,6 @@ class App {
 		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<TagEntity | void> => {
 			const newTag = new TagEntity();
 			newTag.name = req.body.name.trim();
-			newTag.createdAt = this.getCurrentDate();
-			newTag.updatedAt = this.getCurrentDate();
 
 			await this.externalHooks.run('tag.beforeCreate', [newTag]);
 
@@ -794,7 +814,6 @@ class App {
 			const newTag = new TagEntity();
 			newTag.id = Number(id);
 			newTag.name = name.trim();
-			newTag.updatedAt = this.getCurrentDate();
 
 			await this.externalHooks.run('tag.beforeUpdate', [newTag]);
 
@@ -825,6 +844,7 @@ class App {
 		// get generated dynamically
 		this.app.get(`/${this.restEndpoint}/node-parameter-options`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodePropertyOptions[]> => {
 			const nodeType = req.query.nodeType as string;
+			const path = req.query.path as string;
 			let credentials: INodeCredentials | undefined = undefined;
 			const currentNodeParameters = JSON.parse('' + req.query.currentNodeParameters) as INodeParameters;
 			if (req.query.credentials !== undefined) {
@@ -834,7 +854,7 @@ class App {
 
 			const nodeTypes = NodeTypes();
 
-			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, JSON.parse('' + req.query.currentNodeParameters), credentials!);
+			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, path, JSON.parse('' + req.query.currentNodeParameters), credentials!);
 
 			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
 			const workflowCredentials = await WorkflowCredentials(workflowData.nodes);
@@ -998,8 +1018,6 @@ class App {
 			await this.externalHooks.run('credentials.create', [newCredentialsData]);
 
 			// Add special database related data
-			newCredentialsData.createdAt = this.getCurrentDate();
-			newCredentialsData.updatedAt = this.getCurrentDate();
 
 			// TODO: also add user automatically depending on who is logged in, if anybody is logged in
 
@@ -1841,6 +1859,7 @@ class App {
 						}
 					);
 				}
+				returnData.sort((a, b) => parseInt(b.id, 10) - parseInt(a.id, 10));
 
 				return returnData;
 			}

@@ -9,6 +9,7 @@ import {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
+
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -36,6 +37,7 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
+
 	let options: OptionsWithUri = {
 		auth: {
 			user: credentials.consumerKey as string,
@@ -47,11 +49,16 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 		uri: uri || `${credentials.url}/wp-json/wc/v3${resource}`,
 		json: true,
 	};
+
+	if (credentials.includeCredentialsInQuery === true) {
+		delete options.auth;
+		Object.assign(qs, { consumer_key: credentials.consumerKey, consumer_secret: credentials.consumerSecret });
+	}
+
 	if (!Object.keys(body).length) {
 		delete options.form;
 	}
 	options = Object.assign({}, options, option);
-
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {

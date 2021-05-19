@@ -2,9 +2,9 @@ import {MigrationInterface, QueryRunner} from "typeorm";
 import config = require("../../../../config");
 
 export class UniqueWorkflowNames1620826335440 implements MigrationInterface {
-    name = 'UniqueWorkflowNames1620826335440'
+		name = 'UniqueWorkflowNames1620826335440';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
+		async up(queryRunner: QueryRunner): Promise<void> {
 			const tablePrefix = config.get('database.tablePrefix');
 
 			const workflowNames = await queryRunner.query(`
@@ -37,12 +37,12 @@ export class UniqueWorkflowNames1620826335440 implements MigrationInterface {
 			}
 
 			await queryRunner.query('ALTER TABLE `' + tablePrefix + 'workflow_entity` ADD UNIQUE INDEX `IDX_' + tablePrefix + '943d8f922be094eb507cb9a7f9` (`name`)');
-    }
+		}
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
+		async down(queryRunner: QueryRunner): Promise<void> {
 			const tablePrefix = config.get('database.tablePrefix');
 
 			await queryRunner.query('ALTER TABLE `' + tablePrefix + 'workflow_entity` DROP INDEX `IDX_' + tablePrefix + '943d8f922be094eb507cb9a7f9`');
-    }
+		}
 
 }

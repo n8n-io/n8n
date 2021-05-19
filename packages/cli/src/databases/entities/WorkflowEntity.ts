@@ -10,13 +10,16 @@ import {
 } from 'n8n-workflow';
 
 import {
+	BeforeUpdate,
 	Column,
 	ColumnOptions,
+	CreateDateColumn,
 	Entity,
 	Index,
 	JoinTable,
 	ManyToMany,
 	PrimaryGeneratedColumn,
+	UpdateDateColumn,
 } from 'typeorm';
 
 import {
@@ -24,6 +27,7 @@ import {
 } from '../../';
 
 import {
+	getTimestampSyntax,
 	resolveDataType
 } from '../utils';
 
@@ -45,16 +49,19 @@ export class WorkflowEntity implements IWorkflowDb {
 	@Column()
 	active: boolean;
 
-	@Column(resolveDataType('json'))
+	@Column({
+		type: resolveDataType('json') as ColumnOptions['type'],
+		nullable: true,
+	})
 	nodes: INode[];
 
 	@Column(resolveDataType('json'))
 	connections: IConnections;
 
-	@Column(resolveDataType('datetime'))
+	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
 	createdAt: Date;
 
-	@Column(resolveDataType('datetime'))
+	@UpdateDateColumn({ precision: 3, default: () => getTimestampSyntax(), onUpdate: getTimestampSyntax() })
 	updatedAt: Date;
 
 	@Column({
@@ -82,4 +89,9 @@ export class WorkflowEntity implements IWorkflowDb {
 		},
 	})
 	tags: TagEntity[];
+
+	@BeforeUpdate()
+	setUpdateDate() {
+		this.updatedAt = new Date();
+	}
 }
