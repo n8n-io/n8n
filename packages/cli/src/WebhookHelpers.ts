@@ -203,7 +203,9 @@ export async function executeWebhook(
 		200,
 	) as number;
 
-	if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode as string)) {
+	if (
+		!['onReceived', 'lastNode', 'responseNode', 'noBodyResponse'].includes(responseMode as string)
+	) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
@@ -341,6 +343,22 @@ export async function executeWebhook(
 					data: {
 						message: 'Workflow got started.',
 					},
+					responseCode,
+				});
+			}
+
+			didSendResponse = true;
+		}
+
+		if (responseMode === 'noBodyResponse' && didSendResponse === false) {
+			if (webhookResultData.webhookResponse !== undefined) {
+				// Data to respond with is given
+				responseCallback(null, {
+					data: webhookResultData.webhookResponse,
+					responseCode,
+				});
+			} else {
+				responseCallback(null, {
 					responseCode,
 				});
 			}
