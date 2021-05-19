@@ -21,8 +21,10 @@ import mixins from "vue-typed-mixins";
 import { mapGetters } from "vuex";
 
 import { pushConnection } from "@/components/mixins/pushConnection";
+import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
-export default mixins(pushConnection).extend({
+// pushConnection has dependency on workflowHelpers mixin
+export default mixins(pushConnection, workflowHelpers).extend({
 	name: "PushConnectionTracker",
 	computed: {
 		...mapGetters(["pushConnectionActive"]),
