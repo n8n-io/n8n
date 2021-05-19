@@ -13,6 +13,7 @@ import {
 	CredentialTypes,
 	Db,
 	ExternalHooks,
+	IExecutionsCurrentSummary,
 	IWorkflowExecutionDataProcess,
 	LoadNodesAndCredentials,
 	NodeTypes,
@@ -72,6 +73,8 @@ function updateSuccess(workflowId: string | number | Object, workflowExecutionsP
 
 export class ExecuteAll extends Command {
 	static description = '\nExecutes all workflows once';
+
+	static cancelled = false;
 	
 	static examples = [
 		`$ n8n executeAll`,
@@ -104,9 +107,43 @@ export class ExecuteAll extends Command {
 			description: 'Compares current execution with an existing snapshot. You must inform an existing folder where the snapshots are saved.',
 		}),
 	};
+
+	static async stopProcess() {
+		this.cancelled = true;
+		const activeExecutionsInstance = ActiveExecutions.getInstance();
+		const stopPromises = activeExecutionsInstance.getActiveExecutions().map(async execution => {
+			activeExecutionsInstance.stopExecution(execution.id);
+		});
+
+		await Promise.allSettled(stopPromises);
+
+		setTimeout(() => {
+			process.exit(0);
+		}, 30000);
+
+		let executingWorkflows = activeExecutionsInstance.getActiveExecutions() as IExecutionsCurrentSummary[];
+
+		let count = 0;
+		while (executingWorkflows.length !== 0) {
+			if (count++ % 4 === 0) {
+				console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
+				executingWorkflows.map(execution => {
+					console.log(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
+				});
+			}
+			await new Promise((resolve) => {
+				setTimeout(resolve, 500);
+			});
+			executingWorkflows = activeExecutionsInstance.getActiveExecutions();
+		}
+		process.exit(0);
+	}
 	
 	
 	async run() {
+
+		process.on('SIGTERM', ExecuteAll.stopProcess);
+		process.on('SIGINT', ExecuteAll.stopProcess);
 
 		const logger = getLogger();
 		LoggerProxy.init(logger);
@@ -225,6 +262,9 @@ export class ExecuteAll extends Command {
 		let workflowsExecutionsPromises:Array<Promise<IRun | undefined>> = [];
 		let workflowExecutionsProgress:Array<IWorkflowExecutionProgress> = [];
 		for (let i = 0; i < allWorkflows.length; i++) {
+			if (ExecuteAll.cancelled) {
+				break;
+			}
 			const workflowData = allWorkflows[i];
 			
 			const executionResult:IExecutionResult = {
