@@ -344,7 +344,7 @@ export class Notion implements INodeType {
 				}
 			}
 
-			if (operation === 'search') {
+			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					const simple = this.getNodeParameter('simple', 0) as boolean;
 					const databaseId = this.getNodeParameter('databaseId', i) as string;

@@ -30,9 +30,9 @@ export const databasePageOperations = [
 				description: 'Create a pages in a database',
 			},
 			{
-				name: 'Search',
-				value: 'search',
-				description: 'Search pages in a database',
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all pages in a database',
 			},
 			{
 				name: 'Update',
@@ -742,7 +742,7 @@ export const databasePageFields = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                databasePage:search                              */
+	/*                                databasePage:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Database ID',
@@ -759,7 +759,7 @@ export const databasePageFields = [
 					'databasePage',
 				],
 				operation: [
-					'search',
+					'getAll',
 				],
 			},
 		},
@@ -774,7 +774,7 @@ export const databasePageFields = [
 					'databasePage',
 				],
 				operation: [
-					'search',
+					'getAll',
 				],
 			},
 		},
@@ -791,7 +791,7 @@ export const databasePageFields = [
 					'databasePage',
 				],
 				operation: [
-					'search',
+					'getAll',
 				],
 				returnAll: [
 					false,
@@ -815,7 +815,7 @@ export const databasePageFields = [
 					'databasePage',
 				],
 				operation: [
-					'search',
+					'getAll',
 				],
 			},
 		},
@@ -829,7 +829,7 @@ export const databasePageFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'search',
+					'getAll',
 				],
 				resource: [
 					'databasePage',
