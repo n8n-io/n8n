@@ -198,7 +198,7 @@ export const documentFields = [
 								displayName: 'Text',
 								name: 'text',
 								type: 'string',
-								description: 'The text to search for in the document.',
+								description: 'The text to insert in the document.',
 								default: '',
 							},
 						],
@@ -458,7 +458,7 @@ export const documentFields = [
 					},
 					{
 						name: 'deletePositionedObjectValues',
-						displayName: 'Delete Position Object',
+						displayName: 'Delete Positioned Object',
 						values: [
 							{
 								displayName: 'Object ID',
@@ -520,7 +520,7 @@ export const documentFields = [
 									{
 										name: 'Default',
 										value: 'DEFAULT',
-										description: 'A default header.',
+										description: 'A default footer.',
 									},
 									{
 										name: 'Unspecified',
