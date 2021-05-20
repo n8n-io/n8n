@@ -11,14 +11,13 @@ export interface IComment {
 
 export interface RequestedAttributes {
 	[key: string]: AttributeParameters;
-  }
-  
+}
+
 export interface AttributeParameters {
 	scoreType?: string;
 	scoreThreshold?: FloatValue;
 }
-  
+
 export interface FloatValue {
 	value: number;
 }
-  

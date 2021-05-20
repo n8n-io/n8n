@@ -32,15 +32,15 @@ export class GooglePerspective implements INodeType {
 			'={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Google Perspective',
-			color: '#200647'
+			color: '#200647',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
 				name: 'googlePerspectiveOAuth2Api',
-				required: true
-			}
+				required: true,
+			},
 		],
 		properties: [
 			{
@@ -50,11 +50,11 @@ export class GooglePerspective implements INodeType {
 				options: [
 					{
 						name: 'comment',
-						value: 'comment'
-					}
+						value: 'comment',
+					},
 				],
 				default: 'comment',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -62,18 +62,18 @@ export class GooglePerspective implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: ['comment']
-					}
+						resource: ['comment'],
+					},
 				},
 				options: [
 					{
 						name: 'Analyze Comment',
 						value: 'AnalyzeComment',
-						description: 'Analyze Comment'
-					}
+						description: 'Analyze Comment',
+					},
 				],
 				default: 'AnalyzeComment',
-				description: 'The operation to perform'
+				description: 'The operation to perform',
 			},
 			// ----------------------------------
 			//         All
@@ -85,17 +85,17 @@ export class GooglePerspective implements INodeType {
 				options: [
 					{
 						name: 'text',
-						value: 'text'
-					}
+						value: 'text',
+					},
 				],
 				default: 'text',
 				description: 'The source of the comment.',
 				required: true,
 				displayOptions: {
 					show: {
-						operation: ['AnalyzeComment']
-					}
-				}
+						operation: ['AnalyzeComment'],
+					},
+				},
 			},
 			{
 				displayName: 'Text',
@@ -107,9 +107,9 @@ export class GooglePerspective implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['AnalyzeComment'],
-						source: ['text']
-					}
-				}
+						source: ['text'],
+					},
+				},
 			},
 			{
 				displayName: 'Options',
@@ -117,8 +117,8 @@ export class GooglePerspective implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						operation: ['AnalyzeComment']
-					}
+						operation: ['AnalyzeComment'],
+					},
 				},
 				default: {},
 				description: '',
@@ -215,12 +215,12 @@ export class GooglePerspective implements INodeType {
 						options: [
 							{
 								name: 'Plain Text',
-								value: 'PLAIN_TEXT'
-							}
+								value: 'PLAIN_TEXT',
+							},
 						],
 						default: 'PLAIN_TEXT',
 						description: 'The type of input comment.',
-						required: true
+						required: true,
 					},
 					{
 						displayName: 'Language',
@@ -229,28 +229,28 @@ export class GooglePerspective implements INodeType {
 						options: [
 							{
 								name: 'English',
-								value: 'en'
+								value: 'en',
 							},
 							{
 								name: 'French',
-								value: 'fr'
+								value: 'fr',
 							},
 							{
 								name: 'German',
-								value: 'de'
-							}
+								value: 'de',
+							},
 						],
 						default: 'en',
 						description: 'The language of input comment.',
-						required: true
-					}
-				]
-			}
-		]
+						required: true,
+					},
+				],
+			},
+		],
 	};
 
 	async execute(
-		this: IExecuteFunctions
+		this: IExecuteFunctions,
 	): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const length = (items.length as unknown) as number;
@@ -263,16 +263,16 @@ export class GooglePerspective implements INodeType {
 					const source = this.getNodeParameter('source', i) as string;
 					const options = this.getNodeParameter(
 						'options',
-						i
+						i,
 					) as IDataObject;
 					const commentType =
 						(options.commentType as string | undefined) || 'PLAIN_TEXT';
-					let attributes = this.getNodeParameter(
+					const attributes = this.getNodeParameter(
 						'options.requestedAttributesUi.requestedAttributesValues',
-						i, []
+						i, [],
 					) as IDataObject[];
 
-					const data = attributes.reduce((accumulator: { [key: string]: any }, currentValue: IDataObject) => {
+					const data = attributes.reduce((accumulator: { [key: string]: any }, currentValue: IDataObject) => { // tslint:disable-line:no-any
 						return Object.assign(accumulator, {
 						[`${(currentValue.attributeName as string).toUpperCase()}`]: {
 							'scoreType': currentValue.scoreType,
@@ -282,9 +282,9 @@ export class GooglePerspective implements INodeType {
 
 					const body: IData = {
 						comment: {
-							type: commentType
+							type: commentType,
 						},
-						requestedAttributes: (data as unknown) as RequestedAttributes
+						requestedAttributes: (data as unknown) as RequestedAttributes,
 					};
 
 					if (source === 'text') {
@@ -300,7 +300,7 @@ export class GooglePerspective implements INodeType {
 						this,
 						'POST',
 						`/v1alpha1/comments:analyze`,
-						body
+						body,
 					);
 					responseData.push(response);
 				}
