@@ -547,7 +547,7 @@ export const databasePageFields = [
 						name: 'multiSelectValue',
 						type: 'multiOptions',
 						typeOptions: {
-							loadOptionsMethod: 'getPropertySelectValues',
+							loadOptionsMethod: 'getDatabaseOptionsFromPage',
 						},
 						displayOptions: {
 							show: {
@@ -565,7 +565,7 @@ export const databasePageFields = [
 						name: 'selectValue',
 						type: 'options',
 						typeOptions: {
-							loadOptionsMethod: 'getPropertySelectValues',
+							loadOptionsMethod: 'getDatabaseOptionsFromPage',
 						},
 						displayOptions: {
 							show: {

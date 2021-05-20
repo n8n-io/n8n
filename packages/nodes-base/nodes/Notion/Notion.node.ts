@@ -213,7 +213,6 @@ export class Notion implements INodeType {
 				const [name, type] = (this.getCurrentNodeParameter('&key') as string).split('|');
 				const databaseId = this.getCurrentNodeParameter('databaseId') as string;
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
-				//(['multi_select', 'select'].includes(type)) ? option.id :
 				return (properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: option.id }));
 			},
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -247,6 +246,14 @@ export class Notion implements INodeType {
 					return 0;
 				});
 				return returnData;
+			},
+
+			async getDatabaseOptionsFromPage(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const pageId = this.getCurrentNodeParameter('pageId') as string;
+				const [name, type] = (this.getCurrentNodeParameter('&key') as string).split('|');
+				const { parent: { database_id: databaseId } } = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
+				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
+				return (properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: option.id }));
 			},
 		},
 	};
@@ -336,11 +343,11 @@ export class Notion implements INodeType {
 						body.properties = mapProperties(properties, timezone) as IDataObject;
 					}
 					body.children = formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]);
-					const page = await notionApiRequest.call(this, 'POST', '/pages', body);
+					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
 					if (simple === true) {
-						responseData = simplifyObjects(page);
+						responseData = simplifyObjects(responseData);
 					}
-					returnData.push.apply(returnData, responseData);
+					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
 				}
 			}
 
@@ -399,11 +406,11 @@ export class Notion implements INodeType {
 					if (properties.length !== 0) {
 						body.properties = mapProperties(properties, timezone) as IDataObject;
 					}
-					const page = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
+					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
 					if (simple === true) {
-						responseData = simplifyObjects(page);
+						responseData = simplifyObjects(responseData);
 					}
-					returnData.push.apply(returnData, responseData);
+					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
 				}
 			}
 		}
@@ -445,11 +452,11 @@ export class Notion implements INodeType {
 					body.parent['page_id'] = this.getNodeParameter('pageId', i) as string;
 					body.properties = formatTitle(this.getNodeParameter('title', i) as string);
 					body.children = formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]);
-					const page = await notionApiRequest.call(this, 'POST', '/pages', body);
+					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
 					if (simple === true) {
-						responseData = simplifyObjects(page);
+						responseData = simplifyObjects(responseData);
 					}
-					returnData.push.apply(returnData, responseData);
+					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
 				}
 			}
 
@@ -457,11 +464,11 @@ export class Notion implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const pageId = this.getNodeParameter('pageId', i) as string;
 					const simple = this.getNodeParameter('simple', i) as boolean;
-					const page = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
+					responseData = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 					if (simple === true) {
-						responseData = simplifyObjects(page);
+						responseData = simplifyObjects(responseData);
 					}
-					returnData.push.apply(returnData, responseData);
+					returnData.push.apply(returnData, Array.isArray(responseData) ? responseData : [responseData]);
 				}
 			}
 
