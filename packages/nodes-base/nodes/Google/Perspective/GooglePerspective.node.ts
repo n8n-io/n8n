@@ -221,6 +221,28 @@ export class GooglePerspective implements INodeType {
 						default: 'PLAIN_TEXT',
 						description: 'The type of input comment.',
 						required: true
+					},
+					{
+						displayName: 'Language',
+						name: 'language',
+						type: 'options',
+						options: [
+							{
+								name: 'English',
+								value: 'en'
+							},
+							{
+								name: 'French',
+								value: 'fr'
+							},
+							{
+								name: 'German',
+								value: 'de'
+							}
+						],
+						default: 'en',
+						description: 'The language of input comment.',
+						required: true
 					}
 				]
 			}
@@ -268,6 +290,10 @@ export class GooglePerspective implements INodeType {
 					if (source === 'text') {
 						const text = this.getNodeParameter('text', i) as string;
 						body.comment.text = text;
+					}
+
+					if (options.language) {
+						body.languages = options.language as string;
 					}
 
 					const response = await googleApiRequest.call(

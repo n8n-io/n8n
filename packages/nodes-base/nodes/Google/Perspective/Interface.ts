@@ -1,6 +1,7 @@
 export interface IData {
 	comment: IComment;
 	requestedAttributes: RequestedAttributes;
+	languages?: string;
 }
 
 export interface IComment {
