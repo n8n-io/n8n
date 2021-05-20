@@ -265,7 +265,7 @@ export class GoogleDocs implements INodeType {
 								createHeaderValues.forEach(({ type, segmentId, index }) => {
 									body.requests.push({
 										createHeader: {
-											type,
+											type: 'DEFAULT',
 											sectionBreakLocation: { segmentId, index },
 										},
 									});
@@ -276,7 +276,7 @@ export class GoogleDocs implements INodeType {
 								createFooterValues.forEach(({ type, segmentId, index }) => {
 									body.requests.push({
 										createFooter: {
-											type,
+											type: 'DEFAULT',
 											sectionBreakLocation: { segmentId, index },
 										},
 									});
