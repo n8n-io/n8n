@@ -14,6 +14,7 @@ import {
 	IDisplayOptions,
 	INodeProperties,
 	IPollFunctions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -24,15 +25,12 @@ import {
 import * as moment from 'moment-timezone';
 
 export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const authenticationMethod = this.getNodeParameter('authentication', 0, 'apiKey');
+
 	try {
-		const credentials = this.getCredentials('notionApi');
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
-		}
 		let options: OptionsWithUri = {
-			headers: {
-				'Authorization': `Bearer ${credentials.apiKey}`,
-			},
+			headers: {},
 			method,
 			qs,
 			body,
@@ -41,16 +39,17 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 		};
 
 		options = Object.assign({}, options, option);
-		return await this.helpers.request!(options);
-	} catch (error) {
-
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			const errorBody = error.response.body;
-			throw new Error(`Notion error response [${error.statusCode}]: ${errorBody.message}`);
+		if (authenticationMethod === 'apiKey') {
+			const credentials = this.getCredentials('notionApi') as IDataObject;
+			options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
+			return this.helpers.request!(options);
+		} else {
+			//@ts-ignore
+			return this.helpers.requestOAuth2.call(this, 'notionOAuth2Api', options);
 		}
 
-		throw error;
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -152,14 +151,15 @@ function getLink(text: { textLink: string, isLink: boolean }) {
 	return {};
 }
 
-function getTexts(texts: [{ textType: string, textContent: string, isLink: boolean, textLink: string, mentionType: string, annotationUi: IDataObject, expression: string }]) {
+function getTexts(texts: [{ textType: string, text: string, isLink: boolean, textLink: string, mentionType: string, annotationUi: IDataObject, expression: string }]) {
 	const results = [];
 	for (const text of texts) {
+		console.log(text);
 		if (text.textType === 'text') {
 			results.push({
 				type: 'text',
 				text: {
-					content: text.textContent,
+					content: text.text,
 					...getLink(text),
 				},
 				annotations: text.annotationUi,
@@ -197,7 +197,7 @@ export function formatBlocks(blocks: IDataObject[]) {
 				...(block.type === 'to_do') ? { checked: block.checked } : { checked: false },
 				//@ts-expect-error
 				// tslint:disable-next-line: no-any
-				text: (block.onlyContent === true) ? formatText(block.content).text : getTexts(block.text.text as any || []),
+				text: (block.richText === false) ? formatText(block.textContent).text : getTexts(block.text.text as any || []),
 			},
 		});
 	}
@@ -209,14 +209,14 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 	let result = {};
 	switch (type) {
 		case 'rich_text':
-			if (value.onlyContent) {
-				result = { rich_text: [ { text: { content: value.content } }] };
+			if (value.richText === false) {
+				result = { rich_text: [{ text: { content: value.textContent } }] };
 			} else {
 				result = { rich_text: getTexts(value.text.text) };
 			}
 			break;
 		case 'title':
-			result = { title: [ { text:  { content: value.title } } ] };
+			result = { title: [{ text: { content: value.title } }] };
 			break;
 		case 'number':
 			result = { type: 'number', number: value.numberValue };
@@ -357,6 +357,36 @@ export function simplifyProperties(properties: any) {
 		// else if (['rollup'].includes(properties[key].type)) {
 		// 	results[`${key}`] = properties[key][type][properties[key][type].type];
 		// }
+	}
+	return results;
+}
+
+// tslint:disable-next-line: no-any
+export function simplifyObjects(objects: any) {
+	const results: IDataObject[] = [];
+	for (const { object, id, properties, parent } of objects) {
+		if (object === 'page' && parent.type === 'page_id') {
+			results.push({
+				id,
+				title: properties.title.title[0].plain_text,
+			});
+		} else if (object === 'page' && parent.type === 'database_id') {
+			results.push({
+				id,
+				...Object.keys(properties).reduce((obj, value) => Object.assign(obj, {
+					[properties[value]]: properties[value][properties[value].type],
+				}), {}),
+			});
+		} else if (object === 'database') {
+			const title = properties.title.title[0].plain_text;
+			results.push({
+				id,
+				title,
+				...Object.keys(properties).reduce((obj, value) => Object.assign(obj, {
+					[properties[value]]: properties[value][properties[value].type],
+				}), {}),
+			});
+		}
 	}
 	return results;
 }

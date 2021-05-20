@@ -4,10 +4,14 @@ import {
 
 import {
 	blocks,
-	text
+	text,
 } from './Blocks';
 
-export const databaseRecordOperations = [
+import { 
+	filters,
+} from './Filters';
+
+export const databasePageOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -15,7 +19,7 @@ export const databaseRecordOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'databaseRecord',
+					'databasePage',
 				],
 			},
 		},
@@ -23,12 +27,17 @@ export const databaseRecordOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a record in a database.',
+				description: 'Create a pages in a database',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search pages in a database',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update record in a database.',
+				description: 'Update pages in a database',
 			},
 		],
 		default: 'create',
@@ -36,10 +45,10 @@ export const databaseRecordOperations = [
 	},
 ] as INodeProperties[];
 
-export const databaseRecordFields = [
+export const databasePageFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                databaseRecord:create                       */
+	/*                                databasePage:create                       */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Database ID',
@@ -53,14 +62,14 @@ export const databaseRecordFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'databaseRecord',
+					'databasePage',
 				],
 				operation: [
 					'create',
 				],
 			},
 		},
-		description: 'The ID of the database that this databaseRecord belongs to.',
+		description: 'The ID of the database that this databasePage belongs to.',
 	},
 	{
 		displayName: 'Simple',
@@ -69,7 +78,7 @@ export const databaseRecordFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'databaseRecord',
+					'databasePage',
 				],
 				operation: [
 					'create',
@@ -89,7 +98,7 @@ export const databaseRecordFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'databaseRecord',
+					'databasePage',
 				],
 				operation: [
 					'create',
@@ -135,8 +144,8 @@ export const databaseRecordFields = [
 						default: '',
 					},
 					{
-						displayName: 'Only Content',
-						name: 'onlyContent',
+						displayName: 'Rich Text',
+						name: 'richText',
 						type: 'boolean',
 						displayOptions: {
 							show: {
@@ -145,19 +154,19 @@ export const databaseRecordFields = [
 								],
 							},
 						},
-						default: true,
+						default: false,
 					},
 					{
-						displayName: 'Text Content',
-						name: 'content',
+						displayName: 'Text',
+						name: 'textContent',
 						type: 'string',
 						displayOptions: {
 							show: {
 								type: [
 									'rich_text',
 								],
-								onlyContent: [
-									true,
+								richText: [
+									false,
 								],
 							},
 						},
@@ -168,8 +177,8 @@ export const databaseRecordFields = [
 							type: [
 								'rich_text',
 							],
-							onlyContent: [
-								false,
+							richText: [
+								true,
 							],
 						},
 					}),
@@ -281,8 +290,8 @@ export const databaseRecordFields = [
 								],
 							},
 						},
-						default: '',
-						description: 'List of databaseRecords that belong to another database. Multiples can be defined separated by comma.',
+						default: [],
+						description: 'List of databasePages that belong to another database. Multiples can be defined separated by comma.',
 					},
 					{
 						displayName: 'Checkbox',
@@ -386,9 +395,9 @@ export const databaseRecordFields = [
 			},
 		],
 	},
-	...blocks('databaseRecord', 'create'),
+	...blocks('databasePage', 'create'),
 	/* -------------------------------------------------------------------------- */
-	/*                      databaseRecord:update                                 */
+	/*                      databasePage:update                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Page ID',
@@ -399,14 +408,14 @@ export const databaseRecordFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'databaseRecord',
+					'databasePage',
 				],
 				operation: [
 					'update',
 				],
 			},
 		},
-		description: 'The ID of the databaseRecord to update.',
+		description: 'The ID of the databasePage to update.',
 	},
 	{
 		displayName: 'Simple',
@@ -415,7 +424,7 @@ export const databaseRecordFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'databaseRecord',
+					'databasePage',
 				],
 				operation: [
 					'update',
@@ -435,7 +444,7 @@ export const databaseRecordFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'databaseRecord',
+					'databasePage',
 				],
 				operation: [
 					'update',
@@ -481,8 +490,8 @@ export const databaseRecordFields = [
 						default: '',
 					},
 					{
-						displayName: 'Only Content',
-						name: 'onlyContent',
+						displayName: 'Rich Text',
+						name: 'richText',
 						type: 'boolean',
 						displayOptions: {
 							show: {
@@ -491,19 +500,19 @@ export const databaseRecordFields = [
 								],
 							},
 						},
-						default: true,
+						default: false,
 					},
 					{
-						displayName: 'Text Content',
-						name: 'content',
+						displayName: 'Text',
+						name: 'textContent',
 						type: 'string',
 						displayOptions: {
 							show: {
 								type: [
 									'rich_text',
 								],
-								onlyContent: [
-									true,
+								richText: [
+									false,
 								],
 							},
 						},
@@ -514,8 +523,8 @@ export const databaseRecordFields = [
 							type: [
 								'rich_text',
 							],
-							onlyContent: [
-								false,
+							richText: [
+								true,
 							],
 						},
 					}),
@@ -627,8 +636,8 @@ export const databaseRecordFields = [
 								],
 							},
 						},
-						default: '',
-						description: 'List of databaseRecords that belong to another database. Multiples can be defined separated by comma.',
+						default: [],
+						description: 'List of databasePages that belong to another database. Multiples can be defined separated by comma.',
 					},
 					{
 						displayName: 'Checkbox',
@@ -727,6 +736,256 @@ export const databaseRecordFields = [
 						default: '',
 						description: `
 						An ISO 8601 formatted date, with optional time. Represents the end of a date range.`,
+					},
+				],
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                databasePage:search                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Database ID',
+		name: 'databaseId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getDatabases',
+		},
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'databasePage',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'databasePage',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'databasePage',
+				],
+				operation: [
+					'search',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'databasePage',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		default: true,
+		description: 'When set to true a simplify version of the response will be used else the raw data.',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: [
+					'search',
+				],
+				resource: [
+					'databasePage',
+				],
+			},
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: [
+			{
+				displayName: 'Filters',
+				name: 'filter',
+				placeholder: 'Add Filter',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Single Condition',
+						name: 'singleCondition',
+						values: [
+							...filters,
+						],
+					},
+					{
+						displayName: 'Multiple Condition',
+						name: 'multipleCondition',
+						values: [
+							{
+								displayName: 'Condition',
+								name: 'condition',
+								placeholder: 'Add Condition',
+								type: 'fixedCollection',
+								typeOptions: {
+									multipleValues: true,
+								},
+								default: {},
+								options: [
+									{
+										displayName: 'OR',
+										name: 'or',
+										values: [
+											...filters,
+										],
+									},
+									{
+										displayName: 'AND',
+										name: 'and',
+										values: [
+											...filters,
+										],
+									},
+								],
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Sort',
+				name: 'sort',
+				placeholder: 'Add Sort',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Sort',
+						name: 'sortValue',
+						values: [
+							{
+								displayName: 'Timestamp',
+								name: 'timestamp',
+								type: 'boolean',
+								default: false,
+								description: `Whether or not to use the record's timestamp to sort the response.`,
+							},
+							{
+								displayName: 'Property Name',
+								name: 'key',
+								type: 'options',
+								displayOptions: {
+									show: {
+										timestamp: [
+											false,
+										],
+									},
+								},
+								typeOptions: {
+									loadOptionsMethod: 'getFilterProperties',
+									loadOptionsDependsOn: [
+										'datatabaseId',
+									],
+								},
+								default: '',
+								description: 'The name of the property to filter by.',
+							},
+							{
+								displayName: 'Property Name',
+								name: 'key',
+								type: 'options',
+								options: [
+									{
+										name: 'Created Time',
+										value: 'created_time',
+									},
+									{
+										name: 'Last Edited Time',
+										value: 'last_edited_time',
+									},
+								],
+								displayOptions: {
+									show: {
+										timestamp: [
+											true,
+										],
+									},
+								},
+								default: '',
+								description: 'The name of the property to filter by.',
+							},
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'hidden',
+								displayOptions: {
+									show: {
+										timestamp: [
+											true,
+										],
+									},
+								},
+								default: '={{$parameter["&key"].split("|")[1]}}',
+							},
+							{
+								displayName: 'Direction',
+								name: 'direction',
+								type: 'options',
+								options: [
+									{
+										name: 'Ascending',
+										value: 'ascending',
+									},
+									{
+										name: 'Descending',
+										value: 'descending',
+									},
+								],
+								default: '',
+								description: 'The direction to sort.',
+							},
+						],
 					},
 				],
 			},

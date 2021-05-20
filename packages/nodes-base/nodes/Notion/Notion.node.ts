@@ -15,12 +15,12 @@ import {
 	formatBlocks,
 	formatTitle,
 	getBlockTypes,
-	getFormattedChildren,
 	mapFilters,
 	mapProperties,
 	mapSorting,
 	notionApiRequest,
 	notionApiRequestAllItems,
+	simplifyObjects,
 	simplifyProperties,
 } from './GenericFunctions';
 
@@ -45,9 +45,9 @@ import {
 } from './BlockDescription';
 
 import { 
-	databaseRecordFields,
-	databaseRecordOperations,
-} from './DatabaseRecordDescription';
+	databasePageFields,
+	databasePageOperations,
+} from './DatabasePageDescription';
 
 export class Notion implements INodeType {
 	description: INodeTypeDescription = {
@@ -68,9 +68,44 @@ export class Notion implements INodeType {
 			{
 				name: 'notionApi',
 				required: true,
+				// displayOptions: {
+				// 	show: {
+				// 		authentication: [
+				// 			'apiKey',
+				// 		],
+				// 	},
+				// },
 			},
+			// {
+			// 	name: 'notionOAuth2Api',
+			// 	required: true,
+			// 	displayOptions: {
+			// 		show: {
+			// 			authentication: [
+			// 				'oAuth2',
+			// 			],
+			// 		},
+			// 	},
+			// },
 		],
 		properties: [
+			// {
+			// 	displayName: 'Authentication',
+			// 	name: 'authentication',
+			// 	type: 'options',
+			// 	options: [
+			// 		{
+			// 			name: 'API Key',
+			// 			value: 'apiKey',
+			// 		},
+			// 		{
+			// 			name: 'OAuth2',
+			// 			value: 'oAuth2',
+			// 		},
+			// 	],
+			// 	default: 'apiKey',
+			// 	description: 'The resource to operate on.',
+			// },
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -85,8 +120,8 @@ export class Notion implements INodeType {
 						value: 'database',
 					},
 					{
-						name: 'Database Record',
-						value: 'databaseRecord',
+						name: 'Database Page',
+						value: 'databasePage',
 					},
 					{
 						name: 'Page',
@@ -104,8 +139,8 @@ export class Notion implements INodeType {
 			...blockFields,
 			...databaseOperations,
 			...databaseFields,
-			...databaseRecordOperations,
-			...databaseRecordFields,
+			...databasePageOperations,
+			...databasePageFields,
 			...pageOperations,
 			...pageFields,
 			...userOperations,
@@ -129,8 +164,8 @@ export class Notion implements INodeType {
 					});
 				}
 				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
+					if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) { return -1; }
+					if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) { return 1; }
 					return 0;
 				});
 				return returnData;
@@ -149,8 +184,8 @@ export class Notion implements INodeType {
 					}
 				}
 				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
+					if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) { return -1; }
+					if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) { return 1; }
 					return 0;
 				});
 				return returnData;
@@ -166,8 +201,8 @@ export class Notion implements INodeType {
 					});
 				}
 				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
+					if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) { return -1; }
+					if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) { return 1; }
 					return 0;
 				});
 				return returnData;
@@ -208,8 +243,8 @@ export class Notion implements INodeType {
 					}
 				}
 				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
+					if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) { return -1; }
+					if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) { return 1; }
 					return 0;
 				});
 				return returnData;
@@ -302,8 +337,33 @@ export class Notion implements INodeType {
 					returnData.push.apply(returnData, responseData);
 				}
 			}
+		}
 
-			if (operation === 'query') {
+		if (resource === 'databasePage') {
+
+			if (operation === 'create') {
+				for (let i = 0; i < length; i++) {
+					const simple = this.getNodeParameter('simple', i) as boolean;
+					// tslint:disable-next-line: no-any
+					const body: { [key: string]: any } = {
+						parent: {},
+						properties: {},
+					};
+					body.parent['database_id'] = this.getNodeParameter('databaseId', i) as string;
+					const properties = this.getNodeParameter('propertiesUi.propertyValues', i, []) as IDataObject[];
+					if (properties.length !== 0) {
+						body.properties = mapProperties(properties, timezone) as IDataObject;
+					}
+					body.children = formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]);
+					const page = await notionApiRequest.call(this, 'POST', '/pages', body);
+					if (simple === true) {
+						page.properties = simplifyProperties(page.properties);
+					}
+					returnData.push(page);
+				}
+			}
+
+			if (operation === 'search') {
 				for (let i = 0; i < length; i++) {
 					const simple = this.getNodeParameter('simple', 0) as boolean;
 					const databaseId = this.getNodeParameter('databaseId', i) as string;
@@ -345,31 +405,6 @@ export class Notion implements INodeType {
 						}
 					}
 					returnData.push.apply(returnData, responseData);
-				}
-			}
-		}
-
-		if (resource === 'databaseRecord') {
-
-			if (operation === 'create') {
-				for (let i = 0; i < length; i++) {
-					const simple = this.getNodeParameter('simple', i) as boolean;
-					// tslint:disable-next-line: no-any
-					const body: { [key: string]: any } = {
-						parent: {},
-						properties: {},
-					};
-					body.parent['database_id'] = this.getNodeParameter('databaseId', i) as string;
-					const properties = this.getNodeParameter('propertiesUi.propertyValues', i, []) as IDataObject[];
-					if (properties.length !== 0) {
-						body.properties = mapProperties(properties, timezone) as IDataObject;
-					}
-					body.children = formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]);
-					const page = await notionApiRequest.call(this, 'POST', '/pages', body);
-					if (simple === true) {
-						page.properties = simplifyProperties(page.properties);
-					}
-					returnData.push(page);
 				}
 			}
 
@@ -451,15 +486,16 @@ export class Notion implements INodeType {
 				}
 			}
 
-			if (operation === 'query') {
+			if (operation === 'search') {
 				for (let i = 0; i < length; i++) {
-					const query = this.getNodeParameter('query', i) as string;
+					const text = this.getNodeParameter('text', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const simple = this.getNodeParameter('simple', i) as boolean;
 					const body: IDataObject = {};
 
-					if (query) {
-						body['query'] = query;
+					if (text) {
+						body['query'] = text;
 					}
 
 					if (options.filter) {
@@ -478,6 +514,11 @@ export class Notion implements INodeType {
 						responseData = await notionApiRequestAllItems.call(this, 'results', 'POST', '/search', body);
 						responseData = responseData.splice(0, qs.limit);
 					}
+
+					// if (simple === true) {
+					// 	responseData = simplifyObjects(responseData);
+					// }
+
 					returnData.push.apply(returnData, responseData);
 				}
 			}

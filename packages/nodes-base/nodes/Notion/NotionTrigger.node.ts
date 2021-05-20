@@ -48,8 +48,8 @@ export class NotionTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Record Added',
-						value: 'recordAdded',
+						name: 'Page Added to Database',
+						value: 'pageAddedToDatabase',
 					},
 					// {
 					// 	name: 'Record Updated',
@@ -69,8 +69,7 @@ export class NotionTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						event: [
-							'recordAdded',
-							'recordUpdated',
+							'pageAddedToDatabase',
 						],
 					},
 				},
@@ -85,8 +84,7 @@ export class NotionTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						event: [
-							'recordAdded',
-							'recordUpdated',
+							'pageAddedToDatabase',
 						],
 					},
 				},
@@ -108,8 +106,8 @@ export class NotionTrigger implements INodeType {
 					});
 				}
 				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
+					if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) { return -1; }
+					if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) { return 1; }
 					return 0;
 				});
 				return returnData;
@@ -129,12 +127,10 @@ export class NotionTrigger implements INodeType {
 
 		const endDate = now;
 
-		const maxPageSize = 10;
-
-		const sortProperty = (event === 'recordAdded') ? 'created_time' : 'last_edited_time';
+		const sortProperty = (event === 'pageAddedToDatabase') ? 'created_time' : 'last_edited_time';
 
 		const body: IDataObject = {
-			page_size: maxPageSize,
+			page_size: 1,
 			sorts: [
 				{
 					timestamp: sortProperty,
@@ -143,38 +139,47 @@ export class NotionTrigger implements INodeType {
 			],
 		};
 
-		if (this.getMode() === 'manual') {
-			body.page_size = 1;
-		}
-
 		let records: IDataObject[] = [];
 
 		let hasMore = true;
 
-		do {
-			const { results, has_more, next_cursor } = await notionApiRequest.call(this, 'POST', `/databases/${databaseId}/query`, body);
-			records.push.apply(records, results);
-			hasMore = has_more;
-			if (next_cursor !== null) {
-				body['start_cursor'] = next_cursor;
-			}
-		} while (!moment(records[records.length - 1][sortProperty] as string).isSameOrBefore(startDate) && hasMore === true);
+		//get last record
+		const { results: data } = await notionApiRequest.call(this, 'POST', `/databases/${databaseId}/query`, body);
 
-		if (this.getMode() !== 'manual') {
-			records = records.filter((record: IDataObject) => moment(record[sortProperty] as string).isBetween(moment(startDate), moment(endDate)));
-		}
-
-		if (simple === true) {
-			for (let i = 0; i < records.length; i++) {
-				records[i].properties = simplifyProperties(records[i].properties);
+		if (this.getMode() === 'manual') {
+			if (Array.isArray(data) && data.length) {
+				return [this.helpers.returnJsonArray(data)];
 			}
 		}
+		// if something changed after the last check
+		if (moment(data[0][sortProperty] as string).isAfter(startDate)) {
+			do {
+				body.page_size = 10;
+				const { results, has_more, next_cursor } = await notionApiRequest.call(this, 'POST', `/databases/${databaseId}/query`, body);
+				records.push.apply(records, results);
+				hasMore = has_more;
+				if (next_cursor !== null) {
+					body['start_cursor'] = next_cursor;
+				}
+			} while (!moment(records[records.length - 1][sortProperty] as string).isSameOrBefore(startDate) && hasMore === true);
 
-		webhookData.lastTimeChecked = endDate;
+			if (this.getMode() !== 'manual') {
+				records = records.filter((record: IDataObject) => moment(record[sortProperty] as string).isBetween(startDate, endDate));
+			}
 
-		if (Array.isArray(records) && records.length) {
-			return [this.helpers.returnJsonArray(records)];
+			if (simple === true) {
+				for (let i = 0; i < records.length; i++) {
+					records[i].properties = simplifyProperties(records[i].properties);
+				}
+			}
+
+			webhookData.lastTimeChecked = endDate;
+
+			if (Array.isArray(records) && records.length) {
+				return [this.helpers.returnJsonArray(records)];
+			}
 		}
+		
 		return null;
 	}
 }

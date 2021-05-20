@@ -259,8 +259,8 @@ const typeEquation = [{
 
 const typeText = [
 	{
-		displayName: 'Text Content',
-		name: 'textContent',
+		displayName: 'Text',
+		name: 'text',
 		displayOptions: {
 			show: {
 				textType: [
@@ -384,20 +384,20 @@ const title = (type: string) => [{
 	description: 'Plain text of page title.',
 }] as INodeProperties[];
 
-const onlyContent = (displayOptions: IDisplayOptions) => [
+const richText = (displayOptions: IDisplayOptions) => [
 	{
-		displayName: 'Only Content',
-		name: 'onlyContent',
+		displayName: 'Rich Text',
+		name: 'richText',
 		type: 'boolean',
 		displayOptions,
-		default: true,
+		default: false,
 	},
 ] as INodeProperties[];
 
 const textContent = (displayOptions: IDisplayOptions) => [
 	{
-		displayName: 'Text Content',
-		name: 'content',
+		displayName: 'Text',
+		name: 'textContent',
 		type: 'string',
 		displayOptions,
 		default: '',
@@ -409,7 +409,7 @@ const block = (blockType: string) => {
 	switch (blockType) {
 		case 'to_do':
 			data.push(...todo(blockType));
-			data.push(...onlyContent({
+			data.push(...richText({
 				show: {
 					type: [
 						blockType,
@@ -421,8 +421,8 @@ const block = (blockType: string) => {
 					type: [
 						blockType,
 					],
-					onlyContent: [
-						true,
+					richText: [
+						false,
 					],
 				},
 			}));
@@ -431,8 +431,8 @@ const block = (blockType: string) => {
 					type: [
 						blockType,
 					],
-					onlyContent: [
-						false,
+					richText: [
+						true,
 					],
 				},
 			}));
@@ -441,7 +441,7 @@ const block = (blockType: string) => {
 			data.push(...title(blockType));
 			break;
 		default:
-			data.push(...onlyContent({
+			data.push(...richText({
 				show: {
 					type: [
 						blockType,
@@ -453,8 +453,8 @@ const block = (blockType: string) => {
 					type: [
 						blockType,
 					],
-					onlyContent: [
-						true,
+					richText: [
+						false,
 					],
 				},
 			}));
@@ -463,8 +463,8 @@ const block = (blockType: string) => {
 					type: [
 						blockType,
 					],
-					onlyContent: [
-						false,
+					richText: [
+						true,
 					],
 				},
 			}));

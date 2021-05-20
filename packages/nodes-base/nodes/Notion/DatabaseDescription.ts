@@ -2,10 +2,6 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import {
-	filters,
-} from './Filters';
-
 export const databaseOperations = [
 	{
 		displayName: 'Operation',
@@ -22,17 +18,12 @@ export const databaseOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a database.',
+				description: 'Get a database',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all databases.',
-			},
-			{
-				name: 'Query',
-				value: 'query',
-				description: 'Query a database.',
+				description: 'Get all databases',
 			},
 		],
 		default: 'get',
@@ -62,30 +53,9 @@ export const databaseFields = [
 			},
 		},
 	},
-
 	/* -------------------------------------------------------------------------- */
-	/*                                database:query                              */
+	/*                                database:getAll                             */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Database ID',
-		name: 'databaseId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getDatabases',
-		},
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'query',
-				],
-			},
-		},
-	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -96,7 +66,6 @@ export const databaseFields = [
 					'database',
 				],
 				operation: [
-					'query',
 					'getAll',
 				],
 			},
@@ -114,7 +83,6 @@ export const databaseFields = [
 					'database',
 				],
 				operation: [
-					'query',
 					'getAll',
 				],
 				returnAll: [
@@ -128,191 +96,5 @@ export const databaseFields = [
 		},
 		default: 50,
 		description: 'How many results to return.',
-	},
-	{
-		displayName: 'Simple',
-		name: 'simple',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'query',
-				],
-			},
-		},
-		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		displayOptions: {
-			show: {
-				operation: [
-					'query',
-				],
-				resource: [
-					'database',
-				],
-			},
-		},
-		default: {},
-		placeholder: 'Add Field',
-		options: [
-			{
-				displayName: 'Filters',
-				name: 'filter',
-				placeholder: 'Add Filter',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: false,
-				},
-				default: {},
-				options: [
-					{
-						displayName: 'Single Condition',
-						name: 'singleCondition',
-						values: [
-							...filters,
-						],
-					},
-					{
-						displayName: 'Multiple Condition',
-						name: 'multipleCondition',
-						values: [
-							{
-								displayName: 'Condition',
-								name: 'condition',
-								placeholder: 'Add Condition',
-								type: 'fixedCollection',
-								typeOptions: {
-									multipleValues: true,
-								},
-								default: {},
-								options: [
-									{
-										displayName: 'OR',
-										name: 'or',
-										values: [
-											...filters,
-										],
-									},
-									{
-										displayName: 'AND',
-										name: 'and',
-										values: [
-											...filters,
-										],
-									},
-								],
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'Sort',
-				name: 'sort',
-				placeholder: 'Add Sort',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: {},
-				options: [
-					{
-						displayName: 'Sort',
-						name: 'sortValue',
-						values: [
-							{
-								displayName: 'Timestamp',
-								name: 'timestamp',
-								type: 'boolean',
-								default: false,
-								description: `Whether or not to use the record's timestamp to sort the response.`,
-							},
-							{
-								displayName: 'Property Name',
-								name: 'key',
-								type: 'options',
-								displayOptions: {
-									show: {
-										timestamp: [
-											false,
-										],
-									},
-								},
-								typeOptions: {
-									loadOptionsMethod: 'getFilterProperties',
-									loadOptionsDependsOn: [
-										'datatabaseId',
-									],
-								},
-								default: '',
-								description: 'The name of the property to filter by.',
-							},
-							{
-								displayName: 'Property Name',
-								name: 'key',
-								type: 'options',
-								options: [
-									{
-										name: 'Created Time',
-										value: 'created_time',
-									},
-									{
-										name: 'Last Edited Time',
-										value: 'last_edited_time',
-									},
-								],
-								displayOptions: {
-									show: {
-										timestamp: [
-											true,
-										],
-									},
-								},
-								default: '',
-								description: 'The name of the property to filter by.',
-							},
-							{
-								displayName: 'Type',
-								name: 'type',
-								type: 'hidden',
-								displayOptions: {
-									show: {
-										timestamp: [
-											true,
-										],
-									},
-								},
-								default: '={{$parameter["&key"].split("|")[1]}}',
-							},
-							{
-								displayName: 'Direction',
-								name: 'direction',
-								type: 'options',
-								options: [
-									{
-										name: 'Ascending',
-										value: 'ascending',
-									},
-									{
-										name: 'Descending',
-										value: 'descending',
-									},
-								],
-								default: '',
-								description: 'The direction to sort.',
-							},
-						],
-					},
-				],
-			},
-		],
 	},
 ] as INodeProperties[];

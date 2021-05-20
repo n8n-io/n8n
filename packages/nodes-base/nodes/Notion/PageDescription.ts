@@ -4,7 +4,6 @@ import {
 
 import {
 	blocks,
-	text
 } from './Blocks';
 
 export const pageOperations = [
@@ -23,16 +22,16 @@ export const pageOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a page.',
+				description: 'Create a page',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a page.',
+				description: 'Get a page',
 			},
 			{
-				name: 'Query',
-				value: 'query',
+				name: 'Search',
+				value: 'search',
 				description: 'Text search of pages',
 			},
 		],
@@ -138,11 +137,11 @@ export const pageFields = [
 		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                page:query                                  */
+	/*                                page:search                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Query',
-		name: 'query',
+		displayName: 'Search Text',
+		name: 'text',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -151,10 +150,11 @@ export const pageFields = [
 					'page',
 				],
 				operation: [
-					'query',
+					'search',
 				],
 			},
 		},
+		description: 'The text to search for.',
 	},
 	{
 		displayName: 'Return All',
@@ -166,7 +166,7 @@ export const pageFields = [
 					'page',
 				],
 				operation: [
-					'query',
+					'search',
 				],
 			},
 		},
@@ -183,7 +183,7 @@ export const pageFields = [
 					'page',
 				],
 				operation: [
-					'query',
+					'search',
 				],
 				returnAll: [
 					false,
@@ -198,6 +198,23 @@ export const pageFields = [
 		description: 'How many results to return.',
 	},
 	{
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'page',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		default: true,
+		description: 'When set to true a simplify version of the response will be used else the raw data.',
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -207,7 +224,7 @@ export const pageFields = [
 					'page',
 				],
 				operation: [
-					'query',
+					'search',
 				],
 			},
 		},
