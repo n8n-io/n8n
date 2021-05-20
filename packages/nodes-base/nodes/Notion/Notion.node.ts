@@ -214,7 +214,7 @@ export class Notion implements INodeType {
 				const [name, type] = (this.getCurrentNodeParameter('&key') as string).split('|');
 				const databaseId = this.getCurrentNodeParameter('databaseId') as string;
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
-				//(['multi_select', 'select'].includes(type)) ? option.id : 
+				//(['multi_select', 'select'].includes(type)) ? option.id :
 				return (properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: option.id }));
 			},
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {

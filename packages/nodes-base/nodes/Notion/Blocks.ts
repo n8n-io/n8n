@@ -151,20 +151,20 @@ const typeMention = [{
 	},
 	options: [
 		{
-			name: 'User',
-			value: 'user',
-		},
-		{
-			name: 'Page',
-			value: 'page',
-		},
-		{
 			name: 'Database',
 			value: 'database',
 		},
 		{
 			name: 'Date',
 			value: 'date',
+		},
+		{
+			name: 'Page',
+			value: 'page',
+		},
+		{
+			name: 'User',
+			value: 'user',
 		},
 	],
 	default: '',
@@ -327,16 +327,16 @@ export const text = (displayOptions: IDisplayOptions) => [
 						type: 'options',
 						options: [
 							{
-								name: 'Text',
-								value: 'text',
+								name: 'Equation',
+								value: 'equation',
 							},
 							{
 								name: 'Mention',
 								value: 'mention',
 							},
 							{
-								name: 'Equation',
-								value: 'equation',
+								name: 'Text',
+								value: 'text',
 							},
 						],
 						default: 'text',
