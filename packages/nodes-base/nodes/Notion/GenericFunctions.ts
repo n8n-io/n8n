@@ -154,7 +154,6 @@ function getLink(text: { textLink: string, isLink: boolean }) {
 function getTexts(texts: [{ textType: string, text: string, isLink: boolean, textLink: string, mentionType: string, annotationUi: IDataObject, expression: string }]) {
 	const results = [];
 	for (const text of texts) {
-		console.log(text);
 		if (text.textType === 'text') {
 			results.push({
 				type: 'text',
@@ -331,32 +330,46 @@ export function simplifyProperties(properties: any) {
 	for (const key of Object.keys(properties)) {
 		const type = (properties[key] as IDataObject).type as string;
 		if (['text'].includes(properties[key].type)) {
-			const texts = properties[key].text.map((e: IDataObject) => e.text || {});
+			const texts = properties[key].text.map((e: { text: { content: string } }) => e.text.content || {}).join('');
 			results[`${key}`] = texts;
 		} else if (['url', 'created_time', 'checkbox', 'number', 'last_edited_time', 'email', 'phone_number', 'date'].includes(properties[key].type)) {
 			// tslint:disable-next-line: no-any
 			results[`${key}`] = properties[key][type] as any;
 		} else if (['title'].includes(properties[key].type)) {
-			results[`${key}`] = {};
-			if (properties[key][type].length !== 0) {
-				results[`${key}`] = properties[key][type][0].text || {};
+			results[`${key}`] = '';
+			if (Array.isArray(properties[key][type])) {
+				results[`${key}`] = properties[key][type][0].text.content;
+			} else {
+				results[`${key}`] = properties[key][type] || '';
 			}
 		} else if (['created_by', 'last_edited_by', 'select'].includes(properties[key].type)) {
 			results[`${key}`] = properties[key][type].name;
 		} else if (['people'].includes(properties[key].type)) {
-			// tslint:disable-next-line: no-any
-			results[`${key}`] = properties[key][type].map((person: any) => person.person.email || {});
+			if (Array.isArray(properties[key][type])) {
+				// tslint:disable-next-line: no-any
+				results[`${key}`] = properties[key][type].map((person: any) => person.person.email || {});
+			} else {
+				results[`${key}`] = properties[key][type];
+			}
 		} else if (['multi_select'].includes(properties[key].type)) {
-			results[`${key}`] = properties[key][type].map((e: IDataObject) => e.name || {});
+			if (Array.isArray(properties[key][type])) {
+				results[`${key}`] = properties[key][type].map((e: IDataObject) => e.name || {});
+			} else {
+				results[`${key}`] = properties[key][type].options.map((e: IDataObject) => e.name || {});
+			}
 		} else if (['relation'].includes(properties[key].type)) {
-			results[`${key}`] = properties[key][type].map((e: IDataObject) => e.id || {});
+			if (Array.isArray(properties[key][type])) {
+				results[`${key}`] = properties[key][type].map((e: IDataObject) => e.id || {});
+			} else {
+				results[`${key}`] = properties[key][type].database_id;
+			}
 		} else if (['formula'].includes(properties[key].type)) {
 			results[`${key}`] = properties[key][type][properties[key][type].type];
+
+		} else if (['rollup'].includes(properties[key].type)) {
+			//TODO figure how to resolve rollup field type
+			// results[`${key}`] = properties[key][type][properties[key][type].type];
 		}
-		//figure how to resolve the rollup
-		// else if (['rollup'].includes(properties[key].type)) {
-		// 	results[`${key}`] = properties[key][type][properties[key][type].type];
-		// }
 	}
 	return results;
 }
@@ -364,8 +377,8 @@ export function simplifyProperties(properties: any) {
 // tslint:disable-next-line: no-any
 export function simplifyObjects(objects: any) {
 	const results: IDataObject[] = [];
-	for (const { object, id, properties, parent } of objects) {
-		if (object === 'page' && parent.type === 'page_id') {
+	for (const { object, id, properties, parent, title } of objects) {
+		if (object === 'page' && (parent.type === 'page_id' || parent.type === 'workspace')) {
 			results.push({
 				id,
 				title: properties.title.title[0].plain_text,
@@ -373,18 +386,12 @@ export function simplifyObjects(objects: any) {
 		} else if (object === 'page' && parent.type === 'database_id') {
 			results.push({
 				id,
-				...Object.keys(properties).reduce((obj, value) => Object.assign(obj, {
-					[properties[value]]: properties[value][properties[value].type],
-				}), {}),
+				...simplifyProperties(properties),
 			});
 		} else if (object === 'database') {
-			const title = properties.title.title[0].plain_text;
 			results.push({
 				id,
-				title,
-				...Object.keys(properties).reduce((obj, value) => Object.assign(obj, {
-					[properties[value]]: properties[value][properties[value].type],
-				}), {}),
+				title: title[0].plain_text,
 			});
 		}
 	}

@@ -515,9 +515,9 @@ export class Notion implements INodeType {
 						responseData = responseData.splice(0, qs.limit);
 					}
 
-					// if (simple === true) {
-					// 	responseData = simplifyObjects(responseData);
-					// }
+					if (simple === true) {
+						responseData = simplifyObjects(responseData);
+					}
 
 					returnData.push.apply(returnData, responseData);
 				}
