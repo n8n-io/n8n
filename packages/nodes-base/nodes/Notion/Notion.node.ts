@@ -21,7 +21,6 @@ import {
 	notionApiRequest,
 	notionApiRequestAllItems,
 	simplifyObjects,
-	simplifyProperties,
 } from './GenericFunctions';
 
 import {
@@ -44,14 +43,14 @@ import {
 	blockOperations,
 } from './BlockDescription';
 
-import { 
+import {
 	databasePageFields,
 	databasePageOperations,
 } from './DatabasePageDescription';
 
 export class Notion implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Notion',
+		displayName: 'Notion (Beta)',
 		name: 'notion',
 		icon: 'file:notion.svg',
 		group: ['output'],
@@ -290,24 +289,6 @@ export class Notion implements INodeType {
 					returnData.push.apply(returnData, responseData);
 				}
 			}
-
-			if (operation === 'update') {
-				for (let i = 0; i < length; i++) {
-					const pageId = this.getNodeParameter('pageId', i) as string;
-					const simple = this.getNodeParameter('simple', i) as boolean;
-					const properties = this.getNodeParameter('propertiesUi.propertyValues', i, []) as IDataObject[];
-					// tslint:disable-next-line: no-any
-					const body: { [key: string]: any } = {
-						properties: {},
-					};
-					body.properties = mapProperties(properties, timezone) as IDataObject;
-					const page = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
-					if (simple === true) {
-						page.properties = simplifyProperties(page.properties);
-					}
-					returnData.push(page);
-				}
-			}
 		}
 
 		if (resource === 'database') {
@@ -357,9 +338,9 @@ export class Notion implements INodeType {
 					body.children = formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]);
 					const page = await notionApiRequest.call(this, 'POST', '/pages', body);
 					if (simple === true) {
-						page.properties = simplifyProperties(page.properties);
+						responseData = simplifyObjects(page);
 					}
-					returnData.push(page);
+					returnData.push.apply(returnData, responseData);
 				}
 			}
 
@@ -400,9 +381,7 @@ export class Notion implements INodeType {
 						responseData = responseData.results;
 					}
 					if (simple === true) {
-						for (let i = 0; i < responseData.length; i++) {
-							responseData[i].properties = simplifyProperties(responseData[i].properties);
-						}
+						responseData = simplifyObjects(responseData);
 					}
 					returnData.push.apply(returnData, responseData);
 				}
@@ -422,9 +401,9 @@ export class Notion implements INodeType {
 					}
 					const page = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
 					if (simple === true) {
-						page.properties = simplifyProperties(page.properties);
+						responseData = simplifyObjects(page);
 					}
-					returnData.push(page);
+					returnData.push.apply(returnData, responseData);
 				}
 			}
 		}
@@ -468,21 +447,21 @@ export class Notion implements INodeType {
 					body.children = formatBlocks(this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[]);
 					const page = await notionApiRequest.call(this, 'POST', '/pages', body);
 					if (simple === true) {
-						page.properties = simplifyProperties(page.properties);
+						responseData = simplifyObjects(page);
 					}
-					returnData.push(page);
+					returnData.push.apply(returnData, responseData);
 				}
 			}
 
 			if (operation === 'get') {
 				for (let i = 0; i < length; i++) {
 					const pageId = this.getNodeParameter('pageId', i) as string;
-					const page = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 					const simple = this.getNodeParameter('simple', i) as boolean;
+					const page = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 					if (simple === true) {
-						page.properties = simplifyProperties(page.properties);
+						responseData = simplifyObjects(page);
 					}
-					returnData.push(page);
+					returnData.push.apply(returnData, responseData);
 				}
 			}
 

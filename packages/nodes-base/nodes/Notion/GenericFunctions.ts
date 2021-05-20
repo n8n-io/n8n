@@ -26,11 +26,11 @@ import * as moment from 'moment-timezone';
 
 export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const authenticationMethod = this.getNodeParameter('authentication', 0, 'apiKey');
-
 	try {
 		let options: OptionsWithUri = {
-			headers: {},
+			headers: {
+				'Notion-Version': '2021-05-13',
+			},
 			method,
 			qs,
 			body,
@@ -39,14 +39,9 @@ export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions 
 		};
 
 		options = Object.assign({}, options, option);
-		if (authenticationMethod === 'apiKey') {
-			const credentials = this.getCredentials('notionApi') as IDataObject;
-			options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
-			return this.helpers.request!(options);
-		} else {
-			//@ts-ignore
-			return this.helpers.requestOAuth2.call(this, 'notionOAuth2Api', options);
-		}
+		const credentials = this.getCredentials('notionApi') as IDataObject;
+		options!.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
+		return this.helpers.request!(options);
 
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -330,15 +325,14 @@ export function simplifyProperties(properties: any) {
 	for (const key of Object.keys(properties)) {
 		const type = (properties[key] as IDataObject).type as string;
 		if (['text'].includes(properties[key].type)) {
-			const texts = properties[key].text.map((e: { text: { content: string } }) => e.text.content || {}).join('');
+			const texts = properties[key].text.map((e: { plain_text: string }) => e.plain_text || {}).join('');
 			results[`${key}`] = texts;
 		} else if (['url', 'created_time', 'checkbox', 'number', 'last_edited_time', 'email', 'phone_number', 'date'].includes(properties[key].type)) {
 			// tslint:disable-next-line: no-any
 			results[`${key}`] = properties[key][type] as any;
 		} else if (['title'].includes(properties[key].type)) {
-			results[`${key}`] = '';
-			if (Array.isArray(properties[key][type])) {
-				results[`${key}`] = properties[key][type][0].text.content;
+			if (Array.isArray(properties[key][type]) && properties[key][type].length !== 0) {
+				results[`${key}`] = properties[key][type][0].plain_text;
 			} else {
 				results[`${key}`] = properties[key][type] || '';
 			}
@@ -376,6 +370,9 @@ export function simplifyProperties(properties: any) {
 
 // tslint:disable-next-line: no-any
 export function simplifyObjects(objects: any) {
+	if (!Array.isArray(objects)) {
+		objects = [objects];
+	}
 	const results: IDataObject[] = [];
 	for (const { object, id, properties, parent, title } of objects) {
 		if (object === 'page' && (parent.type === 'page_id' || parent.type === 'workspace')) {

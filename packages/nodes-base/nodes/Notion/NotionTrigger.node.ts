@@ -13,15 +13,14 @@ import {
 
 import {
 	notionApiRequest,
-	notionApiRequestAllItems,
-	simplifyProperties,
+	simplifyObjects,
 } from './GenericFunctions';
 
 import * as moment from 'moment';
 
 export class NotionTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Notion Trigger',
+		displayName: 'Notion Trigger (Beta)',
 		name: 'notionTrigger',
 		icon: 'file:notion.svg',
 		group: ['trigger'],
@@ -127,6 +126,10 @@ export class NotionTrigger implements INodeType {
 
 		const endDate = now;
 
+		webhookData.lastTimeChecked = endDate;
+
+		console.log(`from: ${startDate} - to: ${endDate}`);
+
 		const sortProperty = (event === 'pageAddedToDatabase') ? 'created_time' : 'last_edited_time';
 
 		const body: IDataObject = {
@@ -144,15 +147,24 @@ export class NotionTrigger implements INodeType {
 		let hasMore = true;
 
 		//get last record
-		const { results: data } = await notionApiRequest.call(this, 'POST', `/databases/${databaseId}/query`, body);
+		let { results: data } = await notionApiRequest.call(this, 'POST', `/databases/${databaseId}/query`, body);
 
 		if (this.getMode() === 'manual') {
+			if (simple === true) {
+				data = simplifyObjects(data);
+			}
 			if (Array.isArray(data) && data.length) {
 				return [this.helpers.returnJsonArray(data)];
 			}
 		}
+		// console.log(data[0][sortProperty]);
+
+		// console.log(`${moment(data[0][sortProperty] as string).utc().format()} if after ${startDate}`);
+
+		// console.log(moment(data[0][sortProperty] as string).isSameOrAfter(moment(startDate)));
+		
 		// if something changed after the last check
-		if (moment(data[0][sortProperty] as string).isAfter(startDate)) {
+	//	if (moment(data[0][sortProperty] as string).isSameOrAfter(startDate)) {
 			do {
 				body.page_size = 10;
 				const { results, has_more, next_cursor } = await notionApiRequest.call(this, 'POST', `/databases/${databaseId}/query`, body);
@@ -168,18 +180,16 @@ export class NotionTrigger implements INodeType {
 			}
 
 			if (simple === true) {
-				for (let i = 0; i < records.length; i++) {
-					records[i].properties = simplifyProperties(records[i].properties);
-				}
+				records = simplifyObjects(records);
 			}
 
-			webhookData.lastTimeChecked = endDate;
+			// webhookData.lastTimeChecked = records[records.length -1][];
 
 			if (Array.isArray(records) && records.length) {
 				return [this.helpers.returnJsonArray(records)];
 			}
-		}
-		
+		//}
+
 		return null;
 	}
 }

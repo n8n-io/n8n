@@ -7,7 +7,7 @@ import {
 	text,
 } from './Blocks';
 
-import { 
+import {
 	filters,
 } from './Filters';
 
