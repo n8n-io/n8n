@@ -49,10 +49,7 @@ export class WorkflowEntity implements IWorkflowDb {
 	@Column()
 	active: boolean;
 
-	@Column({
-		type: resolveDataType('json') as ColumnOptions['type'],
-		nullable: true,
-	})
+	@Column(resolveDataType('json'))
 	nodes: INode[];
 
 	@Column(resolveDataType('json'))
