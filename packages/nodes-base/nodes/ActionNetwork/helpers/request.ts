@@ -7,6 +7,8 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
+import * as querystring from 'querystring';
+
 export async function actionNetworkApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: string,
@@ -61,12 +63,14 @@ export async function *iterateActionNetworkApiRequest(
 	qs?: any
 ) {
 	let res
+	let nextPage: any = 1
 
 	do {
-		res = await actionNetworkApiRequest.call(hook, method, pathOrUri, body, headers, qs)
+		res = await actionNetworkApiRequest.call(hook, method, pathOrUri, body, headers, { ...qs, page: nextPage })
+		nextPage = res?.['_links']?.['next']?.split('=')?.[1]
 
 		for (const embedded of res._embedded[resource]) {
 			yield embedded
 		}
-	} while (res.page < res.total_pages)
+	} while (nextPage)
 }
