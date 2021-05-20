@@ -2978,8 +2978,8 @@ describe('Workflow', () => {
 								propertyValues: [
 									{
 										multiSelectValue: [],
-									}
-								]
+									},
+								],
 							},
 						},
 					},
@@ -2989,7 +2989,7 @@ describe('Workflow', () => {
 								values: {
 									propertyValues: [
 										{
-										}
+										},
 									],
 								},
 							},
@@ -2998,7 +2998,7 @@ describe('Workflow', () => {
 									propertyValues: [
 										{
 											multiSelectValue: [],
-										}
+										},
 									],
 								},
 							},
@@ -3008,7 +3008,7 @@ describe('Workflow', () => {
 								values: {
 									propertyValues: [
 										{
-										}
+										},
 									],
 								},
 							},
@@ -3017,7 +3017,7 @@ describe('Workflow', () => {
 									propertyValues: [
 										{
 											multiSelectValue: [],
-										}
+										},
 									],
 								},
 							},
@@ -3060,8 +3060,8 @@ describe('Workflow', () => {
 								propertyValues: [
 									{
 										multiString: ['value1'],
-									}
-								]
+									},
+								],
 							},
 						},
 					},
@@ -3071,7 +3071,7 @@ describe('Workflow', () => {
 								values: {
 									propertyValues: [
 										{
-										}
+										},
 									],
 								},
 							},
@@ -3080,7 +3080,7 @@ describe('Workflow', () => {
 									propertyValues: [
 										{
 											multiString: ['value1'],
-										}
+										},
 									],
 								},
 							},
@@ -3090,7 +3090,7 @@ describe('Workflow', () => {
 								values: {
 									propertyValues: [
 										{
-										}
+										},
 									],
 								},
 							},
@@ -3099,7 +3099,7 @@ describe('Workflow', () => {
 									propertyValues: [
 										{
 											multiString: ['value1'],
-										}
+										},
 									],
 								},
 							},
