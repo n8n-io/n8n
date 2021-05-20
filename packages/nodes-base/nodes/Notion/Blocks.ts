@@ -138,123 +138,170 @@ const annotation = [
 	},
 ] as INodeProperties[];
 
-const typeMention = [{
-	displayName: 'Type',
-	name: 'mentionType',
-	type: 'options',
-	displayOptions: {
-		show: {
-			textType: [
-				'mention',
-			],
+const typeMention = [
+	{
+		displayName: 'Type',
+		name: 'mentionType',
+		type: 'options',
+		displayOptions: {
+			show: {
+				textType: [
+					'mention',
+				],
+			},
 		},
+		options: [
+			{
+				name: 'Database',
+				value: 'database',
+			},
+			{
+				name: 'Date',
+				value: 'date',
+			},
+			{
+				name: 'Page',
+				value: 'page',
+			},
+			{
+				name: 'User',
+				value: 'user',
+			},
+		],
+		default: '',
+		description: `An inline mention of a user, page, database, or date. In the app these are</br>
+		created by typing @ followed by the name of a user, page, database, or a date.`,
 	},
-	options: [
-		{
-			name: 'Database',
-			value: 'database',
+	{
+		displayName: 'User ID',
+		name: 'user',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getUsers',
 		},
-		{
-			name: 'Date',
-			value: 'date',
+		displayOptions: {
+			show: {
+				mentionType: [
+					'user',
+				],
+			},
 		},
-		{
-			name: 'Page',
-			value: 'page',
-		},
-		{
-			name: 'User',
-			value: 'user',
-		},
-	],
-	default: '',
-	description: `An inline mention of a user, page, database, or date. In the app these are</br>
-	created by typing @ followed by the name of a user, page, database, or a date.`,
-},
-{
-	displayName: 'User',
-	name: 'user',
-	type: 'string',
-	displayOptions: {
-		show: {
-			mentionType: [
-				'user',
-			],
-		},
+		default: '',
+		description: 'The id of the user being mentioned.',
 	},
-	default: '',
-	description: 'The id of the user being mentioned.',
-},
-{
-	displayName: 'Page',
-	name: 'page',
-	type: 'string',
-	displayOptions: {
-		show: {
-			mentionType: [
-				'page',
-			],
+	{
+		displayName: 'Page ID',
+		name: 'page',
+		type: 'string',
+		displayOptions: {
+			show: {
+				mentionType: [
+					'page',
+				],
+			},
 		},
+		default: '',
+		description: 'The id of the page being mentioned.',
 	},
-	default: '',
-	description: 'The id of the page being mentioned.',
-},
-{
-	displayName: 'Database',
-	name: 'database',
-	type: 'string',
-	displayOptions: {
-		show: {
-			mentionType: [
-				'database',
-			],
+	{
+		displayName: 'Database ID',
+		name: 'database',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getDatabases',
 		},
-	},
-	default: '',
-	description: 'The id of the database being mentioned.',
-},
-{
-	displayName: 'Start Date',
-	name: 'start',
-	type: 'dateTime',
-	displayOptions: {
-		show: {
-			mentionType: [
-				'date',
-			],
+		displayOptions: {
+			show: {
+				mentionType: [
+					'database',
+				],
+			},
 		},
+		default: '',
+		description: 'The id of the database being mentioned.',
 	},
-	default: '',
-},
-{
-	displayName: 'End Date',
-	name: 'end',
-	type: 'dateTime',
-	displayOptions: {
-		show: {
-			mentionType: [
-				'date',
-			],
+	{
+		displayName: 'Range',
+		name: 'range',
+		displayOptions: {
+			show: {
+				mentionType: [
+					'date',
+				],
+			},
 		},
+		type: 'boolean',
+		default: false,
+		description: 'Weather or not you want to define a date range.',
 	},
-	default: '',
-},
+	{
+		displayName: 'Date',
+		name: 'date',
+		displayOptions: {
+			show: {
+				mentionType: [
+					'date',
+				],
+				range: [
+					false,
+				],
+			},
+		},
+		type: 'dateTime',
+		default: '',
+		description: 'An ISO 8601 format date, with optional time.',
+	},
+	{
+		displayName: 'Date Start',
+		name: 'dateStart',
+		displayOptions: {
+			show: {
+				mentionType: [
+					'date',
+				],
+				range: [
+					true,
+				],
+			},
+		},
+		type: 'dateTime',
+		default: '',
+		description: 'An ISO 8601 format date, with optional time.',
+	},
+	{
+		displayName: 'Date End',
+		name: 'dateEnd',
+		displayOptions: {
+			show: {
+				range: [
+					true,
+				],
+				mentionType: [
+					'date',
+				],
+			},
+		},
+		type: 'dateTime',
+		default: '',
+		description: `An ISO 8601 formatted date, with optional time. Represents the end of a date range.`,
+	},
 ] as INodeProperties[];
 
-const typeEquation = [{
-	displayName: 'Expression',
-	name: 'expression',
-	type: 'string',
-	displayOptions: {
-		show: {
-			textType: [
-				'equation',
-			],
+const typeEquation = [
+	{
+		displayName: 'Expression',
+		name: 'expression',
+		type: 'string',
+		displayOptions: {
+			show: {
+				textType: [
+					'equation',
+				],
+			},
 		},
+		default: '',
+		description: '',
 	},
-	default: '',
-	description: '',
-},
 ] as INodeProperties[];
 
 const typeText = [

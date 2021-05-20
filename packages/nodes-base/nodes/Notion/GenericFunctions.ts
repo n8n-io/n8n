@@ -146,7 +146,7 @@ function getLink(text: { textLink: string, isLink: boolean }) {
 	return {};
 }
 
-function getTexts(texts: [{ textType: string, text: string, isLink: boolean, textLink: string, mentionType: string, annotationUi: IDataObject, expression: string }]) {
+function getTexts(texts: [{ textType: string, text: string, isLink: boolean, range: boolean, textLink: string, mentionType: string, dateStart: string, dateEnd: string, date:string, annotationUi: IDataObject, expression: string }]) {
 	const results = [];
 	for (const text of texts) {
 		if (text.textType === 'text') {
@@ -159,15 +159,29 @@ function getTexts(texts: [{ textType: string, text: string, isLink: boolean, tex
 				annotations: text.annotationUi,
 			});
 		} else if (text.textType === 'mention') {
-			results.push({
-				type: 'mention',
-				mention: {
-					type: text.mentionType,
-					//@ts-ignore
-					[text.mentionType]: text[mentionType] as string,
-				},
-				annotations: text.annotationUi,
-			});
+			if (text.mentionType === 'date') {
+				results.push({
+					type: 'mention',
+					mention: {
+						type: text.mentionType,
+						[text.mentionType]: (text.range === true) 
+						? { start: text.dateStart, end: text.dateEnd } 
+						: { start: text.date, end: null },
+					},
+					annotations: text.annotationUi,
+				});
+			} else {
+				//@ts-ignore
+				results.push({
+					type: 'mention',
+					mention: {
+						type: text.mentionType,
+						//@ts-ignore
+						[text.mentionType]: { id: text[text.mentionType] as string },
+					},
+					annotations: text.annotationUi,
+				});
+			}
 		} else if (text.textType === 'equation') {
 			results.push({
 				type: 'equation',
