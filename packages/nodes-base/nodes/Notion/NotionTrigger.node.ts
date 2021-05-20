@@ -128,8 +128,6 @@ export class NotionTrigger implements INodeType {
 
 		webhookData.lastTimeChecked = endDate;
 
-		console.log(`from: ${startDate} - to: ${endDate}`);
-
 		const sortProperty = (event === 'pageAddedToDatabase') ? 'created_time' : 'last_edited_time';
 
 		const body: IDataObject = {
@@ -157,14 +155,9 @@ export class NotionTrigger implements INodeType {
 				return [this.helpers.returnJsonArray(data)];
 			}
 		}
-		// console.log(data[0][sortProperty]);
-
-		// console.log(`${moment(data[0][sortProperty] as string).utc().format()} if after ${startDate}`);
-
-		// console.log(moment(data[0][sortProperty] as string).isSameOrAfter(moment(startDate)));
 		
 		// if something changed after the last check
-	//	if (moment(data[0][sortProperty] as string).isSameOrAfter(startDate)) {
+		if (Object.keys(data[0]).length !== 0 && webhookData.lastRecordProccesed !== data[0].id) {
 			do {
 				body.page_size = 10;
 				const { results, has_more, next_cursor } = await notionApiRequest.call(this, 'POST', `/databases/${databaseId}/query`, body);
@@ -183,12 +176,12 @@ export class NotionTrigger implements INodeType {
 				records = simplifyObjects(records);
 			}
 
-			// webhookData.lastTimeChecked = records[records.length -1][];
+			webhookData.lastRecordProccesed = data[0].id;
 
 			if (Array.isArray(records) && records.length) {
 				return [this.helpers.returnJsonArray(records)];
 			}
-		//}
+		}
 
 		return null;
 	}
