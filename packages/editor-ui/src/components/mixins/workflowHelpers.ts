@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeIssues,
 	INodeParameters,
+	NodeParameterValue,
 	INodeType,
 	INodeTypes,
 	INodeTypeData,
@@ -337,7 +338,8 @@ export const workflowHelpers = mixins(
 				return nodeData;
 			},
 
-			resolveExpression (expression: string, siblingParameters: INodeParameters = {}) {
+
+			resolveParameter(parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[]) {
 				const inputIndex = 0;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -363,13 +365,19 @@ export const workflowHelpers = mixins(
 					connectionInputData = [];
 				}
 
+				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', false) as IDataObject;
+			},
+
+			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {
+
 				const parameters = {
 					'__xxxxxxx__': expression,
 					...siblingParameters,
 				};
-				const returnData =  workflow.expression.getParameterValue(parameters, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', false) as IDataObject;
+				const returnData = this.resolveParameter(parameters) as IDataObject;
 
 				if (typeof returnData['__xxxxxxx__'] === 'object') {
+					const workflow = this.getWorkflow();
 					return workflow.expression.convertObjectValueToString(returnData['__xxxxxxx__'] as object);
 				}
 				return returnData['__xxxxxxx__'];
