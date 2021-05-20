@@ -613,7 +613,13 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 					nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name];
 				} else if (returnDefaults === true) {
 					// Does not have values defined but defaults should be returned
-					nodeParameters[nodeProperties.name] = JSON.parse(JSON.stringify(nodeProperties.default));
+					if (Array.isArray(nodeProperties.default)) {
+						nodeParameters[nodeProperties.name] = JSON.parse(JSON.stringify(nodeProperties.default));
+					} else {
+						// As it is probably wrong for many nodes, do we keep on returning an empty array if
+						// anything else than an array is set as default
+						nodeParameters[nodeProperties.name] = [];
+					}
 				}
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 			} else {
