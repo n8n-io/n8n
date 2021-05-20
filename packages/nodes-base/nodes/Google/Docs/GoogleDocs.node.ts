@@ -24,9 +24,6 @@ import {
 	IUpdateFields,
 } from './interfaces';
 
-import {
-	isEmpty
-} from 'lodash';
 export class GoogleDocs implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Docs',
@@ -143,7 +140,7 @@ export class GoogleDocs implements INodeType {
 							//         replace values
 							// ----------------------------------
 
-							if (replaceAllTextValues && replaceAllTextValues.length) {
+							if (replaceAllTextValues?.length) {
 								replaceAllTextValues.forEach(({ replaceText, text, matchCase }) => {
 									body.requests.push({
 										replaceAllText: {
@@ -158,7 +155,7 @@ export class GoogleDocs implements INodeType {
 							//         insert values
 							// ----------------------------------
 
-							if (insertTextValues && insertTextValues.length) {
+							if (insertTextValues?.length) {
 								insertTextValues.forEach(({ text, locationChoice, segmentId, index }) => {
 									body.requests.push({
 										insertText: {
@@ -172,7 +169,7 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 
-							if (insertPageBreakValues && insertPageBreakValues.length) {
+							if (insertPageBreakValues?.length) {
 								insertPageBreakValues.forEach(({ locationChoice, segmentId, index }) => {
 									body.requests.push({
 										insertPageBreak: {
@@ -185,7 +182,7 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 
-							if (insertTableValues && insertTableValues.length) {
+							if (insertTableValues?.length) {
 								insertTableValues.forEach(value => {
 									const { rows, columns, locationChoice, segmentId, index } = value;
 									body.requests.push({
@@ -201,7 +198,7 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 
-							if (insertTableRowValues && insertTableRowValues.length) {
+							if (insertTableRowValues?.length) {
 								insertTableRowValues.forEach(value => {
 									const { insertBelow, rowIndex, columnIndex, segmentId, index } = value;
 									body.requests.push({
@@ -217,7 +214,7 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 
-							if (insertTableColumnValues && insertTableColumnValues.length) {
+							if (insertTableColumnValues?.length) {
 								insertTableColumnValues.forEach(value => {
 									const { insertRight, rowIndex, columnIndex, segmentId, index } = value;
 									body.requests.push({
@@ -237,7 +234,7 @@ export class GoogleDocs implements INodeType {
 							//         create values
 							// ----------------------------------
 
-							if (createParagraphBulletsValues && createParagraphBulletsValues.length) {
+							if (createParagraphBulletsValues?.length) {
 								createParagraphBulletsValues.forEach(value => {
 									const { bulletPreset, segmentId, startIndex, endIndex } = value;
 									body.requests.push({
@@ -249,7 +246,7 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 
-							if (createNamedRangeValues && createNamedRangeValues.length) {
+							if (createNamedRangeValues?.length) {
 								createNamedRangeValues.forEach(value => {
 									const { name, segmentId, startIndex, endIndex } = value;
 									body.requests.push({
@@ -261,7 +258,7 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 
-							if (createHeaderValues && createHeaderValues.length) {
+							if (createHeaderValues?.length) {
 								createHeaderValues.forEach(({ type, segmentId, index }) => {
 									body.requests.push({
 										createHeader: {
@@ -272,7 +269,7 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 
-							if (createFooterValues && createFooterValues.length) {
+							if (createFooterValues?.length) {
 								createFooterValues.forEach(({ type, segmentId, index }) => {
 									body.requests.push({
 										createFooter: {
@@ -287,7 +284,7 @@ export class GoogleDocs implements INodeType {
 							//         delete values
 							// ----------------------------------
 
-							if (deleteParagraphBulletsValues && deleteParagraphBulletsValues.length) {
+							if (deleteParagraphBulletsValues?.length) {
 								deleteParagraphBulletsValues.forEach(value => {
 									const { segmentId, startIndex, endIndex } = value;
 									body.requests.push({
@@ -298,7 +295,7 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 
-							if (deleteNamedRangeValues && deleteNamedRangeValues.length) {
+							if (deleteNamedRangeValues?.length) {
 								deleteNamedRangeValues.forEach(({ namedRangeReference, value }) => {
 									body.requests.push({
 										deleteNamedRange: {
@@ -308,7 +305,7 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 
-							if (deletePositionedObjectValues && deletePositionedObjectValues.length) {
+							if (deletePositionedObjectValues?.length) {
 								deletePositionedObjectValues.forEach(({ objectId }) => {
 									body.requests.push({
 										deletePositionedObject: { objectId },
@@ -316,7 +313,7 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 
-							if (deleteTableRowValues && deleteTableRowValues.length) {
+							if (deleteTableRowValues?.length) {
 								deleteTableRowValues.forEach(value => {
 									const { rowIndex, columnIndex, segmentId, index } = value;
 									body.requests.push({
@@ -331,7 +328,7 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 
-							if (deleteTableColumnValues && deleteTableColumnValues.length) {
+							if (deleteTableColumnValues?.length) {
 								deleteTableColumnValues.forEach(value => {
 									const { rowIndex, columnIndex, segmentId, index } = value;
 									body.requests.push({
@@ -346,7 +343,7 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 
-							if (deleteHeaderValues && deleteHeaderValues.length) {
+							if (deleteHeaderValues?.length) {
 								deleteHeaderValues.forEach(({ headerId }) => {
 									body.requests.push({
 										deleteHeader: { headerId },
@@ -354,7 +351,7 @@ export class GoogleDocs implements INodeType {
 								});
 							}
 
-							if (deleteFooterValues && deleteFooterValues.length) {
+							if (deleteFooterValues?.length) {
 								deleteFooterValues.forEach(({ footerId }) => {
 									body.requests.push({
 										deleteFooter: { footerId },
