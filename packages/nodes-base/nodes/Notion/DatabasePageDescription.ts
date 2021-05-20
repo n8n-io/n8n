@@ -291,10 +291,10 @@ export const databasePageFields = [
 							},
 						},
 						default: [],
-						description: 'List of databasePages that belong to another database. Multiples can be defined separated by comma.',
+						description: 'List of databases that belong to another database. Multiples can be defined separated by comma.',
 					},
 					{
-						displayName: 'Checkbox',
+						displayName: 'Checked',
 						name: 'checkboxValue',
 						displayOptions: {
 							show: {
@@ -637,10 +637,10 @@ export const databasePageFields = [
 							},
 						},
 						default: [],
-						description: 'List of databasePages that belong to another database. Multiples can be defined separated by comma.',
+						description: 'List of databases that belong to another database. Multiples can be defined separated by comma.',
 					},
 					{
-						displayName: 'Checkbox',
+						displayName: 'Checked',
 						name: 'checkboxValue',
 						displayOptions: {
 							show: {

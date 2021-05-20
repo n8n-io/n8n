@@ -348,7 +348,7 @@ export function simplifyProperties(properties: any) {
 			if (Array.isArray(properties[key][type]) && properties[key][type].length !== 0) {
 				results[`${key}`] = properties[key][type][0].plain_text;
 			} else {
-				results[`${key}`] = properties[key][type] || '';
+				results[`${key}`] = '';
 			}
 		} else if (['created_by', 'last_edited_by', 'select'].includes(properties[key].type)) {
 			results[`${key}`] = properties[key][type].name;

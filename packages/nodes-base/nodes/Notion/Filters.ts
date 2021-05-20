@@ -256,7 +256,7 @@ export const filters = [{
 	default: '',
 },
 {
-	displayName: 'Checkbox',
+	displayName: 'Checked',
 	name: 'checkboxValue',
 	displayOptions: {
 		show: {
@@ -267,11 +267,9 @@ export const filters = [{
 	},
 	type: 'boolean',
 	default: false,
-	description: `
-						Whether or not the checkbox is checked.</br>
-						true represents checked.</br>
-						false represents unchecked.
-						`,
+	description: `Whether or not the checkbox is checked.</br>
+				true represents checked.</br>
+				false represents unchecked.`,
 },
 {
 	displayName: 'Number',
