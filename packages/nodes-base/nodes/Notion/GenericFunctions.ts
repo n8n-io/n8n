@@ -146,7 +146,7 @@ function getLink(text: { textLink: string, isLink: boolean }) {
 	return {};
 }
 
-function getTexts(texts: [{ textType: string, text: string, isLink: boolean, range: boolean, textLink: string, mentionType: string, dateStart: string, dateEnd: string, date:string, annotationUi: IDataObject, expression: string }]) {
+function getTexts(texts: [{ textType: string, text: string, isLink: boolean, range: boolean, textLink: string, mentionType: string, dateStart: string, dateEnd: string, date: string, annotationUi: IDataObject, expression: string }]) {
 	const results = [];
 	for (const text of texts) {
 		if (text.textType === 'text') {
@@ -164,9 +164,9 @@ function getTexts(texts: [{ textType: string, text: string, isLink: boolean, ran
 					type: 'mention',
 					mention: {
 						type: text.mentionType,
-						[text.mentionType]: (text.range === true) 
-						? { start: text.dateStart, end: text.dateEnd } 
-						: { start: text.date, end: null },
+						[text.mentionType]: (text.range === true)
+							? { start: text.dateStart, end: text.dateEnd }
+							: { start: text.date, end: null },
 					},
 					annotations: text.annotationUi,
 				});

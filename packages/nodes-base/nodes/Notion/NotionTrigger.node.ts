@@ -155,7 +155,7 @@ export class NotionTrigger implements INodeType {
 				return [this.helpers.returnJsonArray(data)];
 			}
 		}
-		
+
 		// if something changed after the last check
 		if (Object.keys(data[0]).length !== 0 && webhookData.lastRecordProccesed !== data[0].id) {
 			do {
