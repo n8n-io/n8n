@@ -482,7 +482,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 ::-webkit-scrollbar-thumb {
 	border-radius: 6px;
-	background: lighten($--color-primary, 20%);
+	background: $--scrollbar-thumb-color;
 }
 ::-webkit-scrollbar-thumb:hover {
 	background: $--color-primary;

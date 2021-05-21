@@ -258,7 +258,7 @@ $--border-radius: 20px;
 		overflow-x: hidden;
 
 		// firefox fix for scrollbars
-		scrollbar-color: $--color-primary-light transparent;
+		scrollbar-color: $--scrollbar-thumb-color transparent;
 	}
 
 	.el-input.is-focus {

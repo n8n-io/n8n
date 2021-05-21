@@ -56,3 +56,6 @@ $--breakpoint-xs: 768px;
 $--breakpoint-sm: 992px;
 $--breakpoint-md: 1200px;
 $--breakpoint-lg: 1920px;
+
+// scrollbars
+$--scrollbar-thumb-color: lighten($--color-primary, 20%);
