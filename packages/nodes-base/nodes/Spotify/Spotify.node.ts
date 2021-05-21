@@ -40,10 +40,10 @@ export class Spotify implements INodeType {
 			},
 		],
 		properties: [
-			// ----------------------------------------------------------
+			// ----------------------------------------------------------------
 			//         Resource to Operate on
-			//		   Player, Album, Artisits, Playlists, Tracks
-			// ----------------------------------------------------------
+			//		   Player, Album, Artisits, Playlists, Tracks, Follow
+			// ----------------------------------------------------------------
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -73,6 +73,10 @@ export class Spotify implements INodeType {
 						name: 'Track',
 						value: 'track',
 					},
+					{
+						name: 'Follow',
+						value: 'follow'
+					}
 				],
 				default: 'player',
 				description: 'The resource to operate on.',
@@ -546,6 +550,68 @@ export class Spotify implements INodeType {
 				],
 				default: 'getLikedTracks',
 			},
+			// ---------------------------------------
+			//         Follow Operations
+			//		    Get Followed Artists
+			// ---------------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'follow',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Following',
+						value: 'following',
+						description: 'Get your followed artists.'
+					},
+				],
+				default: 'following',
+				description: 'The operation to perform.',
+			},
+			{
+				displayName: 'Type',
+				name: 'type',
+				type: 'string',
+				default: 'artist',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'follow'
+						],
+						operation: [
+							'following'
+						],
+					}
+				},
+				placeholder: 'artist',
+				description: 'The ID type',
+			},
+			{
+				displayName: 'After',
+				name: 'after',
+				type: 'string',
+				default: '',
+				required: false,
+				displayOptions: {
+					show: {
+						resource: [
+							'follow'
+						],
+						operation: [
+							'following'
+						],
+					}
+				},
+				description: 'The last artist ID retrieved from the previous request.',
+			},
 			{
 				displayName: 'Return All',
 				name: 'returnAll',
@@ -613,9 +679,11 @@ export class Spotify implements INodeType {
 					show: {
 						resource: [
 							'player',
+							'follow',
 						],
 						operation: [
 							'recentlyPlayed',
+							'following',
 						],
 					},
 				},
@@ -1046,6 +1114,28 @@ export class Spotify implements INodeType {
 						responseData = responseData.items;
 					}
 				}
+			} else if (resource === 'follow') {
+
+				if (operation === 'following') {
+					requestMethod = 'GET';
+
+					endpoint = `/me/following`;
+
+					const type = this.getNodeParameter('type', i) as string;
+					const after = this.getNodeParameter('after', i) as string;
+					const limit = this.getNodeParameter('limit', i) as number;
+
+					qs = {
+						type,
+						limit,
+					};
+
+					if (after !== '') qs.after = after;
+
+					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+				}
+
 			}
 
 			if (returnAll) {
