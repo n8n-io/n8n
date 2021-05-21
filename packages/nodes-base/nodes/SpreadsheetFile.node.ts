@@ -293,7 +293,7 @@ export class SpreadsheetFile implements INodeType {
 					},
 					{
 						displayName: 'Sheet Name',
-						name: 'sheetName',
+						name: 'sheetNameTo',
 						type: 'string',
 						displayOptions: {
 							show: {
@@ -440,7 +440,7 @@ export class SpreadsheetFile implements INodeType {
 			}
 
 			// Convert the data in the correct format
-			const sheetName = options.sheetName as string || 'Sheet';
+			const sheetName = options.sheetNameTo as string || 'Sheet';
 			const wb: WorkBook = {
 				SheetNames: [sheetName],
 				Sheets: {
