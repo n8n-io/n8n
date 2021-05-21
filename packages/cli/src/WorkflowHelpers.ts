@@ -389,9 +389,3 @@ export type WorkflowNameRequest = Express.Request & {
 	}
 };
 
-export const DEFAULT_NEW_WORKFLOW_NAME = 'My Workflow';
-
-/**
- * Check if a string is _not_ an all-digit string.
- */
-export const isNotNumeric = (str: string) => !/^\d+$/.test(str);

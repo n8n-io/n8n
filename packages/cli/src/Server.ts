@@ -113,7 +113,7 @@ import { Registry } from 'prom-client';
 import * as TagHelpers from './TagHelpers';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { DEFAULT_NEW_WORKFLOW_NAME, isNotNumeric, WorkflowNameRequest } from './WorkflowHelpers';
+import { WorkflowNameRequest } from './WorkflowHelpers';
 
 class App {
 
@@ -124,6 +124,7 @@ class App {
 	endpointWebhookTest: string;
 	endpointPresetCredentials: string;
 	externalHooks: IExternalHooksClass;
+	defaultWorkflowName: string;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
@@ -147,6 +148,9 @@ class App {
 
 		this.endpointWebhook = config.get('endpoints.webhook') as string;
 		this.endpointWebhookTest = config.get('endpoints.webhookTest') as string;
+
+		this.defaultWorkflowName = config.get('workflows.defaultName') as string;
+
 		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
 		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
 		this.saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
@@ -568,7 +572,9 @@ class App {
 
 
 		this.app.get(`/${this.restEndpoint}/workflows/new`, ResponseHelper.send(async (req: WorkflowNameRequest, res: express.Response): Promise<{ name: string }> => {
-			const nameToReturn = req.query.name ?? DEFAULT_NEW_WORKFLOW_NAME;
+			const nameToReturn = req.query.name && req.query.name !== ''
+				? req.query.name
+				: this.defaultWorkflowName;
 
 			const workflows = await Db.collections.Workflow!.find({
 				select: ['name'],
@@ -580,24 +586,24 @@ class App {
 				return { name: nameToReturn };
 			}
 
-			const numericSuffixes = workflows.reduce((acc: number[], { name }) => {
-				const lastWhitespaceIndex = name.lastIndexOf(' ');
-				if (lastWhitespaceIndex === -1) return acc;
+			const maxSuffix = workflows.reduce((acc: number, { name }) => {
+				const parts = name.split(`${nameToReturn} `);
 
-				const suffix = name.slice(lastWhitespaceIndex + 1);
-				if (isNotNumeric(suffix)) return acc;
+				if (parts.length > 2) return acc;
 
-				acc.push(Number(suffix));
+				const suffix = Number(parts[1]);
+
+				if (!isNaN(suffix) && Math.ceil(suffix) > acc) {
+					acc = Math.ceil(suffix);
+				}
 
 				return acc;
-			}, []);
+			}, 0);
 
 			// name is duplicate but no numeric suffixes exist yet
-			if (numericSuffixes.length === 0) {
+			if (maxSuffix === 0) {
 				return { name: `${nameToReturn} 2` };
 			}
-
-			const maxSuffix = Math.max(...numericSuffixes);
 
 			return { name: `${nameToReturn} ${maxSuffix + 1}` };
 		}));
@@ -854,6 +860,7 @@ class App {
 
 			const nodeTypes = NodeTypes();
 
+			// @ts-ignore
 			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, path, JSON.parse('' + req.query.currentNodeParameters), credentials!);
 
 			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
