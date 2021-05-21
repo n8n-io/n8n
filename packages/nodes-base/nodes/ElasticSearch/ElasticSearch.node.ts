@@ -20,6 +20,10 @@ import {
 	indexOperations,
 } from './descriptions';
 
+import {
+	DocumentGetAllAdditionalFields,
+} from './types';
+
 export class ElasticSearch implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ElasticSearch',
@@ -132,11 +136,11 @@ export class ElasticSearch implements INodeType {
 
 					const body = {} as IDataObject;
 					const qs = {} as IDataObject;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as DocumentGetAllAdditionalFields;
 
 					if (Object.keys(additionalFields).length) {
 						const { query, ...rest } = additionalFields;
-						Object.assign(body, query);
+						Object.assign(body, JSON.parse(query));
 						Object.assign(qs, rest);
 					}
 
@@ -145,11 +149,8 @@ export class ElasticSearch implements INodeType {
 					if (!returnAll) {
 						qs.size = this.getNodeParameter('limit', 0);
 					}
-
 					responseData = await elasticSearchApiRequest.call(this, 'GET', `/${indexId}/_search`, body, qs);
 					responseData = responseData.hits.hits;
-
-					// TODO: Paginate
 
 				} else if (operation === 'index') {
 

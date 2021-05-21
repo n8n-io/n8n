@@ -352,13 +352,13 @@ export const documentFields = [
 				typeOptions: {
 					minValue: 1,
 				},
-				default: 0,
+				default: 1,
 			},
 			{
 				displayName: 'Query',
 				name: 'query',
 				description: 'Query in the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html" target="_blank">ElasticSearch Query DSL</a>.',
-				type: 'string',
+				type: 'json',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -369,13 +369,6 @@ export const documentFields = [
 				displayName: 'Request Cache',
 				name: 'request_cache',
 				description: 'If true, the caching of search results is enabled for requests where size is 0. See <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/shard-request-cache.html" target="_blank">ElasticSearch shard request cache settings</a>.',
-				type: 'boolean',
-				default: false,
-			},
-			{
-				displayName: 'Rest Total Hits as Integer',
-				name: 'rest_total_hits_as_int',
-				description: 'Whether <code>hits.total</code> should be rendered as an integer or an object in the rest search response. Defaults to false.',
 				type: 'boolean',
 				default: false,
 			},
@@ -409,13 +402,6 @@ export const documentFields = [
 				description: 'If true, return the sequence number and primary term of the last modification of each hit. See <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/optimistic-concurrency-control.html" target="_blank">Optimistic concurrency control</a>.',
 				type: 'boolean',
 				default: false,
-			},
-			{
-				displayName: 'Size',
-				name: 'size',
-				description: 'Define the number of hits to return. Defaults to 10.',
-				type: 'number',
-				default: 10,
 			},
 			{
 				displayName: 'Sort',
@@ -458,20 +444,6 @@ export const documentFields = [
 				description: 'If true, retrieve the document fields stored in the index rather than the document <code>_source</code>. Defaults to false.',
 				type: 'boolean',
 				default: false,
-			},
-			{
-				displayName: 'Suggest Field',
-				name: 'suggest_field',
-				description: 'Field to use for suggestions.',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Suggest Text',
-				name: 'suggest_text',
-				description: 'Source text for which the suggestions should be returned.',
-				type: 'string',
-				default: '',
 			},
 			{
 				displayName: 'Terminate After',
