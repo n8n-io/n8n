@@ -101,7 +101,19 @@ export class ExecuteAll extends Command {
 		const results = ExecuteAll.workflowExecutionsProgress.map(execution => {
 			let openColor = '', closeColor = '';
 			if (colorOutput) {
-				openColor = execution.status === 'success' ? "\x1b[32m" : (execution.status === 'error' ? "\x1b[31m" : "\x1b[0m");
+				switch (execution.status) {
+					case 'success':
+						openColor =	"\x1b[32m";
+						break;
+					case 'error':
+						openColor = "\x1b[31m";
+						break;
+					case 'warning':
+						openColor = "\x1b[33m";
+						break;
+					default:
+						openColor = "\x1b[0m"
+				}
 				closeColor = "\x1b[0m";
 			}
 			return openColor + execution.workflowId + closeColor;
@@ -109,19 +121,25 @@ export class ExecuteAll extends Command {
 		process.stdout.write("Running batch; workflow IDs " + results.join(','));
 	}
 
-	updateError(workflowId: string | number | Object) {
+	updateProgressStatus(workflowId: string | number | Object, status: 'warning'|'error'|'success') {
 		const workflowProgress = ExecuteAll.workflowExecutionsProgress.find(executionProgress => executionProgress.workflowId === workflowId);
 		if (workflowProgress !== undefined) {
-			workflowProgress.status = 'error';
+			workflowProgress.status = status;
 		}
+	}
+
+	updateError(workflowId: string | number | Object) {
+		this.updateProgressStatus(workflowId, 'error');
 		this.updateProgress();
 	}
 
 	updateSuccess(workflowId: string | number | Object) {
-		const workflowProgress = ExecuteAll.workflowExecutionsProgress.find(executionProgress => executionProgress.workflowId === workflowId);
-		if (workflowProgress !== undefined) {
-			workflowProgress.status = 'success';
-		}
+		this.updateProgressStatus(workflowId, 'success');
+		this.updateProgress();
+	}
+
+	updateWarning(workflowId: string | number | Object) {
+		this.updateProgressStatus(workflowId, 'warning');
 		this.updateProgress();
 	}
 
@@ -154,6 +172,26 @@ export class ExecuteAll extends Command {
 			executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 		}
 		process.exit(0);
+	}
+
+	shouldBeConsideredAsWarning(errorMessage: string) {
+
+		const warningStrings = [
+			'refresh token is invalid',
+			'unable to connect to',
+			'econnreset',
+			'429',
+		];
+
+		errorMessage = errorMessage.toLowerCase();
+
+		for (let i = 0; i < warningStrings.length; i++) {
+			if (errorMessage.includes(warningStrings[i])) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 	
 	
@@ -265,9 +303,11 @@ export class ExecuteAll extends Command {
 			workflowsNumber:allWorkflows.length,
 			summary:{
 				failedExecutions:0,
+				warningExecutions: 0,
 				succeededExecution:0,
 				exceptions:0,
 				errors: [],
+				warnings: [],
 			},
 			coveredNodes:{},
 			executions:[],
@@ -308,11 +348,11 @@ export class ExecuteAll extends Command {
 				// If the workflow does not contain a start-node we can not know what
 				// should be executed and with which data to start.
 				executionResult.error = 'Workflow cannot be started as it does not contain a "Start" node.';
-				result.summary.failedExecutions++;
+				result.summary.warningExecutions++;
 				result.executions.push(executionResult);
 				ExecuteAll.workflowExecutionsProgress.push({
 					workflowId: workflowData.id,
-					status: 'error',
+					status: 'warning',
 				});
 				this.updateProgress();
 				continue;
@@ -331,10 +371,10 @@ export class ExecuteAll extends Command {
 					const timeoutTimer = setTimeout(() => {
 						gotCancel = true;
 						executionResult.error = 'Workflow execution timed out.';
-						result.summary.failedExecutions++;
+						result.summary.warningExecutions++;
 						result.executions.push(executionResult);
-						result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
-						this.updateError(workflowData.id);
+						result.summary.warnings.push({workflowId: workflowData.id, error: executionResult.error});
+						this.updateWarning(workflowData.id);
 						reject(new Error('Workflow execution timed out.'));
 					}, executionTimeout);
 					try {
@@ -379,13 +419,20 @@ export class ExecuteAll extends Command {
 								if (data.data.resultData.lastNodeExecuted !== undefined) {
 									executionResult.error += ` on node ${data.data.resultData.lastNodeExecuted}`;
 								}
-								result.summary.failedExecutions++;
+
+								if (this.shouldBeConsideredAsWarning(executionResult.error)) {
+									result.summary.warningExecutions++;
+									result.summary.warnings.push({workflowId: workflowData.id, error: executionResult.error});
+									this.updateWarning(workflowData.id);
+								} else {
+									result.summary.failedExecutions++;
+									result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
+									this.updateError(workflowData.id);
+								}
 								result.executions.push(executionResult);
-								result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
-								this.updateError(workflowData.id);
+
 								if (debug === true) {
-									this.log(JSON.stringify(data, null, 2));
-									console.log(data.data.resultData.error);
+									console.log("\nWorkflow ID ", workflowData.id, "failed: ", executionResult.error + '\n');
 								}
 
 							}else{
@@ -455,10 +502,10 @@ export class ExecuteAll extends Command {
 										}
 									} else {
 										executionResult.error = 'Snapshot for not found.';
-										result.summary.failedExecutions++;
+										result.summary.warningExecutions++;
 										result.executions.push(executionResult);
-										result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
-										this.updateError(workflowData.id);
+										result.summary.warnings.push({workflowId: workflowData.id, error: executionResult.error});
+										this.updateWarning(workflowData.id);
 									}
 								}
 								// Save snapshots only after comparing - this is to make sure we're updating
@@ -525,7 +572,9 @@ interface IResult {
 		failedExecutions:number,
 		succeededExecution:number,
 		exceptions:number,
+		warningExecutions:number,
 		errors:IExecutionError[],
+		warnings:IExecutionError[],
 	};
 	coveredNodes:{
 		[key:string]:number
@@ -552,5 +601,5 @@ interface IExecutionError {
 
 interface IWorkflowExecutionProgress {
 	workflowId: string | number | ObjectID;
-	status: 'success' | 'error' | 'running';
+	status: 'success' | 'error' | 'warning' | 'running';
 }
