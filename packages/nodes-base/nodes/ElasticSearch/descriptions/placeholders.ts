@@ -34,3 +34,10 @@ export const query = `{
     }
   }
 }`;
+
+export const document = `{
+  "timestamp": "2099-05-06T16:21:15.000Z",
+  "event": {
+    "original": "192.0.2.42 - - [06/May/2099:16:21:15 +0000] \"GET /images/bg.jpg HTTP/1.0\" 200 24736"
+  }
+}`;
