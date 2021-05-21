@@ -57,7 +57,7 @@ export class ExecuteAll extends Command {
 
 	static cancelled = false;
 
-	static workflowExecutionsProgress:Array<IWorkflowExecutionProgress> = [];
+	static workflowExecutionsProgress:IWorkflowExecutionProgress[] = [];
 	
 	static examples = [
 		`$ n8n executeAll`,
@@ -112,7 +112,7 @@ export class ExecuteAll extends Command {
 						openColor = "\x1b[33m";
 						break;
 					default:
-						openColor = "\x1b[0m"
+						openColor = "\x1b[0m";
 				}
 				closeColor = "\x1b[0m";
 			}
@@ -121,24 +121,24 @@ export class ExecuteAll extends Command {
 		process.stdout.write("Running batch; workflow IDs " + results.join(','));
 	}
 
-	updateProgressStatus(workflowId: string | number | Object, status: 'warning'|'error'|'success') {
+	updateProgressStatus(workflowId: string | number | ObjectID, status: 'warning'|'error'|'success') {
 		const workflowProgress = ExecuteAll.workflowExecutionsProgress.find(executionProgress => executionProgress.workflowId === workflowId);
 		if (workflowProgress !== undefined) {
 			workflowProgress.status = status;
 		}
 	}
 
-	updateError(workflowId: string | number | Object) {
+	updateError(workflowId: string | number | ObjectID) {
 		this.updateProgressStatus(workflowId, 'error');
 		this.updateProgress();
 	}
 
-	updateSuccess(workflowId: string | number | Object) {
+	updateSuccess(workflowId: string | number | ObjectID) {
 		this.updateProgressStatus(workflowId, 'success');
 		this.updateProgress();
 	}
 
-	updateWarning(workflowId: string | number | Object) {
+	updateWarning(workflowId: string | number | ObjectID) {
 		this.updateProgressStatus(workflowId, 'warning');
 		this.updateProgress();
 	}
@@ -441,7 +441,7 @@ export class ExecuteAll extends Command {
 										data.data.resultData.runData[nodeName].map((taskData: ITaskData) => {
 											if (taskData.data === undefined) {
 												return;
-											};
+											}
 											Object.keys(taskData.data).map(connectionName => {
 												const connection = taskData.data![connectionName] as Array<INodeExecutionData[] | null>;
 												connection.map(executionDataArray => {
