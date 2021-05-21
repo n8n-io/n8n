@@ -254,12 +254,11 @@ $--border-radius: 20px;
 	.el-select__tags {
 		max-height: $--max-input-height;
 		border-radius: $--border-radius;
-
 		overflow-y: scroll;
-		
-		// firefox fix for scrollbar colors
 		overflow-x: hidden;
-		scrollbar-color: #787878 transparent;
+
+		// firefox fix for scrollbars
+		scrollbar-color: $--color-primary-light transparent;
 	}
 
 	.el-input.is-focus {
