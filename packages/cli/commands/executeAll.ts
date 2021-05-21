@@ -1,10 +1,18 @@
 import * as fs from 'fs';
-import { Command, flags } from '@oclif/command';
+import { 
+	Command, 
+	flags,
+} from '@oclif/command';
+
 import {
 	UserSettings,
 } from 'n8n-core';
+
 import {
-	INode, IRun, Workflow,
+	INode, 
+	INodeExecutionData, 
+	IRun, 
+	ITaskData, 
 } from 'n8n-workflow';
 
 import {
@@ -29,7 +37,9 @@ import {
 	diff,
 	diffString
 } from 'json-diff';
-import { ObjectID, UpdateValuesMissingError } from 'typeorm';
+import { 
+	ObjectID, 
+} from 'typeorm';
 
 import { 
 	getLogger,
@@ -41,47 +51,20 @@ import {
 
 const colorOutput = true;
 
-function updateProgress(executionProgress: IWorkflowExecutionProgress[]) {
-	process.stdout.clearLine(-1);
-    process.stdout.cursorTo(0);
-	const results = executionProgress.map(execution => {
-		let openColor = '', closeColor = '';
-		if (colorOutput) {
-			openColor = execution.status === 'success' ? "\x1b[32m" : (execution.status === 'error' ? "\x1b[31m" : "\x1b[0m");
-			closeColor = "\x1b[0m";
-		}
-		return openColor + execution.workflowId + closeColor;
-	});
-    process.stdout.write("Running batch; workflow IDs " + results.join(','));
-}
-
-function updateError(workflowId: string | number | Object, workflowExecutionsProgress: IWorkflowExecutionProgress[]) {
-	const workflowProgress = workflowExecutionsProgress.find(executionProgress => executionProgress.workflowId === workflowId);
-	if (workflowProgress !== undefined) {
-		workflowProgress.status = 'error';
-	}
-	updateProgress(workflowExecutionsProgress);
-}
-
-function updateSuccess(workflowId: string | number | Object, workflowExecutionsProgress: IWorkflowExecutionProgress[]) {
-	const workflowProgress = workflowExecutionsProgress.find(executionProgress => executionProgress.workflowId === workflowId);
-	if (workflowProgress !== undefined) {
-		workflowProgress.status = 'success';
-	}
-	updateProgress(workflowExecutionsProgress);
-}
 
 export class ExecuteAll extends Command {
 	static description = '\nExecutes all workflows once';
 
 	static cancelled = false;
+
+	static workflowExecutionsProgress:Array<IWorkflowExecutionProgress> = [];
 	
 	static examples = [
 		`$ n8n executeAll`,
 		`$ n8n executeAll --concurrency=10`,
 		`$ n8n executeAll --debug --output=/data/output.json`,
 		`$ n8n executeAll --ids=10,13,15`,
-		`$ n8n executeAll --snapshot=/data/snapshots`,
+		`$ n8n executeAll --snapshot=/data/snapshots --shallow`,
 		`$ n8n executeAll --compare=/data/previousExecutionData`,
 	];
 	
@@ -106,7 +89,41 @@ export class ExecuteAll extends Command {
 		compare: flags.string({
 			description: 'Compares current execution with an existing snapshot. You must inform an existing folder where the snapshots are saved.',
 		}),
+		shallow: flags.boolean({
+			description: 'Compares only if attributes output from node are the same, with no regards to neste JSON objects.',
+		}),
 	};
+
+
+	updateProgress() {
+		process.stdout.clearLine(-1);
+		process.stdout.cursorTo(0);
+		const results = ExecuteAll.workflowExecutionsProgress.map(execution => {
+			let openColor = '', closeColor = '';
+			if (colorOutput) {
+				openColor = execution.status === 'success' ? "\x1b[32m" : (execution.status === 'error' ? "\x1b[31m" : "\x1b[0m");
+				closeColor = "\x1b[0m";
+			}
+			return openColor + execution.workflowId + closeColor;
+		});
+		process.stdout.write("Running batch; workflow IDs " + results.join(','));
+	}
+
+	updateError(workflowId: string | number | Object) {
+		const workflowProgress = ExecuteAll.workflowExecutionsProgress.find(executionProgress => executionProgress.workflowId === workflowId);
+		if (workflowProgress !== undefined) {
+			workflowProgress.status = 'error';
+		}
+		this.updateProgress();
+	}
+
+	updateSuccess(workflowId: string | number | Object) {
+		const workflowProgress = ExecuteAll.workflowExecutionsProgress.find(executionProgress => executionProgress.workflowId === workflowId);
+		if (workflowProgress !== undefined) {
+			workflowProgress.status = 'success';
+		}
+		this.updateProgress();
+	}
 
 	static async stopProcess() {
 		this.cancelled = true;
@@ -260,7 +277,6 @@ export class ExecuteAll extends Command {
 		// "requiredNodeTypes" are also defined in editor-ui/views/NodeView.vue
 		const requiredNodeTypes = ['n8n-nodes-base.start'];
 		let workflowsExecutionsPromises:Array<Promise<IRun | undefined>> = [];
-		let workflowExecutionsProgress:Array<IWorkflowExecutionProgress> = [];
 		for (let i = 0; i < allWorkflows.length; i++) {
 			if (ExecuteAll.cancelled) {
 				break;
@@ -294,10 +310,15 @@ export class ExecuteAll extends Command {
 				executionResult.error = 'Workflow cannot be started as it does not contain a "Start" node.';
 				result.summary.failedExecutions++;
 				result.executions.push(executionResult);
+				ExecuteAll.workflowExecutionsProgress.push({
+					workflowId: workflowData.id,
+					status: 'error',
+				});
+				this.updateProgress();
 				continue;
 			}
 
-			workflowExecutionsProgress.push({
+			ExecuteAll.workflowExecutionsProgress.push({
 				workflowId: workflowData.id,
 				status: 'running',
 			});
@@ -313,6 +334,7 @@ export class ExecuteAll extends Command {
 						result.summary.failedExecutions++;
 						result.executions.push(executionResult);
 						result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
+						this.updateError(workflowData.id);
 						reject(new Error('Workflow execution timed out.'));
 					}, executionTimeout);
 					try {
@@ -340,7 +362,7 @@ export class ExecuteAll extends Command {
 							result.summary.failedExecutions++;
 							result.executions.push(executionResult);
 							result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
-							updateError(workflowData.id, workflowExecutionsProgress);
+							this.updateError(workflowData.id);
 						}else{
 
 							workflowData.nodes.forEach(node => {
@@ -360,19 +382,51 @@ export class ExecuteAll extends Command {
 								result.summary.failedExecutions++;
 								result.executions.push(executionResult);
 								result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
-								updateError(workflowData.id, workflowExecutionsProgress);
+								this.updateError(workflowData.id);
 								if (debug === true) {
 									this.log(JSON.stringify(data, null, 2));
 									console.log(data.data.resultData.error);
 								}
 
 							}else{
-
+								if (flags.shallow === true) {
+									Object.keys(data.data.resultData.runData).map((nodeName: string) => {
+										data.data.resultData.runData[nodeName].map((taskData: ITaskData) => {
+											if (taskData.data === undefined) {
+												return;
+											};
+											Object.keys(taskData.data).map(connectionName => {
+												const connection = taskData.data![connectionName] as Array<INodeExecutionData[] | null>;
+												connection.map(executionDataArray => {
+													if (executionDataArray === null) {
+														return;
+													}
+													executionDataArray.map(executionData => {
+														if (executionData.json === undefined) {
+															return;
+														}
+														const jsonProperties = executionData.json;
+														const nodeOutputAttributes = Object.keys(jsonProperties);
+														nodeOutputAttributes.map(attributeName => {
+															if (Array.isArray(jsonProperties[attributeName])) {
+																jsonProperties[attributeName] = ['json array'];
+															} else if (typeof jsonProperties[attributeName] === 'object') {
+																jsonProperties[attributeName] = {object: true};
+															}
+														});
+													});
+												});
+												
+											});
+										});
+									});
+								}
+								
 								const serializedData = JSON.stringify(data, null, 2);
 								if (flags.compare === undefined){
 									result.summary.succeededExecution++;
 									result.executions.push(executionResult);
-									updateSuccess(workflowData.id, workflowExecutionsProgress);
+									this.updateSuccess(workflowData.id);
 								} else {
 									const fileName = (flags.compare.endsWith(sep) ? flags.compare : flags.compare + sep) + `${workflowData.id}-snapshot.json`;
 									if (fs.existsSync(fileName) === true) {
@@ -389,7 +443,7 @@ export class ExecuteAll extends Command {
 											result.summary.failedExecutions++;
 											result.executions.push(executionResult);
 											result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
-											updateError(workflowData.id, workflowExecutionsProgress);
+											this.updateError(workflowData.id);
 											if (debug === true) {
 												// @ts-ignore
 												console.log('Detailed changes: ', diffString(JSON.parse(contents), data, undefined, {keysOnly: true}));
@@ -397,14 +451,14 @@ export class ExecuteAll extends Command {
 										}else{
 											result.summary.succeededExecution++;
 											result.executions.push(executionResult);
-											updateSuccess(workflowData.id, workflowExecutionsProgress);
+											this.updateSuccess(workflowData.id);
 										}
 									} else {
 										executionResult.error = 'Snapshot for not found.';
 										result.summary.failedExecutions++;
 										result.executions.push(executionResult);
 										result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
-										updateError(workflowData.id, workflowExecutionsProgress);
+										this.updateError(workflowData.id);
 									}
 								}
 								// Save snapshots only after comparing - this is to make sure we're updating
@@ -420,7 +474,7 @@ export class ExecuteAll extends Command {
 						executionResult.error = 'Workflow failed to execute.';
 						result.summary.exceptions++;
 						result.executions.push(executionResult);
-						updateError(workflowData.id, workflowExecutionsProgress);
+						this.updateError(workflowData.id);
 						if (debug === true) {
 							console.error(e.message);
 							console.error(e.stack);
@@ -432,10 +486,10 @@ export class ExecuteAll extends Command {
 			);
 			if(concurrency === 0 || (i !== 0 && (i+1) % concurrency === 0)){
 				process.stdout.write('\n');
-				updateProgress(workflowExecutionsProgress);
+				this.updateProgress();
 				await Promise.allSettled(workflowsExecutionsPromises);
 				workflowsExecutionsPromises = [];
-				workflowExecutionsProgress = [];
+				ExecuteAll.workflowExecutionsProgress = [];
 			}
 
 		}
