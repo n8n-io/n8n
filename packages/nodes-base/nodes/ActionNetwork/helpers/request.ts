@@ -53,6 +53,32 @@ export async function actionNetworkApiRequest(
 	}
 }
 
+export async function allPagesActionNetworkApiRequest(
+	hook: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	method: string,
+	pathOrUri: string,
+	resource: string,
+	body?: any,
+	headers?: object,
+	qs?: any
+) {
+	let res
+	let nextPage: any = 1
+	let results: any[] = []
+
+	do {
+		res = await actionNetworkApiRequest.call(hook, method, pathOrUri, body, headers, { ...qs, page: nextPage })
+		nextPage = null
+    const next = querystring.parse(res?._links?.next?.href?.split("?")?.[1])
+		if (res.total_pages && next?.page && res.total_pages > next?.page) {
+			nextPage = next.page
+		}
+
+		results = results.concat(res._embedded[resource] as any[])
+	} while (nextPage)
+	return results
+}
+
 export async function *iterateActionNetworkApiRequest(
 	hook: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: string,
@@ -67,7 +93,11 @@ export async function *iterateActionNetworkApiRequest(
 
 	do {
 		res = await actionNetworkApiRequest.call(hook, method, pathOrUri, body, headers, { ...qs, page: nextPage })
-		nextPage = res?.['_links']?.['next']?.split('=')?.[1]
+		nextPage = null
+    const next = querystring.parse(res?._links?.next?.href?.split("?")?.[1])
+		if (res.total_pages && next?.page && res.total_pages > next?.page) {
+			nextPage = next.page
+		}
 
 		for (const embedded of res._embedded[resource]) {
 			yield embedded

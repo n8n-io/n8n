@@ -29,7 +29,7 @@ import * as query from './resources/query'
 import * as tag from './resources/tag'
 import * as tagging from './resources/tagging'
 
-import { createIdentifierDictionary, createRelatedResourcesIdentifierDictionary } from './helpers/osdi';
+import { createIdentifierDictionary, createRelatedResourcesIdentifierDictionary, addOSDIMetadata, getOSDIResourceName } from './helpers/osdi';
 
 const resources = [
 	{ name: 'Person', value: 'person', module: person },
@@ -103,28 +103,12 @@ export class ActionNetwork implements INodeType {
 			}
 
 			// Identify where the list of data is
-			const firstDataKey = Object.keys(responseData['_embedded'])[0]
+			const firstDataKey = getOSDIResourceName(responseData)
 
 			// Some general transformations on the resolved data
 			if (firstDataKey) {
 				// For each item, try and provide some more usable data for downstream work
-				(responseData['_embedded'][firstDataKey] as any[]).forEach((item, i) => {
-					// Try to give each item an ID dictionary for upstream work.
-					// Particularly useful for pulling out the Action Network ID of an item for a further operation on it
-					// e.g. find an event, get its ID and then sign someone up to it via its ID
-					const identifierDictionary = createIdentifierDictionary(item?.identifiers as string[] || [])
-					// Also provide IDs for related items mentioned in `links`
-					// for downstream operations
-					const relatedResourceIdentifiers = createRelatedResourcesIdentifierDictionary(item?._links || {})
-					//
-					responseData['_embedded'][firstDataKey][i] = {
-						...item,
-						identifierDictionary: {
-							self: identifierDictionary,
-							...relatedResourceIdentifiers
-						}
-					}
-				})
+				responseData['_embedded'][firstDataKey] = (responseData['_embedded'][firstDataKey] as any[]).map(addOSDIMetadata)
 			}
 
 			// Optionally return a big list of items

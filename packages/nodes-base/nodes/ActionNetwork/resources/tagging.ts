@@ -1,9 +1,9 @@
 import { INodeProperties } from 'n8n-workflow';
 import { createListOperations, createPaginationProperties, constructODIFilterString } from '../helpers/fields';
 import { IExecuteFunctions } from 'n8n-core/dist/src/Interfaces';
-import { actionNetworkApiRequest } from '../helpers/request';
+import { actionNetworkApiRequest, iterateActionNetworkApiRequest, allPagesActionNetworkApiRequest } from '../helpers/request';
 import { IDataObject } from '../../../../workflow/dist/src/Interfaces';
-import { createResourceLink, getResourceIDFromURL } from '../helpers/osdi';
+import { createResourceLink, getResourceIDFromURL, addOSDIMetadata } from '../helpers/osdi';
 
 // https://actionnetwork.org/docs/v2/tag
 // - Scenario: Retrieving a collection of item resources (GET)
@@ -39,6 +39,10 @@ export const fields: INodeProperties[] = [
 				name: 'Delete',
 				value: 'DELETE',
 			},
+			{
+				name: 'Delete by Person and Tag',
+				value: 'DELETE_BY_PERSON_TAG',
+			},
 		],
 		displayOptions: {
 			show: {
@@ -48,14 +52,14 @@ export const fields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Tag ID',
-		name: 'tag_id',
+		name: 'osdi:tag',
 		type: 'string',
 		default: '',
 		required: false,
 		displayOptions: {
 			show: {
 				resource: [ 'tagging' ],
-				operation: [ 'POST', 'DELETE', 'GET_ALL_TAG', 'GET' ]
+				operation: [ 'POST', 'DELETE', 'DELETE_BY_PERSON_TAG', 'GET_ALL_TAG', 'GET' ]
 			},
 		},
 	},
@@ -82,7 +86,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'tagging' ],
-				operation: [ 'POST', 'GET_ALL_PERSON' ]
+				operation: [ 'POST', 'GET_ALL_PERSON', 'DELETE_BY_PERSON_TAG' ]
 			}
 		}
 	},
@@ -100,22 +104,39 @@ export const fields: INodeProperties[] = [
 ];
 
 export const resolve = async (node: IExecuteFunctions, i: number) => {
-	const operation = node.getNodeParameter('operation', i) as 'GET' | 'DELETE' | 'POST' | 'GET_ALL_TAG' | 'GET_ALL_PERSON';
+	const operation = node.getNodeParameter('operation', i) as 'GET' | 'DELETE' | 'DELETE_BY_PERSON_TAG' | 'POST' | 'GET_ALL_TAG' | 'GET_ALL_PERSON';
 
 	if (operation === 'GET') {
-		const tag_id = node.getNodeParameter('tag_id', i) as string;
+		const tag_id = node.getNodeParameter('osdi:tag', i) as string;
 		const tagging_id = node.getNodeParameter('tagging_id', i) as string;
 		return actionNetworkApiRequest.call(node, 'GET', `/api/v2/tags/${tag_id}/taggings/${tagging_id}`) as Promise<IDataObject>
 	}
 
 	if (operation === 'DELETE') {
-		const tag_id = node.getNodeParameter('tag_id', i) as string;
+		const tag_id = getResourceIDFromURL('osdi:tag', node.getNodeParameter('osdi:tag', i) as string)
 		const tagging_id = node.getNodeParameter('tagging_id', i) as string;
 		return actionNetworkApiRequest.call(node, 'DELETE', `/api/v2/tags/${tag_id}/taggings/${tagging_id}`) as Promise<IDataObject>
 	}
 
+	if (operation === 'DELETE_BY_PERSON_TAG') {
+		// Get taggings for this person
+		const person_id = getResourceIDFromURL('osdi:person', node.getNodeParameter('osdi:person', i) as string)
+		// Remove taggings where they match this tag_id
+		const tag_id = getResourceIDFromURL('osdi:tag', node.getNodeParameter('osdi:tag', i) as string)
+		const responses: any[] = []
+		for await (const _tagging of iterateActionNetworkApiRequest(node, 'GET', `/api/v2/people/${person_id}/taggings`, 'osdi:taggings')) {
+			const tagging = addOSDIMetadata(_tagging)
+			const this_tag_id = tagging.identifierDictionary['osdi:tag'].action_network
+			if (this_tag_id === tag_id) {
+				const tagging_id = tagging.identifierDictionary.self.action_network
+				responses.push(await actionNetworkApiRequest.call(node, 'DELETE', `/api/v2/tags/${tag_id}/taggings/${tagging_id}`) as Promise<IDataObject>)
+			}
+		}
+		return responses
+	}
+
 	if (operation === 'POST') {
-		const tag_id = node.getNodeParameter('tag_id', i) as string;
+		const tag_id = getResourceIDFromURL('osdi:tag', node.getNodeParameter('osdi:tag', i) as string)
 		const personRefURL = node.getNodeParameter('osdi:person', i) as string;
 		const body = createResourceLink('osdi:person', personRefURL)
 		return actionNetworkApiRequest.call(node, 'POST', `/api/v2/tags/${tag_id}/taggings`, body) as Promise<IDataObject>
@@ -130,7 +151,7 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	}
 
 	if (operation === 'GET_ALL_TAG') {
-		const tag_id = node.getNodeParameter('tag_id', i) as string;
+		const tag_id = getResourceIDFromURL('osdi:tag', node.getNodeParameter('osdi:tag', i) as string)
 		const url = `/api/v2/tags/${tag_id}/taggings`
 		const qs = createPaginationProperties(node, i)
 		return actionNetworkApiRequest.call(node, 'GET', url, undefined, undefined, qs) as Promise<IDataObject[]>

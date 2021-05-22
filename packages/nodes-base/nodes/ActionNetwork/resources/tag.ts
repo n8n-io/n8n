@@ -2,8 +2,9 @@ import { createPersonSignupHelperFields, createPersonSignupHelperObject } from '
 import { INodeProperties } from 'n8n-workflow';
 import { createListOperations, createFilterFields, createPaginationProperties, createFilterProperties } from '../helpers/fields';
 import { IExecuteFunctions } from 'n8n-core/dist/src/Interfaces';
-import { actionNetworkApiRequest } from '../helpers/request';
+import { actionNetworkApiRequest, iterateActionNetworkApiRequest } from '../helpers/request';
 import { IDataObject } from '../../../../workflow/dist/src/Interfaces';
+import { ensureArray } from '../helpers/javascript';
 
 // https://actionnetwork.org/docs/v2/tags
 // - Scenario: Retrieving a collection of tag resources (GET)
@@ -23,6 +24,10 @@ export const fields: INodeProperties[] = [
 				value: 'GET',
 			},
 			{
+				name: 'Get by Name',
+				value: 'GET_BY_NAME',
+			},
+			{
 				name: 'Get All',
 				value: 'GET_ALL',
 			},
@@ -39,7 +44,7 @@ export const fields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Tag ID',
-		name: 'tag_id',
+		name: 'osdi:tag',
 		type: 'string',
 		default: '',
 		required: true,
@@ -60,7 +65,7 @@ export const fields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: [ 'tag' ],
-				operation: [ 'POST' ]
+				operation: [ 'POST', 'GET_BY_NAME' ]
 			}
 		},
 	},
@@ -78,13 +83,19 @@ export const fields: INodeProperties[] = [
 ];
 
 export const resolve = async (node: IExecuteFunctions, i: number) => {
-	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL';
+	const operation = node.getNodeParameter('operation', i) as 'GET' | 'PUT' | 'POST' | 'GET_ALL' | 'GET_BY_NAME';
 	let url = `/api/v2/tags`
 
 	if (operation === 'GET') {
-		const tag_id = node.getNodeParameter('tag_id', i) as string;
+		const tag_id = node.getNodeParameter('osdi:tag', i) as string;
 		return actionNetworkApiRequest.call(node, operation, `${url}/${tag_id}`) as Promise<IDataObject>
 	}
+
+  if (operation === 'GET_BY_NAME') {
+		const name = node.getNodeParameter('name', i) as string
+		const tags = await searchTagsByName(node, name)
+		return tags
+  }
 
 	if (operation === 'POST') {
 		let body: any = {
@@ -103,5 +114,17 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	}
 
 	return []
+}
 
+export async function searchTagsByName(node: IExecuteFunctions, _tagNames: string | string[]) {
+	const tagNames = Array.from(new Set(ensureArray(_tagNames)))
+	const matchedTags = []
+
+	for await (const tag of iterateActionNetworkApiRequest(node, 'GET', '/api/v2/tags/', 'osdi:tags')) {
+		if (tagNames.includes(tag.name)) {
+			matchedTags.push(tag)
+		}
+	}
+
+	return matchedTags
 }
