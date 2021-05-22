@@ -8,7 +8,6 @@ import {
 	resolve as pathResolve,
 } from 'path';
 import {
-	getConnection,
 	getConnectionManager,
 	In,
 } from 'typeorm';
@@ -22,7 +21,7 @@ import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
-// IMPORRTANT! Do not switch to anther bcrypt library unless really needed and
+// IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
 import * as promClient from 'prom-client';
