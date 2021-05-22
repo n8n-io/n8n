@@ -22,7 +22,9 @@ import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
-import { compare } from '@node-rs/bcrypt';
+// IMPORRTANT! Do not switch to anther bcrypt library unless really needed and
+// tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
+import { compare } from 'bcryptjs';
 import * as promClient from 'prom-client';
 
 import {
