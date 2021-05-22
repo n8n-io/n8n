@@ -745,7 +745,7 @@ export interface IWorkflowExecuteAdditionalData {
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
 	restApiUrl: string;
-	sendMessageToUI: (source: string, message: string) => Promise<void>;
+	sendMessageToUI?: (source: string, message: string) => Promise<void>;
 	timezone: string;
 	webhookBaseUrl: string;
 	webhookTestBaseUrl: string;

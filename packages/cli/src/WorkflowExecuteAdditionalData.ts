@@ -627,7 +627,7 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 		// If no timeout was given from the parent, then we use our timeout.
 		subworkflowTimeout = Math.min(additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER, Date.now() + (workflowData.settings.executionTimeout as number * 1000));
 	}
-	
+
 	additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
 
 
@@ -663,16 +663,15 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 }
 
 
-async function sendMessageToUI(source: string, message: string) {
-	// TODO: Get the sessionId (currently missing)
+export async function sendMessageToUI(source: string, message: string) {
 	// TODO: Make work also in "own" mode
-	// // Push data to session which started workflow
-	// if (this.sessionId === undefined) {
-	// 	return;
-	// }
+	// Push data to session which started workflow
+	if (this.sessionId === undefined) {
+		return;
+	}
 
 	const pushInstance = Push.getInstance();
-	pushInstance.send('sendConsoleMessage', {
+	return pushInstance.send('sendConsoleMessage', {
 		source: `Node: "${source}"`,
 		message,
 	}, this.sessionId);
@@ -705,7 +704,6 @@ export async function getBase(credentials: IWorkflowCredentials, currentNodePara
 		encryptionKey,
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + config.get('endpoints.rest') as string,
-		sendMessageToUI,
 		timezone,
 		webhookBaseUrl,
 		webhookTestBaseUrl,
