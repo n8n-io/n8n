@@ -84,7 +84,6 @@ export class Function implements INodeType {
 		if (mode === 'manual') {
 			vm.on('console.log', (msg: string) => {
 				this.sendMessageToUI(msg);
-				// console.log('REDIRECTED:', msg);
 			});
 		}
 
