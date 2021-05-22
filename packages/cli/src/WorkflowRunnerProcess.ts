@@ -148,7 +148,7 @@ export class WorkflowRunnerProcess {
 				} catch (error) {
 					this.logger.error(`There was a problem sending UI data to parent process: "${error.message}"`);
 				}
-			}
+			};
 		})();
 
 		const executeWorkflowFunction = additionalData.executeWorkflow;
