@@ -6,6 +6,8 @@ import { createListOperations, createFilterFields } from '../helpers/fields';
 import { IExecuteFunctions } from 'n8n-core/dist/src/Interfaces';
 import { actionNetworkApiRequest, iterateActionNetworkApiRequest } from '../helpers/request';
 import { OptionsWithUri } from 'request';
+import { searchTagsByName } from './tag';
+import { addOSDIMetadata } from '../helpers/osdi';
 
 /**
  * Adds person parameters.
@@ -275,10 +277,10 @@ export const createPersonSignupHelperFields = createFields([
 		]
 	},
 	{
-		displayName: 'Remove Tags and Identifiers',
-		name: 'remove_tags_and_ids',
+		displayName: 'Remove Tags',
+		name: 'remove_tags',
 		type: 'collection',
-		placeholder: 'Remove Tag / ID',
+		placeholder: 'Remove Tag',
 		default: {},
 		displayOptions: {
 			show: {
@@ -295,16 +297,6 @@ export const createPersonSignupHelperFields = createFields([
 				typeOptions: {
 					multipleValues: true,
 					multipleValueButtonText: 'Remove tag',
-				},
-			},
-			{
-				name: 'remove_identifiers',
-				displayName: 'Custom IDs',
-				type: 'string',
-				default: [],
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Remove custom ID',
 				},
 			},
 		]
@@ -392,60 +384,27 @@ export function createPersonSignupHelperObject(node: IExecuteFunctions, i: numbe
 		)
 	}
 
-	console.log(JSON.stringify(body))
-
 	return body
 }
 
-export async function removeTagsAndIdentifiers(
-	person: any,
+export async function removeTags(
 	node: IExecuteFunctions,
-	i: number
+	person_url: any,
+	remove_tags: string[]
 ) {
-	const { remove_tags, remove_identifiers } = node.getNodeParameter('remove_tags_and_ids', i, {}) as any
-	const credentials = node.getCredentials('ActionNetworkGroupApiToken');
+	const removedTags = await searchTagsByName(node, remove_tags)
+	const removedTagHrefs = removedTags.map(tag => tag._links.self.href)
 
-	if (remove_tags && remove_tags.length > 0) {
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+	// Get the taggings associated with the person
+	const taggingHref = person_url + '/taggings'
+
+	for await (const tagging of iterateActionNetworkApiRequest(node, 'GET', taggingHref, 'osdi:taggings')) {
+		if (removedTagHrefs.includes(tagging._links['osdi:tag'].href)) {
+			const uri = tagging._links.self.href
+			await actionNetworkApiRequest.call(node, 'DELETE', uri)
 		}
-
-		console.log('removing tags', remove_tags, 'from', person)
-		const removedTagHrefs = await getUrlsForNamedTags(node, remove_tags)
-		console.log('-> hrefs', removedTagHrefs)
-
-		// Get the taggings associated with the person
-		const taggingHref = person._links.self.href + '/taggings'
-
-		for await (const tagging of iterateActionNetworkApiRequest(node, 'GET', taggingHref, 'osdi:taggings')) {
-			if (removedTagHrefs.has(tagging._links['osdi:tag'].href)) {
-				const uri = tagging._links.self.href
-				console.log('DELETE', uri)
-
-				await actionNetworkApiRequest.call(node, 'DELETE', uri)
-			}
-		}
-
-		console.log('done')
-	}
-
-	if (remove_identifiers && remove_identifiers.length > 0) {
-		throw Error('Not implemented')
 	}
 }
-
-async function getUrlsForNamedTags(node: IExecuteFunctions, tagNames: string[]) {
-	const tagUrls = new Set<string>()
-
-	for await (const tag of iterateActionNetworkApiRequest(node, 'GET', '/api/v2/tags/', 'osdi:tags')) {
-		if (tagNames.includes(tag.name)) {
-			tagUrls.add(tag._links.self.href)
-		}
-	}
-
-	return tagUrls
-}
-
 
 // [DOCS](https://actionnetwork.org/docs/v2/person)
 // Scenario: Retrieving a collection of attendance resources (GET)
@@ -538,8 +497,11 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 
 	if (operation === 'POST') {
 		let body = createPersonSignupHelperObject(node, i)
-		const person = await actionNetworkApiRequest.call(node, operation, url, body) as Promise<IDataObject>
-		await removeTagsAndIdentifiers(person, node, i)
+		const person = await (actionNetworkApiRequest.call(node, operation, url, body) as Promise<any>)
+		const { remove_tags } = node.getNodeParameter('remove_tags', i, {}) as any
+		if (remove_tags?.length) {
+			await removeTags(node, person._links.self.href, remove_tags)
+		}
 
 		return person
 	}

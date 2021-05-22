@@ -121,10 +121,11 @@ export const resolve = async (node: IExecuteFunctions, i: number) => {
 	if (operation === 'DELETE_BY_PERSON_TAG') {
 		// Get taggings for this person
 		const person_id = getResourceIDFromURL('osdi:person', node.getNodeParameter('osdi:person', i) as string)
-		// Remove taggings where they match this tag_id
+		const tagging_url = `/api/v2/people/${person_id}/taggings`
+		// For each tagging, check if tag_id matches
 		const tag_id = getResourceIDFromURL('osdi:tag', node.getNodeParameter('osdi:tag', i) as string)
 		const responses: any[] = []
-		for await (const _tagging of iterateActionNetworkApiRequest(node, 'GET', `/api/v2/people/${person_id}/taggings`, 'osdi:taggings')) {
+		for await (const _tagging of iterateActionNetworkApiRequest(node, 'GET', tagging_url, 'osdi:taggings')) {
 			const tagging = addOSDIMetadata(_tagging)
 			const this_tag_id = tagging.identifierDictionary['osdi:tag'].action_network
 			if (this_tag_id === tag_id) {
