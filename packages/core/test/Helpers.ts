@@ -465,6 +465,30 @@ class NodeTypesClass implements INodeTypes {
 				},
 			},
 		},
+		'n8n-nodes-base.noOp': {
+			sourcePath: '',
+			type: {
+				description: {
+					displayName: 'No Operation, do nothing',
+					name: 'noOp',
+					icon: 'fa:arrow-right',
+					group: ['organization'],
+					version: 1,
+					description: 'No Operation',
+					defaults: {
+						name: 'NoOp',
+						color: '#b0b0b0',
+					},
+					inputs: ['main'],
+					outputs: ['main'],
+					properties: [],
+				},
+				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+					const items = this.getInputData();
+					return this.prepareOutputData(items);
+				},
+			},
+		},
 		'n8n-nodes-base.set': {
 			sourcePath: '',
 			type: {

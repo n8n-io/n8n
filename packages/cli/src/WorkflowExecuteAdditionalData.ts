@@ -85,11 +85,11 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
 		// Run the error workflow
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
 		if (workflowData.settings !== undefined && workflowData.settings.errorWorkflow && !(mode === 'error' && workflowData.id && workflowData.settings.errorWorkflow.toString() === workflowData.id.toString())) {
-			Logger.verbose(`Start external error workflow`, { executionId: this.executionId, errorWorkflowId: workflowData.settings.errorWorkflow.toString(), workflowId: this.workflowData.id });
+			Logger.verbose(`Start external error workflow`, { executionId, errorWorkflowId: workflowData.settings.errorWorkflow.toString(), workflowId: workflowData.id });
 			// If a specific error workflow is set run only that one
 			WorkflowHelpers.executeErrorWorkflow(workflowData.settings.errorWorkflow as string, workflowErrorData);
 		} else if (mode !== 'error' && workflowData.id !== undefined && workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)) {
-			Logger.verbose(`Start internal error workflow`, { executionId: this.executionId, workflowId: this.workflowData.id });
+			Logger.verbose(`Start internal error workflow`, { executionId, workflowId: workflowData.id });
 			// If the workflow contains
 			WorkflowHelpers.executeErrorWorkflow(workflowData.id.toString(), workflowErrorData);
 		}
@@ -619,7 +619,16 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	// This one already contains changes to talk to parent process
 	// and get executionID from `activeExecutions` running on main process
 	additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
-	additionalDataIntegrated.executionTimeoutTimestamp = additionalData.executionTimeoutTimestamp;
+
+	let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
+	if (workflowData.settings?.executionTimeout !== undefined && workflowData.settings.executionTimeout > 0) {
+		// We might have received a max timeout timestamp from the parent workflow
+		// If we did, then we get the minimum time between the two timeouts
+		// If no timeout was given from the parent, then we use our timeout.
+		subworkflowTimeout = Math.min(additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER, Date.now() + (workflowData.settings.executionTimeout as number * 1000));
+	}
+	
+	additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
 
 
 	// Execute the workflow
