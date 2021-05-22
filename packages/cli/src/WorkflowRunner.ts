@@ -472,6 +472,9 @@ export class WorkflowRunner {
 				clearTimeout(executionTimeout);
 				this.activeExecutions.remove(executionId!, message.data.runData);
 
+			} else if (message.type === 'sendMessageToUI') {
+				WorkflowExecuteAdditionalData.sendMessageToUI.bind({ sessionId: data.sessionId })(message.data.source, message.data.message);
+
 			} else if (message.type === 'processError') {
 				clearTimeout(executionTimeout);
 				const executionError = message.data.executionError as ExecutionError;

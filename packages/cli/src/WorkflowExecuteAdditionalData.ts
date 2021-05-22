@@ -664,17 +664,20 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 
 
 export async function sendMessageToUI(source: string, message: string) {
-	// TODO: Make work also in "own" mode
-	// Push data to session which started workflow
 	if (this.sessionId === undefined) {
 		return;
 	}
 
-	const pushInstance = Push.getInstance();
-	return pushInstance.send('sendConsoleMessage', {
-		source: `Node: "${source}"`,
-		message,
-	}, this.sessionId);
+	// Push data to session which started workflow
+	try {
+		const pushInstance = Push.getInstance();
+		await pushInstance.send('sendConsoleMessage', {
+			source: `Node: "${source}"`,
+			message,
+		}, this.sessionId);
+	} catch (error) {
+		Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
+	}
 }
 
 
