@@ -4,9 +4,9 @@ import {
 } from 'n8n-core';
 import {
 	ICredentialType,
+	ILogger,
 	INodeType,
 	INodeTypeData,
-	Logger,
 	LoggerProxy,
 } from 'n8n-workflow';
 
@@ -38,7 +38,7 @@ class LoadNodesAndCredentialsClass {
 
 	nodeModulesPath = '';
 
-	logger: Logger;
+	logger: ILogger;
 
 	async init() {
 		this.logger = getLogger();
