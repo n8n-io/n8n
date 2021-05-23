@@ -66,8 +66,6 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 		delete options.qs;
 	}
 
-	console.log(options);
-
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
