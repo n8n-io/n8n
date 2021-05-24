@@ -5,6 +5,7 @@ export * from './ExternalHooks';
 export * from './Interfaces';
 export * from './LoadNodesAndCredentials';
 export * from './NodeTypes';
+export * from './SleepTracker';
 export * from './WorkflowCredentials';
 export * from './WorkflowRunner';
 

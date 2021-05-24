@@ -113,19 +113,19 @@ export class WorkflowRunner {
 	 * @returns {Promise<string>}
 	 * @memberof WorkflowRunner
 	 */
-	async run(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, realtime?: boolean): Promise<string> {
+	async run(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, realtime?: boolean, executionId?: string): Promise<string> {
 		const executionsProcess = config.get('executions.process') as string;
 		const executionsMode = config.get('executions.mode') as string;
 
-		let executionId: string;
+		// TODO: Probably have to change behaviour to work on top of an existing execution for all three
 		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
 			// frontend would not be possible
 			executionId = await this.runBull(data, loadStaticData, realtime);
 		} else if (executionsProcess === 'main') {
-			executionId = await this.runMainProcess(data, loadStaticData);
+			executionId = await this.runMainProcess(data, loadStaticData, executionId);
 		} else {
-			executionId = await this.runSubprocess(data, loadStaticData);
+			executionId = await this.runSubprocess(data, loadStaticData, executionId);
 		}
 
 		const externalHooks = ExternalHooks();
@@ -152,13 +152,12 @@ export class WorkflowRunner {
 	 * @returns {Promise<string>}
 	 * @memberof WorkflowRunner
 	 */
-	async runMainProcess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
+	async runMainProcess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, restartExecutionId?: string): Promise<string> {
 		if (loadStaticData === true && data.workflowData.id) {
 			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(data.workflowData.id as string);
 		}
 
 		const nodeTypes = NodeTypes();
-
 
 		// Soft timeout to stop workflow execution after current running node
 		// Changes were made by adding the `workflowTimeout` to the `additionalData`
@@ -177,7 +176,7 @@ export class WorkflowRunner {
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(data.credentials, undefined, workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000);
 
 		// Register the active execution
-		const executionId = await this.activeExecutions.add(data, undefined);
+		const executionId = await this.activeExecutions.add(data, undefined, restartExecutionId) as string;
 		Logger.verbose(`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`, {executionId});
 
 		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
@@ -374,7 +373,7 @@ export class WorkflowRunner {
 	 * @returns {Promise<string>}
 	 * @memberof WorkflowRunner
 	 */
-	async runSubprocess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
+	async runSubprocess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, restartExecutionId?: string): Promise<string> {
 		let startedAt = new Date();
 		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
 
@@ -383,7 +382,7 @@ export class WorkflowRunner {
 		}
 
 		// Register the active execution
-		const executionId = await this.activeExecutions.add(data, subprocess);
+		const executionId = await this.activeExecutions.add(data, subprocess, restartExecutionId);
 
 		// Check if workflow contains a "executeWorkflow" Node as in this
 		// case we can not know which nodeTypes and credentialTypes will

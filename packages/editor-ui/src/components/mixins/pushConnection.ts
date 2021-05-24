@@ -207,7 +207,15 @@ export const pushConnection = mixins(
 					let runDataExecutedErrorMessage;
 					// @ts-ignore
 					const workflow = this.getWorkflow();
-					if (runDataExecuted.finished !== true) {
+					if (runDataExecuted.sleepTill !== undefined) {
+						// Workflow did start but had been put to sleep
+						this.$titleSet(workflow.name, 'IDLE');
+						this.$showMessage({
+							title: 'Workflow got started',
+							message: 'Workflow execution got started and is now sleeping!',
+							type: 'success',
+						});
+					} else if (runDataExecuted.finished !== true) {
 						// There was a problem with executing the workflow
 						let errorMessage = 'There was a problem executing the workflow!';
 

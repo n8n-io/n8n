@@ -38,6 +38,7 @@ import {
 	faCodeBranch,
 	faCog,
 	faCogs,
+	faClock,
 	faClone,
 	faCloud,
 	faCloudDownloadAlt,
@@ -121,6 +122,7 @@ library.add(faCode);
 library.add(faCodeBranch);
 library.add(faCog);
 library.add(faCogs);
+library.add(faClock);
 library.add(faClone);
 library.add(faCloud);
 library.add(faCloudDownloadAlt);

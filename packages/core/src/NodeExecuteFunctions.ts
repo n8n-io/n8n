@@ -749,6 +749,9 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				return workflow.getStaticData(type, node);
 			},
 			prepareOutputData: NodeHelpers.prepareOutputData,
+			async putExecutionToSleep(sleepTill: Date): Promise<void> {
+				runExecutionData.sleepTill = sleepTill;
+			},
 			helpers: {
 				prepareBinaryData,
 				request: requestPromiseWithDefaults,

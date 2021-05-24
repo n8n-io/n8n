@@ -4,6 +4,7 @@ import { CreateIndexStoppedAt1594825041918 } from './1594825041918-CreateIndexSt
 import { AddWebhookId1611071044839 } from './1611071044839-AddWebhookId';
 import { MakeStoppedAtNullable1607431743769 } from './1607431743769-MakeStoppedAtNullable';
 import { CreateTagEntity1617213344594 } from './1617213344594-CreateTagEntity';
+import { AddSleepColumn1621707690587 } from './1621707690587-AddSleepColumn';
 
 export const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -12,4 +13,5 @@ export const sqliteMigrations = [
 	AddWebhookId1611071044839,
 	MakeStoppedAtNullable1607431743769,
 	CreateTagEntity1617213344594,
+	AddSleepColumn1621707690587,
 ];

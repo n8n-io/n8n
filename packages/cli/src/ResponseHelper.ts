@@ -148,6 +148,7 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
 	const returnData: IExecutionFlatted = Object.assign({}, {
 		data: stringify(fullExecutionData.data),
 		mode: fullExecutionData.mode,
+		sleepTill: fullExecutionData.sleepTill,
 		startedAt: fullExecutionData.startedAt,
 		stoppedAt: fullExecutionData.stoppedAt,
 		finished: fullExecutionData.finished ? fullExecutionData.finished : false,

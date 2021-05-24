@@ -223,6 +223,7 @@ export interface IExecuteFunctions {
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
 	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
+	putExecutionToSleep(sleepTill: Date): Promise<void>;
 	helpers: {
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
 	};
@@ -644,6 +645,7 @@ export interface IRun {
 	data: IRunExecutionData;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
+	sleepTill?: Date;
 	startedAt: Date;
 	stoppedAt?: Date;
 }
@@ -667,6 +669,7 @@ export interface IRunExecutionData {
 		nodeExecutionStack: IExecuteData[];
 		waitingExecution: IWaitingForExecution;
 	};
+	sleepTill?: Date;
 }
 
 

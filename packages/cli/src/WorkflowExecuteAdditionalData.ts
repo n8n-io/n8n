@@ -248,7 +248,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 					if (execution === undefined) {
 						// Something went badly wrong if this happens.
 						// This check is here mostly to make typescript happy.
-						return undefined;
+						return;
 					}
 					const fullExecutionData: IExecutionResponse = ResponseHelper.unflattenExecutionData(execution);
 
@@ -259,11 +259,9 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 						return;
 					}
 
-
 					if (fullExecutionData.data === undefined) {
 						fullExecutionData.data = {
-							startData: {
-							},
+							startData: {},
 							resultData: {
 								runData: {},
 							},
@@ -343,7 +341,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						saveManualExecutions = this.workflowData.settings.saveManualExecutions as boolean;
 					}
 
-					if (isManualMode && saveManualExecutions === false) {
+					if (isManualMode && saveManualExecutions === false && !fullRunData.sleepTill) {
 						// Data is always saved, so we remove from database
 						await Db.collections.Execution!.delete(this.executionId);
 						return;
@@ -361,12 +359,14 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					if (workflowDidSucceed === true && saveDataSuccessExecution === 'none' ||
 						workflowDidSucceed === false && saveDataErrorExecution === 'none'
 					) {
-						if (!isManualMode) {
-							executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
+						if (!fullRunData.sleepTill) {
+							if (!isManualMode) {
+								executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
+							}
+							// Data is always saved, so we remove from database
+							await Db.collections.Execution!.delete(this.executionId);
+							return;
 						}
-						// Data is always saved, so we remove from database
-						await Db.collections.Execution!.delete(this.executionId);
-						return;
 					}
 
 					const fullExecutionData: IExecutionDb = {
@@ -376,6 +376,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						startedAt: fullRunData.startedAt,
 						stoppedAt: fullRunData.stoppedAt,
 						workflowData: this.workflowData,
+						sleepTill: fullRunData.sleepTill,
 					};
 
 					if (this.retryOf !== undefined) {
@@ -627,7 +628,7 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 		// If no timeout was given from the parent, then we use our timeout.
 		subworkflowTimeout = Math.min(additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER, Date.now() + (workflowData.settings.executionTimeout as number * 1000));
 	}
-	
+
 	additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
 
 

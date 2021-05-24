@@ -9,6 +9,13 @@
 			</div>
 			<el-badge v-else :hidden="workflowDataItems === 0" class="node-info-icon data-count" :value="workflowDataItems"></el-badge>
 
+			<div v-if="sleeping" class="node-info-icon sleeping">
+				<el-tooltip placement="top" effect="light">
+					<div slot="content" v-html="sleeping"></div>
+					<font-awesome-icon icon="clock" />
+				</el-tooltip>
+			</div>
+
 			<div class="node-executing-info" title="Node is executing">
 				<font-awesome-icon icon="sync-alt" spin />
 			</div>
@@ -58,6 +65,8 @@ import {
 import NodeIcon from '@/components/NodeIcon.vue';
 
 import mixins from 'vue-typed-mixins';
+
+import { get } from 'lodash';
 
 export default mixins(nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Node',
@@ -128,6 +137,18 @@ export default mixins(nodeBase, nodeHelpers, workflowHelpers).extend({
 			} else {
 				return 'play';
 			}
+		},
+		sleeping (): string | undefined {
+			const workflowExecution = this.$store.getters.getWorkflowExecution;
+
+			if (workflowExecution && workflowExecution.sleepTill) {
+				const lastNodeExecuted = get(workflowExecution, 'data.resultData.lastNodeExecuted');
+				if (this.name === lastNodeExecuted) {
+					return `Node is sleeping till ${new Date(workflowExecution.sleepTill).toLocaleTimeString()}`;
+				}
+			}
+
+			return;
 		},
 		nodeSubtitle (): string | undefined {
 			return this.getNodeSubtitle(this.data, this.nodeType, this.workflow);
@@ -284,6 +305,11 @@ export default mixins(nodeBase, nodeHelpers, workflowHelpers).extend({
 				font-weight: 600;
 				top: -12px;
 			}
+
+			&.sleeping {
+				left: 10px;
+				top: -12px;
+			}
 		}
 
 		.node-issues {
@@ -291,6 +317,13 @@ export default mixins(nodeBase, nodeHelpers, workflowHelpers).extend({
 			height: 25px;
 			font-size: 20px;
 			color: #ff0000;
+		}
+
+		.sleeping {
+			width: 25px;
+			height: 25px;
+			font-size: 20px;
+			color: #5e5efa;
 		}
 
 		.node-options {
