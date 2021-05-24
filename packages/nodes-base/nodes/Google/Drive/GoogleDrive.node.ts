@@ -1985,7 +1985,7 @@ export class GoogleDrive implements INodeType {
 						const data = await googleApiRequest.call(this, 'GET', `/drive/v3/drives`, {}, qs);
 						response = data.drives as IDataObject[];
 					}
-					console.log(response);
+
 					returnData.push.apply(returnData, response);
 				}
 				if (operation === 'update') {
