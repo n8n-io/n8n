@@ -136,7 +136,7 @@ export function formatText(content: string) {
 }
 
 function getLink(text: { textLink: string, isLink: boolean }) {
-	if (text.isLink === true) {
+	if (text.isLink === true && text.textLink !== '') {
 		return {
 			link: {
 				url: text.textLink,
@@ -270,10 +270,12 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			};
 			break;
 		case 'date':
+			//&& value.dateStart !== 'Invalid date' && value.dateEnd !== 'Invalid date'
 			if (value.range === true) {
 				result = {
 					type: 'date', date: { start: moment.tz(value.dateStart, timezone).utc().format(), end: moment.tz(value.dateEnd, timezone).utc().format() },
 				};
+				//if (value.date !== 'Invalid date')
 			} else {
 				result = {
 					type: 'date', date: { start: moment.tz(value.date, timezone).utc().format(), end: null },
