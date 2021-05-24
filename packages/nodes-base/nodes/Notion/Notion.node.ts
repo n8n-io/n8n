@@ -212,8 +212,11 @@ export class Notion implements INodeType {
 			async getPropertySelectValues(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const [name, type] = (this.getCurrentNodeParameter('&key') as string).split('|');
 				const databaseId = this.getCurrentNodeParameter('databaseId') as string;
+				const resource = this.getCurrentNodeParameter('resource') as string;
+				const operation = this.getCurrentNodeParameter('operation') as string;
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
-				return (properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: option.id }));
+				const useNames = (resource === 'databasePage' && operation === 'getAll');
+				return (properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: (['select', 'multi_select'].includes(type) && useNames) ? option.name : option.id }));
 			},
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
