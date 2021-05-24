@@ -1607,7 +1607,7 @@ class App {
 					mode: result.mode,
 					retryOf: result.retryOf ? result.retryOf.toString() : undefined,
 					retrySuccessId: result.retrySuccessId ? result.retrySuccessId.toString() : undefined,
-					sleepTill: result.sleepTill,
+					sleepTill: result.sleepTill as Date | undefined,
 					startedAt: result.startedAt,
 					stoppedAt: result.stoppedAt,
 					workflowId: result.workflowData!.id ? result.workflowData!.id!.toString() : '',

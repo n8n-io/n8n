@@ -178,7 +178,7 @@ export interface IExecutionFlatted extends IExecutionBase {
 export interface IExecutionFlattedDb extends IExecutionBase {
 	id: number | string;
 	data: string;
-	sleepTill?: Date;
+	sleepTill?: Date | null;
 	workflowData: IWorkflowBase;
 }
 

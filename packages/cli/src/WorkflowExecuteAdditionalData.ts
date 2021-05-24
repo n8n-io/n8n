@@ -47,6 +47,8 @@ import * as config from '../config';
 
 import { LessThanOrEqual } from 'typeorm';
 
+import { DateUtils } from 'typeorm/util/DateUtils';
+
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
 /**
@@ -113,7 +115,9 @@ function pruneExecutionData(): void {
 		date.setHours(date.getHours() - maxAge);
 
 		// throttle just on success to allow for self healing on failure
-		Db.collections.Execution!.delete({ stoppedAt: LessThanOrEqual(date.toISOString()) })
+		// This is needed because of issue in TypeORM <> SQLite:
+		// https://github.com/typeorm/typeorm/issues/2286
+		Db.collections.Execution!.delete({ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)), sleepTill: null })
 			.then(data =>
 				setTimeout(() => {
 					throttling = false;
