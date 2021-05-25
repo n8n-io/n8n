@@ -9,12 +9,10 @@ export interface IUpdateFields {
 	};
 	requestsUi: {
 		createFooterValues?: Array<{
-			type: 'DEFAULT' | 'HEADER_FOOTER_TYPE_UNSPECIFIED',
 			segmentId: string,
 			index: number,
 		}>;
 		createHeaderValues?: Array<{
-			type: 'DEFAULT' | 'HEADER_FOOTER_TYPE_UNSPECIFIED',
 			segmentId: string,
 			index: number,
 		}>;
