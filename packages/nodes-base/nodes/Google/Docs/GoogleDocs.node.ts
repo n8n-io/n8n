@@ -259,7 +259,7 @@ export class GoogleDocs implements INodeType {
 							}
 
 							if (createHeaderValues?.length) {
-								createHeaderValues.forEach(({ type, segmentId, index }) => {
+								createHeaderValues.forEach(({ segmentId, index }) => {
 									body.requests.push({
 										createHeader: {
 											type: 'DEFAULT',
@@ -270,7 +270,7 @@ export class GoogleDocs implements INodeType {
 							}
 
 							if (createFooterValues?.length) {
-								createFooterValues.forEach(({ type, segmentId, index }) => {
+								createFooterValues.forEach(({ segmentId, index }) => {
 									body.requests.push({
 										createFooter: {
 											type: 'DEFAULT',
