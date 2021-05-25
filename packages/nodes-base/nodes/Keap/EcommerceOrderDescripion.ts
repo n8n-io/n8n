@@ -83,7 +83,7 @@ export const ecommerceOrderFields = [
 	{
 		displayName: 'Order Title',
 		name: 'orderTitle',
-		type: 'dateTime',
+		type: 'string',
 		required: true,
 		displayOptions: {
 			show: {
