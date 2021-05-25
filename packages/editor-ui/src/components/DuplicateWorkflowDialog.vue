@@ -1,6 +1,5 @@
 <template>
 	<Modal
-		v-if="name"
 		:name="modalName"
 		:eventBus="modalBus"
 		@enter="save"
