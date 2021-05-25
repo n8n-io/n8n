@@ -54,14 +54,14 @@ export class Git implements INodeType {
 						description: 'Add configuration property.',
 					},
 					{
-						name: 'Commit',
-						value: 'commit',
-						description: 'Commit files or folders to git.',
-					},
-					{
 						name: 'Clone',
 						value: 'clone',
 						description: 'Clone a repository.',
+					},
+					{
+						name: 'Commit',
+						value: 'commit',
+						description: 'Commit files or folders to git.',
 					},
 					{
 						name: 'Fetch',
@@ -79,21 +79,6 @@ export class Git implements INodeType {
 						description: 'Return git commit history.',
 					},
 					{
-						name: 'Status',
-						value: 'status',
-						description: 'Return status of current repository.',
-					},
-					{
-						name: 'User Setup',
-						value: 'userSetup',
-						description: 'Set the user.',
-					},
-					{
-						name: 'Tag',
-						value: 'tag',
-						description: 'Create a new tag.',
-					},
-					{
 						name: 'Pull',
 						value: 'pull',
 						description: 'Pull from remote repository.',
@@ -107,6 +92,21 @@ export class Git implements INodeType {
 						name: 'Push Tags',
 						value: 'pushTags',
 						description: 'Push Tags to remote repository.',
+					},
+					{
+						name: 'Status',
+						value: 'status',
+						description: 'Return status of current repository.',
+					},
+					{
+						name: 'Tag',
+						value: 'tag',
+						description: 'Create a new tag.',
+					},
+					{
+						name: 'User Setup',
+						value: 'userSetup',
+						description: 'Set the user.',
 					},
 				],
 			},
@@ -140,167 +140,175 @@ export class Git implements INodeType {
 		let item: INodeExecutionData;
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			item = items[itemIndex];
+			try {
+				item = items[itemIndex];
 
-			const baseDir = this.getNodeParameter('baseDirectory', itemIndex, '') as string;
-			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+				const baseDir = this.getNodeParameter('baseDirectory', itemIndex, '') as string;
+				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 
-			const gitOptions: Partial<SimpleGitOptions> = {
-				baseDir,
-				binary: 'git',
-				maxConcurrentProcesses: 6,
-			};
+				const gitOptions: Partial<SimpleGitOptions> = {
+					baseDir,
+					binary: 'git',
+					maxConcurrentProcesses: 6,
+				};
 
-			// TODO: Allow to set credentials
-			const git: SimpleGit = simpleGit(gitOptions);
+				// TODO: Allow to set credentials
+				const git: SimpleGit = simpleGit(gitOptions);
 
-			// TODO: Add continue on error
-			// TODO: Make it possible to auto-confirm RSA key fingerprint
+				// TODO: Make it possible to auto-confirm RSA key fingerprint
 
-			if (operation === 'add') {
-				// ----------------------------------
-				//         add
-				// ----------------------------------
+				if (operation === 'add') {
+					// ----------------------------------
+					//         add
+					// ----------------------------------
 
-				const paths = this.getNodeParameter('paths', itemIndex, '') as string;
+					const paths = this.getNodeParameter('paths', itemIndex, '') as string;
 
-				await git.add(paths.split(','));
+					await git.add(paths.split(','));
 
-				returnItems.push({ json: { success: true } });
+					returnItems.push({ json: { success: true } });
 
-			} else if (operation === 'addConfig') {
-				// ----------------------------------
-				//         addConfig
-				// ----------------------------------
+				} else if (operation === 'addConfig') {
+					// ----------------------------------
+					//         addConfig
+					// ----------------------------------
 
-				const key = this.getNodeParameter('key', itemIndex, '') as string;
-				const value = this.getNodeParameter('value', itemIndex, '') as string;
-				const append = this.getNodeParameter('append', itemIndex, '') as boolean;
+					const key = this.getNodeParameter('key', itemIndex, '') as string;
+					const value = this.getNodeParameter('value', itemIndex, '') as string;
+					const append = this.getNodeParameter('append', itemIndex, '') as boolean;
 
-				await git.addConfig(key, value, append);
-				returnItems.push({ json: { success: true } });
+					await git.addConfig(key, value, append);
+					returnItems.push({ json: { success: true } });
 
-			} else if (operation === 'clone') {
-				// ----------------------------------
-				//         clone
-				// ----------------------------------
+				} else if (operation === 'clone') {
+					// ----------------------------------
+					//         clone
+					// ----------------------------------
 
-				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
+					const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
 
-				const a = await git.clone(repositoryPath, '.');
-				console.log('a');
-				console.log(a);
+					const a = await git.clone(repositoryPath, '.');
+					console.log('a');
+					console.log(a);
 
-				returnItems.push({ json: { success: true } });
+					returnItems.push({ json: { success: true } });
 
-			} else if (operation === 'commit') {
-				// ----------------------------------
-				//         commit
-				// ----------------------------------
+				} else if (operation === 'commit') {
+					// ----------------------------------
+					//         commit
+					// ----------------------------------
 
-				const message = this.getNodeParameter('message', itemIndex, '') as string;
+					const message = this.getNodeParameter('message', itemIndex, '') as string;
 
-				let files: string[] | undefined = undefined;
-				if (options.files !== undefined) {
-					files = (options.files as string).split(',');
+					let files: string[] | undefined = undefined;
+					if (options.files !== undefined) {
+						files = (options.files as string).split(',');
+					}
+
+					await git.commit(message, files);
+
+					returnItems.push({ json: { success: true } });
+
+				} else if (operation === 'fetch') {
+					// ----------------------------------
+					//         fetch
+					// ----------------------------------
+
+					await git.fetch();
+					returnItems.push({ json: { success: true } });
+
+				} else if (operation === 'log') {
+					// ----------------------------------
+					//         log
+					// ----------------------------------
+
+					const logOptions: LogOptions = {};
+
+					const returnAll = this.getNodeParameter('returnAll', itemIndex, false) as boolean;
+					if (returnAll === false) {
+						logOptions.maxCount = this.getNodeParameter('limit', itemIndex, 100) as number;
+					}
+					if (options.file) {
+						logOptions.file = options.file as string;
+					}
+
+					const log = await git.log(logOptions);
+
+					// @ts-ignore
+					returnItems.push(...this.helpers.returnJsonArray(log.all));
+
+				} else if (operation === 'pull') {
+					// ----------------------------------
+					//         pull
+					// ----------------------------------
+
+					await git.pull();
+					returnItems.push({ json: { success: true } });
+
+				} else if (operation === 'push') {
+					// ----------------------------------
+					//         push
+					// ----------------------------------
+
+					await git.push();
+					returnItems.push({ json: { success: true } });
+
+				} else if (operation === 'pushTags') {
+					// ----------------------------------
+					//         pushTags
+					// ----------------------------------
+
+					await git.pushTags();
+					returnItems.push({ json: { success: true } });
+
+				} else if (operation === 'listConfig') {
+					// ----------------------------------
+					//         listConfig
+					// ----------------------------------
+
+					const config = await git.listConfig();
+
+					const data = [];
+					for (const fileName of Object.keys(config.values)) {
+						data.push({
+							_file: fileName,
+							...config.values[fileName],
+						});
+					}
+
+					// @ts-ignore
+					returnItems.push(...this.helpers.returnJsonArray(data));
+
+				} else if (operation === 'status') {
+					// ----------------------------------
+					//         status
+					// ----------------------------------
+
+					const status = await git.status();
+
+					// @ts-ignore
+					returnItems.push(...this.helpers.returnJsonArray([status]));
+
+				} else if (operation === 'tag') {
+					// ----------------------------------
+					//         tag
+					// ----------------------------------
+
+					const name = this.getNodeParameter('name', itemIndex, '') as string;
+
+					await git.addTag(name);
+					returnItems.push({ json: { success: true } });
+
 				}
 
-				await git.commit(message, files);
+			} catch (error) {
 
-				returnItems.push({ json: { success: true } });
-
-			} else if (operation === 'fetch') {
-				// ----------------------------------
-				//         fetch
-				// ----------------------------------
-
-				await git.fetch();
-				returnItems.push({ json: { success: true } });
-
-			} else if (operation === 'log') {
-				// ----------------------------------
-				//         log
-				// ----------------------------------
-
-				const logOptions: LogOptions = {};
-
-				const returnAll = this.getNodeParameter('returnAll', itemIndex, false) as boolean;
-				if (returnAll === false) {
-					logOptions.maxCount = this.getNodeParameter('limit', itemIndex, 100) as number;
-				}
-				if (options.file) {
-					logOptions.file = options.file as string;
+				if (this.continueOnFail()) {
+					returnItems.push({ json: { error: error.toString() } });
+					continue;
 				}
 
-				const log = await git.log(logOptions);
-
-				// @ts-ignore
-				returnItems.push(...this.helpers.returnJsonArray(log.all));
-
-			} else if (operation === 'pull') {
-				// ----------------------------------
-				//         pull
-				// ----------------------------------
-
-				await git.pull();
-				returnItems.push({ json: { success: true } });
-
-			} else if (operation === 'push') {
-				// ----------------------------------
-				//         push
-				// ----------------------------------
-
-				await git.push();
-				returnItems.push({ json: { success: true } });
-
-			} else if (operation === 'pushTags') {
-				// ----------------------------------
-				//         pushTags
-				// ----------------------------------
-
-				await git.pushTags();
-				returnItems.push({ json: { success: true } });
-
-			} else if (operation === 'listConfig') {
-				// ----------------------------------
-				//         listConfig
-				// ----------------------------------
-
-				const config = await git.listConfig();
-
-				const data = [];
-				for (const fileName of Object.keys(config.values)) {
-					data.push({
-						_file: fileName,
-						...config.values[fileName],
-					});
-				}
-
-				// @ts-ignore
-				returnItems.push(...this.helpers.returnJsonArray(data));
-
-			} else if (operation === 'status') {
-				// ----------------------------------
-				//         status
-				// ----------------------------------
-
-				const status = await git.status();
-
-				// @ts-ignore
-				returnItems.push(...this.helpers.returnJsonArray([status]));
-
-			} else if (operation === 'tag') {
-				// ----------------------------------
-				//         tag
-				// ----------------------------------
-
-				const name = this.getNodeParameter('name', itemIndex, '') as string;
-
-				await git.addTag(name);
-				returnItems.push({ json: { success: true } });
-
-			} else {
-				throw new Error(`The operation "${operation}" is not known!`);
+				throw error;
 			}
 		}
 

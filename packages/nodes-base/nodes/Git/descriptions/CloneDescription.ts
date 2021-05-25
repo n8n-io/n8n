@@ -19,5 +19,4 @@ export const cloneFields = [
 		description: 'The path of the remote repository to clone.',
 		required: true,
 	},
-
 ] as INodeProperties[];

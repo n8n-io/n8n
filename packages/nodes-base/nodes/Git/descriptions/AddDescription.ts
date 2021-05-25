@@ -19,5 +19,4 @@ export const addFields = [
 		description: 'Comma separated list of paths of files or folders to add.',
 		required: true,
 	},
-
 ] as INodeProperties[];
