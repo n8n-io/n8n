@@ -507,7 +507,9 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.$store.commit('setStateDirty', false);
+					if (this.isReadOnly) {
+						return;
+					}
 
 					this.callDebounced('saveCurrentWorkflow', 1000);
 				} else if (e.key === 'Enter') {
