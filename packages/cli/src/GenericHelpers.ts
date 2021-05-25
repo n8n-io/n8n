@@ -12,22 +12,6 @@ let versionCache: IPackageVersions | undefined;
 
 
 /**
- * Displays a message to the user
- *
- * @export
- * @param {string} message The message to display
- * @param {string} [level='log']
- */
-export function logOutput(message: string, level = 'log'): void {
-	if (level === 'log') {
-		console.log(message);
-	} else if (level === 'error') {
-		console.error(message);
-	}
-}
-
-
-/**
  * Returns the base URL n8n is reachable from
  *
  * @export
