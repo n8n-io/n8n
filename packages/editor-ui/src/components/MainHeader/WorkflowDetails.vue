@@ -218,7 +218,7 @@ export default mixins(workflowHelpers).extend({
 
 <style scoped lang="scss">
 $--text-line-height: 24px;
-$--header-spacing: 30px;
+$--header-spacing: 20px;
 
 .container {
 	width: 100%;
@@ -242,7 +242,7 @@ $--header-spacing: 30px;
 	line-height: $--text-line-height;
 	display: flex;
 	align-items: center;
-	margin-right: $--header-spacing;
+	margin-right: 30px;
 
 	> span {
 		margin-right: 5px;
