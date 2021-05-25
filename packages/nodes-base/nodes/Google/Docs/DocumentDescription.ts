@@ -73,6 +73,7 @@ export const documentFields = [
 			},
 		},
 		default: '',
+		description: 'The ID of the Google Document. <br />Found as part of the sheet URL https://docs.google.com/document/d/${ID}/',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -94,6 +95,7 @@ export const documentFields = [
 			},
 		},
 		default: '',
+		description: 'The ID of the Google Document. <br />Found as part of the sheet URL https://docs.google.com/document/d/${ID}/',
 	},
 	{
 		displayName: 'Update Fields',
@@ -399,7 +401,7 @@ export const documentFields = [
 								displayName: 'Object ID',
 								name: 'objectId',
 								type: 'string',
-								description: 'The ID of the positioned object to delete.',
+								description: 'The ID of the positioned object to delete (An object that is tied to a paragraph and positioned relative to its beginning), See the Google <a href="https://developers.google.com/docs/api/reference/rest/v1/PositionedObject">documentation</a>.',
 								default: '',
 							},
 						],
@@ -433,7 +435,7 @@ export const documentFields = [
 								displayName: 'Index',
 								name: 'index',
 								type: 'number',
-								description: 'The zero-based index, relative to the beginning of the specified segment.',
+								description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer a table).',
 								default: 0,
 							},
 						],
@@ -467,7 +469,7 @@ export const documentFields = [
 								displayName: 'Index',
 								name: 'index',
 								type: 'number',
-								description: 'The zero-based index, relative to the beginning of the specified segment.',
+								description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer a table).',
 								default: 0,
 							},
 						],
@@ -566,7 +568,7 @@ export const documentFields = [
 								displayName: 'Index',
 								name: 'index',
 								type: 'number',
-								description: 'The zero-based index, relative to the beginning of the specified segment.',
+								description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer a table).',
 								displayOptions: {
 									show: {
 										locationChoice: [
@@ -667,7 +669,7 @@ export const documentFields = [
 								displayName: 'Index',
 								name: 'index',
 								type: 'number',
-								description: 'The zero-based index, relative to the beginning of the specified segment.',
+								description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer a table).',
 								default: 0,
 							},
 						],
@@ -708,7 +710,7 @@ export const documentFields = [
 								displayName: 'Index',
 								name: 'index',
 								type: 'number',
-								description: 'The zero-based index, relative to the beginning of the specified segment.',
+								description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer a table).',
 								default: 0,
 							},
 						],

@@ -8,91 +8,91 @@ export interface IUpdateFields {
 		}
 	};
 	requestsUi: {
-		createFooterValues: Array<{
+		createFooterValues?: Array<{
 			type: 'DEFAULT' | 'HEADER_FOOTER_TYPE_UNSPECIFIED',
 			segmentId: string,
 			index: number,
 		}>;
-		createHeaderValues: Array<{
+		createHeaderValues?: Array<{
 			type: 'DEFAULT' | 'HEADER_FOOTER_TYPE_UNSPECIFIED',
 			segmentId: string,
 			index: number,
 		}>;
-		createNamedRangeValues: Array<{
+		createNamedRangeValues?: Array<{
 			name: string,
 			segmentId: string,
 			startIndex: number,
 			endIndex: number,
 		}>;
-		createParagraphBulletsValues: Array<{
+		createParagraphBulletsValues?: Array<{
 			bulletPreset: string,
 			segmentId: string,
 			startIndex: number,
 			endIndex: number,
 		}>;
-		deleteFooterValues: Array<{
+		deleteFooterValues?: Array<{
 			footerId: string,
 		}>;
-		deleteHeaderValues: Array<{
+		deleteHeaderValues?: Array<{
 			headerId: string,
 		}>;
-		deleteNamedRangeValues: Array<{
+		deleteNamedRangeValues?: Array<{
 			namedRangeReference: 'name' | 'namedRangeId',
 			value: string,
 		}>;
-		deleteParagraphBulletsValues: Array<{
+		deleteParagraphBulletsValues?: Array<{
 			startIndex: number,
 			segmentId: string,
 			endIndex: number,
 		}>;
-		deletePositionedObjectValues: Array<{
+		deletePositionedObjectValues?: Array<{
 			objectId: string,
 		}>;
-		deleteTableColumnValues: Array<{
+		deleteTableColumnValues?: Array<{
 			rowIndex: number,
 			columnIndex: number,
 			segmentId: string,
 			index: number,
 		}>;
-		deleteTableRowValues: Array<{
+		deleteTableRowValues?: Array<{
 			rowIndex: number,
 			columnIndex: number,
 			segmentId: string,
 			index: number,
 		}>;
-		insertPageBreakValues: Array<{
+		insertPageBreakValues?: Array<{
 			locationChoice: 'endOfSegmentLocation' | 'location',
 			segmentId: string,
 			index: number,
 		}>;
-		insertTableValues: Array<{
+		insertTableValues?: Array<{
 			rows: number,
 			columns: number,
 			locationChoice: 'endOfSegmentLocation' | 'location',
 			segmentId: string,
 			index: number,
 		}>;
-		insertTableColumnValues: Array<{
+		insertTableColumnValues?: Array<{
 			insertRight: boolean,
 			rowIndex: number,
 			columnIndex: number,
 			segmentId: string,
 			index: number,
 		}>;
-		insertTableRowValues: Array<{
+		insertTableRowValues?: Array<{
 			insertBelow: boolean,
 			rowIndex: number,
 			columnIndex: number,
 			segmentId: string,
 			index: number,
 		}>;
-		insertTextValues: Array<{
+		insertTextValues?: Array<{
 			text: string,
 			locationChoice: 'endOfSegmentLocation' | 'location',
 			segmentId: string,
 			index: number,
 		}>;
-		replaceAllTextValues: Array<{
+		replaceAllTextValues?: Array<{
 			replaceText: string,
 			text: string,
 			matchCase: boolean,
