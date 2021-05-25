@@ -376,7 +376,7 @@ export async function validateWorkflow(newWorkflow: WorkflowEntity) {
 export function throwDuplicateEntryError(error: Error) {
 	const errorMessage = error.message.toLowerCase();
 	if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
-		throw new ResponseHelper.ResponseError('Workflow name already exists', undefined, 400);
+		throw new ResponseHelper.ResponseError('There is already a workflow with this name', undefined, 400);
 	}
 
 	throw new ResponseHelper.ResponseError(errorMessage, undefined, 400);
