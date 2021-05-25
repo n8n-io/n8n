@@ -115,6 +115,7 @@ export default mixins(workflowHelpers).extend({
 			appliedTagIds: [],
 			tagsEditBus: new Vue(),
 			MAX_WORKFLOW_NAME_LENGTH,
+			tagsSaving: false,
 		};
 	},
 	computed: {
@@ -154,8 +155,13 @@ export default mixins(workflowHelpers).extend({
 
 				return;
 			}
+			if (this.$data.tagsSaving) {
+				return;
+			}
+			this.$data.tagsSaving = true;
 
 			const saved = await this.saveCurrentWorkflow({ tags });
+			this.$data.tagsSaving = false;
 			if (saved) {
 				this.$data.isTagsEditEnabled = false;
 			}
