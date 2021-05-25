@@ -134,11 +134,6 @@ export default mixins(showMessage).extend({
 				this.$emit("update", [...this.$props.currentTagIds, newTag.id]);
 				this.$nextTick(() => this.focusOnTag(newTag.id));
 
-				this.$showMessage({
-					title: "New tag was created",
-					message: `"${name}" was added to your tag collection`,
-					type: "success",
-				});
 				this.$data.filter = "";
 			} catch (error) {
 				this.$showError(

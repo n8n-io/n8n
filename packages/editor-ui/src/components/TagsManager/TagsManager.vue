@@ -90,12 +90,6 @@ export default mixins(showMessage).extend({
 				const newTag = await this.$store.dispatch("tags/create", name);
 				this.$data.tagIds = [newTag.id].concat(this.$data.tagIds);
 				cb(newTag);
-
-				this.$showMessage({
-					title: "New tag was created",
-					message: `"${name}" was added to your tag collection`,
-					type: "success",
-				});
 			} catch (error) {
 				this.$showError(
 					error,

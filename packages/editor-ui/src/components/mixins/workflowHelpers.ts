@@ -469,11 +469,6 @@ export const workflowHelpers = mixins(
 
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 					this.$store.commit('setStateDirty', false);
-					this.$showMessage({
-						title: 'Workflow saved',
-						message: `The workflow "${workflowData.name}" got saved!`,
-						type: 'success',
-					});
 					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 					return true;
