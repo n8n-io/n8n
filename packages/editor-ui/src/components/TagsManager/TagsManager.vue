@@ -84,7 +84,7 @@ export default mixins(showMessage).extend({
 		async onCreate(name: string, cb: (tag: ITag | null, error?: Error) => void) {
 			try {
 				if (!name) {
-					throw new Error("Tag name was not set");
+					throw new Error("Tag name cannot be empty");
 				}
 
 				const newTag = await this.$store.dispatch("tags/create", name);
@@ -112,7 +112,7 @@ export default mixins(showMessage).extend({
 
 			try {
 				if (!name) {
-					throw new Error("Tag name was not set");
+					throw new Error("Tag name cannot be empty");
 				}
 
 				if (name === oldName) {
