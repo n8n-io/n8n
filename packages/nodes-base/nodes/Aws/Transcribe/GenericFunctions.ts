@@ -11,10 +11,6 @@ import {
 } from 'request';
 
 import {
-	parseString,
-} from 'xml2js';
-
-import {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
@@ -22,8 +18,15 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialDataDecryptedObject, NodeApiError, NodeOperationError,
+	ICredentialDataDecryptedObject,
+	IDataObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
+
+import {
+	get,
+} from 'lodash';
 
 function getEndpointForService(service: string, credentials: ICredentialDataDecryptedObject): string {
 	let endpoint;
@@ -74,18 +77,31 @@ export async function awsApiRequestREST(this: IHookFunctions | IExecuteFunctions
 	}
 }
 
-export async function awsApiRequestSOAP(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
-	const response = await awsApiRequest.call(this, service, method, path, body, headers);
-	try {
-		return await new Promise((resolve, reject) => {
-			parseString(response, { explicitArray: false }, (err, data) => {
-				if (err) {
-					return reject(err);
-				}
-				resolve(data);
-			});
-		});
-	} catch (error) {
-		return response;
-	}
+export async function awsApiRequestRESTAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, service: string, method: string, path: string, body?: string, query: IDataObject = {}, headers: IDataObject = {}, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	const propertyNameArray = propertyName.split('.');
+
+	do {
+		responseData = await awsApiRequestREST.call(this, service, method, path, body, query);
+
+		if (get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`)) {
+			query['NextToken'] = get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`);
+		}
+		if (get(responseData, propertyName)) {
+			if (Array.isArray(get(responseData, propertyName))) {
+				returnData.push.apply(returnData, get(responseData, propertyName));
+			} else {
+				returnData.push(get(responseData, propertyName));
+			}
+		}
+	} while (
+		get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`) !== undefined
+	);
+
+	return returnData;
 }
+
