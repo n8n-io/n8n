@@ -32,7 +32,7 @@
 						<template slot-scope="scope">
 							<div :key="scope.row.id">
 								<span class="name">{{scope.row.name}}</span>
-								<TagsContainer class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="2" @click="onTagClick"/>
+								<TagsContainer class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="3" @click="onTagClick"/>
 							</div>
 						</template>
 					</el-table-column>
