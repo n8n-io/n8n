@@ -91,10 +91,11 @@ export default mixins(showMessage).extend({
 				this.$data.tagIds = [newTag.id].concat(this.$data.tagIds);
 				cb(newTag);
 			} catch (error) {
+				const escapedName = escape(name);
 				this.$showError(
 					error,
 					"New tag was not created",
-					`A problem occurred when trying to create the "${name}" tag`,
+					`A problem occurred when trying to create the "${escapedName}" tag`,
 				);
 				cb(null, error);
 			}
@@ -116,17 +117,21 @@ export default mixins(showMessage).extend({
 				
 				const updatedTag = await this.$store.dispatch("tags/rename", { id, name });
 				cb(!!updatedTag);
+			
+				const escapedName = escape(name);
+				const escapedOldName = escape(oldName);
 
 				this.$showMessage({
 					title: "Tag was updated",
-					message: `The "${oldName}" tag was successfully updated to "${name}"`,
+					message: `The "${escapedOldName}" tag was successfully updated to "${escapedName}"`,
 					type: "success",
 				});
 			} catch (error) {
+				const escapedName = escape(oldName);
 				this.$showError(
 					error,
 					"Tag was not updated",
-					`A problem occurred when trying to update the "${oldName}" tag`,
+					`A problem occurred when trying to update the "${escapedName}" tag`,
 				);
 				cb(false, error);
 			}
@@ -146,16 +151,18 @@ export default mixins(showMessage).extend({
 
 				cb(deleted);
 
+				const escapedName = escape(name);
 				this.$showMessage({
 					title: "Tag was deleted",
-					message: `The "${name}" tag was successfully deleted from your tag collection`,
+					message: `The "${escapedName}" tag was successfully deleted from your tag collection`,
 					type: "success",
 				});
 			} catch (error) {
+				const escapedName = escape(name);
 				this.$showError(
 					error,
 					"Tag was not deleted",
-					`A problem occurred when trying to delete the "${name}" tag`,
+					`A problem occurred when trying to delete the "${escapedName}" tag`,
 				);
 				cb(false, error);
 			}
