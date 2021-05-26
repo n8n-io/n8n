@@ -22,7 +22,7 @@ export class AwsTranscribe implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to Amazon Transcribe',
+		description: 'Sends data to AWS Transcribe',
 		defaults: {
 			name: 'AWS Transcribe',
 			color: '#5aa08d',
@@ -47,7 +47,7 @@ export class AwsTranscribe implements INodeType {
 					},
 				],
 				default: 'transcriptionJob',
-				description: 'The resource to perform.',
+				description: 'Resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -76,7 +76,7 @@ export class AwsTranscribe implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
+				description: 'Operation to perform.',
 			},
 			{
 				displayName: 'Job Name',
@@ -129,10 +129,10 @@ export class AwsTranscribe implements INodeType {
 					},
 				},
 				default: false,
-				description: 'When set to true a simplify version of the response will be used else the raw data.',
+				description: 'Return a simplified version of the response instead of the raw data.',
 			},
 			{
-				displayName: 'Language Code',
+				displayName: 'Language',
 				name: 'languageCode',
 				type: 'options',
 				options: [
@@ -179,10 +179,10 @@ export class AwsTranscribe implements INodeType {
 					},
 				},
 				default: 'en-US',
-				description: 'The language code for the language used in the input media file.',
+				description: 'Language used in the input media file.',
 			},
 			// ----------------------------------
-			//         Transcription Job Settigns
+			//     Transcription Job Settings
 			// ----------------------------------
 			{
 				displayName: 'Options',
@@ -203,42 +203,42 @@ export class AwsTranscribe implements INodeType {
 						name: 'channelIdentification',
 						type: 'boolean',
 						default: false,
-						description: 'Instructs Amazon Transcribe to process each audio channel separately.',
+						description: 'Process each audio channel separately.',
 					},
 					{
 						displayName: 'Show Alternatives',
 						name: 'showAlternatives',
 						type: 'boolean',
 						default: false,
-						description: 'Instructs Amazon Transcribe to process each audio channel separately.',
+						description: 'Process each audio channel separately.',
 					},
 					{
 						displayName: 'Max Alternatives',
 						name: 'maxAlternatives',
 						type: 'number',
 						default: 2,
-						description: 'The number of alternative transcriptions that the service should return[2-10].',
+						description: 'Number of alternative transcriptions to return [2-10].',
 					},
 					{
 						displayName: 'Max Speaker Labels',
 						name: 'maxSpeakerLabels',
 						type: 'number',
 						default: 2,
-						description: 'The maximum number of speakers to identify in the input audio[2-10].',
+						description: 'Maximum number of speakers to identify in the input media file [2-10].',
 					},
 					{
 						displayName: 'Vocabulary Name',
 						name: 'vocabularyName',
 						type: 'string',
 						default: '',
-						description: 'The name of a vocabulary to use when processing the transcription job.',
+						description: 'Name of vocabulary to use when processing the transcription job.',
 					},
 					{
 						displayName: 'Vocabulary Filter Name',
 						name: 'vocabularyFilterName',
 						type: 'string',
 						default: '',
-						description: 'The name of the vocabulary filter to use when transcribing the audio.',
+						description: 'Name of vocabulary filter to use when processing the transcription job.',
 					},
 					{
 						displayName: 'Vocabulary Filter Method',
@@ -279,7 +279,7 @@ export class AwsTranscribe implements INodeType {
 						],
 					},
 				},
-				description: 'By default the response only contain the s3 bucket containing the transcript.<br/>If this option gets activated it will resolve the data automatically.',
+				description: 'By default, the response only contains metadata about the transcript.<br>Enable this option to retrieve the transcript instead.',
 			},
 			{
 				displayName: 'Simple',
@@ -299,7 +299,7 @@ export class AwsTranscribe implements INodeType {
 					},
 				},
 				default: true,
-				description: 'When set to true a simplify version of the response will be used else the raw data.',
+				description: 'Return a simplified version of the response instead of the raw data.',
 			},
 			{
 				displayName: 'Return All',
@@ -323,6 +323,7 @@ export class AwsTranscribe implements INodeType {
 				name: 'limit',
 				type: 'number',
 				default: 20,
+				description: 'How many results to return.',
 				displayOptions: {
 					show: {
 						resource: [
@@ -358,7 +359,7 @@ export class AwsTranscribe implements INodeType {
 						displayName: 'Job Name Contains',
 						name: 'jobNameContains',
 						type: 'string',
-						description: 'When specified, the jobs returned in the list are limited to jobs whose name contains the specified string.',
+						description: 'Return only transcription jobs whose name contains the specified string.',
 						default: '',
 					},
 					{
@@ -383,7 +384,7 @@ export class AwsTranscribe implements INodeType {
 								value: 'QUEUED',
 							},
 						],
-						description: 'When specified, returns only transcription jobs with the specified status.',
+						description: 'Return only transcription jobs with the specified status.',
 						default: '',
 					},
 				],
