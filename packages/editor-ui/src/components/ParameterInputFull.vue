@@ -1,14 +1,14 @@
 <template>
 	<el-row class="parameter-wrapper">
 		<el-col :span="isMultiLineParameter ? 24 : 10" class="parameter-name" :class="{'multi-line': isMultiLineParameter}">
-			<span class="title" :title="parameter.displayName">{{getTranslation(parameter.displayName)}}</span>:
+			<span class="title" :title="parameter.displayName">{{ translateDisplayName(parameter.displayName) }}</span>:
 			<el-tooltip class="parameter-info" placement="top" v-if="parameter.description" effect="light">
 				<div slot="content" v-html="parameter.description"></div>
 				<font-awesome-icon icon="question-circle" />
 			</el-tooltip>
 		</el-col>
 		<el-col :span="isMultiLineParameter ? 24 : 14" class="parameter-value">
-			<parameter-input :parameter="parameter" :value="value" :displayOptions="displayOptions" :path="path" @valueChanged="valueChanged" />
+			<parameter-input :parameter="parameter" :value="value" :displayOptions="displayOptions" :path="path" :displayName='parameter.displayName' @valueChanged="valueChanged" />
 		</el-col>
 	</el-row>
 </template>
@@ -52,7 +52,6 @@ export default Vue
 		],
 		methods: {
 			getArgument (argumentName: string): string | number | boolean | undefined {
-				console.log(this.$t(`${this.$store.getters.activeNode.type}.${this.parameter.displayName}`));
 				if (this.parameter.typeOptions === undefined) {
 					return undefined;
 				}
@@ -66,8 +65,10 @@ export default Vue
 			valueChanged (parameterData: IUpdateInformation) {
 				this.$emit('valueChanged', parameterData);
 			},
-			getTranslation(str: string) {
-				return this.$te(`${this.$store.getters.activeNode.type}.${str}`) ? this.$t(`${this.$store.getters.activeNode.type}.${str}`) : str;
+			translateDisplayName(displayName: string) {
+				return this.$te(`${this.$store.getters.activeNode.type}.${displayName}`)
+					? this.$t(`${this.$store.getters.activeNode.type}.${displayName}`)
+					: displayName;
 			},
 		},
 	});

@@ -56,7 +56,7 @@
 				:key="option.value"
 				:label="option.name"
 			>
-				<div class="option-headline">{{ option.name }}</div>
+				<div class="option-headline">{{ translateOptionName(option.name) }}</div>
 				<div v-if="option.description" class="option-description" v-html="option.description"></div>
 			</el-option>
 		</el-select>
@@ -163,6 +163,7 @@ export default mixins(
 			'path', // string
 			'value',
 			'isCredential', // boolean
+			'displayName', // string
 		],
 		data () {
 			return {
@@ -592,6 +593,11 @@ export default mixins(
 				} else if (command === 'removeExpression') {
 					this.valueChanged(this.expressionValueComputed || null);
 				}
+			},
+			translateOptionName(optionName: string) {
+				return this.$te(`${this.$store.getters.activeNode.type}.options.${this.displayName}.${optionName}`)
+					? this.$t(`${this.$store.getters.activeNode.type}.options.${this.displayName}.${optionName}`)
+					: optionName;
 			},
 		},
 		mounted () {
