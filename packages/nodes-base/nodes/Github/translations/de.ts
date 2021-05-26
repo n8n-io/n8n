@@ -1,6 +1,9 @@
 module.exports = {
 	de: {
 		github: {
+			/**
+			 * `displayName`
+			 */
 			Authentication: 'Authentifizierung',
 			Resource: 'Ressource',
 			Operation: 'Aktion',
@@ -9,8 +12,25 @@ module.exports = {
 			Title: 'Titel',
 			Body: 'Körper',
 			Label: 'Etikett',
-			Assignee: 'Beauftragte',
+			Assignee: 'Beauftragter',
 			Labels: 'Etiketten',
+			Assignees: 'Beauftragten',
+
+			/**
+			 * `collection`
+			 */
+			collection: {
+				Labels: {
+					multipleValueButtonText: 'Etikett hinzufügen',
+				},
+				Assignees: {
+					multipleValueButtonText: 'Beautragten hinzufügen',
+				},
+			},
+
+			/**
+			 * `options`
+			 */
 			options: {
 				Resource: {
 					Issue: 'Thema',
