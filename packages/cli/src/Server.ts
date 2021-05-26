@@ -766,10 +766,13 @@ class App {
 			return nodeNames.map(name => {
 				try {
 					const node = nodeTypes.getByName(name);
-					// @ts-ignore
-					node?.description.translation = require('/Users/ben-mbp/Development/n8n/n8n/packages/cli/node_modules/n8n-nodes-base/dist/nodes/Github/translations/en')
-					console.log(node);
-					return node
+
+					if (!node) throw new Error();
+					if (node.description.translationFilePath) {
+						node.description.translation = require(node.description.translationFilePath);
+					}
+
+					return node;
 				} catch (e) {
 					return undefined;
 				}

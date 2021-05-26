@@ -177,6 +177,10 @@ class LoadNodesAndCredentialsClass {
 			tempNode.description.icon = 'file:' + path.join(path.dirname(filePath), tempNode.description.icon.substr(5));
 		}
 
+		if (tempNode.description.language) {
+			tempNode.description.translationFilePath = path.join(path.dirname(filePath), 'translations', `${tempNode.description.language}.js`);
+		}
+
 		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
 			return;
 		}
