@@ -1851,21 +1851,19 @@ export default mixins(
 					for (type of Object.keys(currentConnections[sourceNode])) {
 						connection[type] = [];
 						for (sourceIndex = 0; sourceIndex < currentConnections[sourceNode][type].length; sourceIndex++) {
-							if (!currentConnections[sourceNode][type][sourceIndex]) {
-								// There is so something wrong with the data so ignore
-								continue;
-							}
 							const nodeSourceConnections = [];
-							for (connectionIndex = 0; connectionIndex < currentConnections[sourceNode][type][sourceIndex].length; connectionIndex++) {
-								const nodeConnection: NodeInputConnections = [];
-								connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
-								if (!createNodeNames.includes(connectionData.node)) {
-									// Node does not get created so skip input connection
-									continue;
-								}
+							if (currentConnections[sourceNode][type][sourceIndex]) {
+								for (connectionIndex = 0; connectionIndex < currentConnections[sourceNode][type][sourceIndex].length; connectionIndex++) {
+									const nodeConnection: NodeInputConnections = [];
+									connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
+									if (!createNodeNames.includes(connectionData.node)) {
+										// Node does not get created so skip input connection
+										continue;
+									}
 
-								nodeSourceConnections.push(connectionData);
-								// Add connection
+									nodeSourceConnections.push(connectionData);
+									// Add connection
+								}
 							}
 							connection[type].push(nodeSourceConnections);
 						}
