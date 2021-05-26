@@ -54,7 +54,7 @@
 				v-for="option in parameterOptions"
 				:value="option.value"
 				:key="option.value"
-				:label="option.name"
+				:label="$translateOptionName(displayName, option.name)"
 			>
 				<div class="option-headline">{{ $translateOptionName(displayName, option.name) }}</div>
 				<div v-if="option.description" class="option-description" v-html="$translateDescription(option.description)"></div>
@@ -295,7 +295,7 @@ export default mixins(
 						returnValue = returnValue.toString().replace(/\n/, '|');
 					}
 				}
-
+				// console.log('rrr', returnValue);
 				return returnValue;
 			},
 			displayOptionsComputed (): boolean {
