@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const publicStatusPageOperations = [
 	{
@@ -8,7 +10,7 @@ export const publicStatusPageOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'publicStatusPage',
 				],
 			},
 		},
@@ -16,18 +18,28 @@ export const publicStatusPageOperations = [
 			{
 				name: 'Create',
 				value: 'create',
+				description: 'Create a public status page',
+
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				description: 'Delete a public status page',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a public status page',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				description: 'Get all a public status pages',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				description: 'Update a public status page',
 			},
 		],
 		default: 'getAll',
@@ -48,7 +60,7 @@ export const publicStatusPageFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'publicStatusPage',
 				],
 				operation: [
 					'create',
@@ -66,7 +78,7 @@ export const publicStatusPageFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'publicStatusPage',
 				],
 				operation: [
 					'create',
@@ -84,7 +96,7 @@ export const publicStatusPageFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'publicStatusPage',
 				],
 				operation: [
 					'create',
@@ -145,10 +157,11 @@ export const publicStatusPageFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'publicStatusPage',
 				],
 				operation: [
 					'delete',
+					'get',
 				],
 			},
 		},
@@ -164,7 +177,7 @@ export const publicStatusPageFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'publicStatusPage',
 				],
 				operation: [
 					'getAll',
@@ -181,7 +194,7 @@ export const publicStatusPageFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'publicStatusPage',
 				],
 				operation: [
 					'getAll',
@@ -207,7 +220,7 @@ export const publicStatusPageFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'publicStatusPage',
 				],
 				operation: [
 					'getAll',
@@ -243,7 +256,7 @@ export const publicStatusPageFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'publicStatusPage',
 				],
 				operation: [
 					'update',
@@ -261,7 +274,7 @@ export const publicStatusPageFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'psp',
+					'publicStatusPage',
 				],
 				operation: [
 					'update',

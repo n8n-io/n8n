@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import { 
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const alertContactOperations = [
 	{
@@ -16,18 +18,27 @@ export const alertContactOperations = [
 			{
 				name: 'Create',
 				value: 'create',
+				description: 'Create an alert contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				description: 'Delete an alert contact',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get an alert contact',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				description: 'Get all alert contacts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				description: 'Update an alert contact',
 			},
 		],
 		default: 'getAll',
@@ -152,6 +163,7 @@ export const alertContactFields = [
 				],
 				operation: [
 					'delete',
+					'get',
 				],
 			},
 		},

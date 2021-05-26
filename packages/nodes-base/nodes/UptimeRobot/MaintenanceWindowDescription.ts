@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import { 
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const maintenanceWindowOperations = [
 	{
@@ -8,7 +10,7 @@ export const maintenanceWindowOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindow',
+					'maintenanceWindow',
 				],
 			},
 		},
@@ -16,18 +18,28 @@ export const maintenanceWindowOperations = [
 			{
 				name: 'Create',
 				value: 'create',
+				description: 'Create a maintenance window',
+
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				description: 'Delete a maintenance window',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a maintenance window',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				description: 'Get all a maintenance windows',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				description: 'Update a maintenance window',
 			},
 		],
 		default: 'getAll',
@@ -40,15 +52,15 @@ export const maintenanceWindowFields = [
 	/*                                maintenanceWindow:create                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Duration',
+		displayName: 'Duration (minutes)',
 		name: 'duration',
 		type: 'number',
 		required: true,
-		default: '',
+		default: 1,
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindow',
+					'maintenanceWindow',
 				],
 				operation: [
 					'create',
@@ -66,7 +78,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindow',
+					'maintenanceWindow',
 				],
 				operation: [
 					'create',
@@ -74,24 +86,6 @@ export const maintenanceWindowFields = [
 			},
 		},
 		description: 'The friendly name of the maintenance window.',
-	},
-	{
-		displayName: 'Start Time',
-		name: 'start_time',
-		type: 'dateTime',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'mwindow',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		description: 'The maintenance window start datetime.',
 	},
 	{
 		displayName: 'Type',
@@ -120,7 +114,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindow',
+					'maintenanceWindow',
 				],
 				operation: [
 					'create',
@@ -130,25 +124,97 @@ export const maintenanceWindowFields = [
 		description: 'The type of the maintenance window.',
 	},
 	{
-		displayName: 'Value',
-		name: 'value',
-		type: 'string',
+		displayName: 'Week Day',
+		name: 'weekDay',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'maintenanceWindow',
+				],
+				operation: [
+					'create',
+				],
+				type: [
+					3,
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Monday',
+				value: 1,
+			},
+			{
+				name: 'Tuesday',
+				value: 2,
+			},
+			{
+				name: 'Wednesday',
+				value: 3,
+			},
+			{
+				name: 'Thursday',
+				value: 4,
+			},
+			{
+				name: 'Friday',
+				value: 5,
+			},
+			{
+				name: 'Saturday',
+				value: 6,
+			},
+			{
+				name: 'Sunday',
+				value: 7,
+			},
+		],
+		default: '',
+	},
+	{
+		displayName: 'Month Day',
+		name: 'monthDay',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'maintenanceWindow',
+				],
+				operation: [
+					'create',
+				],
+				type: [
+					4,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 30,
+		},
+		default: 1,
+	},
+	{
+		displayName: 'Start Time',
+		name: 'start_time',
+		type: 'dateTime',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindow',
+					'maintenanceWindow',
 				],
 				operation: [
 					'create',
 				],
 			},
 		},
-		description: 'The correspondent value for the maintenance window type.',
+		description: 'The maintenance window start datetime.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                maintenanceWindow:delete                 */
+	/*                                maintenanceWindow:delete                    */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
@@ -159,17 +225,18 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindow',
+					'maintenanceWindow',
 				],
 				operation: [
 					'delete',
+					'get',
 				],
 			},
 		},
 		description: 'The ID of the maintenance window.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                maintenanceWindow:getAll                   */
+	/*                                maintenanceWindow:getAll                    */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -178,7 +245,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindow',
+					'maintenanceWindow',
 				],
 				operation: [
 					'getAll',
@@ -195,7 +262,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindow',
+					'maintenanceWindow',
 				],
 				operation: [
 					'getAll',
@@ -221,7 +288,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindow',
+					'maintenanceWindow',
 				],
 				operation: [
 					'getAll',
@@ -257,7 +324,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindow',
+					'maintenanceWindow',
 				],
 				operation: [
 					'update',
@@ -267,7 +334,7 @@ export const maintenanceWindowFields = [
 		description: 'The ID of the maintenance window.',
 	},
 	{
-		displayName: 'Duration',
+		displayName: 'Duration (minutes)',
 		name: 'duration',
 		type: 'number',
 		required: true,
@@ -275,7 +342,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindow',
+					'maintenanceWindow',
 				],
 				operation: [
 					'update',
@@ -293,7 +360,7 @@ export const maintenanceWindowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'mwindow',
+					'maintenanceWindow',
 				],
 				operation: [
 					'update',
@@ -341,11 +408,64 @@ export const maintenanceWindowFields = [
 				description: 'The type of the maintenance window.',
 			},
 			{
-				displayName: 'Value',
-				name: 'value',
-				type: 'string',
+				displayName: 'Week Day',
+				name: 'weekDay',
+				type: 'options',
+				displayOptions: {
+					show: {
+						type: [
+							3,
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Monday',
+						value: 1,
+					},
+					{
+						name: 'Tuesday',
+						value: 2,
+					},
+					{
+						name: 'Wednesday',
+						value: 3,
+					},
+					{
+						name: 'Thursday',
+						value: 4,
+					},
+					{
+						name: 'Friday',
+						value: 5,
+					},
+					{
+						name: 'Saturday',
+						value: 6,
+					},
+					{
+						name: 'Sunday',
+						value: 7,
+					},
+				],
 				default: '',
-				description: 'The correspondent value for the maintenance window type.',
+			},
+			{
+				displayName: 'Month Day',
+				name: 'monthDay',
+				type: 'number',
+				displayOptions: {
+					show: {
+						type: [
+							4,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 30,
+				},
+				default: 1,
 			},
 		],
 	},
