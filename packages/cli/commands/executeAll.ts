@@ -143,7 +143,7 @@ export class ExecuteAll extends Command {
 		this.updateProgress();
 	}
 
-	static async stopProcess() {
+	static async stopProcess(skipExit = false) {
 		this.cancelled = true;
 		const activeExecutionsInstance = ActiveExecutions.getInstance();
 		const stopPromises = activeExecutionsInstance.getActiveExecutions().map(async execution => {
@@ -171,7 +171,9 @@ export class ExecuteAll extends Command {
 			});
 			executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 		}
-		process.exit(0);
+		if (!skipExit) {
+			process.exit(0);
+		}
 	}
 
 	shouldBeConsideredAsWarning(errorMessage: string) {
@@ -546,7 +548,7 @@ export class ExecuteAll extends Command {
 		}
 		if(flags.output !== undefined){
 			fs.writeFileSync(flags.output,JSON.stringify(result, null, 2));
-			console.log('Execution finished.');
+			console.log('\nExecution finished.');
 			console.log('Summary:');
 			console.log(`\tSuccess: ${result.summary.succeededExecution}`);
 			console.log(`\tFailures: ${result.summary.failedExecutions}`);
@@ -559,9 +561,12 @@ export class ExecuteAll extends Command {
 		}else{
 			console.log(JSON.stringify(result, null, 2));
 		}
-		if(result.summary.succeededExecution !== result.workflowsNumber){
+		if(result.summary.failedExecutions > 0){
 			this.exit(1);
 		}
+		// Make sure all processes exit gracefully
+		await ExecuteAll.stopProcess(true);
+
 		this.exit(0);
 	}
 }
