@@ -14,16 +14,12 @@ import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 
 import { pushConnection } from '@/components/mixins/pushConnection';
-import { showMessage } from '@/components/mixins/showMessage';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import ExecutionDetails from '@/components/MainHeader/ExecutionDetails/ExecutionDetails.vue';
 
 export default mixins(
 	pushConnection,
-	showMessage,
-	workflowHelpers, // pushConnection has dependency on workflowHelpers mixin
 )
 	.extend({
 		name: 'MainHeader',
