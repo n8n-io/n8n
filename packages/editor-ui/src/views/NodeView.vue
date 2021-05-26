@@ -2035,11 +2035,11 @@ export default mixins(
 					// Only call API if node information is actually missing
 					this.startLoading();
 					const nodeInfo = await this.restApi().getNodesInformation(nodesToBeFetched);
-					console.log(nodeInfo);
-					// @ts-ignore
-					addNodeTranslations(nodeInfo[0].translation);
-					console.log(this.$t(`${nodeInfo[0].name}.Authentication`));
-					console.log(this.$t('about.sourceCode'));
+
+					if (nodeInfo[0].translation) {
+						addNodeTranslations(nodeInfo[0].translation);
+					}
+
 					this.$store.commit('updateNodeTypes', nodeInfo);
 					this.stopLoading();
 				}
