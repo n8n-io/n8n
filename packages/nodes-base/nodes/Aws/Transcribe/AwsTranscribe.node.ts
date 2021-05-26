@@ -456,7 +456,7 @@ export class AwsTranscribe implements INodeType {
 						});
 					}
 
-					const action = 'Transcribe.createTranscriptionJob';
+					const action = 'Transcribe.StartTranscriptionJob';
 					responseData = await awsApiRequestREST.call(this, 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
 					responseData = responseData.TranscriptionJob;
 				}
