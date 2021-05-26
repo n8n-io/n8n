@@ -259,7 +259,7 @@ export class AwsTranscribe implements INodeType {
 							},
 
 						],
-						default: '',
+						default: 'remove',
 						description: 'Defines how to handle filtered text.',
 					},
 				],
@@ -385,7 +385,7 @@ export class AwsTranscribe implements INodeType {
 							},
 						],
 						description: 'Return only transcription jobs with the specified status.',
-						default: '',
+						default: 'COMPLETED',
 					},
 				],
 			},
