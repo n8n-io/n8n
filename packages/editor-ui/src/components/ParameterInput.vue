@@ -581,11 +581,6 @@ export default mixins(
 					this.valueChanged(this.expressionValueComputed || null);
 				}
 			},
-			// translateOptionName(optionName: string) {
-			// 	return this.$te(`${this.$store.getters.activeNode.type}.options.${this.displayName}.${optionName}`)
-			// 		? this.$t(`${this.$store.getters.activeNode.type}.options.${this.displayName}.${optionName}`)
-			// 		: optionName;
-			// },
 		},
 		mounted () {
 			this.tempValue = this.displayValue as string;
