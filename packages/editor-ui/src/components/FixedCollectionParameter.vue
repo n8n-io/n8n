@@ -5,7 +5,7 @@
 		</div>
 
 		<div v-for="property in getProperties" :key="property.name" class="fixed-collection-parameter-property">
-			<div class="parameter-name" :title="property.displayName">{{property.displayName}}:</div>
+			<div class="parameter-name" :title="property.displayName">{{ $translateDisplayName(property.displayName )}}:</div>
 
 			<div v-if="multipleValues === true">
 				<div v-for="(value, index) in values[property.name]" :key="property.name + index" class="parameter-item">
@@ -61,10 +61,11 @@ import {
 import { get } from 'lodash';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { translate } from '@/components/mixins/translate';
 
 import mixins from 'vue-typed-mixins';
 
-export default mixins(genericHelpers)
+export default mixins(genericHelpers, translate)
 	.extend({
 		name: 'FixedCollectionParameter',
 		props: [

@@ -27,7 +27,7 @@
 							@click="deleteOption(parameter.name)"
 						/>
 					</div>
-					{{parameter.displayName}}:
+					{{ $translateDisplayName(parameter.displayName) }}:
 					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
 						<div slot="content" v-html="parameter.description"></div>
 						<font-awesome-icon icon="question-circle"/>
@@ -86,6 +86,7 @@ import { IUpdateInformation } from '@/Interface';
 
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { translate } from '@/components/mixins/translate';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
@@ -96,6 +97,7 @@ import mixins from 'vue-typed-mixins';
 export default mixins(
 	genericHelpers,
 	nodeHelpers,
+	translate,
 )
 	.extend({
 		name: 'ParameterInputList',

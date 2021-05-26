@@ -56,8 +56,8 @@
 				:key="option.value"
 				:label="option.name"
 			>
-				<div class="option-headline">{{ translateOptionName(option.name) }}</div>
-				<div v-if="option.description" class="option-description" v-html="option.description"></div>
+				<div class="option-headline">{{ $translateOptionName(displayName, option.name) }}</div>
+				<div v-if="option.description" class="option-description" v-html="$translateDescription(option.description)"></div>
 			</el-option>
 		</el-select>
 
@@ -137,6 +137,7 @@ import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { translate } from '@/components/mixins/translate';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -147,6 +148,7 @@ export default mixins(
 	genericHelpers,
 	nodeHelpers,
 	showMessage,
+	translate,
 	workflowHelpers,
 )
 	.extend({
@@ -594,11 +596,11 @@ export default mixins(
 					this.valueChanged(this.expressionValueComputed || null);
 				}
 			},
-			translateOptionName(optionName: string) {
-				return this.$te(`${this.$store.getters.activeNode.type}.options.${this.displayName}.${optionName}`)
-					? this.$t(`${this.$store.getters.activeNode.type}.options.${this.displayName}.${optionName}`)
-					: optionName;
-			},
+			// translateOptionName(optionName: string) {
+			// 	return this.$te(`${this.$store.getters.activeNode.type}.options.${this.displayName}.${optionName}`)
+			// 		? this.$t(`${this.$store.getters.activeNode.type}.options.${this.displayName}.${optionName}`)
+			// 		: optionName;
+			// },
 		},
 		mounted () {
 			this.tempValue = this.displayValue as string;
