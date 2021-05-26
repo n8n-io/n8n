@@ -1,7 +1,7 @@
 <template>
 	<el-row class="parameter-wrapper">
 		<el-col :span="isMultiLineParameter ? 24 : 10" class="parameter-name" :class="{'multi-line': isMultiLineParameter}">
-			<span class="title" :title="parameter.displayName">{{ translateDisplayName(parameter.displayName) }}</span>:
+			<span class="title" :title="parameter.displayName">{{ $translateDisplayName(parameter.displayName) }}</span>:
 			<el-tooltip class="parameter-info" placement="top" v-if="parameter.description" effect="light">
 				<div slot="content" v-html="parameter.description"></div>
 				<font-awesome-icon icon="question-circle" />
@@ -22,7 +22,10 @@ import {
 
 import ParameterInput from '@/components/ParameterInput.vue';
 
-export default Vue
+import { translate } from '@/components/mixins/translate';
+import mixins from 'vue-typed-mixins';
+
+export default mixins(translate)
 	.extend({
 		name: 'ParameterInputFull',
 		components: {
@@ -64,11 +67,6 @@ export default Vue
 			},
 			valueChanged (parameterData: IUpdateInformation) {
 				this.$emit('valueChanged', parameterData);
-			},
-			translateDisplayName(displayName: string) {
-				return this.$te(`${this.$store.getters.activeNode.type}.${displayName}`)
-					? this.$t(`${this.$store.getters.activeNode.type}.${displayName}`)
-					: displayName;
 			},
 		},
 	});
