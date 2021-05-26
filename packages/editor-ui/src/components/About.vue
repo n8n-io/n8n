@@ -1,6 +1,6 @@
 <template>
 	<span>
-		<el-dialog class="n8n-about" :visible="dialogVisible" append-to-body width="50%" title="About n8n" :before-close="closeDialog">
+		<el-dialog class="n8n-about" :visible="dialogVisible" append-to-body width="50%" :title="this.$t('about.aboutN8n')" :before-close="closeDialog">
 			<div>
 				<el-row>
 					<el-col :span="8" class="info-name">
@@ -12,7 +12,6 @@
 				</el-row>
 				<el-row>
 					<el-col :span="8" class="info-name">
-						<!-- Source Code: -->
 						{{ $t('about.sourceCode') }}:
 					</el-col>
 					<el-col :span="16">
@@ -21,16 +20,18 @@
 				</el-row>
 				<el-row>
 					<el-col :span="8" class="info-name">
-						License:
+						{{ $t('about.license') }}:
 					</el-col>
 					<el-col :span="16">
-						<a href="https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md" target="_blank">Apache 2.0 with Commons Clause</a>
+						<a href="https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md" target="_blank">
+							{{ $t('about.apacheWithCommons20Clause') }}
+						</a>
 					</el-col>
 				</el-row>
 
 				<div class="action-buttons">
 					<el-button type="success" @click="closeDialog">
-						Close
+						{{ $t('about.close') }}
 					</el-button>
 				</div>
 			</div>
