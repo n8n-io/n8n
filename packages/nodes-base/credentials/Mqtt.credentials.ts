@@ -1,5 +1,6 @@
 import {
 	ICredentialType,
+	IDisplayOptions,
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
@@ -16,6 +17,10 @@ export class Mqtt implements ICredentialType {
 				{
 					name: 'mqtt',
 					value: 'mqtt',
+				},
+				{
+					name: 'mqtts (SSL/TLS)',
+					value: 'mqtts',
 				},
 				{
 					name: 'ws',
@@ -64,6 +69,100 @@ export class Mqtt implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 			description: 'Client ID. If left empty, one is autogenrated for you',
+		},
+		{
+			displayName: 'SSL',
+			name: 'ssl',
+			type: 'boolean' as NodePropertyTypes,
+			default: false,
+		},
+		{
+			displayName: 'Passwordless',
+			name: 'passwordless',
+			type: 'boolean' as NodePropertyTypes,
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+				},
+			},
+			default: true,
+			description: 'Passwordless connection with certificates (SASL mechanism EXTERNAL)',
+		},
+		{
+			displayName: 'CA Certificates',
+			name: 'ca',
+			type: 'string' as NodePropertyTypes,
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+				},
+			},
+			default: '',
+			description: 'SSL CA Certificates to use.',
+		},
+		{
+			displayName: 'Reject Unauthorized Certificate',
+			name: 'rejectUnauthorized',
+			type: 'boolean' as NodePropertyTypes,			
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+					passwordless: [
+						true,
+					],
+				},
+			} as IDisplayOptions,
+			default: '',
+			description: 'Validate Certificate.',
+		},
+		{
+			displayName: 'Client Certificate',
+			name: 'cert',
+			type: 'string' as NodePropertyTypes,
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+					passwordless: [
+						true,
+					],
+				},
+			} as IDisplayOptions,
+			default: '',
+			description: 'SSL Client Certificate to use.',
+		},
+		{
+			displayName: 'Client Key',
+			name: 'key',
+			type: 'string' as NodePropertyTypes,
+			typeOptions: {
+				password: true,
+			},
+			displayOptions: {
+				show: {
+					ssl: [
+						true,
+					],
+					passwordless: [
+						true,
+					],
+				},
+			},
+			default: '',
+			description: 'SSL Client Key to use.',
 		},
 	];
 }
