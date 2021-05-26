@@ -216,11 +216,12 @@ export class Phantombuster implements INodeType {
 
 					if (jsonParameters) {
 						if (additionalFields.argumentsJson) {
-							body.arguments = validateJSON(additionalFields.argumentsJson as string, 'Arguments');
+							body.arguments = validateJSON(this, additionalFields.argumentsJson as string, 'Arguments');
+
 							delete additionalFields.argumentsJson;
 						}
 						if (additionalFields.bonusArgumentJson) {
-							body.bonusArgument = validateJSON(additionalFields.bonusArgumentJson as string, 'Bonus Argument');
+							body.bonusArgument = validateJSON(this, additionalFields.bonusArgumentJson as string, 'Bonus Argument');
 							delete additionalFields.bonusArgumentJson;
 						}
 					} else {

@@ -30,7 +30,7 @@
 						<div class="editor-description">
 							Result
 						</div>
-						<expression-input :parameter="parameter" resolvedValue="true" rows="8" :value="value" :path="path"></expression-input>
+						<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="value" :path="path"></expression-input>
 					</div>
 
 				</el-col>
@@ -52,7 +52,11 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-export default Vue.extend({
+import { externalHooks } from '@/components/mixins/externalHooks';
+
+import mixins from 'vue-typed-mixins';
+
+export default mixins(externalHooks).extend({
 	name: 'ExpressionEdit',
 	props: [
 		'dialogVisible',
@@ -81,7 +85,16 @@ export default Vue.extend({
 		},
 
 		itemSelected (eventData: IVariableItemSelected) {
+			// User inserted item from Expression Editor variable selector
 			(this.$refs.inputFieldExpression as any).itemSelected(eventData); // tslint:disable-line:no-any
+
+			this.$externalHooks().run('expressionEdit.itemSelected', { parameter: this.parameter, value: this.value, selectedItem: eventData });
+		},
+	},
+	watch: {
+		dialogVisible (newValue) {
+			const resolvedExpressionValue = this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue() || undefined;  // tslint:disable-line:no-any
+			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
 		},
 	},
 });

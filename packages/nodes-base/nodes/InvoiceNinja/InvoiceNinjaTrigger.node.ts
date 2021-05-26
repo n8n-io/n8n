@@ -112,7 +112,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 
 					try {
 						await invoiceNinjaApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

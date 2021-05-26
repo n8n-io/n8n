@@ -10,7 +10,9 @@ import {
 import {
 	IDataObject,
 	IHookFunctions,
-	IWebhookFunctions
+	IWebhookFunctions,
+	NodeApiError,
+	NodeOperationError
 } from 'n8n-workflow';
 
 export async function erpNextApiRequest(
@@ -22,11 +24,11 @@ export async function erpNextApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ) {
-
-	const credentials = this.getCredentials('erpNextApi');
+	const credentials = this.getCredentials('erpNextApi') as ERPNextApiCredentials;
+	const baseUrl = getBaseUrl(credentials);
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	let options: OptionsWithUri = {
@@ -38,7 +40,7 @@ export async function erpNextApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri || `https://${credentials.subdomain}.erpnext.com${resource}`,
+		uri: uri || `${baseUrl}${resource}`,
 		json: true,
 	};
 
@@ -54,29 +56,16 @@ export async function erpNextApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
 		if (error.statusCode === 403) {
-			throw new Error(
-				`ERPNext error response [${error.statusCode}]: DocType unavailable.`,
-			);
+			throw new NodeApiError(this.getNode(), { message: 'DocType unavailable.' });
 		}
 
 		if (error.statusCode === 307) {
-			throw new Error(
-				`ERPNext error response [${error.statusCode}]: Please ensure the subdomain is correct.`,
-			);
+			throw new NodeApiError(this.getNode(), { message: 'Please ensure the subdomain is correct.' });
 		}
 
-		let errorMessages;
-		if (error?.response?.body?._server_messages) {
-			const errors = JSON.parse(error.response.body._server_messages);
-			errorMessages = errors.map((e: string) => JSON.parse(e).message);
-			throw new Error(
-				`ARPNext error response [${error.statusCode}]: ${errorMessages.join('|')}`,
-			);
-		}
+		throw new NodeApiError(this.getNode(), error);
 
-		throw error;
 	}
 }
 
@@ -105,3 +94,19 @@ export async function erpNextApiRequestAllItems(
 
 	return returnData;
 }
+
+/**
+ * Return the base API URL based on the user's environment.
+ */
+const getBaseUrl = ({ environment, domain, subdomain }: ERPNextApiCredentials) =>
+	environment === 'cloudHosted'
+		? `https://${subdomain}.erpnext.com`
+		: domain;
+
+type ERPNextApiCredentials = {
+	apiKey: string;
+	apiSecret: string;
+	environment: 'cloudHosted' | 'selfHosted';
+	subdomain?: string;
+	domain?: string;
+};

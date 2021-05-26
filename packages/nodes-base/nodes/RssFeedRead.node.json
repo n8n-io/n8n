@@ -13,9 +13,14 @@
 		],
 		"generic": [
 			{
-				"label": "Why this CEO loves n8n",
+				"label": "Why business process automation with n8n can change your daily life",
 				"icon": "🧬",
-				"url": "https://medium.com/n8n-io/why-this-ceo-loves-n8n-ee7d102b0948"
+				"url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/"
+			},
+			{
+				"label": "Why I chose n8n over Zapier in 2020",
+				"icon": "😍",
+				"url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/"
 			}
 		]
 	}

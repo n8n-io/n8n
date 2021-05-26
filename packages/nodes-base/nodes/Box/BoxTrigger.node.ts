@@ -327,7 +327,7 @@ export class BoxTrigger implements INodeType {
 
 					try {
 						await boxApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

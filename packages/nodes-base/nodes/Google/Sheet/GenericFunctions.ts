@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import * as moment from 'moment-timezone';
@@ -40,7 +40,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			const credentials = this.getCredentials('googleApi');
 
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
@@ -53,11 +53,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			return await this.helpers.requestOAuth2.call(this, 'googleSheetsOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			throw new Error(`Google Sheet error response [${error.statusCode}]: ${error.response.body.message}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

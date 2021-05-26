@@ -169,7 +169,7 @@ export class HelpScoutTrigger implements INodeType {
 					const endpoint = `/v2/webhooks/${webhookData.webhookId}`;
 					try {
 						await helpscoutApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

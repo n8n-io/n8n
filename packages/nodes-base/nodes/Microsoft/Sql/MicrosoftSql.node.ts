@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -215,7 +216,7 @@ export class MicrosoftSql implements INodeType {
 		const credentials = this.getCredentials('microsoftSql');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		const config = {
@@ -387,14 +388,14 @@ export class MicrosoftSql implements INodeType {
 				} as IDataObject);
 			} else {
 				await pool.close();
-				throw new Error(`The operation "${operation}" is not supported!`);
+				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 			}
-		} catch (err) {
+		} catch (error) {
 			if (this.continueOnFail() === true) {
 				returnItems = items;
 			} else {
 				await pool.close();
-				throw err;
+				throw error;
 			}
 		}
 

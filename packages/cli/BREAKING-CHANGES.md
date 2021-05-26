@@ -2,6 +2,62 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.118.0
+
+### What changed?
+The minimum Node.js version required for n8n is now v14.
+
+### When is action necessary?
+If you're using n8n via npm or PM2 or if you're contributing to n8n.
+
+### How to upgrade:
+Update the Node.js version to v14 or above.
+
+----------------------------
+
+### What changed?
+In the Postgres, CrateDB, QuestDB and TimescaleDB nodes the `Execute Query` operation returns the result from all queries executed instead of just one of the results.
+
+### When is action necessary?
+
+If you use any of the above mentioned nodes with the `Execute Query` operation and the result is relevant to you, you are encouraged to revisit your logic. The node output may now contain more information than before. This change was made so that the behavior is more consistent across n8n where input with multiple rows should yield results acccording all input data instead of only one. Please note: n8n was already running multiple queries based on input. Only the output was changed.
+
+## 0.117.0
+
+### What changed?
+Removed the "Activation Trigger" node. This node was replaced by two other nodes.
+
+The "Activation Trigger" node was added on version 0.113.0 but was not fully compliant to UX, so we decided to refactor and change it ASAP so it affects the least possible users.
+
+The new nodes are "n8n Trigger" and "Workflow Trigger". Behavior-wise, the nodes do the same, we just split the functionality to make it more intuitive to users.
+
+### When is action necessary?
+
+If you use the "Activation Trigger" in any of your workflows, please replace it by the new nodes.
+
+### How to upgrade:
+
+Remove the previous node and add the new ones according to your workflows.
+
+----------------------------
+
+Changed the behavior for nodes that use Postgres Wire Protocol: Postgres, QuestDB, CrateDB and TimescaleDB.
+
+All nodes have been standardized and now follow the same patterns. Behavior will be the same for most cases, but new added functionality can now be explored.
+
+You can now also inform how you would like n8n to execute queries. Default mode is `Multiple queries` which translates to previous behavior, but you can now run them `Independently` or `Transaction`. Also, `Continue on Fail` now plays a major role for the new modes.
+
+The node output for `insert` operations now rely on the new parameter `Return fields`, just like `update` operations did previously.
+
+### When is action necessary?
+
+If you rely on the output returned by `insert` operations for any of the mentioned nodes, we recommend you review your workflows.
+
+By default, all `insert` operations will have `Return fields: *` as the default, setting, returning all information inserted.
+
+Previously, the node would return all information it received, without taking into account what actually happened in the database.
+
+
 ## 0.113.0
 
 ### What changed?

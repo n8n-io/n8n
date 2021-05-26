@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -636,7 +637,7 @@ export class Airtable implements INodeType {
 			}
 
 		} else {
-			throw new Error(`The operation "${operation}" is not known!`);
+			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

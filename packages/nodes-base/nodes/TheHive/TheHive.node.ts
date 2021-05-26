@@ -11,7 +11,8 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
-	INodeTypeDescription
+	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -389,13 +390,13 @@ export class TheHive implements INodeType {
 									const item = items[i];
 
 									if (item.binary === undefined) {
-										throw new Error('No binary data exists on item!');
+										throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 									}
 
 									const binaryPropertyName = artifactvalue.binaryProperty as string;
 
 									if (item.binary[binaryPropertyName] === undefined) {
-										throw new Error(`No binary data property '${binaryPropertyName}' does not exists on item!`);
+										throw new NodeOperationError(this.getNode(), `No binary data property '${binaryPropertyName}' does not exists on item!`);
 									}
 
 									const binaryData = item.binary[binaryPropertyName] as IBinaryData;
@@ -666,13 +667,13 @@ export class TheHive implements INodeType {
 									const item = items[i];
 
 									if (item.binary === undefined) {
-										throw new Error('No binary data exists on item!');
+										throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 									}
 
 									const binaryPropertyName = artifactvalue.binaryProperty as string;
 
 									if (item.binary[binaryPropertyName] === undefined) {
-										throw new Error(`No binary data property '${binaryPropertyName}' does not exists on item!`);
+										throw new NodeOperationError(this.getNode(), `No binary data property '${binaryPropertyName}' does not exists on item!`);
 									}
 
 									const binaryData = item.binary[binaryPropertyName] as IBinaryData;
@@ -868,13 +869,13 @@ export class TheHive implements INodeType {
 						const item = items[i];
 
 						if (item.binary === undefined) {
-							throw new Error('No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
 
 						const binaryPropertyName = this.getNodeParameter('binaryProperty', i) as string;
 
 						if (item.binary[binaryPropertyName] === undefined) {
-							throw new Error(`No binary data property '${binaryPropertyName}' does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property '${binaryPropertyName}' does not exists on item!`);
 						}
 
 						const binaryData = item.binary[binaryPropertyName] as IBinaryData;
@@ -1801,13 +1802,13 @@ export class TheHive implements INodeType {
 							const item = items[i];
 
 							if (item.binary === undefined) {
-								throw new Error('No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 							}
 
 							const binaryPropertyName = attachmentValues.binaryProperty as string;
 
 							if (item.binary[binaryPropertyName] === undefined) {
-								throw new Error(`No binary data property '${binaryPropertyName}' does not exists on item!`);
+								throw new NodeOperationError(this.getNode(), `No binary data property '${binaryPropertyName}' does not exists on item!`);
 							}
 
 							const binaryData = item.binary[binaryPropertyName] as IBinaryData;

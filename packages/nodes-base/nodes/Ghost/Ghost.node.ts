@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -226,7 +227,7 @@ export class Ghost implements INodeType {
 						} else {
 							const mobileDoc = validateJSON(content);
 							if (mobileDoc === undefined) {
-								throw new Error('Content must be a valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON');
 							}
 							post.mobiledoc = content;
 						}
@@ -240,7 +241,7 @@ export class Ghost implements INodeType {
 						}
 
 						if (post.status === 'scheduled' && post.published_at === undefined) {
-							throw new Error('Published at must be define when status is scheduled');
+							throw new NodeOperationError(this.getNode(), 'Published at must be define when status is scheduled');
 						}
 
 						responseData = await ghostApiRequest.call(this, 'POST', '/admin/posts', { posts: [post] }, qs);
@@ -320,7 +321,7 @@ export class Ghost implements INodeType {
 						} else {
 							const mobileDoc = validateJSON(updateFields.contentJson as string || undefined);
 							if (mobileDoc === undefined) {
-								throw new Error('Content must be a valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Content must be a valid JSON');
 							}
 							post.mobiledoc = updateFields.contentJson;
 							delete updateFields.contentJson;
@@ -335,7 +336,7 @@ export class Ghost implements INodeType {
 						}
 
 						if (post.status === 'scheduled' && post.published_at === undefined) {
-							throw new Error('Published at must be define when status is scheduled');
+							throw new NodeOperationError(this.getNode(), 'Published at must be define when status is scheduled');
 						}
 
 						post.updated_at = posts[0].updated_at;

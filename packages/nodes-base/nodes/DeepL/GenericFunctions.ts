@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 export async function deepLApiRequest(
@@ -45,7 +45,7 @@ export async function deepLApiRequest(
 		const credentials = this.getCredentials('deepLApi');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		options.qs.auth_key = credentials.apiKey;
@@ -53,10 +53,6 @@ export async function deepLApiRequest(
 		return await this.helpers.request!(options);
 
 	} catch (error) {
-		if (error?.response?.body?.message) {
-			// Try to return the error prettier
-			throw new Error(`DeepL error response [${error.statusCode}]: ${error.response.body.message}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

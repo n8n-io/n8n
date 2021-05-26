@@ -8,7 +8,6 @@ import {
 	resolve as pathResolve,
 } from 'path';
 import {
-	getConnection,
 	getConnectionManager,
 	In,
 } from 'typeorm';
@@ -22,6 +21,8 @@ import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
+// IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
+// tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
 import * as promClient from 'prom-client';
 
@@ -132,6 +133,7 @@ class App {
 	protocol: string;
 	sslKey: string;
 	sslCert: string;
+	payloadSizeMax: number;
 
 	presetCredentialsLoaded: boolean;
 
@@ -145,6 +147,7 @@ class App {
 		this.saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
 		this.executionTimeout = config.get('executions.timeout') as number;
 		this.maxExecutionTimeout = config.get('executions.maxTimeout') as number;
+		this.payloadSizeMax = config.get('endpoints.payloadSizeMax') as number;
 		this.timezone = config.get('generic.timezone') as string;
 		this.restEndpoint = config.get('endpoints.rest') as string;
 
@@ -369,7 +372,7 @@ class App {
 
 		// Support application/json type post data
 		this.app.use(bodyParser.json({
-			limit: '16mb', verify: (req, res, buf) => {
+			limit: this.payloadSizeMax + 'mb', verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
 			},
@@ -378,7 +381,7 @@ class App {
 		// Support application/xml type post data
 		// @ts-ignore
 		this.app.use(bodyParser.xml({
-			limit: '16mb', xmlParseOptions: {
+			limit: this.payloadSizeMax + 'mb', xmlParseOptions: {
 				normalize: true,     // Trim whitespace inside text nodes
 				normalizeTags: true, // Transform tags to lowercase
 				explicitArray: false, // Only put properties in array if length > 1
@@ -386,7 +389,7 @@ class App {
 		}));
 
 		this.app.use(bodyParser.text({
-			limit: '16mb', verify: (req, res, buf) => {
+			limit: this.payloadSizeMax + 'mb', verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
 			},
@@ -570,6 +573,7 @@ class App {
 
 			const newWorkflowData = req.body as IWorkflowBase;
 			const id = req.params.id;
+			newWorkflowData.id = id;
 
 			await this.externalHooks.run('workflow.update', [newWorkflowData]);
 
@@ -714,6 +718,7 @@ class App {
 		// get generated dynamically
 		this.app.get(`/${this.restEndpoint}/node-parameter-options`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodePropertyOptions[]> => {
 			const nodeType = req.query.nodeType as string;
+			const path = req.query.path as string;
 			let credentials: INodeCredentials | undefined = undefined;
 			const currentNodeParameters = JSON.parse('' + req.query.currentNodeParameters) as INodeParameters;
 			if (req.query.credentials !== undefined) {
@@ -723,7 +728,7 @@ class App {
 
 			const nodeTypes = NodeTypes();
 
-			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, JSON.parse('' + req.query.currentNodeParameters), credentials!);
+			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, path, JSON.parse('' + req.query.currentNodeParameters), credentials!);
 
 			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
 			const workflowCredentials = await WorkflowCredentials(workflowData.nodes);
@@ -1737,6 +1742,7 @@ class App {
 						}
 					);
 				}
+				returnData.sort((a, b) => parseInt(b.id, 10) - parseInt(a.id, 10));
 
 				return returnData;
 			}

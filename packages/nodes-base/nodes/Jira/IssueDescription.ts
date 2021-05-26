@@ -16,14 +16,19 @@ export const issueOperations = [
 		},
 		options: [
 			{
+				name: 'Changelog',
+				value: 'changelog',
+				description: 'Get issue changelog',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new issue',
 			},
 			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update an issue',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete an issue',
 			},
 			{
 				name: 'Get',
@@ -36,11 +41,6 @@ export const issueOperations = [
 				description: 'Get all issues',
 			},
 			{
-				name: 'Changelog',
-				value: 'changelog',
-				description: 'Get issue changelog',
-			},
-			{
 				name: 'Notify',
 				value: 'notify',
 				description: 'Create an email notification for an issue and add it to the mail queue',
@@ -51,9 +51,9 @@ export const issueOperations = [
 				description: `Return either all transitions or a transition that can be performed by the user on an issue, based on the issue's status`,
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete an issue',
+				name: 'Update',
+				value: 'update',
+				description: 'Update an issue',
 			},
 		],
 		default: 'create',
@@ -370,10 +370,7 @@ export const issueFields = [
 			{
 				displayName: 'Issue Type',
 				name: 'issueType',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getIssueTypes',
-				},
+				type: 'string',
 				default: '',
 				description: 'Issue Types',
 			},

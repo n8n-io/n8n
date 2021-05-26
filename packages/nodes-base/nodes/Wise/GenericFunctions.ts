@@ -7,6 +7,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -60,15 +61,7 @@ export async function wiseApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
-		const errors = error.error.errors;
-
-		if (errors && Array.isArray(errors)) {
-			const errorMessage = errors.map((e) => e.message).join(' | ');
-			throw new Error(`Wise error response [${error.statusCode}]: ${errorMessage}`);
-		}
-
-		throw new Error(`Wise error response [${error.statusCode}]: ${error}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

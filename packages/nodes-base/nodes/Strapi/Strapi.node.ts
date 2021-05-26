@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -129,7 +130,7 @@ export class Strapi implements INodeType {
 						if (query !== undefined) {
 							qs._where = query;
 						} else {
-							throw new Error('Query must be a valid JSON');
+							throw new NodeOperationError(this.getNode(), 'Query must be a valid JSON');
 						}
 					}
 

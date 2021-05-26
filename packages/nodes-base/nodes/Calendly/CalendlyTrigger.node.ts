@@ -122,7 +122,7 @@ export class CalendlyTrigger implements INodeType {
 
 					try {
 						await calendlyApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

@@ -5,6 +5,8 @@ import {
 
 import {
 	IDataObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 /**
@@ -27,7 +29,7 @@ export async function plivoApiRequest(
 	const credentials = this.getCredentials('plivoApi') as { authId: string, authToken: string };
 
 	if (!credentials) {
-		throw new Error('No credentials returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials returned!');
 	}
 
 	const options = {
@@ -45,18 +47,6 @@ export async function plivoApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		if (error.statusCode === 401) {
-			throw new Error('Invalid Plivo credentials');
-		}
-		if (error?.response?.body?.error) {
-			let errorMessage = `Plivo error response [${error.statusCode}]: ${error.response.body.error}`;
-			if (error.response.body.more_info) {
-				errorMessage = `errorMessage (${error.response.body.more_info})`;
-			}
-
-			throw new Error(errorMessage);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

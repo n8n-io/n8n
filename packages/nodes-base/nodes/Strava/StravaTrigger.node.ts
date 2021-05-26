@@ -8,6 +8,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -161,8 +162,9 @@ export class StravaTrigger implements INodeType {
 				try {
 					responseData = await stravaApiRequest.call(this, 'POST', endpoint, body);
 				} catch (error) {
-					if (error.response && error.response.body && error.response.body.errors) {
-						const errors = error.response.body.errors;
+					const apiErrorResponse = error.cause.response;
+					if (apiErrorResponse?.body?.errors) {
+						const errors = apiErrorResponse.body.errors;
 						for (error of errors) {
 							// if there is a subscription already created
 							if (error.resource === 'PushSubscription' && error.code === 'already exists') {
@@ -181,24 +183,15 @@ export class StravaTrigger implements INodeType {
 
 									responseData = await stravaApiRequest.call(this, 'POST', `/push_subscriptions`, body);
 								} else {
-									throw new Error(`A subscription already exist [${webhooks[0].callback_url}].
-								If you want to delete this subcription and create a new one with the current parameters please go to options and set delete if exist to true`);
+									error.message = `A subscription already exists [${webhooks[0].callback_url}]. If you want to delete this subcription and create a new one with the current parameters please go to options and set delete if exist to true`;
+									throw error;
 								}
 							}
 						}
 					}
 
 					if (!responseData) {
-						let errorMessage = '';
-						if (error.response && error.response.body && error.response.body.message) {
-							errorMessage = error.response.body.message;
-						} else {
-							errorMessage = error.message;
-						}
-
-						throw new Error(
-							`Strava error response [${error.statusCode}]: ${errorMessage}`,
-						);
+						throw error;
 					}
 				}
 
@@ -218,7 +211,7 @@ export class StravaTrigger implements INodeType {
 
 					try {
 						await stravaApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

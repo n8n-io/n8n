@@ -6,6 +6,7 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -50,14 +51,7 @@ export async function raindropApiRequest(
 
 	try {
 		return await this.helpers.requestOAuth2!.call(this, 'raindropOAuth2Api', options);
-
 	} catch (error) {
-
-		if (error?.response?.body?.errorMessage) {
-			const errorMessage = error?.response?.body?.errorMessage;
-			throw new Error(`Raindrop error response [${error.statusCode}]: ${errorMessage}`);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

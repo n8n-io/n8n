@@ -3,6 +3,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 const { NodeVM } = require('vm2');
@@ -85,28 +86,28 @@ export class Function implements INodeType {
 		try {
 			// Execute the function code
 			items = (await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname));
-		} catch (e) {
-			return Promise.reject(e);
+		} catch (error) {
+			return Promise.reject(error);
 		}
 
 
 		// Do very basic validation of the data
 		if (items === undefined) {
-			throw new Error('No data got returned. Always return an Array of items!');
+			throw new NodeOperationError(this.getNode(), 'No data got returned. Always return an Array of items!');
 		}
 		if (!Array.isArray(items)) {
-			throw new Error('Always an Array of items has to be returned!');
+			throw new NodeOperationError(this.getNode(), 'Always an Array of items has to be returned!');
 		}
 		for (const item of items) {
 			if (item.json === undefined) {
-				throw new Error('All returned items have to contain a property named "json"!');
+				throw new NodeOperationError(this.getNode(), 'All returned items have to contain a property named "json"!');
 			}
 			if (typeof item.json !== 'object') {
-				throw new Error('The json-property has to be an object!');
+				throw new NodeOperationError(this.getNode(), 'The json-property has to be an object!');
 			}
 			if (item.binary !== undefined) {
 				if (Array.isArray(item.binary) || typeof item.binary !== 'object') {
-					throw new Error('The binary-property has to be an object!');
+					throw new NodeOperationError(this.getNode(), 'The binary-property has to be an object!');
 				}
 			}
 		}

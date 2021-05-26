@@ -116,7 +116,7 @@ export class CopperTrigger implements INodeType {
 				const endpoint = `/webhooks/${webhookData.webhookId}`;
 				try {
 					await copperApiRequest.call(this, 'GET', endpoint);
-				} catch (err) {
+				} catch (error) {
 					return false;
 				}
 				return true;
