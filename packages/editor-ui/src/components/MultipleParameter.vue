@@ -74,7 +74,7 @@ export default mixins(genericHelpers, translate)
 
 				return this.$te(translatedButtonText)
 					? this.$t(translatedButtonText)
-					: typeOptions.multipleValueButtonText || 'Add item'
+					: typeOptions.multipleValueButtonText || 'Add item';
 			},
 			hideDelete (): boolean {
 				return this.parameter.options.length === 1;
