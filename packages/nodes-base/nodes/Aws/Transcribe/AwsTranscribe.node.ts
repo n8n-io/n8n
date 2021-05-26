@@ -210,7 +210,7 @@ export class AwsTranscribe implements INodeType {
 						name: 'showAlternatives',
 						type: 'boolean',
 						default: false,
-						description: 'Process each audio channel separately.',
+						description: 'Return alternative transcriptions.',
 					},
 					{
 						displayName: 'Max Alternatives',
