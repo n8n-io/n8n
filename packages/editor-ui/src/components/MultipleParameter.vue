@@ -2,7 +2,7 @@
 	<div @keydown.stop class="duplicate-parameter">
 
 		<div class="parameter-name">
-			{{parameter.displayName}}:
+			{{ $translateDisplayName(parameter.displayName) }}:
 			<el-tooltip class="parameter-info" placement="top" v-if="parameter.description" effect="light">
 				<div slot="content" v-html="parameter.description"></div>
 				<font-awesome-icon icon="question-circle" />
@@ -48,10 +48,11 @@ import ParameterInput from '@/components/ParameterInput.vue';
 import { get } from 'lodash';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { translate } from '@/components/mixins/translate';
 
 import mixins from 'vue-typed-mixins';
 
-export default mixins(genericHelpers)
+export default mixins(genericHelpers, translate)
 	.extend({
 		name: 'MultipleParameter',
 		components: {
@@ -66,7 +67,14 @@ export default mixins(genericHelpers)
 		],
 		computed: {
 			addButtonText (): string {
-				return (this.parameter.typeOptions && this.parameter.typeOptions.multipleValueButtonText) ? this.parameter.typeOptions.multipleValueButtonText : 'Add item';
+				const { type } = this.$store.getters.activeNode;
+				const { displayName, typeOptions } = this.parameter;
+
+				const translatedButtonText = `${type}.collection.${displayName}.multipleValueButtonText`;
+
+				return this.$te(translatedButtonText)
+					? this.$t(translatedButtonText)
+					: typeOptions.multipleValueButtonText || 'Add item'
 			},
 			hideDelete (): boolean {
 				return this.parameter.options.length === 1;
