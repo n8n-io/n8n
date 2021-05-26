@@ -77,7 +77,7 @@ export const documentFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                 document:update                             */
+	/*                                 document:update                            */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Document ID',
@@ -96,6 +96,23 @@ export const documentFields = [
 		},
 		default: '',
 		description: 'The ID of the Google Document. <br />Found as part of the sheet URL https://docs.google.com/document/d/${ID}/',
+	},
+	{
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'document',
+				],
+			},
+		},
+		default: true,
+		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
 	{
 		displayName: 'Update Fields',

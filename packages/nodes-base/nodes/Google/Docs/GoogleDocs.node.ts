@@ -76,307 +76,315 @@ export class GoogleDocs implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 
-			try {
+			//try {
 
-				if (resource === 'document') {
+			if (resource === 'document') {
 
-					if (operation === 'create') {
+				if (operation === 'create') {
 
-						// https://developers.google.com/docs/api/reference/rest/v1/documents/create
+					// https://developers.google.com/docs/api/reference/rest/v1/documents/create
 
-						const body: IDataObject = {
-							title: this.getNodeParameter('title', i) as string,
+					const body: IDataObject = {
+						title: this.getNodeParameter('title', i) as string,
+					};
+
+					responseData = await googleApiRequest.call(this, 'POST', '/documents', body);
+
+				} else if (operation === 'get') {
+
+					// https://developers.google.com/docs/api/reference/rest/v1/documents/get
+
+					const documentId = this.getNodeParameter('documentId', i) as string;
+					responseData = await googleApiRequest.call(this, 'GET', `/documents/${documentId}`);
+
+				} else if (operation === 'update') {
+
+					// https://developers.google.com/docs/api/reference/rest/v1/documents/batchUpdate
+
+					const documentId = this.getNodeParameter('documentId', i) as string;
+					const simple = this.getNodeParameter('simple', 0) as boolean;
+					const { writeControl, requestsUi } = this.getNodeParameter('updateFields', i) as IUpdateFields;
+
+					const body = {
+						requests: [],
+					} as IUpdateBody;
+
+					if (hasKeys(writeControl)) {
+						const { control, value } = writeControl.writeControlObject;
+						body.writeControl = {
+							[control]: value,
 						};
+					}
 
-						responseData = await googleApiRequest.call(this, 'POST', '/documents', body);
+					if (hasKeys(requestsUi)) {
+						const {
+							createFooterValues,
+							createHeaderValues,
+							createNamedRangeValues,
+							createParagraphBulletsValues,
+							deleteFooterValues,
+							deleteHeaderValues,
+							deleteNamedRangeValues,
+							deleteParagraphBulletsValues,
+							deletePositionedObjectValues,
+							deleteTableColumnValues,
+							deleteTableRowValues,
+							insertPageBreakValues,
+							insertTableValues,
+							insertTableColumnValues,
+							insertTableRowValues,
+							insertTextValues,
+							replaceAllTextValues,
+						} = requestsUi;
 
-					} else if (operation === 'get') {
+						// ----------------------------------
+						//         replace values
+						// ----------------------------------
 
-						// https://developers.google.com/docs/api/reference/rest/v1/documents/get
-
-						const documentId = this.getNodeParameter('documentId', i) as string;
-						responseData = await googleApiRequest.call(this, 'GET', `/documents/${documentId}`);
-
-					} else if (operation === 'update') {
-
-						// https://developers.google.com/docs/api/reference/rest/v1/documents/batchUpdate
-
-						const documentId = this.getNodeParameter('documentId', i) as string;
-						const { writeControl, requestsUi } = this.getNodeParameter('updateFields', i) as IUpdateFields;
-
-						const body = {
-							requests: [],
-						} as IUpdateBody;
-
-						if (hasKeys(writeControl)) {
-							const { control, value } = writeControl.writeControlObject;
-							body.writeControl = {
-								[control]: value,
-							};
+						if (replaceAllTextValues?.length) {
+							replaceAllTextValues.forEach(({ replaceText, text, matchCase }) => {
+								body.requests.push({
+									replaceAllText: {
+										replaceText,
+										containsText: { text, matchCase },
+									},
+								});
+							});
 						}
 
-						if (hasKeys(requestsUi)) {
-							const {
-								createFooterValues,
-								createHeaderValues,
-								createNamedRangeValues,
-								createParagraphBulletsValues,
-								deleteFooterValues,
-								deleteHeaderValues,
-								deleteNamedRangeValues,
-								deleteParagraphBulletsValues,
-								deletePositionedObjectValues,
-								deleteTableColumnValues,
-								deleteTableRowValues,
-								insertPageBreakValues,
-								insertTableValues,
-								insertTableColumnValues,
-								insertTableRowValues,
-								insertTextValues,
-								replaceAllTextValues,
-							} = requestsUi;
+						// ----------------------------------
+						//         insert values
+						// ----------------------------------
 
-							// ----------------------------------
-							//         replace values
-							// ----------------------------------
-
-							if (replaceAllTextValues?.length) {
-								replaceAllTextValues.forEach(({ replaceText, text, matchCase }) => {
-									body.requests.push({
-										replaceAllText: {
-											replaceText,
-											containsText: { text, matchCase },
+						if (insertTextValues?.length) {
+							insertTextValues.forEach(({ text, locationChoice, segmentId, index }) => {
+								body.requests.push({
+									insertText: {
+										text,
+										[locationChoice]: {
+											segmentId,
+											...(locationChoice === 'location') ? { index } : {},
 										},
-									});
+									},
 								});
-							}
-
-							// ----------------------------------
-							//         insert values
-							// ----------------------------------
-
-							if (insertTextValues?.length) {
-								insertTextValues.forEach(({ text, locationChoice, segmentId, index }) => {
-									body.requests.push({
-										insertText: {
-											text,
-											[locationChoice]: {
-												segmentId,
-												...(locationChoice === 'location') ? { index }: {},
-											},
-										},
-									});
-								});
-							}
-
-							if (insertPageBreakValues?.length) {
-								insertPageBreakValues.forEach(({ locationChoice, segmentId, index }) => {
-									body.requests.push({
-										insertPageBreak: {
-											[locationChoice]: {
-												segmentId,
-												...(locationChoice === 'location') ? { index }: {},
-											},
-										},
-									});
-								});
-							}
-
-							if (insertTableValues?.length) {
-								insertTableValues.forEach(value => {
-									const { rows, columns, locationChoice, segmentId, index } = value;
-									body.requests.push({
-										insertTable: {
-											rows,
-											columns,
-											[locationChoice]: {
-												segmentId,
-												...(locationChoice === 'location') ? { index }: {},
-											},
-										},
-									});
-								});
-							}
-
-							if (insertTableRowValues?.length) {
-								insertTableRowValues.forEach(value => {
-									const { insertBelow, rowIndex, columnIndex, segmentId, index } = value;
-									body.requests.push({
-										insertTableRow: {
-											insertBelow,
-											tableCellLocation: {
-												rowIndex,
-												columnIndex,
-												tableStartLocation: { segmentId, index },
-											},
-										},
-									});
-								});
-							}
-
-							if (insertTableColumnValues?.length) {
-								insertTableColumnValues.forEach(value => {
-									const { insertRight, rowIndex, columnIndex, segmentId, index } = value;
-									body.requests.push({
-										insertTableColumn: {
-											insertRight,
-											tableCellLocation: {
-												rowIndex,
-												columnIndex,
-												tableStartLocation: { segmentId, index },
-											},
-										},
-									});
-								});
-							}
-
-							// ----------------------------------
-							//         create values
-							// ----------------------------------
-
-							if (createParagraphBulletsValues?.length) {
-								createParagraphBulletsValues.forEach(value => {
-									const { bulletPreset, segmentId, startIndex, endIndex } = value;
-									body.requests.push({
-										createParagraphBullets: {
-											bulletPreset,
-											range: { segmentId, startIndex, endIndex },
-										},
-									});
-								});
-							}
-
-							if (createNamedRangeValues?.length) {
-								createNamedRangeValues.forEach(value => {
-									const { name, segmentId, startIndex, endIndex } = value;
-									body.requests.push({
-										createNamedRange: {
-											name,
-											range: { segmentId, startIndex, endIndex },
-										},
-									});
-								});
-							}
-
-							if (createHeaderValues?.length) {
-								createHeaderValues.forEach(({ segmentId, index }) => {
-									body.requests.push({
-										createHeader: {
-											type: 'DEFAULT',
-											sectionBreakLocation: { segmentId, index },
-										},
-									});
-								});
-							}
-
-							if (createFooterValues?.length) {
-								createFooterValues.forEach(({ segmentId, index }) => {
-									body.requests.push({
-										createFooter: {
-											type: 'DEFAULT',
-											sectionBreakLocation: { segmentId, index },
-										},
-									});
-								});
-							}
-
-							// ----------------------------------
-							//         delete values
-							// ----------------------------------
-
-							if (deleteParagraphBulletsValues?.length) {
-								deleteParagraphBulletsValues.forEach(value => {
-									const { segmentId, startIndex, endIndex } = value;
-									body.requests.push({
-										deleteParagraphBullets: {
-											range: { segmentId, startIndex, endIndex },
-										},
-									});
-								});
-							}
-
-							if (deleteNamedRangeValues?.length) {
-								deleteNamedRangeValues.forEach(({ namedRangeReference, value }) => {
-									body.requests.push({
-										deleteNamedRange: {
-											[namedRangeReference]: value,
-										},
-									});
-								});
-							}
-
-							if (deletePositionedObjectValues?.length) {
-								deletePositionedObjectValues.forEach(({ objectId }) => {
-									body.requests.push({
-										deletePositionedObject: { objectId },
-									});
-								});
-							}
-
-							if (deleteTableRowValues?.length) {
-								deleteTableRowValues.forEach(value => {
-									const { rowIndex, columnIndex, segmentId, index } = value;
-									body.requests.push({
-										deleteTableRow: {
-											tableCellLocation: {
-												rowIndex,
-												columnIndex,
-												tableStartLocation: { segmentId, index },
-											},
-										},
-									});
-								});
-							}
-
-							if (deleteTableColumnValues?.length) {
-								deleteTableColumnValues.forEach(value => {
-									const { rowIndex, columnIndex, segmentId, index } = value;
-									body.requests.push({
-										deleteTableColumn: {
-											tableCellLocation: {
-												rowIndex,
-												columnIndex,
-												tableStartLocation: { segmentId, index },
-											},
-										},
-									});
-								});
-							}
-
-							if (deleteHeaderValues?.length) {
-								deleteHeaderValues.forEach(({ headerId }) => {
-									body.requests.push({
-										deleteHeader: { headerId },
-									});
-								});
-							}
-
-							if (deleteFooterValues?.length) {
-								deleteFooterValues.forEach(({ footerId }) => {
-									body.requests.push({
-										deleteFooter: { footerId },
-									});
-								});
-							}
+							});
 						}
 
-						responseData = await googleApiRequest.call(this, 'POST', `/documents/${documentId}:batchUpdate`, body);
+						if (insertPageBreakValues?.length) {
+							insertPageBreakValues.forEach(({ locationChoice, segmentId, index }) => {
+								body.requests.push({
+									insertPageBreak: {
+										[locationChoice]: {
+											segmentId,
+											...(locationChoice === 'location') ? { index } : {},
+										},
+									},
+								});
+							});
+						}
 
+						if (insertTableValues?.length) {
+							insertTableValues.forEach(value => {
+								const { rows, columns, locationChoice, segmentId, index } = value;
+								body.requests.push({
+									insertTable: {
+										rows,
+										columns,
+										[locationChoice]: {
+											segmentId,
+											...(locationChoice === 'location') ? { index } : {},
+										},
+									},
+								});
+							});
+						}
+
+						if (insertTableRowValues?.length) {
+							insertTableRowValues.forEach(value => {
+								const { insertBelow, rowIndex, columnIndex, segmentId, index } = value;
+								body.requests.push({
+									insertTableRow: {
+										insertBelow,
+										tableCellLocation: {
+											rowIndex,
+											columnIndex,
+											tableStartLocation: { segmentId, index },
+										},
+									},
+								});
+							});
+						}
+
+						if (insertTableColumnValues?.length) {
+							insertTableColumnValues.forEach(value => {
+								const { insertRight, rowIndex, columnIndex, segmentId, index } = value;
+								body.requests.push({
+									insertTableColumn: {
+										insertRight,
+										tableCellLocation: {
+											rowIndex,
+											columnIndex,
+											tableStartLocation: { segmentId, index },
+										},
+									},
+								});
+							});
+						}
+
+						// ----------------------------------
+						//         create values
+						// ----------------------------------
+
+						if (createParagraphBulletsValues?.length) {
+							createParagraphBulletsValues.forEach(value => {
+								const { bulletPreset, segmentId, startIndex, endIndex } = value;
+								body.requests.push({
+									createParagraphBullets: {
+										bulletPreset,
+										range: { segmentId, startIndex, endIndex },
+									},
+								});
+							});
+						}
+
+						if (createNamedRangeValues?.length) {
+							createNamedRangeValues.forEach(value => {
+								const { name, segmentId, startIndex, endIndex } = value;
+								body.requests.push({
+									createNamedRange: {
+										name,
+										range: { segmentId, startIndex, endIndex },
+									},
+								});
+							});
+						}
+
+						if (createHeaderValues?.length) {
+							createHeaderValues.forEach(({ segmentId, index }) => {
+								body.requests.push({
+									createHeader: {
+										type: 'DEFAULT',
+										sectionBreakLocation: { segmentId, index },
+									},
+								});
+							});
+						}
+
+						if (createFooterValues?.length) {
+							createFooterValues.forEach(({ segmentId, index }) => {
+								body.requests.push({
+									createFooter: {
+										type: 'DEFAULT',
+										sectionBreakLocation: { segmentId, index },
+									},
+								});
+							});
+						}
+
+						// ----------------------------------
+						//         delete values
+						// ----------------------------------
+
+						if (deleteParagraphBulletsValues?.length) {
+							deleteParagraphBulletsValues.forEach(value => {
+								const { segmentId, startIndex, endIndex } = value;
+								body.requests.push({
+									deleteParagraphBullets: {
+										range: { segmentId, startIndex, endIndex },
+									},
+								});
+							});
+						}
+
+						if (deleteNamedRangeValues?.length) {
+							deleteNamedRangeValues.forEach(({ namedRangeReference, value }) => {
+								body.requests.push({
+									deleteNamedRange: {
+										[namedRangeReference]: value,
+									},
+								});
+							});
+						}
+
+						if (deletePositionedObjectValues?.length) {
+							deletePositionedObjectValues.forEach(({ objectId }) => {
+								body.requests.push({
+									deletePositionedObject: { objectId },
+								});
+							});
+						}
+
+						if (deleteTableRowValues?.length) {
+							deleteTableRowValues.forEach(value => {
+								const { rowIndex, columnIndex, segmentId, index } = value;
+								body.requests.push({
+									deleteTableRow: {
+										tableCellLocation: {
+											rowIndex,
+											columnIndex,
+											tableStartLocation: { segmentId, index },
+										},
+									},
+								});
+							});
+						}
+
+						if (deleteTableColumnValues?.length) {
+							deleteTableColumnValues.forEach(value => {
+								const { rowIndex, columnIndex, segmentId, index } = value;
+								body.requests.push({
+									deleteTableColumn: {
+										tableCellLocation: {
+											rowIndex,
+											columnIndex,
+											tableStartLocation: { segmentId, index },
+										},
+									},
+								});
+							});
+						}
+
+						if (deleteHeaderValues?.length) {
+							deleteHeaderValues.forEach(({ headerId }) => {
+								body.requests.push({
+									deleteHeader: { headerId },
+								});
+							});
+						}
+
+						if (deleteFooterValues?.length) {
+							deleteFooterValues.forEach(({ footerId }) => {
+								body.requests.push({
+									deleteFooter: { footerId },
+								});
+							});
+						}
+					}
+
+					responseData = await googleApiRequest.call(this, 'POST', `/documents/${documentId}:batchUpdate`, body);
+
+					if (simple === true) {
+						if (Object.keys(responseData.replies[0]).length !== 0) {
+							const key = Object.keys(responseData.replies[0])[0];
+							responseData = responseData.replies[0][key];
+						} else {
+							responseData = { success: true };
+						}
 					}
 				}
-
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
-					continue;
-				}
-				throw error;
 			}
+
+			// } catch (error) {
+			// 	if (this.continueOnFail()) {
+			// 		returnData.push({ error: error.message });
+			// 		continue;
+			// 	}
+			// 	throw error;
+			// }
 
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
 				: returnData.push(responseData);
-
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

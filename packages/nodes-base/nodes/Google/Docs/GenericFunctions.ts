@@ -30,7 +30,6 @@ export async function googleApiRequest(
 	if (!Object.keys(body).length) {
 		delete options.body;
 	}
-
 	try {
 		return await this.helpers.requestOAuth2.call(this, 'googleDocsOAuth2Api', options);
 	} catch (error) {
