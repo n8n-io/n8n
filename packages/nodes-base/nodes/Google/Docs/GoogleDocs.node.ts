@@ -368,7 +368,7 @@ export class GoogleDocs implements INodeType {
 							const key = Object.keys(responseData.replies[0])[0];
 							responseData = responseData.replies[0][key];
 						} else {
-							responseData = { success: true };
+							responseData = {};
 						}
 					}
 				}
