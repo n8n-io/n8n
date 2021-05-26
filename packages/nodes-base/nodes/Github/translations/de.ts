@@ -1,9 +1,11 @@
 module.exports = {
 	de: {
 		github: {
-			/**
-			 * `displayName`
-			 */
+			// ----------------------------------------
+			//          top-level display names
+			// ----------------------------------------
+
+			// main params
 			Authentication: 'Authentifizierung',
 			Resource: 'Ressource',
 			Operation: 'Aktion',
@@ -13,24 +15,25 @@ module.exports = {
 			Body: 'Körper',
 			Label: 'Etikett',
 			Assignee: 'Beauftragter',
+
+			// headers (e.g. for collections)
 			Labels: 'Etiketten',
 			Assignees: 'Beauftragten',
 
-			/**
-			 * `collection`
-			 */
-			collection: {
-				Labels: {
-					multipleValueButtonText: 'Etikett hinzufügen',
-				},
-				Assignees: {
-					multipleValueButtonText: 'Beautragten hinzufügen',
-				},
-			},
+			// headers (e.g. for fixed collections)
+			'Additional Parameters': 'Zusätzliche Parameter',
 
-			/**
-			 * `options`
-			 */
+			// option names (e.g. for fixed collections)
+			Email: 'Email-Adresse',
+
+			// descriptions (e.g. for operation options)
+			'Create a new file in repository.': 'Neue Datei in Repo schaffen.',
+
+			// ----------------------------------------
+			//          nested display names
+			// ----------------------------------------
+
+			// dropdown options
 			options: {
 				Resource: {
 					Issue: 'Thema',
@@ -39,6 +42,21 @@ module.exports = {
 					Release: 'Veröffentlichung',
 					Review: 'Überprüfung',
 					User: 'Benutzer',
+				},
+				Operation: {
+					Create: 'Schaffen',
+					Delete: 'Entfernen',
+					Get: 'Anfragen',
+				},
+			},
+
+			// buttons
+			collection: {
+				Labels: {
+					multipleValueButtonText: 'Etikett hinzufügen',
+				},
+				Assignees: {
+					multipleValueButtonText: 'Beautragten hinzufügen',
 				},
 			},
 		},
