@@ -1,12 +1,12 @@
 import Vue from 'vue';
 import VueI18n from 'vue-i18n';
-import messages from './locales/en';
+import messages from './locales/de';
 import axios from 'axios';
 
 Vue.use(VueI18n);
 
 export const i18n = new VueI18n({
-	locale: 'en', // set locale
+	locale: 'de', // set locale
 	fallbackLocale: 'en',
 	messages, // set locale messages
 });
@@ -20,14 +20,16 @@ function setI18nLanguage (lang: string): string {
 	return lang;
 }
 
-export function addNodeTranslations(translations: object) {
+export function addNodeTranslations(translations: { [key: string]: string | object} ) {
 	const lang = Object.keys(translations)[0];
-	// @ts-ignore
 	const messages = translations[lang];
-	console.log('ADDING NODE LANGUAGE', lang, messages);
+	console.log('----------------------------------');
+	console.log('BASE GENERIC MESSAGES', i18n.messages);
+	console.log('ADDING NODE LANGUAGE', lang);
+	console.log('ADDING NODE MESSAGES', messages);
+	console.log('----------------------------------');
 	const newNodesBase = { 'n8n-nodes-base': Object.assign(i18n.messages[lang]['n8n-nodes-base'], messages) };
 	i18n.setLocaleMessage(lang, Object.assign(i18n.messages[lang], newNodesBase));
-	console.log(i18n.messages);
 }
 
 export function loadLanguageAsync(lang: string) {
