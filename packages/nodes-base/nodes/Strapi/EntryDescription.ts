@@ -285,7 +285,7 @@ export const entryFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'JSON query to filter the data.<a href="https://strapi.io/documentation/v3.x/content-api/parameters.html#filters" target="_blank"> Info</a>',
+				description: 'JSON query to filter the data. <a href="https://strapi.io/documentation/developer-docs/latest/developer-resources/content-api/content-api.html#filters" target="_blank">More info</a>.',
 			},
 		],
 	},

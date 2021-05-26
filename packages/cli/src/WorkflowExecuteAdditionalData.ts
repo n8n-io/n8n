@@ -619,7 +619,16 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	// This one already contains changes to talk to parent process
 	// and get executionID from `activeExecutions` running on main process
 	additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
-	additionalDataIntegrated.executionTimeoutTimestamp = additionalData.executionTimeoutTimestamp;
+
+	let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
+	if (workflowData.settings?.executionTimeout !== undefined && workflowData.settings.executionTimeout > 0) {
+		// We might have received a max timeout timestamp from the parent workflow
+		// If we did, then we get the minimum time between the two timeouts
+		// If no timeout was given from the parent, then we use our timeout.
+		subworkflowTimeout = Math.min(additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER, Date.now() + (workflowData.settings.executionTimeout as number * 1000));
+	}
+	
+	additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
 
 
 	// Execute the workflow
