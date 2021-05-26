@@ -217,14 +217,22 @@ export class AwsTranscribe implements INodeType {
 						name: 'maxAlternatives',
 						type: 'number',
 						default: 2,
-						description: 'Number of alternative transcriptions to return [2-10].',
+						description: 'Max number of alternative transcriptions to return.',
+						typeOptions: {
+							minValue: 2,
+							maxValue: 10,
+						},
 					},
 					{
 						displayName: 'Max Speaker Labels',
 						name: 'maxSpeakerLabels',
 						type: 'number',
 						default: 2,
-						description: 'Maximum number of speakers to identify in the input media file [2-10].',
+						description: 'Max number of speakers to identify in the input media file.',
+						typeOptions: {
+							minValue: 2,
+							maxValue: 10,
+						},
 					},
 					{
 						displayName: 'Vocabulary Name',
@@ -324,6 +332,9 @@ export class AwsTranscribe implements INodeType {
 				type: 'number',
 				default: 20,
 				description: 'How many results to return.',
+				typeOptions: {
+					minValue: 1,
+				},
 				displayOptions: {
 					show: {
 						resource: [
