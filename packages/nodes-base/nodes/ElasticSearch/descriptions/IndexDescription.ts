@@ -110,7 +110,7 @@ export const indexFields = [
 			{
 				displayName: 'Master Timeout',
 				name: 'master_timeout',
-				description: 'Period to wait for a connection to the master node. If no response is received before the timeout expires,<br>the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">ElasticSearch time units reference</a>.',
+				description: 'Period to wait for a connection to the master node. If no response is received before the timeout expires,<br>the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units reference</a>.',
 				type: 'string',
 				default: '1m',
 			},
@@ -128,7 +128,7 @@ export const indexFields = [
 			{
 				displayName: 'Timeout',
 				name: 'timeout',
-				description: 'Period to wait for a response. If no response is received before the timeout expires, the request<br>fails and returns an error. Defaults to <code>30s</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">ElasticSearch time units reference</a>.',
+				description: 'Period to wait for a response. If no response is received before the timeout expires, the request<br>fails and returns an error. Defaults to <code>30s</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units reference</a>.',
 				type: 'string',
 				default: '30s',
 			},
@@ -269,7 +269,7 @@ export const indexFields = [
 			{
 				displayName: 'Master Timeout',
 				name: 'master_timeout',
-				description: 'Period to wait for a connection to the master node. If no response is received before the timeout expires,<br>the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">ElasticSearch time units reference</a>.',
+				description: 'Period to wait for a connection to the master node. If no response is received before the timeout expires,<br>the request fails and returns an error. Defaults to <code>1m</code>. See the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units" target="_blank">Elasticsearch time units reference</a>.',
 				type: 'string',
 				default: '1m',
 			},

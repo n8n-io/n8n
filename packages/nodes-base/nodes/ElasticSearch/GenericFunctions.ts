@@ -12,10 +12,10 @@ import {
 } from 'n8n-workflow';
 
 import {
-	ElasticSearchApiCredentials,
+	ElasticsearchApiCredentials,
 } from './types';
 
-export async function elasticSearchApiRequest(
+export async function elasticsearchApiRequest(
 	this: IExecuteFunctions,
 	method: 'GET' | 'PUT' | 'POST' | 'DELETE',
 	endpoint: string,
@@ -26,7 +26,7 @@ export async function elasticSearchApiRequest(
 		username,
 		password,
 		baseUrl,
-	} = this.getCredentials('elasticSearchApi') as ElasticSearchApiCredentials;
+	} = this.getCredentials('elasticsearchApi') as ElasticsearchApiCredentials;
 
 	const token = Buffer.from(`${username}:${password}`).toString('base64');
 

@@ -10,7 +10,7 @@ import {
 } from 'n8n-workflow';
 
 import {
-	elasticSearchApiRequest,
+	elasticsearchApiRequest,
 } from './GenericFunctions';
 
 import {
@@ -24,24 +24,24 @@ import {
 	DocumentGetAllAdditionalFields,
 } from './types';
 
-export class ElasticSearch implements INodeType {
+export class Elasticsearch implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'ElasticSearch',
-		name: 'elasticSearch',
-		icon: 'file:elasticSearch.svg',
+		displayName: 'Elasticsearch',
+		name: 'elasticsearch',
+		icon: 'file:elasticsearch.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume the ElasticSearch API',
+		description: 'Consume the Elasticsearch API',
 		defaults: {
-			name: 'ElasticSearch',
+			name: 'Elasticsearch',
 			color: '#f3d337',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'elasticSearchApi',
+				name: 'elasticsearchApi',
 				required: true,
 			},
 		],
@@ -101,7 +101,7 @@ export class ElasticSearch implements INodeType {
 				const documentId = this.getNodeParameter('documentId', i);
 
 				const endpoint = `/${indexId}/_doc/${documentId}`;
-				responseData = await elasticSearchApiRequest.call(this, 'DELETE', endpoint);
+				responseData = await elasticsearchApiRequest.call(this, 'DELETE', endpoint);
 
 			} else if (operation === 'get') {
 
@@ -122,7 +122,7 @@ export class ElasticSearch implements INodeType {
 					}
 
 					const endpoint = `/${indexId}/_doc/${documentId}`;
-					responseData = await elasticSearchApiRequest.call(this, 'GET', endpoint, {}, qs);
+					responseData = await elasticsearchApiRequest.call(this, 'GET', endpoint, {}, qs);
 
 				} else if (operation === 'getAll') {
 
@@ -149,7 +149,7 @@ export class ElasticSearch implements INodeType {
 					if (!returnAll) {
 						qs.size = this.getNodeParameter('limit', 0);
 					}
-					responseData = await elasticSearchApiRequest.call(this, 'GET', `/${indexId}/_search`, body, qs);
+					responseData = await elasticsearchApiRequest.call(this, 'GET', `/${indexId}/_search`, body, qs);
 					responseData = responseData.hits.hits;
 
 				} else if (operation === 'index') {
@@ -175,7 +175,7 @@ export class ElasticSearch implements INodeType {
 					}
 
 					const endpoint = `/${indexId}/_doc/${documentId}`;
-					responseData = await elasticSearchApiRequest.call(this, 'PUT', endpoint, body);
+					responseData = await elasticsearchApiRequest.call(this, 'PUT', endpoint, body);
 
 				} else if (operation === 'update') {
 
@@ -193,7 +193,7 @@ export class ElasticSearch implements INodeType {
 					const documentId = this.getNodeParameter('documentId', i);
 
 					const endpoint = `/${indexId}/_update/${documentId}`;
-					responseData = await elasticSearchApiRequest.call(this, 'POST', endpoint, body);
+					responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body);
 
 				}
 
@@ -225,7 +225,7 @@ export class ElasticSearch implements INodeType {
 						Object.assign(qs, rest);
 					}
 
-					responseData = await elasticSearchApiRequest.call(this, 'PUT', `/${indexId}`);
+					responseData = await elasticsearchApiRequest.call(this, 'PUT', `/${indexId}`);
 
 				} else if (operation === 'delete') {
 
@@ -237,7 +237,7 @@ export class ElasticSearch implements INodeType {
 
 					const indexId = this.getNodeParameter('indexId', i);
 
-					responseData = await elasticSearchApiRequest.call(this, 'DELETE', `/${indexId}`);
+					responseData = await elasticsearchApiRequest.call(this, 'DELETE', `/${indexId}`);
 
 				} else if (operation === 'get') {
 
@@ -256,7 +256,7 @@ export class ElasticSearch implements INodeType {
 						Object.assign(qs, additionalFields);
 					}
 
-					responseData = await elasticSearchApiRequest.call(this, 'GET', `/${indexId}`, {}, qs);
+					responseData = await elasticsearchApiRequest.call(this, 'GET', `/${indexId}`, {}, qs);
 
 				} else if (operation === 'getAll') {
 
@@ -266,7 +266,7 @@ export class ElasticSearch implements INodeType {
 
 					// https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html
 
-					responseData = await elasticSearchApiRequest.call(this, 'GET', '/_aliases');
+					responseData = await elasticsearchApiRequest.call(this, 'GET', '/_aliases');
 					responseData = Object.keys(responseData).map(i => ({ indexId: i }));
 
 					const returnAll = this.getNodeParameter('returnAll', i);

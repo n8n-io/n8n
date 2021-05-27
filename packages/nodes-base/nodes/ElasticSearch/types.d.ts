@@ -1,4 +1,4 @@
-export type ElasticSearchApiCredentials = {
+export type ElasticsearchApiCredentials = {
 	username: string;
 	password: string;
 	baseUrl: string;

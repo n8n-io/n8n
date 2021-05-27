@@ -3,10 +3,10 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class ElasticSearchApi implements ICredentialType {
-	name = 'elasticSearchApi';
-	displayName = 'Elastic Search API';
-	documentationUrl = 'elasticSearch';
+export class ElasticsearchApi implements ICredentialType {
+	name = 'elasticsearchApi';
+	displayName = 'Elasticsearch API';
+	documentationUrl = 'elasticsearch';
 	properties = [
 		{
 			displayName: 'Username',
@@ -30,7 +30,7 @@ export class ElasticSearchApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 			placeholder: 'https://a-b-optimized-deployment-ffc9df.es.us-west1.gcp.cloud.es.io:9243',
-			description: 'Referred to as \'endpoint\' in the ElasticSearch dashboard.',
+			description: 'Referred to as \'endpoint\' in the Elasticsearch dashboard.',
 		},
 	];
 }
