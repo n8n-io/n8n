@@ -10,6 +10,7 @@ import {
 import {
 	getConnectionManager,
 	In,
+	Like,
 } from 'typeorm';
 import * as bodyParser from 'body-parser';
 require('body-parser-xml')(bodyParser);
@@ -66,6 +67,7 @@ import {
 	WebhookServer,
 	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
+	WorkflowHelpers,
 	WorkflowRunner,
 } from './';
 
@@ -113,6 +115,7 @@ import { Registry } from 'prom-client';
 import * as TagHelpers from './TagHelpers';
 import { TagEntity } from './databases/entities/TagEntity';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { WorkflowNameRequest } from './WorkflowHelpers';
 
 class App {
 
@@ -123,6 +126,7 @@ class App {
 	endpointWebhookTest: string;
 	endpointPresetCredentials: string;
 	externalHooks: IExternalHooksClass;
+	defaultWorkflowName: string;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
@@ -146,6 +150,9 @@ class App {
 
 		this.endpointWebhook = config.get('endpoints.webhook') as string;
 		this.endpointWebhookTest = config.get('endpoints.webhookTest') as string;
+
+		this.defaultWorkflowName = config.get('workflows.defaultName') as string;
+
 		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
 		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
 		this.saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
@@ -493,8 +500,6 @@ class App {
 			const incomingData = req.body;
 
 			const newWorkflow = new WorkflowEntity();
-			newWorkflow.createdAt = this.getCurrentDate();
-			newWorkflow.updatedAt = this.getCurrentDate();
 
 			Object.assign(newWorkflow, incomingData);
 			newWorkflow.name = incomingData.name.trim();
@@ -507,7 +512,8 @@ class App {
 
 			await this.externalHooks.run('workflow.create', [newWorkflow]);
 
-			const savedWorkflow = await Db.collections.Workflow!.save(newWorkflow);
+			await WorkflowHelpers.validateWorkflow(newWorkflow);
+			const savedWorkflow = await Db.collections.Workflow!.save(newWorkflow).catch(WorkflowHelpers.throwDuplicateEntryError) as WorkflowEntity;
 			savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, incomingTagOrder);
 
 			// @ts-ignore
@@ -566,6 +572,45 @@ class App {
 			return workflows;
 		}));
 
+
+		this.app.get(`/${this.restEndpoint}/workflows/new`, ResponseHelper.send(async (req: WorkflowNameRequest, res: express.Response): Promise<{ name: string }> => {
+			const nameToReturn = req.query.name && req.query.name !== ''
+				? req.query.name
+				: this.defaultWorkflowName;
+
+			const workflows = await Db.collections.Workflow!.find({
+				select: ['name'],
+				where: { name: Like(`${nameToReturn}%`) },
+			});
+
+			// name is unique
+			if (workflows.length === 0) {
+				return { name: nameToReturn };
+			}
+
+			const maxSuffix = workflows.reduce((acc: number, { name }) => {
+				const parts = name.split(`${nameToReturn} `);
+
+				if (parts.length > 2) return acc;
+
+				const suffix = Number(parts[1]);
+
+				if (!isNaN(suffix) && Math.ceil(suffix) > acc) {
+					acc = Math.ceil(suffix);
+				}
+
+				return acc;
+			}, 0);
+
+			// name is duplicate but no numeric suffixes exist yet
+			if (maxSuffix === 0) {
+				return { name: `${nameToReturn} 2` };
+			}
+
+			return { name: `${nameToReturn} ${maxSuffix + 1}` };
+		}));
+
+
 		// Returns a specific workflow
 		this.app.get(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<WorkflowEntity | undefined> => {
 			const workflow = await Db.collections.Workflow!.findOne(req.params.id, { relations: ['tags'] });
@@ -587,7 +632,7 @@ class App {
 			const { tags, ...updateData } = req.body;
 
 			const id = req.params.id;
-			newWorkflowData.id = id;
+			updateData.id = id;
 
 			await this.externalHooks.run('workflow.update', [updateData]);
 
@@ -624,7 +669,8 @@ class App {
 
 			updateData.updatedAt = this.getCurrentDate(); // TODO: Set at DB level
 
-			await Db.collections.Workflow!.update(id, updateData);
+			await WorkflowHelpers.validateWorkflow(updateData);
+			await Db.collections.Workflow!.update(id, updateData).catch(WorkflowHelpers.throwDuplicateEntryError);
 
 			const tablePrefix = config.get('database.tablePrefix');
 			await TagHelpers.removeRelations(req.params.id, tablePrefix);
@@ -755,8 +801,6 @@ class App {
 		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<TagEntity | void> => {
 			const newTag = new TagEntity();
 			newTag.name = req.body.name.trim();
-			newTag.createdAt = this.getCurrentDate();
-			newTag.updatedAt = this.getCurrentDate();
 
 			await this.externalHooks.run('tag.beforeCreate', [newTag]);
 
@@ -778,7 +822,6 @@ class App {
 			const newTag = new TagEntity();
 			newTag.id = Number(id);
 			newTag.name = name.trim();
-			newTag.updatedAt = this.getCurrentDate();
 
 			await this.externalHooks.run('tag.beforeUpdate', [newTag]);
 
@@ -819,6 +862,7 @@ class App {
 
 			const nodeTypes = NodeTypes();
 
+			// @ts-ignore
 			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, path, JSON.parse('' + req.query.currentNodeParameters), credentials!);
 
 			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
@@ -983,8 +1027,6 @@ class App {
 			await this.externalHooks.run('credentials.create', [newCredentialsData]);
 
 			// Add special database related data
-			newCredentialsData.createdAt = this.getCurrentDate();
-			newCredentialsData.updatedAt = this.getCurrentDate();
 
 			// TODO: also add user automatically depending on who is logged in, if anybody is logged in
 
