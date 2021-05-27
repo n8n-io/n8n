@@ -131,7 +131,7 @@ export interface IRestApi {
 	getSettings(): Promise<IN8nUISettings>;
 	getNodeTypes(): Promise<INodeTypeDescription[]>;
 	getNodesInformation(nodeList: string[]): Promise<INodeTypeDescription[]>;
-	getNodeParameterOptions(nodeType: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
+	getNodeParameterOptions(nodeType: string, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
 	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
@@ -241,7 +241,7 @@ export interface IWorkflowShortResponse {
 	active: boolean;
 	createdAt: number | string;
 	updatedAt: number | string;
-	tags?: ITag[];
+	tags: ITag[];
 }
 
 
@@ -524,6 +524,8 @@ export interface IUiState {
 	isPageLoading: boolean;
 }
 
+export interface IWorkflowsState {
+}
 
 export interface IRestApiContext {
 	baseUrl: string;

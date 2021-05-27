@@ -113,7 +113,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
-import { NEW_WORKFLOW_NAME, NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -507,7 +507,9 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.$store.commit('setStateDirty', false);
+					if (this.isReadOnly) {
+						return;
+					}
 
 					this.callDebounced('saveCurrentWorkflow', 1000);
 				} else if (e.key === 'Enter') {
@@ -1396,7 +1398,8 @@ export default mixins(
 			},
 			async newWorkflow (): Promise<void> {
 				await this.resetWorkspace();
-				this.$store.commit('setWorkflowName', {newName: NEW_WORKFLOW_NAME, setStateDirty: false});
+				await this.$store.dispatch('workflows/setNewWorkflowName');
+				this.$store.commit('setStateDirty', false);
 
 				// Create start node
 				const defaultNodes = [

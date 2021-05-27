@@ -6,7 +6,7 @@
 		size="sm"
 		title="Duplicate Workflow"	
 	>
-		<template slot="content">
+		<template v-slot:content>
 			<el-row>
 				<el-input
 					v-model="name"
@@ -39,7 +39,7 @@
 import Vue from "vue";
 import mixins from "vue-typed-mixins";
 
-import { DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH } from "@/constants";
+import { MAX_WORKFLOW_NAME_LENGTH } from "@/constants";
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
 import TagsDropdown from "@/components/TagsDropdown.vue";
@@ -54,14 +54,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 			"workflowTags"
 		] as string[];
 
-		const currentWorkflowName  = this.$store.getters["workflowName"];
-		let name = currentWorkflowName;
-		if (currentWorkflowName && currentWorkflowName.length <= (MAX_WORKFLOW_NAME_LENGTH - DUPLICATE_POSTFFIX.length)) {
-			name = `${currentWorkflowName}${DUPLICATE_POSTFFIX}`;
-		}
-
 		return {
-			name,
+			name: '',
 			currentTagIds,
 			isSaving: false,
 			modalBus: new Vue(),
@@ -70,7 +64,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 			prevTagIds: currentTagIds,
 		};
 	},
-	mounted() {
+	async mounted() {
+		this.$data.name = await this.$store.dispatch('workflows/getDuplicateCurrentWorkflowName');
 		this.$nextTick(() => this.focusOnNameInput());
 	},
 	watch: {
@@ -105,7 +100,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			if (!name) {
 				this.$showMessage({
 					title: "Name missing",
-					message: `No name for the workflow got entered and so could not be saved!`,
+					message: `Please enter a name, or press 'esc' to go back to the old one.`,
 					type: "error",
 				});
 
@@ -118,8 +113,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 			if (saved) {
 				this.closeDialog();
-				this.$data.isSaving = false;
 			}
+
+			this.$data.isSaving = false;
 		},
 		closeDialog(): void {
 			this.modalBus.$emit("close");

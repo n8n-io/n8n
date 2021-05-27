@@ -3,9 +3,9 @@
 		:name="modalName"
 		size="xl"
 	>
-			<template slot="header">
+			<template v-slot:header>
 				<div class="workflows-header">
-					<div>
+					<div class="title">
 						<h1>Open Workflow</h1>
 					</div>
 					<div class="tags-filter">
@@ -26,13 +26,13 @@
 				</div>
 			</template>
 
-			<template slot="content">
+			<template v-slot:content>
 				<el-table class="search-table" :data="filteredWorkflows" stripe @cell-click="openWorkflow" :default-sort = "{prop: 'updatedAt', order: 'descending'}" v-loading="isDataLoading">
 					<el-table-column property="name" label="Name" class-name="clickable" sortable>
 						<template slot-scope="scope">
 							<div :key="scope.row.id">
 								<span class="name">{{scope.row.name}}</span>
-								<TagsContainer class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="2" />
+								<TagsContainer class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="3" @click="onTagClick"/>
 							</div>
 						</template>
 					</el-table-column>
@@ -91,7 +91,7 @@ export default mixins(
 		filteredWorkflows (): IWorkflowShortResponse[] {
 			return this.workflows
 				.filter((workflow: IWorkflowShortResponse) => {
-					if (this.filterText && workflow.name.toLowerCase().indexOf(this.filterText.toLowerCase()) === -1) {
+					if (this.filterText && !workflow.name.toLowerCase().includes(this.filterText.toLowerCase())) {
 						return false;
 					}
 
@@ -103,12 +103,7 @@ export default mixins(
 						return false;
 					}
 
-					return this.filterTagIds.reduce((accu: boolean, id: string) => {
-						const tagIds = ((workflow.tags || []) as ITag[])
-							.map(({id}: ITag): string => id);
-
-						return accu && tagIds.indexOf(id) > -1;
-					}, true);
+					return this.filterTagIds.reduce((accu: boolean, id: string) =>  accu && !!workflow.tags.find(tag => tag.id === id), true);
 				});
 		},
 	},
@@ -128,6 +123,11 @@ export default mixins(
 		},
 		updateTagsFilter(tags: string[]) {
 			this.filterTagIds = tags;
+		},
+		onTagClick(tagId: string) {
+			if (tagId !== 'count' && this.filterTagIds.indexOf(tagId) === -1) {
+				this.filterTagIds.push(tagId);
+			}
 		},
 		async openWorkflow (data: IWorkflowShortResponse, column: any) { // tslint:disable-line:no-any
 			if (column.label !== 'Active') {
@@ -211,7 +211,7 @@ export default mixins(
 .workflows-header {
 	display: flex;
 
-	> div:first-of-type {
+	.title {
 		flex-grow: 1;
 
 		h1 {
@@ -227,6 +227,8 @@ export default mixins(
 	}
 
 	.tags-filter {
+		flex-grow: 1;
+		max-width: 270px;
 		min-width: 220px;
 	}
 }

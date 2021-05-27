@@ -6,7 +6,7 @@
 		@enter="onEnter"
 		size="md"
 	>
-		<template slot="content">
+		<template v-slot:content>
 			<el-row>
 				<TagsView
 					v-if="hasTags || isCreating"
@@ -49,7 +49,7 @@ export default mixins(showMessage).extend({
 	props: ['modalName'],
 	data() {
 		const tagIds = (this.$store.getters['tags/allTags'] as ITag[])
-			.map((tag): string => tag.id);
+			.map((tag) => tag.id);
 
 		return {
 			tagIds,
@@ -84,23 +84,18 @@ export default mixins(showMessage).extend({
 		async onCreate(name: string, cb: (tag: ITag | null, error?: Error) => void) {
 			try {
 				if (!name) {
-					throw new Error("Tag name was not set");
+					throw new Error("Tag name cannot be empty");
 				}
 
 				const newTag = await this.$store.dispatch("tags/create", name);
 				this.$data.tagIds = [newTag.id].concat(this.$data.tagIds);
 				cb(newTag);
-
-				this.$showMessage({
-					title: "New tag was created",
-					message: `"${name}" was added to your tag collection`,
-					type: "success",
-				});
 			} catch (error) {
+				const escapedName = escape(name);
 				this.$showError(
 					error,
 					"New tag was not created",
-					`A problem occurred when trying to create the "${name}" tag`,
+					`A problem occurred when trying to create the "${escapedName}" tag`,
 				);
 				cb(null, error);
 			}
@@ -112,7 +107,7 @@ export default mixins(showMessage).extend({
 
 			try {
 				if (!name) {
-					throw new Error("Tag name was not set");
+					throw new Error("Tag name cannot be empty");
 				}
 
 				if (name === oldName) {
@@ -122,17 +117,21 @@ export default mixins(showMessage).extend({
 				
 				const updatedTag = await this.$store.dispatch("tags/rename", { id, name });
 				cb(!!updatedTag);
+			
+				const escapedName = escape(name);
+				const escapedOldName = escape(oldName);
 
 				this.$showMessage({
 					title: "Tag was updated",
-					message: `The "${oldName}" tag was successfully updated to "${name}"`,
+					message: `The "${escapedOldName}" tag was successfully updated to "${escapedName}"`,
 					type: "success",
 				});
 			} catch (error) {
+				const escapedName = escape(oldName);
 				this.$showError(
 					error,
 					"Tag was not updated",
-					`A problem occurred when trying to update the "${oldName}" tag`,
+					`A problem occurred when trying to update the "${escapedName}" tag`,
 				);
 				cb(false, error);
 			}
@@ -152,16 +151,18 @@ export default mixins(showMessage).extend({
 
 				cb(deleted);
 
+				const escapedName = escape(name);
 				this.$showMessage({
 					title: "Tag was deleted",
-					message: `The "${name}" tag was successfully deleted from your tag collection`,
+					message: `The "${escapedName}" tag was successfully deleted from your tag collection`,
 					type: "success",
 				});
 			} catch (error) {
+				const escapedName = escape(name);
 				this.$showError(
 					error,
 					"Tag was not deleted",
-					`A problem occurred when trying to delete the "${name}" tag`,
+					`A problem occurred when trying to delete the "${escapedName}" tag`,
 				);
 				cb(false, error);
 			}
