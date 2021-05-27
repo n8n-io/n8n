@@ -43,7 +43,7 @@ import {
 	WorkflowHooks,
 } from 'n8n-workflow';
 
-import * as config from '../config';
+import { config } from '@config';
 
 import { LessThanOrEqual } from 'typeorm';
 
@@ -627,7 +627,7 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 		// If no timeout was given from the parent, then we use our timeout.
 		subworkflowTimeout = Math.min(additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER, Date.now() + (workflowData.settings.executionTimeout as number * 1000));
 	}
-	
+
 	additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
 
 

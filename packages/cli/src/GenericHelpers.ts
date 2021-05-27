@@ -1,4 +1,4 @@
-import * as config from '../config';
+import { config } from '@config';
 import * as express from 'express';
 import { join as pathJoin } from 'path';
 import {

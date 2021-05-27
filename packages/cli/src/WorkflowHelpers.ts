@@ -21,7 +21,7 @@ import {
 	LoggerProxy as Logger,
 	Workflow,} from 'n8n-workflow';
 
-import * as config from '../config';
+import { config } from '@config';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
