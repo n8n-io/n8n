@@ -89,113 +89,113 @@ export class Elasticsearch implements INodeType {
 
 				// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs.html
 
-			if (operation === 'delete') {
-
-				// ----------------------------------------
-				//             document: delete
-				// ----------------------------------------
-
-				// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-delete.html
-
-				const indexId = this.getNodeParameter('indexId', i);
-				const documentId = this.getNodeParameter('documentId', i);
-
-				const endpoint = `/${indexId}/_doc/${documentId}`;
-				responseData = await elasticsearchApiRequest.call(this, 'DELETE', endpoint);
-
-			} else if (operation === 'get') {
+				if (operation === 'delete') {
 
 					// ----------------------------------------
-					//              document: get
+					//             document: delete
 					// ----------------------------------------
 
-					// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-get.html
+					// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-delete.html
 
 					const indexId = this.getNodeParameter('indexId', i);
 					const documentId = this.getNodeParameter('documentId', i);
-
-					const qs = {} as IDataObject;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					if (Object.keys(additionalFields).length) {
-						Object.assign(qs, additionalFields);
-					}
 
 					const endpoint = `/${indexId}/_doc/${documentId}`;
-					responseData = await elasticsearchApiRequest.call(this, 'GET', endpoint, {}, qs);
+					responseData = await elasticsearchApiRequest.call(this, 'DELETE', endpoint);
 
-				} else if (operation === 'getAll') {
+				} else if (operation === 'get') {
 
-					// ----------------------------------------
-					//            document: getAll
-					// ----------------------------------------
+						// ----------------------------------------
+						//              document: get
+						// ----------------------------------------
 
-					// https://www.elastic.co/guide/en/elasticsearch/reference/current/search-search.html
+						// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-get.html
 
-					const indexId = this.getNodeParameter('indexId', i);
+						const indexId = this.getNodeParameter('indexId', i);
+						const documentId = this.getNodeParameter('documentId', i);
 
-					const body = {} as IDataObject;
-					const qs = {} as IDataObject;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as DocumentGetAllAdditionalFields;
+						const qs = {} as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					if (Object.keys(additionalFields).length) {
-						const { query, ...rest } = additionalFields;
-						Object.assign(body, JSON.parse(query));
-						Object.assign(qs, rest);
+						if (Object.keys(additionalFields).length) {
+							Object.assign(qs, additionalFields);
+						}
+
+						const endpoint = `/${indexId}/_doc/${documentId}`;
+						responseData = await elasticsearchApiRequest.call(this, 'GET', endpoint, {}, qs);
+
+					} else if (operation === 'getAll') {
+
+						// ----------------------------------------
+						//            document: getAll
+						// ----------------------------------------
+
+						// https://www.elastic.co/guide/en/elasticsearch/reference/current/search-search.html
+
+						const indexId = this.getNodeParameter('indexId', i);
+
+						const body = {} as IDataObject;
+						const qs = {} as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as DocumentGetAllAdditionalFields;
+
+						if (Object.keys(additionalFields).length) {
+							const { query, ...rest } = additionalFields;
+							Object.assign(body, JSON.parse(query));
+							Object.assign(qs, rest);
+						}
+
+						const returnAll = this.getNodeParameter('returnAll', 0);
+
+						if (!returnAll) {
+							qs.size = this.getNodeParameter('limit', 0);
+						}
+						responseData = await elasticsearchApiRequest.call(this, 'GET', `/${indexId}/_search`, body, qs);
+						responseData = responseData.hits.hits;
+
+					} else if (operation === 'index') {
+
+						// ----------------------------------------
+						//             document: index
+						// ----------------------------------------
+
+						// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-index_.html
+
+						const body = {
+							field: this.getNodeParameter('field', i),
+						} as IDataObject;
+
+						const indexId = this.getNodeParameter('indexId', i);
+						const documentId = this.getNodeParameter('documentId', i);
+
+						const qs = {} as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (Object.keys(additionalFields).length) {
+							Object.assign(qs, additionalFields);
+						}
+
+						const endpoint = `/${indexId}/_doc/${documentId}`;
+						responseData = await elasticsearchApiRequest.call(this, 'PUT', endpoint, body);
+
+					} else if (operation === 'update') {
+
+						// ----------------------------------------
+						//             document: update
+						// ----------------------------------------
+
+						// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-update.html
+
+						const body = {
+							script: this.getNodeParameter('script', i),
+						} as IDataObject;
+
+						const indexId = this.getNodeParameter('indexId', i);
+						const documentId = this.getNodeParameter('documentId', i);
+
+						const endpoint = `/${indexId}/_update/${documentId}`;
+						responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body);
+
 					}
-
-					const returnAll = this.getNodeParameter('returnAll', 0);
-
-					if (!returnAll) {
-						qs.size = this.getNodeParameter('limit', 0);
-					}
-					responseData = await elasticsearchApiRequest.call(this, 'GET', `/${indexId}/_search`, body, qs);
-					responseData = responseData.hits.hits;
-
-				} else if (operation === 'index') {
-
-					// ----------------------------------------
-					//             document: index
-					// ----------------------------------------
-
-					// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-index_.html
-
-					const body = {
-						field: this.getNodeParameter('field', i),
-					} as IDataObject;
-
-					const indexId = this.getNodeParameter('indexId', i);
-					const documentId = this.getNodeParameter('documentId', i);
-
-					const qs = {} as IDataObject;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					if (Object.keys(additionalFields).length) {
-						Object.assign(qs, additionalFields);
-					}
-
-					const endpoint = `/${indexId}/_doc/${documentId}`;
-					responseData = await elasticsearchApiRequest.call(this, 'PUT', endpoint, body);
-
-				} else if (operation === 'update') {
-
-					// ----------------------------------------
-					//             document: update
-					// ----------------------------------------
-
-					// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-update.html
-
-					const body = {
-						script: this.getNodeParameter('script', i),
-					} as IDataObject;
-
-					const indexId = this.getNodeParameter('indexId', i);
-					const documentId = this.getNodeParameter('documentId', i);
-
-					const endpoint = `/${indexId}/_update/${documentId}`;
-					responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body);
-
-				}
 
 			} else if (resource === 'index') {
 
