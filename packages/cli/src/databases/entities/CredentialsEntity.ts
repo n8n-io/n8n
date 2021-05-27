@@ -3,6 +3,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	getTimestampSyntax,
 	resolveDataType
 } from '../utils';
 
@@ -11,10 +12,13 @@ import {
 } from '../..';
 
 import {
+	BeforeUpdate,
 	Column,
+	CreateDateColumn,
 	Entity,
 	Index,
 	PrimaryGeneratedColumn,
+	UpdateDateColumn,
 } from 'typeorm';
 
 @Entity()
@@ -40,9 +44,14 @@ export class CredentialsEntity implements ICredentialsDb {
 	@Column(resolveDataType('json'))
 	nodesAccess: ICredentialNodeAccess[];
 
-	@Column(resolveDataType('datetime'))
+	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
 	createdAt: Date;
 
-	@Column(resolveDataType('datetime'))
+	@UpdateDateColumn({ precision: 3, default: () => getTimestampSyntax(), onUpdate: getTimestampSyntax() })
 	updatedAt: Date;
+
+	@BeforeUpdate()
+	setUpdateDate() {
+		this.updatedAt = new Date();
+	}
 }

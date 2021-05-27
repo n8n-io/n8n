@@ -30,12 +30,12 @@ import {
 	IUpdateInformation,
 	IWorkflowDb,
 	XYPositon,
-	ITag,
 	IRestApiContext,
 } from './Interface';
 
 import tags from './modules/tags';
 import ui from './modules/ui';
+import workflows from './modules/workflows';
 
 Vue.use(Vuex);
 
@@ -91,6 +91,7 @@ const state: IRootState = {
 const modules = {
 	tags,
 	ui,
+	workflows,
 };
 
 export const store = new Vuex.Store({

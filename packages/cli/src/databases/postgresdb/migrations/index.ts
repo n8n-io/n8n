@@ -4,6 +4,7 @@ import { CreateIndexStoppedAt1594828256133 } from './1594828256133-CreateIndexSt
 import { AddWebhookId1611144599516 } from './1611144599516-AddWebhookId';
 import { MakeStoppedAtNullable1607431743768 } from './1607431743768-MakeStoppedAtNullable';
 import { CreateTagEntity1617270242566 } from './1617270242566-CreateTagEntity';
+import { UniqueWorkflowNames1620824779533 } from './1620824779533-UniqueWorkflowNames';
 
 export const postgresMigrations = [
 	InitialMigration1587669153312,
@@ -12,4 +13,5 @@ export const postgresMigrations = [
 	AddWebhookId1611144599516,
 	MakeStoppedAtNullable1607431743768,
 	CreateTagEntity1617270242566,
+	UniqueWorkflowNames1620824779533,
 ];

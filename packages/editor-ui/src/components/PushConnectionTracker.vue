@@ -17,24 +17,13 @@
 </template>
 
 <script lang="ts">
-import mixins from "vue-typed-mixins";
+import Vue from "vue";
 import { mapGetters } from "vuex";
 
-import { pushConnection } from "@/components/mixins/pushConnection";
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-
-// pushConnection has dependency on workflowHelpers mixin
-export default mixins(pushConnection, workflowHelpers).extend({
+export default Vue.extend({
 	name: "PushConnectionTracker",
 	computed: {
 		...mapGetters(["pushConnectionActive"]),
-	},
-	async mounted() {
-		// Initialize the push connection
-		this.pushConnect();
-	},
-	beforeDestroy() {
-		this.pushDisconnect();
 	},
 });
 </script>

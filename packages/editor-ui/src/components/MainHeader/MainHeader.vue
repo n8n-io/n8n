@@ -13,23 +13,13 @@
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { pushConnection } from '@/components/mixins/pushConnection';
-import { restApi } from '@/components/mixins/restApi';
-import { showMessage } from '@/components/mixins/showMessage';
-import { titleChange } from '@/components/mixins/titleChange';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import ExecutionDetails from '@/components/MainHeader/ExecutionDetails/ExecutionDetails.vue';
 
 export default mixins(
-	genericHelpers,
 	pushConnection,
-	restApi,
-	showMessage,
-	titleChange,
-	workflowHelpers,
 )
 	.extend({
 		name: 'MainHeader',
@@ -44,6 +34,13 @@ export default mixins(
 			isExecutionPage (): boolean {
 				return ['ExecutionById'].includes(this.$route.name as string);
 			},
+		},
+		async mounted() {
+			// Initialize the push connection
+			this.pushConnect();
+		},
+		beforeDestroy() {
+			this.pushDisconnect();
 		},
 	});
 </script>
@@ -73,6 +70,7 @@ export default mixins(
 	background-color: #fff;
 	height: 65px;
 	width: 100%;
+	box-sizing: border-box;
 
 	padding-left: $--sidebar-width;
 

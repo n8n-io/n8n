@@ -4,7 +4,9 @@ import { CreateIndexStoppedAt1594902918301 } from './1594902918301-CreateIndexSt
 import { AddWebhookId1611149998770 } from './1611149998770-AddWebhookId';
 import { MakeStoppedAtNullable1607431743767 } from './1607431743767-MakeStoppedAtNullable';
 import { ChangeDataSize1615306975123 } from './1615306975123-ChangeDataSize';
+import { ChangeCredentialDataSize1620729500000 } from './1620729500000-ChangeCredentialDataSize';
 import { CreateTagEntity1617268711084 } from './1617268711084-CreateTagEntity';
+import { UniqueWorkflowNames1620826335440 } from './1620826335440-UniqueWorkflowNames';
 
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
@@ -13,5 +15,7 @@ export const mysqlMigrations = [
 	AddWebhookId1611149998770,
 	MakeStoppedAtNullable1607431743767,
 	ChangeDataSize1615306975123,
+	ChangeCredentialDataSize1620729500000,
 	CreateTagEntity1617268711084,
+	UniqueWorkflowNames1620826335440,
 ];

@@ -1,9 +1,6 @@
 <template>
 	<span :title="name">
-		<slot v-if="custom" :shortenedName="shortenedName"></slot>
-		<span v-else>
-			{{ shortenedName }}
-		</span>
+		<slot :shortenedName="shortenedName"></slot>
 	</span>
 </template>
 
@@ -15,7 +12,7 @@ const WORKFLOW_NAME_END_COUNT_TO_KEEP = 4;
 
 export default Vue.extend({
 	name: "WorkflowNameShort",
-	props: ["name", "limit", "custom"],
+	props: ["name", "limit"],
 	computed: {
 		shortenedName(): string {
 			const name = this.$props.name;

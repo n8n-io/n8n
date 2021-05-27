@@ -406,7 +406,9 @@ export default mixins(
 					this.$router.push({ name: 'NodeViewNew' });
 				} else if (key === 'workflow-download') {
 					const workflowData = await this.getWorkflowDataToSave();
-					const blob = new Blob([JSON.stringify(workflowData, null, 2)], {
+
+					const {tags, ...data} = workflowData;
+					const blob = new Blob([JSON.stringify(data, null, 2)], {
 						type: 'application/json;charset=utf-8',
 					});
 
