@@ -138,24 +138,30 @@ export default mixins(externalHooks).extend({
 }
 
 .el-input {
-	background-color: #fff;
-	min-height: 60px;
+	background-color: $--node-creator-search-background-color;
+  color: $--node-creator-search-placeholder-color;
+  font-size: 18px;
 
 	/deep/ input, input:focus {
-	  border: 1px solid #DBDFE7;
+	  border: 1px solid $--node-creator-border-color;
 		border-radius: 0;
 		min-height: 60px;
 	}
 }
 
 .type-selector {
-	height: 50px;
 	text-align: center;
 	background-color: $--node-creator-select-background-color;
-}
+	border-right: 1px solid $--node-creator-border-color;
+	border-left: 1px solid $--node-creator-border-color;
 
-.type-selector >>> .el-tabs__nav {
-	padding-bottom: 10px;
+	/deep/ .el-tabs > div {
+		margin-bottom: 0;
+
+		.el-tabs__nav {
+			height: 43px;
+		}
+	}
 }
 
 .no-results {
