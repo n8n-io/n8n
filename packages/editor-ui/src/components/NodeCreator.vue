@@ -5,9 +5,6 @@
 				<div class="close-button clickable close-on-click" @click="closeCreator" title="Close">
 					<i class="el-icon-close close-on-click"></i>
 				</div>
-				<div class="header">
-					Create Node
-				</div>
 
 				<node-create-list v-if="active" ref="list" @nodeTypeSelected="nodeTypeSelected"></node-create-list>
 			</div>
@@ -88,11 +85,12 @@ export default Vue.extend({
 	position: fixed;
 	top: 65px;
 	right: 0;
-	width: 350px;
+	width: $--node-creator-width;
 	height: calc(100% - 65px);
-	background-color: #fff4f1;
+	background-color: $--node-creator-background-color;
 	z-index: 200;
 	color: #555;
+
 
 	.header {
 		font-size: 1.2em;

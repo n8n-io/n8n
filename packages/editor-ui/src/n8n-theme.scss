@@ -288,21 +288,22 @@ h1, h2, h3, h4, h5, h6 {
 
 
 // Input
-.el-input__inner {
-	border-radius: 20px;
-	text-overflow: ellipsis;
+.el-input:not(.custom) {
+	.el-input__inner {
+		border-radius: 20px;
+		text-overflow: ellipsis;
+	}
+	.el-input--small .el-input__inner {
+		border-radius: 13px;
+	}
+	.el-input__inner,
+	.el-input__inner:hover {
+		background-color: $--custom-input-background;
+		color: $--custom-input-font;
+		border: none;
+		outline: 0;
+	}
 }
-.el-input--small .el-input__inner {
-	border-radius: 13px;
-}
-.el-input__inner,
-.el-input__inner:hover {
-	background-color: $--custom-input-background;
-	color: $--custom-input-font;
-	border: none;
-	outline: 0;
-}
-
 
 // Number Input
 .el-input-number {

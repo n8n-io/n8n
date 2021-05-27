@@ -1,13 +1,13 @@
 <template>
 	<div>
 		<div class="input-wrapper">
-			<el-input placeholder="Type to filter..." v-model="nodeFilter" ref="inputField" size="small" type="text" prefix-icon="el-icon-search" @keydown.native="nodeFilterKeyDown" clearable ></el-input>
+			<el-input class="custom" placeholder="Search nodes..." v-model="nodeFilter" ref="inputField" type="text" prefix-icon="el-icon-search" @keydown.native="nodeFilterKeyDown" clearable ></el-input>
 		</div>
 		<div class="type-selector">
 			<el-tabs v-model="selectedType" stretch>
+				<el-tab-pane label="All" name="All"></el-tab-pane>
 				<el-tab-pane label="Regular" name="Regular"></el-tab-pane>
 				<el-tab-pane label="Trigger" name="Trigger"></el-tab-pane>
-				<el-tab-pane label="All" name="All"></el-tab-pane>
 			</el-tabs>
 		</div>
 		<div class="node-create-list-wrapper">
@@ -23,7 +23,6 @@
 
 <script lang="ts">
 
-import Vue from 'vue';
 import { externalHooks } from "@/components/mixins/externalHooks";
 import { INodeTypeDescription } from 'n8n-workflow';
 import NodeCreateItem from '@/components/NodeCreateItem.vue';
@@ -39,7 +38,7 @@ export default mixins(externalHooks).extend({
 		return {
 			activeNodeTypeIndex: 0,
 			nodeFilter: '',
-			selectedType: 'Regular',
+			selectedType: 'All',
 		};
 	},
 	computed: {
@@ -122,17 +121,10 @@ export default mixins(externalHooks).extend({
 });
 </script>
 
-<style scoped>
-
+<style lang="scss" scoped>
 .node-create-list-wrapper {
-	position: absolute;
-	top: 160px;
-	left: 0px;
-	right: 0px;
-	bottom: 0;
 	overflow-y: auto;
 	overflow-x: hidden;
-	background-color: #fff;
 }
 
 .node-create-list {
@@ -145,18 +137,21 @@ export default mixins(externalHooks).extend({
 	padding: 15px 0 5px 10px;
 }
 
-.input-wrapper >>> .el-input__inner,
-.input-wrapper >>> .el-input__inner:hover {
+.el-input {
 	background-color: #fff;
-}
-.input-wrapper {
-	margin: 10px;
-	height: 35px;
+	min-height: 60px;
+
+	/deep/ input, input:focus {
+	  border: 1px solid #DBDFE7;
+		border-radius: 0;
+		min-height: 60px;
+	}
 }
 
 .type-selector {
 	height: 50px;
 	text-align: center;
+	background-color: $--node-creator-select-background-color;
 }
 
 .type-selector >>> .el-tabs__nav {
