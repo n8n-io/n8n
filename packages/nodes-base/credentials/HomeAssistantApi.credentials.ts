@@ -3,10 +3,10 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class HomeAssistantIoApi implements ICredentialType {
-	name = 'homeAssistantIoApi';
-	displayName = 'Home Assistant Io Api';
-	documentationUrl = 'homeAssistantIo';
+export class HomeAssistantApi implements ICredentialType {
+	name = 'homeAssistantApi';
+	displayName = 'Home Assistant Api';
+	documentationUrl = 'homeAssistant';
 	properties = [
 		{
 			displayName: 'Access Token',

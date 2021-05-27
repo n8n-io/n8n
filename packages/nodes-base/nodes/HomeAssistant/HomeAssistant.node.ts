@@ -52,24 +52,24 @@ import {
 	homeAssistantIoApiRequest,
 	validateJSON,
 } from './GenericFunctions';
-export class HomeAssistantIo implements INodeType {
+export class HomeAssistant implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Home Assistant Io',
-		name: 'homeAssistantIo',
-		icon: 'file:homeAssistantIo.svg',
+		displayName: 'Home Assistant',
+		name: 'homeAssistant',
+		icon: 'file:homeAssistant.svg',
 		group: [ 'output' ],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Home Assistant Io API',
 		defaults: {
-			name: 'Home Assistant Io',
+			name: 'Home Assistant',
 			color: '#3578e5',
 		},
 		inputs: [ 'main' ],
 		outputs: [ 'main' ],
 		credentials: [
 			{
-				name: 'homeAssistantIoApi',
+				name: 'homeAssistantApi',
 				required: true,
 			},
 		],
