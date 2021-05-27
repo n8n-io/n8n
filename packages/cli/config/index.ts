@@ -5,7 +5,7 @@ import * as core from 'n8n-core';
 
 dotenv.config();
 
-const config = convict({
+export const config = convict({
 
 	database: {
 		type: {
@@ -624,4 +624,3 @@ config.validate({
 	allowed: 'strict',
 });
 
-export = config;
