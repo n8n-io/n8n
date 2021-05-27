@@ -162,7 +162,7 @@ export const pushConnection = mixins(
 
 				if (receivedData.type === 'sendConsoleMessage') {
 					const pushData = receivedData.data as IPushDataConsoleMessage;
-					console.log(pushData.source, pushData.message);
+					console.log(pushData.source, pushData.message); // eslint-disable-line no-console
 					return true;
 				}
 
