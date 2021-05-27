@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "0.57.0",
+  "version": "0.59.0",
   "description": "Workflow base code of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "lodash.get": "^4.4.2",
+    "lodash.isequal": "^4.5.0",
     "riot-tmpl": "^3.0.8",
     "xml2js": "^0.4.23"
   },
