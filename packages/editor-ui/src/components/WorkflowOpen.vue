@@ -125,7 +125,7 @@ export default mixins(
 			this.filterTagIds = tags;
 		},
 		onTagClick(tagId: string) {
-			if (tagId !== 'count' && this.filterTagIds.indexOf(tagId) === -1) {
+			if (tagId !== 'count' && !this.filterTagIds.includes(tagId)) {
 				this.filterTagIds.push(tagId);
 			}
 		},

@@ -34,52 +34,49 @@
 	</div>
 </template>
 
-
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import mixins from "vue-typed-mixins";
 
-import {
-	IExecutionResponse,
-} from '../../../Interface';
+import { IExecutionResponse } from "../../../Interface";
 
-import { titleChange } from '@/components/mixins/titleChange';
+import { titleChange } from "@/components/mixins/titleChange";
 
-import WorkflowNameShort from '@/components/WorkflowNameShort.vue';
-import ReadOnly from '@/components/MainHeader/ExecutionDetails/ReadOnly.vue';
+import WorkflowNameShort from "@/components/WorkflowNameShort.vue";
+import ReadOnly from "@/components/MainHeader/ExecutionDetails/ReadOnly.vue";
 
 export default mixins(titleChange).extend({
-		name: 'ExecutionDetails',
-		components: {
-			WorkflowNameShort,
-			ReadOnly,
+	name: "ExecutionDetails",
+	components: {
+		WorkflowNameShort,
+		ReadOnly,
+	},
+	computed: {
+		executionId(): string | undefined {
+			return this.$route.params.id;
 		},
-		computed: {
-			executionId (): string | undefined {
-				return this.$route.params.id;
-			},
-			executionFinished (): boolean {
-				const fullExecution = this.$store.getters.getWorkflowExecution;
+		executionFinished(): boolean {
+			const fullExecution = this.$store.getters.getWorkflowExecution;
 
-				return !!fullExecution && fullExecution.finished;
-			},
-			workflowExecution (): IExecutionResponse | null {
-				return this.$store.getters.getWorkflowExecution;
-			},
-			workflowName (): string {
-				return this.$store.getters.workflowName;
-			},
+			return !!fullExecution && fullExecution.finished;
 		},
-		methods: {
-			async openWorkflow (workflowId: string) {
-				this.$titleSet(this.workflowName, 'IDLE');
-				// Change to other workflow
-				this.$router.push({
-					name: 'NodeViewExisting',
-					params: { name: workflowId },
-				});
-			},
+		workflowExecution(): IExecutionResponse | null {
+			return this.$store.getters.getWorkflowExecution;
 		},
-	});
+		workflowName(): string {
+			return this.$store.getters.workflowName;
+		},
+	},
+	methods: {
+		async openWorkflow(workflowId: string) {
+			this.$titleSet(this.workflowName, "IDLE");
+			// Change to other workflow
+			this.$router.push({
+				name: "NodeViewExisting",
+				params: { name: workflowId },
+			});
+		},
+	},
+});
 </script>
 
 <style scoped lang="scss">
@@ -88,8 +85,8 @@ export default mixins(titleChange).extend({
 }
 
 .execution-icon.success {
-	color: $--custom-success-text-light; 
-}	
+	color: $--custom-success-text-light;
+}
 
 .container {
 	width: 100%;
