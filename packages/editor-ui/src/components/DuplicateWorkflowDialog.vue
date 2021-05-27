@@ -100,7 +100,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			if (!name) {
 				this.$showMessage({
 					title: "Name missing",
-					message: `Please enter a name, or press 'esc' to go back to the old one.`,
+					message: `Please enter a name.`,
 					type: "error",
 				});
 
