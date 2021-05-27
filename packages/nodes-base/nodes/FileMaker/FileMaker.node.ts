@@ -4,23 +4,24 @@ import {
 	INodeExecutionData, INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 
 import {OptionsWithUri} from 'request';
 import {
-	layoutsApiRequest,
 	getFields,
 	getPortals,
 	getScripts,
 	getToken,
-	parseSort,
+	layoutsApiRequest,
+	logout,
+	parseFields,
 	parsePortals,
 	parseQuery,
 	parseScripts,
-	parseFields,
-	logout
-} from "./GenericFunctions";
+	parseSort,
+} from './GenericFunctions';
 
 export class FileMaker implements INodeType {
 	description: INodeTypeDescription = {
@@ -143,7 +144,7 @@ export class FileMaker implements INodeType {
 							'records',
 						],
 					},
-				}
+				},
 			},
 			{
 				displayName: 'Limit',
@@ -159,7 +160,7 @@ export class FileMaker implements INodeType {
 							'records',
 						],
 					},
-				}
+				},
 			},
 			{
 				displayName: 'Get portals',
@@ -219,7 +220,7 @@ export class FileMaker implements INodeType {
 				displayOptions: {
 					show: {
 						action: [
-							'find'
+							'find',
 						],
 					},
 				},
@@ -277,8 +278,8 @@ export class FileMaker implements INodeType {
 											default: '',
 											description: 'Value to search',
 										},
-									]
-								}
+									],
+								},
 								],
 								description: 'Field Name',
 							},
@@ -286,9 +287,9 @@ export class FileMaker implements INodeType {
 								displayName: 'Omit',
 								name: 'omit',
 								type: 'boolean',
-								default: false
+								default: false,
 							},
-						]
+						],
 					},
 				],
 			},
@@ -353,16 +354,16 @@ export class FileMaker implements INodeType {
 								options: [
 									{
 										name: 'Ascend',
-										value: 'ascend'
+										value: 'ascend',
 									},
 									{
 										name: 'Descend',
-										value: 'descend'
+										value: 'descend',
 									},
 								],
 								description: 'Sort order.',
 							},
-						]
+						],
 					},
 				],
 			},
@@ -379,7 +380,7 @@ export class FileMaker implements INodeType {
 							'record',
 							'records',
 						],
-					}
+					},
 				},
 			},
 			{
@@ -400,7 +401,7 @@ export class FileMaker implements INodeType {
 							'records',
 						],
 						setScriptBefore: [
-							true
+							true,
 						],
 					},
 				},
@@ -421,7 +422,7 @@ export class FileMaker implements INodeType {
 							'records',
 						],
 						setScriptBefore: [
-							true
+							true,
 						],
 					},
 				},
@@ -441,7 +442,7 @@ export class FileMaker implements INodeType {
 							'record',
 							'records',
 						],
-					}
+					},
 				},
 			},
 			{
@@ -462,7 +463,7 @@ export class FileMaker implements INodeType {
 							'records',
 						],
 						setScriptSort: [
-							true
+							true,
 						],
 					},
 				},
@@ -483,7 +484,7 @@ export class FileMaker implements INodeType {
 							'records',
 						],
 						setScriptSort: [
-							true
+							true,
 						],
 					},
 				},
@@ -503,7 +504,7 @@ export class FileMaker implements INodeType {
 							'record',
 							'records',
 						],
-					}
+					},
 				},
 			},
 			{
@@ -524,7 +525,7 @@ export class FileMaker implements INodeType {
 							'records',
 						],
 						setScriptAfter: [
-							true
+							true,
 						],
 					},
 				},
@@ -545,7 +546,7 @@ export class FileMaker implements INodeType {
 							'records',
 						],
 						setScriptAfter: [
-							true
+							true,
 						],
 					},
 				},
@@ -583,7 +584,7 @@ export class FileMaker implements INodeType {
 							'edit',
 						],
 					},
-				}
+				},
 			},
 			{
 				displayName: 'Fields',
@@ -625,7 +626,7 @@ export class FileMaker implements INodeType {
 								type: 'string',
 								default: '',
 							},
-						]
+						],
 					},
 				],
 			},
@@ -645,7 +646,7 @@ export class FileMaker implements INodeType {
 				displayOptions: {
 					show: {
 						action: [
-							'performscript'
+							'performscript',
 						],
 					},
 				},
@@ -661,14 +662,14 @@ export class FileMaker implements INodeType {
 				displayOptions: {
 					show: {
 						action: [
-							'performscript'
+							'performscript',
 						],
 					},
 				},
 				placeholder: 'Script Parameters',
 				description: 'A parameter for the FileMaker script.',
 			},
-		]
+		],
 	};
 
 	methods = {
@@ -680,8 +681,8 @@ export class FileMaker implements INodeType {
 
 				try {
 					returnData = await layoutsApiRequest.call(this);
-				} catch (err) {
-					throw new Error(`FileMaker Error: ${err}`);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
 				}
 
 				return returnData;
@@ -696,8 +697,8 @@ export class FileMaker implements INodeType {
 				let layouts;
 				try {
 					layouts = await layoutsApiRequest.call(this);
-				} catch (err) {
-					throw new Error(`FileMaker Error: ${err}`);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
 				}
 				for (const layout of layouts) {
 					returnData.push({
@@ -714,8 +715,8 @@ export class FileMaker implements INodeType {
 				let fields;
 				try {
 					fields = await getFields.call(this);
-				} catch (err) {
-					throw new Error(`FileMaker Error: ${err}`);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
 				}
 				for (const field of fields) {
 					returnData.push({
@@ -732,8 +733,8 @@ export class FileMaker implements INodeType {
 				let scripts;
 				try {
 					scripts = await getScripts.call(this);
-				} catch (err) {
-					throw new Error(`FileMaker Error: ${err}`);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
 				}
 				for (const script of scripts) {
 					if (!script.isFolder) {
@@ -752,8 +753,8 @@ export class FileMaker implements INodeType {
 				let portals;
 				try {
 					portals = await getPortals.call(this);
-				} catch (err) {
-					throw new Error(`FileMaker Error: ${err}`);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
 				}
 				Object.keys(portals).forEach((portal) => {
 					returnData.push({
@@ -775,14 +776,14 @@ export class FileMaker implements INodeType {
 		const credentials = this.getCredentials('fileMaker');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		let token;
 		try {
 			token = await getToken.call(this);
-		} catch (e) {
-			throw new Error(`Login fail: ${e}`);
+		} catch (error) {
+			throw new NodeOperationError(this.getNode(), `Login fail: ${error}`);
 		}
 
 		let requestOptions: OptionsWithUri;
@@ -803,7 +804,7 @@ export class FileMaker implements INodeType {
 						'Authorization': `Bearer ${token}`,
 					},
 					method: 'GET',
-					json: true
+					json: true,
 				};
 
 				const layout = this.getNodeParameter('layout', i) as string;
@@ -813,7 +814,7 @@ export class FileMaker implements INodeType {
 					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
 					requestOptions.qs = {
 						'portal': JSON.stringify(parsePortals.call(this, i)),
-						...parseScripts.call(this, i)
+						...parseScripts.call(this, i),
 					};
 				} else if (action === 'records') {
 					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records`;
@@ -821,7 +822,7 @@ export class FileMaker implements INodeType {
 						'_offset': this.getNodeParameter('offset', i),
 						'_limit': this.getNodeParameter('limit', i),
 						'portal': JSON.stringify(parsePortals.call(this, i)),
-						...parseScripts.call(this, i)
+						...parseScripts.call(this, i),
 					};
 					const sort = parseSort.call(this, i);
 					if (sort) {
@@ -835,7 +836,7 @@ export class FileMaker implements INodeType {
 						'offset': this.getNodeParameter('offset', i),
 						'limit': this.getNodeParameter('limit', i),
 						'layout.response': this.getNodeParameter('responseLayout', i),
-						...parseScripts.call(this, i)
+						...parseScripts.call(this, i),
 					};
 					const sort = parseSort.call(this, i);
 					if (sort) {
@@ -850,7 +851,7 @@ export class FileMaker implements INodeType {
 					requestOptions.body = {
 						fieldData: {...parseFields.call(this, i)},
 						portalData: {},
-						...parseScripts.call(this, i)
+						...parseScripts.call(this, i),
 					};
 				} else if (action === 'edit') {
 					const recid = this.getNodeParameter('recid', i) as string;
@@ -862,7 +863,7 @@ export class FileMaker implements INodeType {
 					requestOptions.body = {
 						fieldData: {...parseFields.call(this, i)},
 						portalData: {},
-						...parseScripts.call(this, i)
+						...parseScripts.call(this, i),
 					};
 				} else if (action === 'performscript') {
 					const scriptName = this.getNodeParameter('script', i) as string;
@@ -876,17 +877,17 @@ export class FileMaker implements INodeType {
 					requestOptions.method = 'POST';
 					requestOptions.headers!['Content-Type'] = 'application/json';
 					requestOptions.qs = {
-						...parseScripts.call(this, i)
+						...parseScripts.call(this, i),
 					};
 				} else if (action === 'delete') {
 					const recid = this.getNodeParameter('recid', i) as string;
 					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
 					requestOptions.method = 'DELETE';
 					requestOptions.qs = {
-						...parseScripts.call(this, i)
+						...parseScripts.call(this, i),
 					};
 				} else {
-					throw new Error(`The action "${action}" is not implemented yet!`);
+					throw new NodeOperationError(this.getNode(), `The action "${action}" is not implemented yet!`);
 				}
 
 				// Now that the options are all set make the actual http request
@@ -898,13 +899,18 @@ export class FileMaker implements INodeType {
 				}
 
 				if (typeof response === 'string') {
-					throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+					throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON. Change "Response Format" to "String"');
 				}
 				returnData.push({json: response});
 			}
 		} catch (error) {
 			await logout.call(this, token);
-			throw new Error(`The action "${error.message}" is not implemented yet!`);
+
+			if (error.node) {
+				throw error;
+			}
+
+			throw new NodeOperationError(this.getNode(), `The action "${error.message}" is not implemented yet!`);
 		}
 
 		return this.prepareOutputData(returnData);

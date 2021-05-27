@@ -13,7 +13,7 @@ export interface IAccount {
 	Description?: string;
 	BillingState?: string;
 	ShippingStreet?: string;
-	ShippingCity?:string;
+	ShippingCity?: string;
 	AccountSource?: string;
 	AnnualRevenue?: number;
 	BillingStreet?: string;

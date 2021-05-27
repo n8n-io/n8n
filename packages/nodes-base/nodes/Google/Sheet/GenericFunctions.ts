@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import * as moment from 'moment-timezone';
@@ -26,7 +26,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		body,
 		qs,
 		uri: uri || `https://sheets.googleapis.com${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		if (Object.keys(headers).length !== 0) {
@@ -40,7 +40,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			const credentials = this.getCredentials('googleApi');
 
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
@@ -53,15 +53,11 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			return await this.helpers.requestOAuth2.call(this, 'googleSheetsOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			throw new Error(`Google Sheet error response [${error.statusCode}]: ${error.response.body.message}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -80,7 +76,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	return returnData;
 }
 
-function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IDataObject) : Promise<IDataObject> {
+function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IDataObject): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [
@@ -93,25 +89,25 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 
 	const signature = jwt.sign(
 		{
-		  'iss': credentials.email as string,
-		  'sub': credentials.email as string,
-		  'scope': scopes.join(' '),
-		  'aud': `https://oauth2.googleapis.com/token`,
-		  'iat': now,
-		  'exp': now + 3600,
+			'iss': credentials.email as string,
+			'sub': credentials.delegatedEmail || credentials.email as string,
+			'scope': scopes.join(' '),
+			'aud': `https://oauth2.googleapis.com/token`,
+			'iat': now,
+			'exp': now + 3600,
 		},
 		credentials.privateKey as string,
 		{
-		  algorithm: 'RS256',
-		  header: {
-			'kid': credentials.privateKey as string,
-			'typ': 'JWT',
-			'alg': 'RS256',
-		  },
-		}
-	  );
+			algorithm: 'RS256',
+			header: {
+				'kid': credentials.privateKey as string,
+				'typ': 'JWT',
+				'alg': 'RS256',
+			},
+		},
+	);
 
-	  const options: OptionsWithUri = {
+	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
@@ -121,9 +117,25 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 			assertion: signature,
 		},
 		uri: 'https://oauth2.googleapis.com/token',
-		json: true
+		json: true,
 	};
 
 	//@ts-ignore
 	return this.helpers.request(options);
+}
+
+// Hex to RGB
+export function hexToRgb(hex: string) {
+	// Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
+	const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+	hex = hex.replace(shorthandRegex, (m, r, g, b) => {
+		return r + r + g + g + b + b;
+	});
+
+	const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+	return result ? {
+		red: parseInt(result[1], 16),
+		green: parseInt(result[2], 16),
+		blue: parseInt(result[3], 16),
+	} : null;
 }

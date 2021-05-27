@@ -1,9 +1,13 @@
 import { ChildProcess, spawn } from 'child_process';
 const copyfiles = require('copyfiles');
+
 import {
 	readFile as fsReadFile,
+} from 'fs/promises';
+import {
 	write as fsWrite,
 } from 'fs';
+
 import { join } from 'path';
 import { file } from 'tmp-promise';
 import { promisify } from 'util';
@@ -32,7 +36,7 @@ export async function createCustomTsconfig () {
 	const tsconfigPath = join(__dirname, '../../src/tsconfig-build.json');
 
 	// Read the tsconfi file
-	const tsConfigString = await fsReadFileAsync(tsconfigPath, { encoding: 'utf8'}) as string;
+	const tsConfigString = await fsReadFile(tsconfigPath, { encoding: 'utf8'}) as string;
 	const tsConfig = JSON.parse(tsConfigString);
 
 	// Set absolute include paths
@@ -63,8 +67,15 @@ export async function createCustomTsconfig () {
 export async function buildFiles (options?: IBuildOptions): Promise<string> {
 	options = options || {};
 
-	// Get the path of the TypeScript cli of this project
-	const tscPath = join(__dirname, '../../node_modules/.bin/tsc');
+	let typescriptPath;
+
+	// Check for OS to designate correct tsc path
+	if (process.platform === 'win32') {
+		typescriptPath = '../../node_modules/TypeScript/lib/tsc';
+	} else {
+		typescriptPath = '../../node_modules/.bin/tsc';
+	}
+	const tscPath = join(__dirname, typescriptPath);
 
 	const tsconfigData = await createCustomTsconfig();
 

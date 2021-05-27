@@ -163,7 +163,7 @@ export const leadFields = [
 				name: 'leadStatus',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getLeadStatuses'
+					loadOptionsMethod: 'getLeadStatuses',
 				},
 				default: '',
 			},
@@ -230,7 +230,7 @@ export const leadFields = [
 				type: 'string',
 				default: '',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Address',
@@ -288,7 +288,7 @@ export const leadFields = [
 						default: '',
 					},
 				],
-			}
+			},
 		],
 	},
 /* -------------------------------------------------------------------------- */
@@ -409,7 +409,7 @@ export const leadFields = [
 					name: 'leadStatus',
 					type: 'options',
 					typeOptions: {
-						loadOptionsMethod: 'getLeadStatuses'
+						loadOptionsMethod: 'getLeadStatuses',
 					},
 					default: '',
 				},
@@ -476,7 +476,7 @@ export const leadFields = [
 					type: 'string',
 					default: '',
 				},
-			]
+			],
 	},
 	{
 		displayName: 'Address',
@@ -534,7 +534,7 @@ export const leadFields = [
 						default: '',
 					},
 				],
-			}
+			},
 		],
 	},
 /* -------------------------------------------------------------------------- */
@@ -681,7 +681,7 @@ export const leadFields = [
 				default: '',
 				description: 'To get the list of records based on the territory	',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 lead:delete                                */

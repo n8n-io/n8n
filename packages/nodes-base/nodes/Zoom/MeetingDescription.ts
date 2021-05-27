@@ -422,7 +422,7 @@ export const meetingFields = [
 					{
 						name: 'Scheduled',
 						value: 'scheduled',
-						description: 'This includes all valid past meetings, live meetings and upcoming scheduled meetings'
+						description: 'This includes all valid past meetings, live meetings and upcoming scheduled meetings',
 					},
 					{
 						name: 'Live',

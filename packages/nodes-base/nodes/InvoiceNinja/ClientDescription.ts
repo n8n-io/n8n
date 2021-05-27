@@ -1,4 +1,4 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
 export const clientOperations = [
 	{
@@ -99,7 +99,7 @@ export const clientFields = [
 				type: 'string',
 				default: '',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Billing Address',

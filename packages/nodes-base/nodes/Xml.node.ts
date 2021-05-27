@@ -1,10 +1,11 @@
 import { Builder, Parser } from 'xml2js';
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IDataObject,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 
@@ -220,7 +221,7 @@ export class Xml implements INodeType {
 					},
 				],
 			},
-		]
+		],
 	};
 
 
@@ -245,7 +246,7 @@ export class Xml implements INodeType {
 				const parser = new Parser(parserOptions);
 
 				if (item.json[dataPropertyName] === undefined) {
-					throw new Error(`No json property "${dataPropertyName}" does not exists on item!`);
+					throw new NodeOperationError(this.getNode(), `No json property "${dataPropertyName}" does not exists on item!`);
 				}
 
 				// @ts-ignore
@@ -256,11 +257,11 @@ export class Xml implements INodeType {
 
 				items[itemIndex] = {
 					json: {
-						[dataPropertyName]: builder.buildObject(items[itemIndex].json)
-					}
+						[dataPropertyName]: builder.buildObject(items[itemIndex].json),
+					},
 				};
 			} else {
-				throw new Error(`The operation "${mode}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
 			}
 		}
 

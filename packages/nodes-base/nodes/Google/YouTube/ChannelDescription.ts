@@ -34,11 +34,11 @@ export const channelOperations = [
 				name: 'Upload Banner',
 				value: 'uploadBanner',
 				description: 'Upload a channel banner',
-			}
+			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.'
-	}
+		description: 'The operation to perform.',
+	},
 ] as INodeProperties[];
 
 export const channelFields = [
@@ -215,7 +215,7 @@ export const channelFields = [
 				name: 'h1',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getLanguages'
+					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
 				description: `The hl parameter instructs the API to retrieve localized resource metadata for a specific application language that the YouTube website supports.`,

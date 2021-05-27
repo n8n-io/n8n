@@ -2,12 +2,16 @@ import {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
+	IWebhookFunctions,
 } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
-import { IDataObject } from 'n8n-workflow';
+import {
+	OptionsWithUri,
+} from 'request';
 
-
+import {
+	IDataObject, NodeApiError, NodeOperationError,
+} from 'n8n-workflow';
 
 // Interface in n8n
 export interface IMarkupKeyboard {
@@ -138,11 +142,11 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: object, query?: IDataObject, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('telegramApi');
 
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	query = query || {};
@@ -157,21 +161,34 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		json: true,
 	};
 
+	if (Object.keys(option).length > 0) {
+		Object.assign(options, option);
+	}
+
+	if (Object.keys(body).length === 0) {
+		delete options.body;
+	}
+
+	if (Object.keys(query).length === 0) {
+		delete options.qs;
+	}
+
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Telegram credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.error_code) {
-			// Try to return the error prettier
-			const errorBody = error.response.body;
-			throw new Error(`Telegram error response [${errorBody.error_code}]: ${errorBody.description}`);
-		}
-
-		// Expected error data did not get returned so throw the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
+}
+
+export function getImageBySize(photos: IDataObject[], size: string): IDataObject | undefined {
+
+	const sizes = {
+		'small': 0,
+		'medium': 1,
+		'large': 2,
+	} as IDataObject;
+
+	const index = sizes[size] as number;
+
+	return photos[index];
 }

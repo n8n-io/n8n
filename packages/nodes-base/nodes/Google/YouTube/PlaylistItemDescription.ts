@@ -37,8 +37,8 @@ export const playlistItemOperations = [
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.'
-	}
+		description: 'The operation to perform.',
+	},
 ] as INodeProperties[];
 
 export const playlistItemFields = [
@@ -295,7 +295,7 @@ export const playlistItemFields = [
 				],
 			},
 		},
-		default: ''
+		default: '',
 	},
 	{
 		displayName: 'Fields',

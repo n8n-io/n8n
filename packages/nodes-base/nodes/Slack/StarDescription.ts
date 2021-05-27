@@ -36,9 +36,9 @@ export const starOperations = [
 
 export const starFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                star:add                                    */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                star:add                                    */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -46,7 +46,62 @@ export const starFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'add'
+					'add',
+				],
+				resource: [
+					'star',
+				],
+			},
+		},
+		default: {},
+		description: 'Options to set',
+		placeholder: 'Add options',
+		options: [
+			{
+				displayName: 'Channel ID',
+				name: 'channelId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getChannels',
+				},
+				default: '',
+				description: 'Channel to add star to, or channel where the message to add star to was posted (used with timestamp).',
+			},
+			{
+				displayName: 'File Comment',
+				name: 'fileComment',
+				type: 'string',
+				default: '',
+				description: 'File comment to add star to.',
+			},
+			{
+				displayName: 'File ID',
+				name: 'fileId',
+				type: 'string',
+				default: '',
+				description: 'File to add star to.',
+			},
+			{
+				displayName: 'Timestamp',
+				name: 'timestamp',
+				type: 'string',
+				default: '',
+				description: 'Timestamp of the message to add star to.',
+			},
+		],
+	},
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 star:delete                             */
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: [
+					'delete',
 				],
 				resource: [
 					'star',
@@ -90,63 +145,10 @@ export const starFields = [
 			},
 		],
 	},
-/* ----------------------------------------------------------------------- */
-/*                                 star:delete                             */
-/* ----------------------------------------------------------------------- */
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		displayOptions: {
-			show: {
-				operation: [
-					'delete'
-				],
-				resource: [
-					'star',
-				],
-			},
-		},
-		default: {},
-		description: 'Options to set',
-		placeholder: 'Add options',
-		options: [
-			{
-				displayName: 'Channel ID',
-				name: 'channelId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getChannels',
-				},
-				default: '',
-				description: 'Channel to add star to, or channel where the message to add star to was posted (used with timestamp).',
-			},
-			{
-				displayName: 'File ID',
-				name: 'fileId',
-				type: 'string',
-				default: '',
-				description: 'File to add star to.',
-			},
-			{
-				displayName: 'File Comment',
-				name: 'fileComment',
-				type: 'string',
-				default: '',
-				description: 'File comment to add star to.',
-			},
-			{
-				displayName: 'Timestamp',
-				name: 'timestamp',
-				type: 'string',
-				default: '',
-				description: 'Timestamp of the message to add star to.',
-			},
-		],
-	},
-/* -------------------------------------------------------------------------- */
-/*                                 star:getAll                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 star:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',

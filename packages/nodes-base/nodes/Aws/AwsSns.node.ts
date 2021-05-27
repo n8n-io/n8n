@@ -1,11 +1,13 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
-	INodePropertyOptions,
+	IDataObject,
 	ILoadOptionsFunctions,
-	IDataObject
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { awsApiRequestSOAP } from './GenericFunctions';
@@ -29,7 +31,7 @@ export class AwsSns implements INodeType {
 			{
 				name: 'aws',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -107,12 +109,7 @@ export class AwsSns implements INodeType {
 			// select them easily
 			async getTopics(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let data;
-				try {
-					data = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ListTopics');
-				} catch (err) {
-					throw new Error(`AWS Error: ${err}`);
-				}
+				const data = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ListTopics');
 
 				let topics = data.ListTopicsResponse.ListTopicsResult.Topics.member;
 
@@ -133,7 +130,7 @@ export class AwsSns implements INodeType {
 				}
 
 				return returnData;
-			}
+			},
 		},
 	};
 
@@ -149,12 +146,8 @@ export class AwsSns implements INodeType {
 				'Message=' + this.getNodeParameter('message', i) as string,
 			];
 
-			let responseData;
-			try {
-				responseData = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=Publish&' + params.join('&'));
-			} catch (err) {
-				throw new Error(`AWS Error: ${err}`);
-			}
+
+			const	responseData = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=Publish&' + params.join('&'));
 			returnData.push({MessageId: responseData.PublishResponse.PublishResult.MessageId} as IDataObject);
 		}
 

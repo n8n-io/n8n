@@ -3,7 +3,6 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-
 export class AsanaApi implements ICredentialType {
 	name = 'asanaApi';
 	displayName = 'Asana API';

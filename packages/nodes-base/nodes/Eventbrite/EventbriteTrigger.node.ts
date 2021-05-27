@@ -7,9 +7,10 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -87,7 +88,7 @@ export class EventbriteTrigger implements INodeType {
 				type: 'options',
 				required: true,
 				typeOptions: {
-					loadOptionsMethod: 'getOrganizations'
+					loadOptionsMethod: 'getOrganizations',
 				},
 				default: '',
 				description: '',
@@ -101,7 +102,7 @@ export class EventbriteTrigger implements INodeType {
 					loadOptionsDependsOn: [
 						'organization',
 					],
-					loadOptionsMethod: 'getEvents'
+					loadOptionsMethod: 'getEvents',
 				},
 				default: '',
 				description: '',
@@ -113,63 +114,63 @@ export class EventbriteTrigger implements INodeType {
 				options: [
 					{
 						name: 'attendee.updated',
-						value: 'attendee.updated'
+						value: 'attendee.updated',
 					},
 					{
 						name: 'attendee.checked_in',
-						value: 'attendee.checked_in'
+						value: 'attendee.checked_in',
 					},
 					{
 						name: 'attendee.checked_out',
-						value: 'attendee.checked_out'
+						value: 'attendee.checked_out',
 					},
 					{
 						name: 'event.created',
-						value: 'event.created'
+						value: 'event.created',
 					},
 					{
 						name: 'event.published',
-						value: 'event.published'
+						value: 'event.published',
 					},
 					{
 						name: 'event.unpublished',
-						value: 'event.unpublished'
+						value: 'event.unpublished',
 					},
 					{
 						name: 'event.updated',
-						value: 'event.updated'
+						value: 'event.updated',
 					},
 					{
 						name: 'order.placed',
-						value: 'order.placed'
+						value: 'order.placed',
 					},
 					{
 						name: 'order.refunded',
-						value: 'order.refunded'
+						value: 'order.refunded',
 					},
 					{
 						name: 'order.updated',
-						value: 'order.updated'
+						value: 'order.updated',
 					},
 					{
 						name: 'organizer.updated',
-						value: 'organizer.updated'
+						value: 'organizer.updated',
 					},
 					{
 						name: 'ticket_class.created',
-						value: 'ticket_class.created'
+						value: 'ticket_class.created',
 					},
 					{
 						name: 'ticket_class.deleted',
-						value: 'ticket_class.deleted'
+						value: 'ticket_class.deleted',
 					},
 					{
 						name: 'ticket_class.updated',
-						value: 'ticket_class.updated'
+						value: 'ticket_class.updated',
 					},
 					{
 						name: 'venue.updated',
-						value: 'venue.updated'
+						value: 'venue.updated',
 					},
 				],
 				required: true,
@@ -292,7 +293,7 @@ export class EventbriteTrigger implements INodeType {
 		const req = this.getRequestObject();
 
 		if (req.body.api_url === undefined) {
-			throw new Error('The received data does not contain required "api_url" property!');
+			throw new NodeApiError(this.getNode(), req.body, { message: 'The received data does not contain required "api_url" property!' });
 		}
 
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
@@ -311,7 +312,7 @@ export class EventbriteTrigger implements INodeType {
 				workflowData: [
 					this.helpers.returnJsonArray({
 						placeholder: 'Test received. To display actual data of object get the webhook triggered by performing the action which triggers it.',
-					})
+					}),
 				],
 			};
 		}

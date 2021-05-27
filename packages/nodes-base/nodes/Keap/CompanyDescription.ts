@@ -128,7 +128,7 @@ export const companyFields = [
 						name: 'countryCode',
 						type: 'string',
 						default: '',
-						description: 'ISO Alpha-3 Code'
+						description: 'ISO Alpha-3 Code',
 					},
 					{
 						displayName: 'Line 1',
@@ -213,7 +213,7 @@ export const companyFields = [
 						default: '',
 					},
 				],
-			}
+			},
 		],
 	},
 	{

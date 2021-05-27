@@ -1,4 +1,3 @@
-
 export interface IAttachment {
 	ParentId?: string;
 	Name?: string;

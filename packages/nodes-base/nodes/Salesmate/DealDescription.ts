@@ -716,7 +716,7 @@ export const dealFields = [
 				],
 				default: 'desc',
 				description: 'Sort order',
-			}
+			},
 		],
 	},
 	{
@@ -864,12 +864,12 @@ export const dealFields = [
 										name: 'value',
 										type: 'string',
 										default: '',
-									}
-								]
+									},
+								],
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},

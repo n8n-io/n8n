@@ -9,15 +9,14 @@ import {
 	ILoadOptionsFunctions as ILoadOptionsFunctionsBase,
 	INodeExecutionData,
 	INodeType,
+	IOAuth2Options,
 	IPollFunctions as IPollFunctionsBase,
 	IPollResponse,
 	ITriggerFunctions as ITriggerFunctionsBase,
 	ITriggerResponse,
 	IWebhookFunctions as IWebhookFunctionsBase,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
-	IOAuth2Options,
  } from 'n8n-workflow';
-
 
 import { OptionsWithUri, OptionsWithUrl } from 'request';
 import * as requestPromise from 'request-promise-native';
@@ -25,7 +24,6 @@ import * as requestPromise from 'request-promise-native';
 interface Constructable<T> {
 	new(): T;
 }
-
 
 export interface IProcessMessage {
 	data?: any; // tslint:disable-line:no-any

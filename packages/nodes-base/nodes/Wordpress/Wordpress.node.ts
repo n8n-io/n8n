@@ -4,10 +4,10 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeTypeDescription,
 	INodeExecutionData,
-	INodeType,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
 	wordpressApiRequest,
@@ -47,7 +47,7 @@ export class Wordpress implements INodeType {
 			{
 				name: 'wordpressApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -147,6 +147,9 @@ export class Wordpress implements INodeType {
 					const body: IPost = {
 						title,
 					};
+					if (additionalFields.authorId) {
+						body.author = additionalFields.authorId as number;
+					}
 					if (additionalFields.content) {
 						body.content = additionalFields.content as string;
 					}
@@ -186,6 +189,9 @@ export class Wordpress implements INodeType {
 					const body: IPost = {
 						id: parseInt(postId, 10),
 					};
+					if (updateFields.authorId) {
+						body.author = updateFields.authorId as number;
+					}
 					if (updateFields.title) {
 						body.title = updateFields.title as string;
 					}
@@ -231,7 +237,7 @@ export class Wordpress implements INodeType {
 					if (options.context) {
 						qs.context = options.context as string;
 					}
-					responseData = await wordpressApiRequest.call(this,'GET', `/posts/${postId}`, {}, qs);
+					responseData = await wordpressApiRequest.call(this, 'GET', `/posts/${postId}`, {}, qs);
 				}
 				//https://developer.wordpress.org/rest-api/reference/posts/#list-posts
 				if (operation === 'getAll') {
@@ -365,7 +371,7 @@ export class Wordpress implements INodeType {
 					if (options.context) {
 						qs.context = options.context as string;
 					}
-					responseData = await wordpressApiRequest.call(this,'GET', `/users/${userId}`, {}, qs);
+					responseData = await wordpressApiRequest.call(this, 'GET', `/users/${userId}`, {}, qs);
 				}
 				//https://developer.wordpress.org/rest-api/reference/users/#list-users
 				if (operation === 'getAll') {

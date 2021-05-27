@@ -79,7 +79,7 @@ export const workbookFields = [
 				description: `The name of the worksheet to be added. If specified, name should be unqiue. </BR>
 				If not specified, Excel determines the name of the new worksheet.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 workbook:getAll                            */
@@ -149,6 +149,6 @@ export const workbookFields = [
 				default: '',
 				description: `Fields the response will containt. Multiple can be added separated by ,.`,
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

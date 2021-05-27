@@ -198,7 +198,7 @@ export const buildFields = [
 					{
 						name: 'DESC',
 						value: 'desc',
-					}
+					},
 				],
 				default: 'asc',
 				description: 'You may specify order to sort your response.',

@@ -5,11 +5,11 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
@@ -140,7 +140,7 @@ export class KeapTrigger implements INodeType {
 
 					try {
 						await keapApiRequest.call(this, 'DELETE', `/hooks/${webhookData.webhookId}`);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

@@ -1,7 +1,8 @@
 {
 	"compilerOptions": {
 		"lib": [
-			"es2017"
+			"es2017",
+			"es2019.array"
 		],
 		"types": [
 			"node",
@@ -13,6 +14,7 @@
 		"strictNullChecks": true,
 		"strict": true,
 		"preserveConstEnums": true,
+		"resolveJsonModule": true,
 		"declaration": true,
 		"outDir": "./dist/",
 		"target": "es2017",
@@ -22,6 +24,7 @@
 		"credentials/**/*",
 		"src/**/*",
 		"nodes/**/*",
+		"nodes/**/*.json",
 		"test/**/*"
 	],
 	"exclude": [

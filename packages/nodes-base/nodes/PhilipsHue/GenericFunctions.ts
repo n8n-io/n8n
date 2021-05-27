@@ -8,7 +8,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function philipsHueApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -20,7 +20,7 @@ export async function philipsHueApiRequest(this: IExecuteFunctions | ILoadOption
 		body,
 		qs,
 		uri: uri || `https://api.meethue.com${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		if (Object.keys(headers).length !== 0) {
@@ -38,16 +38,7 @@ export async function philipsHueApiRequest(this: IExecuteFunctions | ILoadOption
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'philipsHueOAuth2Api', options, { tokenType: 'Bearer' });
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error) {
-
-			const errorMessage = error.response.body.error.description;
-
-			// Try to return the error prettier
-			throw new Error(
-				`Philip Hue error response [${error.statusCode}]: ${errorMessage}`
-			);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

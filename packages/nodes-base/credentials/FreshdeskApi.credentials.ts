@@ -21,7 +21,7 @@ export class FreshdeskApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			placeholder: 'company',
 			description: 'If the URL you get displayed on Freshdesk is "https://company.freshdesk.com" enter "company"',
-			default: ''
-        }
+			default: '',
+		},
 	];
 }

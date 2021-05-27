@@ -5,9 +5,9 @@
 		<el-button
 			v-if="node && !isReadOnly"
 			:disabled="workflowRunning"
-			@click.stop="runWorkflow(node.name)"
+			@click.stop="runWorkflow(node.name, 'RunData.ExecuteNodeButton')"
 			class="execute-node-button"
-			:title="`Executes node ${node.name} and all not already executed nodes before it.`"
+			:title="`Executes this ${node.name} node after executing any previous nodes that have not yet returned data`"
 		>
 			<div class="run-icon-button">
 				<font-awesome-icon v-if="!workflowRunning" icon="play-circle"/>
@@ -20,9 +20,9 @@
 		<div class="header">
 			<div class="title-text">
 				<strong v-if="dataCount < maxDisplayItems">
-					Results: {{ dataCount }}
+					Items: {{ dataCount }}
 				</strong>
-				<strong v-else>Results:
+				<strong v-else>Items:
 					<el-select v-model="maxDisplayItems" @click.stop>
 						<el-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
 					</el-select>&nbsp;/
@@ -62,24 +62,38 @@
 					<el-radio-button label="Binary" v-if="binaryData.length !== 0"></el-radio-button>
 				</el-radio-group>
 			</div>
+			<div class="select-button" v-if="displayMode === 'JSON' && state.path !== deselectedPlaceholder">
+				<el-dropdown trigger="click" @command="handleCopyClick">
+					<span class="el-dropdown-link">
+						<el-button class="retry-button" circle type="text" size="small" title="Copy">
+							<font-awesome-icon icon="copy" />
+						</el-button>
+					</span>
+					<el-dropdown-menu slot="dropdown">
+						<el-dropdown-item :command="{command: 'itemPath'}">Copy Item Path</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'parameterPath'}">Copy Parameter Path</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'value'}">Copy Value</el-dropdown-item>
+					</el-dropdown-menu>
+				</el-dropdown>
+
+			</div>
 		</div>
 		<div class="data-display-content">
 			<span v-if="node && workflowRunData !== null && workflowRunData.hasOwnProperty(node.name)">
 				<div v-if="workflowRunData[node.name][runIndex].error" class="error-display">
-					<div class="error-message">ERROR: {{workflowRunData[node.name][runIndex].error.message}}</div>
-					<pre><code>{{workflowRunData[node.name][runIndex].error.stack}}</code></pre>
+					<NodeErrorView :error="workflowRunData[node.name][runIndex].error" />
 				</div>
 				<span v-else>
 					<div v-if="showData === false" class="to-much-data">
 						<h3>
-							Node contains large amount of data
+							Node returned a large amount of data
 						</h3>
 
 						<div class="text">
 							The node contains {{parseInt(dataSize/1024).toLocaleString()}} KB of data.<br />
 							Displaying it could cause problems!<br />
 							<br />
-							If you decide to display it anyway avoid the JSON view!
+							If you do decide to display it, avoid the JSON view!
 						</div>
 
 						<el-button size="small" @click="displayMode = 'Table';showData = true;">
@@ -104,10 +118,18 @@
 								</tr>
 							</table>
 						</div>
-						<json-tree
+						<vue-json-pretty
 							v-else-if="displayMode === 'JSON'"
 							:data="jsonData"
-							:level="10"
+							:deep="10"
+							v-model="state.path"
+							:showLine="true"
+							:showLength="true"
+							selectableType="single"
+							path=""
+							:highlightSelectedNode="true"
+							:selectOnClickNode="true"
+							@click="dataItemClicked"
 							class="json-data"
 						/>
 					</div>
@@ -133,6 +155,10 @@
 											<div v-if="binaryData.fileName">
 												<div class="label">File Name: </div>
 												<div class="value">{{binaryData.fileName}}</div>
+											</div>
+											<div v-if="binaryData.directory">
+												<div class="label">Directory: </div>
+												<div class="value">{{binaryData.directory}}</div>
 											</div>
 											<div v-if="binaryData.fileExtension">
 												<div class="label">File Extension:</div>
@@ -162,7 +188,7 @@
 				<div>
 					<strong>No data</strong><br />
 					<br />
-					To display data execute the node first by pressing the execute button above.
+					Data returned by this node will display here<br />
 				</div>
 			</div>
 		</div>
@@ -171,8 +197,8 @@
 
 <script lang="ts">
 import Vue from 'vue';
-// @ts-ignore
-import JsonTree from 'vue-json-tree';
+//@ts-ignore
+import VueJsonPretty from 'vue-json-pretty';
 import {
 	GenericValue,
 	IBinaryData,
@@ -199,14 +225,22 @@ import {
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
+import NodeErrorView from '@/components/Error/NodeViewError.vue';
 
+import { copyPaste } from '@/components/mixins/copyPaste';
+import { externalHooks } from "@/components/mixins/externalHooks";
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
 
+// A path that does not exist so that nothing is selected by default
+const deselectedPlaceholder = '_!^&*';
+
 export default mixins(
+	copyPaste,
+	externalHooks,
 	genericHelpers,
 	nodeHelpers,
 	workflowRun,
@@ -215,13 +249,19 @@ export default mixins(
 		name: 'RunData',
 		components: {
 			BinaryDataDisplay,
-			JsonTree,
+			NodeErrorView,
+			VueJsonPretty,
 		},
 		data () {
 			return {
 				binaryDataPreviewActive: false,
 				dataSize: 0,
+				deselectedPlaceholder,
 				displayMode: 'Table',
+				state: {
+					value: '' as object | number | string,
+					path: deselectedPlaceholder,
+				},
 				runIndex: 0,
 				showData: false,
 				outputIndex: 0,
@@ -380,18 +420,6 @@ export default mixins(
 			},
 		},
 		methods: {
-			getOutputName (outputIndex: number) {
-				if (this.node === null) {
-					return outputIndex + 1;
-				}
-
-				const nodeType = this.$store.getters.nodeType(this.node.type);
-				if (!nodeType.hasOwnProperty('outputNames') || nodeType.outputNames.length <= outputIndex) {
-					return outputIndex + 1;
-				}
-
-				return nodeType.outputNames[outputIndex];
-			},
 			closeBinaryDataDisplay () {
 				this.binaryDataDisplayVisible = false;
 				this.binaryDataDisplayData = null;
@@ -465,7 +493,9 @@ export default mixins(
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
 			},
-			// displayBinaryData (binaryData: IBinaryData) {
+			dataItemClicked (path: string, data: object | number | string) {
+				this.state.value = data;
+			},
 			displayBinaryData (index: number, key: string) {
 				this.binaryDataDisplayVisible = true;
 
@@ -476,6 +506,85 @@ export default mixins(
 					index,
 					key,
 				};
+			},
+			getOutputName (outputIndex: number) {
+				if (this.node === null) {
+					return outputIndex + 1;
+				}
+
+				const nodeType = this.$store.getters.nodeType(this.node.type);
+				if (!nodeType.hasOwnProperty('outputNames') || nodeType.outputNames.length <= outputIndex) {
+					return outputIndex + 1;
+				}
+
+				return nodeType.outputNames[outputIndex];
+			},
+			convertPath (path: string): string {
+				// TODO: That can for sure be done fancier but for now it works
+				const placeholder = '*___~#^#~___*';
+				let inBrackets = path.match(/\[(.*?)\]/g);
+
+				if (inBrackets === null) {
+					inBrackets = [];
+				} else {
+					inBrackets = inBrackets.map(item => item.slice(1, -1)).map(item => {
+						if (item.startsWith('"') && item.endsWith('"')) {
+							return item.slice(1, -1);
+						}
+						return item;
+					});
+				}
+				const withoutBrackets = path.replace(/\[(.*?)\]/g, placeholder);
+				const pathParts = withoutBrackets.split('.');
+				const allParts = [] as string[];
+				pathParts.forEach(part => {
+					let index = part.indexOf(placeholder);
+					while(index !== -1) {
+						if (index === 0) {
+							allParts.push(inBrackets!.shift() as string);
+							part = part.substr(placeholder.length);
+						} else {
+							allParts.push(part.substr(0, index));
+							part = part.substr(index);
+						}
+						index = part.indexOf(placeholder);
+					}
+					if (part !== '') {
+						allParts.push(part);
+					}
+				});
+
+				return '["' + allParts.join('"]["') + '"]';
+			},
+			handleCopyClick (commandData: { command: string }) {
+				const newPath = this.convertPath(this.state.path);
+
+				let value: string;
+				if (commandData.command === 'value') {
+					if (typeof this.state.value === 'object') {
+						value = JSON.stringify(this.state.value, null, 2);
+					} else {
+						value = this.state.value.toString();
+					}
+				} else {
+					let startPath = '';
+					let path = '';
+					if (commandData.command === 'itemPath') {
+						const pathParts = newPath.split(']');
+						const index = pathParts[0].slice(1);
+						path = pathParts.slice(1).join(']');
+						startPath = `$item(${index}).$node["${this.node!.name}"].json`;
+					} else if (commandData.command === 'parameterPath') {
+						path = newPath.split(']').slice(1).join(']');
+						startPath = `$node["${this.node!.name}"].json`;
+					}
+					if (!path.startsWith('[') && !path.startsWith('.') && path) {
+						path += '.';
+					}
+					value = `{{ ${startPath + path} }}`;
+				}
+
+				this.copyToClipboard(value);
 			},
 			refreshDataSize () {
 				// Hide by default the data from being displayed
@@ -492,10 +601,6 @@ export default mixins(
 					// Data is reasonable small (< 200kb) so display it directly
 					this.showData = true;
 				}
-
-				if (this.displayMode === 'Binary' && this.binaryData.length === 0) {
-					this.displayMode = 'Table';
-				}
 			},
 		},
 		watch: {
@@ -504,12 +609,19 @@ export default mixins(
 				this.outputIndex = 0;
 				this.maxDisplayItems = 25;
 				this.refreshDataSize();
+				if (this.displayMode === 'Binary') {
+					this.closeBinaryDataDisplay();
+					if (this.binaryData.length === 0) {
+						this.displayMode = 'Table';
+					}
+				}
 			},
 			jsonData () {
 				this.refreshDataSize();
 			},
-			displayMode () {
+			displayMode (newValue, oldValue) {
 				this.closeBinaryDataDisplay();
+				this.$externalHooks().run('runData.displayModeChanged', { newValue, oldValue });
 			},
 			maxRunIndex () {
 				this.runIndex = Math.min(this.runIndex, this.maxRunIndex);
@@ -610,15 +722,8 @@ export default mixins(
 		}
 
 		.json-data {
-			.json-tree {
+			&.vjs-tree {
 				color: $--custom-input-font;
-
-				.json-tree-value-number {
-					color: #b03030;
-				}
-				.json-tree-value-string {
-					color: #8aab1a;
-				}
 			}
 		}
 
@@ -635,13 +740,6 @@ export default mixins(
 
 			.text {
 				margin-bottom: 1em;
-			}
-		}
-
-		.error-display {
-			.error-message {
-				color: #ff0000;
-				font-weight: bold;
 			}
 		}
 
@@ -693,6 +791,16 @@ export default mixins(
 	.header {
 		padding-top: 10px;
 		padding-left: 10px;
+
+		.select-button {
+			height: 30px;
+			top: 50px;
+			right: 30px;
+			position: absolute;
+			text-align: right;
+			width: 200px;
+			z-index: 10;
+		}
 
 		.title-text {
 			display: inline-block;

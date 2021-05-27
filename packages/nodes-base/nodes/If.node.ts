@@ -4,6 +4,7 @@ import {
 	INodeParameters,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 	NodeParameterValue,
 } from 'n8n-workflow';
 
@@ -31,6 +32,7 @@ export class If implements INodeType {
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
+					sortable: true,
 				},
 				description: 'The type of values to compare.',
 				default: {},
@@ -53,11 +55,11 @@ export class If implements INodeType {
 								options: [
 									{
 										name: 'Equal',
-										value: 'equal'
+										value: 'equal',
 									},
 									{
 										name: 'Not Equal',
-										value: 'notEqual'
+										value: 'notEqual',
 									},
 								],
 								default: 'equal',
@@ -68,6 +70,43 @@ export class If implements INodeType {
 								name: 'value2',
 								type: 'boolean',
 								default: false,
+								description: 'The value to compare with the first one.',
+							},
+						],
+					},
+					{
+						name: 'dateTime',
+						displayName: 'Date & Time',
+						values: [
+							{
+								displayName: 'Value 1',
+								name: 'value1',
+								type: 'dateTime',
+								default: '',
+								description: 'The value to compare with the second one.',
+							},
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								options: [
+									{
+										name: 'Occurred after',
+										value: 'after',
+									},
+									{
+										name: 'Occurred before',
+										value: 'before',
+									},
+								],
+								default: 'after',
+								description: 'Operation to decide where the the data should be mapped to.',
+							},
+							{
+								displayName: 'Value 2',
+								name: 'value2',
+								type: 'dateTime',
+								default: '',
 								description: 'The value to compare with the first one.',
 							},
 						],
@@ -90,27 +129,31 @@ export class If implements INodeType {
 								options: [
 									{
 										name: 'Smaller',
-										value: 'smaller'
+										value: 'smaller',
 									},
 									{
 										name: 'Smaller Equal',
-										value: 'smallerEqual'
+										value: 'smallerEqual',
 									},
 									{
 										name: 'Equal',
-										value: 'equal'
+										value: 'equal',
 									},
 									{
 										name: 'Not Equal',
-										value: 'notEqual'
+										value: 'notEqual',
 									},
 									{
 										name: 'Larger',
-										value: 'larger'
+										value: 'larger',
 									},
 									{
 										name: 'Larger Equal',
-										value: 'largerEqual'
+										value: 'largerEqual',
+									},
+									{
+										name: 'Is Empty',
+										value: 'isEmpty',
 									},
 								],
 								default: 'smaller',
@@ -120,6 +163,13 @@ export class If implements INodeType {
 								displayName: 'Value 2',
 								name: 'value2',
 								type: 'number',
+								displayOptions: {
+									hide: {
+										operation: [
+											'isEmpty',
+										],
+									},
+								},
 								default: 0,
 								description: 'The value to compare with the first one.',
 							},
@@ -143,23 +193,35 @@ export class If implements INodeType {
 								options: [
 									{
 										name: 'Contains',
-										value: 'contains'
+										value: 'contains',
+									},
+									{
+										name: 'Ends With',
+										value: 'endsWith',
 									},
 									{
 										name: 'Equal',
-										value: 'equal'
+										value: 'equal',
 									},
 									{
 										name: 'Not Contains',
-										value: 'notContains'
+										value: 'notContains',
 									},
 									{
 										name: 'Not Equal',
-										value: 'notEqual'
+										value: 'notEqual',
 									},
 									{
 										name: 'Regex',
-										value: 'regex'
+										value: 'regex',
+									},
+									{
+										name: 'Starts With',
+										value: 'startsWith',
+									},
+									{
+										name: 'Is Empty',
+										value: 'isEmpty',
 									},
 								],
 								default: 'equal',
@@ -172,6 +234,7 @@ export class If implements INodeType {
 								displayOptions: {
 									hide: {
 										operation: [
+											'isEmpty',
 											'regex',
 										],
 									},
@@ -206,12 +269,12 @@ export class If implements INodeType {
 					{
 						name: 'ALL',
 						description: 'Only if all conditions are meet it goes into "true" branch.',
-						value: 'all'
+						value: 'all',
 					},
 					{
 						name: 'ANY',
 						description: 'If any of the conditions is meet it goes into "true" branch.',
-						value: 'any'
+						value: 'any',
 					},
 				],
 				default: 'all',
@@ -234,33 +297,57 @@ export class If implements INodeType {
 		const compareOperationFunctions: {
 			[key: string]: (value1: NodeParameterValue, value2: NodeParameterValue) => boolean;
 		} = {
-			contains: (value1: NodeParameterValue, value2: NodeParameterValue) => value1.toString().includes(value2.toString()),
-			notContains: (value1: NodeParameterValue, value2: NodeParameterValue) => !value1.toString().includes(value2.toString()),
+			after: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) > (value2 || 0),
+			before: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) < (value2 || 0),
+			contains: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || '').toString().includes((value2 || '').toString()),
+			notContains: (value1: NodeParameterValue, value2: NodeParameterValue) => !(value1 || '').toString().includes((value2 || '').toString()),
+			endsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 as string).endsWith(value2 as string),
 			equal: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 === value2,
 			notEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 !== value2,
-			larger: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 > value2,
-			largerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 >= value2,
-			smaller: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 < value2,
-			smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 <= value2,
+			larger: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) > (value2 || 0),
+			largerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) >= (value2 || 0),
+			smaller: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) < (value2 || 0),
+			smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) <= (value2 || 0),
+			startsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 as string).startsWith(value2 as string),
+			isEmpty: (value1: NodeParameterValue) => [undefined, null, ''].includes(value1 as string),
 			regex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
-				const regexMatch = value2.toString().match(new RegExp('^/(.*?)/([gimy]*)$'));
+				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
 
 				let regex: RegExp;
 				if (!regexMatch) {
-					regex = new RegExp(value2.toString());
+					regex = new RegExp((value2 || '').toString());
 				} else if (regexMatch.length === 1) {
 					regex = new RegExp(regexMatch[1]);
 				} else {
 					regex = new RegExp(regexMatch[1], regexMatch[2]);
 				}
 
-				return !!value1.toString().match(regex);
+				return !!(value1 || '').toString().match(regex);
 			},
+		};
+
+		// Converts the input data of a dateTime into a number for easy compare
+		const convertDateTime = (value: NodeParameterValue): number => {
+			let returnValue: number | undefined = undefined;
+			if (typeof value === 'string') {
+				returnValue = new Date(value).getTime();
+			} else if (typeof value === 'number') {
+				returnValue = value;
+			} if ((value as unknown as object) instanceof Date) {
+				returnValue = (value as unknown as Date).getTime();
+			}
+
+			if (returnValue === undefined || isNaN(returnValue)) {
+				throw new NodeOperationError(this.getNode(), `The value "${value}" is not a valid DateTime.`);
+			}
+
+			return returnValue;
 		};
 
 		// The different dataTypes to check the values in
 		const dataTypes = [
 			'boolean',
+			'dateTime',
 			'number',
 			'string',
 		];
@@ -269,6 +356,7 @@ export class If implements INodeType {
 		// which ones via output "false"
 		let dataType: string;
 		let compareOperationResult: boolean;
+		let value1: NodeParameterValue, value2: NodeParameterValue;
 		itemLoop:
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			item = items[itemIndex];
@@ -282,7 +370,16 @@ export class If implements INodeType {
 				// Check all the values of the current dataType
 				for (compareData of this.getNodeParameter(`conditions.${dataType}`, itemIndex, []) as INodeParameters[]) {
 					// Check if the values passes
-					compareOperationResult = compareOperationFunctions[compareData.operation as string](compareData.value1 as NodeParameterValue, compareData.value2 as NodeParameterValue);
+
+					value1 = compareData.value1 as NodeParameterValue;
+					value2 = compareData.value2 as NodeParameterValue;
+
+					if (dataType === 'dateTime') {
+						value1 = convertDateTime(value1);
+						value2 = convertDateTime(value2);
+					}
+
+					compareOperationResult = compareOperationFunctions[compareData.operation as string](value1, value2);
 
 					if (compareOperationResult === true && combineOperation === 'any') {
 						// If it passes and the operation is "any" we do not have to check any

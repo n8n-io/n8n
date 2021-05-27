@@ -54,7 +54,7 @@ export class Merge implements INodeType {
 					{
 						name: 'Multiplex',
 						value: 'multiplex',
-						description: 'Merges each value of one input with each value of the other input. The output will contain (m * n) items where (m) and (n) are lengths of the inputs.'
+						description: 'Merges each value of one input with each value of the other input. The output will contain (m * n) items where (m) and (n) are lengths of the inputs.',
 					},
 					{
 						name: 'Pass-through',
@@ -82,7 +82,7 @@ export class Merge implements INodeType {
 				displayOptions: {
 					show: {
 						mode: [
-							'mergeByIndex'
+							'mergeByIndex',
 						],
 					},
 				},
@@ -147,7 +147,7 @@ export class Merge implements INodeType {
 				displayOptions: {
 					show: {
 						mode: [
-							'passThrough'
+							'passThrough',
 						],
 					},
 				},
@@ -194,8 +194,8 @@ export class Merge implements INodeType {
 				],
 				default: 'always',
 				description: 'Select when to overwrite the values from Input1 with values from Input 2.',
-			}
-		]
+			},
+		],
 	};
 
 

@@ -1,4 +1,3 @@
-
 export interface IContact {
 	LastName?: string;
 	Fax?: string;
@@ -8,7 +7,7 @@ export interface IContact {
 	Jigsaw?: string;
 	OwnerId?: string;
 	AccountId?: string;
-	Birthdate?:string;
+	Birthdate?: string;
 	FirstName?: string;
 	HomePhone?: string;
 	OtherCity?: string;

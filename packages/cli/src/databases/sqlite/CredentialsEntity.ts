@@ -20,7 +20,7 @@ export class CredentialsEntity implements ICredentialsDb {
 	id: number;
 
 	@Column({
-		length: 128
+		length: 128,
 	})
 	name: string;
 
@@ -29,7 +29,7 @@ export class CredentialsEntity implements ICredentialsDb {
 
 	@Index()
 	@Column({
-		length: 32
+		length: 32,
 	})
 	type: string;
 

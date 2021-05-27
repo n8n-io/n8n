@@ -1,4 +1,4 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
 export const leadOpeations = [
 	{
@@ -19,6 +19,11 @@ export const leadOpeations = [
 				description: 'Create a new lead',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a lead',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a lead',
@@ -33,11 +38,6 @@ export const leadOpeations = [
 				value: 'update',
 				description: 'Update new lead',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a lead',
-			}
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -46,10 +46,9 @@ export const leadOpeations = [
 
 export const leadFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                 lead:delete                                */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                 lead:delete                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Delete By',
 		name: 'deleteBy',
@@ -97,10 +96,9 @@ export const leadFields = [
 		description: 'Delete by value',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                  lead:get                                 */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                  lead:get                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Select By',
 		name: 'selectBy',
@@ -159,10 +157,9 @@ export const leadFields = [
 		description: 'View by value',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                  lead:getAll                                 */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                  lead:getAll                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -235,13 +232,12 @@ export const leadFields = [
 				default: '',
 				description: 'The phone number of the lead',
 			},
-		]
+		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 lead:update                                */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                 lead:update                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Update By',
 		name: 'updateBy',
@@ -290,10 +286,9 @@ export const leadFields = [
 		description: 'Value of the property to identify the lead to update',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 lead:create                                */
-/* -------------------------------------------------------------------------- */
-
+	/* -------------------------------------------------------------------------- */
+	/*                                 lead:create                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -356,6 +351,33 @@ export const leadFields = [
 				description: 'An avatar image URL. note: the image url needs to be https.',
 			},
 			{
+				displayName: 'Companies',
+				name: 'companies',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getCompanies',
+				},
+				default: [],
+				description: 'Identifies the companies this user belongs to.',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						'/resource': [
+							'lead',
+						],
+						'/operation': [
+							'update',
+						],
+					},
+				},
+				description: 'The email of the user.',
+			},
+			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
@@ -384,38 +406,18 @@ export const leadFields = [
 				description: 'A boolean value, which if true, instructs Intercom to update the<br />users last_request_at value to the current API service time in<br />UTC. default value if not sent is false.',
 			},
 			{
-				displayName: 'Companies',
-				name: 'companies',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getCompanies',
-				},
-				default: [],
-				description: 'Identifies the companies this user belongs to.',
-			},
-			{
-				displayName: 'Email',
-				name: 'email',
+				displayName: 'UTM Campaign',
+				name: 'utmCampaign',
 				type: 'string',
 				default: '',
-				displayOptions: {
-					show: {
-						'/resource': [
-							'lead',
-						],
-						'/operation': [
-							'update',
-						],
-					},
-				},
-				description: 'The email of the user.',
+				description: 'Identifies a specific product promotion or strategic campaign',
 			},
 			{
-				displayName: 'UTM Source',
-				name: 'utmSource',
+				displayName: 'UTM Content',
+				name: 'utmContent',
 				type: 'string',
 				default: '',
-				description: 'An avatar image URL. note: the image url needs to be https.',
+				description: 'Identifies what specifically was clicked to bring the user to the site',
 			},
 			{
 				displayName: 'UTM Medium',
@@ -425,11 +427,11 @@ export const leadFields = [
 				description: 'Identifies what type of link was used',
 			},
 			{
-				displayName: 'UTM Campaign',
-				name: 'utmCampaign',
+				displayName: 'UTM Source',
+				name: 'utmSource',
 				type: 'string',
 				default: '',
-				description: 'Identifies a specific product promotion or strategic campaign',
+				description: 'An avatar image URL. note: the image url needs to be https.',
 			},
 			{
 				displayName: 'UTM Term',
@@ -438,14 +440,7 @@ export const leadFields = [
 				default: '',
 				description: 'Identifies search terms',
 			},
-			{
-				displayName: 'UTM Content',
-				name: 'utmContent',
-				type: 'string',
-				default: '',
-				description: 'Identifies what specifically was clicked to bring the user to the site',
-			},
-		]
+		],
 	},
 	{
 		displayName: 'Custom Attributes',
@@ -514,7 +509,7 @@ export const leadFields = [
 						default: '',
 					},
 				],
-			}
+			},
 		],
 		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
 	},

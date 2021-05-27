@@ -4,8 +4,8 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -122,7 +122,7 @@ export class CalendlyTrigger implements INodeType {
 
 					try {
 						await calendlyApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

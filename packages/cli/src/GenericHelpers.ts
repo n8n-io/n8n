@@ -3,31 +3,12 @@ import * as express from 'express';
 import { join as pathJoin } from 'path';
 import {
 	readFile as fsReadFile,
-} from 'fs';
-import { promisify } from 'util';
+} from 'fs/promises';
 import { IDataObject } from 'n8n-workflow';
 
 import { IPackageVersions } from './';
 
-const fsReadFileAsync = promisify(fsReadFile);
-
 let versionCache: IPackageVersions | undefined;
-
-
-/**
- * Displays a message to the user
- *
- * @export
- * @param {string} message The message to display
- * @param {string} [level='log']
- */
-export function logOutput(message: string, level = 'log'): void {
-	if (level === 'log') {
-		console.log(message);
-	} else if (level === 'error') {
-		console.error(message);
-	}
-}
 
 
 /**
@@ -72,7 +53,7 @@ export async function getVersions(): Promise<IPackageVersions> {
 		return versionCache;
 	}
 
-	const packageFile = await fsReadFileAsync(pathJoin(__dirname, '../../package.json'), 'utf8') as string;
+	const packageFile = await fsReadFile(pathJoin(__dirname, '../../package.json'), 'utf8') as string;
 	const packageData = JSON.parse(packageFile);
 
 	versionCache = {
@@ -95,14 +76,15 @@ export async function getConfigValue(configKey: string): Promise<string | boolea
 
 	// Get the environment variable
 	const configSchema = config.getSchema();
-	let currentSchema = configSchema.properties as IDataObject;
+	// @ts-ignore
+	let currentSchema = configSchema._cvtProperties as IDataObject;
 	for (const key of configKeyParts) {
 		if (currentSchema[key] === undefined) {
 			throw new Error(`Key "${key}" of ConfigKey "${configKey}" does not exist`);
-		} else if ((currentSchema[key]! as IDataObject).properties === undefined) {
+		} else if ((currentSchema[key]! as IDataObject)._cvtProperties === undefined) {
 			currentSchema = currentSchema[key] as IDataObject;
 		} else {
-			currentSchema = (currentSchema[key] as IDataObject).properties as IDataObject;
+			currentSchema = (currentSchema[key] as IDataObject)._cvtProperties as IDataObject;
 		}
 	}
 
@@ -121,7 +103,7 @@ export async function getConfigValue(configKey: string): Promise<string | boolea
 
 	let data;
 	try {
-		data = await fsReadFileAsync(fileEnvironmentVariable, 'utf8') as string;
+		data = await fsReadFile(fileEnvironmentVariable, 'utf8') as string;
 	} catch (error) {
 		if (error.code === 'ENOENT') {
 			throw new Error(`The file "${fileEnvironmentVariable}" could not be found.`);

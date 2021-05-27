@@ -1,6 +1,6 @@
 <template>
 	<div class="node-wrapper" :style="nodePosition">
-		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick">
+		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 			<div v-if="hasIssues" class="node-info-icon node-issues">
 				<el-tooltip placement="top" effect="light">
 					<div slot="content" v-html="nodeIssues"></div>
@@ -12,20 +12,20 @@
 			<div class="node-executing-info" title="Node is executing">
 				<font-awesome-icon icon="sync-alt" spin />
 			</div>
-			<div class="node-options" v-if="!isReadOnly">
-				<div @click.stop.left="deleteNode" class="option" title="Delete Node" >
+			<div class="node-options no-select-on-click" v-if="!isReadOnly">
+				<div v-touch:tap="deleteNode" class="option" title="Delete Node" >
 					<font-awesome-icon icon="trash" />
 				</div>
-				<div @click.stop.left="disableNode" class="option" title="Activate/Deactivate Node" >
+				<div v-touch:tap="disableNode" class="option" title="Activate/Deactivate Node" >
 					<font-awesome-icon :icon="nodeDisabledIcon" />
 				</div>
-				<div @click.stop.left="duplicateNode" class="option" title="Duplicate Node" >
+				<div v-touch:tap="duplicateNode" class="option" title="Duplicate Node" >
 					<font-awesome-icon icon="clone" />
 				</div>
-				<div @click.stop.left="setNodeActive" class="option touch" title="Edit Node" v-if="!isReadOnly">
+				<div v-touch:tap="setNodeActive" class="option touch" title="Edit Node" v-if="!isReadOnly">
 					<font-awesome-icon class="execute-icon" icon="cog" />
 				</div>
-				<div @click.stop.left="executeNode" class="option" title="Execute Node" v-if="!isReadOnly && !workflowRunning">
+				<div v-touch:tap="executeNode" class="option" title="Execute Node" v-if="!isReadOnly && !workflowRunning">
 					<font-awesome-icon class="execute-icon" icon="play-circle" />
 				</div>
 			</div>
@@ -47,14 +47,11 @@
 
 import Vue from 'vue';
 import { nodeBase } from '@/components/mixins/nodeBase';
+import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import {
-	INode,
-	INodeIssueObjectProperty,
-	INodePropertyOptions,
 	INodeTypeDescription,
-	ITaskData,
 	NodeHelpers,
 } from 'n8n-workflow';
 
@@ -62,7 +59,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 
 import mixins from 'vue-typed-mixins';
 
-export default mixins(nodeBase, workflowHelpers).extend({
+export default mixins(nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Node',
 	components: {
 		NodeIcon,
@@ -110,6 +107,10 @@ export default mixins(nodeBase, workflowHelpers).extend({
 				classes.push('is-touch-device');
 			}
 
+			if (this.isTouchActive) {
+				classes.push('touch-active');
+			}
+
 			return classes;
 		},
 		nodeIssues (): string {
@@ -129,41 +130,7 @@ export default mixins(nodeBase, workflowHelpers).extend({
 			}
 		},
 		nodeSubtitle (): string | undefined {
-			if (this.data.notesInFlow) {
-				return this.data.notes;
-			}
-
-			if (this.nodeType !== null && this.nodeType.subtitle !== undefined) {
-				return this.workflow.getSimpleParameterValue(this.data as INode, this.nodeType.subtitle) as string | undefined;
-			}
-
-			if (this.data.parameters.operation !== undefined) {
-				const operation = this.data.parameters.operation as string;
-				if (this.nodeType === null) {
-					return operation;
-				}
-
-				const operationData = this.nodeType.properties.find((property) => {
-					return property.name === 'operation';
-				});
-				if (operationData === undefined) {
-					return operation;
-				}
-
-				if (operationData.options === undefined) {
-					return operation;
-				}
-
-				const optionData = operationData.options.find((option) => {
-					return (option as INodePropertyOptions).value === this.data.parameters.operation;
-				});
-				if (optionData === undefined) {
-					return operation;
-				}
-
-				return optionData.name;
-			}
-			return undefined;
+			return this.getNodeSubtitle(this.data, this.nodeType, this.workflow);
 		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
@@ -174,7 +141,7 @@ export default mixins(nodeBase, workflowHelpers).extend({
 	},
 	data () {
 		return {
-			isTouchDevice: 'ontouchstart' in window || navigator.msMaxTouchPoints,
+			isTouchActive: false,
 		};
 	},
 	methods: {
@@ -182,7 +149,7 @@ export default mixins(nodeBase, workflowHelpers).extend({
 			this.disableNodes([this.data]);
 		},
 		executeNode () {
-			this.$emit('runWorkflow', this.data.name);
+			this.$emit('runWorkflow', this.data.name, 'Node.executeNode');
 		},
 		deleteNode () {
 			Vue.nextTick(() => {
@@ -198,6 +165,14 @@ export default mixins(nodeBase, workflowHelpers).extend({
 		},
 		setNodeActive () {
 			this.$store.commit('setActiveNode', this.data.name);
+		},
+		touchStart () {
+			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {
+				this.isTouchActive = true;
+				setTimeout(() => {
+					this.isTouchActive = false;
+				}, 2000);
+			}
 		},
 	},
 });
@@ -268,6 +243,7 @@ export default mixins(nodeBase, workflowHelpers).extend({
 			}
 		}
 
+		&.touch-active,
 		&:hover {
 			.node-execute {
 				display: initial;

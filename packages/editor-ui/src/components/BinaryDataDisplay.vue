@@ -11,10 +11,10 @@
 		</el-button>
 
 		<div class="binary-data-window-wrapper">
-			<div v-if="binaryData === null">
+			<div v-if="!binaryData">
 				Data to display did not get found
 			</div>
-			<embed :src="'data:' + binaryData.mimeType + ';base64,' + binaryData.data" class="binary-data" :class="embedClass"/>
+			<embed v-else :src="'data:' + binaryData.mimeType + ';base64,' + binaryData.data" class="binary-data" :class="embedClass"/>
 		</div>
 
 	</div>

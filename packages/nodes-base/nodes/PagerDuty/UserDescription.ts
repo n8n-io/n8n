@@ -43,7 +43,7 @@ export const userFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the user.',

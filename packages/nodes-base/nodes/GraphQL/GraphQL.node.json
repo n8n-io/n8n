@@ -1,0 +1,28 @@
+{
+	"node": "n8n-nodes-base.graphql",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Data & Storage",
+		"Development"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.graphql/"
+			}
+		],
+		"generic": [
+			{
+				"label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n",
+				"icon": "👏",
+				"url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/"
+			},
+			{
+				"label": "How Goomer automated their operations with over 200 n8n workflows",
+				"icon": "🛵",
+				"url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/"
+			}
+		]
+	}
+}

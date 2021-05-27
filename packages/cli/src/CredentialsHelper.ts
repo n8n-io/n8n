@@ -4,10 +4,17 @@ import {
 
 import {
 	ICredentialDataDecryptedObject,
+	ICredentialsExpressionResolveValues,
 	ICredentialsHelper,
+	INode,
 	INodeParameters,
 	INodeProperties,
+	INodeType,
+	INodeTypeData,
+	INodeTypes,
 	NodeHelpers,
+	Workflow,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import {
@@ -16,6 +23,19 @@ import {
 	Db,
 	ICredentialsDb,
 } from './';
+
+
+const mockNodeTypes: INodeTypes = {
+	nodeTypes: {},
+	init: async (nodeTypes?: INodeTypeData): Promise<void> => { },
+	getAll: (): INodeType[] => {
+		// Does not get used in Workflow so no need to return it
+		return [];
+	},
+	getByName: (nodeType: string): INodeType | undefined => {
+		return undefined;
+	},
+};
 
 
 export class CredentialsHelper extends ICredentialsHelper {
@@ -82,7 +102,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @returns {ICredentialDataDecryptedObject}
 	 * @memberof CredentialsHelper
 	 */
-	getDecrypted(name: string, type: string, raw?: boolean): ICredentialDataDecryptedObject {
+	getDecrypted(name: string, type: string, mode: WorkflowExecuteMode, raw?: boolean, expressionResolveValues?: ICredentialsExpressionResolveValues): ICredentialDataDecryptedObject {
 		const credentials = this.getCredentials(name, type);
 
 		const decryptedDataOriginal = credentials.getData(this.encryptionKey);
@@ -91,7 +111,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return decryptedDataOriginal;
 		}
 
-		return this.applyDefaultsAndOverwrites(decryptedDataOriginal, type);
+		return this.applyDefaultsAndOverwrites(decryptedDataOriginal, type, mode, expressionResolveValues);
 	}
 
 
@@ -103,16 +123,39 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @returns {ICredentialDataDecryptedObject}
 	 * @memberof CredentialsHelper
 	 */
-	applyDefaultsAndOverwrites(decryptedDataOriginal: ICredentialDataDecryptedObject, type: string): ICredentialDataDecryptedObject {
+	applyDefaultsAndOverwrites(decryptedDataOriginal: ICredentialDataDecryptedObject, type: string, mode: WorkflowExecuteMode, expressionResolveValues?: ICredentialsExpressionResolveValues): ICredentialDataDecryptedObject {
 		const credentialsProperties = this.getCredentialsProperties(type);
 
 		// Add the default credential values
-		const decryptedData = NodeHelpers.getNodeParameters(credentialsProperties, decryptedDataOriginal as INodeParameters, true, false) as ICredentialDataDecryptedObject;
+		let decryptedData = NodeHelpers.getNodeParameters(credentialsProperties, decryptedDataOriginal as INodeParameters, true, false) as ICredentialDataDecryptedObject;
 
 		if (decryptedDataOriginal.oauthTokenData !== undefined) {
 			// The OAuth data gets removed as it is not defined specifically as a parameter
 			// on the credentials so add it back in case it was set
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
+		}
+
+		if (expressionResolveValues) {
+			try {
+				const workflow = new Workflow({ nodes: Object.values(expressionResolveValues.workflow.nodes), connections: expressionResolveValues.workflow.connectionsBySourceNode, active: false, nodeTypes: expressionResolveValues.workflow.nodeTypes });
+				decryptedData = workflow.expression.getParameterValue(decryptedData as INodeParameters, expressionResolveValues.runExecutionData, expressionResolveValues.runIndex, expressionResolveValues.itemIndex, expressionResolveValues.node.name, expressionResolveValues.connectionInputData, mode, false, decryptedData) as ICredentialDataDecryptedObject;
+			} catch (e) {
+				e.message += ' [Error resolving credentials]';
+				throw e;
+			}
+		} else {
+			const node = {
+				name: '',
+				typeVersion: 1,
+				type: 'mock',
+				position: [0, 0],
+				parameters: {} as INodeParameters,
+			} as INode;
+
+			const workflow = new Workflow({ nodes: [node!], connections: {}, active: false, nodeTypes: mockNodeTypes });
+
+			// Resolve expressions if any are set
+			decryptedData = workflow.expression.getComplexParameterValue(node!, decryptedData as INodeParameters, mode, undefined, decryptedData) as ICredentialDataDecryptedObject;
 		}
 
 		// Load and apply the credentials overwrites if any exist

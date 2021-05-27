@@ -5,10 +5,11 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeTypeDescription,
 	INodeExecutionData,
-	INodeType,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -28,10 +29,10 @@ import {
 } from './ProductDescription';
 
 import {
-	IOrder,
-	IDiscountCode,
 	IAddress,
+	IDiscountCode,
 	ILineItem,
+	IOrder,
 } from './OrderInterface';
 
 import {
@@ -139,7 +140,7 @@ export class Shopify implements INodeType {
 					const shipping = additionalFields.shippingAddressUi as IDataObject;
 					const lineItem = (this.getNodeParameter('limeItemsUi', i) as IDataObject).lineItemValues as IDataObject[];
 					if (lineItem === undefined) {
-						throw new Error('At least one line item has to be added');
+						throw new NodeOperationError(this.getNode(), 'At least one line item has to be added');
 					}
 					const body: IOrder = {
 						test: true,

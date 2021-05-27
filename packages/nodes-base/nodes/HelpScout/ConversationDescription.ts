@@ -248,7 +248,7 @@ export const conversationFields = [
 				default: 0,
 				description: 'ID of the user who is adding the conversation and threads.',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Threads',
@@ -281,23 +281,23 @@ export const conversationFields = [
 						options: [
 							{
 								name: 'Chat',
-								value: 'chat'
+								value: 'chat',
 							},
 							{
 								name: 'Customer',
-								value: 'customer'
+								value: 'customer',
 							},
 							{
 								name: 'Note',
-								value: 'note'
+								value: 'note',
 							},
 							{
 								name: 'Phone',
-								value: 'phone'
+								value: 'phone',
 							},
 							{
 								name: 'Reply',
-								value: 'reply'
+								value: 'reply',
 							},
 						],
 						default: '',
@@ -307,10 +307,10 @@ export const conversationFields = [
 						name: 'text',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true
+							alwaysOpenEditWindow: true,
 						},
 						default: '',
-						description: 'The message text.'
+						description: 'The message text.',
 					},
 					{
 						displayName: 'Bcc',
@@ -318,7 +318,7 @@ export const conversationFields = [
 						displayOptions: {
 							show: {
 								type: [
-									'customer'
+									'customer',
 								],
 							},
 						},
@@ -328,7 +328,7 @@ export const conversationFields = [
 							multipleValueButtonText: 'Add Email',
 						},
 						default: [],
-						description: 'Email addresses.'
+						description: 'Email addresses.',
 					},
 					{
 						displayName: 'Cc',
@@ -336,7 +336,7 @@ export const conversationFields = [
 						displayOptions: {
 							show: {
 								type: [
-									'customer'
+									'customer',
 								],
 							},
 						},
@@ -346,7 +346,7 @@ export const conversationFields = [
 							multipleValueButtonText: 'Add Email',
 						},
 						default: [],
-						description: 'Email addresses.'
+						description: 'Email addresses.',
 					},
 					{
 						displayName: 'Draft',
@@ -354,7 +354,7 @@ export const conversationFields = [
 						displayOptions: {
 							show: {
 								type: [
-									'reply'
+									'reply',
 								],
 							},
 						},
@@ -527,7 +527,7 @@ export const conversationFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Advanced search <a href="https://developer.helpscout.com/mailbox-api/endpoints/conversations/list/#query">Examples</a>'
+				description: 'Advanced search <a href="https://developer.helpscout.com/mailbox-api/endpoints/conversations/list/#query">Examples</a>',
 			},
 			{
 				displayName: 'Sort Field',

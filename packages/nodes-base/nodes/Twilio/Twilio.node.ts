@@ -3,9 +3,10 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -31,7 +32,7 @@ export class Twilio implements INodeType {
 			{
 				name: 'twilioApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -199,10 +200,10 @@ export class Twilio implements INodeType {
 						body.To = `whatsapp:${body.To}`;
 					}
 				} else {
-					throw new Error(`The operation "${operation}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 				}
 			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 			}
 
 			const responseData = await twilioApiRequest.call(this, requestMethod, endpoint, body, qs);

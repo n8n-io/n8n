@@ -1,0 +1,32 @@
+{
+	"node": "n8n-nodes-base.telegramTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Communication"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/telegram"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.telegramTrigger/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n",
+				"icon": "🧾",
+				"url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/"
+			},
+			{
+				"label": "Creating Telegram Bots with n8n, a No-Code Platform",
+				"icon": "💬",
+				"url": "https://n8n.io/blog/creating-telegram-bots-with-n8n-a-no-code-platform/"
+			}
+		]
+	}
+}

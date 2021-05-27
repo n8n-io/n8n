@@ -22,7 +22,7 @@ export class WorkflowEntity implements IWorkflowDb {
 	id: number;
 
 	@Column({
-		length: 128
+		length: 128,
 	})
 	name: string;
 

@@ -4,11 +4,13 @@ import {
 
 import {
 	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -18,25 +20,25 @@ import {
 } from './GenericFunctions';
 
 import {
-	workbookOperations,
 	workbookFields,
+	workbookOperations,
 } from './WorkbookDescription';
 
 import {
-	worksheetOperations,
 	worksheetFields,
+	worksheetOperations,
 } from './WorksheetDescription';
 
 import {
-	tableOperations,
 	tableFields,
+	tableOperations,
 } from './TableDescription';
 
 export class MicrosoftExcel implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft Excel',
 		name: 'microsoftExcel',
-		icon: 'file:excel.png',
+		icon: 'file:excel.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -146,7 +148,7 @@ export class MicrosoftExcel implements INodeType {
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -297,7 +299,7 @@ export class MicrosoftExcel implements INodeType {
 					columns = columns.map((column: IDataObject) => column.name);
 
 					if (!columns.includes(lookupColumn)) {
-						throw new Error(`Column ${lookupColumn} does not exist on the table selected`);
+						throw new NodeApiError(this.getNode(), responseData, { message: `Column ${lookupColumn} does not exist on the table selected` });
 					}
 
 					result.length = 0;
@@ -398,7 +400,7 @@ export class MicrosoftExcel implements INodeType {
 						const keyRow = this.getNodeParameter('keyRow', i) as number;
 						const dataStartRow = this.getNodeParameter('dataStartRow', i) as number;
 						if (responseData.values === null) {
-							throw new Error('Range did not return data');
+							throw new NodeApiError(this.getNode(), responseData, { message: 'Range did not return data' });
 						}
 						const keyValues = responseData.values[keyRow];
 						for (let i = dataStartRow; i < responseData.values.length; i++) {

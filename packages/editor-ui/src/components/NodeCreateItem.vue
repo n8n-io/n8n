@@ -1,5 +1,5 @@
 <template>
-	<div class="node-item clickable" :class="{active: active}" @click="nodeTypeSelected(nodeType)">
+	<div class="node-item clickable" :class="{active: active}" :data-node-name="nodeName" @click="nodeTypeSelected(nodeType)">
 		<NodeIcon class="node-icon" :nodeType="nodeType" :style="nodeIconStyle" />
 		<div class="name">
 			{{nodeType.displayName}}
@@ -32,6 +32,9 @@ export default Vue.extend({
 			return {
 				color: this.nodeType.defaults.color,
 			};
+		},
+		nodeName (): string {
+			return this.nodeType.name;
 		},
 	},
 	methods: {

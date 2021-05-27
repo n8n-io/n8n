@@ -14,7 +14,7 @@ export class Ftp implements ICredentialType {
 			required: true,
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			placeholder: 'localhost'
+			placeholder: 'localhost',
 		},
 		{
 			displayName: 'Port',

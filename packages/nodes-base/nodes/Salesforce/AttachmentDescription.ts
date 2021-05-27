@@ -51,9 +51,9 @@ export const attachmentOperations = [
 
 export const attachmentFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                attachment:create                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                attachment:create                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Parent ID',
 		name: 'parentId',
@@ -66,7 +66,7 @@ export const attachmentFields = [
 					'attachment',
 				],
 				operation: [
-					'create'
+					'create',
 				],
 			},
 		},
@@ -84,7 +84,7 @@ export const attachmentFields = [
 					'attachment',
 				],
 				operation: [
-					'create'
+					'create',
 				],
 			},
 		},
@@ -102,7 +102,7 @@ export const attachmentFields = [
 					'attachment',
 				],
 				operation: [
-					'create'
+					'create',
 				],
 			},
 		},
@@ -152,9 +152,10 @@ export const attachmentFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 attachment:update           	              */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 attachment:update           	              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Attachment ID',
 		name: 'attachmentId',
@@ -168,10 +169,10 @@ export const attachmentFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
-		description: 'Id of attachment that needs to be fetched',
+		description: 'ID of attachment that needs to be fetched.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -224,7 +225,7 @@ export const attachmentFields = [
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod:  'getUsers',
+					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
 				description: 'ID of the User who owns the attachment.',
@@ -232,9 +233,9 @@ export const attachmentFields = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                  attachment:get                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  attachment:get                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Attachment ID',
 		name: 'attachmentId',
@@ -248,14 +249,15 @@ export const attachmentFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
-		description: 'Id of attachment that needs to be fetched',
+		description: 'ID of attachment that needs to be fetched.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  attachment:delete                         */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  attachment:delete                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Attachment ID',
 		name: 'attachmentId',
@@ -269,14 +271,15 @@ export const attachmentFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
-		description: 'Id of attachment that needs to be fetched',
+		description: 'ID of attachment that needs to be fetched.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 attachment:getAll                          */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 attachment:getAll                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -336,12 +339,75 @@ export const attachmentFields = [
 		},
 		options: [
 			{
+				displayName: 'Conditions',
+				name: 'conditionsUi',
+				placeholder: 'Add Condition',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'The condition to set.',
+				default: {},
+				options: [
+					{
+						name: 'conditionValues',
+						displayName: 'Condition',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getAtachmentFields',
+								},
+								default: '',
+								description: 'For date, number, or boolean, please use expressions.',
+							},
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								options: [
+									{
+										name: '=',
+										value: 'equal',
+									},
+									{
+										name: '>',
+										value: '>',
+									},
+									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '>=',
+										value: '>=',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
+								],
+								default: 'equal',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
 				default: '',
 				description: 'Fields to include separated by ,',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

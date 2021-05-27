@@ -12,23 +12,22 @@ import 'quill/dist/quill.core.css';
 
 import Quill, { DeltaOperation } from 'quill';
 // @ts-ignore
-import AutoFormat, { AutoformatHelperAttribute } from 'quill-autoformat';
+import AutoFormat from 'quill-autoformat';
 import {
 	NodeParameterValue,
 	Workflow,
-	WorkflowDataProxy,
 } from 'n8n-workflow';
 
 import {
-	IExecutionResponse,
 	IVariableItemSelected,
-	IVariableSelectorOption,
 } from '@/Interface';
+import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
+	genericHelpers,
 	workflowHelpers,
 )
 	.extend({
@@ -119,7 +118,7 @@ export default mixins(
 			};
 
 			this.editor = new Quill(this.$refs['expression-editor'] as Element, {
-				readOnly: !!this.resolvedValue,
+				readOnly: !!this.resolvedValue || this.isReadOnly,
 				modules: {
 					autoformat: {},
 					keyboard: {
@@ -265,7 +264,7 @@ export default mixins(
 
 					} else if (value.charAt(0) === '^') {
 						// Is variable
-						let displayValue = `{{${value.slice(1)}}}` as string | number | boolean | null;
+						let displayValue = `{{${value.slice(1)}}}` as string | number | boolean | null | undefined;
 						if (this.resolvedValue) {
 							displayValue = [null, undefined].includes(displayValue as null | undefined) ? '' : displayValue;
 							displayValue = this.resolveParameterString((displayValue as string).toString()) as NodeParameterValue;

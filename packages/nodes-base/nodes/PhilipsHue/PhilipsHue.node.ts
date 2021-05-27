@@ -4,21 +4,21 @@ import {
 
 import {
 	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
-	philipsHueApiRequest,
 	getUser,
+	philipsHueApiRequest,
 } from './GenericFunctions';
 
 import {
-	lightOperations,
 	lightFields,
+	lightOperations,
 } from './LightDescription';
 
 export class PhilipsHue implements INodeType {
@@ -66,7 +66,7 @@ export class PhilipsHue implements INodeType {
 			// Get all the lights to display them to user so that he can
 			// select them easily
 			async getLights(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
@@ -77,17 +77,31 @@ export class PhilipsHue implements INodeType {
 					'GET',
 					`/bridge/${user}/lights`,
 				);
+				
+				const groups = await philipsHueApiRequest.call(
+					this,
+					'GET',
+					`/bridge/${user}/groups`,
+				);
+
 				for (const light of Object.keys(lights)) {
-					const lightName = lights[light].name;
+					let lightName = lights[light].name;
 					const lightId = light;
+					
+					for (const groupId of Object.keys(groups)) {
+						if(groups[groupId].type === 'Room' && groups[groupId].lights.includes(lightId)) {
+							lightName = `${groups[groupId].name}: ${lightName}`;
+						}
+					}
+					
 					returnData.push({
 						name: lightName,
-						value: lightId
+						value: lightId,
 					});
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

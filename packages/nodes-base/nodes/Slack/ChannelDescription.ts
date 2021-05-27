@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const channelOperations = [
 	{
@@ -64,6 +66,11 @@ export const channelOperations = [
 				description: 'Leaves a conversation.',
 			},
 			{
+				name: 'Member',
+				value: 'member',
+				description: 'List members of a conversation.',
+			},
+			{
 				name: 'Open',
 				value: 'open',
 				description: 'Opens or resumes a direct message or multi-person direct message.',
@@ -101,9 +108,9 @@ export const channelOperations = [
 
 export const channelFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                channel:archive                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                channel:archive                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -114,7 +121,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'archive'
+					'archive',
 				],
 				resource: [
 					'channel',
@@ -125,9 +132,10 @@ export const channelFields = [
 		required: true,
 		description: 'The name of the channel to archive.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                channel:close                               */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                channel:close                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -138,7 +146,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'close'
+					'close',
 				],
 				resource: [
 					'channel',
@@ -149,9 +157,10 @@ export const channelFields = [
 		required: true,
 		description: 'The name of the channel to close.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                channel:create                              */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                channel:create                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -161,7 +170,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'create'
+					'create',
 				],
 				resource: [
 					'channel',
@@ -195,21 +204,12 @@ export const channelFields = [
 				default: false,
 				description: 'Create a private channel instead of a public one',
 			},
-			{
-				displayName: 'Users',
-				name: 'users',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				default: [],
-				description: `Required for workspace apps. A list of between 1 and 30 human users that will be added to the newly-created conversation`,
-			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 channel:invite                             */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 channel:invite                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -221,7 +221,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'invite'
+					'invite',
 				],
 				resource: [
 					'channel',
@@ -232,9 +232,9 @@ export const channelFields = [
 		description: 'The ID of the channel to invite user to.',
 	},
 	{
-		displayName: 'User ID',
-		name: 'userId',
-		type: 'options',
+		displayName: 'User IDs',
+		name: 'userIds',
+		type: 'multiOptions',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
 		},
@@ -242,7 +242,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'invite'
+					'invite',
 				],
 				resource: [
 					'channel',
@@ -252,9 +252,10 @@ export const channelFields = [
 		required: true,
 		description: 'The ID of the user to invite into channel.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  channel:get                               */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  channel:get                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -263,7 +264,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'get'
+					'get',
 				],
 				resource: [
 					'channel',
@@ -296,11 +297,12 @@ export const channelFields = [
 				type: 'boolean',
 				default: false,
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  channel:kick                              */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  channel:kick                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -313,7 +315,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'kick'
+					'kick',
 				],
 				resource: [
 					'channel',
@@ -333,7 +335,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'kick'
+					'kick',
 				],
 				resource: [
 					'channel',
@@ -342,9 +344,10 @@ export const channelFields = [
 		},
 		default: '',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  channel:join                              */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  channel:join                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -357,7 +360,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'join'
+					'join',
 				],
 				resource: [
 					'channel',
@@ -366,9 +369,10 @@ export const channelFields = [
 		},
 		required: true,
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 channel:getAll                             */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 channel:getAll                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -441,29 +445,30 @@ export const channelFields = [
 				options: [
 					{
 						name: 'Public Channel',
-						value: 'public_channel'
+						value: 'public_channel',
 					},
 					{
 						name: 'Private Channel',
-						value: 'private_channel'
+						value: 'private_channel',
 					},
 					{
 						name: 'mpim',
-						value: 'mpim'
+						value: 'mpim',
 					},
 					{
 						name: 'im',
-						value: 'im'
+						value: 'im',
 					},
 				],
 				default: ['public_channel'],
 				description: 'Mix and match channel types',
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 channel:history                            */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 channel:history                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -476,7 +481,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'history'
+					'history',
 				],
 				resource: [
 					'channel',
@@ -565,11 +570,12 @@ export const channelFields = [
 				default: '',
 				description: 'Start of time range of messages to include in results.',
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                channel:leave                               */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                channel:leave                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -580,7 +586,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'leave'
+					'leave',
 				],
 				resource: [
 					'channel',
@@ -591,9 +597,89 @@ export const channelFields = [
 		required: true,
 		description: 'The name of the channel to leave.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                channel:open                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  channel:member                            */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Channel',
+		name: 'channelId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'member',
+				],
+				resource: [
+					'channel',
+				],
+			},
+		},
+		required: true,
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'channel',
+				],
+				operation: [
+					'member',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 100,
+		placeholder: 'Limit',
+		displayOptions: {
+			show: {
+				operation: [
+					'member',
+				],
+				resource: [
+					'channel',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		required: false,
+	},
+	{
+		displayName: 'Resolve Data',
+		name: 'resolveData',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'channel',
+				],
+				operation: [
+					'member',
+				],
+			},
+		},
+		description: 'By default the response only contain the ID to resource. If this<br />option gets activated it will resolve the data automatically.',
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                channel:open                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -635,11 +721,12 @@ export const channelFields = [
 				default: [],
 				description: `If only one user is included, this creates a 1:1 DM. The ordering of the users is preserved whenever a multi-person direct message is returned. Supply a channel when not supplying users.`,
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                channel:rename                              */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                channel:rename                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -650,7 +737,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'rename'
+					'rename',
 				],
 				resource: [
 					'channel',
@@ -668,7 +755,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'rename'
+					'rename',
 				],
 				resource: [
 					'channel',
@@ -679,9 +766,10 @@ export const channelFields = [
 		required: true,
 		description: 'New name for conversation.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 channel:replies                            */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 channel:replies                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -694,7 +782,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'replies'
+					'replies',
 				],
 				resource: [
 					'channel',
@@ -712,7 +800,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'replies'
+					'replies',
 				],
 				resource: [
 					'channel',
@@ -801,11 +889,12 @@ export const channelFields = [
 				default: '',
 				description: 'Start of time range of messages to include in results.',
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                channel:setPurpose                          */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                channel:setPurpose                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -816,7 +905,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'setPurpose'
+					'setPurpose',
 				],
 				resource: [
 					'channel',
@@ -834,7 +923,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'setPurpose'
+					'setPurpose',
 				],
 				resource: [
 					'channel',
@@ -845,9 +934,10 @@ export const channelFields = [
 		required: true,
 		description: 'A new, specialer purpose',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                channel:setTopic                            */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                channel:setTopic                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -858,7 +948,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'setTopic'
+					'setTopic',
 				],
 				resource: [
 					'channel',
@@ -876,7 +966,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'setTopic'
+					'setTopic',
 				],
 				resource: [
 					'channel',
@@ -887,9 +977,10 @@ export const channelFields = [
 		required: true,
 		description: 'The new topic string. Does not support formatting or linkification.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                channel:unarchive                           */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                channel:unarchive                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -900,7 +991,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'unarchive'
+					'unarchive',
 				],
 				resource: [
 					'channel',

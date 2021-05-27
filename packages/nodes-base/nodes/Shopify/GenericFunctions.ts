@@ -3,15 +3,15 @@ import {
 } from 'request';
 
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
-	BINARY_ENCODING
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -21,10 +21,10 @@ import {
 export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('shopifyApi');
 	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 	const headerWithAuthentication = Object.assign({},
-		{ Authorization: ` Basic ${Buffer.from(`${credentials.apiKey}:${credentials.password}`).toString(BINARY_ENCODING)}` });
+		{ Authorization: `Basic ${Buffer.from(`${credentials.apiKey}:${credentials.password}`).toString(BINARY_ENCODING)}` });
 
 	const options: OptionsWithUri = {
 		headers: headerWithAuthentication,
@@ -32,7 +32,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		qs: query,
 		uri: uri || `https://${credentials.shopSubdomain}.myshopify.com/admin/api/2019-10${resource}`,
 		body,
-		json: true
+		json: true,
 	};
 
 	if (Object.keys(option).length !== 0) {
@@ -47,20 +47,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.response.body && error.response.body.errors) {
-			let message = '';
-			if (typeof error.response.body.errors === 'object') {
-				for (const key of Object.keys(error.response.body.errors)) {
-					message += error.response.body.errors[key];
-				}
-			} else {
-				message = `${error.response.body.errors} |`;
-			}
-			const errorMessage = `Shopify error response [${error.statusCode}]: ${message}`;
-			throw new Error(errorMessage);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

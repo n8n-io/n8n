@@ -9,6 +9,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -114,7 +116,7 @@ export class Mandrill implements INodeType {
 			{
 				name: 'mandrillApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -221,7 +223,7 @@ export class Mandrill implements INodeType {
 						operation: [
 							'sendHtml',
 							'sendTemplate',
-						]
+						],
 					},
 				},
 			},
@@ -551,7 +553,7 @@ export class Mandrill implements INodeType {
 			},
 			{
 				displayName: 'Attachments',
-				name: 'attachments',
+				name: 'attachmentsJson',
 				type: 'json',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
@@ -647,9 +649,9 @@ export class Mandrill implements INodeType {
 				displayOptions: {
 					show: {
 						jsonParameters: [
-							true
-						]
-					}
+							true,
+						],
+					},
 				},
 				typeOptions: {
 					alwaysOpenEditWindow: true,
@@ -692,7 +694,7 @@ export class Mandrill implements INodeType {
 								description: '',
 							},
 						],
-					}
+					},
 				],
 				description: 'Optional extra headers to add to the message (most headers are allowed).',
 			},
@@ -708,8 +710,8 @@ export class Mandrill implements INodeType {
 				let templates;
 				try {
 					templates = await mandrillApiRequest.call(this, '/templates', 'POST', '/list');
-				} catch (err) {
-					throw new Error(`Mandrill Error: ${err}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 				for (const template of templates) {
 					const templateName = template.name;
@@ -722,7 +724,7 @@ export class Mandrill implements INodeType {
 				}
 
 				return returnData;
-			}
+			},
 		},
 	};
 
@@ -816,9 +818,9 @@ export class Mandrill implements INodeType {
 					const metadataUi = this.getNodeParameter('metadataUi', i) as IDataObject;
 					if (!_.isEmpty(metadataUi)) {
 						// @ts-ignore
-						body.message.metadata = _.map(metadataUi.metadataValues, (o) => {
+						body.message.metadata = _.map(metadataUi.metadataValues, (o: IDataObject) => {
 							const aux: IDataObject = {};
-							aux[o.name] = o.value;
+							aux[o.name as string] = o.value;
 							return aux;
 						});
 					}
@@ -826,7 +828,7 @@ export class Mandrill implements INodeType {
 					const mergeVarsUi = this.getNodeParameter('mergeVarsUi', i) as IDataObject;
 					if (!_.isEmpty(mergeVarsUi)) {
 						// @ts-ignore
-						body.message.global_merge_vars = _.map(mergeVarsUi.mergeVarsValues, (o) => {
+						body.message.global_merge_vars = _.map(mergeVarsUi.mergeVarsValues, (o: IDataObject) => {
 							const aux: IDataObject = {};
 							aux.name = o.name;
 							aux.content = o.content;
@@ -835,13 +837,13 @@ export class Mandrill implements INodeType {
 					}
 
 					const attachmentsUi = this.getNodeParameter('attachmentsUi', i) as IDataObject;
-					let attachmentsBinary = [], attachmentsValues = [];
+					let attachmentsBinary: Attachments[] = [], attachmentsValues: Attachments[] = [];
 					if (!_.isEmpty(attachmentsUi)) {
 
 						if (attachmentsUi.hasOwnProperty('attachmentsValues')
 							&& !_.isEmpty(attachmentsUi.attachmentsValues)) {
 							// @ts-ignore
-							attachmentsValues = _.map(attachmentsUi.attachmentsValues, (o) => {
+							attachmentsValues = _.map(attachmentsUi.attachmentsValues, (o: IDataObject) => {
 								const aux: IDataObject = {};
 								// @ts-ignore
 								aux.name = o.name;
@@ -855,12 +857,12 @@ export class Mandrill implements INodeType {
 							&& !_.isEmpty(attachmentsUi.attachmentsBinary)
 							&& items[i].binary) {
 							// @ts-ignore
-							attachmentsBinary = _.map(attachmentsUi.attachmentsBinary, (o) => {
-								if (items[i].binary!.hasOwnProperty(o.property)) {
+							attachmentsBinary = _.map(attachmentsUi.attachmentsBinary, (o: IDataObject) => {
+								if (items[i].binary!.hasOwnProperty(o.property as string)) {
 									const aux: IDataObject = {};
-									aux.name = items[i].binary![o.property].fileName || 'unknown';
-									aux.content = items[i].binary![o.property].data;
-									aux.type = items[i].binary![o.property].mimeType;
+									aux.name = items[i].binary![o.property as string].fileName || 'unknown';
+									aux.content = items[i].binary![o.property as string].data;
+									aux.type = items[i].binary![o.property as string].mimeType;
 									return aux;
 								}
 							});

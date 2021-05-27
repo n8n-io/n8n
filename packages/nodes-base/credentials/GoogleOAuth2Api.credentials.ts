@@ -27,7 +27,7 @@ export class GoogleOAuth2Api implements ICredentialType {
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'access_type=offline',
+			default: 'access_type=offline&prompt=consent',
 		},
 		{
 			displayName: 'Authentication',

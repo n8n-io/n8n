@@ -181,7 +181,7 @@ export const imageFields = [
 						type: 'string',
 						default: '',
 						description: 'Replacement image url you want to use (must be publicly viewable)',
-					}
+					},
 				],
 			},
 		],
@@ -202,7 +202,7 @@ export const imageFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the image.',

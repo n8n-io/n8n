@@ -5,8 +5,8 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -19,7 +19,7 @@ export class CopperTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Copper Trigger',
 		name: 'copperTrigger',
-		icon: 'file:copper.png',
+		icon: 'file:copper.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Copper events via webhooks',
@@ -33,7 +33,7 @@ export class CopperTrigger implements INodeType {
 			{
 				name: 'copperApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -116,7 +116,7 @@ export class CopperTrigger implements INodeType {
 				const endpoint = `/webhooks/${webhookData.webhookId}`;
 				try {
 					await copperApiRequest.call(this, 'GET', endpoint);
-				} catch (err) {
+				} catch (error) {
 					return false;
 				}
 				return true;
@@ -147,7 +147,7 @@ export class CopperTrigger implements INodeType {
 				const endpoint = `/webhooks/${webhookData.webhookId}`;
 				try {
 					await copperApiRequest.call(this, 'DELETE', endpoint);
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				delete webhookData.webhookId;

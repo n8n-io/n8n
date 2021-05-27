@@ -6,9 +6,10 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodeType,
 	INodePropertyOptions,
+	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -129,7 +130,7 @@ export class Medium implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Are you posting for a publication?'
+				description: 'Are you posting for a publication?',
 			},
 			{
 				displayName: 'Publication ID',
@@ -476,13 +477,13 @@ export class Medium implements INodeType {
 						bodyRequest.tags = tags.split(',').map(name => {
 							const returnValue = name.trim();
 							if (returnValue.length > 25) {
-								throw new Error(`The tag "${returnValue}" is to long. Maximum lenght of a tag is 25 characters.`);
+								throw new NodeOperationError(this.getNode(), `The tag "${returnValue}" is to long. Maximum lenght of a tag is 25 characters.`);
 							}
 							return returnValue;
 						});
 
 						if ((bodyRequest.tags as string[]).length > 5) {
-							throw new Error('To many tags got used. Maximum 5 can be set.');
+							throw new NodeOperationError(this.getNode(), 'To many tags got used. Maximum 5 can be set.');
 						}
 					}
 
@@ -510,7 +511,7 @@ export class Medium implements INodeType {
 							'POST',
 							`/publications/${publicationId}/posts`,
 							bodyRequest,
-							qs
+							qs,
 						);
 					}
 					else {
@@ -519,7 +520,7 @@ export class Medium implements INodeType {
 							'GET',
 							'/me',
 							{},
-							qs
+							qs,
 						);
 
 						const authorId = responseAuthorId.data.id;
@@ -528,7 +529,7 @@ export class Medium implements INodeType {
 							'POST',
 							`/users/${authorId}/posts`,
 							bodyRequest,
-							qs
+							qs,
 						);
 
 						responseData = responseData.data;

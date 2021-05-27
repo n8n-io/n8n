@@ -21,6 +21,8 @@
 					</a>
 				</el-menu-item>
 
+				<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
+
 				<el-submenu index="workflow" title="Workflow">
 					<template slot="title">
 						<font-awesome-icon icon="network-wired"/>&nbsp;
@@ -120,30 +122,8 @@
 						<span slot="title" class="item-title-root">Help</span>
 					</template>
 
-					<el-menu-item index="help-documentation">
-						<template slot="title">
-							<a href="https://docs.n8n.io" target="_blank">
-								<font-awesome-icon icon="book"/>
-								<span slot="title" class="item-title">Documentation</span>
-							</a>
-						</template>
-					</el-menu-item>
-					<el-menu-item index="help-forum">
-						<template slot="title">
-							<a href="https://community.n8n.io" target="_blank">
-								<font-awesome-icon icon="users"/>
-								<span slot="title" class="item-title">Forum</span>
-							</a>
-						</template>
-					</el-menu-item>
-					<el-menu-item index="help-examples">
-						<template slot="title">
-							<a href="https://n8n.io/workflows" target="_blank">
-								<font-awesome-icon icon="network-wired"/>
-								<span slot="title" class="item-title">Workflows</span>
-							</a>
-						</template>
-					</el-menu-item>
+					<MenuItemsIterator :items="helpMenuItems" />
+
 					<el-menu-item index="help-about">
 						<template slot="title">
 							<font-awesome-icon class="about-icon" icon="info"/>
@@ -151,6 +131,8 @@
 						</template>
 					</el-menu-item>
 				</el-submenu>
+
+				<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
 
 			</el-menu>
 
@@ -160,6 +142,7 @@
 </template>
 
 <script lang="ts">
+
 import Vue from 'vue';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 
@@ -167,6 +150,7 @@ import {
 	IExecutionResponse,
 	IExecutionsStopData,
 	IWorkflowDataUpdate,
+	IMenuItem,
 } from '../Interface';
 
 import About from '@/components/About.vue';
@@ -179,21 +163,55 @@ import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
+import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { workflowSave } from '@/components/mixins/workflowSave';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
 import { saveAs } from 'file-saver';
 
 import mixins from 'vue-typed-mixins';
+import MenuItemsIterator from './MainSidebarMenuItemsIterator.vue';
+
+const helpMenuItems: IMenuItem[] = [
+	{
+		id: 'docs',
+		type: 'link',
+		properties: {
+			href: 'https://docs.n8n.io',
+			title: 'Documentation',
+			icon: 'book',
+			newWindow: true,
+		},
+	},
+	{
+		id: 'forum',
+		type: 'link',
+		properties: {
+			href: 'https://community.n8n.io',
+			title: 'Forum',
+			icon: 'users',
+			newWindow: true,
+		},
+	},
+	{
+		id: 'examples',
+		type: 'link',
+		properties: {
+			href: 'https://n8n.io/workflows',
+			title: 'Workflows',
+			icon: 'network-wired',
+			newWindow: true,
+		},
+	},
+];
 
 export default mixins(
 	genericHelpers,
 	restApi,
 	showMessage,
+	titleChange,
 	workflowHelpers,
 	workflowRun,
-	workflowSave,
 )
 	.extend({
 		name: 'MainHeader',
@@ -204,6 +222,7 @@ export default mixins(
 			ExecutionsList,
 			WorkflowOpen,
 			WorkflowSettings,
+			MenuItemsIterator,
 		},
 		data () {
 			return {
@@ -217,6 +236,7 @@ export default mixins(
 				stopExecutionInProgress: false,
 				workflowOpenDialogVisible: false,
 				workflowSettingsDialogVisible: false,
+				helpMenuItems,
 			};
 		},
 		computed: {
@@ -265,6 +285,12 @@ export default mixins(
 			},
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
+			},
+			sidebarMenuTopItems(): IMenuItem[] {
+				return this.$store.getters.sidebarMenuItems.filter((item: IMenuItem) => item.position === 'top');
+			},
+			sidebarMenuBottomItems(): IMenuItem[] {
+				return this.$store.getters.sidebarMenuItems.filter((item: IMenuItem) => item.position === 'bottom');
 			},
 		},
 		methods: {
@@ -396,7 +422,7 @@ export default mixins(
 						return;
 					}
 
-					this.$store.commit('setWorkflowName', workflowName);
+					this.$store.commit('setWorkflowName', {newName: workflowName, setStateDirty: false});
 
 					this.$showMessage({
 						title: 'Workflow renamed',
@@ -417,7 +443,8 @@ export default mixins(
 						this.$showError(error, 'Problem deleting the workflow', 'There was a problem deleting the workflow:');
 						return;
 					}
-
+					// Reset tab title since workflow is deleted.
+					this.$titleReset();
 					this.$showMessage({
 						title: 'Workflow got deleted',
 						message: `The workflow "${this.workflowName}" got deleted!`,
@@ -445,13 +472,29 @@ export default mixins(
 				} else if (key === 'workflow-settings') {
 					this.workflowSettingsDialogVisible = true;
 				} else if (key === 'workflow-new') {
-					this.$router.push({ name: 'NodeViewNew' });
+					const result = this.$store.getters.getStateIsDirty;
+					if(result) {
+						const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+						if (importConfirm === true) {
+							this.$store.commit('setStateDirty', false);
+							this.$router.push({ name: 'NodeViewNew' });
 
-					this.$showMessage({
-						title: 'Workflow created',
-						message: 'A new workflow got created!',
-						type: 'success',
-					});
+							this.$showMessage({
+								title: 'Workflow created',
+								message: 'A new workflow got created!',
+								type: 'success',
+							});
+						}
+					} else {
+						this.$router.push({ name: 'NodeViewNew' });
+
+						this.$showMessage({
+							title: 'Workflow created',
+							message: 'A new workflow got created!',
+							type: 'success',
+						});
+					}
+					this.$titleReset();
 				} else if (key === 'credentials-open') {
 					this.credentialOpenDialogVisible = true;
 				} else if (key === 'credentials-new') {
@@ -516,6 +559,11 @@ export default mixins(
 .el-menu-item {
 	a {
 		color: #666;
+
+		&.primary-item {
+			color: $--color-primary;
+			vertical-align: baseline;
+		}
 	}
 
 	&.logo-item {

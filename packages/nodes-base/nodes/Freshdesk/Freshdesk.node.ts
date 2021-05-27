@@ -1,20 +1,32 @@
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
+
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
+	capitalize,
 	freshdeskApiRequest,
 	freshdeskApiRequestAllItems,
 	// validateJSON,
-	capitalize
 } from './GenericFunctions';
+
+import {
+	ICreateContactBody,
+} from './ContactInterface';
+
+import {
+	contactFields,
+	contactOperations,
+} from './ContactDescription';
 
 enum Status {
 	Open = 2,
@@ -27,7 +39,7 @@ enum Priority {
 	Low = 1,
 	Medium = 2,
 	High = 3,
-	Urgent = 4
+	Urgent = 4,
 }
 
 enum Source {
@@ -77,7 +89,7 @@ export class Freshdesk implements INodeType {
 		description: 'Consume Freshdesk API',
 		defaults: {
 			name: 'Freshdesk',
-			color: '#c02428',
+			color: '#25c10b',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -95,6 +107,10 @@ export class Freshdesk implements INodeType {
 				required: true,
 				options: [
 					{
+						name: 'Contact',
+						value: 'contact',
+					},
+					{
 						name: 'Ticket',
 						value: 'ticket',
 					},
@@ -111,7 +127,7 @@ export class Freshdesk implements INodeType {
 					show: {
 						resource: [
 							'ticket',
-						]
+						],
 					},
 				},
 				options: [
@@ -156,7 +172,7 @@ export class Freshdesk implements INodeType {
 						],
 						operation: [
 							'create',
-						]
+						],
 					},
 				},
 				options: [
@@ -206,7 +222,7 @@ export class Freshdesk implements INodeType {
 						],
 						operation: [
 							'create',
-						]
+						],
 					},
 				},
 				default: '',
@@ -224,7 +240,7 @@ export class Freshdesk implements INodeType {
 						],
 						operation: [
 							'create',
-						]
+						],
 					},
 				},
 				options: [
@@ -259,8 +275,8 @@ export class Freshdesk implements INodeType {
 							'ticket',
 						],
 						operation: [
-							'create'
-						]
+							'create',
+						],
 					},
 				},
 				options: [
@@ -279,7 +295,7 @@ export class Freshdesk implements INodeType {
 					{
 						name: 'Urgent',
 						value: 'urgent',
-					}
+					},
 				],
 				default: 'low',
 				description: 'Priority',
@@ -295,8 +311,8 @@ export class Freshdesk implements INodeType {
 							'ticket',
 						],
 						operation: [
-							'create'
-						]
+							'create',
+						],
 					},
 				},
 				options: [
@@ -433,7 +449,7 @@ export class Freshdesk implements INodeType {
 						type: 'options',
 						default: '',
 						typeOptions: {
-							loadOptionsMethod: 'getGroups'
+							loadOptionsMethod: 'getGroups',
 						},
 						description: `ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id`,
 					},
@@ -451,7 +467,7 @@ export class Freshdesk implements INodeType {
 						type: 'options',
 						default: '',
 						typeOptions: {
-							loadOptionsMethod: 'getProducts'
+							loadOptionsMethod: 'getProducts',
 						},
 						description: `ID of the product to which the ticket is associated.
 						It will be ignored if the email_config_id attribute is set in the request.`,
@@ -498,9 +514,9 @@ export class Freshdesk implements INodeType {
 								name: 'Refund',
 								value: 'Refund',
 							},
-						]
+						],
 					},
-				]
+				],
 			},
 			// {
 			// 	displayName: 'Custom Fields',
@@ -588,7 +604,7 @@ export class Freshdesk implements INodeType {
 						],
 						operation: [
 							'update',
-						]
+						],
 					},
 				},
 				default: '',
@@ -710,7 +726,7 @@ export class Freshdesk implements INodeType {
 							{
 								name: 'Urgent',
 								value: 'urgent',
-							}
+							},
 						],
 						default: 'low',
 						description: 'Priority',
@@ -782,7 +798,7 @@ export class Freshdesk implements INodeType {
 							{
 								name: 'Closed',
 								value: 'closed',
-							}
+							},
 						],
 						default: 'pending',
 						description: 'Status',
@@ -842,27 +858,27 @@ export class Freshdesk implements INodeType {
 						options: [
 							{
 								name: 'Feature Request',
-								value: 'Feature Request'
+								value: 'Feature Request',
 							},
 							{
 								name: 'Incident',
-								value: 'Incident'
+								value: 'Incident',
 							},
 							{
 								name: 'Problem',
-								value: 'Problem'
+								value: 'Problem',
 							},
 							{
 								name: 'Question',
-								value: 'Question'
+								value: 'Question',
 							},
 							{
 								name: 'Refund',
-								value: 'Refund'
+								value: 'Refund',
 							},
-						]
+						],
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Ticket ID',
@@ -875,8 +891,8 @@ export class Freshdesk implements INodeType {
 							'ticket',
 						],
 						operation: [
-							'get'
-						]
+							'get',
+						],
 					},
 				},
 				default: '',
@@ -1026,7 +1042,7 @@ export class Freshdesk implements INodeType {
 						type: 'dateTime',
 						default: '',
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Ticket ID',
@@ -1039,14 +1055,17 @@ export class Freshdesk implements INodeType {
 							'ticket',
 						],
 						operation: [
-							'delete'
-						]
+							'delete',
+						],
 					},
 				},
 				default: '',
 				description: 'Ticket ID',
 			},
-		]
+			// CONTACTS
+			...contactOperations,
+			...contactFields,
+		],
 	};
 
 	methods = {
@@ -1145,13 +1164,13 @@ export class Freshdesk implements INodeType {
 						// @ts-ignore
 						priority: Priority[capitalize(priority)],
 						// @ts-ignore
-						source: Source[capitalize(source)]
+						source: Source[capitalize(source)],
 					};
 
 					if (requester === 'requesterId') {
 						// @ts-ignore
 						if (isNaN(value)) {
-							throw new Error('Requester Id must be a number');
+							throw new NodeOperationError(this.getNode(), 'Requester Id must be a number');
 						}
 						body.requester_id = parseInt(value, 10);
 					} else if (requester === 'email') {
@@ -1236,7 +1255,7 @@ export class Freshdesk implements INodeType {
 						if (updateFields.requester === 'requesterId') {
 							// @ts-ignore
 							if (isNaN(parseInt(value, 10))) {
-								throw new Error('Requester Id must be a number');
+								throw new NodeOperationError(this.getNode(), 'Requester Id must be a number');
 							}
 							body.requester_id = parseInt(value as string, 10);
 						} else if (updateFields.requester === 'email') {
@@ -1342,14 +1361,67 @@ export class Freshdesk implements INodeType {
 					const ticketId = this.getNodeParameter('ticketId', i) as string;
 					responseData = await freshdeskApiRequest.call(this, 'DELETE', `/tickets/${ticketId}`);
 				}
+			} else if (resource === 'contact') {
+				//https://developers.freshdesk.com/api/#create_contact
+				if (operation === 'create') {
+					const name = this.getNodeParameter('name', i) as string;
+					const email = this.getNodeParameter('email', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+					if (additionalFields.customFields) {
+						const metadata = (additionalFields.customFields as IDataObject).customField as IDataObject[];
+						additionalFields.custom_fields = {};
+						for (const data of metadata) {
+							//@ts-ignore
+							additionalFields.custom_fields[data.name as string] = data.value;
+						}
+						delete additionalFields.customFields;
+					}
+
+					const body: ICreateContactBody = additionalFields;
+					body.name = name;
+					if (email) {
+						body.email = email;
+					}
+					responseData = await freshdeskApiRequest.call(this, 'POST', '/contacts', body);
+				//https://developers.freshdesk.com/api/#delete_contact
+				} else if (operation === 'delete') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					responseData = await freshdeskApiRequest.call(this, 'DELETE', `/contacts/${contactId}`, {});
+				} else if (operation === 'get') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					responseData = await freshdeskApiRequest.call(this, 'GET', `/contacts/${contactId}`, {});
+				//https://developers.freshdesk.com/api/#list_all_contacts
+				} else if (operation === 'getAll') {
+					const qs = this.getNodeParameter('filters', i, {}) as IDataObject;
+					responseData = await freshdeskApiRequest.call(this, 'GET', '/contacts', {}, qs);
+				//https://developers.freshdesk.com/api/#update_contact
+				} else if (operation === 'update') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+					if (additionalFields.customFields) {
+						const metadata = (additionalFields.customFields as IDataObject).customField as IDataObject[];
+						additionalFields.custom_fields = {};
+						for (const data of metadata) {
+							//@ts-ignore
+							additionalFields.custom_fields[data.name as string] = data.value;
+						}
+						delete additionalFields.customFields;
+					}
+
+					const body: ICreateContactBody = additionalFields;
+					responseData = await freshdeskApiRequest.call(this, 'PUT', `/contacts/${contactId}`, body);
+				}
 			}
+
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
 				if (responseData === undefined) {
-					responseData = { json: {
+					responseData = {
 						success: true,
-					} };
+					};
 				}
 
 				returnData.push(responseData as IDataObject);

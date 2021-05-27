@@ -9,6 +9,7 @@
 		"noImplicitReturns": true,
 		"strict": true,
 		"jsx": "preserve",
+		"skipLibCheck": true,
 		"importHelpers": true,
 		"moduleResolution": "node",
 		"esModuleInterop": true,

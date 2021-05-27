@@ -4,25 +4,26 @@ import {
 } from 'n8n-core';
 import {
 	ICredentialType,
+	ILogger,
 	INodeType,
 	INodeTypeData,
+	LoggerProxy,
 } from 'n8n-workflow';
 
 import * as config from '../config';
+
+import {
+	getLogger,
+} from '../src/Logger';
+
 import {
 	access as fsAccess,
 	readdir as fsReaddir,
 	readFile as fsReadFile,
 	stat as fsStat,
- } from 'fs';
+ } from 'fs/promises';
 import * as glob from 'glob-promise';
 import * as path from 'path';
-import { promisify } from 'util';
-
-const fsAccessAsync = promisify(fsAccess);
-const fsReaddirAsync = promisify(fsReaddir);
-const fsReadFileAsync = promisify(fsReadFile);
-const fsStatAsync = promisify(fsStat);
 
 
 class LoadNodesAndCredentialsClass {
@@ -33,10 +34,16 @@ class LoadNodesAndCredentialsClass {
 	} = {};
 
 	excludeNodes: string[] | undefined = undefined;
+	includeNodes: string[] | undefined = undefined;
 
 	nodeModulesPath = '';
 
+	logger: ILogger;
+
 	async init() {
+		this.logger = getLogger();
+		LoggerProxy.init(this.logger);
+
 		// Get the path to the node-modules folder to be later able
 		// to load the credentials and nodes
 		const checkPaths = [
@@ -48,7 +55,7 @@ class LoadNodesAndCredentialsClass {
 		];
 		for (const checkPath of checkPaths) {
 			try {
-				await fsAccessAsync(checkPath);
+				await fsAccess(checkPath);
 				// Folder exists, so use it.
 				this.nodeModulesPath = path.dirname(checkPath);
 				break;
@@ -63,6 +70,7 @@ class LoadNodesAndCredentialsClass {
 		}
 
 		this.excludeNodes = config.get('nodes.exclude');
+		this.includeNodes = config.get('nodes.include');
 
 		// Get all the installed packages which contain n8n nodes
 		const packages = await this.getN8nNodePackages();
@@ -100,13 +108,13 @@ class LoadNodesAndCredentialsClass {
 		const getN8nNodePackagesRecursive = async (relativePath: string): Promise<string[]> => {
 			const results: string[] = [];
 			const nodeModulesPath = `${this.nodeModulesPath}/${relativePath}`;
-			for (const file of await fsReaddirAsync(nodeModulesPath)) {
+			for (const file of await fsReaddir(nodeModulesPath)) {
 				const isN8nNodesPackage = file.indexOf('n8n-nodes-') === 0;
 				const isNpmScopedPackage = file.indexOf('@') === 0;
 				if (!isN8nNodesPackage && !isNpmScopedPackage) {
 					continue;
 				}
-				if (!(await fsStatAsync(nodeModulesPath)).isDirectory()) {
+				if (!(await fsStat(nodeModulesPath)).isDirectory()) {
 					continue;
 				}
 				if (isN8nNodesPackage) { results.push(`${relativePath}${file}`); }
@@ -175,6 +183,14 @@ class LoadNodesAndCredentialsClass {
 			tempNode.description.icon = 'file:' + path.join(path.dirname(filePath), tempNode.description.icon.substr(5));
 		}
 
+		if (tempNode.executeSingle) {
+			this.logger.warn(`"executeSingle" will get deprecated soon. Please update the code of node "${packageName}.${nodeName}" to use "execute" instead!`, { filePath });
+		}
+
+		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
+			return;
+		}
+
 		// Check if the node should be skiped
 		if (this.excludeNodes !== undefined && this.excludeNodes.includes(fullNodeName)) {
 			return;
@@ -228,7 +244,7 @@ class LoadNodesAndCredentialsClass {
 		const packagePath = path.join(this.nodeModulesPath, packageName);
 
 		// Read the data from the package.json file to see if any n8n data is defiend
-		const packageFileString = await fsReadFileAsync(path.join(packagePath, 'package.json'), 'utf8');
+		const packageFileString = await fsReadFile(path.join(packagePath, 'package.json'), 'utf8');
 		const packageFile = JSON.parse(packageFileString);
 		if (!packageFile.hasOwnProperty('n8n')) {
 			return;

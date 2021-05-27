@@ -117,16 +117,21 @@ export interface INodeTypesMaxCount {
 	};
 }
 
+export interface IExternalHooks {
+	run(eventName: string, metadata?: IDataObject): Promise<void>;
+}
+
 export interface IRestApi {
 	getActiveWorkflows(): Promise<string[]>;
 	getActivationError(id: string): Promise<IActivationError | undefined >;
 	getCurrentExecutions(filter: object): Promise<IExecutionsCurrentSummaryExtended[]>;
-	getPastExecutions(filter: object, limit: number, lastId?: string | number): Promise<IExecutionsListResponse>;
+	getPastExecutions(filter: object, limit: number, lastId?: string | number, firstId?: string | number): Promise<IExecutionsListResponse>;
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
 	getSettings(): Promise<IN8nUISettings>;
 	getNodeTypes(): Promise<INodeTypeDescription[]>;
-	getNodeParameterOptions(nodeType: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
+	getNodesInformation(nodeList: string[]): Promise<INodeTypeDescription[]>;
+	getNodeParameterOptions(nodeType: string, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
 	createNewWorkflow(sendData: IWorkflowData): Promise<IWorkflowDb>;
@@ -309,8 +314,7 @@ export interface IExecutionsListResponse {
 }
 
 export interface IExecutionsCurrentSummaryExtended {
-	id?: string;
-	idActive: string;
+	id: string;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	retryOf?: string;
@@ -329,8 +333,7 @@ export interface IExecutionsStopData {
 }
 
 export interface IExecutionsSummary {
-	id?: string; // executionIdDb
-	idActive?: string; // executionIdActive
+	id: string;
 	mode: WorkflowExecuteMode;
 	finished?: boolean;
 	retryOf?: string;
@@ -365,8 +368,7 @@ export interface IPushDataExecutionStarted {
 
 export interface IPushDataExecutionFinished {
 	data: IRun;
-	executionIdActive: string;
-	executionIdDb?: string;
+	executionId: string;
 	retryOf?: string;
 }
 
@@ -399,8 +401,15 @@ export interface IN8nUISettings {
 	timezone: string;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
+	oauthCallbackUrls: {
+		oauth1: string;
+		oauth2: string;
+	};
 	urlBaseWebhook: string;
 	versionCli: string;
+	n8nMetadata?: {
+		[key: string]: string | number | undefined;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -416,4 +425,23 @@ export interface ITimeoutHMS {
 	hours: number;
 	minutes: number;
 	seconds: number;
+}
+
+export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
+
+export type MenuItemType = 'link';
+export type MenuItemPosition = 'top' | 'bottom';
+
+export interface IMenuItem {
+	id: string;
+	type: MenuItemType;
+	position?: MenuItemPosition;
+	properties: ILinkMenuItemProperties;
+}
+
+export interface ILinkMenuItemProperties {
+	title: string;
+	icon: string;
+	href: string;
+	newWindow?: boolean;
 }

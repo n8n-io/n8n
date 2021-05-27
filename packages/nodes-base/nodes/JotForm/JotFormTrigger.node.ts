@@ -9,8 +9,8 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -42,7 +42,7 @@ export class JotFormTrigger implements INodeType {
 			{
 				name: 'jotFormApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -59,7 +59,7 @@ export class JotFormTrigger implements INodeType {
 				type: 'options',
 				required: true,
 				typeOptions: {
-					loadOptionsMethod: 'getForms'
+					loadOptionsMethod: 'getForms',
 				},
 				default: '',
 				description: '',
@@ -123,7 +123,7 @@ export class JotFormTrigger implements INodeType {
 
 					const webhookIds = Object.keys(responseData.content);
 					webhookData.webhookId = webhookIds[webhookUrls.indexOf(webhookUrl)];
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;
@@ -167,7 +167,7 @@ export class JotFormTrigger implements INodeType {
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
 		const onlyAnswers = this.getNodeParameter('onlyAnswers', false) as boolean;
 
-		const form = new formidable.IncomingForm();
+		const form = new formidable.IncomingForm({});
 
 		return new Promise((resolve, reject) => {
 

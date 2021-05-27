@@ -19,6 +19,7 @@ export class GmailOAuth2Api implements ICredentialType {
 		'googleOAuth2Api',
 	];
 	displayName = 'Gmail OAuth2 API';
+	documentationUrl = 'google';
 	properties = [
 		{
 			displayName: 'Scope',
