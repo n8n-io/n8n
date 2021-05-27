@@ -1,11 +1,13 @@
 <template>
 	<div class="node-item clickable" :class="{active: active}" :data-node-name="nodeName" @click="nodeTypeSelected(nodeType)">
 		<NodeIcon class="node-icon" :nodeType="nodeType" :style="nodeIconStyle" />
-		<div class="name">
-			{{nodeType.displayName}}
-		</div>
-		<div class="description">
-			{{nodeType.description}}
+		<div>
+			<div class="name">
+				{{nodeType.displayName}}
+			</div>
+			<div class="description">
+				{{nodeType.description}}
+			</div>
 		</div>
 	</div>
 </template>
@@ -48,38 +50,35 @@ export default Vue.extend({
 <style scoped lang="scss">
 
 .node-item {
-	position: relative;
-	border-bottom: 1px solid #eee;
-	background-color: #fff;
-	padding: 6px;
-	border-left: 3px solid #fff;
+	border-bottom: 1px solid $--node-creator-border-color;
+	padding: 11px 20px 11px 15px;
+	border-left: 1px solid $--node-creator-border-color;
+	display: flex;
 
 	&:hover {
-		border-left: 3px solid #ccc;
+		border-left: 1px solid $--node-creator-item-hover-border-color;
+		background-color: $--node-creator-item-hover-background-color;
 	}
 }
 
-.active {
-	border-left: 3px solid $--color-primary;
+.node-icon {
+	margin-right: 15px;
 }
 
-.node-icon {
-	display: inline-block;
-	position: absolute;
-	left: 12px;
-	top: calc(50% - 15px);
+.active {
+	border-left: 1px solid $--color-primary;
 }
 
 .name {
 	font-weight: bold;
-	font-size: 0.9em;
-	padding-left: 50px;
+  font-size: 14px;
+  line-height: 16px;
 }
 
 .description {
-	margin-top: 3px;
-	line-height: 1.7em;
-	font-size: 0.8em;
-	padding-left: 50px;
+	margin-top: 4px;
+  font-size: 11px;
+  line-height: 15px;
 }
+
 </style>

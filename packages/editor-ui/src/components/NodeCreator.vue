@@ -91,7 +91,6 @@ export default Vue.extend({
 	z-index: 200;
 	color: #555;
 
-
 	.header {
 		font-size: 1.2em;
 		margin: 20px 15px;

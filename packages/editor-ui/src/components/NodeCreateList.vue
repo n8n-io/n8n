@@ -124,7 +124,7 @@ export default mixins(externalHooks).extend({
 <style lang="scss" scoped>
 .node-create-list-wrapper {
 	overflow-y: auto;
-	overflow-x: hidden;
+	max-height: 100vh;
 }
 
 .node-create-list {
