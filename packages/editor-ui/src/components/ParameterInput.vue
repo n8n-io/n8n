@@ -10,7 +10,7 @@
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
 			</div>
 
-			<el-input v-else v-model="tempValue" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="!isValueExpression && isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
+			<el-input v-else v-model="tempValue" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="!isValueExpression && isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'': $translatePlaceholder(parameter)">
 				<font-awesome-icon v-if="!isValueExpression && !isReadOnly" slot="suffix" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
 			</el-input>
 		</div>
@@ -54,10 +54,10 @@
 				v-for="option in parameterOptions"
 				:value="option.value"
 				:key="option.value"
-				:label="$translateOptionName(displayName, option.name)"
+				:label="$translateOptionName(parameter.displayName, option.name)"
 			>
-				<div class="option-headline">{{ $translateOptionName(displayName, option.name) }}</div>
-				<div v-if="option.description" class="option-description" v-html="$translateDescription(option.description)"></div>
+				<div class="option-headline">{{ $translateOptionName(parameter.displayName, option.name) }}</div>
+				<div v-if="$translateOptionDescription(parameter.displayName, option.name, option.description)" class="option-description" v-html="$translateOptionDescription(parameter.displayName, option.name, option.description)"></div>
 			</el-option>
 		</el-select>
 

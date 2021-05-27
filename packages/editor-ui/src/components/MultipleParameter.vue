@@ -2,9 +2,9 @@
 	<div @keydown.stop class="duplicate-parameter">
 
 		<div class="parameter-name">
-			{{ $translateDisplayName(parameter.displayName) }}:
-			<el-tooltip class="parameter-info" placement="top" v-if="parameter.description" effect="light">
-				<div slot="content" v-html="parameter.description"></div>
+			{{ $translateDisplayName(parameter) }}:
+			<el-tooltip class="parameter-info" placement="top" v-if="$translateDescription(parameter)" effect="light">
+				<div slot="content" v-html="$translateDescription(parameter)"></div>
 				<font-awesome-icon icon="question-circle" />
 			</el-tooltip>
 		</div>
@@ -27,7 +27,7 @@
 
 		<div class="add-item-wrapper">
 			<div v-if="values && Object.keys(values).length === 0 || isReadOnly" class="no-items-exist">
-				Currently no items exist
+				{{ $t('nodeView.currentlyNoItemsExist') }}:
 			</div>
 			<el-button v-if="!isReadOnly" size="small" class="add-item" @click="addItem()">{{ addButtonText }}</el-button>
 		</div>
@@ -49,6 +49,7 @@ import { get } from 'lodash';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { translate } from '@/components/mixins/translate';
+import { TranslateResult } from 'vue-i18n';
 
 import mixins from 'vue-typed-mixins';
 
@@ -66,15 +67,9 @@ export default mixins(genericHelpers, translate)
 			'values', // NodeParameters[]
 		],
 		computed: {
-			addButtonText (): string {
-				const { type } = this.$store.getters.activeNode;
-				const { displayName, typeOptions } = this.parameter;
-
-				const translatedButtonText = `${type}.collection.${displayName}.multipleValueButtonText`;
-
-				return this.$te(translatedButtonText)
-					? this.$t(translatedButtonText)
-					: typeOptions.multipleValueButtonText || 'Add item';
+			addButtonText (): string | TranslateResult {
+				if (!this.parameter.typeOptions) return 'Add item';
+				return this.$translateMultipleValueButtonText(this.parameter);
 			},
 			hideDelete (): boolean {
 				return this.parameter.options.length === 1;

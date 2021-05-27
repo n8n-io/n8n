@@ -1,11 +1,11 @@
 <template>
 	<div @keydown.stop class="fixed-collection-parameter">
 		<div v-if="getProperties.length === 0" class="no-items-exist">
-			Currently no items exist
+			{{ $t('nodeView.currentlyNoItemsExist') }}:
 		</div>
 
 		<div v-for="property in getProperties" :key="property.name" class="fixed-collection-parameter-property">
-			<div class="parameter-name" :title="property.displayName">{{ $translateDisplayName(property.displayName )}}:</div>
+			<div class="parameter-name" :title="property.displayName">{{ property.displayName }}:</div>
 
 			<div v-if="multipleValues === true">
 				<div v-for="(value, index) in values[property.name]" :key="property.name + index" class="parameter-item">

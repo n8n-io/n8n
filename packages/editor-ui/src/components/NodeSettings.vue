@@ -17,7 +17,7 @@
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<el-tabs stretch>
-				<el-tab-pane label="Parameters">
+				<el-tab-pane :label="this.$t('nodeView.parameters')">
 					<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
 					<node-webhooks :node="node" :nodeType="nodeType" />
 					<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
@@ -25,7 +25,7 @@
 						This node does not have any parameters.
 					</div>
 				</el-tab-pane>
-				<el-tab-pane label="Settings">
+				<el-tab-pane :label="this.$t('nodeView.settings')">
 					<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
 					<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
 				</el-tab-pane>

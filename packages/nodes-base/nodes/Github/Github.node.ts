@@ -852,6 +852,7 @@ export class Github implements INodeType {
 						displayName: 'Labels',
 						name: 'labels',
 						type: 'collection',
+						description: 'The labels of the issue.',
 						typeOptions: {
 							multipleValues: true,
 							multipleValueButtonText: 'Add Label',
@@ -871,6 +872,7 @@ export class Github implements INodeType {
 						displayName: 'Assignees',
 						name: 'assignees',
 						type: 'collection',
+						description: 'The assignees of the issue.',
 						typeOptions: {
 							multipleValues: true,
 							multipleValueButtonText: 'Add Assignee',

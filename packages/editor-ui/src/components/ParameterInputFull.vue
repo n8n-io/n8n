@@ -1,14 +1,14 @@
 <template>
 	<el-row class="parameter-wrapper">
 		<el-col :span="isMultiLineParameter ? 24 : 10" class="parameter-name" :class="{'multi-line': isMultiLineParameter}">
-			<span class="title" :title="parameter.displayName">{{ $translateDisplayName(parameter.displayName) }}</span>:
-			<el-tooltip class="parameter-info" placement="top" v-if="parameter.description" effect="light">
-				<div slot="content" v-html="parameter.description"></div>
+			<span class="title" :title="parameter.displayName">{{ $translateDisplayName(parameter) }}</span>:
+			<el-tooltip class="parameter-info" placement="top" v-if="$translateDescription(parameter)" effect="light">
+				<div slot="content" v-html="$translateDescription(parameter)"></div>
 				<font-awesome-icon icon="question-circle" />
 			</el-tooltip>
 		</el-col>
 		<el-col :span="isMultiLineParameter ? 24 : 14" class="parameter-value">
-			<parameter-input :parameter="parameter" :value="value" :displayOptions="displayOptions" :path="path" :displayName='parameter.displayName' @valueChanged="valueChanged" />
+			<parameter-input :parameter="parameter" :value="value" :displayOptions="displayOptions" :path="path" :displayName='$translateDisplayName(parameter)' @valueChanged="valueChanged" />
 		</el-col>
 	</el-row>
 </template>

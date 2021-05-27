@@ -1,62 +1,103 @@
 module.exports = {
 	de: {
 		github: {
-			// ----------------------------------------
-			//          top-level display names
-			// ----------------------------------------
-
-			// main params
-			Authentication: 'Authentifizierung',
-			Resource: 'Ressource',
-			Operation: 'Aktion',
-			'Repository Owner': 'Repo Besitzer',
-			'Repository Name': 'Repo Name',
-			Title: 'Titel',
-			Body: 'Körper',
-			Label: 'Etikett',
-			Assignee: 'Beauftragter',
-
-			// headers (e.g. for collections)
-			Labels: 'Etiketten',
-			Assignees: 'Beauftragten',
-
-			// headers (e.g. for fixed collections)
-			'Additional Parameters': 'Zusätzliche Parameter',
-
-			// option names (e.g. for fixed collections)
-			Email: 'Email-Adresse',
-
-			// descriptions (e.g. for operation options)
-			'Create a new file in repository.': 'Neue Datei in Repo schaffen.',
-
-			// ----------------------------------------
-			//          nested display names
-			// ----------------------------------------
-
-			// dropdown options
-			options: {
+			parameters: {
+				Authentication: {
+					displayName: 'Authentifizierung',
+					options: {
+						'Access Token': {
+							displayName: 'Zugangstoken',
+						},
+					},
+				},
 				Resource: {
-					Issue: 'Thema',
-					File: 'Datei',
-					Repository: 'Repo',
-					Release: 'Veröffentlichung',
-					Review: 'Überprüfung',
-					User: 'Benutzer',
+					displayName: 'Ressource',
+					description: 'Beschreibung der Ressourcen',
+					options: {
+						Issue: {
+							displayName: 'Thema',
+							description: 'Beschreibung eines Themas',
+						},
+						File: {
+							displayName: 'Datei',
+						},
+						Repository: {
+							displayName: 'Repo',
+						},
+						Release: {
+							displayName: 'Veröffentlichung',
+						},
+						Review: {
+							displayName: 'Überprüfung',
+						},
+						User: {
+							displayName: 'Benutzer',
+						},
+					},
 				},
 				Operation: {
-					Create: 'Schaffen',
-					Delete: 'Entfernen',
-					Get: 'Anfragen',
+					displayName: 'Aktion',
+					options: {
+						Create: {
+							displayName: 'Schaffen',
+							description: 'Neue Datei in Repo schaffen.',
+						},
+						Delete: {
+							displayName: 'Entfernen',
+						},
+						Get: {
+							displayName: 'Anfragen',
+						},
+					},
 				},
-			},
-
-			// buttons
-			collection: {
+				'Repository Owner': {
+					displayName: 'Repo Besitzer',
+					placeholder: 'Die n8n-io',
+				},
+				'Repository Name': {
+					displayName: 'Repo Name',
+					placeholder: 'Das n8n',
+				},
+				Title: {
+					displayName: 'Titel',
+				},
+				Body: {
+					displayName: 'Körper',
+				},
+				// TODO: Decide if a param like `Label` should be considered
+				// a) a hidden top-level param with a header `Labels`, or
+				// b) a nested param under the top-level param `Labels`
+				Label: {
+					displayName: 'Etikett',
+					description: 'Beschreibung des Etikettes',
+				},
+				Assignee: {
+					displayName: 'Beauftragte',
+					description: 'Beschreibung des Beauftragtens',
+				},
 				Labels: {
+					displayName: 'Etiketten',
+					description: 'Beschreibung der Etiketten',
 					multipleValueButtonText: 'Etikett hinzufügen',
 				},
 				Assignees: {
+					displayName: 'Beauftragte',
+					description: 'Beschreibung der Beauftragten',
 					multipleValueButtonText: 'Beautragten hinzufügen',
+				},
+				'Additional Parameters': {
+					displayName: 'Zusätzliche Parameter',
+					options: {
+						Author: {
+							displayName: 'Autor',
+						},
+						Branch: {
+							displayName: 'Ast',
+						},
+						Committer: {
+							displayName: 'Commit-Macher',
+						},
+					},
 				},
 			},
 		},

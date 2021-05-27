@@ -27,7 +27,7 @@
 							@click="deleteOption(parameter.name)"
 						/>
 					</div>
-					{{ $translateDisplayName(parameter.displayName) }}:
+					{{ parameter.displayName }}:
 					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
 						<div slot="content" v-html="parameter.description"></div>
 						<font-awesome-icon icon="question-circle"/>
