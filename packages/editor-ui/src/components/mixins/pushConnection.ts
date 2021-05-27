@@ -173,7 +173,6 @@ export const pushConnection = mixins(
 					return false;
 				}
 
-				// if (['nodeExecuteAfter', 'nodeExecuteBefore'].includes(receivedData.type)) {
 				if (receivedData.type === 'nodeExecuteAfter' || receivedData.type === 'nodeExecuteBefore') {
 					if (this.$store.getters.isActionActive('workflowRunning') === false) {
 						// No workflow is running so ignore the messages
