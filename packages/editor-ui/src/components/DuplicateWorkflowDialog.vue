@@ -6,7 +6,7 @@
 		size="sm"
 		title="Duplicate Workflow"	
 	>
-		<template slot="content">
+		<template v-slot:content>
 			<el-row>
 				<el-input
 					v-model="name"

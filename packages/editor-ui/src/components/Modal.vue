@@ -8,7 +8,7 @@
 			:width="width"
 			append-to-body
 		>
-			<template slot="title">
+			<template v-slot:title>
 				<slot name="header" />
 			</template>
 			<div class="modal-content" @keydown.stop @keydown.enter="handleEnter" @keydown.esc="closeDialog">
@@ -71,11 +71,7 @@ export default Vue.extend({
 	},
 	computed: {
 		width(): string {
-			if (this.$props.size && sizeMap[this.$props.size]) {
-				return sizeMap[this.$props.size];
-			}
-
-			return sizeMap.default;
+			return this.$props.size ? sizeMap[this.$props.size] : sizeMap.default;
 		},
 		isActive(): boolean {
 			return this.$store.getters['ui/isModalActive'](this.$props.name);

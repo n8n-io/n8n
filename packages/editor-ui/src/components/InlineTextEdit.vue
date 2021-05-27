@@ -1,8 +1,6 @@
 <template>
 	<span @keydown.stop class="inline-edit" >
-		<span
-			v-if="isEditEnabled"
-		>
+		<span v-if="isEditEnabled">
 			<ExpandableInputEdit
 				:placeholder="placeholder"
 				:value="newValue"

@@ -16,7 +16,7 @@ export default Vue.extend({
 			let value = (this.value as string).replace(/\s/g, '.'); // force input to expand on space chars
 			if (!value) {
 				// @ts-ignore
-				value = this.$props.placeholder as string;
+				value = this.$props.placeholder;
 			}
 
 			return `${value}`;  // adjust for padding

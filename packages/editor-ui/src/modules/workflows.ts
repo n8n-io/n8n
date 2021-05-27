@@ -1,5 +1,5 @@
 import { getNewWorkflow } from '@/api/workflows';
-import { DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH, NEW_WORKFLOW_NAME } from '@/constants';
+import { DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH, DEFAULT_NEW_WORKFLOW_NAME } from '@/constants';
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,
@@ -11,14 +11,14 @@ const module: Module<IWorkflowsState, IRootState> = {
 	state: {},
 	actions: {
 		setNewWorkflowName: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<void> => {
-			let newName = NEW_WORKFLOW_NAME;
-
+			let newName = '';
 			try {
-				const newWorkflow = await getNewWorkflow(context.rootGetters.getRestApiContext, NEW_WORKFLOW_NAME );
+				const newWorkflow = await getNewWorkflow(context.rootGetters.getRestApiContext);
 				newName = newWorkflow.name;
 			}
 			catch (e) {
 				// in case of error, default to original name
+				newName = DEFAULT_NEW_WORKFLOW_NAME;
 			}
 
 			context.commit('setWorkflowName', { newName }, { root: true });

@@ -47,10 +47,7 @@ import { titleChange } from '@/components/mixins/titleChange';
 import WorkflowNameShort from '@/components/WorkflowNameShort.vue';
 import ReadOnly from '@/components/MainHeader/ExecutionDetails/ReadOnly.vue';
 
-export default mixins(
-	titleChange,
-)
-	.extend({
+export default mixins(titleChange).extend({
 		name: 'ExecutionDetails',
 		components: {
 			WorkflowNameShort,
@@ -63,16 +60,7 @@ export default mixins(
 			executionFinished (): boolean {
 				const fullExecution = this.$store.getters.getWorkflowExecution;
 
-				if (fullExecution === null) {
-					// No execution loaded so return also false
-					return false;
-				}
-
-				if (fullExecution.finished === true) {
-					return true;
-				}
-
-				return false;
+				return !!fullExecution && fullExecution.finished;
 			},
 			workflowExecution (): IExecutionResponse | null {
 				return this.$store.getters.getWorkflowExecution;

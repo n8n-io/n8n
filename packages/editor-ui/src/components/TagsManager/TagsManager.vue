@@ -6,7 +6,7 @@
 		@enter="onEnter"
 		size="md"
 	>
-		<template slot="content">
+		<template v-slot:content>
 			<el-row>
 				<TagsView
 					v-if="hasTags || isCreating"
@@ -49,7 +49,7 @@ export default mixins(showMessage).extend({
 	props: ['modalName'],
 	data() {
 		const tagIds = (this.$store.getters['tags/allTags'] as ITag[])
-			.map((tag): string => tag.id);
+			.map((tag) => tag.id);
 
 		return {
 			tagIds,

@@ -3,7 +3,7 @@
 		:name="modalName"
 		size="xl"
 	>
-			<template slot="header">
+			<template v-slot:header>
 				<div class="workflows-header">
 					<div class="title">
 						<h1>Open Workflow</h1>
@@ -26,7 +26,7 @@
 				</div>
 			</template>
 
-			<template slot="content">
+			<template v-slot:content>
 				<el-table class="search-table" :data="filteredWorkflows" stripe @cell-click="openWorkflow" :default-sort = "{prop: 'updatedAt', order: 'descending'}" v-loading="isDataLoading">
 					<el-table-column property="name" label="Name" class-name="clickable" sortable>
 						<template slot-scope="scope">
@@ -91,7 +91,7 @@ export default mixins(
 		filteredWorkflows (): IWorkflowShortResponse[] {
 			return this.workflows
 				.filter((workflow: IWorkflowShortResponse) => {
-					if (this.filterText && workflow.name.toLowerCase().indexOf(this.filterText.toLowerCase()) === -1) {
+					if (this.filterText && !workflow.name.toLowerCase().includes(this.filterText.toLowerCase())) {
 						return false;
 					}
 
@@ -103,12 +103,7 @@ export default mixins(
 						return false;
 					}
 
-					return this.filterTagIds.reduce((accu: boolean, id: string) => {
-						const tagIds = ((workflow.tags || []) as ITag[])
-							.map(({id}: ITag): string => id);
-
-						return accu && tagIds.indexOf(id) > -1;
-					}, true);
+					return this.filterTagIds.reduce((accu: boolean, id: string) =>  accu && !!workflow.tags.find(tag => tag.id === id), true);
 				});
 		},
 	},

@@ -414,7 +414,7 @@ export const workflowHelpers = mixins(
 					if (tags) {
 						const createdTags = (workflowData.tags || []) as ITag[];
 						const tagIds = createdTags.map((tag: ITag): string => tag.id);
-						this.$store.commit('setWorkflowTagIds', tagIds || []);
+						this.$store.commit('setWorkflowTagIds', tagIds);
 					}
 
 					this.$store.commit('setStateDirty', false);
@@ -460,7 +460,7 @@ export const workflowHelpers = mixins(
 
 					const createdTags = (workflowData.tags || []) as ITag[];
 					const tagIds = createdTags.map((tag: ITag): string => tag.id);
-					this.$store.commit('setWorkflowTagIds', tagIds || []);
+					this.$store.commit('setWorkflowTagIds', tagIds);
 
 					this.$router.push({
 						name: 'NodeViewExisting',

@@ -9,9 +9,7 @@
 import mixins from 'vue-typed-mixins';
 import emitter from '@/components/mixins/emitter';
 
-export default mixins(
-	emitter,
-).extend({
+export default mixins(emitter).extend({
 	name: 'IntersectionObserved',
 	props: ['enabled'],
 	mounted() {
