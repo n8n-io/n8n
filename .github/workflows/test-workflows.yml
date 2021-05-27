@@ -1,0 +1,58 @@
+name: Run test workflows
+
+# on:
+#   schedule:
+#     - cron: "0 1 * * *"
+
+on: [push]
+
+jobs:
+  run-test-workflows:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [14.x]
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v2
+        with:
+          path: n8n
+      -
+        name: Checkout workflows repo
+        uses: actions/checkout@v2
+        with:
+          repository: n8n-io/test-workflows
+          path: test-workflows
+      - 
+        name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - 
+        name: npm install, build, import credentials
+        run: |
+          cd n8n
+          npm install
+          npm run bootstrap
+          npm run build --if-present
+        env:
+          CI: true
+        shell: bash
+      - 
+        name: Import credentials
+        run: |
+          gpg --passphrase $PASSPHRASE --decrypt credentials.json.gpg > credentials.json
+          ./packages/cli/bin/n8n import:credentials --input=credentials.json
+        env:
+          PASSPHRASE: ${{secrets.GPG_PASSPHRASE}}
+        shell: bash
+      - 
+        name: Import workflows
+        run: ./packages/cli/bin/n8n import:workflow --separate --input=../test-workflows/workflows
+        shell: bash
+      -
+        name: Run tests
+        run: ./packages/cli/bin/n8n executeAll

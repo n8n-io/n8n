@@ -183,6 +183,7 @@ export class ExecuteAll extends Command {
 			'unable to connect to',
 			'econnreset',
 			'429',
+			'econnrefused',
 		];
 
 		errorMessage = errorMessage.toLowerCase();
@@ -265,6 +266,9 @@ export class ExecuteAll extends Command {
 		// Load all node and credential types
 		const loadNodesAndCredentials = LoadNodesAndCredentials();
 		const loadNodesAndCredentialsPromise = loadNodesAndCredentials.init();
+
+		// Make sure the settings exist
+		await UserSettings.prepareUserSettings();
 		
 		// Wait till the database is ready
 		await startDbInitPromise;
@@ -356,7 +360,9 @@ export class ExecuteAll extends Command {
 					workflowId: workflowData.id,
 					status: 'warning',
 				});
-				this.updateProgress();
+				if (flags.debug === true) {
+					this.updateProgress();
+				}
 				continue;
 			}
 
@@ -376,7 +382,9 @@ export class ExecuteAll extends Command {
 						result.summary.warningExecutions++;
 						result.executions.push(executionResult);
 						result.summary.warnings.push({workflowId: workflowData.id, error: executionResult.error});
-						this.updateWarning(workflowData.id);
+						if (flags.debug === true) {
+							this.updateWarning(workflowData.id);
+						}
 						reject(new Error('Workflow execution timed out.'));
 					}, executionTimeout);
 					try {
@@ -404,7 +412,9 @@ export class ExecuteAll extends Command {
 							result.summary.failedExecutions++;
 							result.executions.push(executionResult);
 							result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
-							this.updateError(workflowData.id);
+							if (flags.debug === true) {
+								this.updateError(workflowData.id);
+							}
 						}else{
 
 							workflowData.nodes.forEach(node => {
@@ -425,11 +435,15 @@ export class ExecuteAll extends Command {
 								if (this.shouldBeConsideredAsWarning(executionResult.error)) {
 									result.summary.warningExecutions++;
 									result.summary.warnings.push({workflowId: workflowData.id, error: executionResult.error});
-									this.updateWarning(workflowData.id);
+									if (flags.debug === true) {
+										this.updateWarning(workflowData.id);
+									}
 								} else {
 									result.summary.failedExecutions++;
 									result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
-									this.updateError(workflowData.id);
+									if (flags.debug === true) {
+										this.updateError(workflowData.id);
+									}
 								}
 								result.executions.push(executionResult);
 
@@ -475,7 +489,9 @@ export class ExecuteAll extends Command {
 								if (flags.compare === undefined){
 									result.summary.succeededExecution++;
 									result.executions.push(executionResult);
-									this.updateSuccess(workflowData.id);
+									if (flags.debug === true) {
+										this.updateSuccess(workflowData.id);
+									}
 								} else {
 									const fileName = (flags.compare.endsWith(sep) ? flags.compare : flags.compare + sep) + `${workflowData.id}-snapshot.json`;
 									if (fs.existsSync(fileName) === true) {
@@ -492,7 +508,9 @@ export class ExecuteAll extends Command {
 											result.summary.failedExecutions++;
 											result.executions.push(executionResult);
 											result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
-											this.updateError(workflowData.id);
+											if (flags.debug === true) {
+												this.updateError(workflowData.id);
+											}
 											if (debug === true) {
 												// @ts-ignore
 												console.log('Detailed changes: ', diffString(JSON.parse(contents), data, undefined, {keysOnly: true}));
@@ -500,14 +518,18 @@ export class ExecuteAll extends Command {
 										}else{
 											result.summary.succeededExecution++;
 											result.executions.push(executionResult);
-											this.updateSuccess(workflowData.id);
+											if (flags.debug === true) {
+												this.updateSuccess(workflowData.id);
+											}
 										}
 									} else {
 										executionResult.error = 'Snapshot for not found.';
 										result.summary.warningExecutions++;
 										result.executions.push(executionResult);
 										result.summary.warnings.push({workflowId: workflowData.id, error: executionResult.error});
-										this.updateWarning(workflowData.id);
+										if (flags.debug === true) {
+											this.updateWarning(workflowData.id);
+										}
 									}
 								}
 								// Save snapshots only after comparing - this is to make sure we're updating
@@ -523,7 +545,9 @@ export class ExecuteAll extends Command {
 						executionResult.error = 'Workflow failed to execute.';
 						result.summary.exceptions++;
 						result.executions.push(executionResult);
-						this.updateError(workflowData.id);
+						if (flags.debug === true) {
+							this.updateError(workflowData.id);
+						}
 						if (debug === true) {
 							console.error(e.message);
 							console.error(e.stack);
@@ -535,7 +559,9 @@ export class ExecuteAll extends Command {
 			);
 			if(concurrency === 0 || (i !== 0 && (i+1) % concurrency === 0)){
 				process.stdout.write('\n');
-				this.updateProgress();
+				if (flags.debug === true) {
+					this.updateProgress();
+				}
 				await Promise.allSettled(workflowsExecutionsPromises);
 				workflowsExecutionsPromises = [];
 				ExecuteAll.workflowExecutionsProgress = [];
