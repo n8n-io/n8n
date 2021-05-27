@@ -37,9 +37,6 @@
 <script lang="ts">
 import Vue from 'vue';
 import {
-	INodeIssues,
-	INodeIssueData,
-	INodeIssueObjectProperty,
 	INodeTypeDescription,
 	INodeParameters,
 	INodeProperties,
@@ -409,9 +406,9 @@ export default mixins(
 						name: node.name,
 						value: nodeParameters,
 					};
-					
+
 					this.$store.commit('setNodeParameters', updateInformation);
-					
+
 					this.$externalHooks().run('nodeSettings.valueChanged', { parameterPath, newValue, parameters: this.parameters, oldNodeParameters });
 
 					this.updateNodeParameterIssues(node, nodeType);
