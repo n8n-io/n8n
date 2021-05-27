@@ -233,10 +233,6 @@ export class HomeAssistantIo implements INodeType {
 						}
 
 						responseData = await homeAssistantIoApiRequest.call(this, 'POST', `/states/${entityId}`, body);
-						if (Array.isArray(responseData) && responseData.length === 0) {
-							responseData = { sucess: true };
-						}
-
 					}
 				} else if (resource === 'event') {
 					if (operation === 'getAll') {
@@ -349,26 +345,26 @@ export class HomeAssistantIo implements INodeType {
 						});
 
 						const newItem: INodeExecutionData = {
-							json: items[ i ].json,
+							json: items[i].json,
 							binary: {},
 						};
 
-						if (mimeType === undefined && responseData.headers[ 'content-type' ]) {
-							mimeType = responseData.headers[ 'content-type' ];
+						if (mimeType === undefined && responseData.headers['content-type']) {
+							mimeType = responseData.headers['content-type'];
 						}
 
-						if (items[ i ].binary !== undefined) {
+						if (items[i].binary !== undefined) {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
-							Object.assign(newItem.binary, items[ i ].binary);
+							Object.assign(newItem.binary, items[i].binary);
 						}
 
-						items[ i ] = newItem;
+						items[i] = newItem;
 
 						const data = Buffer.from(responseData.body as string);
 
-						items[ i ].binary![ dataPropertyNameDownload ] = await this.helpers.prepareBinaryData(data as unknown as Buffer, `screenshot.jpg`, mimeType);
+						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, `screenshot.jpg`, mimeType);
 					}
 				}
 			} catch (error) {

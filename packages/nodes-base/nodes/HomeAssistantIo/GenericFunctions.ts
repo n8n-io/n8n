@@ -1,11 +1,16 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri
+} from 'request';
+
 import {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
+
+import {
+	IDataObject,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 export async function homeAssistantIoApiRequest(this: IExecuteFunctions, method: string, resource: string, body: IDataObject = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}) {
 	const credentials = this.getCredentials('homeAssistantIoApi');
