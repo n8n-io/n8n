@@ -49,7 +49,7 @@ import {
 } from './CameraProxyDescription';
 
 import {
-	homeAssistantIoApiRequest,
+	homeAssistantApiRequest,
 	validateJSON,
 } from './GenericFunctions';
 export class HomeAssistant implements INodeType {
@@ -154,14 +154,14 @@ export class HomeAssistant implements INodeType {
 			try {
 				if (resource === 'config') {
 					if (operation === 'get') {
-						responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/config');
+						responseData = await homeAssistantApiRequest.call(this, 'GET', '/config');
 					} else if (operation === 'check') {
-						responseData = await homeAssistantIoApiRequest.call(this, 'POST', '/config/core/check_config');
+						responseData = await homeAssistantApiRequest.call(this, 'POST', '/config/core/check_config');
 					}
 				} else if (resource === 'service') {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/services');
+						responseData = await homeAssistantApiRequest.call(this, 'GET', '/services');
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = (responseData as IDataObject[]).slice(0, limit);
@@ -194,7 +194,7 @@ export class HomeAssistant implements INodeType {
 							}
 						}
 
-						responseData = await homeAssistantIoApiRequest.call(this, 'POST', `/services/${domain}/${service}`, body);
+						responseData = await homeAssistantApiRequest.call(this, 'POST', `/services/${domain}/${service}`, body);
 						if (Array.isArray(responseData) && responseData.length === 0) {
 							responseData = { sucess: true };
 						}
@@ -202,14 +202,14 @@ export class HomeAssistant implements INodeType {
 				} else if (resource === 'state') {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/states');
+						responseData = await homeAssistantApiRequest.call(this, 'GET', '/states');
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = (responseData as IDataObject[]).slice(0, limit);
 						}
 					} else if (operation === 'get') {
 						const entityId = this.getNodeParameter('entityId', i) as string;
-						responseData = await homeAssistantIoApiRequest.call(this, 'GET', `/states/${entityId}`);
+						responseData = await homeAssistantApiRequest.call(this, 'GET', `/states/${entityId}`);
 					} else if (operation === 'upsert') {
 						const entityId = this.getNodeParameter('entityId', i) as string;
 						const state = this.getNodeParameter('state', i) as string;
@@ -232,12 +232,12 @@ export class HomeAssistant implements INodeType {
 							}
 						}
 
-						responseData = await homeAssistantIoApiRequest.call(this, 'POST', `/states/${entityId}`, body);
+						responseData = await homeAssistantApiRequest.call(this, 'POST', `/states/${entityId}`, body);
 					}
 				} else if (resource === 'event') {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/events');
+						responseData = await homeAssistantApiRequest.call(this, 'GET', '/events');
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = (responseData as IDataObject[]).slice(0, limit);
@@ -261,12 +261,12 @@ export class HomeAssistant implements INodeType {
 							}
 						}
 
-						responseData = await homeAssistantIoApiRequest.call(this, 'POST', `/events/${eventType}`, body);
+						responseData = await homeAssistantApiRequest.call(this, 'POST', `/events/${eventType}`, body);
 
 					}
 				} else if (resource === 'log') {
 					if (operation === 'getErroLogs') {
-						responseData = await homeAssistantIoApiRequest.call(this, 'GET', '/error_log');
+						responseData = await homeAssistantApiRequest.call(this, 'GET', '/error_log');
 						if (responseData) {
 							responseData = {
 								errorLog: responseData,
@@ -288,7 +288,7 @@ export class HomeAssistant implements INodeType {
 							}
 						}
 
-						responseData = await homeAssistantIoApiRequest.call(this, 'GET', endpoint, {}, qs);
+						responseData = await homeAssistantApiRequest.call(this, 'GET', endpoint, {}, qs);
 
 					}
 				} else if (resource === 'template') {
@@ -296,7 +296,7 @@ export class HomeAssistant implements INodeType {
 						const body = {
 							template: this.getNodeParameter('template', i) as string,
 						};
-						responseData = await homeAssistantIoApiRequest.call(this, 'POST', '/template', body);
+						responseData = await homeAssistantApiRequest.call(this, 'POST', '/template', body);
 						if (responseData) {
 							responseData = { renderedTemplate: responseData };
 						}
@@ -325,7 +325,7 @@ export class HomeAssistant implements INodeType {
 							}
 						}
 
-						responseData = await homeAssistantIoApiRequest.call(this, 'GET', endpoint, {}, qs);
+						responseData = await homeAssistantApiRequest.call(this, 'GET', endpoint, {}, qs);
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
 							responseData = (responseData as IDataObject[]).slice(0, limit);
@@ -339,7 +339,7 @@ export class HomeAssistant implements INodeType {
 
 						let mimeType: string | undefined;
 
-						responseData = await homeAssistantIoApiRequest.call(this, 'GET', endpoint, {}, {}, undefined, {
+						responseData = await homeAssistantApiRequest.call(this, 'GET', endpoint, {}, {}, undefined, {
 							encoding: null,
 							resolveWithFullResponse: true,
 						});
