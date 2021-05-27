@@ -18,5 +18,8 @@
 		"Encrypt",
 		"SHA",
 		"Hash"
+	],
+	"subcategories": [
+		"Helpers"
 	]
 }

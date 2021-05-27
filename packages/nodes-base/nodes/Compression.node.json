@@ -18,5 +18,8 @@
 		"Zip",
 		"Gzip",
 		"uncompress"
+	],
+	"subcategories": [
+		"Files"
 	]
 }

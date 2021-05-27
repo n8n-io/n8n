@@ -38,6 +38,16 @@
 				"url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/"
 			},
 			{
+				"label": "Automate your data processing pipeline in 9 steps",
+				"icon": "⚙️",
+				"url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/"
+			},
+			{
+				"label": "15 Google apps you can combine and automate to increase productivity",
+				"icon": "💡",
+				"url": "https://n8n.io/blog/automate-google-apps-for-productivity/"
+			},
+			{
 				"label": "Building an expense tracking app in 10 minutes",
 				"icon": "📱",
 				"url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/"
@@ -73,5 +83,8 @@
 				"url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/"
 			}
 		]
-	}
+	},
+	"subcategories": [
+		"Data Transformation"
+	]
 }
