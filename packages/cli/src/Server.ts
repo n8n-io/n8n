@@ -667,7 +667,8 @@ class App {
 				}
 			}
 
-			updateData.updatedAt = this.getCurrentDate(); // TODO: Set at DB level
+			// required due to atomic update
+			updateData.updatedAt = this.getCurrentDate();
 
 			await WorkflowHelpers.validateWorkflow(updateData);
 			await Db.collections.Workflow!.update(id, updateData).catch(WorkflowHelpers.throwDuplicateEntryError);
