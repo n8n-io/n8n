@@ -23,6 +23,11 @@
 				"url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/"
 			},
 			{
+				"label": "Automate your data processing pipeline in 9 steps",
+				"icon": "⚙️",
+				"url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/"
+			},
+			{
 				"label": "5 workflow automations for Mattermost that we love at n8n",
 				"icon": "🤖",
 				"url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/"
@@ -37,6 +42,11 @@
 				"icon": "🎖",
 				"url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/"
 			}
+		]
+	},
+	"subcategories": {
+		"Core Nodes": [
+			"Helpers"
 		]
 	}
 }

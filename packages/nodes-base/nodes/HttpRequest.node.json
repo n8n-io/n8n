@@ -49,6 +49,11 @@
 				"url": "https://n8n.io/blog/world-poetry-day-workflow/"
 			},
 			{
+				"label": "15 Google apps you can combine and automate to increase productivity",
+				"icon": "💡",
+				"url": "https://n8n.io/blog/automate-google-apps-for-productivity/"
+			},
+			{
 				"label": "Automate Designs with Bannerbear and n8n",
 				"icon": "🎨",
 				"url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/"
@@ -88,6 +93,11 @@
 				"icon": "🛵",
 				"url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/"
 			}
+		]
+	},
+	"subcategories": {
+		"Core Nodes": [
+			"Helpers"
 		]
 	}
 }

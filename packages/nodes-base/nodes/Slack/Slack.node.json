@@ -18,6 +18,11 @@
 		],
 		"generic": [
 			{
+				"label": "Automate your data processing pipeline in 9 steps",
+				"icon": "⚙️",
+				"url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/"
+			},
+			{
 				"label": "Build your own virtual assistant with n8n: A step by step guide",
 				"icon": "👦",
 				"url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/"
