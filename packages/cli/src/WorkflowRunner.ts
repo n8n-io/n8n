@@ -182,9 +182,7 @@ export class WorkflowRunner {
 
 		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
 
-		additionalData.sendMessageToUI = ((sessionId) => {
-			return WorkflowExecuteAdditionalData.sendMessageToUI.bind({sessionId});
-		})(data.sessionId);
+		additionalData.sendMessageToUI = WorkflowExecuteAdditionalData.sendMessageToUI.bind({sessionId: data.sessionId});
 
 		let workflowExecution: PCancelable<IRun>;
 		if (data.executionData !== undefined) {

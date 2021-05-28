@@ -663,7 +663,7 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 }
 
 
-export async function sendMessageToUI(source: string, message: string) {
+export function sendMessageToUI(source: string, message: string) {
 	if (this.sessionId === undefined) {
 		return;
 	}
@@ -671,7 +671,7 @@ export async function sendMessageToUI(source: string, message: string) {
 	// Push data to session which started workflow
 	try {
 		const pushInstance = Push.getInstance();
-		await pushInstance.send('sendConsoleMessage', {
+		pushInstance.send('sendConsoleMessage', {
 			source: `Node: "${source}"`,
 			message,
 		}, this.sessionId);
@@ -803,4 +803,3 @@ export function getWorkflowHooksMain(data: IWorkflowExecutionDataProcess, execut
 
 	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, { sessionId: data.sessionId, retryOf: data.retryOf as string });
 }
-

@@ -753,15 +753,13 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				if (mode !== 'manual') {
 					return;
 				}
-				(async () => {
-					try {
-						if (additionalData.sendMessageToUI) {
-							await additionalData.sendMessageToUI(node.name, message);
-						}
-					} catch (error) {
-						Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
+				try {
+					if (additionalData.sendMessageToUI) {
+						additionalData.sendMessageToUI(node.name, message);
 					}
-				})();
+				} catch (error) {
+					Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
+				}
 			},
 			helpers: {
 				prepareBinaryData,
