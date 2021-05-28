@@ -43,18 +43,18 @@ jobs:
         shell: bash
       - 
         name: Import credentials
-        run: ./packages/cli/bin/n8n import:credentials --input=../test-workflows/credentials.json
+        run: n8n/packages/cli/bin/n8n import:credentials --input=test-workflows/credentials.json
         shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
       - 
         name: Import workflows
-        run: ./packages/cli/bin/n8n import:workflow --separate --input=../test-workflows/workflows
+        run: n8n/packages/cli/bin/n8n import:workflow --separate --input=test-workflows/workflows
         shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
       -
         name: Run tests
-        run: ./packages/cli/bin/n8n executeAll
+        run: n8n/packages/cli/bin/n8n executeAll
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
