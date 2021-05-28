@@ -18,5 +18,10 @@
 		"Encrypt",
 		"SHA",
 		"Hash"
-	]
+	],
+	"subcategories": {
+		"Core Nodes": [
+			"Helpers"
+		]
+	}
 }
