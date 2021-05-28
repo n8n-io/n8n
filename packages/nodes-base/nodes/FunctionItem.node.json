@@ -13,7 +13,9 @@
 			}
 		]
 	},
-	"subcategories": [
-		"Data Transformation"
-	]
+	"subcategories": {
+		"Core Nodes": [
+			"Data Transformation"
+		]
+	}
 }
