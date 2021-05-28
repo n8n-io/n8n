@@ -4,7 +4,7 @@
 			v-for="(element, index) in elements"
 			:key="index"
 			@click="() => selected(element)"
-			:class="{container: true, active: activeIndex === index}"
+			:class="{container: true, active: activeIndex === index, clickable: true}"
 		>
 			<div v-if="element.type === 'category'" class="category">
 				<span class="name">{{ element.category }}</span>
@@ -106,6 +106,10 @@ export default Vue.extend({
 		display: flex;
 		align-items: center;
 	}
+}
+
+.container {
+	border-left: 1px solid $--node-creator-border-color;
 }
 
 .container:hover {

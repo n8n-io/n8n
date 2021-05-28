@@ -1,22 +1,40 @@
 <template>
-	<div>
-		<div class="input-wrapper">
-			<el-input class="custom" placeholder="Search nodes..." v-model="nodeFilter" ref="inputField" type="text" prefix-icon="el-icon-search" @keydown.native="nodeFilterKeyDown" clearable ></el-input>
+	<div @click="onClickInside" class="scrollable">
+		<div>
+			<el-input :class="{'custom': true, hidden: !!activeSubcategory}" placeholder="Search nodes..." v-model="nodeFilter" ref="inputField" type="text" prefix-icon="el-icon-search" @keydown.native="nodeFilterKeyDown" clearable ></el-input>
 		</div>
-		<div class="type-selector">
-			<el-tabs v-model="selectedType" stretch>
-				<el-tab-pane label="All" name="All"></el-tab-pane>
-				<el-tab-pane label="Regular" name="Regular"></el-tab-pane>
-				<el-tab-pane label="Trigger" name="Trigger"></el-tab-pane>
-			</el-tabs>
+		<div v-if="activeSubcategory">
+			<div class="subcategory-header">
+				<div class="clickable" @click="onBackArrowClick">
+					<font-awesome-icon class="back-arrow" icon="arrow-left" />
+				</div>
+				<span>{{activeSubcategory}}</span>
+			</div>
+			
+			<NodeCreateIterator :elements="subcategorizedNodes" :activeIndex="activeNodeTypeIndex" @nodeTypeSelected="nodeTypeSelected" />
 		</div>
-		<div v-if="nodeFilter.length === 0">
-			<NodeCreateIterator  :elements="categorized" @categorySelected="onCategorySelected" :activeIndex="activeNodeTypeIndex" />
-		</div>
-		<div class="node-create-list-wrapper">
-			<NodeCreateIterator v-if="filteredNodeTypes.length > 0" :nodeTypes="filteredNodeTypes" :activeIndex="activeNodeTypeIndex" />
-			<div v-else class="no-results">
-				🙃 no nodes matching your search criteria
+		<div v-else>
+			<div class="type-selector">
+				<el-tabs v-model="selectedType" stretch @tab-click="onTabClick">
+					<el-tab-pane label="All" name="All"></el-tab-pane>
+					<el-tab-pane label="Regular" name="Regular"></el-tab-pane>
+					<el-tab-pane label="Trigger" name="Trigger"></el-tab-pane>
+				</el-tabs>
+			</div>
+			<div v-if="nodeFilter.length === 0">
+				<NodeCreateIterator
+					:elements="categorized"
+					:activeIndex="activeNodeTypeIndex"
+					@categorySelected="onCategorySelected"
+					@nodeTypeSelected="nodeTypeSelected"
+					@subcategorySelected="onSubcategorySelected"
+				/>
+			</div>
+			<div class="node-create-list-wrapper" v-else>
+				<NodeCreateIterator v-if="filteredNodeTypes.length > 0" :elements="filteredNodeTypes" :activeIndex="activeNodeTypeIndex" @nodeTypeSelected="nodeTypeSelected" />
+				<div v-else class="no-results">
+					🙃 no nodes matching your search criteria
+				</div>
 			</div>
 		</div>
 	</div>
@@ -135,6 +153,7 @@ export default mixins(externalHooks).extend({
 						category,
 						nodeType,
 						subcategory,
+						isTrigger: nodeType.group.includes('trigger'),
 					} as INodeCreateElement);
 				});
 				return accu;
@@ -191,7 +210,7 @@ export default mixins(externalHooks).extend({
 		},
 
 		categorized() {
-			return this.nodesWithCategories.map((el: INodeCreateElement, i) => {
+			return this.nodesWithCategories.map((el: INodeCreateElement) => {
 				if (el.type === 'category') {
 					return {
 						...el,
@@ -202,12 +221,30 @@ export default mixins(externalHooks).extend({
 					return el;
 				}
 				else if (el.type === 'node' && el.category === this.activeCategory) {
-					return el;
+					if (this.selectedType === 'All' || (this.selectedType === 'Trigger' && el.isTrigger)) {
+						return el;
+					}
+					if (this.selectedType === 'Regular' && !el.isTrigger) {
+						return el;
+					}
 				}
 
 				return null;
 			})
 			.filter(el => !!el);
+		},
+
+		subcategorizedNodes() {
+			return this.categoriesWithNodes[this.activeCategory][this.activeSubcategory]
+				.filter((el) => {
+					if (el.isTrigger && this.selectedType === 'Trigger') {
+						return true;
+					}
+					if (!el.isTrigger && this.selectedType === 'Regular') {
+						return true;
+					}
+					return this.selectedType === 'All';
+				});
 		},
 	},
 	watch: {
@@ -254,8 +291,21 @@ export default mixins(externalHooks).extend({
 			}
 
 			this.activeNodeTypeIndex = this.categories.indexOf(category);
-			console.log(this.activeNodeTypeIndex);
 		},
+		onSubcategorySelected(subcategory: string) {
+			this.activeSubcategory = subcategory;
+			this.activeNodeTypeIndex = 0;
+		},
+
+		onBackArrowClick() {
+			this.activeSubcategory = '';
+			this.activeNodeTypeIndex = 0;
+		},
+
+		onClickInside() {
+			// keep focus on input field as user clicks around
+			this.$refs.inputField.focus();
+		}
 	},
 	async mounted() {
 		this.$externalHooks().run('nodeCreateList.mounted');
@@ -267,9 +317,35 @@ export default mixins(externalHooks).extend({
 </script>
 
 <style lang="scss" scoped>
-.node-create-list-wrapper {
+.subcategory-header {
+	box-sizing: border-box;
+  height: 50px;
+  background-color: #F2F4F8;
+	border: 1px solid $--node-creator-border-color;
+
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 16px;
+
+	display: flex;
+	align-items: center;
+	padding: 11px 15px;
+}
+
+.back-arrow {
+  color: #8D939C;
+	height: 16px;
+	width: 16px;
+	margin-right: 24px;
+}
+
+.scrollable {
 	overflow-y: auto;
 	max-height: 100vh;
+
+	&::-webkit-scrollbar {
+ 		display: none;
+	}
 }
 
 .el-input {
@@ -281,6 +357,12 @@ export default mixins(externalHooks).extend({
 	  border: 1px solid $--node-creator-border-color;
 		border-radius: 0;
 		min-height: 60px;
+	}
+
+	&.hidden {
+		z-index: -1;
+		position: absolute;
+		opacity: 0;
 	}
 }
 

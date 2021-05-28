@@ -53,13 +53,13 @@ export default Vue.extend({
 .node-item {
 	border-bottom: 1px solid $--node-creator-border-color;
 	padding: 11px 20px 11px 15px;
-	border-left: 1px solid $--node-creator-border-color;
+	// border-left: 1px solid $--node-creator-border-color;
 	display: flex;
 
-	&:hover {
-		border-left: 1px solid $--node-creator-item-hover-border-color;
-		background-color: $--node-creator-item-hover-background-color;
-	}
+	// &:hover {
+	// 	// border-left: 1px solid $--node-creator-item-hover-border-color;
+	// 	background-color: $--node-creator-item-hover-background-color;
+	// }
 }
 
 .details {

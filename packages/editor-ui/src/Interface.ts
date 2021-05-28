@@ -462,7 +462,7 @@ export interface INodeCreateElement {
 	nodeType?: INodeTypeTemp;
 	category?: string;
 	expanded?: boolean;
-	active: boolean;
+	isTrigger?: boolean;
 	subcategory?: string;
 	description?: string;
 }
