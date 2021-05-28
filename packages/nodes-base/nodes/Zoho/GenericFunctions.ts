@@ -58,19 +58,12 @@ export async function zohoApiRequest(
 	if (!Object.keys(qs).length) {
 		delete options.qs;
 	}
-
 	try {
-		let responseData = await this.helpers.requestOAuth2?.call(this, 'zohoOAuth2Api', options);
+		const responseData = await this.helpers.requestOAuth2?.call(this, 'zohoOAuth2Api', options);
 
 		if (responseData === undefined) return [];
 
 		throwOnErrorStatus.call(this, responseData);
-
-		const operation = this.getNodeParameter('operation', 0) as string;
-
-		if (['create', 'delete', 'update', 'get'].includes(operation)) {
-			responseData = responseData.data[0];
-		}
 
 		return responseData;
 	} catch (error) {
@@ -159,6 +152,7 @@ export const adjustProductDetails = (productDetails: ProductDetails) => {
 		return {
 			...omit('product', p),
 			product: { id: p.id },
+			quantity: p.quantity || 1,
 		};
 	});
 };
