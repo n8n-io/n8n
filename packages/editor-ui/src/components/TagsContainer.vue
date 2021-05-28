@@ -27,6 +27,7 @@
 							:title="tag.name"
 							type="info"
 							size="small"
+							:class="{hoverable}"
 						>
 							{{ tag.name }}
 						</el-tag>
@@ -61,6 +62,7 @@ export default Vue.extend({
 		"limit",
 		"clickable",
 		"responsive",
+		"hoverable",
 	],
 	data() {
 		return {
@@ -134,6 +136,10 @@ export default Vue.extend({
 
 	.hidden {
 		visibility: hidden;
+	}
+
+	.el-tag.hoverable:hover {
+		border-color: $--color-primary;
 	}
 
 	.count-container {
