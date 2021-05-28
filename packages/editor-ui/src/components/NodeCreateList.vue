@@ -10,16 +10,28 @@
 				<el-tab-pane label="Trigger" name="Trigger"></el-tab-pane>
 			</el-tabs>
 		</div>
-		<div class="node-create-list-wrapper">
-			<div v-if="filteredNodeTypes.length === 0" class="no-results">
+		<div v-if="nodeFilter.length === 0">
+			<NodeCreateCategory
+				v-for="category in categories"
+				:expanded="true"
+				:name="category"
+				:subcategories="categorized[category]"
+				:key="category"
+			/>
+		</div>
+		<div class="node-create-list-wrapper" v-else>
+			<NodeCreateIterator v-if="filteredNodeTypes.length > 0" :nodeTypes="filteredNodeTypes" :activeIndex="activeNodeTypeIndex" />
+			<div v-else class="no-results">
 				🙃 no nodes matching your search criteria
 			</div>
-			<NodeCreateIterator :nodeTypes="filteredNodeTypes" :activeIndex="activeNodeTypeIndex" />
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
+
+const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
+const UNCATEGORIZED_SUBCATEGORY = 'Other';
 
 import { externalHooks } from "@/components/mixins/externalHooks";
 import { INodeTypeDescription } from 'n8n-workflow';
@@ -27,12 +39,16 @@ import NodeCreateItem from '@/components/NodeCreateItem.vue';
 
 import mixins from "vue-typed-mixins";
 import NodeCreateIterator from "./NodeCreateIterator.vue";
+import { INodeTypeTemp, ICategorizedNodes } from "@/Interface";
+import NodeCreateCategory from "./NodeCreateCategory.vue";
+import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY } from "@/constants";
 
 export default mixins(externalHooks).extend({
 	name: 'NodeCreateList',
 	components: {
 		NodeCreateItem,
 		NodeCreateIterator,
+		NodeCreateCategory,
 	},
 	data () {
 		return {
@@ -74,6 +90,73 @@ export default mixins(externalHooks).extend({
 
 			this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', { nodeFilter: this.nodeFilter, result: returnData, selectedType: this.selectedType });
 			return returnData;
+		},
+		categorized (): ICategorizedNodes {
+			// temp
+			const subcategories = ['Flow', 'Helpers', 'Files', 'Data Transformation'];
+			// @ts-ignore
+			const mockNodeTypes = this.nodeTypes.map((nodeType: INodeTypeTemp, i: number): INodeTypeTemp => {
+				if (!nodeType.codex || !nodeType.codex.categories) {
+					return nodeType;
+				}
+
+				if (nodeType.codex.categories.includes('Core Nodes')) {
+					const subcategory: string = subcategories[i % 4];
+					return {
+						...nodeType,
+						codex: {
+							...nodeType.codex,
+							subcategories: {
+								'Core Nodes': [subcategory],
+							},
+						}
+					}
+				}
+
+				return nodeType;
+			});
+
+			return mockNodeTypes.reduce((accu: ICategorizedNodes, nodeType: INodeTypeTemp) => {
+				if (!nodeType.codex || !nodeType.codex.categories) {
+					accu[UNCATEGORIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].push(nodeType);
+
+					return accu;
+				}
+
+				nodeType.codex.categories.forEach((_category) => {
+					const category = _category.trim();
+					const subcategory = nodeType.codex && nodeType.codex.subcategories && nodeType.codex.subcategories[category]?
+						nodeType.codex.subcategories[category][0] : UNCATEGORIZED_SUBCATEGORY;
+
+					if (!accu[category]) {
+						accu[category] = {};
+					}
+					if (!accu[category][subcategory]) {
+						accu[category][subcategory] = [];
+					}
+					accu[category][subcategory].push(nodeType);
+				});
+
+				return accu;
+			}, {
+				[UNCATEGORIZED_CATEGORY]: {
+					[UNCATEGORIZED_SUBCATEGORY]: [],
+				}
+			});
+		},
+		categories(): string[] {
+			const categories = Object.keys(this.categorized)
+			console.log(this.categorized);
+			console.log(categories);
+			const sorted = categories 
+				.filter((category: string) => category !== CORE_NODES_CATEGORY && category !== CUSTOM_NODES_CATEGORY);
+			sorted.sort();
+
+			if (categories.includes(CUSTOM_NODES_CATEGORY)) {
+				return [CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, ...sorted];
+			}
+
+			return [CORE_NODES_CATEGORY, ...sorted];
 		},
 	},
 	watch: {

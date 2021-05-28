@@ -445,3 +445,23 @@ export interface ILinkMenuItemProperties {
 	href: string;
 	newWindow?: boolean;
 }
+
+export interface ICodex {
+	categories?: string[];
+	subcategories?: {[category: string]: string[]}
+}
+
+// todo rely on update workflow type
+export interface INodeTypeTemp extends INodeTypeDescription {
+		codex?: ICodex;
+}
+
+export interface ICategorizedNodes {
+	[category: string]: ISubCategorizedNodes;
+}
+
+export interface ISubCategorizedNodes {
+	[subcategory: string]: INodeTypeTemp[]
+}
+
+

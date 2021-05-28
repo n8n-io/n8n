@@ -1,12 +1,12 @@
 <template>
   <div>
-    <node-create-item
+    <NodeCreateItem
       v-for="(nodeType, index) in nodeTypes"
       :active="index === activeIndex"
       :nodeType="nodeType"
       v-bind:key="nodeType.name"
       @nodeTypeSelected="nodeTypeSelected"
-    ></node-create-item>
+    ></NodeCreateItem>
   </div>
 </template>
 
@@ -27,7 +27,7 @@ export default Vue.extend({
 		nodeTypeSelected (nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
-	}
+	},
 });
 
 </script>
