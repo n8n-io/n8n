@@ -2,8 +2,9 @@
 	<div class="node-item clickable" :class="{active: active}" :data-node-name="nodeName" @click="nodeTypeSelected(nodeType)">
 		<NodeIcon class="node-icon" :nodeType="nodeType" :style="nodeIconStyle" />
 		<div>
-			<div class="name">
-				{{nodeType.displayName}}
+			<div class="details">
+				<span class="name">{{nodeType.displayName}}</span>
+				<TriggerIcon v-if="isTrigger" class="trigger-icon" />
 			</div>
 			<div class="description">
 				{{nodeType.description}}
@@ -18,11 +19,13 @@ import Vue from 'vue';
 import { INodeTypeDescription } from 'n8n-workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
+import TriggerIcon from './TriggerIcon.vue';
 
 export default Vue.extend({
 	name: 'NodeCreateItem',
 	components: {
 		NodeIcon,
+		TriggerIcon,
 	},
 	props: [
 		'active',
@@ -37,6 +40,9 @@ export default Vue.extend({
 		},
 		nodeName (): string {
 			return this.nodeType.name;
+		},
+		isTrigger (): boolean {
+			return (this.nodeType as INodeTypeDescription).group.includes('trigger');
 		},
 	},
 	methods: {
@@ -61,6 +67,11 @@ export default Vue.extend({
 	}
 }
 
+.details {
+	display: flex;
+	align-items: center;
+}
+
 .node-icon {
 	margin-right: 15px;
 }
@@ -72,13 +83,19 @@ export default Vue.extend({
 .name {
 	font-weight: bold;
   font-size: 14px;
-  line-height: 16px;
+  line-height: 18px;
+	margin-right: 5px;
 }
 
 .description {
 	margin-top: 4px;
   font-size: 11px;
   line-height: 15px;
+}
+
+.trigger-icon {
+	height: 18px;
+	width: 18px;
 }
 
 </style>
