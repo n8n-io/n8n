@@ -11,12 +11,10 @@
 			</el-tabs>
 		</div>
 		<div class="node-create-list-wrapper">
-			<div class="node-create-list">
-				<div v-if="filteredNodeTypes.length === 0" class="no-results">
-					🙃 no nodes matching your search criteria
-				</div>
-				<node-create-item :active="index === activeNodeTypeIndex" :nodeType="nodeType" v-for="(nodeType, index) in filteredNodeTypes" v-bind:key="nodeType.name" @nodeTypeSelected="nodeTypeSelected"></node-create-item>
+			<div v-if="filteredNodeTypes.length === 0" class="no-results">
+				🙃 no nodes matching your search criteria
 			</div>
+			<NodeCreateIterator :nodeTypes="filteredNodeTypes" :activeIndex="activeNodeTypeIndex" />
 		</div>
 	</div>
 </template>
@@ -28,11 +26,13 @@ import { INodeTypeDescription } from 'n8n-workflow';
 import NodeCreateItem from '@/components/NodeCreateItem.vue';
 
 import mixins from "vue-typed-mixins";
+import NodeCreateIterator from "./NodeCreateIterator.vue";
 
 export default mixins(externalHooks).extend({
 	name: 'NodeCreateList',
 	components: {
 		NodeCreateItem,
+		NodeCreateIterator,
 	},
 	data () {
 		return {
@@ -125,16 +125,6 @@ export default mixins(externalHooks).extend({
 .node-create-list-wrapper {
 	overflow-y: auto;
 	max-height: 100vh;
-}
-
-.node-create-list {
-	position: relative;
-	width: 100%;
-}
-
-.group-name {
-	font-size: 0.9em;
-	padding: 15px 0 5px 10px;
 }
 
 .el-input {
