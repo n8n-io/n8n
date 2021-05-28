@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<div class="container">
 		<div class="category">
 			<span>{{ name }}</span>
 		</div>
@@ -48,6 +48,10 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" scoped>
+.container {
+	margin-bottom: 15px;
+}
+
 .category {
 	border-bottom: 1px solid $--node-creator-border-color;
   font-size: 11px;
@@ -65,16 +69,13 @@ export default Vue.extend({
 		font-weight: bold;
 		letter-spacing: 0;
 		line-height: 16px;
+		margin-bottom: 3px;
 	}
 
 	.description {
 		font-size: 11px;
 		letter-spacing: 0;
 		line-height: 15px;
-	}
-
-	:last-of-type {
-		margin-bottom: 15px;
 	}
 }
 </style>
