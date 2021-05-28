@@ -1,13 +1,20 @@
 <template>
 	<div class="container">
 		<div class="category">
-			<span>{{ name }}</span>
+			<span class="name">{{ name }}</span>
+			<font-awesome-icon class="arrow" icon="chevron-down" v-if="expanded" />
+			<font-awesome-icon class="arrow" icon="chevron-up" v-else />
 		</div>
 		<NodeCreateIterator v-if="hasOneSubcategory && expanded" :nodeTypes="firstSubcategoryNodes"/>
 		<div v-else>
 			<div class="subcategory" v-for="subcategory in subcategoryNames" :key="subcategory">
-				<div class="title">{{subcategory}}</div>
-				<div class="description">Lorem ipsum testlkjre dfkl jsdf </div>
+				<div class="details">
+					<div class="title">{{subcategory}}</div>
+					<div class="description">Lorem ipsum testlkjre dfkl jsdf </div>
+				</div>
+				<div class="action">
+					<font-awesome-icon class="arrow" icon="arrow-right" />
+				</div>
 			</div>
 		</div>
 	</div>
@@ -23,7 +30,7 @@ import NodeCreateIterator from './NodeCreateIterator.vue';
 export default Vue.extend({
 	name: 'NodeCreateCategory',
 	components: {
-		NodeCreateIterator
+		NodeCreateIterator,
 	},
 	props: [
 		'name',
@@ -32,13 +39,13 @@ export default Vue.extend({
 	],
 	computed: {
 		hasOneSubcategory(): boolean {
-			return Object.keys(this.subcategories).length === 1;
+			return this.subcategories && Object.keys(this.subcategories).length === 1;
 		},
 		firstSubcategoryNodes(): INodeTypeTemp[] {
-			return (this.subcategories as ISubCategorizedNodes)[Object.keys(this.subcategories)[0]];
+			return this.subcategories && (this.subcategories as ISubCategorizedNodes)[Object.keys(this.subcategories)[0]];
 		},
 		subcategoryNames(): string[] {
-			const subcategories = Object.keys(this.subcategories);
+			const subcategories = (this.subcategories && Object.keys(this.subcategories)) || [];
 			subcategories.sort();
 
 			return subcategories;
@@ -48,10 +55,6 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" scoped>
-.container {
-	margin-bottom: 15px;
-}
-
 .category {
 	border-bottom: 1px solid $--node-creator-border-color;
   font-size: 11px;
@@ -59,10 +62,22 @@ export default Vue.extend({
   letter-spacing: 1px;
   line-height: 11px;
 	padding: 10px 12px;
+	border-left: 1px solid $--node-creator-border-color;
+	padding-top: 15px;
+	display: flex;
+
+	.name {
+		flex-grow: 1;
+	}
 }
 
 .subcategory {
+	display: flex;
 	padding: 11px 16px 11px 30px;
+
+	.details {
+		flex-grow: 1;
+	}
 
 	.title {
 		font-size: 14px;
@@ -77,5 +92,26 @@ export default Vue.extend({
 		letter-spacing: 0;
 		line-height: 15px;
 	}
+
+	.action {
+		display: flex;
+		align-items: center;
+	}
+}
+
+.category, .subcategory {
+	cursor: pointer;
+	border-left: 1px solid $--node-creator-border-color;
+
+	&:hover {
+		border-left: 1px solid $--node-creator-item-hover-border-color;
+		background-color: $--node-creator-item-hover-background-color;
+	}
+}
+
+.arrow {
+	font-size: 12px;
+	width: 12px;
+	color: #8D939C;
 }
 </style>

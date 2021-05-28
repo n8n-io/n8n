@@ -448,10 +448,11 @@ export interface ILinkMenuItemProperties {
 
 export interface ICodex {
 	categories?: string[];
-	subcategories?: {[category: string]: string[]}
+	subcategories?: {[category: string]: string[]};
 }
 
 // todo rely on update workflow type
+// @ts-ignore
 export interface INodeTypeTemp extends INodeTypeDescription {
 		codex?: ICodex;
 }
@@ -461,7 +462,7 @@ export interface ICategorizedNodes {
 }
 
 export interface ISubCategorizedNodes {
-	[subcategory: string]: INodeTypeTemp[]
+	[subcategory: string]: INodeTypeTemp[];
 }
 
 

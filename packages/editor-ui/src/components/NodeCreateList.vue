@@ -109,8 +109,8 @@ export default mixins(externalHooks).extend({
 							subcategories: {
 								'Core Nodes': [subcategory],
 							},
-						}
-					}
+						},
+					};
 				}
 
 				return nodeType;
@@ -141,11 +141,11 @@ export default mixins(externalHooks).extend({
 			}, {
 				[UNCATEGORIZED_CATEGORY]: {
 					[UNCATEGORIZED_SUBCATEGORY]: [],
-				}
+				},
 			});
 		},
 		categories(): string[] {
-			const categories = Object.keys(this.categorized)
+			const categories = Object.keys(this.categorized);
 			console.log(this.categorized);
 			console.log(categories);
 			const sorted = categories 

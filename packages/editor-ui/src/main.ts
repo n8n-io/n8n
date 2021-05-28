@@ -26,11 +26,14 @@ import {
 	faAngleRight,
 	faAngleUp,
 	faArrowRight,
+	faArrowLeft,
 	faAt,
 	faBook,
 	faBug,
 	faCalendar,
 	faCheck,
+	faChevronDown,
+	faChevronUp,
 	faCode,
 	faCodeBranch,
 	faCog,
@@ -108,11 +111,14 @@ library.add(faAngleDown);
 library.add(faAngleRight);
 library.add(faAngleUp);
 library.add(faArrowRight);
+library.add(faArrowLeft);
 library.add(faAt);
 library.add(faBook);
 library.add(faBug);
 library.add(faCalendar);
 library.add(faCheck);
+library.add(faChevronDown);
+library.add(faChevronUp);
 library.add(faCode);
 library.add(faCodeBranch);
 library.add(faCog);
