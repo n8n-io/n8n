@@ -18,5 +18,10 @@
 		"Zip",
 		"Gzip",
 		"uncompress"
-	]
+	],
+	"subcategories": {
+		"Core Nodes": [
+			"Files"
+		]
+	}
 }
