@@ -11,15 +11,9 @@
 			</el-tabs>
 		</div>
 		<div v-if="nodeFilter.length === 0">
-			<NodeCreateCategory
-				v-for="category in categories"
-				:expanded="true"
-				:name="category"
-				:subcategories="categorized[category]"
-				:key="category"
-			/>
+			<NodeCreateIterator  :elements="categorized" @categorySelected="onCategorySelected" :activeIndex="activeNodeTypeIndex" />
 		</div>
-		<div class="node-create-list-wrapper" v-else>
+		<div class="node-create-list-wrapper">
 			<NodeCreateIterator v-if="filteredNodeTypes.length > 0" :nodeTypes="filteredNodeTypes" :activeIndex="activeNodeTypeIndex" />
 			<div v-else class="no-results">
 				🙃 no nodes matching your search criteria
@@ -39,8 +33,8 @@ import NodeCreateItem from '@/components/NodeCreateItem.vue';
 
 import mixins from "vue-typed-mixins";
 import NodeCreateIterator from "./NodeCreateIterator.vue";
-import { INodeTypeTemp, ICategorizedNodes } from "@/Interface";
 import NodeCreateCategory from "./NodeCreateCategory.vue";
+import { INodeCreateElement, INodeTypeTemp } from "@/Interface";
 import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY } from "@/constants";
 
 export default mixins(externalHooks).extend({
@@ -52,16 +46,15 @@ export default mixins(externalHooks).extend({
 	},
 	data () {
 		return {
-			activeNodeTypeIndex: 0,
+			activeCategory: CORE_NODES_CATEGORY,
+			activeSubcategory: '',
+			activeNodeTypeIndex: 1,
 			nodeFilter: '',
 			selectedType: 'All',
 		};
 	},
 	computed: {
-		nodeTypes (): INodeTypeDescription[] {
-			return this.$store.getters.allNodeTypes;
-		},
-		filteredNodeTypes () {
+		filteredNodeTypes (): INodeCreateElement[] {
 			const filter = this.nodeFilter.toLowerCase();
 			const nodeTypes: INodeTypeDescription[] = this.$store.getters.allNodeTypes;
 
@@ -89,17 +82,23 @@ export default mixins(externalHooks).extend({
 			});
 
 			this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', { nodeFilter: this.nodeFilter, result: returnData, selectedType: this.selectedType });
-			return returnData;
+
+			return returnData.map((nodeType) => ({
+				type: 'node',
+				nodeType,
+			}));
 		},
-		categorized (): ICategorizedNodes {
+
+		categoriesWithNodes(): any {
+			const nodeTypes = this.$store.getters.allNodeTypes;
+
 			// temp
 			const subcategories = ['Flow', 'Helpers', 'Files', 'Data Transformation'];
 			// @ts-ignore
-			const mockNodeTypes = this.nodeTypes.map((nodeType: INodeTypeTemp, i: number): INodeTypeTemp => {
+			const mockNodeTypes = nodeTypes.map((nodeType: INodeTypeTemp, i: number): INodeTypeTemp => {
 				if (!nodeType.codex || !nodeType.codex.categories) {
 					return nodeType;
 				}
-
 				if (nodeType.codex.categories.includes('Core Nodes')) {
 					const subcategory: string = subcategories[i % 4];
 					return {
@@ -112,42 +111,44 @@ export default mixins(externalHooks).extend({
 						},
 					};
 				}
-
 				return nodeType;
 			});
 
-			return mockNodeTypes.reduce((accu: ICategorizedNodes, nodeType: INodeTypeTemp) => {
+			// todo move logic elsewhere
+			const categorized = mockNodeTypes.reduce((accu: any, nodeType: INodeTypeTemp) => {
 				if (!nodeType.codex || !nodeType.codex.categories) {
 					accu[UNCATEGORIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].push(nodeType);
-
 					return accu;
 				}
-
-				nodeType.codex.categories.forEach((_category) => {
+				nodeType.codex.categories.forEach((_category: string) => {
 					const category = _category.trim();
 					const subcategory = nodeType.codex && nodeType.codex.subcategories && nodeType.codex.subcategories[category]?
 						nodeType.codex.subcategories[category][0] : UNCATEGORIZED_SUBCATEGORY;
-
 					if (!accu[category]) {
 						accu[category] = {};
 					}
 					if (!accu[category][subcategory]) {
 						accu[category][subcategory] = [];
 					}
-					accu[category][subcategory].push(nodeType);
+					accu[category][subcategory].push({
+						type: 'node',
+						category,
+						nodeType,
+						subcategory,
+					} as INodeCreateElement);
 				});
-
 				return accu;
 			}, {
 				[UNCATEGORIZED_CATEGORY]: {
 					[UNCATEGORIZED_SUBCATEGORY]: [],
 				},
 			});
+
+			return categorized;
 		},
+
 		categories(): string[] {
-			const categories = Object.keys(this.categorized);
-			console.log(this.categorized);
-			console.log(categories);
+			const categories = Object.keys(this.categoriesWithNodes);
 			const sorted = categories 
 				.filter((category: string) => category !== CORE_NODES_CATEGORY && category !== CUSTOM_NODES_CATEGORY);
 			sorted.sort();
@@ -157,6 +158,56 @@ export default mixins(externalHooks).extend({
 			}
 
 			return [CORE_NODES_CATEGORY, ...sorted];
+		},
+
+		nodesWithCategories(): INodeCreateElement[] {
+			const collapsed = this.categories.reduce((accu: any, category: string) => {
+				const categoryEl = {
+					type: 'category',
+					active: false,
+					category,
+				};
+
+				const subcategories = Object.keys(this.categoriesWithNodes[category]);
+				if (subcategories.length === 1) {
+					return [...accu, categoryEl, ...this.categoriesWithNodes[category][subcategories[0]]];
+				}
+
+				const subcategorized = subcategories.reduce((accu: any, subcategory: string) => {
+					const subcategoryEl = {
+						type: 'subcategory',
+						category,
+						subcategory,
+						description: 'Lorem ipsum',
+					};
+
+					return [...accu, subcategoryEl];
+				}, []);
+
+				return [...accu, categoryEl, ...subcategorized];
+			}, []);
+
+			return collapsed;
+		},
+
+		categorized() {
+			return this.nodesWithCategories.map((el: INodeCreateElement, i) => {
+				if (el.type === 'category') {
+					return {
+						...el,
+						expanded: this.activeCategory === el.category,
+					};
+				}
+				else if (el.type === 'subcategory' && el.category === this.activeCategory) {
+					return el;
+				}
+				else if (el.type === 'node' && el.category === this.activeCategory) {
+					return el;
+				}
+
+				return null;
+			})
+			.filter(el => !!el);
 		},
 	},
 	watch: {
@@ -193,6 +244,17 @@ export default mixins(externalHooks).extend({
 		},
 		nodeTypeSelected (nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
+		},
+		onCategorySelected(category: string) {
+			if (this.activeCategory === category) {
+				this.activeCategory = '';
+			}
+			else {
+				this.activeCategory = category;
+			}
+
+			this.activeNodeTypeIndex = this.categories.indexOf(category);
+			console.log(this.activeNodeTypeIndex);
 		},
 	},
 	async mounted() {

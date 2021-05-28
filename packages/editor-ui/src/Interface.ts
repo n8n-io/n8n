@@ -457,12 +457,14 @@ export interface INodeTypeTemp extends INodeTypeDescription {
 		codex?: ICodex;
 }
 
-export interface ICategorizedNodes {
-	[category: string]: ISubCategorizedNodes;
-}
-
-export interface ISubCategorizedNodes {
-	[subcategory: string]: INodeTypeTemp[];
+export interface INodeCreateElement {
+	type: string;
+	nodeType?: INodeTypeTemp;
+	category?: string;
+	expanded?: boolean;
+	active: boolean;
+	subcategory?: string;
+	description?: string;
 }
 
 

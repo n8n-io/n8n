@@ -1,5 +1,5 @@
 <template>
-	<div class="node-item clickable" :class="{active: active}" :data-node-name="nodeName" @click="nodeTypeSelected(nodeType)">
+	<div class="node-item" :class="{active: active}" :data-node-name="nodeName">
 		<NodeIcon class="node-icon" :nodeType="nodeType" :style="nodeIconStyle" />
 		<div>
 			<div class="details">
@@ -43,11 +43,6 @@ export default Vue.extend({
 		},
 		isTrigger (): boolean {
 			return (this.nodeType as INodeTypeDescription).group.includes('trigger');
-		},
-	},
-	methods: {
-		nodeTypeSelected (nodeType: INodeTypeDescription) {
-			this.$emit('nodeTypeSelected', nodeType.name);
 		},
 	},
 });

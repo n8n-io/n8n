@@ -1,13 +1,15 @@
 <template>
 	<div class="container">
-		<div class="category">
+		<div :class="{category: true, active: activeIndex === -1}">
 			<span class="name">{{ name }}</span>
 			<font-awesome-icon class="arrow" icon="chevron-down" v-if="expanded" />
 			<font-awesome-icon class="arrow" icon="chevron-up" v-else />
 		</div>
-		<NodeCreateIterator v-if="hasOneSubcategory && expanded" :nodeTypes="firstSubcategoryNodes"/>
-		<div v-else>
-			<div class="subcategory" v-for="subcategory in subcategoryNames" :key="subcategory">
+		<div v-if="hasSubcategories && expanded">
+			<div 
+				v-for="(subcategory, index) in subcategoryNames"
+				:class="{subcategory, active: index === activeIndex}"
+				:key="subcategory">
 				<div class="details">
 					<div class="title">{{subcategory}}</div>
 					<div class="description">Lorem ipsum testlkjre dfkl jsdf </div>
@@ -17,6 +19,7 @@
 				</div>
 			</div>
 		</div>
+		<NodeCreateIterator v-else-if="expanded" :nodeTypes="firstSubcategoryNodes"/>
 	</div>
 </template>
 
@@ -24,7 +27,7 @@
 
 import Vue from 'vue';
 
-import { ICategorizedNodes, INodeTypeTemp, ISubCategorizedNodes } from '@/Interface';
+import { INodeTypeTemp  } from '@/Interface';
 import NodeCreateIterator from './NodeCreateIterator.vue';
 
 export default Vue.extend({
@@ -36,10 +39,11 @@ export default Vue.extend({
 		'name',
 		'subcategories',
 		'expanded',
+		'activeIndex',
 	],
 	computed: {
-		hasOneSubcategory(): boolean {
-			return this.subcategories && Object.keys(this.subcategories).length === 1;
+		hasSubcategories(): boolean {
+			return this.subcategories && Object.keys(this.subcategories).length > 1;
 		},
 		firstSubcategoryNodes(): INodeTypeTemp[] {
 			return this.subcategories && (this.subcategories as ISubCategorizedNodes)[Object.keys(this.subcategories)[0]];
@@ -102,6 +106,10 @@ export default Vue.extend({
 .category, .subcategory {
 	cursor: pointer;
 	border-left: 1px solid $--node-creator-border-color;
+
+	&.active {
+		border-left: 1px solid $--color-primary; 
+	}
 
 	&:hover {
 		border-left: 1px solid $--node-creator-item-hover-border-color;
