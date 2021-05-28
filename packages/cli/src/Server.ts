@@ -442,7 +442,6 @@ class App {
 		// Healthcheck
 		// ----------------------------------------
 
-
 		// Does very basic health check
 		this.app.get('/healthz', async (req: express.Request, res: express.Response) => {
 
