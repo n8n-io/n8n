@@ -54,9 +54,19 @@
 				"url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/"
 			},
 			{
+				"label": "Automate your data processing pipeline in 9 steps",
+				"icon": "⚙️",
+				"url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/"
+			},
+			{
 				"label": "Celebrating World Poetry Day with a daily poem in Telegram",
 				"icon": "📜",
 				"url": "https://n8n.io/blog/world-poetry-day-workflow/"
+			},
+			{
+				"label": "15 Google apps you can combine and automate to increase productivity",
+				"icon": "💡",
+				"url": "https://n8n.io/blog/automate-google-apps-for-productivity/"
 			},
 			{
 				"label": "Automate Designs with Bannerbear and n8n",
@@ -114,5 +124,10 @@
 		"Time",
 		"Scheduler",
 		"Poll"
-	]
+	],
+	"subcategories": {
+		"Core Nodes": [
+			"Flow"
+		]
+	}
 }

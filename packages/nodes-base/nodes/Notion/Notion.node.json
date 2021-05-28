@@ -1,20 +1,19 @@
 {
-	"node": "n8n-nodes-base.mqtt",
+	"node": "n8n-nodes-base.notion",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [
-		"Development",
-		"Communication"
+		"Productivity"
 	],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/mqtt"
+				"url": "https://docs.n8n.io/credentials/notion"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.mqtt/"
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.notion/"
 			}
 		]
 	}
