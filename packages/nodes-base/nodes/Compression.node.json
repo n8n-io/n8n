@@ -19,7 +19,9 @@
 		"Gzip",
 		"uncompress"
 	],
-	"subcategories": [
-		"Files"
-	]
+	"subcategories": {
+		"Core Nodes": [
+			"Files"
+		]
+	}
 }

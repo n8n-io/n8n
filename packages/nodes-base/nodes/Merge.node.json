@@ -34,7 +34,9 @@
 			}
 		]
 	},
-	"subcategories": [
-		"Flow"
-	]
+	"subcategories": {
+		"Core Nodes": [
+			"Flow"
+		]
+	}
 }

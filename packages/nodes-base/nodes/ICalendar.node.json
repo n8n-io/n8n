@@ -13,7 +13,9 @@
 			}
 		]
 	},
-	"subcategories": [
-		"Files"
-	]
+	"subcategories": {
+		"Core Nodes": [
+			"Files"
+		]
+	}
 }

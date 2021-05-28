@@ -19,7 +19,9 @@
 		"SHA",
 		"Hash"
 	],
-	"subcategories": [
-		"Helpers"
-	]
+	"subcategories": {
+		"Core Nodes": [
+			"Helpers"
+		]
+	}
 }

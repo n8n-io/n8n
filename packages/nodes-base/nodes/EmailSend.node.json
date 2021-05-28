@@ -30,7 +30,9 @@
 			}
 		]
 	},
-	"subcategories": [
-		"Helpers"
-	]
+	"subcategories": {
+		"Core Nodes": [
+			"Helpers"
+		]
+	}
 }
