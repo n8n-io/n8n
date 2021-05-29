@@ -375,8 +375,6 @@ export class Ssh implements INodeType {
 						const parameterPath = this.getNodeParameter('path', i) as string;
 						const fileName = this.getNodeParameter('options.fileName', i, '') as string;
 
-						console.log('path', parameterPath);
-
 						const item = items[i];
 
 						if (item.binary === undefined) {
