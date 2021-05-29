@@ -300,6 +300,7 @@
       "dist/nodes/Aws/S3/AwsS3.node.js",
       "dist/nodes/Aws/SES/AwsSes.node.js",
       "dist/nodes/Aws/SQS/AwsSqs.node.js",
+      "dist/nodes/Aws/Transcribe/AwsTranscribe.node.js",
       "dist/nodes/Aws/AwsSns.node.js",
       "dist/nodes/Aws/AwsSnsTrigger.node.js",
       "dist/nodes/Bannerbear/Bannerbear.node.js",
