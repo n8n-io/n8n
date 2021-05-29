@@ -73,8 +73,10 @@ export class FunctionItem implements INodeType {
 			const dataProxy = this.getWorkflowDataProxy(itemIndex);
 			Object.assign(sandbox, dataProxy);
 
+			const mode = this.getMode();
+
 			const options = {
-				console: 'inherit',
+				console: (mode === 'manual') ? 'redirect' : 'inherit',
 				sandbox,
 				require: {
 					external: false as boolean | { modules: string[] },
@@ -92,10 +94,12 @@ export class FunctionItem implements INodeType {
 
 			const vm = new NodeVM(options);
 
+			if (mode === 'manual') {
+				vm.on('console.log', this.sendMessageToUI);
+			}
+
 			// Get the code to execute
 			const functionCode = this.getNodeParameter('functionCode', itemIndex) as string;
-
-
 
 			let jsonData: IDataObject;
 			try {

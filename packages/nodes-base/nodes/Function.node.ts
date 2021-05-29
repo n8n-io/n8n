@@ -60,8 +60,10 @@ export class Function implements INodeType {
 		// By default use data from first item
 		Object.assign(sandbox, sandbox.$item(0));
 
+		const mode = this.getMode();
+
 		const options = {
-			console: 'inherit',
+			console: (mode === 'manual') ? 'redirect' : 'inherit',
 			sandbox,
 			require: {
 				external: false as boolean | { modules: string[] },
@@ -77,8 +79,11 @@ export class Function implements INodeType {
 			options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
 		}
 
-
 		const vm = new NodeVM(options);
+
+		if (mode === 'manual') {
+			vm.on('console.log', this.sendMessageToUI);
+		}
 
 		// Get the code to execute
 		const functionCode = this.getNodeParameter('functionCode', 0) as string;
