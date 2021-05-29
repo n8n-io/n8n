@@ -70,7 +70,7 @@ export const publicStatusPageFields = [
 		description: 'The friendly name of the status page.',
 	},
 	{
-		displayName: 'Monitors',
+		displayName: 'Monitor IDs',
 		name: 'monitors',
 		type: 'string',
 		required: true,
@@ -85,7 +85,7 @@ export const publicStatusPageFields = [
 				],
 			},
 		},
-		description: 'Specify monitor IDs to be displayed in status page (the values are separated with a dash (-) or 0 for all monitors).',
+		description: 'Monitor ids to be displayed in status page (the values are separated with a dash (-) or 0 for all monitors).',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -229,18 +229,11 @@ export const publicStatusPageFields = [
 		},
 		options: [
 			{
-				displayName: 'Public Status Pages',
+				displayName: 'Public Status Page IDs',
 				name: 'psps',
 				type: 'string',
 				default: '',
-				description: 'Specify public status pages IDs separated with dash, e.g. 236-1782-4790.',
-			},
-			{
-				displayName: 'Offset',
-				name: 'offset',
-				type: 'number',
-				default: 0,
-				description: 'Defines the record to start paginating.',
+				description: 'Public status pages ids separated with dash, e.g. 236-1782-4790.',
 			},
 		],
 	},
@@ -297,11 +290,11 @@ export const publicStatusPageFields = [
 				description: 'The friendly name of the status page.',
 			},
 			{
-				displayName: 'Monitors',
+				displayName: 'Monitor IDs',
 				name: 'monitors',
 				type: 'string',
 				default: '',
-				description: 'Specify monitor IDs to be displayed in status page (the values are separated with a dash (-) or 0 for all monitors).',
+				description: 'Monitor IDs to be displayed in status page (the values are separated with a dash (-) or 0 for all monitors).',
 			},
 			{
 				displayName: 'Password',

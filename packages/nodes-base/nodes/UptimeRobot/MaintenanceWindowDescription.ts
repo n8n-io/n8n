@@ -253,7 +253,7 @@ export const maintenanceWindowFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -297,18 +297,11 @@ export const maintenanceWindowFields = [
 		},
 		options: [
 			{
-				displayName: 'Maintenance Window',
+				displayName: 'Maintenance Window IDs',
 				name: 'mwindow',
 				type: 'string',
 				default: '',
-				description: 'Specify maintenance windows IDs separated with dash, e.g. 236-1782-4790.',
-			},
-			{
-				displayName: 'Offset',
-				name: 'offset',
-				type: 'number',
-				default: 0,
-				description: 'Defines the record to start paginating.',
+				description: 'Maintenance windows ids separated with dash, e.g. 236-1782-4790.',
 			},
 		],
 	},

@@ -148,7 +148,7 @@ export const alertContactFields = [
 		description: 'The correspondent value for the alert contact type.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                alertContact:delete                          */
+	/*                                alertContact:delete                         */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
@@ -231,18 +231,11 @@ export const alertContactFields = [
 		},
 		options: [
 			{
-				displayName: 'Alert Contacts',
+				displayName: 'Alert Contact IDs',
 				name: 'alert_contacts',
 				type: 'string',
 				default: '',
-				description: 'Specify alert contacts IDs separated with dash, e.g. 236-1782-4790.',
-			},
-			{
-				displayName: 'Offset',
-				name: 'offset',
-				type: 'number',
-				default: 0,
-				description: 'Defines the record to start paginating.',
+				description: 'Alert contact ids separated with dash, e.g. 236-1782-4790.',
 			},
 		],
 	},
