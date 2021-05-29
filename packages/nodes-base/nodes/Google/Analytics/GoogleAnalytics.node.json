@@ -15,6 +15,13 @@
 			{
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.googleAnalytics/"
 			}
+		],
+		"generic": [
+			{
+				"label": "15 Google apps you can combine and automate to increase productivity",
+				"icon": "💡",
+				"url": "https://n8n.io/blog/automate-google-apps-for-productivity/"
+			}
 		]
 	}
 }

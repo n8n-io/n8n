@@ -6,6 +6,8 @@ $--color-primary-light: #fbebed;
 $--custom-dialog-text-color: #666;
 $--custom-dialog-background: #fff;
 
+$--custom-font-black: #000;
+$--custom-font-dark: #595e67;
 $--custom-font-light: #777;
 $--custom-font-very-light: #999;
 
@@ -21,6 +23,7 @@ $--custom-error-text : #eb2222;
 $--custom-running-background : #ffffe5;
 $--custom-running-text : #eb9422;
 $--custom-success-background : #e3f0e4;
+$--custom-success-text-light: #2f4;
 $--custom-success-text : #40c351;
 $--custom-warning-background : #ffffe5;
 $--custom-warning-text : #eb9422;
@@ -28,14 +31,35 @@ $--custom-warning-text : #eb9422;
 $--custom-node-view-background : #faf9fe;
 
 // Table
-$--custom-table-background-main: $--custom-header-background	;
-$--custom-table-background-alternative: #f5f5f5;
-$--custom-table-background-alternative2: lighten($--custom-table-background-main, 60% );
+$--custom-table-background-main: $--custom-header-background;
+$--custom-table-background-stripe-color: #f6f6f6;
+$--custom-table-background-hover-color: #e9f0f4;
 
 $--custom-input-background: #f0f0f0;
 $--custom-input-background-disabled: #ccc;
 $--custom-input-font: #333;
+$--custom-input-border-color: #dcdfe6;
 $--custom-input-font-disabled: #555;
+$--custom-input-border-shadow: 1px solid $--custom-input-border-color;
 
-$--table-row-hover-background: lighten( $--custom-table-background-alternative, 15% );
-$--table-current-row-background: $--table-row-hover-background;
+$--header-height: 65px;
+
+$--sidebar-width: 65px;
+$--sidebar-expanded-width: 200px;
+$--tags-manager-min-height: 300px;
+
+// based on element.io breakpoints
+$--breakpoint-xs: 768px;
+$--breakpoint-sm: 992px;
+$--breakpoint-md: 1200px;
+$--breakpoint-lg: 1920px;
+
+// scrollbars
+$--scrollbar-thumb-color: lighten($--color-primary, 20%);
+
+// tags
+$--tag-background-color: #dce1e9;
+$--tag-text-color: #3d3f46;
+$--tag-close-background-color: #717782;
+$--tag-close-background-hover-color: #3d3f46;
+

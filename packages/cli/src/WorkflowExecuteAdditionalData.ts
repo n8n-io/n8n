@@ -663,6 +663,24 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 }
 
 
+export function sendMessageToUI(source: string, message: string) {
+	if (this.sessionId === undefined) {
+		return;
+	}
+
+	// Push data to session which started workflow
+	try {
+		const pushInstance = Push.getInstance();
+		pushInstance.send('sendConsoleMessage', {
+			source: `Node: "${source}"`,
+			message,
+		}, this.sessionId);
+	} catch (error) {
+		Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
+	}
+}
+
+
 /**
  * Returns the base additional data without webhooks
  *
@@ -785,4 +803,3 @@ export function getWorkflowHooksMain(data: IWorkflowExecutionDataProcess, execut
 
 	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, { sessionId: data.sessionId, retryOf: data.retryOf as string });
 }
-

@@ -137,6 +137,17 @@ export class WorkflowRunnerProcess {
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(this.data.credentials, undefined, workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000);
 		additionalData.hooks = this.getProcessForwardHooks();
 
+		additionalData.sendMessageToUI = async (source: string, message: string) => {
+			if (workflowRunner.data!.executionMode !== 'manual') {
+				return;
+			}
+
+			try {
+				await sendToParentProcess('sendMessageToUI', { source, message });
+			} catch (error) {
+				this.logger.error(`There was a problem sending UI data to parent process: "${error.message}"`);
+			}
+		};
 		const executeWorkflowFunction = additionalData.executeWorkflow;
 		additionalData.executeWorkflow = async (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[] | undefined): Promise<Array<INodeExecutionData[] | null> | IRun> => {
 			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(workflowInfo);
