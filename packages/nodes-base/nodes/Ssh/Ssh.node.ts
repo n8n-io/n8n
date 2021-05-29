@@ -15,7 +15,7 @@ import {
 	readFile,
 	rm,
 	writeFile,
-} from 'fs/promises'
+} from 'fs/promises';
 
 import { file } from 'tmp-promise';
 
