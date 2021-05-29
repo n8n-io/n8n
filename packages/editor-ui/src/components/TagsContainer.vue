@@ -3,12 +3,11 @@
 		<template>
 			<span class="tags">
 				<span
-					v-for="tag in tags" 
+					v-for="tag in tags"
 					:key="tag.id"
 					:class="{clickable: !tag.hidden}"
-					@click="(e) => onClick(e, tag)"
 				>
-					<el-tag 
+					<el-tag
 						:title="tag.title"
 						type="info"
 						size="small"
@@ -23,7 +22,7 @@
 						:enabled="responsive"
 						v-else
 					>
-						<el-tag 
+						<el-tag
 							:title="tag.name"
 							type="info"
 							size="small"
@@ -127,7 +126,7 @@ export default Vue.extend({
 	}
 
 	.tags {
-		display: flex; 
+		display: flex;
 
 		> span {
 			padding-right: 4px; // why not margin? for space between tags to be clickable
