@@ -289,7 +289,7 @@ export class Ssh implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const authentication = this.getNodeParameter('authentication', 0) as string;
 
-		const cleanupFiles: string[] = [];
+		const temporaryFiles: string[] = [];
 
 		const ssh = new nodeSSH.NodeSSH();
 
@@ -310,7 +310,7 @@ export class Ssh implements INodeType {
 				const credentials = this.getCredentials('sshPrivateKey') as IDataObject;
 
 				const { path, } = await file();
-				cleanupFiles.push(path);
+				temporaryFiles.push(path);
 				await writeFile(path, credentials.privateKey as string);
 
 				const options = {
@@ -347,7 +347,7 @@ export class Ssh implements INodeType {
 						const parameterPath = this.getNodeParameter('path', i) as string;
 
 						const { path } = await file({mode: 0x0777, prefix: 'prefix-'});
-						cleanupFiles.push(path);
+						temporaryFiles.push(path);
 
 						await ssh.getFile(path, parameterPath);
 
@@ -391,9 +391,9 @@ export class Ssh implements INodeType {
 							throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
 						}
 
-						const { fd, path } = await file();
-						cleanupFiles.push(path);
-						await fsWriteFileAsync(fd, Buffer.from(binaryData.data, BINARY_ENCODING));
+						const { path } = await file();
+						temporaryFiles.push(path);
+						await writeFile(path, Buffer.from(binaryData.data, BINARY_ENCODING));
 
 						await ssh.putFile(path, `${parameterPath}${(parameterPath.charAt(parameterPath.length -1) === '/') ? '' : '/'}${fileName || binaryData.fileName}`);
 
@@ -403,11 +403,11 @@ export class Ssh implements INodeType {
 			}
 		} catch (error) {
 			ssh.dispose();
-			for (const cleanup of cleanupFiles) await rm(cleanup);
+			for (const tempFile of temporaryFiles) await rm(tempFile);
 			throw error;
 		}
 
-		for (const cleanup of cleanupFiles) await rm(cleanup);
+		for (const tempFile of temporaryFiles) await rm(tempFile);
 
 		ssh.dispose();
 
