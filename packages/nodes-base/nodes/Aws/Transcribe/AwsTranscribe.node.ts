@@ -17,7 +17,7 @@ import {
 export class AwsTranscribe implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS Transcribe',
-		name: 'AwsTranscribe',
+		name: 'awsTranscribe',
 		icon: 'file:transcribe.svg',
 		group: ['output'],
 		version: 1,
