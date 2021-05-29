@@ -100,5 +100,10 @@
 				"url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/"
 			}
 		]
+	},
+	"subcategories": {
+		"Core Nodes": [
+			"Data Transformation"
+		]
 	}
 }
