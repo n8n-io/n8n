@@ -19,6 +19,9 @@ import router from './router';
 
 import { runExternalHook } from './components/mixins/externalHooks';
 
+// @ts-ignore
+import vClickOutside from 'v-click-outside';
+
 import { library } from '@fortawesome/fontawesome-svg-core';
 import {
 	faAngleDoubleLeft,
@@ -70,6 +73,7 @@ import {
 	faPlay,
 	faPlayCircle,
 	faPlus,
+	faPlusCircle,
 	faQuestion,
 	faQuestionCircle,
 	faRedo,
@@ -102,6 +106,7 @@ import { store } from './store';
 Vue.use(Vue2TouchEvents);
 
 Vue.use(ElementUI, { locale });
+Vue.use(vClickOutside);
 
 library.add(faAngleDoubleLeft);
 library.add(faAngleDown);
@@ -152,6 +157,7 @@ library.add(faPen);
 library.add(faPlay);
 library.add(faPlayCircle);
 library.add(faPlus);
+library.add(faPlusCircle);
 library.add(faQuestion);
 library.add(faQuestionCircle);
 library.add(faRedo);
