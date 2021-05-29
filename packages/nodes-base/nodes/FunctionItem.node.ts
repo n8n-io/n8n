@@ -34,7 +34,16 @@ export class FunctionItem implements INodeType {
 					rows: 10,
 				},
 				type: 'string',
-				default: 'item.myVariable = 1;\nreturn item;',
+				default: `// Code here will run once per input item.
+// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.functionItem
+
+// Add a new field called 'myNewField' to the JSON of the item
+item.myNewField = 1;
+
+// You can write logs to the browser console
+console.log('Done!');
+
+return item;`,
 				description: 'The JavaScript code to execute for each item.',
 				noDataExpression: true,
 			},
