@@ -20,11 +20,13 @@ import {
 } from 'n8n-core';
 
 import * as PCancelable from 'p-cancelable';
-import { ObjectID, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 
 import { ChildProcess } from 'child_process';
 import { Url } from 'url';
 import { Request } from 'express';
+import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { TagEntity } from './databases/entities/TagEntity';
 
 export interface IActivationError {
 	time: number;
@@ -57,12 +59,13 @@ export interface ICredentialsOverwrite {
 export interface IDatabaseCollections {
 	Credentials: Repository<ICredentialsDb> | null;
 	Execution: Repository<IExecutionFlattedDb> | null;
-	Workflow: Repository<IWorkflowDb> | null;
+	Workflow: Repository<WorkflowEntity> | null;
 	Webhook: Repository<IWebhookDb> | null;
+	Tag: Repository<TagEntity> | null;
 }
 
 export interface IWebhookDb {
-	workflowId: number | string | ObjectID;
+	workflowId: number | string;
 	webhookPath: string;
 	method: string;
 	node: string;
@@ -70,28 +73,44 @@ export interface IWebhookDb {
 	pathLength?: number;
 }
 
-export interface IWorkflowBase extends IWorkflowBaseWorkflow {
-	id?: number | string | ObjectID;
+// ----------------------------------
+//               tags
+// ----------------------------------
 
+export interface ITagDb {
+	id: number;
+	name: string;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
+export type UsageCount = {
+	usageCount: number
+};
+
+export type ITagWithCountDb = ITagDb & UsageCount;
+
+// ----------------------------------
+//            workflows
+// ----------------------------------
+
+export interface IWorkflowBase extends IWorkflowBaseWorkflow {
+	id?: number | string;
+}
 
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
-	id: number | string | ObjectID;
+	id: number | string;
+	tags: ITagDb[];
 }
 
 export interface IWorkflowResponse extends IWorkflowBase {
 	id: string;
 }
 
-export interface IWorkflowShortResponse {
-	id: string;
-	name: string;
-	active: boolean;
-	createdAt: Date;
-	updatedAt: Date;
-}
+// ----------------------------------
+//            credentials
+// ----------------------------------
 
 export interface ICredentialsBase {
 	createdAt: Date;
@@ -99,7 +118,7 @@ export interface ICredentialsBase {
 }
 
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
-	id: number | string | ObjectID;
+	id: number | string;
 }
 
 export interface ICredentialsResponse extends ICredentialsDb {
@@ -107,7 +126,7 @@ export interface ICredentialsResponse extends ICredentialsDb {
 }
 
 export interface ICredentialsDecryptedDb extends ICredentialsBase, ICredentialsDecrypted {
-	id: number | string | ObjectID;
+	id: number | string;
 }
 
 export interface ICredentialsDecryptedResponse extends ICredentialsDecryptedDb {
@@ -118,14 +137,14 @@ export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';
 export type SaveExecutionDataType = 'all' | 'none';
 
 export interface IExecutionBase {
-	id?: number | string | ObjectID;
+	id?: number | string;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt?: Date; // empty value means execution is still running
 	workflowId?: string; // To be able to filter executions easily //
 	finished: boolean;
-	retryOf?: number | string | ObjectID; // If it is a retry, the id of the execution it is a retry of.
-	retrySuccessId?: number | string | ObjectID; // If it failed and a retry did succeed. The id of the successful retry.
+	retryOf?: number | string; // If it is a retry, the id of the execution it is a retry of.
+	retrySuccessId?: number | string; // If it failed and a retry did succeed. The id of the successful retry.
 }
 
 // Data in regular format with references
@@ -155,7 +174,7 @@ export interface IExecutionFlatted extends IExecutionBase {
 }
 
 export interface IExecutionFlattedDb extends IExecutionBase {
-	id: number | string | ObjectID;
+	id: number | string;
 	data: string;
 	workflowData: IWorkflowBase;
 }
@@ -398,7 +417,7 @@ export interface IWorkflowExecutionDataProcess {
 	executionMode: WorkflowExecuteMode;
 	executionData?: IRunExecutionData;
 	runData?: IRunData;
-	retryOf?: number | string | ObjectID;
+	retryOf?: number | string;
 	sessionId?: string;
 	startNodes?: string[];
 	workflowData: IWorkflowBase;

@@ -12,6 +12,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
+import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
 
@@ -20,6 +21,7 @@ export const pushConnection = mixins(
 	nodeHelpers,
 	showMessage,
 	titleChange,
+	workflowHelpers,
 )
 	.extend({
 		data () {
@@ -227,7 +229,7 @@ export const pushConnection = mixins(
 
 						runDataExecutedErrorMessage = errorMessage;
 
-						this.$titleSet(workflow.name, 'ERROR');
+						this.$titleSet(workflow.name as string, 'ERROR');
 						this.$showMessage({
 							title: 'Problem executing workflow',
 							message: errorMessage,
@@ -235,7 +237,7 @@ export const pushConnection = mixins(
 						});
 					} else {
 						// Workflow did execute without a problem
-						this.$titleSet(workflow.name, 'IDLE');
+						this.$titleSet(workflow.name as string, 'IDLE');
 						this.$showMessage({
 							title: 'Workflow got executed',
 							message: 'Workflow did get executed successfully!',

@@ -253,7 +253,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async isActive(id: string): Promise<boolean> {
-		const workflow = await Db.collections.Workflow?.findOne({ id }) as IWorkflowDb;
+		const workflow = await Db.collections.Workflow?.findOne({ id: Number(id) }) as IWorkflowDb;
 		return workflow?.active as boolean;
 	}
 

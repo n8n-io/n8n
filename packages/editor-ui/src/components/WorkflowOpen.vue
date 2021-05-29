@@ -1,44 +1,68 @@
 <template>
-	<span>
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" title="Open Workflow" :before-close="closeDialog" top="5vh">
+	<Modal
+		:name="modalName"
+		size="xl"
+	>
+			<template v-slot:header>
+				<div class="workflows-header">
+					<div class="title">
+						<h1>Open Workflow</h1>
+					</div>
+					<div class="tags-filter">
+						<TagsDropdown 
+							placeholder="Filter by tags..."
+							:currentTagIds="filterTagIds"
+							:createEnabled="false"
+							@update="updateTagsFilter"
+							@esc="onTagsFilterEsc"
+							@blur="onTagsFilterBlur"
+						/>
+					</div>
+					<div class="search-filter">
+						<el-input placeholder="Search workflows..." ref="inputFieldFilter" v-model="filterText">
+							<i slot="prefix" class="el-input__icon el-icon-search"></i>
+						</el-input>
+					</div>
+				</div>
+			</template>
 
-			<div class="text-very-light">
-				Select a workflow to open:
-			</div>
-
-			<div class="search-wrapper ignore-key-press">
-				<el-input placeholder="Workflow filter..." ref="inputFieldFilter" v-model="filterText">
-					<i slot="prefix" class="el-input__icon el-icon-search"></i>
-				</el-input>
-			</div>
-
-			<el-table class="search-table" :data="filteredWorkflows" stripe @cell-click="openWorkflow" :default-sort = "{prop: 'updatedAt', order: 'descending'}" v-loading="isDataLoading">
-				<el-table-column property="name" label="Name" class-name="clickable" sortable></el-table-column>
-				<el-table-column property="createdAt" label="Created" class-name="clickable" width="225" sortable></el-table-column>
-				<el-table-column property="updatedAt" label="Updated" class-name="clickable" width="225" sortable></el-table-column>
-				<el-table-column label="Active" width="90">
-					<template slot-scope="scope">
-						<workflow-activator :workflow-active="scope.row.active" :workflow-id="scope.row.id" @workflowActiveChanged="workflowActiveChanged" />
-					</template>
-				</el-table-column>
-			</el-table>
-		</el-dialog>
-	</span>
+			<template v-slot:content>
+				<el-table class="search-table" :data="filteredWorkflows" stripe @cell-click="openWorkflow" :default-sort = "{prop: 'updatedAt', order: 'descending'}" v-loading="isDataLoading">
+					<el-table-column property="name" label="Name" class-name="clickable" sortable>
+						<template slot-scope="scope">
+							<div :key="scope.row.id">
+								<span class="name">{{scope.row.name}}</span>
+								<TagsContainer class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="3" @click="onTagClick" :hoverable="true"/>
+							</div>
+						</template>
+					</el-table-column>
+					<el-table-column property="createdAt" label="Created" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column property="updatedAt" label="Updated" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column label="Active" width="75">
+						<template slot-scope="scope">
+							<workflow-activator :workflow-active="scope.row.active" :workflow-id="scope.row.id" @workflowActiveChanged="workflowActiveChanged" />
+						</template>
+					</el-table-column>
+				</el-table>
+			</template>
+	</Modal>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
 
-import WorkflowActivator from '@/components/WorkflowActivator.vue';
+import { ITag, IWorkflowShortResponse } from '@/Interface';
 
 import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
-import { titleChange } from '@/components/mixins/titleChange';
-import { IWorkflowShortResponse } from '@/Interface';
 
-import mixins from 'vue-typed-mixins';
+import Modal from '@/components/Modal.vue';
+import TagsContainer from '@/components/TagsContainer.vue';
+import TagsDropdown from '@/components/TagsDropdown.vue';
+import WorkflowActivator from '@/components/WorkflowActivator.vue';
 
 export default mixins(
 	genericHelpers,
@@ -47,48 +71,63 @@ export default mixins(
 	workflowHelpers,
 ).extend({
 	name: 'WorkflowOpen',
-	props: [
-		'dialogVisible',
-	],
 	components: {
 		WorkflowActivator,
+		TagsContainer,
+		TagsDropdown,
+		Modal,
 	},
+	props: ['modalName'],
 	data () {
 		return {
 			filterText: '',
 			isDataLoading: false,
 			workflows: [] as IWorkflowShortResponse[],
+			filterTagIds: [] as string[],
+			prevFilterTagIds: [] as string[],
 		};
 	},
 	computed: {
 		filteredWorkflows (): IWorkflowShortResponse[] {
-			return this.workflows.filter((workflow: IWorkflowShortResponse) => {
-				if (this.filterText === '' || workflow.name.toLowerCase().indexOf(this.filterText.toLowerCase()) !== -1) {
-					return true;
-				}
-				return false;
-			});
+			return this.workflows
+				.filter((workflow: IWorkflowShortResponse) => {
+					if (this.filterText && !workflow.name.toLowerCase().includes(this.filterText.toLowerCase())) {
+						return false;
+					}
+
+					if (this.filterTagIds.length === 0) {
+						return true;
+					}
+
+					if (!workflow.tags || workflow.tags.length === 0) {
+						return false;
+					}
+
+					return this.filterTagIds.reduce((accu: boolean, id: string) =>  accu && !!workflow.tags.find(tag => tag.id === id), true);
+				});
 		},
 	},
-	watch: {
-		dialogVisible (newValue, oldValue) {
-			if (newValue) {
-				this.filterText = '';
-				this.openDialog();
+	mounted() {
+		this.filterText = '';
+		this.filterTagIds = [];
+		this.openDialog();
 
-				Vue.nextTick(() => {
-					// Make sure that users can directly type in the filter
-					(this.$refs.inputFieldFilter as HTMLInputElement).focus();
-				});
-			}
-		},
+		Vue.nextTick(() => {
+			// Make sure that users can directly type in the filter
+			(this.$refs.inputFieldFilter as HTMLInputElement).focus();
+		});
 	},
 	methods: {
-		closeDialog () {
-			// Handle the close externally as the visible parameter is an external prop
-			// and is so not allowed to be changed here.
-			this.$emit('closeDialog');
-			return false;
+		getIds(tags: ITag[] | undefined) {
+			return (tags || []).map((tag) => tag.id);
+		},
+		updateTagsFilter(tags: string[]) {
+			this.filterTagIds = tags;
+		},
+		onTagClick(tagId: string) {
+			if (tagId !== 'count' && !this.filterTagIds.includes(tagId)) {
+				this.filterTagIds.push(tagId);
+			}
 		},
 		async openWorkflow (data: IWorkflowShortResponse, column: any) { // tslint:disable-line:no-any
 			if (column.label !== 'Active') {
@@ -114,11 +153,19 @@ export default mixins(
 					} else {
 						// This is used to avoid duplicating the message
 						this.$store.commit('setStateDirty', false);
-						this.$emit('openWorkflow', data.id);
+
+						this.$router.push({
+							name: 'NodeViewExisting',
+							params: { name: data.id },
+						});
 					}
 				} else {
-					this.$emit('openWorkflow', data.id);
+					this.$router.push({
+						name: 'NodeViewExisting',
+						params: { name: data.id },
+					});
 				}
+				this.$store.commit('ui/closeTopModal');
 			}
 		},
 		openDialog () {
@@ -149,21 +196,45 @@ export default mixins(
 				}
 			}
 		},
+		onTagsFilterBlur() {
+			this.prevFilterTagIds = this.filterTagIds;
+		},
+		onTagsFilterEsc() {
+			// revert last applied tags
+			this.filterTagIds = this.prevFilterTagIds;
+		},
 	},
 });
 </script>
 
 <style scoped lang="scss">
+.workflows-header {
+	display: flex;
 
-.search-wrapper {
-	position: absolute;
-	right: 20px;
-	top: 20px;
-	width: 200px;
+	.title {
+		flex-grow: 1;
+
+		h1 {
+			font-weight: 600;
+			line-height: 24px;
+			font-size: 18px;
+		}
+	}
+
+	.search-filter {
+		margin-left: 10px;
+		min-width: 160px;
+	}
+
+	.tags-filter {
+		flex-grow: 1;
+		max-width: 270px;
+		min-width: 220px;
+	}
 }
 
-.search-table {
-	margin-top: 2em;
+.search-table .name {
+	font-weight: 400;
+	margin-right: 10px;
 }
-
 </style>
