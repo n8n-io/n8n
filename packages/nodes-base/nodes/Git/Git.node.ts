@@ -188,8 +188,6 @@ export class Git implements INodeType {
 					const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
 
 					const a = await git.clone(repositoryPath, '.');
-					console.log('a');
-					console.log(a);
 
 					returnItems.push({ json: { success: true } });
 
