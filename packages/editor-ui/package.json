@@ -79,7 +79,7 @@
     "uuid": "^8.1.0",
     "vue": "^2.6.9",
     "vue-cli-plugin-webpack-bundle-analyzer": "^2.0.0",
-    "vue-json-pretty": "^1.7.1",
+    "vue-json-pretty": "1.7.1",
     "vue-prism-editor": "^0.3.0",
     "vue-router": "^3.0.6",
     "vue-template-compiler": "^2.5.17",
