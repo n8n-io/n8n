@@ -24,7 +24,9 @@
     "test:e2e": "vue-cli-service test:e2e",
     "test:unit": "vue-cli-service test:unit"
   },
-  "dependencies": {},
+  "dependencies": {
+    "v-click-outside": "^3.1.2"
+  },
   "devDependencies": {
     "@beyonk/google-fonts-webpack-plugin": "^1.5.0",
     "@fortawesome/fontawesome-svg-core": "^1.2.19",
@@ -79,7 +81,7 @@
     "uuid": "^8.1.0",
     "vue": "^2.6.9",
     "vue-cli-plugin-webpack-bundle-analyzer": "^2.0.0",
-    "vue-json-pretty": "^1.7.1",
+    "vue-json-pretty": "1.7.1",
     "vue-prism-editor": "^0.3.0",
     "vue-router": "^3.0.6",
     "vue-template-compiler": "^2.5.17",

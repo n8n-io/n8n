@@ -40,7 +40,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 		icon: 'file:surveyMonkey.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Survey Monkey events occure.',
+		description: 'Starts the workflow when Survey Monkey events occur.',
 		defaults: {
 			name: 'SurveyMonkey Trigger',
 			color: '#53b675',

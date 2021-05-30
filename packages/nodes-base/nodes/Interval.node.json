@@ -23,5 +23,10 @@
 				"url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/"
 			}
 		]
+	},
+	"subcategories": {
+		"Core Nodes": [
+			"Flow"
+		]
 	}
 }
