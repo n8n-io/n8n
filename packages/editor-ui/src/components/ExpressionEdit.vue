@@ -72,10 +72,6 @@ export default mixins(
 			latestValue: '',
 		};
 	},
-	mounted () {
-		this.displayValue = this.value;
-		this.latestValue = this.value;
-	},
 	methods: {
 		valueChanged (value: string) {
 			this.latestValue = value;
@@ -103,6 +99,9 @@ export default mixins(
 	},
 	watch: {
 		dialogVisible (newValue) {
+			this.displayValue = this.value;
+			this.latestValue = this.value;
+
 			const resolvedExpressionValue = this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue() || undefined;  // tslint:disable-line:no-any
 			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
 		},
