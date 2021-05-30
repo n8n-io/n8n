@@ -399,9 +399,7 @@ export class Ssh implements INodeType {
 						}
 					}
 				} catch (error) {
-					console.log('error', error);
 					if (this.continueOnFail()) {
-						console.log('k1');
 						if (resource === 'file' && operation === 'download') {
 							items[i] = {
 								json: {
