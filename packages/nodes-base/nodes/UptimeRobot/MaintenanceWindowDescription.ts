@@ -1,4 +1,4 @@
-import { 
+import {
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -71,7 +71,7 @@ export const maintenanceWindowFields = [
 	},
 	{
 		displayName: 'Friendly Name',
-		name: 'friendly_name',
+		name: 'friendlyName',
 		type: 'string',
 		required: true,
 		default: '',
@@ -213,6 +213,7 @@ export const maintenanceWindowFields = [
 		},
 		description: 'The maintenance window start datetime.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                maintenanceWindow:delete                    */
 	/* -------------------------------------------------------------------------- */
@@ -235,6 +236,7 @@ export const maintenanceWindowFields = [
 		},
 		description: 'The ID of the maintenance window.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                maintenanceWindow:getAll                    */
 	/* -------------------------------------------------------------------------- */
@@ -305,6 +307,7 @@ export const maintenanceWindowFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                maintenanceWindow:update                    */
 	/* -------------------------------------------------------------------------- */

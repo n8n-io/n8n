@@ -1,4 +1,4 @@
-import { 
+import {
 	OptionsWithUri
 } from 'request';
 

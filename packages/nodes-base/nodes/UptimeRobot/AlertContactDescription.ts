@@ -1,4 +1,4 @@
-import { 
+import {
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -52,7 +52,7 @@ export const alertContactFields = [
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Friendly Name',
-		name: 'friendly_name',
+		name: 'friendlyName',
 		type: 'string',
 		required: true,
 		default: '',
@@ -76,38 +76,34 @@ export const alertContactFields = [
 		default: '',
 		options: [
 			{
-				name: 'SMS',
-				value: 1,
+				name: 'Boxcar',
+				value: 4,
 			},
 			{
 				name: 'E-mail',
 				value: 2,
 			},
 			{
+				name: 'SMS',
+				value: 1,
+			},
+			{
 				name: 'Twitter DM',
 				value: 3,
-			},
-			{
-				name: 'Boxcar',
-				value: 4,
-			},
-			{
-				name: 'Webhook',
-				value: 5,
 			},
 			{
 				name: 'Pushbullet',
 				value: 6,
 			},
-			// the commented option are not supported yet
-			// {
-			// 	name:'Zapier',
-			// 	value:7,
-			// },
 			{
 				name: 'Pushover',
 				value: 9,
 			},
+			{
+				name: 'Webhook',
+				value: 5,
+			},
+			// the commented option are not supported yet
 			// {
 			// 	name:'HipChat',
 			// 	value:10,
@@ -116,6 +112,11 @@ export const alertContactFields = [
 			// 	name:'Slack',
 			// 	value:11
 			// },
+			// {
+			// 	name:'Zapier',
+			// 	value:7,
+			// },
+
 		],
 		displayOptions: {
 			show: {
@@ -147,6 +148,7 @@ export const alertContactFields = [
 		},
 		description: 'The correspondent value for the alert contact type.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                alertContact:delete                         */
 	/* -------------------------------------------------------------------------- */
@@ -169,6 +171,7 @@ export const alertContactFields = [
 		},
 		description: 'The ID of the alert contact.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                alertContact:getAll                         */
 	/* -------------------------------------------------------------------------- */
@@ -239,6 +242,7 @@ export const alertContactFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                alertContact:update                         */
 	/* -------------------------------------------------------------------------- */

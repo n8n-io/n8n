@@ -36,11 +36,13 @@ export const publicStatusPageOperations = [
 				value: 'getAll',
 				description: 'Get all a public status pages',
 			},
-			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a public status page',
-			},
+			// Got deactivated because it did not work reliably. Looks like it is on the UptimeRobot
+			// side but we deactivate for now just to be sure
+			// {
+			// 	name: 'Update',
+			// 	value: 'update',
+			// 	description: 'Update a public status page',
+			// },
 		],
 		default: 'getAll',
 		description: 'The operation to perform.',
@@ -53,7 +55,7 @@ export const publicStatusPageFields = [
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Friendly Name',
-		name: 'friendly_name',
+		name: 'friendlyName',
 		type: 'string',
 		required: true,
 		default: '',
@@ -145,6 +147,7 @@ export const publicStatusPageFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                            publicStatusPage:delete                         */
 	/* -------------------------------------------------------------------------- */
@@ -167,6 +170,7 @@ export const publicStatusPageFields = [
 		},
 		description: 'The ID of the public status page.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                            publicStatusPage:getAll                         */
 	/* -------------------------------------------------------------------------- */
@@ -237,6 +241,7 @@ export const publicStatusPageFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                            publicStatusPage:update                         */
 	/* -------------------------------------------------------------------------- */

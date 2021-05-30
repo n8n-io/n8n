@@ -1,4 +1,4 @@
-import { 
+import {
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -57,7 +57,7 @@ export const monitorFields = [
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Friendly Name',
-		name: 'friendly_name',
+		name: 'friendlyName',
 		type: 'string',
 		required: true,
 		default: '',
@@ -81,6 +81,10 @@ export const monitorFields = [
 		default: '',
 		options: [
 			{
+				name: 'Heartbeat',
+				value: 5,
+			},
+			{
 				name: 'HTTP(S)',
 				value: 1,
 			},
@@ -95,10 +99,6 @@ export const monitorFields = [
 			{
 				name: 'Port',
 				value: 4,
-			},
-			{
-				name: 'Heartbeat',
-				value: 5,
 			},
 		],
 		displayOptions: {
@@ -131,6 +131,7 @@ export const monitorFields = [
 		},
 		description: 'The URL/IP of the monitor.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                monitor:delete/reset                        */
 	/* -------------------------------------------------------------------------- */
@@ -154,6 +155,7 @@ export const monitorFields = [
 		},
 		description: 'The ID of the monitor.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                monitor:getAll                              */
 	/* -------------------------------------------------------------------------- */
@@ -292,6 +294,10 @@ export const monitorFields = [
 				default: '',
 				options: [
 					{
+						name: 'Heartbeat',
+						value: 5,
+					},
+					{
 						name: 'HTTP(S)',
 						value: 1,
 					},
@@ -307,15 +313,12 @@ export const monitorFields = [
 						name: 'Port',
 						value: 4,
 					},
-					{
-						name: 'Heartbeat',
-						value: 5,
-					},
 				],
 				description: 'Select monitor types.',
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                monitor:update                              */
 	/* -------------------------------------------------------------------------- */
@@ -362,20 +365,6 @@ export const monitorFields = [
 				description: 'The friendly name of the monitor.',
 			},
 			{
-				displayName: 'HTTP Username',
-				name: 'http_username',
-				type: 'string',
-				default: '',
-				description: 'The username used for password-protected web pages.',
-			},
-			{
-				displayName: 'HTTP Password',
-				name: 'http_password',
-				type: 'string',
-				default: '',
-				description: 'The password used for password-protected web pages.',
-			},
-			{
 				displayName: 'HTTP Auth Type',
 				name: 'http_auth_type',
 				type: 'options',
@@ -399,12 +388,24 @@ export const monitorFields = [
 				default: '',
 				options: [
 					{
-						name: 'HEAD',
-						value: 1,
+						name: 'DELETE',
+						value: 6,
 					},
 					{
 						name: 'GET',
 						value: 2,
+					},
+					{
+						name: 'HEAD',
+						value: 1,
+					},
+					{
+						name: 'OPTIONS',
+						value: 7,
+					},
+					{
+						name: 'PATCH',
+						value: 5,
 					},
 					{
 						name: 'POST',
@@ -414,20 +415,22 @@ export const monitorFields = [
 						name: 'PUT',
 						value: 4,
 					},
-					{
-						name: 'PATCH',
-						value: 5,
-					},
-					{
-						name: 'DELETE',
-						value: 6,
-					},
-					{
-						name: 'OPTIONS',
-						value: 7,
-					},
 				],
 				description: 'The HTTP method to be used.',
+			},
+			{
+				displayName: 'HTTP Password',
+				name: 'http_password',
+				type: 'string',
+				default: '',
+				description: 'The password used for password-protected web pages.',
+			},
+			{
+				displayName: 'HTTP Username',
+				name: 'http_username',
+				type: 'string',
+				default: '',
+				description: 'The username used for password-protected web pages.',
 			},
 			{
 				displayName: 'Interval',
@@ -467,6 +470,14 @@ export const monitorFields = [
 				default: '',
 				options: [
 					{
+						name: 'Custom Port',
+						value: 99,
+					},
+					{
+						name: 'FTP (21)',
+						value: 3,
+					},
+					{
 						name: 'HTTP (80)',
 						value: 1,
 					},
@@ -475,24 +486,16 @@ export const monitorFields = [
 						value: 2,
 					},
 					{
-						name: 'FTP (21)',
-						value: 3,
-					},
-					{
-						name: 'SMTP (25)',
-						value: 4,
+						name: 'IMAP (143)',
+						value: 6,
 					},
 					{
 						name: 'POP3 (110)',
 						value: 5,
 					},
 					{
-						name: 'IMAP (143)',
-						value: 6,
-					},
-					{
-						name: 'Custom Port',
-						value: 99,
+						name: 'SMTP (25)',
+						value: 4,
 					},
 				],
 				description: 'Specify which pre-defined port/service or custom port is monitored.',
