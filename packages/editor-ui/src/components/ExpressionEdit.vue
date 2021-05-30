@@ -30,7 +30,7 @@
 						<div class="editor-description">
 							Result
 						</div>
-						<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="value" :path="path"></expression-input>
+						<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input>
 					</div>
 
 				</el-col>
@@ -41,22 +41,20 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import ExpressionInput from '@/components/ExpressionInput.vue';
 import VariableSelector from '@/components/VariableSelector.vue';
 
 import { IVariableItemSelected } from '@/Interface';
 
-import {
-	Workflow,
-} from 'n8n-workflow';
-
 import { externalHooks } from '@/components/mixins/externalHooks';
+import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
 
-export default mixins(externalHooks).extend({
+export default mixins(
+	externalHooks,
+	genericHelpers,
+).extend({
 	name: 'ExpressionEdit',
 	props: [
 		'dialogVisible',
@@ -70,16 +68,28 @@ export default mixins(externalHooks).extend({
 	},
 	data () {
 		return {
+			displayValue: '',
+			latestValue: '',
 		};
+	},
+	mounted () {
+		this.displayValue = this.value;
+		this.latestValue = this.value;
 	},
 	methods: {
 		valueChanged (value: string) {
-			this.$emit('valueChanged', value);
+			this.latestValue = value;
+			this.callDebounced('updateDisplayValue', 500);
+		},
+
+		updateDisplayValue () {
+			this.displayValue = this.latestValue;
 		},
 
 		closeDialog () {
 			// Handle the close externally as the visible parameter is an external prop
 			// and is so not allowed to be changed here.
+			this.$emit('valueChanged', this.latestValue);
 			this.$emit('closeDialog');
 			return false;
 		},
