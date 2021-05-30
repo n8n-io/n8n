@@ -328,75 +328,92 @@ export class Ssh implements INodeType {
 			}
 
 			for (let i = 0; i < items.length; i++) {
+				try {
+					if (resource === 'command') {
 
-				if (resource === 'command') {
+						if (operation === 'execute') {
 
-					if (operation === 'execute') {
-
-						const command = this.getNodeParameter('command', i) as string;
-						const cwd = this.getNodeParameter('cwd', i) as string;
-						returnData.push(await ssh.execCommand(command, { cwd, }));
-					}
-				}
-
-				if (resource === 'file') {
-
-					if (operation === 'download') {
-
-						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
-						const parameterPath = this.getNodeParameter('path', i) as string;
-
-						const { path } = await file({mode: 0x0777, prefix: 'prefix-'});
-						temporaryFiles.push(path);
-
-						await ssh.getFile(path, parameterPath);
-
-						const newItem: INodeExecutionData = {
-							json: items[i].json,
-							binary: {},
-						};
-
-						if (items[i].binary !== undefined) {
-							// Create a shallow copy of the binary data so that the old
-							// data references which do not get changed still stay behind
-							// but the incoming data does not get changed.
-							Object.assign(newItem.binary, items[i].binary);
+							const command = this.getNodeParameter('command', i) as string;
+							const cwd = this.getNodeParameter('cwd', i) as string;
+							returnData.push(await ssh.execCommand(command, { cwd, }));
 						}
-
-						items[i] = newItem;
-
-						const data = await readFile(path as string);
-
-						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data, parameterPath);
 					}
 
-					if (operation === 'upload') {
+					if (resource === 'file') {
 
-						const parameterPath = this.getNodeParameter('path', i) as string;
-						const fileName = this.getNodeParameter('options.fileName', i, '') as string;
+						if (operation === 'download') {
 
-						const item = items[i];
+							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const parameterPath = this.getNodeParameter('path', i) as string;
 
-						if (item.binary === undefined) {
-							throw new Error('No binary data exists on item!');
+							const { path } = await file({ mode: 0x0777, prefix: 'prefix-' });
+							temporaryFiles.push(path);
+
+							await ssh.getFile(path, parameterPath);
+
+							const newItem: INodeExecutionData = {
+								json: items[i].json,
+								binary: {},
+							};
+
+							if (items[i].binary !== undefined) {
+								// Create a shallow copy of the binary data so that the old
+								// data references which do not get changed still stay behind
+								// but the incoming data does not get changed.
+								Object.assign(newItem.binary, items[i].binary);
+							}
+
+							items[i] = newItem;
+
+							const data = await readFile(path as string);
+
+							items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data, parameterPath);
 						}
 
-						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+						if (operation === 'upload') {
 
-						const binaryData = item.binary[propertyNameUpload] as IBinaryData;
+							const parameterPath = this.getNodeParameter('path', i) as string;
+							const fileName = this.getNodeParameter('options.fileName', i, '') as string;
 
-						if (item.binary[propertyNameUpload] === undefined) {
-							throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
+							const item = items[i];
+
+							if (item.binary === undefined) {
+								throw new Error('No binary data exists on item!');
+							}
+
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+
+							const binaryData = item.binary[propertyNameUpload] as IBinaryData;
+
+							if (item.binary[propertyNameUpload] === undefined) {
+								throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
+							}
+
+							const { path } = await file();
+							temporaryFiles.push(path);
+							await writeFile(path, Buffer.from(binaryData.data, BINARY_ENCODING));
+
+							await ssh.putFile(path, `${parameterPath}${(parameterPath.charAt(parameterPath.length - 1) === '/') ? '' : '/'}${fileName || binaryData.fileName}`);
+
+							returnData.push({ success: true });
 						}
-
-						const { path } = await file();
-						temporaryFiles.push(path);
-						await writeFile(path, Buffer.from(binaryData.data, BINARY_ENCODING));
-
-						await ssh.putFile(path, `${parameterPath}${(parameterPath.charAt(parameterPath.length -1) === '/') ? '' : '/'}${fileName || binaryData.fileName}`);
-
-						returnData.push({ success: true });
 					}
+				} catch (error) {
+					console.log('error', error);
+					if (this.continueOnFail()) {
+						console.log('k1');
+						if (resource === 'file' && operation === 'download') {
+							items[i] = {
+								json: {
+									error: error.message,
+								}
+							};
+						} else {
+							returnData.push({ error: error.message });
+						}
+						continue;
+					}
+					throw error;
 				}
 			}
 		} catch (error) {
