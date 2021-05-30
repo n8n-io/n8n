@@ -82,9 +82,7 @@ export class Function implements INodeType {
 		const vm = new NodeVM(options);
 
 		if (mode === 'manual') {
-			vm.on('console.log', (msg: string) => {
-				this.sendMessageToUI(msg);
-			});
+			vm.on('console.log', this.sendMessageToUI);
 		}
 
 		// Get the code to execute
