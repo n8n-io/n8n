@@ -24,7 +24,7 @@ const nodeSSH = require('node-ssh');
 export class Ssh implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SSH',
-		name: 'Ssh',
+		name: 'ssh',
 		icon: 'fa:terminal',
 		group: ['input'],
 		version: 1,
