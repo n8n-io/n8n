@@ -11,5 +11,21 @@ export class DeepLApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
+		{
+			displayName: 'API Plan',
+			name: 'apiPlan',
+			type: 'options' as NodePropertyTypes,
+			options: [
+				{
+					name: 'Pro Plan',
+					value: 'pro',
+				},
+				{
+					name: 'Free Plan',
+					value: 'free',
+				},
+			],
+			default: 'pro',
+		},
 	];
 }
