@@ -38,7 +38,11 @@ function addAdditionalFields(body: IDataObject, additionalFields: IDataObject) {
 			for (const customProperty of (additionalFields.customProperties as IDataObject)!.property! as CustomProperty[]) {
 				body[customProperty.name] = customProperty.value;
 			}
-		} else {
+		} else if (key === 'customFields' && (additionalFields.customFields as IDataObject).property !== undefined) {
+			for (const customProperty of (additionalFields.customFields as IDataObject)!.property! as CustomProperty[]) {
+				body[customProperty.name] = customProperty.value;
+			}
+		}  else {
 			body[key] = additionalFields[key];
 		}
 	}
@@ -872,6 +876,45 @@ export class Pipedrive implements INodeType {
 						description: 'Currency of the deal. Accepts a 3-character currency code. Like EUR, USD, ...',
 					},
 					{
+						displayName: 'Custom Fields',
+						name: 'customFields',
+						placeholder: 'Add Custom Field',
+						description: 'Adds a custom field to set also values which have not been predefined.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'property',
+								displayName: 'Custom Field',
+								typeOptions: {
+									multipleValueButtonText: 'Add Cutom Field'
+								},
+								values: [
+									{
+										displayName: 'Property Name',
+										name: 'name',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getDealCustomFields'
+										},
+										default: '',
+										description: 'Name of the custom field to set.',
+									},
+									{
+										displayName: 'Property Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the property to set.',
+									},
+								],
+							},
+						],
+					},
+					{
 						displayName: 'Custom Properties',
 						name: 'customProperties',
 						placeholder: 'Add Custom Property',
@@ -1130,6 +1173,45 @@ export class Pipedrive implements INodeType {
 						type: 'string',
 						default: 'USD',
 						description: 'Currency of the deal. Accepts a 3-character currency code. Like EUR, USD, ...',
+					},
+					{
+						displayName: 'Custom Fields',
+						name: 'customFields',
+						placeholder: 'Add Custom Field',
+						description: 'Adds a custom field to set also values which have not been predefined.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'property',
+								displayName: 'Custom Field',
+								typeOptions: {
+									multipleValueButtonText: 'Add Cutom Field'
+								},
+								values: [
+									{
+										displayName: 'Property Name',
+										name: 'name',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getDealCustomFields'
+										},
+										default: '',
+										description: 'Name of the custom field to set.',
+									},
+									{
+										displayName: 'Property Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the property to set.',
+									},
+								],
+							},
+						],
 					},
 					{
 						displayName: 'Custom Properties',
@@ -2063,6 +2145,45 @@ export class Pipedrive implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Custom Fields',
+						name: 'customFields',
+						placeholder: 'Add Custom Field',
+						description: 'Adds a custom field to set also values which have not been predefined.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'property',
+								displayName: 'Custom Field',
+								typeOptions: {
+									multipleValueButtonText: 'Add Cutom Field'
+								},
+								values: [
+									{
+										displayName: 'Property Name',
+										name: 'name',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getPersonCustomFields'
+										},
+										default: '',
+										description: 'Name of the custom field to set.',
+									},
+									{
+										displayName: 'Property Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the property to set.',
+									},
+								],
+							},
+						],
+					},
+					{
 						displayName: 'Custom Properties',
 						name: 'customProperties',
 						placeholder: 'Add Custom Property',
@@ -2237,6 +2358,45 @@ export class Pipedrive implements INodeType {
 				},
 				default: {},
 				options: [
+					{
+						displayName: 'Custom Fields',
+						name: 'customFields',
+						placeholder: 'Add Custom Field',
+						description: 'Adds a custom field to set also values which have not been predefined.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'property',
+								displayName: 'Custom Field',
+								typeOptions: {
+									multipleValueButtonText: 'Add Cutom Field'
+								},
+								values: [
+									{
+										displayName: 'Property Name',
+										name: 'name',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getPersonCustomFields'
+										},
+										default: '',
+										description: 'Name of the custom field to set.',
+									},
+									{
+										displayName: 'Property Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the property to set.',
+									},
+								],
+							},
+						],
+					},
 					{
 						displayName: 'Custom Properties',
 						name: 'customProperties',
@@ -2654,7 +2814,7 @@ export class Pipedrive implements INodeType {
 						
 						returnData.push({
 							name: field.name,
-							value: field.id,
+							value: field.key,
 						});
 					}
 				}
@@ -2672,7 +2832,7 @@ export class Pipedrive implements INodeType {
 						
 						returnData.push({
 							name: field.name,
-							value: field.id,
+							value: field.key,
 						});
 					}
 				}
@@ -2690,7 +2850,7 @@ export class Pipedrive implements INodeType {
 						
 						returnData.push({
 							name: field.name,
-							value: field.id,
+							value: field.key,
 						});
 					}
 				}
