@@ -411,132 +411,141 @@ export class AwsTranscribe implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < items.length; i++) {
-			if (resource === 'transcriptionJob') {
-				//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectDominantLanguage.html
-				if (operation === 'create') {
-					const transcriptionJobName = this.getNodeParameter('transcriptionJobName', i) as string;
-					const mediaFileUri = this.getNodeParameter('mediaFileUri', i) as string;
-					const detectLang = this.getNodeParameter('detectLanguage', i) as boolean;
+			try {
+				if (resource === 'transcriptionJob') {
+					//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectDominantLanguage.html
+					if (operation === 'create') {
+						const transcriptionJobName = this.getNodeParameter('transcriptionJobName', i) as string;
+						const mediaFileUri = this.getNodeParameter('mediaFileUri', i) as string;
+						const detectLang = this.getNodeParameter('detectLanguage', i) as boolean;
 
-					const options = this.getNodeParameter('options', i, {}) as IDataObject;
+						const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
-					const body: IDataObject = {
-						TranscriptionJobName: transcriptionJobName,
-						Media: {
-							MediaFileUri: mediaFileUri,
-						},
-					};
+						const body: IDataObject = {
+							TranscriptionJobName: transcriptionJobName,
+							Media: {
+								MediaFileUri: mediaFileUri,
+							},
+						};
 
-					if (detectLang) {
-						body.IdentifyLanguage = detectLang;
-					} else {
-						body.LanguageCode = this.getNodeParameter('languageCode', i) as string;
+						if (detectLang) {
+							body.IdentifyLanguage = detectLang;
+						} else {
+							body.LanguageCode = this.getNodeParameter('languageCode', i) as string;
+						}
+
+						if (options.channelIdentification) {
+							Object.assign(body.Settings, { ChannelIdentification: options.channelIdentification });
+						}
+
+						if (options.MaxAlternatives) {
+							Object.assign(body.Settings, {
+								ShowAlternatives: options.maxAlternatives,
+								MaxAlternatives: options.maxAlternatives,
+							});
+						}
+
+						if (options.showSpeakerLabels) {
+							Object.assign(body.Settings, {
+								ShowSpeakerLabels: options.showSpeakerLabels,
+								MaxSpeakerLabels: options.maxSpeakerLabels,
+							});
+						}
+
+						if (options.vocabularyName) {
+							Object.assign(body.Settings, {
+								VocabularyName: options.vocabularyName,
+							});
+						}
+
+						if (options.vocabularyFilterName) {
+							Object.assign(body.Settings, {
+								VocabularyFilterName: options.vocabularyFilterName,
+							});
+						}
+
+						if (options.vocabularyFilterMethod) {
+							Object.assign(body.Settings, {
+								VocabularyFilterMethod: options.vocabularyFilterMethod,
+							});
+						}
+
+						const action = 'Transcribe.StartTranscriptionJob';
+						responseData = await awsApiRequestREST.call(this, 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+						responseData = responseData.TranscriptionJob;
 					}
+					//https://docs.aws.amazon.com/transcribe/latest/dg/API_DeleteTranscriptionJob.html
+					if (operation === 'delete') {
+						const transcriptionJobName = this.getNodeParameter('transcriptionJobName', i) as string;
 
-					if (options.channelIdentification) {
-						Object.assign(body.Settings, { ChannelIdentification: options.channelIdentification });
+						const body: IDataObject = {
+							TranscriptionJobName: transcriptionJobName,
+						};
+
+						const action = 'Transcribe.DeleteTranscriptionJob';
+						responseData = await awsApiRequestREST.call(this, 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+						responseData = { success: true };
 					}
+					//https://docs.aws.amazon.com/transcribe/latest/dg/API_GetTranscriptionJob.html
+					if (operation === 'get') {
+						const transcriptionJobName = this.getNodeParameter('transcriptionJobName', i) as string;
+						const resolve = this.getNodeParameter('returnTranscript', 0) as boolean;
 
-					if (options.MaxAlternatives) {
-						Object.assign(body.Settings, {
-							ShowAlternatives: options.maxAlternatives,
-							MaxAlternatives: options.maxAlternatives,
-						});
+						const body: IDataObject = {
+							TranscriptionJobName: transcriptionJobName,
+						};
+
+						const action = 'Transcribe.GetTranscriptionJob';
+						responseData = await awsApiRequestREST.call(this, 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+						responseData = responseData.TranscriptionJob;
+
+						if (resolve === true && responseData.TranscriptionJobStatus === 'COMPLETED') {
+							responseData = await this.helpers.request({ method: 'GET', uri: responseData.Transcript.TranscriptFileUri, json: true });
+							const simple = this.getNodeParameter('simple', 0) as boolean;
+							if (simple === true) {
+								responseData = { transcript: responseData.results.transcripts.map((data: IDataObject) => data.transcript).join(' ') };
+							}
+						}
 					}
+					//https://docs.aws.amazon.com/transcribe/latest/dg/API_ListTranscriptionJobs.html
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const action = 'Transcribe.ListTranscriptionJobs';
+						const body: IDataObject = {};
 
-					if (options.showSpeakerLabels) {
-						Object.assign(body.Settings, {
-							ShowSpeakerLabels: options.showSpeakerLabels,
-							MaxSpeakerLabels: options.maxSpeakerLabels,
-						});
-					}
+						if (filters.status) {
+							body['Status'] = filters.status;
+						}
 
-					if (options.vocabularyName) {
-						Object.assign(body.Settings, {
-							VocabularyName: options.vocabularyName,
-						});
-					}
+						if (filters.jobNameContains) {
+							body['JobNameContains'] = filters.jobNameContains;
+						}
 
-					if (options.vocabularyFilterName) {
-						Object.assign(body.Settings, {
-							VocabularyFilterName: options.vocabularyFilterName,
-						});
-					}
+						if (returnAll === true) {
+							responseData = await awsApiRequestRESTAllItems.call(this, 'TranscriptionJobSummaries', 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
 
-					if (options.vocabularyFilterMethod) {
-						Object.assign(body.Settings, {
-							VocabularyFilterMethod: options.vocabularyFilterMethod,
-						});
-					}
-
-					const action = 'Transcribe.StartTranscriptionJob';
-					responseData = await awsApiRequestREST.call(this, 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
-					responseData = responseData.TranscriptionJob;
-				}
-				//https://docs.aws.amazon.com/transcribe/latest/dg/API_DeleteTranscriptionJob.html
-				if (operation === 'delete') {
-					const transcriptionJobName = this.getNodeParameter('transcriptionJobName', i) as string;
-
-					const body: IDataObject = {
-						TranscriptionJobName: transcriptionJobName,
-					};
-
-					const action = 'Transcribe.DeleteTranscriptionJob';
-					responseData = await awsApiRequestREST.call(this, 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
-					responseData = { success: true };
-				}
-				//https://docs.aws.amazon.com/transcribe/latest/dg/API_GetTranscriptionJob.html
-				if (operation === 'get') {
-					const transcriptionJobName = this.getNodeParameter('transcriptionJobName', i) as string;
-					const resolve = this.getNodeParameter('returnTranscript', 0) as boolean;
-
-					const body: IDataObject = {
-						TranscriptionJobName: transcriptionJobName,
-					};
-
-					const action = 'Transcribe.GetTranscriptionJob';
-					responseData = await awsApiRequestREST.call(this, 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
-					responseData = responseData.TranscriptionJob;
-
-					if (resolve === true && responseData.TranscriptionJobStatus === 'COMPLETED') {
-						responseData = await this.helpers.request({ method: 'GET', uri: responseData.Transcript.TranscriptFileUri, json: true });
-						const simple = this.getNodeParameter('simple', 0) as boolean;
-						if (simple === true) {
-							responseData = { transcript: responseData.results.transcripts.map((data: IDataObject) => data.transcript).join(' ') };
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							body['MaxResults'] = limit;
+							responseData = await awsApiRequestREST.call(this, 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+							responseData = responseData.TranscriptionJobSummaries;
 						}
 					}
 				}
-				//https://docs.aws.amazon.com/transcribe/latest/dg/API_ListTranscriptionJobs.html
-				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-					const action = 'Transcribe.ListTranscriptionJobs';
-					const body: IDataObject = {};
 
-					if (filters.status) {
-						body['Status'] = filters.status;
-					}
-
-					if (filters.jobNameContains) {
-						body['JobNameContains'] = filters.jobNameContains;
-					}
-
-					if (returnAll === true) {
-						responseData = await awsApiRequestRESTAllItems.call(this, 'TranscriptionJobSummaries', 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
-
-					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
-						body['MaxResults'] = limit;
-						responseData = await awsApiRequestREST.call(this, 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
-						responseData = responseData.TranscriptionJobSummaries;
-					}
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
 				}
-			}
 
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
