@@ -406,7 +406,7 @@ export class Ssh implements INodeType {
 							items[i] = {
 								json: {
 									error: error.message,
-								}
+								},
 							};
 						} else {
 							returnData.push({ error: error.message });
