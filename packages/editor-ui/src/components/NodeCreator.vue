@@ -2,6 +2,7 @@
 	<div class="node-creator-wrapper">
 		<transition name="slide">
 			<div class="node-creator" v-if="active">
+				<div class="border"></div>
 				<div class="close-button clickable close-on-click" @click="closeCreator" title="Close">
 					<i class="el-icon-close close-on-click"></i>
 				</div>
@@ -107,6 +108,14 @@ export default Vue.extend({
 		margin: 20px 15px;
 		height: 25px;
 	}
+}
+
+.border {
+	position: absolute;
+	height: 100%;
+	width: 100%;
+	border-left: 1px solid $--node-creator-border-color;
+	z-index: -1;
 }
 
 </style>

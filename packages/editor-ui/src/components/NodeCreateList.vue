@@ -2,6 +2,7 @@
 	<div @click="onClickInside">
 		<transition name="slide">
 			<div v-if="activeSubcategory" class="subcategory-panel">
+				<div class="border"></div>
 				<div class="subcategory-header">
 					<div class="clickable" @click="onBackArrowClick">
 						<font-awesome-icon class="back-arrow" icon="arrow-left" />
@@ -380,10 +381,17 @@ export default mixins(externalHooks).extend({
 	width: 100%;
 }
 
+.border {
+	position: absolute;
+	height: 100%;
+	width: 100%;
+	border-left: 1px solid $--node-creator-border-color;
+	z-index: -1;
+}
+
 .subcategory-header {
   height: 50px;
   background-color: #F2F4F8;
-	border: 1px solid $--node-creator-border-color;
 
   font-size: 18px;
   font-weight: 600;

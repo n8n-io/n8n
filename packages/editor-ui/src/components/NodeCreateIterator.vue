@@ -69,7 +69,7 @@ export default Vue.extend({
 
 <style lang="scss" scoped>
 .container {
-	border-left: 1px solid $--node-creator-border-color;
+	border-left: 1px solid transparent;
 
   &:hover {
 		border-left: 1px solid $--node-creator-item-hover-border-color;
