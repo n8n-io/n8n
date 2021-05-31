@@ -455,6 +455,7 @@
       "dist/nodes/MySql/MySql.node.js",
       "dist/nodes/N8nTrigger.node.js",
       "dist/nodes/Nasa/Nasa.node.js",
+      "dist/nodes/Netlify/Netlify.node.js",
       "dist/nodes/NextCloud/NextCloud.node.js",
       "dist/nodes/NoOp.node.js",
       "dist/nodes/Notion/Notion.node.js",
