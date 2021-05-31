@@ -4,7 +4,12 @@ name: Run test workflows
 #   schedule:
 #     - cron: "0 1 * * *"
 
-on: [push]
+# on: [push]
+
+
+on: workflow_dispatch
+
+# TODO: add files to /tmp
 
 jobs:
   run-test-workflows:
@@ -55,6 +60,6 @@ jobs:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
       -
         name: Run tests
-        run: n8n/packages/cli/bin/n8n executeAll
+        run: n8n/packages/cli/bin/n8n executeBatch
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
