@@ -15,7 +15,7 @@
 		</transition>
 		<div>
 			<div>
-				<el-input class="custom" placeholder="Search nodes..." v-model="nodeFilter" ref="inputField" type="text" prefix-icon="el-icon-search" @keydown.native="nodeFilterKeyDown" clearable ></el-input>
+				<el-input :class="{custom: true, active: nodeFilter.length > 0}" placeholder="Search nodes..." v-model="nodeFilter" ref="inputField" type="text" prefix-icon="el-icon-search" @keydown.native="nodeFilterKeyDown" clearable ></el-input>
 			</div>
 			<div class="type-selector">
 				<el-tabs v-model="selectedType" stretch>
@@ -457,6 +457,10 @@ export default mixins(externalHooks).extend({
 	  border: 1px solid $--node-creator-border-color;
 		border-radius: 0;
 		min-height: 60px;
+	}
+
+	/deep/ &.active .el-icon-search {
+		color: $--color-primary !important;
 	}
 }
 
