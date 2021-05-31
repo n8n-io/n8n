@@ -52,6 +52,13 @@ export type LoadedDeals = Array<{
 	id: string;
 }>;
 
+export type LoadedFields = {
+	fields: Array<{
+		field_label: string;
+		api_name: string;
+	}>
+};
+
 export type LoadedVendors = Array<{
 	Vendor_Name: string;
 	id: string;

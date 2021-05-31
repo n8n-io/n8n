@@ -16,12 +16,14 @@ import {
 
 import {
 	flow,
+	sortBy,
 } from 'lodash';
 
 import {
 	AllFields,
 	DateType,
 	IdType,
+	LoadedFields,
 	LocationType,
 	NameType,
 	ProductDetails,
@@ -58,6 +60,7 @@ export async function zohoApiRequest(
 	if (!Object.keys(qs).length) {
 		delete options.qs;
 	}
+
 	try {
 		const responseData = await this.helpers.requestOAuth2?.call(this, 'zohoOAuth2Api', options);
 
@@ -284,3 +287,15 @@ const omit = (propertyToOmit: string, { [propertyToOmit]: _, ...remainingObject 
  */
 export const toLoadOptions = (items: ResourceItems, nameProperty: NameType) =>
 	items.map((item) => ({ name: item[nameProperty], value: item.id }));
+
+/**
+ * Retrieve all fields for a resource, sorted alphabetically.
+ */
+export async function getFields(this: ILoadOptionsFunctions, resource: string) {
+	const { fields } = await zohoApiRequest.call(
+		this, 'GET', '/settings/fields', {}, { module: `${resource}s` },
+	) as LoadedFields;
+	const options = fields.map(({field_label, api_name}) => ({ name: field_label, value: api_name }));
+
+	return sortBy(options, o => o.name);
+}

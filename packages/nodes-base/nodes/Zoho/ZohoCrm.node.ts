@@ -8,8 +8,6 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -23,9 +21,9 @@ import {
 	adjustQuotePayload,
 	adjustSalesOrderPayload,
 	adjustVendorPayload,
+	getFields,
 	handleListing,
 	throwOnEmptyUpdate,
-	throwOnErrorStatus,
 	toLoadOptions,
 	zohoApiRequest,
 	zohoApiRequestAllItems,
@@ -35,6 +33,7 @@ import {
 	LoadedAccounts,
 	LoadedContacts,
 	LoadedDeals,
+	LoadedFields,
 	LoadedProducts,
 	LoadedVendors,
 	ProductDetails,
@@ -172,6 +171,10 @@ export class ZohoCrm implements INodeType {
 			async getDeals(this: ILoadOptionsFunctions) {
 				const deals = await zohoApiRequestAllItems.call(this, 'GET', '/deals') as LoadedDeals;
 				return toLoadOptions(deals, 'Deal_Name');
+			},
+
+			async getLeadFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'lead');
 			},
 
 			async getProducts(this: ILoadOptionsFunctions) {
@@ -585,7 +588,14 @@ export class ZohoCrm implements INodeType {
 						//               lead: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/leads');
+						const qs: IDataObject = {};
+						const options = this.getNodeParameter('options', i) as IDataObject;
+
+						if (Object.keys(options).length) {
+							Object.assign(qs, options);
+						}
+
+						responseData = await handleListing.call(this, 'GET', '/leads', {}, qs);
 
 					} else if (operation === 'update') {
 
