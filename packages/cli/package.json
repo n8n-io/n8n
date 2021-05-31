@@ -107,7 +107,7 @@
     "lodash.get": "^4.4.2",
     "mysql2": "~2.2.0",
     "n8n-core": "~0.73.0",
-    "n8n-editor-ui": "~0.92.0",
+    "n8n-editor-ui": "~0.92.1",
     "n8n-nodes-base": "~0.119.1",
     "n8n-workflow": "~0.60.0",
     "oauth-1.0a": "^2.2.6",
