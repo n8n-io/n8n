@@ -124,11 +124,6 @@ export default mixins(
 		updateTagsFilter(tags: string[]) {
 			this.filterTagIds = tags;
 		},
-		onTagClick(tagId: string) {
-			if (tagId !== 'count' && !this.filterTagIds.includes(tagId)) {
-				this.filterTagIds.push(tagId);
-			}
-		},
 		async openWorkflow (data: IWorkflowShortResponse, column: any) { // tslint:disable-line:no-any
 			if (column.label !== 'Active') {
 
