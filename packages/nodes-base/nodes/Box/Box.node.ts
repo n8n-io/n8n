@@ -277,6 +277,7 @@ export class Box implements INodeType {
 							}
 
 							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 							const body: IDataObject = {};
 
@@ -285,7 +286,7 @@ export class Box implements INodeType {
 							body['attributes'] = JSON.stringify(attributes);
 
 							body['file'] = {
-								value: Buffer.from(binaryData.data, BINARY_ENCODING),
+								value: binaryDataBuffer,
 								options: {
 									filename: binaryData.fileName,
 									contentType: binaryData.mimeType,

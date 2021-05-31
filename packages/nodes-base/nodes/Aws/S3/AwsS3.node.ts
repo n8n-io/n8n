@@ -13,7 +13,6 @@ import {
 } from 'xml2js';
 
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -607,8 +606,9 @@ export class AwsS3 implements INodeType {
 							}
 
 							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-							body = Buffer.from(binaryData.data, BINARY_ENCODING) as Buffer;
+							body = binaryDataBuffer;
 
 							headers['Content-Type'] = binaryData.mimeType;
 

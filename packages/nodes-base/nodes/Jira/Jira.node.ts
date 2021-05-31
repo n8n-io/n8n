@@ -754,6 +754,7 @@ export class Jira implements INodeType {
 					const item = items[i].binary as IBinaryKeyData;
 
 					const binaryData = item[binaryPropertyName] as IBinaryData;
+					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 					if (binaryData === undefined) {
 						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
@@ -769,7 +770,7 @@ export class Jira implements INodeType {
 						{
 							formData: {
 								file: {
-									value: Buffer.from(binaryData.data, BINARY_ENCODING),
+									value: binaryDataBuffer,
 									options: {
 										filename: binaryData.fileName,
 									},

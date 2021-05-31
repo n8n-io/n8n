@@ -3,6 +3,8 @@ import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
+import { promises as fs } from 'fs';
+
 import {
 	IBinaryKeyData,
 	INodeExecutionData,
@@ -226,9 +228,10 @@ export class Compression implements INodeType {
 						}
 
 						const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (binaryData.fileExtension === 'zip') {
-							const files = await unzip(Buffer.from(binaryData.data as string, BINARY_ENCODING));
+							const files = await unzip(binaryDataBuffer);
 
 							for (const key of Object.keys(files)) {
 								// when files are compresed using MACOSX for some reason they are duplicated under __MACOSX
@@ -241,7 +244,7 @@ export class Compression implements INodeType {
 								binaryObject[`${outputPrefix}${zipIndex++}`] = data;
 							}
 						} else if (binaryData.fileExtension === 'gz') {
-							const file = await gunzip(Buffer.from(binaryData.data as string, BINARY_ENCODING));
+							const file = await gunzip(binaryDataBuffer);
 
 							const fileName = binaryData.fileName?.split('.')[0];
 
@@ -280,10 +283,11 @@ export class Compression implements INodeType {
 						}
 
 						const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (outputFormat === 'zip') {
 							zipData[binaryData.fileName as string] = [
-								Buffer.from(binaryData.data, BINARY_ENCODING), {
+								binaryDataBuffer, {
 									level: ALREADY_COMPRESSED.includes(binaryData.fileExtension as string) ? 0 : 6,
 								},
 							];
@@ -291,7 +295,7 @@ export class Compression implements INodeType {
 						} else if (outputFormat === 'gzip') {
 							const outputPrefix = this.getNodeParameter('outputPrefix', 0) as string;
 
-							const data = await gzip(Buffer.from(binaryData.data, BINARY_ENCODING)) as Uint8Array;
+							const data = await gzip(binaryDataBuffer) as Uint8Array;
 
 							const fileName = binaryData.fileName?.split('.')[0];
 
@@ -323,10 +327,10 @@ export class Compression implements INodeType {
 						});
 					}
 				}
-			
+
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({ json: { error: error.message } });
 					continue;
 				}
 				throw error;

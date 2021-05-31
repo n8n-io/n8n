@@ -174,10 +174,11 @@ export class CiscoWebex implements INodeType {
 								const binaryPropertyName = file.binaryPropertyName as string;
 
 								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								const formData = {
 									files: {
-										value: Buffer.from(binaryData.data, BINARY_ENCODING),
+										value: binaryDataBuffer,
 										options: {
 											filename: binaryData.fileName,
 											contentType: binaryData.mimeType,

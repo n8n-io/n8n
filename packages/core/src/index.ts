@@ -13,6 +13,7 @@ export * from './Interfaces';
 export * from './LoadNodeParameterOptions';
 export * from './NodeExecuteFunctions';
 export * from './WorkflowExecute';
+export * from './BinaryDataManager';
 
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import * as UserSettings from './UserSettings';

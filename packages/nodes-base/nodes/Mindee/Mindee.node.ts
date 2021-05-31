@@ -140,6 +140,7 @@ export class Mindee implements INodeType {
 						const item = items[i].binary as IBinaryKeyData;
 
 						const binaryData = item[binaryPropertyName] as IBinaryData;
+						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (binaryData === undefined) {
 							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
@@ -154,7 +155,7 @@ export class Mindee implements INodeType {
 							{
 								formData: {
 									file: {
-										value: Buffer.from(binaryData.data, BINARY_ENCODING),
+										value: dataBuffer,
 										options: {
 											filename: binaryData.fileName,
 										},
@@ -182,6 +183,7 @@ export class Mindee implements INodeType {
 						const item = items[i].binary as IBinaryKeyData;
 
 						const binaryData = item[binaryPropertyName] as IBinaryData;
+						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (binaryData === undefined) {
 							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
@@ -196,7 +198,7 @@ export class Mindee implements INodeType {
 							{
 								formData: {
 									file: {
-										value: Buffer.from(binaryData.data, BINARY_ENCODING),
+										value: dataBuffer,
 										options: {
 											filename: binaryData.fileName,
 										},
