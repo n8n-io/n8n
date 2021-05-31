@@ -75,7 +75,7 @@ import NodeCreateItem from '@/components/NodeCreateItem.vue';
 
 import mixins from "vue-typed-mixins";
 import NodeCreateIterator from "./NodeCreateIterator.vue";
-import { INodeCreateElement, INodeTypeTemp } from "@/Interface";
+import { INodeCreateElement } from "@/Interface";
 import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY } from "@/constants";
 
 interface ICategoriesWithNodes {
@@ -145,30 +145,7 @@ export default mixins(externalHooks).extend({
 		categoriesWithNodes(): ICategoriesWithNodes {
 			const nodeTypes = this.$store.getters.allNodeTypes;
 
-			// temp
-			const subcategories = ['Flow', 'Helpers', 'Files', 'Data Transformation'];
-			// @ts-ignore
-			const mockNodeTypes = nodeTypes.map((nodeType: INodeTypeTemp, i: number): INodeTypeTemp => {
-				if (!nodeType.codex || !nodeType.codex.categories) {
-					return nodeType;
-				}
-				if (nodeType.codex.categories.includes('Core Nodes')) {
-					const subcategory: string = subcategories[i % 4];
-					return {
-						...nodeType,
-						codex: {
-							...nodeType.codex,
-							subcategories: {
-								'Core Nodes': [subcategory],
-							},
-						},
-					};
-				}
-				return nodeType;
-			});
-
-			// todo move logic elsewhere
-			const categorized = mockNodeTypes.reduce((accu: ICategoriesWithNodes, nodeType: INodeTypeTemp) => {
+			const categorized = nodeTypes.reduce((accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
 				if (!nodeType.codex || !nodeType.codex.categories) {
 					accu[UNCATEGORIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].push({
 						type: 'node',

@@ -461,15 +461,9 @@ export interface ICodex {
 	subcategories?: {[category: string]: string[]};
 }
 
-// todo rely on update workflow type
-// @ts-ignore
-export interface INodeTypeTemp extends INodeTypeDescription {
-		codex?: ICodex;
-}
-
 export interface INodeCreateElement {
 	type: string;
-	nodeType?: INodeTypeTemp;
+	nodeType?: INodeTypeDescription;
 	category?: string;
 	expanded?: boolean;
 	isTrigger?: boolean;
