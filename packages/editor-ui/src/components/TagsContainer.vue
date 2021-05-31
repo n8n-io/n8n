@@ -6,6 +6,7 @@
 					v-for="tag in tags"
 					:key="tag.id"
 					:class="{clickable: !tag.hidden}"
+					@click="(e) => onClick(e, tag)"
 				>
 					<el-tag
 						:title="tag.title"
@@ -108,7 +109,9 @@ export default Vue.extend({
 			}
 		},
 		onClick(e: MouseEvent, tag: TagEl) {
-			e.stopPropagation();
+			if (this.clickable) {
+				e.stopPropagation();
+			}
 
 			// if tag is hidden or not displayed
 			if (!tag.hidden) {
