@@ -234,11 +234,13 @@ export default mixins(
 				} else {
 					// If no position got found add it to end
 					let newValue = this.value;
-					if (newValue !== '=') {
-						newValue += ` `;
+					if (newValue === '=' || newValue === '=0') {
+						newValue = `{{${eventData.variable}}}\n`;
+					} else {
+						newValue += ` {{${eventData.variable}}}\n`;
 					}
-					newValue += `{{${eventData.variable}}}\n`;
-					this.$emit('change', newValue);
+
+					this.$emit('change', newValue, true);
 					if (!this.resolvedValue) {
 						Vue.nextTick(() => {
 							this.initValue();
