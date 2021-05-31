@@ -98,7 +98,7 @@ export default Vue.extend({
 	top: 65px;
 	right: 0;
 	width: $--node-creator-width;
-	height: calc(100% - 65px);
+	height: 100%;
 	background-color: $--node-creator-background-color;
 	z-index: 200;
 	color: #555;

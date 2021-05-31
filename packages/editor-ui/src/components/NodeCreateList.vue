@@ -1,5 +1,5 @@
 <template>
-	<div @click="onClickInside">
+	<div @click="onClickInside" class="container">
 		<transition name="slide">
 			<div v-if="activeSubcategory" class="subcategory-panel">
 				<div class="border"></div>
@@ -34,10 +34,21 @@
 					@subcategorySelected="onSubcategorySelected"
 				/>
 			</div>
-			<div class="node-create-list-wrapper scrollable" v-else>
-				<NodeCreateIterator v-if="filteredNodeTypes.length > 0" :elements="filteredNodeTypes" :activeIndex="activeNodeTypeIndex" @nodeTypeSelected="nodeTypeSelected" />
-				<div v-else class="no-results">
-					🙃 no nodes matching your search criteria
+			<div class="node-create-list-wrapper scrollable" v-else-if="filteredNodeTypes.length > 0">
+				<NodeCreateIterator :elements="filteredNodeTypes" :activeIndex="activeNodeTypeIndex" @nodeTypeSelected="nodeTypeSelected" />
+			</div>
+			<div v-else class="no-results">
+				<div class="img">
+					<img :src="require('@/assets/no-nodes-icon.png')" alt="trigger" />
+				</div>
+				<div class="title">
+					<div>We didn't make that... yet</div>
+					<div class="action">Don’t worry, you can probably do it with the <a @click="selectHttpRequest">HTTP Request</a> or <a @click="selectWebhook">Webhook</a> node</div>
+				</div>
+
+				<div class="action">
+					<div>Want us to make it faster?</div>
+					<div><a href="https://n8n-community.typeform.com/to/K1fBVTZ3" target="_blank">Request the node</a></div>
 				</div>
 			</div>
 		</div>
@@ -92,6 +103,7 @@ export default mixins(externalHooks).extend({
 			activeNodeTypeIndex: 1,
 			nodeFilter: '',
 			selectedType: 'All',
+			basePath: this.$store.getters.getBaseUrl,
 		};
 	},
 	computed: {
@@ -332,6 +344,7 @@ export default mixins(externalHooks).extend({
 			}
 		},
 		nodeTypeSelected (nodeTypeName: string) {
+			console.log(nodeTypeName);
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
 		onCategorySelected(category: string) {
@@ -358,6 +371,14 @@ export default mixins(externalHooks).extend({
 			// keep focus on input field as user clicks around
 			(this.$refs.inputField as HTMLInputElement).focus();
 		},
+
+		selectWebhook() {
+			this.$emit('nodeTypeSelected', 'n8n-nodes-base.webhook');
+		},
+
+		selectHttpRequest() {
+			this.$emit('nodeTypeSelected', 'n8n-nodes-base.httpRequest');
+		},
 	},
 	async mounted() {
 		this.$externalHooks().run('nodeCreateList.mounted');
@@ -371,6 +392,14 @@ export default mixins(externalHooks).extend({
 <style lang="scss" scoped>
 * {
 	box-sizing: border-box;
+}
+
+.container {
+	height: 100%;
+
+	> div {
+		height: 100%;
+	}
 }
 
 .subcategory-panel {
@@ -446,18 +475,45 @@ export default mixins(externalHooks).extend({
 	}
 }
 
-.no-results {
-	margin: 20px 10px 0 10px;
-	line-height: 1.5em;
-	text-align: center;
-}
-
 .slide-leave-active,
 .slide-enter-active {
   transition: .3s ease;
 }
 .slide-enter, .slide-leave-to {
   transform: translate(100%);
+}
+
+.no-results {
+	background-color: #F8F9FB;
+	text-align: center;
+	height: 100%;
+	border-left: 1px solid $--node-creator-border-color;
+	padding: 100px 56px 60px 56px;
+	display: flex;
+	flex-direction: column;
+
+	.title {
+		font-size: 22px;
+		line-height: 16px;
+		margin-top: 50px;
+		margin-bottom: 200px;
+
+		div {
+			margin-bottom: 15px;
+		}
+	}
+
+	.action {
+		font-size: 14px;
+		line-height: 19px;
+	}
+
+	a {
+		font-weight: 600;
+		color: $--color-primary;
+		text-decoration: none;
+		cursor: pointer;
+	}
 }
 
 </style>
