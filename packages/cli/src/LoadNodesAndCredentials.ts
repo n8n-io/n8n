@@ -3,6 +3,7 @@ import {
 	UserSettings,
 } from 'n8n-core';
 import {
+	CodexCategories,
 	ICredentialType,
 	ILogger,
 	INodeType,
@@ -169,6 +170,7 @@ class LoadNodesAndCredentialsClass {
 		const tempModule = require(filePath);
 		try {
 			tempNode = new tempModule[nodeName]() as INodeType;
+			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });
 		} catch (error) {
 			console.error(`Error loading node "${nodeName}" from: "${filePath}"`);
 			throw error;
@@ -202,6 +204,52 @@ class LoadNodesAndCredentialsClass {
 		};
 	}
 
+	/**
+	 * Retrieves `categories` and `subcategories` (if defined)
+	 * from the codex for the node at the given file path.
+	 *
+	 * @param {string} filePath The file path to a `*.node.js` file
+	 * @returns {CodexCategories}
+	 * @memberof N8nPackagesInformationClass
+	 */
+	getCodex(filePath: string): CodexCategories {
+		const { categories, subcategories } = require(`${filePath}on`); // .js to .json
+		return {
+			...categories && { categories },
+			...subcategories && { subcategories },
+		};
+	}
+
+	/**
+	 * Adds a node codex `categories` and `subcategories` (if defined)
+	 * to a node description `codex` property.
+	 *
+	 * @param {object} obj
+	 * @param obj.node Node to add categories to
+	 * @param obj.filePath Path to the built node
+	 * @param obj.isCustom Whether the node is custom
+	 * @returns {void}
+	 * @memberof N8nPackagesInformationClass
+	 */
+	addCodex({ node, filePath, isCustom }: {
+		node: INodeType;
+		filePath: string;
+		isCustom: boolean;
+	}) {
+		try {
+			const codex = this.getCodex(filePath);
+
+			if (isCustom) {
+				codex.categories = codex.categories
+					? codex.categories.concat('Custom Nodes')
+					: ['Custom Nodes'];
+			}
+
+			node.description.codex = codex;
+		} catch (_) {
+			this.logger.warn(`No codex available for: ${filePath.split('/').pop()}`);
+		}
+	}
 
 	/**
 	 * Loads nodes and credentials from the given directory
