@@ -30,12 +30,7 @@ export class QuickBooksOAuth2Api implements ICredentialType {
 			type: 'hidden' as NodePropertyTypes,
 			default: 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer',
 		},
-		{
-			displayName: 'Scope',
-			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
-			default: scopes.join(' '),
-		},
+
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
@@ -47,6 +42,26 @@ export class QuickBooksOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden' as NodePropertyTypes,
 			default: 'header',
+		},
+		{
+			displayName: 'Scopes',
+			name: 'scope',
+			type: 'options' as NodePropertyTypes,
+			default: scopes.join(' '),
+			options: [
+				{
+					name: 'Accounting only',
+					value: 'com.intuit.quickbooks.accounting',
+				},
+				{
+					name: 'Payment only',
+					value: 'com.intuit.quickbooks.payment',
+				},
+				{
+					name: 'Accounting and Payment',
+					value: scopes.join(' '),
+				},
+			],
 		},
 		{
 			displayName: 'Environment',
