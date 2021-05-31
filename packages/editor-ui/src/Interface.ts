@@ -153,6 +153,7 @@ export interface IRestApi {
 	oAuth1CredentialAuthorize(sendData: ICredentialsResponse): Promise<string>;
 	oAuth2CredentialAuthorize(sendData: ICredentialsResponse): Promise<string>;
 	oAuth2Callback(code: string, state: string): Promise<string>;
+	getBinaryBufferString(dataPath: string): Promise<string>;
 }
 
 export interface IBinaryDisplayData {

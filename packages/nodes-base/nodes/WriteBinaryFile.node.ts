@@ -13,6 +13,7 @@ import {
 
 import {
 	writeFile as fsWriteFile,
+	readFile as fsReadFile,
 } from 'fs/promises';
 
 
@@ -76,8 +77,10 @@ export class WriteBinaryFile implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So no file can be written!`);
 			}
 
+			const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, dataPropertyName);
+
 			// Write the file to disk
-			await fsWriteFile(fileName, Buffer.from(item.binary[dataPropertyName].data, BINARY_ENCODING), 'binary');
+			await fsWriteFile(fileName, binaryDataBuffer, 'binary');
 
 			const newItem: INodeExecutionData = {
 				json: {},
