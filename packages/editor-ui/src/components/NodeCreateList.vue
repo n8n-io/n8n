@@ -26,6 +26,7 @@
 			<div v-if="nodeFilter.length === 0" class="scrollable">
 				<NodeCreateIterator
 					:elements="categorized"
+					:disabled="!!activeSubcategory"
 					:activeIndex="activeNodeTypeIndex"
 					@categorySelected="onCategorySelected"
 					@nodeTypeSelected="nodeTypeSelected"
@@ -62,6 +63,7 @@ interface ICategoriesWithNodes {
 	};
 }
 
+// todo get rid of 
 interface IActiveSubCategory {
 	category: string;
 	subcategory: string;
@@ -214,7 +216,7 @@ export default mixins(externalHooks).extend({
 						type: 'subcategory',
 						category,
 						subcategory,
-						description: 'Lorem ipsum',
+						description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla',
 					};
 
 					return [...accu, subcategoryEl];
@@ -278,7 +280,17 @@ export default mixins(externalHooks).extend({
 	},
 	methods: {
 		nodeFilterKeyDown (e: KeyboardEvent) {
-			const activeNodeType = this.nodeFilter.length > 0 ? this.filteredNodeTypes[this.activeNodeTypeIndex]: this.categorized[this.activeNodeTypeIndex];
+			let activeList;
+			if (this.nodeFilter.length > 0) {
+				activeList = this.filteredNodeTypes;
+			}
+			else if (this.activeSubcategory) {
+				activeList = this.subcategorizedNodes;
+			}
+			else {
+				activeList = this.categorized;
+			}
+			const activeNodeType = activeList[this.activeNodeTypeIndex];
 
 			if (e.key === 'ArrowDown') {
 				this.activeNodeTypeIndex++;
@@ -296,10 +308,10 @@ export default mixins(externalHooks).extend({
 					this.onCategorySelected(activeNodeType.category);
 				}
 				else if (activeNodeType.type === 'subcategory' && activeNodeType.subcategory) {
-					this.activeSubcategory = {
+					this.onSubcategorySelected({
 						category: activeNodeType.category,
 						subcategory: activeNodeType.subcategory,
-					};
+					});
 				}
 			}
 

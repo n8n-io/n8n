@@ -4,8 +4,7 @@
 			v-for="(element, index) in elements"
 			:key="index"
 			@click="() => selected(element)"
-			:class="{container: true, active: activeIndex === index, clickable: true}"
-			:ref="activeIndex === index ? 'active' : ''"
+			:class="{container: true, active: activeIndex === index && !disabled, clickable: !disabled}"
 		>
 			<div v-if="element.type === 'category'" class="category">
 				<span class="name">{{ element.category }}</span>
@@ -45,9 +44,13 @@ export default Vue.extend({
 	components: {
 		NodeCreateItem,
 	},
-	props: ['elements', 'activeIndex'],
+	props: ['elements', 'activeIndex', 'disabled'],
 	methods: {
 		selected (element: INodeCreateElement) {
+			if (this.$props.disabled) {
+				return;
+			}
+
 			if (element.type === 'node' && element.nodeType) {
 				this.$emit('nodeTypeSelected', element.nodeType.name);
 			}
