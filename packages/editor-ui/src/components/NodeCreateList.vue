@@ -53,13 +53,18 @@ import NodeCreateItem from '@/components/NodeCreateItem.vue';
 
 import mixins from "vue-typed-mixins";
 import NodeCreateIterator from "./NodeCreateIterator.vue";
-import NodeCreateCategory from "./NodeCreateCategory.vue";
 import { INodeCreateElement, INodeTypeTemp } from "@/Interface";
 import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY } from "@/constants";
 
+interface ICategoriesWithNodes {
+	[category: string]: {
+		[subcategory: string]: INodeCreateElement[]
+	};
+}
+
 interface IActiveSubCategory {
-	category: string,
-	subcategory: string,
+	category: string;
+	subcategory: string;
 }
 
 export default mixins(externalHooks).extend({
@@ -67,7 +72,6 @@ export default mixins(externalHooks).extend({
 	components: {
 		NodeCreateItem,
 		NodeCreateIterator,
-		NodeCreateCategory,
 	},
 	data () {
 		return {
@@ -114,7 +118,7 @@ export default mixins(externalHooks).extend({
 			}));
 		},
 
-		categoriesWithNodes(): any {
+		categoriesWithNodes(): ICategoriesWithNodes {
 			const nodeTypes = this.$store.getters.allNodeTypes;
 
 			// temp
@@ -140,9 +144,15 @@ export default mixins(externalHooks).extend({
 			});
 
 			// todo move logic elsewhere
-			const categorized = mockNodeTypes.reduce((accu: any, nodeType: INodeTypeTemp) => {
+			const categorized = mockNodeTypes.reduce((accu: ICategoriesWithNodes, nodeType: INodeTypeTemp) => {
 				if (!nodeType.codex || !nodeType.codex.categories) {
-					accu[UNCATEGORIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].push(nodeType);
+					accu[UNCATEGORIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].push({
+						type: 'node',
+						category: UNCATEGORIZED_CATEGORY,
+						subcategory: UNCATEGORIZED_SUBCATEGORY,
+						nodeType,
+						isTrigger: nodeType.group.includes('trigger'),
+					});
 					return accu;
 				}
 				nodeType.codex.categories.forEach((_category: string) => {
@@ -161,7 +171,7 @@ export default mixins(externalHooks).extend({
 						nodeType,
 						subcategory,
 						isTrigger: nodeType.group.includes('trigger'),
-					} as INodeCreateElement);
+					});
 				});
 				return accu;
 			}, {
@@ -187,7 +197,7 @@ export default mixins(externalHooks).extend({
 		},
 
 		nodesWithCategories(): INodeCreateElement[] {
-			const collapsed = this.categories.reduce((accu: any, category: string) => {
+			const collapsed = this.categories.reduce((accu: INodeCreateElement[], category: string) => {
 				const categoryEl = {
 					type: 'category',
 					active: false,
@@ -199,7 +209,7 @@ export default mixins(externalHooks).extend({
 					return [...accu, categoryEl, ...this.categoriesWithNodes[category][subcategories[0]]];
 				}
 
-				const subcategorized = subcategories.reduce((accu: any, subcategory: string) => {
+				const subcategorized = subcategories.reduce((accu: INodeCreateElement[], subcategory: string) => {
 					const subcategoryEl = {
 						type: 'subcategory',
 						category,
@@ -239,7 +249,7 @@ export default mixins(externalHooks).extend({
 
 				return null;
 			})
-			.filter((el: INodeCreateElement) => !!el);
+				.filter((el: INodeCreateElement) => !!el);
 		},
 
 		subcategorizedNodes() {
@@ -325,7 +335,7 @@ export default mixins(externalHooks).extend({
 		onClickInside() {
 			// keep focus on input field as user clicks around
 			(this.$refs.inputField as HTMLInputElement).focus();
-		}
+		},
 	},
 	async mounted() {
 		this.$externalHooks().run('nodeCreateList.mounted');
