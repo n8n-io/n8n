@@ -3,7 +3,6 @@ import { get } from 'lodash';
 
 import {
 	ActiveExecutions,
-	ExternalHooks,
 	GenericHelpers,
 	IExecutionDb,
 	IResponseCallbackData,
@@ -17,7 +16,7 @@ import {
 } from './';
 
 import {
-	BINARY_ENCODING,
+	BinaryDataHelper,
 	NodeExecuteFunctions,
 } from 'n8n-core';
 
@@ -291,7 +290,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 
 		// Get a promise which resolves when the workflow did execute and send then response
 		const executePromise = activeExecutions.getPostExecutePromise(executionId) as Promise<IExecutionDb | undefined>;
-		executePromise.then((data) => {
+		executePromise.then(async (data) => {
 			if (data === undefined) {
 				if (didSendResponse === false) {
 					responseCallback(null, {
@@ -402,7 +401,8 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 					if (didSendResponse === false) {
 						// Send the webhook response manually
 						res.setHeader('Content-Type', binaryData.mimeType);
-						res.end(Buffer.from(binaryData.data, BINARY_ENCODING));
+						const binaryDataBuffer = await BinaryDataHelper.getInstance().retrieveBinaryData(binaryData);
+						res.end(binaryDataBuffer);
 
 						responseCallback(null, {
 							noWebhookResponse: true,

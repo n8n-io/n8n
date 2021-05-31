@@ -1,5 +1,6 @@
 import * as localtunnel from 'localtunnel';
 import {
+	BinaryDataHelper,
 	TUNNEL_SUBDOMAIN_ENV,
 	UserSettings,
 } from 'n8n-core';
@@ -279,6 +280,9 @@ export class Start extends Command {
 				}
 
 				await Server.start();
+
+				const binaryDataMode = config.get('binaryDataManager.mode');
+				BinaryDataHelper.init(binaryDataMode);
 
 				// Start to get active workflows and run their triggers
 				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();

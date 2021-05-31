@@ -1,10 +1,11 @@
 import {
-	BINARY_ENCODING,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IResponseError,
 	IWorkflowSettings,
 } from './';
+
+import { BinaryDataHelper } from './BinaryDataManager';
 
 import {
 	IAllExecuteFunctions,
@@ -60,6 +61,25 @@ const requestPromiseWithDefaults = requestPromise.defaults({
 });
 
 /**
+ * Returns binary data buffer for given item index and property name.
+ *
+ * @export
+ * @param {ITaskDataConnections} inputData
+ * @param {number} itemIndex
+ * @param {string} propertyName
+ * @returns {Promise<Buffer>}
+ */
+export async function getBinaryDataBuffer(inputData: ITaskDataConnections, itemIndex: number, propertyName: string): Promise<Buffer> {
+	try {
+		const binaryData = inputData['main']![0]![itemIndex]!.binary![propertyName]!;
+		return BinaryDataHelper.getInstance().retrieveBinaryData(binaryData);
+	}
+	catch {
+		throw `Binary data with property name ${propertyName} not found in item ${itemIndex}`;
+	}
+}
+
+/**
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
  *
@@ -70,6 +90,8 @@ const requestPromiseWithDefaults = requestPromise.defaults({
  * @returns {Promise<IBinaryData>}
  */
 export async function prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string): Promise<IBinaryData> {
+	// todo improve internalPath arg name, make it required?
+	
 	if (!mimeType) {
 		// If no mime type is given figure it out
 
@@ -97,10 +119,7 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 
 	const returnData: IBinaryData = {
 		mimeType,
-		// TODO: Should program it in a way that it does not have to converted to base64
-		//       It should only convert to and from base64 when saved in database because
-		//       of for example an error or when there is a wait node.
-		data: binaryData.toString(BINARY_ENCODING),
+		data: '',//binaryData.toString(BINARY_ENCODING),// BINARY_ENCODING, // todo cleanup
 	};
 
 	if (filePath) {
@@ -123,7 +142,9 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 		}
 	}
 
-	return returnData;
+	// const binaryDataUniqueIdentifier = BinaryDataHelper.getInstance().generateIdentifier();
+	// returnData.internalPath = binaryDataUniqueIdentifier;
+	return await BinaryDataHelper.getInstance().storeBinaryData(returnData, binaryData);
 }
 
 
@@ -763,6 +784,9 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			},
 			helpers: {
 				prepareBinaryData,
+				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer> {
+					return getBinaryDataBuffer.call(this, inputData, itemIndex, propertyName);
+				},
 				request: requestPromiseWithDefaults,
 				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
