@@ -183,7 +183,12 @@ export default mixins(
 							continue;
 						} else {
 							// Contains probably no expression with a missing parameter so resolve
-							nodeValues[key] = this.resolveExpression(rawValues[key], nodeValues) as NodeParameterValue;
+							try {
+								nodeValues[key] = this.resolveExpression(rawValues[key], nodeValues) as NodeParameterValue;
+							} catch (e) {
+								// If expression is invalid ignore
+								nodeValues[key] = '';
+							}
 							parameterGotResolved = true;
 						}
 					} else {
@@ -215,6 +220,9 @@ export default mixins(
 		},
 		watch: {
 			filteredParameterNames(newValue, oldValue) {
+				if (newValue === undefined) {
+					return;
+				}
 				// After a parameter does not get displayed anymore make sure that its value gets removed
 				// Is only needed for the edge-case when a parameter gets displayed depending on another field
 				// which contains an expression.
