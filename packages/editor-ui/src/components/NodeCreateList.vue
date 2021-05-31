@@ -394,6 +394,14 @@ export default mixins(externalHooks).extend({
 	box-sizing: border-box;
 }
 
+/deep/ .el-tabs__active-bar {
+	height: 1px;
+}
+
+/deep/ .el-tabs__nav-wrap::after {
+	height: 1px;
+}
+
 .container {
 	height: 100%;
 
@@ -419,6 +427,7 @@ export default mixins(externalHooks).extend({
 }
 
 .subcategory-header {
+	border: #DBDFE7 solid 1px;
   height: 50px;
   background-color: #F2F4F8;
 
