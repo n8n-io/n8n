@@ -63,7 +63,7 @@ const descriptions: {[category: string]: {[subcategory: string]: string}} = {
 		Files: 'Lorem ipsum dolor sit amet',
 		'Data Transformation': 'Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla',
 		Helpers: 'Sup',
-	}
+	},
 };
 
 const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
