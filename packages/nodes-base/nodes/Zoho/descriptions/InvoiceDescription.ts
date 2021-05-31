@@ -42,6 +42,10 @@ export const invoiceOperations = [
 				name: 'Update',
 				value: 'update',
 			},
+			{
+				name: 'Upsert',
+				value: 'upsert',
+			},
 		],
 		default: 'create',
 		description: 'Operation to perform',
@@ -50,7 +54,7 @@ export const invoiceOperations = [
 
 export const invoiceFields = [
 	// ----------------------------------------
-	//             invoice: create
+	//        invoice: create + upsert
 	// ----------------------------------------
 	{
 		displayName: 'Subject',
@@ -66,11 +70,12 @@ export const invoiceFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
 	},
-	makeProductDetails('invoice', 'create'),
+	makeProductDetails('invoice', 'create', { hasUpsert: true }),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -84,6 +89,7 @@ export const invoiceFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},

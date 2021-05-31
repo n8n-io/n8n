@@ -42,6 +42,10 @@ export const salesOrderOperations = [
 				name: 'Update',
 				value: 'update',
 			},
+			{
+				name: 'Upsert',
+				value: 'upsert',
+			},
 		],
 		default: 'create',
 		description: 'Operation to perform',
@@ -50,7 +54,7 @@ export const salesOrderOperations = [
 
 export const salesOrderFields = [
 	// ----------------------------------------
-	//            salesOrder: create
+	//       salesOrder: create + upsert
 	// ----------------------------------------
 	{
 		displayName: 'Account ID',
@@ -68,6 +72,7 @@ export const salesOrderFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -86,11 +91,12 @@ export const salesOrderFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
 	},
-	makeProductDetails('salesOrder', 'create'),
+	makeProductDetails('salesOrder', 'create', { hasUpsert: true }),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -104,6 +110,7 @@ export const salesOrderFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},

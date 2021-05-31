@@ -42,6 +42,10 @@ export const quoteOperations = [
 				name: 'Update',
 				value: 'update',
 			},
+			{
+				name: 'Upsert',
+				value: 'upsert',
+			},
 		],
 		default: 'create',
 		description: 'Operation to perform',
@@ -50,7 +54,7 @@ export const quoteOperations = [
 
 export const quoteFields = [
 	// ----------------------------------------
-	//              quote: create
+	//          quote: create + upsert
 	// ----------------------------------------
 	{
 		displayName: 'Subject',
@@ -66,11 +70,12 @@ export const quoteFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
 	},
-	makeProductDetails('quote', 'create'),
+	makeProductDetails('quote', 'create', { hasUpsert: true }),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -84,6 +89,7 @@ export const quoteFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},

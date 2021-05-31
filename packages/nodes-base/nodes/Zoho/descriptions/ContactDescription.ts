@@ -41,6 +41,10 @@ export const contactOperations = [
 				name: 'Update',
 				value: 'update',
 			},
+			{
+				name: 'Upsert',
+				value: 'upsert',
+			},
 		],
 		default: 'create',
 		description: 'Operation to perform',
@@ -49,7 +53,7 @@ export const contactOperations = [
 
 export const contactFields = [
 	// ----------------------------------------
-	//             contact: create
+	//        contact: create + upsert
 	// ----------------------------------------
 	{
 		displayName: 'Last Name',
@@ -64,6 +68,7 @@ export const contactFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -81,6 +86,7 @@ export const contactFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},

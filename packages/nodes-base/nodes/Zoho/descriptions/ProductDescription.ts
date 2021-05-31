@@ -39,6 +39,10 @@ export const productOperations = [
 				name: 'Update',
 				value: 'update',
 			},
+			{
+				name: 'Upsert',
+				value: 'upsert',
+			},
 		],
 		default: 'create',
 		description: 'Operation to perform',
@@ -47,7 +51,7 @@ export const productOperations = [
 
 export const productFields = [
 	// ----------------------------------------
-	//             product: create
+	//         product: create + upsert
 	// ----------------------------------------
 	{
 		displayName: 'Product Name',
@@ -62,6 +66,7 @@ export const productFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -79,6 +84,7 @@ export const productFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},

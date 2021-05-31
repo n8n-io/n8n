@@ -40,6 +40,10 @@ export const vendorOperations = [
 				name: 'Update',
 				value: 'update',
 			},
+			{
+				name: 'Upsert',
+				value: 'upsert',
+			},
 		],
 		default: 'create',
 		description: 'Operation to perform',
@@ -48,7 +52,7 @@ export const vendorOperations = [
 
 export const vendorFields = [
 	// ----------------------------------------
-	//             vendor: create
+	//         vendor: create + upsert
 	// ----------------------------------------
 	{
 		displayName: 'Vendor Name',
@@ -63,6 +67,7 @@ export const vendorFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -80,6 +85,7 @@ export const vendorFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},

@@ -222,7 +222,7 @@ export const address = {
 	],
 };
 
-export const makeProductDetails = (resource: string, operation: string) => ({
+export const makeProductDetails = (resource: string, operation: string, { hasUpsert } = { hasUpsert: false }) => ({
 	displayName: 'Products',
 	name: 'Product_Details',
 	type: 'collection',
@@ -239,6 +239,7 @@ export const makeProductDetails = (resource: string, operation: string) => ({
 			],
 			operation: [
 				operation,
+				hasUpsert && 'upsert',
 			],
 		},
 	},

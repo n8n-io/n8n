@@ -286,6 +286,26 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/accounts/${accountId}`;
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.data;
+
+					} else if (operation === 'upsert') {
+
+						// ----------------------------------------
+						//             account: upsert
+						// ----------------------------------------
+
+						const body: IDataObject = {
+							Account_Name: this.getNodeParameter('accountName', i),
+						};
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (Object.keys(additionalFields).length) {
+							Object.assign(body, adjustAccountPayload(additionalFields));
+						}
+
+						responseData = await zohoApiRequest.call(this, 'POST', '/accounts/upsert', body);
+						responseData = responseData.data;
+
 					}
 
 				} else if (resource === 'contact') {
@@ -367,6 +387,26 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/contacts/${contactId}`;
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.data;
+
+					} else if (operation === 'upsert') {
+
+						// ----------------------------------------
+						//             contact: upsert
+						// ----------------------------------------
+
+						const body: IDataObject = {
+							Last_Name: this.getNodeParameter('lastName', i),
+						};
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (Object.keys(additionalFields).length) {
+							Object.assign(body, adjustContactPayload(additionalFields));
+						}
+
+						responseData = await zohoApiRequest.call(this, 'POST', '/contacts/upsert', body);
+						responseData = responseData.data;
+
 					}
 
 				} else if (resource === 'deal') {
@@ -446,6 +486,27 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'PUT', `/deals/${dealId}`, body);
 						responseData = responseData.data;
+
+					} else if (operation === 'upsert') {
+
+						// ----------------------------------------
+						//              deal: upsert
+						// ----------------------------------------
+
+						const body: IDataObject = {
+							Deal_Name: this.getNodeParameter('dealName', i),
+							Stage: this.getNodeParameter('stage', i),
+						};
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (Object.keys(additionalFields).length) {
+							Object.assign(body, adjustDealPayload(additionalFields));
+						}
+
+						responseData = await zohoApiRequest.call(this, 'POST', '/deals/upsert', body);
+						responseData = responseData.data;
+
 					}
 
 				} else if (resource === 'invoice') {
@@ -529,6 +590,28 @@ export class ZohoCrm implements INodeType {
 
 						const endpoint = `/invoices/${invoiceId}`;
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
+						responseData = responseData.data;
+
+					} else if (operation === 'upsert') {
+
+						// ----------------------------------------
+						//             invoice: upsert
+						// ----------------------------------------
+
+						const productDetails = this.getNodeParameter('Product_Details', i) as ProductDetails;
+
+						const body: IDataObject = {
+							Subject: this.getNodeParameter('subject', i),
+							Product_Details: adjustProductDetails(productDetails),
+						};
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (Object.keys(additionalFields).length) {
+							Object.assign(body, adjustInvoicePayload(additionalFields));
+						}
+
+						responseData = await zohoApiRequest.call(this, 'POST', `/invoices/upsert`, body);
 						responseData = responseData.data;
 
 					}
@@ -617,6 +700,26 @@ export class ZohoCrm implements INodeType {
 						responseData = await zohoApiRequest.call(this, 'PUT', `/leads/${leadId}`, body);
 						responseData = responseData.data;
 
+					} else if (operation === 'upsert') {
+
+						// ----------------------------------------
+						//              lead: upsert
+						// ----------------------------------------
+
+						const body: IDataObject = {
+							Company: this.getNodeParameter('Company', i),
+							Last_Name: this.getNodeParameter('lastName', i),
+						};
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (Object.keys(additionalFields).length) {
+							Object.assign(body, adjustLeadPayload(additionalFields));
+						}
+
+						responseData = await zohoApiRequest.call(this, 'POST', '/leads/upsert', body);
+						responseData = responseData.data;
+
 					}
 
 				} else if (resource === 'product') {
@@ -697,6 +800,25 @@ export class ZohoCrm implements INodeType {
 
 						const endpoint = `/products/${productId}`;
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
+						responseData = responseData.data;
+
+					} else if (operation === 'upsert') {
+
+						// ----------------------------------------
+						//             product: upsert
+						// ----------------------------------------
+
+						const body: IDataObject = {
+							Product_Name: this.getNodeParameter('productName', i),
+						};
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (Object.keys(additionalFields).length) {
+							Object.assign(body, additionalFields);
+						}
+
+						responseData = await zohoApiRequest.call(this, 'POST', '/products/upsert', body);
 						responseData = responseData.data;
 
 					}
@@ -785,6 +907,29 @@ export class ZohoCrm implements INodeType {
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.data;
 
+					} else if (operation === 'upsert') {
+
+						// ----------------------------------------
+						//          purchaseOrder: upsert
+						// ----------------------------------------
+
+						const productDetails = this.getNodeParameter('Product_Details', i) as ProductDetails;
+
+						const body: IDataObject = {
+							Subject: this.getNodeParameter('subject', i),
+							Vendor_Name: { id: this.getNodeParameter('vendorId', i) },
+							Product_Details: adjustProductDetails(productDetails),
+						};
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (Object.keys(additionalFields).length) {
+							Object.assign(body, adjustPurchaseOrderPayload(additionalFields));
+						}
+
+						responseData = await zohoApiRequest.call(this, 'POST', '/purchase_orders/upsert', body);
+						responseData = responseData.data;
+
 					}
 
 				} else if (resource === 'quote') {
@@ -866,6 +1011,29 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'PUT', `/quotes/${quoteId}`, body);
 						responseData = responseData.data;
+
+					} else if (operation === 'upsert') {
+
+						// ----------------------------------------
+						//              quote: upsert
+						// ----------------------------------------
+
+						const productDetails = this.getNodeParameter('Product_Details', i) as ProductDetails;
+
+						const body: IDataObject = {
+							Subject: this.getNodeParameter('subject', i),
+							Product_Details: adjustProductDetails(productDetails),
+						};
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (Object.keys(additionalFields).length) {
+							Object.assign(body, adjustQuotePayload(additionalFields));
+						}
+
+						responseData = await zohoApiRequest.call(this, 'POST', '/quotes/upsert', body);
+						responseData = responseData.data;
+
 					}
 
 				} else if (resource === 'salesOrder') {
@@ -952,6 +1120,29 @@ export class ZohoCrm implements INodeType {
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.data;
 
+					} else if (operation === 'upsert') {
+
+						// ----------------------------------------
+						//           salesOrder: upsert
+						// ----------------------------------------
+
+						const productDetails = this.getNodeParameter('Product_Details', i) as ProductDetails;
+
+						const body: IDataObject = {
+							Account_Name: { id: this.getNodeParameter('accountId', i) },
+							Subject: this.getNodeParameter('subject', i),
+							Product_Details: adjustProductDetails(productDetails),
+						};
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (Object.keys(additionalFields).length) {
+							Object.assign(body, adjustSalesOrderPayload(additionalFields));
+						}
+
+						responseData = await zohoApiRequest.call(this, 'POST', '/sales_orders/upsert', body);
+						responseData = responseData.data;
+
 					}
 
 				} else if (resource === 'vendor') {
@@ -1032,6 +1223,25 @@ export class ZohoCrm implements INodeType {
 
 						const endpoint = `/vendors/${vendorId}`;
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
+						responseData = responseData.data;
+
+					} else if (operation === 'upsert') {
+
+						// ----------------------------------------
+						//             vendor: upsert
+						// ----------------------------------------
+
+						const body: IDataObject = {
+							Vendor_Name: this.getNodeParameter('vendorName', i),
+						};
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (Object.keys(additionalFields).length) {
+							Object.assign(body, adjustVendorPayload(additionalFields));
+						}
+
+						responseData = await zohoApiRequest.call(this, 'POST', '/vendors/upsert', body);
 						responseData = responseData.data;
 
 					}

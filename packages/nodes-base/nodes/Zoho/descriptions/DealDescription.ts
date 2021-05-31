@@ -39,6 +39,10 @@ export const dealOperations = [
 				name: 'Update',
 				value: 'update',
 			},
+			{
+				name: 'Upsert',
+				value: 'upsert',
+			},
 		],
 		default: 'create',
 		description: 'Operation to perform',
@@ -47,7 +51,7 @@ export const dealOperations = [
 
 export const dealFields = [
 	// ----------------------------------------
-	//               deal: create
+	//          deal: create + upsert
 	// ----------------------------------------
 	{
 		displayName: 'Deal Name',
@@ -62,6 +66,7 @@ export const dealFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -79,6 +84,7 @@ export const dealFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -96,6 +102,7 @@ export const dealFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},

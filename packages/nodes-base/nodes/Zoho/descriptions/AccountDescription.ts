@@ -41,6 +41,10 @@ export const accountOperations = [
 				name: 'Update',
 				value: 'update',
 			},
+			{
+				name: 'Upsert',
+				value: 'upsert',
+			},
 		],
 		default: 'create',
 		description: 'Operation to perform',
@@ -49,7 +53,7 @@ export const accountOperations = [
 
 export const accountFields = [
 	// ----------------------------------------
-	//             account: create
+	//        account: create + upsert
 	// ----------------------------------------
 	{
 		displayName: 'Account Name',
@@ -64,6 +68,7 @@ export const accountFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -81,6 +86,7 @@ export const accountFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},

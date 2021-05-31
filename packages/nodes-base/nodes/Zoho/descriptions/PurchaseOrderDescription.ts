@@ -42,6 +42,10 @@ export const purchaseOrderOperations = [
 				name: 'Update',
 				value: 'update',
 			},
+			{
+				name: 'Upsert',
+				value: 'upsert',
+			},
 		],
 		default: 'create',
 		description: 'Operation to perform',
@@ -50,7 +54,7 @@ export const purchaseOrderOperations = [
 
 export const purchaseOrderFields = [
 	// ----------------------------------------
-	//          purchaseOrder: create
+	//      purchaseOrder: create + upsert
 	// ----------------------------------------
 	{
 		displayName: 'Subject',
@@ -66,6 +70,7 @@ export const purchaseOrderFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -86,11 +91,12 @@ export const purchaseOrderFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
 	},
-	makeProductDetails('purchaseOrder', 'create'),
+	makeProductDetails('purchaseOrder', 'create', { hasUpsert: true }),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

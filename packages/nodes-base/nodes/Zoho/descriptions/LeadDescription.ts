@@ -40,6 +40,10 @@ export const leadOperations = [
 				name: 'Update',
 				value: 'update',
 			},
+			{
+				name: 'Upsert',
+				value: 'upsert',
+			},
 		],
 		default: 'create',
 		description: 'Operation to perform',
@@ -48,7 +52,7 @@ export const leadOperations = [
 
 export const leadFields = [
 	// ----------------------------------------
-	//               lead: create
+	//          lead: create + upsert
 	// ----------------------------------------
 	{
 		displayName: 'Company',
@@ -64,6 +68,7 @@ export const leadFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -81,6 +86,7 @@ export const leadFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -98,6 +104,7 @@ export const leadFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
