@@ -45,6 +45,15 @@
 
 <script lang="ts">
 
+const descriptions: {[category: string]: {[subcategory: string]: string}} = {
+	'Core Nodes': {
+		Flow: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what',
+		Files: 'Lorem ipsum dolor sit amet',
+		'Data Transformation': 'Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla',
+		Helpers: 'Sup',
+	}
+};
+
 const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 const UNCATEGORIZED_SUBCATEGORY = 'Other';
 
@@ -216,7 +225,7 @@ export default mixins(externalHooks).extend({
 						type: 'subcategory',
 						category,
 						subcategory,
-						description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla',
+						description: descriptions[category][subcategory],
 					};
 
 					return [...accu, subcategoryEl];

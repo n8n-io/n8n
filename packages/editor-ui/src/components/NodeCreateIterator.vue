@@ -4,17 +4,16 @@
 			v-for="(element, index) in elements"
 			:key="index"
 			@click="() => selected(element)"
-			:class="{container: true, active: activeIndex === index && !disabled, clickable: !disabled}"
+			:class="{container: true, active: activeIndex === index && !disabled, clickable: !disabled, [element.type]: true}"
 		>
-			<div v-if="element.type === 'category'" class="category">
+			<div v-if="element.type === 'category'">
 				<span class="name">{{ element.category }}</span>
 				<font-awesome-icon class="arrow" icon="chevron-down" v-if="element.expanded" />
 				<font-awesome-icon class="arrow" icon="chevron-up" v-else />
 			</div>
 
 			<div 
-				v-if="element.type === 'subcategory'"
-				class="subcategory">
+				v-if="element.type === 'subcategory'">
 				<div class="details">
 					<div class="title">{{element.subcategory}}</div>
 					<div v-if="element.description" class="description">{{element.description}}</div>
@@ -27,6 +26,7 @@
 			<NodeCreateItem
 				v-if="element.type === 'node'"
 				:nodeType="element.nodeType"
+				:bordered="index < elements.length - 1 && elements[index + 1].type === 'node'"
 			></NodeCreateItem>
 		</div>
 	</div>
@@ -68,13 +68,27 @@ export default Vue.extend({
 
 
 <style lang="scss" scoped>
-.category {
+.container {
+	border-left: 1px solid $--node-creator-border-color;
+
+  &:hover {
+		border-left: 1px solid $--node-creator-item-hover-border-color;
+		background-color: $--node-creator-item-hover-background-color;
+	}
+
+	&.active {
+		border-left: 1px solid $--color-primary !important;
+	}
+}
+
+.category > div {
   font-size: 11px;
   font-weight: bold;
   letter-spacing: 1px;
   line-height: 11px;
-	padding: 10px 12px;
-	padding-top: 15px;
+	padding: 10px 12px 10px 0;
+	margin-left: 12px;
+	border-bottom: 1px solid $--node-creator-border-color;
 	display: flex;
 
 	.name {
@@ -82,7 +96,7 @@ export default Vue.extend({
 	}
 }
 
-.subcategory {
+.subcategory > div {
 	display: flex;
 	padding: 11px 16px 11px 30px;
 
@@ -110,18 +124,11 @@ export default Vue.extend({
 	}
 }
 
-.container {
-	border-left: 1px solid $--node-creator-border-color;
+.subcategory + .category,
+.node + .category {
+	margin-top: 15px;
 }
 
-.container:hover {
-	border-left: 1px solid $--node-creator-item-hover-border-color;
-	background-color: $--node-creator-item-hover-background-color;
-}
-
-.active {
-	border-left: 1px solid $--color-primary !important;
-}
 
 .arrow {
 	font-size: 12px;

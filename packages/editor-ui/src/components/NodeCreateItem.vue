@@ -1,5 +1,5 @@
 <template>
-	<div class="node-item" :class="{active: active}" :data-node-name="nodeName">
+	<div :class="{'node-item': true, bordered}" :data-node-name="nodeName">
 		<NodeIcon class="node-icon" :nodeType="nodeType" :style="nodeIconStyle" />
 		<div>
 			<div class="details">
@@ -31,6 +31,7 @@ export default Vue.extend({
 		'active',
 		'filter',
 		'nodeType',
+		'bordered',
 	],
 	computed: {
 		nodeIconStyle (): object {
@@ -51,15 +52,13 @@ export default Vue.extend({
 <style scoped lang="scss">
 
 .node-item {
-	border-bottom: 1px solid $--node-creator-border-color;
-	padding: 11px 20px 11px 15px;
-	// border-left: 1px solid $--node-creator-border-color;
+	padding: 11px 20px 11px 0;
+	margin-left: 15px;
 	display: flex;
 
-	// &:hover {
-	// 	// border-left: 1px solid $--node-creator-item-hover-border-color;
-	// 	background-color: $--node-creator-item-hover-background-color;
-	// }
+	&.bordered {
+		border-bottom: 1px solid $--node-creator-border-color;
+	}
 }
 
 .details {
@@ -71,10 +70,6 @@ export default Vue.extend({
 	min-width: 30px;
 	max-width: 30px;
 	margin-right: 15px;
-}
-
-.active {
-	border-left: 1px solid $--color-primary;
 }
 
 .name {
