@@ -627,7 +627,7 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 		// If no timeout was given from the parent, then we use our timeout.
 		subworkflowTimeout = Math.min(additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER, Date.now() + (workflowData.settings.executionTimeout as number * 1000));
 	}
-	
+
 	additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
 
 
@@ -659,6 +659,24 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 			...error,
 			stack: error!.stack,
 		};
+	}
+}
+
+
+export function sendMessageToUI(source: string, message: string) {
+	if (this.sessionId === undefined) {
+		return;
+	}
+
+	// Push data to session which started workflow
+	try {
+		const pushInstance = Push.getInstance();
+		pushInstance.send('sendConsoleMessage', {
+			source: `Node: "${source}"`,
+			message,
+		}, this.sessionId);
+	} catch (error) {
+		Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
 	}
 }
 
@@ -785,4 +803,3 @@ export function getWorkflowHooksMain(data: IWorkflowExecutionDataProcess, execut
 
 	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, { sessionId: data.sessionId, retryOf: data.retryOf as string });
 }
-
