@@ -1,5 +1,5 @@
 <template>
-	<div @click="onClickInside" class="scrollable">
+	<div @click="onClickInside">
 		<div>
 			<el-input :class="{'custom': true, hidden: !!activeSubcategory}" placeholder="Search nodes..." v-model="nodeFilter" ref="inputField" type="text" prefix-icon="el-icon-search" @keydown.native="nodeFilterKeyDown" clearable ></el-input>
 		</div>
@@ -8,20 +8,20 @@
 				<div class="clickable" @click="onBackArrowClick">
 					<font-awesome-icon class="back-arrow" icon="arrow-left" />
 				</div>
-				<span>{{activeSubcategory}}</span>
+				<span>{{activeSubcategory.subcategory}}</span>
 			</div>
 			
-			<NodeCreateIterator :elements="subcategorizedNodes" :activeIndex="activeNodeTypeIndex" @nodeTypeSelected="nodeTypeSelected" />
+			<NodeCreateIterator class="scrollable" :elements="subcategorizedNodes" :activeIndex="activeNodeTypeIndex" @nodeTypeSelected="nodeTypeSelected" />
 		</div>
 		<div v-else>
 			<div class="type-selector">
-				<el-tabs v-model="selectedType" stretch @tab-click="onTabClick">
+				<el-tabs v-model="selectedType" stretch>
 					<el-tab-pane label="All" name="All"></el-tab-pane>
 					<el-tab-pane label="Regular" name="Regular"></el-tab-pane>
 					<el-tab-pane label="Trigger" name="Trigger"></el-tab-pane>
 				</el-tabs>
 			</div>
-			<div v-if="nodeFilter.length === 0">
+			<div v-if="nodeFilter.length === 0" class="scrollable">
 				<NodeCreateIterator
 					:elements="categorized"
 					:activeIndex="activeNodeTypeIndex"
@@ -30,7 +30,7 @@
 					@subcategorySelected="onSubcategorySelected"
 				/>
 			</div>
-			<div class="node-create-list-wrapper" v-else>
+			<div class="node-create-list-wrapper scrollable" v-else>
 				<NodeCreateIterator v-if="filteredNodeTypes.length > 0" :elements="filteredNodeTypes" :activeIndex="activeNodeTypeIndex" @nodeTypeSelected="nodeTypeSelected" />
 				<div v-else class="no-results">
 					🙃 no nodes matching your search criteria
@@ -55,6 +55,11 @@ import NodeCreateCategory from "./NodeCreateCategory.vue";
 import { INodeCreateElement, INodeTypeTemp } from "@/Interface";
 import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY } from "@/constants";
 
+interface IActiveSubCategory {
+	category: string,
+	subcategory: string,
+}
+
 export default mixins(externalHooks).extend({
 	name: 'NodeCreateList',
 	components: {
@@ -64,8 +69,8 @@ export default mixins(externalHooks).extend({
 	},
 	data () {
 		return {
-			activeCategory: CORE_NODES_CATEGORY,
-			activeSubcategory: '',
+			activeCategory: [CORE_NODES_CATEGORY],
+			activeSubcategory: null as IActiveSubCategory | null,
 			activeNodeTypeIndex: 1,
 			nodeFilter: '',
 			selectedType: 'All',
@@ -210,17 +215,18 @@ export default mixins(externalHooks).extend({
 		},
 
 		categorized() {
+			// @ts-ignore
 			return this.nodesWithCategories.map((el: INodeCreateElement) => {
-				if (el.type === 'category') {
+				if (el.type === 'category' && el.category) {
 					return {
 						...el,
-						expanded: this.activeCategory === el.category,
+						expanded: this.activeCategory.includes(el.category),
 					};
 				}
-				else if (el.type === 'subcategory' && el.category === this.activeCategory) {
+				else if (el.type === 'subcategory' && el.category && this.activeCategory.includes(el.category)) {
 					return el;
 				}
-				else if (el.type === 'node' && el.category === this.activeCategory) {
+				else if (el.type === 'node' && el.category && this.activeCategory.includes(el.category)) {
 					if (this.selectedType === 'All' || (this.selectedType === 'Trigger' && el.isTrigger)) {
 						return el;
 					}
@@ -231,12 +237,13 @@ export default mixins(externalHooks).extend({
 
 				return null;
 			})
-			.filter(el => !!el);
+			.filter((el: INodeCreateElement) => !!el);
 		},
 
 		subcategorizedNodes() {
-			return this.categoriesWithNodes[this.activeCategory][this.activeSubcategory]
-				.filter((el) => {
+			// @ts-ignore
+			return this.activeSubcategory && this.categoriesWithNodes[this.activeSubcategory.category][this.activeSubcategory.subcategory]
+				.filter((el: INodeCreateElement) => {
 					if (el.isTrigger && this.selectedType === 'Trigger') {
 						return true;
 					}
@@ -259,7 +266,7 @@ export default mixins(externalHooks).extend({
 	},
 	methods: {
 		nodeFilterKeyDown (e: KeyboardEvent) {
-			const activeNodeType = this.filteredNodeTypes[this.activeNodeTypeIndex];
+			const activeNodeType = this.nodeFilter.length > 0 ? this.filteredNodeTypes[this.activeNodeTypeIndex]: this.categorized[this.activeNodeTypeIndex];
 
 			if (e.key === 'ArrowDown') {
 				this.activeNodeTypeIndex++;
@@ -270,7 +277,18 @@ export default mixins(externalHooks).extend({
 				// Make sure that we do not get before the first nodeType
 				this.activeNodeTypeIndex = Math.max(this.activeNodeTypeIndex, 0);
 			} else if (e.key === 'Enter' && activeNodeType) {
-				this.nodeTypeSelected(activeNodeType.name);
+				if (activeNodeType.type === 'node' && activeNodeType.nodeType) {
+					this.nodeTypeSelected(activeNodeType.nodeType.name);
+				}
+				else if (activeNodeType.type === 'category' && activeNodeType.category) {
+					this.onCategorySelected(activeNodeType.category);
+				}
+				else if (activeNodeType.type === 'subcategory' && activeNodeType.subcategory) {
+					this.activeSubcategory = {
+						category: activeNodeType.category,
+						subcategory: activeNodeType.subcategory,
+					};
+				}
 			}
 
 			if (!['Escape', 'Tab'].includes(e.key)) {
@@ -283,28 +301,28 @@ export default mixins(externalHooks).extend({
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
 		onCategorySelected(category: string) {
-			if (this.activeCategory === category) {
-				this.activeCategory = '';
+			if (this.activeCategory.includes(category)) {
+				this.activeCategory = this.activeCategory.filter((active: string) => active !== category);
 			}
 			else {
-				this.activeCategory = category;
+				this.activeCategory = [...this.activeCategory, category];
 			}
 
-			this.activeNodeTypeIndex = this.categories.indexOf(category);
+			this.activeNodeTypeIndex = this.categorized.findIndex((el: INodeCreateElement) => el.category === category);
 		},
-		onSubcategorySelected(subcategory: string) {
-			this.activeSubcategory = subcategory;
+		onSubcategorySelected(selected: IActiveSubCategory) {
+			this.activeSubcategory = selected;
 			this.activeNodeTypeIndex = 0;
 		},
 
 		onBackArrowClick() {
-			this.activeSubcategory = '';
+			this.activeSubcategory = null;
 			this.activeNodeTypeIndex = 0;
 		},
 
 		onClickInside() {
 			// keep focus on input field as user clicks around
-			this.$refs.inputField.focus();
+			(this.$refs.inputField as HTMLInputElement).focus();
 		}
 	},
 	async mounted() {
@@ -317,8 +335,11 @@ export default mixins(externalHooks).extend({
 </script>
 
 <style lang="scss" scoped>
-.subcategory-header {
+* {
 	box-sizing: border-box;
+}
+
+.subcategory-header {
   height: 50px;
   background-color: #F2F4F8;
 	border: 1px solid $--node-creator-border-color;
@@ -342,6 +363,7 @@ export default mixins(externalHooks).extend({
 .scrollable {
 	overflow-y: auto;
 	max-height: 100vh;
+	margin-bottom: 30px;
 
 	&::-webkit-scrollbar {
  		display: none;

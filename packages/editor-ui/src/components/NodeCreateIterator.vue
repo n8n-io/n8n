@@ -5,6 +5,7 @@
 			:key="index"
 			@click="() => selected(element)"
 			:class="{container: true, active: activeIndex === index, clickable: true}"
+			:ref="activeIndex === index ? 'active' : ''"
 		>
 			<div v-if="element.type === 'category'" class="category">
 				<span class="name">{{ element.category }}</span>
@@ -17,7 +18,7 @@
 				class="subcategory">
 				<div class="details">
 					<div class="title">{{element.subcategory}}</div>
-					<div class="description">Lorem ipsum testlkjre dfkl jsdf </div>
+					<div v-if="element.description" class="description">{{element.description}}</div>
 				</div>
 				<div class="action">
 					<font-awesome-icon class="arrow" icon="arrow-right" />
@@ -54,7 +55,7 @@ export default Vue.extend({
 				this.$emit('categorySelected', element.category);
 			}
 			else if (element.type === 'subcategory') {
-				this.$emit('subcategorySelected', element.subcategory);
+				this.$emit('subcategorySelected', {category: element.category, subcategory: element.subcategory});
 			}
 		},
 	},
@@ -65,13 +66,11 @@ export default Vue.extend({
 
 <style lang="scss" scoped>
 .category {
-	border-bottom: 1px solid $--node-creator-border-color;
   font-size: 11px;
   font-weight: bold;
   letter-spacing: 1px;
   line-height: 11px;
 	padding: 10px 12px;
-	border-left: 1px solid $--node-creator-border-color;
 	padding-top: 15px;
 	display: flex;
 
@@ -119,11 +118,6 @@ export default Vue.extend({
 
 .active {
 	border-left: 1px solid $--color-primary !important;
-}
-
-.category, .subcategory {
-	cursor: pointer;
-	border-left: 1px solid $--node-creator-border-color;
 }
 
 .arrow {

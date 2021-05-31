@@ -68,6 +68,8 @@ export default Vue.extend({
 }
 
 .node-icon {
+	min-width: 30px;
+	max-width: 30px;
 	margin-right: 15px;
 }
 
