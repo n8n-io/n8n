@@ -1,12 +1,12 @@
 <template>
 	<div class="node-creator-wrapper">
-		<transition name="el-zoom-in-top">
-			<div class="node-creator" v-show="active">
+		<transition name="slide">
+			<div class="node-creator" v-if="active">
 				<div class="close-button clickable close-on-click" @click="closeCreator" title="Close">
 					<i class="el-icon-close close-on-click"></i>
 				</div>
 
-				<node-create-list v-if="active" ref="list" @nodeTypeSelected="nodeTypeSelected"></node-create-list>
+				<node-create-list ref="list" @nodeTypeSelected="nodeTypeSelected"></node-create-list>
 			</div>
 		</transition>
 	</div>
@@ -56,6 +56,17 @@ export default Vue.extend({
 </script>
 
 <style scoped lang="scss">
+.slide-leave-active,
+.slide-enter-active {
+  transition: .3s ease;
+}
+.slide-enter {
+  transform: translateX(100%);
+}
+
+.slide-leave-to {
+	transform: translateX(120%);
+}
 
 .close-button {
 	position: absolute;

@@ -1,19 +1,21 @@
 <template>
 	<div @click="onClickInside">
-		<div>
-			<el-input :class="{'custom': true, hidden: !!activeSubcategory}" placeholder="Search nodes..." v-model="nodeFilter" ref="inputField" type="text" prefix-icon="el-icon-search" @keydown.native="nodeFilterKeyDown" clearable ></el-input>
-		</div>
-		<div v-if="activeSubcategory">
-			<div class="subcategory-header">
-				<div class="clickable" @click="onBackArrowClick">
-					<font-awesome-icon class="back-arrow" icon="arrow-left" />
+		<transition name="slide">
+			<div v-if="activeSubcategory" class="subcategory-panel">
+				<div class="subcategory-header">
+					<div class="clickable" @click="onBackArrowClick">
+						<font-awesome-icon class="back-arrow" icon="arrow-left" />
+					</div>
+					<span>{{activeSubcategory.subcategory}}</span>
 				</div>
-				<span>{{activeSubcategory.subcategory}}</span>
+				
+				<NodeCreateIterator class="scrollable" :elements="subcategorizedNodes" :activeIndex="activeNodeTypeIndex" @nodeTypeSelected="nodeTypeSelected" />
 			</div>
-			
-			<NodeCreateIterator class="scrollable" :elements="subcategorizedNodes" :activeIndex="activeNodeTypeIndex" @nodeTypeSelected="nodeTypeSelected" />
-		</div>
-		<div v-else>
+		</transition>
+		<div>
+			<div>
+				<el-input class="custom" placeholder="Search nodes..." v-model="nodeFilter" ref="inputField" type="text" prefix-icon="el-icon-search" @keydown.native="nodeFilterKeyDown" clearable ></el-input>
+			</div>
 			<div class="type-selector">
 				<el-tabs v-model="selectedType" stretch>
 					<el-tab-pane label="All" name="All"></el-tab-pane>
@@ -339,6 +341,14 @@ export default mixins(externalHooks).extend({
 	box-sizing: border-box;
 }
 
+.subcategory-panel {
+	position: absolute;
+	background: $--node-creator-search-background-color;
+	z-index: 100;
+	height: 100%;
+	width: 100%;
+}
+
 .subcategory-header {
   height: 50px;
   background-color: #F2F4F8;
@@ -380,12 +390,6 @@ export default mixins(externalHooks).extend({
 		border-radius: 0;
 		min-height: 60px;
 	}
-
-	&.hidden {
-		z-index: -1;
-		position: absolute;
-		opacity: 0;
-	}
 }
 
 .type-selector {
@@ -407,6 +411,14 @@ export default mixins(externalHooks).extend({
 	margin: 20px 10px 0 10px;
 	line-height: 1.5em;
 	text-align: center;
+}
+
+.slide-leave-active,
+.slide-enter-active {
+  transition: .3s ease;
+}
+.slide-enter, .slide-leave-to {
+  transform: translate(100%);
 }
 
 </style>
