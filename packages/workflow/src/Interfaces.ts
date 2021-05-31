@@ -567,7 +567,6 @@ export interface INodeTypeDescription {
 		deactivate?: INodeHookDescription[];
 	};
 	webhooks?: IWebhookDescription[];
-	codex?: CodexSearchProperties;
 }
 
 export interface INodeHookDescription {
@@ -784,8 +783,3 @@ export interface IRawErrorObject {
 export interface IStatusCodeMessages {
 	[key: string]: string;
 }
-
-export type CodexSearchProperties = {
-	categories: string[];
-	alias: string[];
-};
