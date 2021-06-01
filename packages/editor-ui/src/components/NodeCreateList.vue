@@ -581,20 +581,37 @@ export default mixins(externalHooks).extend({
 	height: calc(100% - 160px);
 }
 
-.el-input {
+/deep/ .el-input {
 	background-color: $--node-creator-search-background-color;
 	color: $--node-creator-search-placeholder-color;
 	font-size: 18px;
 
-	/deep/ input,
+	input,
 	input:focus {
 		border: 1px solid $--node-creator-border-color;
 		border-radius: 0;
 		min-height: 60px;
 	}
 
-	/deep/ &.active .el-icon-search {
+	&.active .el-icon-search {
 		color: $--color-primary !important;
+	}
+
+	.el-icon-circle-close{
+		&:hover {
+			&:before {
+				background-color: #3d3f46 !important;
+			}
+		}
+
+		&:before {
+			content: "\E6DB";
+			background-color: #8D939C;
+			color: $--node-creator-search-background-color;
+			border-radius: 50%;
+			font-size: 16px;
+			padding: 1px;
+		}
 	}
 }
 
