@@ -193,6 +193,8 @@ export class ZohoCrm implements INodeType {
 			//             resource fields
 			// ----------------------------------------
 
+			// standard fields
+
 			async getAccountFields(this: ILoadOptionsFunctions) {
 				return getFields.call(this, 'account');
 			},
@@ -235,6 +237,52 @@ export class ZohoCrm implements INodeType {
 
 			async getVendorFields(this: ILoadOptionsFunctions) {
 				return getFields.call(this, 'vendor');
+			},
+
+			// custom fields
+
+			async getCustomAccountFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'account', { onlyCustom: true });
+			},
+
+			async getCustomContactFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'contact', { onlyCustom: true });
+			},
+
+			async getCustomDealFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'deal', { onlyCustom: true });
+			},
+
+			async getCustomInvoiceFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'invoice', { onlyCustom: true });
+			},
+
+			async getCustomLeadFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'lead', { onlyCustom: true });
+			},
+
+			async getCustomProductFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'product', { onlyCustom: true });
+			},
+
+			async getCustomPurchaseOrderFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'purchase_order', { onlyCustom: true });
+			},
+
+			async getCustomVendorOrderFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'vendor', { onlyCustom: true });
+			},
+
+			async getCustomQuoteFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'quote', { onlyCustom: true });
+			},
+
+			async getCustomSalesOrderFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'sales_order', { onlyCustom: true });
+			},
+
+			async getCustomVendorFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'vendor', { onlyCustom: true });
 			},
 		},
 	};

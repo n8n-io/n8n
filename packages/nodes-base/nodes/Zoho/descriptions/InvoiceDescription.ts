@@ -4,6 +4,7 @@ import {
 
 import {
 	billingAddress,
+	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
 	makeProductDetails,
 	shippingAddress,
@@ -119,6 +120,7 @@ export const invoiceFields = [
 				default: '',
 				description: 'Symbol of the currency in which revenue is generated.',
 			},
+			makeCustomFieldsFixedCollection('invoice'),
 			{
 				displayName: 'Description',
 				name: 'Description',
@@ -307,6 +309,7 @@ export const invoiceFields = [
 				default: '',
 				description: 'Symbol of the currency in which revenue is generated.',
 			},
+			makeCustomFieldsFixedCollection('invoice'),
 			{
 				displayName: 'Description',
 				name: 'Description',

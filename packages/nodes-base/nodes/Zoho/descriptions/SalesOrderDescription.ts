@@ -4,6 +4,7 @@ import {
 
 import {
 	billingAddress,
+	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
 	makeProductDetails,
 	shippingAddress,
@@ -149,6 +150,7 @@ export const salesOrderFields = [
 				default: '',
 				description: 'Symbol of the currency in which revenue is generated.',
 			},
+			makeCustomFieldsFixedCollection('salesOrder'),
 			{
 				displayName: 'Deal ID',
 				name: 'dealId',
@@ -385,6 +387,7 @@ export const salesOrderFields = [
 				default: '',
 				description: 'Symbol of the currency in which revenue is generated.',
 			},
+			makeCustomFieldsFixedCollection('salesOrder'),
 			{
 				displayName: 'Deal ID',
 				name: 'dealId',

@@ -1,3 +1,4 @@
+import { capitalizeInitial } from '../GenericFunctions';
 import { CamelCaseResource } from '../types';
 
 export const billingAddress = {
@@ -313,18 +314,7 @@ export const makeProductDetails = (resource: CamelCaseResource) => ({
 });
 
 export const makeGetAllFields = (resource: CamelCaseResource) => {
-	const loadOptionsMethod = {
-		account: 'getAccountFields',
-		contact: 'getContactFields',
-		deal: 'getDealFields',
-		invoice: 'getInvoiceFields',
-		lead: 'getLeadFields',
-		product: 'getProductFields',
-		purchaseOrder: 'getPurchaseOrderFields',
-		quote: 'getQuoteFields',
-		salesOrder: 'getSalesOrderFields',
-		vendor: 'getVendorFields',
-	}[resource];
+	const loadOptionsMethod = `get${capitalizeInitial(resource)}Fields`;
 
 	return [
 		{
@@ -407,6 +397,7 @@ export const makeGetAllFields = (resource: CamelCaseResource) => {
 						loadOptionsMethod,
 					},
 					default: [],
+					description: 'Return only these fields.',
 				},
 				{
 					displayName: 'Include Child',
@@ -452,4 +443,45 @@ export const makeGetAllFields = (resource: CamelCaseResource) => {
 			],
 		},
 	];
+};
+
+export const makeCustomFieldsFixedCollection = (resource: CamelCaseResource) => {
+	const loadOptionsMethod = `getCustom${capitalizeInitial(resource)}Fields`;
+
+	return {
+		displayName: 'Custom Fields',
+		name: 'customFields',
+		placeholder: 'Add Custom Field',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		description: 'Filter by custom fields.',
+		default: {},
+		options: [
+			{
+				name: 'customFields',
+				displayName: 'Custom Field',
+				values: [
+					{
+						displayName: 'Field ID',
+						name: 'fieldId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod,
+						},
+						default: '',
+						description: 'Custom field to set a value to.',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'Value to set on custom field.',
+					},
+				],
+			},
+		],
+	};
 };

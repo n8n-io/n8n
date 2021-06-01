@@ -65,7 +65,6 @@ export async function zohoApiRequest(
 	}
 
 	try {
-		console.log(options);
 		const responseData = await this.helpers.requestOAuth2?.call(this, 'zohoOAuth2Api', options);
 
 		if (responseData === undefined) return [];
@@ -295,10 +294,19 @@ export const toLoadOptions = (items: ResourceItems, nameProperty: NameType) =>
 /**
  * Retrieve all fields for a resource, sorted alphabetically.
  */
-export async function getFields(this: ILoadOptionsFunctions, resource: SnakeCaseResource) {
+export async function getFields(
+	this: ILoadOptionsFunctions,
+	resource: SnakeCaseResource,
+	{ onlyCustom } = { onlyCustom: false },
+) {
 	const endpoint = '/settings/fields';
 	const qs = { module: `${resource}s` };
-	const { fields } = await zohoApiRequest.call(this, 'GET', endpoint, {}, qs) as LoadedFields;
+	let { fields } = await zohoApiRequest.call(this, 'GET', endpoint, {}, qs) as LoadedFields;
+
+	if (onlyCustom) {
+		fields = fields.filter(({ custom_field }) => custom_field);
+	}
+
 	const options = fields.map(({ field_label, api_name }) => ({ name: field_label, value: api_name }));
 
 	return sortBy(options, o => o.name);
@@ -313,3 +321,5 @@ export const addGetAllFilterOptions = (qs: IDataObject, options: GetAllFilterOpt
 		Object.assign(qs, fields && { fields: fields.join(',') }, rest);
 	}
 };
+
+export const capitalizeInitial = (str: string) => str[0].toUpperCase() + str.slice(1);

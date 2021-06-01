@@ -4,6 +4,7 @@ import {
 
 import {
 	address,
+	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
 } from './SharedFields';
 
@@ -124,6 +125,7 @@ export const leadFields = [
 				default: '',
 				description: 'Symbol of the currency in which revenue is generated.',
 			},
+			makeCustomFieldsFixedCollection('lead'),
 			{
 				displayName: 'Description',
 				name: 'Description',
@@ -355,6 +357,7 @@ export const leadFields = [
 				default: '',
 				description: 'Symbol of the currency in which revenue is generated.',
 			},
+			makeCustomFieldsFixedCollection('lead'),
 			{
 				displayName: 'Description',
 				name: 'Description',

@@ -4,6 +4,7 @@ import {
 
 import {
 	mailingAddress,
+	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
 	otherAddress,
 } from './SharedFields';
@@ -112,6 +113,7 @@ export const contactFields = [
 				default: '',
 				description: 'Symbol of the currency in which revenue is generated.',
 			},
+			makeCustomFieldsFixedCollection('contact'),
 			{
 				displayName: 'Date of Birth',
 				name: 'Date_of_Birth',
@@ -322,6 +324,7 @@ export const contactFields = [
 				default: '',
 				description: 'Symbol of the currency in which revenue is generated.',
 			},
+			makeCustomFieldsFixedCollection('contact'),
 			{
 				displayName: 'Date of Birth',
 				name: 'Date_of_Birth',

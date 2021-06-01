@@ -74,6 +74,7 @@ export type LoadedFields = {
 	fields: Array<{
 		field_label: string;
 		api_name: string;
+		custom_field: boolean;
 	}>
 };
 

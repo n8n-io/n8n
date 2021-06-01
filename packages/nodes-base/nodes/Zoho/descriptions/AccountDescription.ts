@@ -4,6 +4,7 @@ import {
 
 import {
 	billingAddress,
+	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
 	shippingAddress,
 } from './SharedFields';
@@ -130,6 +131,7 @@ export const accountFields = [
 				default: '',
 				description: 'Symbol of the currency in which revenue is generated.',
 			},
+			makeCustomFieldsFixedCollection('account'),
 			{
 				displayName: 'Description',
 				name: 'Description',
@@ -316,6 +318,7 @@ export const accountFields = [
 				default: '',
 				description: 'Symbol of the currency in which revenue is generated.',
 			},
+			makeCustomFieldsFixedCollection('account'),
 			{
 				displayName: 'Description',
 				name: 'Description',

@@ -4,6 +4,7 @@ import {
 
 import {
 	address,
+	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
 } from './SharedFields';
 
@@ -103,6 +104,7 @@ export const vendorFields = [
 				type: 'string',
 				default: '',
 			},
+			makeCustomFieldsFixedCollection('vendor'),
 			{
 				displayName: 'Description',
 				name: 'Description',
@@ -230,6 +232,7 @@ export const vendorFields = [
 				type: 'string',
 				default: '',
 			},
+			makeCustomFieldsFixedCollection('vendor'),
 			{
 				displayName: 'Description',
 				name: 'Description',

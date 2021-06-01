@@ -3,6 +3,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
 } from './SharedFields';
 
@@ -98,6 +99,7 @@ export const productFields = [
 				},
 				default: 0,
 			},
+			makeCustomFieldsFixedCollection('product'),
 			{
 				displayName: 'Description',
 				name: 'Description',
@@ -254,6 +256,7 @@ export const productFields = [
 				},
 				default: 0,
 			},
+			makeCustomFieldsFixedCollection('product'),
 			{
 				displayName: 'Description',
 				name: 'Description',
