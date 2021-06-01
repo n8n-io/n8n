@@ -78,8 +78,12 @@
 						<a
 							href="https://n8n-community.typeform.com/to/K1fBVTZ3"
 							target="_blank"
-							>Request the node</a
-						>
+							>	
+								<span>Request the node</span>&nbsp;
+								<span>
+									<font-awesome-icon icon="external-link-alt" title="Request the node" />
+								</span>	
+							</a>
 					</div>
 				</div>
 			</div>
