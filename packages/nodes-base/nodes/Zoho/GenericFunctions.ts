@@ -65,6 +65,7 @@ export async function zohoApiRequest(
 	}
 
 	try {
+		console.log(JSON.stringify(options, null, 2));
 		const responseData = await this.helpers.requestOAuth2?.call(this, 'zohoOAuth2Api', options);
 
 		if (responseData === undefined) return [];
@@ -225,6 +226,22 @@ const adjustAccountIdField = adjustIdField('accountId', 'Account_Name');
 const adjustContactIdField = adjustIdField('contactId', 'Full_Name');
 const adjustDealIdField = adjustIdField('dealId', 'Deal_Name');
 
+const adjustCustomFields = (allFields: AllFields) => {
+	const { customFields, ...rest } = allFields;
+
+	if (!customFields?.customFields.length) return allFields;
+
+	const customFieldsObject = customFields.customFields.reduce((acc, cur) => {
+		acc[cur.fieldId] = cur.value;
+		return acc;
+	}, {} as { [key: string]: string });
+
+	return {
+		...customFieldsObject,
+		...rest,
+	};
+};
+
 // ----------------------------------------
 //           payload adjusters
 // ----------------------------------------
@@ -232,15 +249,20 @@ const adjustDealIdField = adjustIdField('dealId', 'Deal_Name');
 export const adjustAccountPayload = flow(
 	adjustBillingAddressFields,
 	adjustShippingAddressFields,
+	adjustCustomFields,
 );
 
 export const adjustContactPayload = flow(
 	adjustMailingAddressFields,
 	adjustOtherAddressFields,
 	adjustDateOfBirthField,
+	adjustCustomFields,
 );
 
-export const adjustDealPayload = adjustClosingDateField;
+export const adjustDealPayload = flow(
+	adjustClosingDateField,
+	adjustCustomFields,
+);
 
 export const adjustInvoicePayload = flow(
 	adjustBillingAddressFields,
@@ -248,21 +270,27 @@ export const adjustInvoicePayload = flow(
 	adjustInvoiceDateField,
 	adjustDueDateField,
 	adjustAccountIdField,
+	adjustCustomFields,
 );
 
-export const adjustLeadPayload = adjustAddressFields;
+export const adjustLeadPayload = flow(
+	adjustAddressFields,
+	adjustCustomFields,
+);
 
 export const adjustPurchaseOrderPayload = flow(
 	adjustBillingAddressFields,
 	adjustShippingAddressFields,
 	adjustDueDateField,
 	adjustPurchaseOrderDateField,
+	adjustCustomFields,
 );
 
 export const adjustQuotePayload = flow(
 	adjustBillingAddressFields,
 	adjustShippingAddressFields,
 	adjustValidTillField,
+	adjustCustomFields,
 );
 
 export const adjustSalesOrderPayload = flow(
@@ -272,9 +300,13 @@ export const adjustSalesOrderPayload = flow(
 	adjustAccountIdField,
 	adjustContactIdField,
 	adjustDealIdField,
+	adjustCustomFields,
 );
 
-export const adjustVendorPayload = adjustAddressFields;
+export const adjustVendorPayload = flow(
+	adjustAddressFields,
+	adjustCustomFields,
+);
 
 // ----------------------------------------
 //               helpers

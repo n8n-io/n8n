@@ -45,6 +45,7 @@ export type AllFields =
 	{ [Location in LocationType]?: { address_fields: { [key: string]: string } } } &
 	{ Account?: { subfields: { id: string; name: string; } } } &
 	{ [key in 'accountId' | 'contactId' | 'dealId']?: string } &
+	{ customFields?: { customFields: Array<{ fieldId: string; value: string; }> } } &
 	IDataObject;
 
 export type ProductDetails = Array<{ id: string, quantity: number }>;
