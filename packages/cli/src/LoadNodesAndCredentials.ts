@@ -134,7 +134,6 @@ class LoadNodesAndCredentialsClass {
 	 * @param {string} credentialName The name of the credentials
 	 * @param {string} filePath The file to read credentials from
 	 * @returns {Promise<void>}
-	 * @memberof N8nPackagesInformationClass
 	 */
 	async loadCredentialsFromFile(credentialName: string, filePath: string): Promise<void> {
 		const tempModule = require(filePath);
@@ -161,7 +160,6 @@ class LoadNodesAndCredentialsClass {
 	 * @param {string} nodeName Tha name of the node
 	 * @param {string} filePath The file to read node from
 	 * @returns {Promise<void>}
-	 * @memberof N8nPackagesInformationClass
 	 */
 	async loadNodeFromFile(packageName: string, nodeName: string, filePath: string): Promise<void> {
 		let tempNode: INodeType;
@@ -210,13 +208,13 @@ class LoadNodesAndCredentialsClass {
 	 *
 	 * @param {string} filePath The file path to a `*.node.js` file
 	 * @returns {CodexCategories}
-	 * @memberof N8nPackagesInformationClass
 	 */
 	getCodex(filePath: string): CodexCategories {
-		const { categories, subcategories } = require(`${filePath}on`); // .js to .json
+		const { categories, subcategories, alias } = require(`${filePath}on`); // .js to .json
 		return {
-			...categories && { categories },
-			...subcategories && { subcategories },
+			...(categories && { categories }),
+			...(subcategories && { subcategories }),
+			...(alias && { alias }),
 		};
 	}
 
@@ -229,7 +227,6 @@ class LoadNodesAndCredentialsClass {
 	 * @param obj.filePath Path to the built node
 	 * @param obj.isCustom Whether the node is custom
 	 * @returns {void}
-	 * @memberof N8nPackagesInformationClass
 	 */
 	addCodex({ node, filePath, isCustom }: {
 		node: INodeType;
@@ -257,7 +254,6 @@ class LoadNodesAndCredentialsClass {
 	 * @param {string} setPackageName The package name to set for the found nodes
 	 * @param {string} directory The directory to look in
 	 * @returns {Promise<void>}
-	 * @memberof N8nPackagesInformationClass
 	 */
 	async loadDataFromDirectory(setPackageName: string, directory: string): Promise<void> {
 		const files = await glob(path.join(directory, '**/*\.@(node|credentials)\.js'));
@@ -285,7 +281,6 @@ class LoadNodesAndCredentialsClass {
 	 *
 	 * @param {string} packageName The name to read data from
 	 * @returns {Promise<void>}
-	 * @memberof N8nPackagesInformationClass
 	 */
 	async loadDataFromPackage(packageName: string): Promise<void> {
 		// Get the absolute path of the package

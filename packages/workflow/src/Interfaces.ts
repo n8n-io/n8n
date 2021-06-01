@@ -788,4 +788,5 @@ export interface IStatusCodeMessages {
 export type CodexCategories = {
 	categories?: string[];
 	subcategories?: {[category: string]: string[]};
+	alias?: string[];
 };
