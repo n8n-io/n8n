@@ -2,7 +2,7 @@
   <div>
 		<div
 			v-for="(element, index) in elements"
-			:key="index"
+			:key="getKey(element)"
 			@click="() => selected(element)"
 			:class="{container: true, active: activeIndex === index && !disabled, clickable: !disabled, [element.type]: true}"
 		>
@@ -60,6 +60,16 @@ export default Vue.extend({
 			else if (element.type === 'subcategory') {
 				this.$emit('subcategorySelected', {category: element.category, subcategory: element.subcategory});
 			}
+		},
+		getKey (element: INodeCreateElement) {
+			if (element.type === 'category') {
+				return element.category;
+			}
+			if (element.type === 'subcategory') {
+				return `${element.category}_${element.subcategory}`;
+			}
+
+			return element.nodeType && element.nodeType.name;
 		},
 	},
 });
