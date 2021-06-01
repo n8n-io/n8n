@@ -75,7 +75,7 @@ export const invoiceFields = [
 			},
 		},
 	},
-	makeProductDetails('invoice', 'create', { hasUpsert: true }),
+	makeProductDetails('invoice'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

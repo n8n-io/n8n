@@ -75,7 +75,7 @@ export const quoteFields = [
 			},
 		},
 	},
-	makeProductDetails('quote', 'create', { hasUpsert: true }),
+	makeProductDetails('quote'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

@@ -224,7 +224,7 @@ export const address = {
 	],
 };
 
-export const makeProductDetails = (resource: string, operation: string, { hasUpsert } = { hasUpsert: false }) => ({
+export const makeProductDetails = (resource: CamelCaseResource) => ({
 	displayName: 'Products',
 	name: 'Product_Details',
 	type: 'collection',
@@ -240,8 +240,8 @@ export const makeProductDetails = (resource: string, operation: string, { hasUps
 				resource,
 			],
 			operation: [
-				operation,
-				hasUpsert && 'upsert',
+				'create',
+				'upsert',
 			],
 		},
 	},

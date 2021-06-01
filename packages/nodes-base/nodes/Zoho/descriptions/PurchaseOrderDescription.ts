@@ -96,7 +96,7 @@ export const purchaseOrderFields = [
 			},
 		},
 	},
-	makeProductDetails('purchaseOrder', 'create', { hasUpsert: true }),
+	makeProductDetails('purchaseOrder'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -110,6 +110,7 @@ export const purchaseOrderFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
