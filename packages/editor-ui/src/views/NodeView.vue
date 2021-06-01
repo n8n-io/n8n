@@ -2063,6 +2063,10 @@ export default mixins(
 				const resData = await this.importWorkflowData(data.data as IWorkflowDataUpdate);
 			});
 
+			this.$root.$on('newWorkflow', async () => {
+				await this.newWorkflow();
+			});
+
 			this.$root.$on('importWorkflowUrl', async (data: IDataObject) => {
 				const workflowData = await this.getWorkflowDataFromUrl(data.url as string);
 				if (workflowData !== undefined) {

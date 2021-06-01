@@ -432,10 +432,9 @@ export default mixins(
 						if (importConfirm === true) {
 							this.$store.commit('setStateDirty', false);
 							if (this.$router.currentRoute.name === 'NodeViewNew') {
-								// the default router mode is : Hash
-								// HACK; so changing the query will make the route seems different
-								// the added query attribute can be used in the NodeViewNew for extra behavior
-								this.$router.push({ name: 'NodeViewNew', query: {ref:'NodeViewNew'} });
+								// using event emitter pattern
+								// to avoid duplicate navigation issue
+								this.$root.$emit('newWorkflow');
 							} else {
 								this.$router.push({ name: 'NodeViewNew' });
 							}
