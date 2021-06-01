@@ -203,8 +203,8 @@ class LoadNodesAndCredentialsClass {
 	}
 
 	/**
-	 * Retrieves `categories` and `subcategories` (if defined)
-	 * from the codex for the node at the given file path.
+	 * Retrieves `categories`, `subcategories` and alias (if defined)
+	 * from the codex data for the node at the given file path.
 	 *
 	 * @param {string} filePath The file path to a `*.node.js` file
 	 * @returns {CodexData}
