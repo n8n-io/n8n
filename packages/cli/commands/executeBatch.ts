@@ -69,7 +69,7 @@ export class ExecuteBatch extends Command {
 
 	static compare: undefined | string = undefined;
 
-	static snapshot = '';
+	static snapshot: undefined | string = undefined;
 
 	static concurrency = 1;
 
@@ -279,10 +279,10 @@ export class ExecuteBatch extends Command {
 			query.andWhere(`workflows.id not in (:...skipIds)`, {skipIds});
 		}
 
-		allWorkflows = await query.getMany();
+		allWorkflows = await query.getMany() as IWorkflowDb[];
 
 		if (ExecuteBatch.debug === true) {
-			this.log(`Found ${allWorkflows.length} workflows to execute.`);
+			process.stdout.write(`Found ${allWorkflows.length} workflows to execute.\n`);
 		}
 		
 		// Make sure the settings exist
@@ -338,6 +338,7 @@ export class ExecuteBatch extends Command {
 		}else{
 			console.log(JSON.stringify(results, null, 2));
 		}
+
 		if(results.summary.failedExecutions > 0){
 			this.exit(1);
 		}
@@ -647,7 +648,7 @@ export class ExecuteBatch extends Command {
 		retryResults.executions.forEach(newExecution => {
 			if (newExecution.executionStatus === 'success') {
 				// Remove previous execution from list.
-				results.executions.filter(previousExecutions => previousExecutions.workflowId !== newExecution.workflowId);
+				results.executions = results.executions.filter(previousExecutions => previousExecutions.workflowId !== newExecution.workflowId);
 
 				const errorIndex = results.summary.errors.findIndex(summaryInformation => summaryInformation.workflowId === newExecution.workflowId);
 				if (errorIndex !== -1) {
@@ -985,7 +986,7 @@ export class ExecuteBatch extends Command {
 						}
 						// Save snapshots only after comparing - this is to make sure we're updating
 						// After comparing to existing verion.
-						if (ExecuteBatch.snapshot !== '') {
+						if (ExecuteBatch.snapshot !== undefined) {
 							const fileName = (ExecuteBatch.snapshot.endsWith(sep) ? ExecuteBatch.snapshot : ExecuteBatch.snapshot + sep) + `${workflowData.id}-snapshot.json`;
 							fs.writeFileSync(fileName,serializedData);
 						}
