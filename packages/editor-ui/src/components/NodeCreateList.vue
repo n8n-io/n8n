@@ -653,5 +653,9 @@ export default mixins(externalHooks).extend({
 		text-decoration: none;
 		cursor: pointer;
 	}
+
+	img {
+		min-height: 67px;
+	}
 }
 </style>
