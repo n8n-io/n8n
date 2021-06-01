@@ -1,7 +1,7 @@
 <template>
 	<div class="node-creator-wrapper">
 		<transition name="slide">
-			<div class="node-creator" v-if="active">
+			<div class="node-creator" v-if="active" v-click-outside="closeCreator">
 				<div class="border"></div>
 				<div class="close-button clickable close-on-click" @click="closeCreator" title="Close">
 					<i class="el-icon-close close-on-click"></i>
