@@ -567,7 +567,7 @@ export interface INodeTypeDescription {
 		deactivate?: INodeHookDescription[];
 	};
 	webhooks?: IWebhookDescription[];
-	codex?: CodexCategories;
+	codex?: CodexData;
 }
 
 export interface INodeHookDescription {
@@ -785,7 +785,7 @@ export interface IStatusCodeMessages {
 	[key: string]: string;
 }
 
-export type CodexCategories = {
+export type CodexData = {
 	categories?: string[];
 	subcategories?: {[category: string]: string[]};
 	alias?: string[];

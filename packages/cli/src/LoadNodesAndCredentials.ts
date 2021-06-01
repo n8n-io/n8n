@@ -3,7 +3,7 @@ import {
 	UserSettings,
 } from 'n8n-core';
 import {
-	CodexCategories,
+	CodexData,
 	ICredentialType,
 	ILogger,
 	INodeType,
@@ -207,9 +207,9 @@ class LoadNodesAndCredentialsClass {
 	 * from the codex for the node at the given file path.
 	 *
 	 * @param {string} filePath The file path to a `*.node.js` file
-	 * @returns {CodexCategories}
+	 * @returns {CodexData}
 	 */
-	getCodex(filePath: string): CodexCategories {
+	getCodex(filePath: string): CodexData {
 		const { categories, subcategories, alias } = require(`${filePath}on`); // .js to .json
 		return {
 			...(categories && { categories }),
