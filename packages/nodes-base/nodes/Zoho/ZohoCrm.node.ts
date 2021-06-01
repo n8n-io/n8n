@@ -1344,7 +1344,7 @@ export class ZohoCrm implements INodeType {
 
 						addGetAllFilterOptions(qs, options);
 
-						responseData = await handleListing.call(this, 'GET', '/sales_orders');
+						responseData = await handleListing.call(this, 'GET', '/vendors', {}, qs);
 
 					} else if (operation === 'update') {
 
