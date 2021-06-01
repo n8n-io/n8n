@@ -1,6 +1,6 @@
 <template>
 	<span>
-		<img :src="require('@/assets/trigger-icon.svg')" alt="trigger" />
+		<img :src="require('../assets/trigger-icon.svg')" alt="trigger" />
 	</span>
 </template>
 

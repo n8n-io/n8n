@@ -61,7 +61,7 @@
 			</div>
 			<div v-else class="no-results">
 				<div class="img">
-					<img :src="require('@/assets/no-nodes-icon.png')" alt="trigger" />
+					<img :src="require('../assets/no-nodes-icon.png')" alt="trigger" />
 				</div>
 				<div class="title">
 					<div>We didn't make that... yet</div>
