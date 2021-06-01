@@ -255,7 +255,7 @@ export class ZohoCrm implements INodeType {
 			// https://www.zoho.com/crm/developer/docs/api/update-specific-record.html
 			// https://www.zoho.com/crm/developer/docs/api/delete-specific-record.html
 
-			// try {
+			try {
 
 				if (resource === 'account') {
 
@@ -1341,14 +1341,14 @@ export class ZohoCrm implements INodeType {
 
 				}
 
-			// } catch (error) {
-			// 	if (this.continueOnFail()) {
-			// 		returnData.push({ error: error.message });
-			// 		continue;
-			// 	}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
 
-			// 	throw error;
-			// }
+				throw error;
+			}
 
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
