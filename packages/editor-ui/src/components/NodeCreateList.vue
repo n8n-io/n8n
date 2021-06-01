@@ -7,17 +7,30 @@
 					<div class="clickable" @click="onBackArrowClick">
 						<font-awesome-icon class="back-arrow" icon="arrow-left" />
 					</div>
-					<span>{{activeSubcategory.subcategory}}</span>
+					<span>{{ activeSubcategory.subcategory }}</span>
 				</div>
-				
-				<div class="scrollable" >
-					<NodeCreateIterator :elements="subcategorizedNodes" :activeIndex="activeNodeTypeIndex" @nodeTypeSelected="nodeTypeSelected" />
+
+				<div class="scrollable">
+					<NodeCreateIterator
+						:elements="subcategorizedNodes"
+						:activeIndex="activeNodeTypeIndex"
+						@nodeTypeSelected="nodeTypeSelected"
+					/>
 				</div>
 			</div>
 		</transition>
 		<div class="main-panel">
 			<div>
-				<el-input :class="{custom: true, active: nodeFilter.length > 0}" placeholder="Search nodes..." v-model="nodeFilter" ref="inputField" type="text" prefix-icon="el-icon-search" @keydown.native="nodeFilterKeyDown" clearable ></el-input>
+				<el-input
+					:class="{ custom: true, active: nodeFilter.length > 0 }"
+					placeholder="Search nodes..."
+					v-model="nodeFilter"
+					ref="inputField"
+					type="text"
+					prefix-icon="el-icon-search"
+					@keydown.native="nodeFilterKeyDown"
+					clearable
+				></el-input>
 			</div>
 			<div class="type-selector">
 				<el-tabs v-model="selectedType" stretch>
@@ -36,8 +49,15 @@
 					@subcategorySelected="onSubcategorySelected"
 				/>
 			</div>
-			<div class="node-create-list-wrapper scrollable" v-else-if="filteredNodeTypes.length > 0">
-				<NodeCreateIterator :elements="filteredNodeTypes" :activeIndex="activeNodeTypeIndex" @nodeTypeSelected="nodeTypeSelected" />
+			<div
+				class="node-create-list-wrapper scrollable"
+				v-else-if="filteredNodeTypes.length > 0"
+			>
+				<NodeCreateIterator
+					:elements="filteredNodeTypes"
+					:activeIndex="activeNodeTypeIndex"
+					@nodeTypeSelected="nodeTypeSelected"
+				/>
 			</div>
 			<div v-else class="no-results">
 				<div class="img">
@@ -45,12 +65,22 @@
 				</div>
 				<div class="title">
 					<div>We didn't make that... yet</div>
-					<div class="action">Don’t worry, you can probably do it with the <a @click="selectHttpRequest">HTTP Request</a> or <a @click="selectWebhook">Webhook</a> node</div>
+					<div class="action">
+						Don’t worry, you can probably do it with the
+						<a @click="selectHttpRequest">HTTP Request</a> or
+						<a @click="selectWebhook">Webhook</a> node
+					</div>
 				</div>
 
 				<div class="action">
 					<div>Want us to make it faster?</div>
-					<div><a href="https://n8n-community.typeform.com/to/K1fBVTZ3" target="_blank">Request the node</a></div>
+					<div>
+						<a
+							href="https://n8n-community.typeform.com/to/K1fBVTZ3"
+							target="_blank"
+							>Request the node</a
+						>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -58,23 +88,26 @@
 </template>
 
 <script lang="ts">
-
-const descriptions: {[category: string]: {[subcategory: string]: string}} = {
-	'Core Nodes': {
-		Flow: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what',
-		Files: 'Lorem ipsum dolor sit amet',
-		'Data Transformation': 'Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla',
-		Helpers: 'Sup',
+const descriptions: {
+	[category: string]: { [subcategory: string]: string };
+} = {
+	"Core Nodes": {
+		Flow:
+			"Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what",
+		Files: "Lorem ipsum dolor sit amet",
+		"Data Transformation":
+			"Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla",
+		Helpers: "Sup",
 	},
 };
 
-const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
-const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
-const HIDDEN_NODES = ['n8n-nodes-base.start'];
+const UNCATEGORIZED_CATEGORY = "Miscellaneous";
+const UNCATEGORIZED_SUBCATEGORY = "Helpers";
+const HIDDEN_NODES = ["n8n-nodes-base.start"];
 
 import { externalHooks } from "@/components/mixins/externalHooks";
-import { INodeTypeDescription } from 'n8n-workflow';
-import NodeCreateItem from '@/components/NodeCreateItem.vue';
+import { INodeTypeDescription } from "n8n-workflow";
+import NodeCreateItem from "@/components/NodeCreateItem.vue";
 
 import mixins from "vue-typed-mixins";
 import NodeCreateIterator from "./NodeCreateIterator.vue";
@@ -86,37 +119,38 @@ interface ICategoriesWithNodes {
 		[subcategory: string]: {
 			regularCount: number;
 			triggerCount: number;
-			nodes: INodeCreateElement[]
-		}
+			nodes: INodeCreateElement[];
+		};
 	};
 }
 
-// todo get rid of 
+// todo get rid of
 interface IActiveSubCategory {
 	category: string;
 	subcategory: string;
 }
 
 export default mixins(externalHooks).extend({
-	name: 'NodeCreateList',
+	name: "NodeCreateList",
 	components: {
 		NodeCreateItem,
 		NodeCreateIterator,
 	},
-	data () {
+	data() {
 		return {
 			activeCategory: [CORE_NODES_CATEGORY],
 			activeSubcategory: null as IActiveSubCategory | null,
 			activeNodeTypeIndex: 1,
-			nodeFilter: '',
-			selectedType: 'All',
+			nodeFilter: "",
+			selectedType: "All",
 			basePath: this.$store.getters.getBaseUrl,
 		};
 	},
 	computed: {
-		filteredNodeTypes (): INodeCreateElement[] {
+		filteredNodeTypes(): INodeCreateElement[] {
 			const filter = this.nodeFilter.toLowerCase();
-			const nodeTypes: INodeTypeDescription[] = this.$store.getters.allNodeTypes;
+			const nodeTypes: INodeTypeDescription[] = this.$store.getters
+				.allNodeTypes;
 
 			// Apply the filters
 			const returnData = nodeTypes.filter((nodeType) => {
@@ -124,13 +158,22 @@ export default mixins(externalHooks).extend({
 					return false;
 				}
 
-				if (filter && nodeType.displayName.toLowerCase().indexOf(filter) === -1) {
+				if (
+					filter &&
+					nodeType.displayName.toLowerCase().indexOf(filter) === -1
+				) {
 					return false;
 				}
-				if (this.selectedType !== 'All') {
-					if (this.selectedType === 'Trigger' && !nodeType.group.includes('trigger')) {
+				if (this.selectedType !== "All") {
+					if (
+						this.selectedType === "Trigger" &&
+						!nodeType.group.includes("trigger")
+					) {
 						return false;
-					} else if (this.selectedType === 'Regular' && nodeType.group.includes('trigger')) {
+					} else if (
+						this.selectedType === "Regular" &&
+						nodeType.group.includes("trigger")
+					) {
 						return false;
 					}
 				}
@@ -142,85 +185,98 @@ export default mixins(externalHooks).extend({
 			returnData.sort((a, b) => {
 				textA = a.displayName.toLowerCase();
 				textB = b.displayName.toLowerCase();
-				return (textA < textB) ? -1 : (textA > textB) ? 1 : 0;
+				return textA < textB ? -1 : textA > textB ? 1 : 0;
 			});
 
-			this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', { nodeFilter: this.nodeFilter, result: returnData, selectedType: this.selectedType });
+			this.$externalHooks().run("nodeCreateList.filteredNodeTypesComputed", {
+				nodeFilter: this.nodeFilter,
+				result: returnData,
+				selectedType: this.selectedType,
+			});
 
 			return returnData.map((nodeType) => ({
-				type: 'node',
+				type: "node",
 				nodeType,
-				category: '',
+				category: "",
 			}));
 		},
 
 		categoriesWithNodes(): ICategoriesWithNodes {
 			const nodeTypes = this.$store.getters.allNodeTypes;
 
-			const categorized = nodeTypes.reduce((accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
-				if (HIDDEN_NODES.includes(nodeType.name)) {
-					return accu;
-				}
+			const categorized = nodeTypes.reduce(
+				(accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
+					if (HIDDEN_NODES.includes(nodeType.name)) {
+						return accu;
+					}
 
-				if (!nodeType.codex || !nodeType.codex.categories) {
-					accu[UNCATEGORIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].nodes.push({
-						type: 'node',
-						category: UNCATEGORIZED_CATEGORY,
-						subcategory: UNCATEGORIZED_SUBCATEGORY,
-						nodeType,
-						includedByTrigger: nodeType.group.includes('trigger'),
-						includedByRegular: !nodeType.group.includes('trigger'),
+					if (!nodeType.codex || !nodeType.codex.categories) {
+						accu[UNCATEGORIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].nodes.push({
+							type: "node",
+							category: UNCATEGORIZED_CATEGORY,
+							subcategory: UNCATEGORIZED_SUBCATEGORY,
+							nodeType,
+							includedByTrigger: nodeType.group.includes("trigger"),
+							includedByRegular: !nodeType.group.includes("trigger"),
+						});
+						return accu;
+					}
+					nodeType.codex.categories.forEach((_category: string) => {
+						const category = _category.trim();
+						const subcategory =
+							nodeType.codex &&
+							nodeType.codex.subcategories &&
+							nodeType.codex.subcategories[category]
+								? nodeType.codex.subcategories[category][0]
+								: UNCATEGORIZED_SUBCATEGORY;
+						if (!accu[category]) {
+							accu[category] = {};
+						}
+						if (!accu[category][subcategory]) {
+							accu[category][subcategory] = {
+								triggerCount: 0,
+								regularCount: 0,
+								nodes: [],
+							};
+						}
+						const isTrigger = nodeType.group.includes("trigger");
+						if (isTrigger) {
+							accu[category][subcategory].triggerCount++;
+						}
+						if (!isTrigger) {
+							accu[category][subcategory].regularCount++;
+						}
+						accu[category][subcategory].nodes.push({
+							type: "node",
+							category,
+							nodeType,
+							subcategory,
+							includedByTrigger: isTrigger,
+							includedByRegular: !isTrigger,
+						});
 					});
 					return accu;
-				}
-				nodeType.codex.categories.forEach((_category: string) => {
-					const category = _category.trim();
-					const subcategory = nodeType.codex && nodeType.codex.subcategories && nodeType.codex.subcategories[category]?
-						nodeType.codex.subcategories[category][0] : UNCATEGORIZED_SUBCATEGORY;
-					if (!accu[category]) {
-						accu[category] = {};
-					}
-					if (!accu[category][subcategory]) {
-						accu[category][subcategory] = {
+				},
+				{
+					[UNCATEGORIZED_CATEGORY]: {
+						[UNCATEGORIZED_SUBCATEGORY]: {
 							triggerCount: 0,
 							regularCount: 0,
 							nodes: [],
-						};
-					}
-					const isTrigger = nodeType.group.includes('trigger');
-					if (isTrigger) {
-						accu[category][subcategory].triggerCount++;
-					}
-					if (!isTrigger) {
-						accu[category][subcategory].regularCount++;
-					}
-					accu[category][subcategory].nodes.push({
-						type: 'node',
-						category,
-						nodeType,
-						subcategory,
-						includedByTrigger: isTrigger,
-						includedByRegular: !isTrigger,
-					});
-				});
-				return accu;
-			}, {
-				[UNCATEGORIZED_CATEGORY]: {
-					[UNCATEGORIZED_SUBCATEGORY]: {
-						triggerCount: 0,
-						regularCount: 0,
-						nodes: [],
+						},
 					},
-				},
-			});
+				}
+			);
 
 			return categorized;
 		},
 
 		categories(): string[] {
 			const categories = Object.keys(this.categoriesWithNodes);
-			const sorted = categories 
-				.filter((category: string) => category !== CORE_NODES_CATEGORY && category !== CUSTOM_NODES_CATEGORY);
+			const sorted = categories.filter(
+				(category: string) =>
+					category !== CORE_NODES_CATEGORY && category !== CUSTOM_NODES_CATEGORY
+			);
 			sorted.sort();
 
 			if (categories.includes(CUSTOM_NODES_CATEGORY)) {
@@ -231,47 +287,59 @@ export default mixins(externalHooks).extend({
 		},
 
 		nodesWithCategories(): INodeCreateElement[] {
-			const collapsed = this.categories.reduce((accu: INodeCreateElement[], category: string) => {
-				const categoryEl: INodeCreateElement = {
-					type: 'category',
-					category,
-				};
-
-				const subcategories = Object.keys(this.categoriesWithNodes[category]);
-				if (subcategories.length === 1) {
-					const subcategory = this.categoriesWithNodes[category][subcategories[0]];
-					if (subcategory.triggerCount > 0) {
-						categoryEl.includedByTrigger = subcategory.triggerCount > 0;
-					}
-					if (subcategory.regularCount > 0) {
-						categoryEl.includedByRegular = subcategory.regularCount > 0;
-					}
-					return [...accu, categoryEl, ...subcategory.nodes];
-				}
-
-				subcategories.sort();
-				const subcategorized = subcategories.reduce((accu: INodeCreateElement[], subcategory: string) => {
-					const subcategoryEl: INodeCreateElement = {
-						type: 'subcategory',
+			const collapsed = this.categories.reduce(
+				(accu: INodeCreateElement[], category: string) => {
+					const categoryEl: INodeCreateElement = {
+						type: "category",
 						category,
-						subcategory,
-						description: descriptions[category][subcategory],
-						includedByTrigger: this.categoriesWithNodes[category][subcategory].triggerCount > 0,
-						includedByRegular: this.categoriesWithNodes[category][subcategory].regularCount > 0,
 					};
 
-					if (subcategoryEl.includedByTrigger) {
-						categoryEl.includedByTrigger = true;
-					}
-					if (subcategoryEl.includedByRegular) {
-						categoryEl.includedByRegular = true;
+					const subcategories = Object.keys(this.categoriesWithNodes[category]);
+					if (subcategories.length === 1) {
+						const subcategory = this.categoriesWithNodes[category][
+							subcategories[0]
+						];
+						if (subcategory.triggerCount > 0) {
+							categoryEl.includedByTrigger = subcategory.triggerCount > 0;
+						}
+						if (subcategory.regularCount > 0) {
+							categoryEl.includedByRegular = subcategory.regularCount > 0;
+						}
+						return [...accu, categoryEl, ...subcategory.nodes];
 					}
 
-					return [...accu, subcategoryEl];
-				}, []);
+					subcategories.sort();
+					const subcategorized = subcategories.reduce(
+						(accu: INodeCreateElement[], subcategory: string) => {
+							const subcategoryEl: INodeCreateElement = {
+								type: "subcategory",
+								category,
+								subcategory,
+								description: descriptions[category][subcategory],
+								includedByTrigger:
+									this.categoriesWithNodes[category][subcategory].triggerCount >
+									0,
+								includedByRegular:
+									this.categoriesWithNodes[category][subcategory].regularCount >
+									0,
+							};
 
-				return [...accu, categoryEl, ...subcategorized];
-			}, []);
+							if (subcategoryEl.includedByTrigger) {
+								categoryEl.includedByTrigger = true;
+							}
+							if (subcategoryEl.includedByRegular) {
+								categoryEl.includedByRegular = true;
+							}
+
+							return [...accu, subcategoryEl];
+						},
+						[]
+					);
+
+					return [...accu, categoryEl, ...subcategorized];
+				},
+				[]
+			);
 
 			return collapsed;
 		},
@@ -279,85 +347,105 @@ export default mixins(externalHooks).extend({
 		categorized() {
 			// @ts-ignore
 			return this.nodesWithCategories
-			.filter((el: INodeCreateElement) => {
-				if (el.type !== 'category' && !this.activeCategory.includes(el.category)) {
-					return false;
-				}
-				if (this.selectedType === 'Trigger' && el.includedByTrigger) {
-					return true;
-				}
-				if (this.selectedType === 'Regular' && el.includedByRegular) {
-					return true;
-				}
+				.filter((el: INodeCreateElement) => {
+					if (
+						el.type !== "category" &&
+						!this.activeCategory.includes(el.category)
+					) {
+						return false;
+					}
+					if (this.selectedType === "Trigger" && el.includedByTrigger) {
+						return true;
+					}
+					if (this.selectedType === "Regular" && el.includedByRegular) {
+						return true;
+					}
 
-				return this.selectedType === 'All';
-			})
-			.map((el: INodeCreateElement) => {
-				if (el.type === 'category') {
-					return {
-						...el,
-						expanded: this.activeCategory.includes(el.category),
-					};
-				}
+					return this.selectedType === "All";
+				})
+				.map((el: INodeCreateElement) => {
+					if (el.type === "category") {
+						return {
+							...el,
+							expanded: this.activeCategory.includes(el.category),
+						};
+					}
 
-				return el;
-			});
+					return el;
+				});
 		},
 
 		subcategorizedNodes() {
 			// @ts-ignore
-			return this.activeSubcategory && this.categoriesWithNodes[this.activeSubcategory.category][this.activeSubcategory.subcategory].nodes
-				.filter((el: INodeCreateElement) => {
-					if (el.includedByTrigger && this.selectedType === 'Trigger') {
+			return (
+				this.activeSubcategory &&
+				this.categoriesWithNodes[this.activeSubcategory.category][
+					this.activeSubcategory.subcategory
+				].nodes.filter((el: INodeCreateElement) => {
+					if (el.includedByTrigger && this.selectedType === "Trigger") {
 						return true;
 					}
-					if (el.includedByRegular && this.selectedType === 'Regular') {
+					if (el.includedByRegular && this.selectedType === "Regular") {
 						return true;
 					}
-					return this.selectedType === 'All';
-				});
+					return this.selectedType === "All";
+				})
+			);
 		},
 	},
 	watch: {
-		nodeFilter (newValue, oldValue) {
+		nodeFilter(newValue, oldValue) {
 			// Reset the index whenver the filter-value changes
 			this.activeNodeTypeIndex = 0;
-			this.$externalHooks().run('nodeCreateList.nodeFilterChanged', { oldValue, newValue, selectedType: this.selectedType, filteredNodes: this.filteredNodeTypes });
+			this.$externalHooks().run("nodeCreateList.nodeFilterChanged", {
+				oldValue,
+				newValue,
+				selectedType: this.selectedType,
+				filteredNodes: this.filteredNodeTypes,
+			});
 		},
-		selectedType (newValue, oldValue) {
-			this.$externalHooks().run('nodeCreateList.selectedTypeChanged', { oldValue, newValue });
+		selectedType(newValue, oldValue) {
+			this.$externalHooks().run("nodeCreateList.selectedTypeChanged", {
+				oldValue,
+				newValue,
+			});
 		},
 	},
 	methods: {
-		nodeFilterKeyDown (e: KeyboardEvent) {
+		nodeFilterKeyDown(e: KeyboardEvent) {
 			let activeList;
 			if (this.nodeFilter.length > 0) {
 				activeList = this.filteredNodeTypes;
-			}
-			else if (this.activeSubcategory) {
+			} else if (this.activeSubcategory) {
 				activeList = this.subcategorizedNodes;
-			}
-			else {
+			} else {
 				activeList = this.categorized;
 			}
 			const activeNodeType = activeList[this.activeNodeTypeIndex];
 
-			if (e.key === 'ArrowDown') {
+			if (e.key === "ArrowDown") {
 				this.activeNodeTypeIndex++;
 				// Make sure that we stop at the last nodeType
-				this.activeNodeTypeIndex = Math.min(this.activeNodeTypeIndex, activeList.length - 1);
-			} else if (e.key === 'ArrowUp') {
+				this.activeNodeTypeIndex = Math.min(
+					this.activeNodeTypeIndex,
+					activeList.length - 1
+				);
+			} else if (e.key === "ArrowUp") {
 				this.activeNodeTypeIndex--;
 				// Make sure that we do not get before the first nodeType
 				this.activeNodeTypeIndex = Math.max(this.activeNodeTypeIndex, 0);
-			} else if (e.key === 'Enter' && activeNodeType) {
-				if (activeNodeType.type === 'node' && activeNodeType.nodeType) {
+			} else if (e.key === "Enter" && activeNodeType) {
+				if (activeNodeType.type === "node" && activeNodeType.nodeType) {
 					this.nodeTypeSelected(activeNodeType.nodeType.name);
-				}
-				else if (activeNodeType.type === 'category' && activeNodeType.category) {
+				} else if (
+					activeNodeType.type === "category" &&
+					activeNodeType.category
+				) {
 					this.onCategorySelected(activeNodeType.category);
-				}
-				else if (activeNodeType.type === 'subcategory' && activeNodeType.subcategory) {
+				} else if (
+					activeNodeType.type === "subcategory" &&
+					activeNodeType.subcategory
+				) {
 					this.onSubcategorySelected({
 						category: activeNodeType.category,
 						subcategory: activeNodeType.subcategory,
@@ -365,24 +453,27 @@ export default mixins(externalHooks).extend({
 				}
 			}
 
-			if (!['Escape', 'Tab'].includes(e.key)) {
+			if (!["Escape", "Tab"].includes(e.key)) {
 				// We only want to propagate "Escape" as it closes the node-creator and
 				// "Tab" which toggles it
 				e.stopPropagation();
 			}
 		},
-		nodeTypeSelected (nodeTypeName: string) {
-			this.$emit('nodeTypeSelected', nodeTypeName);
+		nodeTypeSelected(nodeTypeName: string) {
+			this.$emit("nodeTypeSelected", nodeTypeName);
 		},
 		onCategorySelected(category: string) {
 			if (this.activeCategory.includes(category)) {
-				this.activeCategory = this.activeCategory.filter((active: string) => active !== category);
-			}
-			else {
+				this.activeCategory = this.activeCategory.filter(
+					(active: string) => active !== category
+				);
+			} else {
 				this.activeCategory = [...this.activeCategory, category];
 			}
 
-			this.activeNodeTypeIndex = this.categorized.findIndex((el: INodeCreateElement) => el.category === category);
+			this.activeNodeTypeIndex = this.categorized.findIndex(
+				(el: INodeCreateElement) => el.category === category
+			);
 		},
 		onSubcategorySelected(selected: IActiveSubCategory) {
 			this.activeSubcategory = selected;
@@ -392,7 +483,7 @@ export default mixins(externalHooks).extend({
 		onBackArrowClick() {
 			this.activeSubcategory = null;
 			this.activeNodeTypeIndex = 0;
-			this.nodeFilter = '';
+			this.nodeFilter = "";
 		},
 
 		onClickInside() {
@@ -401,18 +492,18 @@ export default mixins(externalHooks).extend({
 		},
 
 		selectWebhook() {
-			this.$emit('nodeTypeSelected', 'n8n-nodes-base.webhook');
+			this.$emit("nodeTypeSelected", "n8n-nodes-base.webhook");
 		},
 
 		selectHttpRequest() {
-			this.$emit('nodeTypeSelected', 'n8n-nodes-base.httpRequest');
+			this.$emit("nodeTypeSelected", "n8n-nodes-base.httpRequest");
 		},
 	},
 	async mounted() {
-		this.$externalHooks().run('nodeCreateList.mounted');
+		this.$externalHooks().run("nodeCreateList.mounted");
 	},
 	async destroyed() {
-		this.$externalHooks().run('nodeCreateList.destroyed');
+		this.$externalHooks().run("nodeCreateList.destroyed");
 	},
 });
 </script>
@@ -455,13 +546,13 @@ export default mixins(externalHooks).extend({
 }
 
 .subcategory-header {
-	border: #DBDFE7 solid 1px;
-  height: 50px;
-  background-color: #F2F4F8;
+	border: #dbdfe7 solid 1px;
+	height: 50px;
+	background-color: #f2f4f8;
 
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 16px;
+	font-size: 18px;
+	font-weight: 600;
+	line-height: 16px;
 
 	display: flex;
 	align-items: center;
@@ -469,7 +560,7 @@ export default mixins(externalHooks).extend({
 }
 
 .back-arrow {
-  color: #8D939C;
+	color: #8d939c;
 	height: 16px;
 	width: 16px;
 	margin-right: 24px;
@@ -479,7 +570,7 @@ export default mixins(externalHooks).extend({
 	overflow-y: auto;
 
 	&::-webkit-scrollbar {
- 		display: none;
+		display: none;
 	}
 }
 
@@ -495,11 +586,12 @@ export default mixins(externalHooks).extend({
 
 .el-input {
 	background-color: $--node-creator-search-background-color;
-  color: $--node-creator-search-placeholder-color;
-  font-size: 18px;
+	color: $--node-creator-search-placeholder-color;
+	font-size: 18px;
 
-	/deep/ input, input:focus {
-	  border: 1px solid $--node-creator-border-color;
+	/deep/ input,
+	input:focus {
+		border: 1px solid $--node-creator-border-color;
 		border-radius: 0;
 		min-height: 60px;
 	}
@@ -526,14 +618,15 @@ export default mixins(externalHooks).extend({
 
 .slide-leave-active,
 .slide-enter-active {
-  transition: .3s ease;
+	transition: 0.3s ease;
 }
-.slide-enter, .slide-leave-to {
-  transform: translate(100%);
+.slide-enter,
+.slide-leave-to {
+	transform: translate(100%);
 }
 
 .no-results {
-	background-color: #F8F9FB;
+	background-color: #f8f9fb;
 	text-align: center;
 	height: 100%;
 	border-left: 1px solid $--node-creator-border-color;
@@ -564,5 +657,4 @@ export default mixins(externalHooks).extend({
 		cursor: pointer;
 	}
 }
-
 </style>
