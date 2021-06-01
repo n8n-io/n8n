@@ -65,3 +65,4 @@ jobs:
         shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
+          EXECUTIONS_PROCESS: main

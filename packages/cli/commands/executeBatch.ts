@@ -117,10 +117,17 @@ export class ExecuteBatch extends Command {
 		}),
 	};
 
+	/**
+	 * Gracefully handles exit.
+	 * @param skipExit boolean to skip exit or number according to received signal
+	 */
+	static async stopProcess(skipExit: boolean | number = false) {
 
-	static async stopProcess(skipExit = false) {
-		process.exit(1);
-		this.cancelled = true;
+		if (ExecuteBatch.cancelled === true) {
+			process.exit(0);
+		}
+
+		ExecuteBatch.cancelled = true;
 		const activeExecutionsInstance = ActiveExecutions.getInstance();
 		const stopPromises = activeExecutionsInstance.getActiveExecutions().map(async execution => {
 			activeExecutionsInstance.stopExecution(execution.id);
@@ -147,7 +154,9 @@ export class ExecuteBatch extends Command {
 			});
 			executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 		}
-		if (!skipExit) {
+		// We may receive true but when called from `process.on`
+		// we get the signal (SIGNIT, etc.)
+		if (skipExit !== true) {
 			process.exit(0);
 		}
 	}
@@ -310,7 +319,7 @@ export class ExecuteBatch extends Command {
 
 		let retries = flags.retries;
 
-		while(retries > 0 && (results.summary.warningExecutions + results.summary.failedExecutions > 0)) {
+		while(retries > 0 && (results.summary.warningExecutions + results.summary.failedExecutions > 0) && ExecuteBatch.cancelled === false) {
 			const failedWorkflowIds = results.summary.errors.map(execution => execution.workflowId);
 			failedWorkflowIds.push(...results.summary.warnings.map(execution => execution.workflowId));
 
@@ -339,302 +348,13 @@ export class ExecuteBatch extends Command {
 			console.log(JSON.stringify(results, null, 2));
 		}
 
+		await ExecuteBatch.stopProcess(true);
+
 		if(results.summary.failedExecutions > 0){
 			this.exit(1);
 		}
-		
-		console.log(results);
-		
-		// const result:IResult = {
-		// 	workflowsNumber:allWorkflows.length,
-		// 	summary:{
-		// 		failedExecutions:0,
-		// 		warningExecutions: 0,
-		// 		succeededExecution:0,
-		// 		errors: [],
-		// 		warnings: [],
-		// 	},
-		// 	coveredNodes:{},
-		// 	executions:[],
-		// };
-
-		// // Check if the workflow contains the required "Start" node
-		// // "requiredNodeTypes" are also defined in editor-ui/views/NodeView.vue
-		// const requiredNodeTypes = ['n8n-nodes-base.start'];
-		// let workflowsExecutionsPromises:Array<Promise<IRun | undefined>> = [];
-
-
-		// for (let i = 0; i < allWorkflows.length; i++) {
-		// 	if (ExecuteBatch.cancelled) {
-		// 		break;
-		// 	}
-		// 	const workflowData = allWorkflows[i];
-			
-		// 	const executionResult:IExecutionResult = {
-		// 		workflowId: workflowData.id,
-		// 		executionTime: 0,
-		// 		finished: false,
-		// 		nodes: workflowData.nodes.map(node => ({
-		// 			name: node.name,
-		// 			typeVersion: node.typeVersion,
-		// 			type: node.type,
-		// 		})),
-		// 		error:'',
-		// 		changes:'',
-		// 	};
-
-		// 	let startNode: INode | undefined= undefined;
-		// 	for (const node of workflowData!.nodes) {
-		// 		if (requiredNodeTypes.includes(node.type)) {
-		// 			startNode = node;
-		// 			break;
-		// 		}
-		// 	}
-			
-		// 	if (startNode === undefined) {
-		// 		// If the workflow does not contain a start-node we can not know what
-		// 		// should be executed and with which data to start.
-		// 		executionResult.error = 'Workflow cannot be started as it does not contain a "Start" node.';
-		// 		result.summary.warningExecutions++;
-		// 		result.executions.push(executionResult);
-		// 		ExecuteBatch.workflowExecutionsProgress.push({
-		// 			workflowId: workflowData.id,
-		// 			status: 'warning',
-		// 		});
-		// 		if (flags.debug === true) {
-		// 			this.updateProgress();
-		// 		}
-		// 		continue;
-		// 	}
-
-		// 	ExecuteBatch.workflowExecutionsProgress.push({
-		// 		workflowId: workflowData.id,
-		// 		status: 'running',
-		// 	});
-			
-		// 	workflowsExecutionsPromises.push(
-		// 		new Promise(async (resolve,reject) => {
-		// 			let gotCancel = false;
-					
-		// 			// Timeouts execution after 5 minutes.
-		// 			const timeoutTimer = setTimeout(() => {
-		// 				gotCancel = true;
-		// 				executionResult.error = 'Workflow execution timed out.';
-		// 				result.summary.warningExecutions++;
-		// 				result.executions.push(executionResult);
-		// 				result.summary.warnings.push({workflowId: workflowData.id, error: executionResult.error});
-		// 				if (flags.debug === true) {
-		// 					this.updateWarning(workflowData.id);
-		// 				}
-		// 				reject(new Error('Workflow execution timed out.'));
-		// 			}, executionTimeout);
-		// 			try {
-		// 				const credentials = await WorkflowCredentials(workflowData!.nodes);
-
-		// 				const runData: IWorkflowExecutionDataProcess = {
-		// 					credentials,
-		// 					executionMode: 'cli',
-		// 					startNodes: [startNode!.name],
-		// 					workflowData: workflowData!,
-		// 				};
-
-		// 				const workflowRunner = new WorkflowRunner();
-		// 				const executionId = await workflowRunner.run(runData);
-
-		// 				const activeExecutions = ActiveExecutions.getInstance();
-		// 				const data = await activeExecutions.getPostExecutePromise(executionId);
-		// 				if (gotCancel) {
-		// 					// The promise was rejected already so we simply ignore.
-		// 					return;
-		// 				}
-
-		// 				if (data === undefined) {
-		// 					executionResult.error = 'Workflow did not return any data.';
-		// 					result.summary.failedExecutions++;
-		// 					result.executions.push(executionResult);
-		// 					result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
-		// 					if (flags.debug === true) {
-		// 						this.updateError(workflowData.id);
-		// 					}
-		// 				}else{
-
-		// 					workflowData.nodes.forEach(node => {
-		// 						result.coveredNodes[node.type] = (result.coveredNodes[node.type] || 0) +1; 
-		// 					});
-		// 					executionResult.executionTime = (Date.parse(data.stoppedAt as unknown as string) - Date.parse(data.startedAt as unknown as string))/1000; 
-		// 					executionResult.finished = (data?.finished !== undefined) as boolean; 
-
-		// 					if (data.data.resultData.error) {
-		// 						executionResult.error = 
-		// 							data.data.resultData.error.hasOwnProperty('description') ? 
-		// 							// @ts-ignore
-		// 							data.data.resultData.error.description : data.data.resultData.error.message;
-		// 						if (data.data.resultData.lastNodeExecuted !== undefined) {
-		// 							executionResult.error += ` on node ${data.data.resultData.lastNodeExecuted}`;
-		// 						}
-
-		// 						if (this.shouldBeConsideredAsWarning(executionResult.error)) {
-		// 							result.summary.warningExecutions++;
-		// 							result.summary.warnings.push({workflowId: workflowData.id, error: executionResult.error});
-		// 							if (flags.debug === true) {
-		// 								this.updateWarning(workflowData.id);
-		// 							}
-		// 						} else {
-		// 							result.summary.failedExecutions++;
-		// 							result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
-		// 							if (flags.debug === true) {
-		// 								this.updateError(workflowData.id);
-		// 							}
-		// 						}
-		// 						result.executions.push(executionResult);
-
-		// 						if (debug === true) {
-		// 							console.log("\nWorkflow ID ", workflowData.id, "failed: ", executionResult.error + '\n');
-		// 						}
-
-		// 					}else{
-		// 						if (flags.shallow === true) {
-		// 							Object.keys(data.data.resultData.runData).map((nodeName: string) => {
-		// 								data.data.resultData.runData[nodeName].map((taskData: ITaskData) => {
-		// 									if (taskData.data === undefined) {
-		// 										return;
-		// 									}
-		// 									Object.keys(taskData.data).map(connectionName => {
-		// 										const connection = taskData.data![connectionName] as Array<INodeExecutionData[] | null>;
-		// 										connection.map(executionDataArray => {
-		// 											if (executionDataArray === null) {
-		// 												return;
-		// 											}
-		// 											executionDataArray.map(executionData => {
-		// 												if (executionData.json === undefined) {
-		// 													return;
-		// 												}
-		// 												const jsonProperties = executionData.json;
-		// 												const nodeOutputAttributes = Object.keys(jsonProperties);
-		// 												nodeOutputAttributes.map(attributeName => {
-		// 													if (Array.isArray(jsonProperties[attributeName])) {
-		// 														jsonProperties[attributeName] = ['json array'];
-		// 													} else if (typeof jsonProperties[attributeName] === 'object') {
-		// 														jsonProperties[attributeName] = {object: true};
-		// 													}
-		// 												});
-		// 											});
-		// 										});
-												
-		// 									});
-		// 								});
-		// 							});
-		// 						}
-								
-		// 						const serializedData = JSON.stringify(data, null, 2);
-		// 						if (flags.compare === undefined){
-		// 							result.summary.succeededExecution++;
-		// 							result.executions.push(executionResult);
-		// 							if (flags.debug === true) {
-		// 								this.updateSuccess(workflowData.id);
-		// 							}
-		// 						} else {
-		// 							const fileName = (flags.compare.endsWith(sep) ? flags.compare : flags.compare + sep) + `${workflowData.id}-snapshot.json`;
-		// 							if (fs.existsSync(fileName) === true) {
-
-		// 								const contents = fs.readFileSync(fileName, {encoding: 'utf-8'});
-
-		// 								//@ts-ignore
-		// 								const changes = diff(JSON.parse(contents), data, {keysOnly: true}); // types are outdated here
-
-		// 								if (changes !== undefined) {
-		// 									// we have structural changes. Report them.
-		// 									executionResult.error = `Workflow may contain breaking changes`;
-		// 									executionResult.changes = changes;
-		// 									result.summary.failedExecutions++;
-		// 									result.executions.push(executionResult);
-		// 									result.summary.errors.push({workflowId: workflowData.id, error: executionResult.error});
-		// 									if (flags.debug === true) {
-		// 										this.updateError(workflowData.id);
-		// 									}
-		// 									if (debug === true) {
-		// 										// @ts-ignore
-		// 										console.log('Detailed changes: ', diffString(JSON.parse(contents), data, undefined, {keysOnly: true}));
-		// 									}
-		// 								}else{
-		// 									result.summary.succeededExecution++;
-		// 									result.executions.push(executionResult);
-		// 									if (flags.debug === true) {
-		// 										this.updateSuccess(workflowData.id);
-		// 									}
-		// 								}
-		// 							} else {
-		// 								executionResult.error = 'Snapshot for not found.';
-		// 								result.summary.warningExecutions++;
-		// 								result.executions.push(executionResult);
-		// 								result.summary.warnings.push({workflowId: workflowData.id, error: executionResult.error});
-		// 								if (flags.debug === true) {
-		// 									this.updateWarning(workflowData.id);
-		// 								}
-		// 							}
-		// 						}
-		// 						// Save snapshots only after comparing - this is to make sure we're updating
-		// 						// After comparing to existing verion.
-		// 						if (flags.snapshot !== undefined) {
-		// 							const fileName = (flags.snapshot.endsWith(sep) ? flags.snapshot : flags.snapshot + sep) + `${workflowData.id}-snapshot.json`;
-		// 							fs.writeFileSync(fileName,serializedData);
-		// 						}
-		// 					}
-		// 				}
-		// 				resolve(data);
-		// 			} catch (e) {
-		// 				executionResult.error = 'Workflow failed to execute.';
-		// 				result.summary.failedExecutions++;
-		// 				result.executions.push(executionResult);
-		// 				if (flags.debug === true) {
-		// 					this.updateError(workflowData.id);
-		// 				}
-		// 				if (debug === true) {
-		// 					console.error(e.message);
-		// 					console.error(e.stack);
-		// 				}
-		// 				reject(e);
-		// 			}
-		// 			clearTimeout(timeoutTimer);
-		// 		})
-		// 	);
-		// 	if(concurrency === 0 || (i !== 0 && (i+1) % concurrency === 0)){
-		// 		if (flags.debug === true) {
-		// 			process.stdout.write('\n');
-		// 			this.updateProgress();
-		// 		}
-		// 		await Promise.allSettled(workflowsExecutionsPromises);
-		// 		workflowsExecutionsPromises = [];
-		// 		ExecuteBatch.workflowExecutionsProgress = [];
-		// 	}
-
-		// }
-
-		// if(workflowsExecutionsPromises.length!==0){
-		// 	await Promise.allSettled(workflowsExecutionsPromises);
-		// }
-		// if(flags.output !== undefined){
-		// 	fs.writeFileSync(flags.output,JSON.stringify(result, null, 2));
-		// 	console.log('\nExecution finished.');
-		// 	console.log('Summary:');
-		// 	console.log(`\tSuccess: ${result.summary.succeededExecution}`);
-		// 	console.log(`\tFailures: ${result.summary.failedExecutions}`);
-		// 	console.log(`\tExceptions: ${result.summary.exceptions}`);
-		// 	console.log('\nNodes covered:');
-		// 	Object.entries(result.coveredNodes).map(entry => {
-		// 		console.log(`\t${entry[0]}: ${entry[1]}`);
-		// 	});
-		// 	console.log('\nCheck the JSON file for more details.');
-		// }else{
-		// 	console.log(JSON.stringify(result, null, 2));
-		// }
-		// if(result.summary.failedExecutions > 0){
-		// 	this.exit(1);
-		// }
-		// // Make sure all processes exit gracefully
-		// await ExecuteBatch.stopProcess(true);
-
 		this.exit(0);
+		
 	}
 
 	mergeResults(results: IResult, retryResults: IResult) {
@@ -697,6 +417,11 @@ export class ExecuteBatch extends Command {
 					let workflow: IWorkflowDb | undefined;
 					while (allWorkflows.length > 0) {
 						workflow = allWorkflows.shift();
+						if (ExecuteBatch.cancelled === true) {
+							process.stdout.write(`Thread ${i + 1} resolving and quitting.`);
+							resolve(true);
+							break;
+						}
 						// This if shouldn't be really needed
 						// but it's a concurrency precaution.
 						if (workflow === undefined) {
@@ -773,12 +498,17 @@ export class ExecuteBatch extends Command {
 			}
 
 			await Promise.allSettled(promisesArray);
+			console.log('all promises settled');
 
 			res(result);
 		});
 	}
 
 	updateStatus() {
+
+		if (ExecuteBatch.cancelled === true) {
+			return;
+		}
 
 		process.stdout.moveCursor(0,- (ExecuteBatch.concurrency));
 		process.stdout.cursorTo(0);
@@ -892,7 +622,8 @@ export class ExecuteBatch extends Command {
 
 				const activeExecutions = ActiveExecutions.getInstance();
 				const data = await activeExecutions.getPostExecutePromise(executionId);
-				if (gotCancel) {
+				if (gotCancel || ExecuteBatch.cancelled === true) {
+					clearTimeout(timeoutTimer);
 					// The promise was settled already so we simply ignore.
 					return;
 				}
