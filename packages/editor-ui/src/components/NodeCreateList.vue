@@ -13,7 +13,7 @@
 				<NodeCreateIterator class="scrollable" :elements="subcategorizedNodes" :activeIndex="activeNodeTypeIndex" @nodeTypeSelected="nodeTypeSelected" />
 			</div>
 		</transition>
-		<div>
+		<div class="main-panel">
 			<div>
 				<el-input :class="{custom: true, active: nodeFilter.length > 0}" placeholder="Search nodes..." v-model="nodeFilter" ref="inputField" type="text" prefix-icon="el-icon-search" @keydown.native="nodeFilterKeyDown" clearable ></el-input>
 			</div>
@@ -68,6 +68,7 @@ const descriptions: {[category: string]: {[subcategory: string]: string}} = {
 
 const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
+const HIDDEN_NODES = ['n8n-nodes-base.start'];
 
 import { externalHooks } from "@/components/mixins/externalHooks";
 import { INodeTypeDescription } from 'n8n-workflow';
@@ -117,6 +118,10 @@ export default mixins(externalHooks).extend({
 
 			// Apply the filters
 			const returnData = nodeTypes.filter((nodeType) => {
+				if (HIDDEN_NODES.includes(nodeType.name)) {
+					return false;
+				}
+
 				if (filter && nodeType.displayName.toLowerCase().indexOf(filter) === -1) {
 					return false;
 				}
@@ -151,6 +156,10 @@ export default mixins(externalHooks).extend({
 			const nodeTypes = this.$store.getters.allNodeTypes;
 
 			const categorized = nodeTypes.reduce((accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
+				if (HIDDEN_NODES.includes(nodeType.name)) {
+					return accu;
+				}
+
 				if (!nodeType.codex || !nodeType.codex.categories) {
 					accu[UNCATEGORIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].nodes.push({
 						type: 'node',
@@ -334,7 +343,7 @@ export default mixins(externalHooks).extend({
 			if (e.key === 'ArrowDown') {
 				this.activeNodeTypeIndex++;
 				// Make sure that we stop at the last nodeType
-				this.activeNodeTypeIndex = Math.min(this.activeNodeTypeIndex, this.filteredNodeTypes.length - 1);
+				this.activeNodeTypeIndex = Math.min(this.activeNodeTypeIndex, activeList.length - 1);
 			} else if (e.key === 'ArrowUp') {
 				this.activeNodeTypeIndex--;
 				// Make sure that we do not get before the first nodeType
@@ -361,7 +370,6 @@ export default mixins(externalHooks).extend({
 			}
 		},
 		nodeTypeSelected (nodeTypeName: string) {
-			console.log(nodeTypeName);
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
 		onCategorySelected(category: string) {
@@ -466,12 +474,15 @@ export default mixins(externalHooks).extend({
 
 .scrollable {
 	overflow-y: auto;
-	max-height: 100vh;
-	margin-bottom: 30px;
 
 	&::-webkit-scrollbar {
  		display: none;
 	}
+}
+
+.main-panel .scrollable {
+	padding-bottom: 30px;
+	height: calc(100% - 160px);
 }
 
 .el-input {

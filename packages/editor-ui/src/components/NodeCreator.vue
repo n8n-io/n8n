@@ -102,12 +102,6 @@ export default Vue.extend({
 	background-color: $--node-creator-background-color;
 	z-index: 200;
 	color: #555;
-
-	.header {
-		font-size: 1.2em;
-		margin: 20px 15px;
-		height: 25px;
-	}
 }
 
 .border {
