@@ -569,15 +569,17 @@ export default mixins(externalHooks).extend({
 	&::-webkit-scrollbar {
 		display: none;
 	}
+
+	> div {
+		padding-bottom: 30px;
+	}
 }
 
 .subcategory-panel .scrollable {
 	height: calc(100% - 100px);
-	padding-bottom: 30px;
 }
 
 .main-panel .scrollable {
-	padding-bottom: 30px;
 	height: calc(100% - 160px);
 }
 
