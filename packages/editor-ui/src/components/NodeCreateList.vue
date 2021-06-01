@@ -61,7 +61,7 @@
 			</div>
 			<div v-else class="no-results">
 				<div class="img">
-					<img :src="require('../assets/no-nodes-icon.png')" alt="trigger" />
+					<img :src="`${basePath}no-nodes-icon.png`" alt="" />
 				</div>
 				<div class="title">
 					<div>We didn't make that... yet</div>
@@ -141,10 +141,12 @@ export default mixins(externalHooks).extend({
 			activeNodeTypeIndex: 1,
 			nodeFilter: "",
 			selectedType: "All",
-			basePath: this.$store.getters.getBaseUrl,
 		};
 	},
 	computed: {
+		basePath(): string {
+			return this.$store.getters.getBaseUrl;
+		},
 		filteredNodeTypes(): INodeCreateElement[] {
 			const filter = this.nodeFilter.toLowerCase();
 			const nodeTypes: INodeTypeDescription[] = this.$store.getters
