@@ -265,7 +265,7 @@ export default mixins(externalHooks).extend({
 							nodes: [],
 						},
 					},
-				}
+				},
 			);
 
 			return categorized;
@@ -275,7 +275,7 @@ export default mixins(externalHooks).extend({
 			const categories = Object.keys(this.categoriesWithNodes);
 			const sorted = categories.filter(
 				(category: string) =>
-					category !== CORE_NODES_CATEGORY && category !== CUSTOM_NODES_CATEGORY
+					category !== CORE_NODES_CATEGORY && category !== CUSTOM_NODES_CATEGORY,
 			);
 			sorted.sort();
 
@@ -333,12 +333,12 @@ export default mixins(externalHooks).extend({
 
 							return [...accu, subcategoryEl];
 						},
-						[]
+						[],
 					);
 
 					return [...accu, categoryEl, ...subcategorized];
 				},
-				[]
+				[],
 			);
 
 			return collapsed;
@@ -377,11 +377,8 @@ export default mixins(externalHooks).extend({
 
 		subcategorizedNodes() {
 			// @ts-ignore
-			return (
-				this.activeSubcategory &&
-				this.categoriesWithNodes[this.activeSubcategory.category][
-					this.activeSubcategory.subcategory
-				].nodes.filter((el: INodeCreateElement) => {
+			return (this.activeSubcategory && this.categoriesWithNodes[this.activeSubcategory.category][this.activeSubcategory.subcategory]
+				.nodes.filter((el: INodeCreateElement) => {
 					if (el.includedByTrigger && this.selectedType === "Trigger") {
 						return true;
 					}
@@ -428,7 +425,7 @@ export default mixins(externalHooks).extend({
 				// Make sure that we stop at the last nodeType
 				this.activeNodeTypeIndex = Math.min(
 					this.activeNodeTypeIndex,
-					activeList.length - 1
+					activeList.length - 1,
 				);
 			} else if (e.key === "ArrowUp") {
 				this.activeNodeTypeIndex--;
@@ -465,14 +462,14 @@ export default mixins(externalHooks).extend({
 		onCategorySelected(category: string) {
 			if (this.activeCategory.includes(category)) {
 				this.activeCategory = this.activeCategory.filter(
-					(active: string) => active !== category
+					(active: string) => active !== category,
 				);
 			} else {
 				this.activeCategory = [...this.activeCategory, category];
 			}
 
 			this.activeNodeTypeIndex = this.categorized.findIndex(
-				(el: INodeCreateElement) => el.category === category
+				(el: INodeCreateElement) => el.category === category,
 			);
 		},
 		onSubcategorySelected(selected: IActiveSubCategory) {
