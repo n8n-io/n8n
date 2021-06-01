@@ -54,6 +54,9 @@ import { resolve } from 'p-cancelable';
 const colorOutput = true;
 const executionTimeout = 3 * 60 * 1000;
 
+// TODO:
+// - handle CTRL + C correctly
+// - test with and without debug
 
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
@@ -64,7 +67,7 @@ export class ExecuteBatch extends Command {
 
 	static shallow = false;
 
-	static compare = '';
+	static compare: undefined | string = undefined;
 
 	static snapshot = '';
 
@@ -108,56 +111,12 @@ export class ExecuteBatch extends Command {
 		skipList: flags.string({
 			description: 'File containing a comma separated list of workflow IDs to skip.',
 		}),
+		retries: flags.integer({
+			description: 'Retries failed workflows up to N tries. Default is 1. Set 0 to disable.',
+			default: 1,
+		}),
 	};
 
-
-	// updateProgress() {
-	// 	process.stdout.clearLine(-1);
-	// 	process.stdout.cursorTo(0);
-	// 	const results = ExecuteBatch.workflowExecutionsProgress.map(execution => {
-	// 		let openColor = '', closeColor = '';
-	// 		if (colorOutput) {
-	// 			switch (execution.status) {
-	// 				case 'success':
-	// 					openColor =	"\x1b[32m";
-	// 					break;
-	// 				case 'error':
-	// 					openColor = "\x1b[31m";
-	// 					break;
-	// 				case 'warning':
-	// 					openColor = "\x1b[33m";
-	// 					break;
-	// 				default:
-	// 					openColor = "\x1b[0m";
-	// 			}
-	// 			closeColor = "\x1b[0m";
-	// 		}
-	// 		return openColor + execution.workflowId + closeColor;
-	// 	});
-	// 	process.stdout.write("Running batch; workflow IDs " + results.join(','));
-	// }
-
-	// updateProgressStatus(workflowId: string | number | ObjectID, status: 'warning'|'error'|'success') {
-	// 	const workflowProgress = ExecuteBatch.workflowExecutionsProgress.find(executionProgress => executionProgress.workflowId === workflowId);
-	// 	if (workflowProgress !== undefined) {
-	// 		workflowProgress.status = status;
-	// 	}
-	// }
-
-	// updateError(workflowId: string | number | ObjectID) {
-	// 	this.updateProgressStatus(workflowId, 'error');
-	// 	this.updateProgress();
-	// }
-
-	// updateSuccess(workflowId: string | number | ObjectID) {
-	// 	this.updateProgressStatus(workflowId, 'success');
-	// 	this.updateProgress();
-	// }
-
-	// updateWarning(workflowId: string | number | ObjectID) {
-	// 	this.updateProgressStatus(workflowId, 'warning');
-	// 	this.updateProgress();
-	// }
 
 	static async stopProcess(skipExit = false) {
 		process.exit(1);
@@ -283,7 +242,7 @@ export class ExecuteBatch extends Command {
 		if (flags.skipList !== undefined) {
 			if (fs.existsSync(flags.skipList)) {
 				const contents = fs.readFileSync(flags.skipList, {encoding: 'utf-8'});
-				skipIds.push(...contents.split(',').map(id => parseInt(id.trim())));
+				skipIds.push(...contents.split(',').map(id => parseInt(id.trim(), 10)));
 			} else {
 				console.log('Skip list file not found. Exiting.');
 				return;
@@ -348,6 +307,41 @@ export class ExecuteBatch extends Command {
 
 		// Send a shallow copy of allWorkflows so we still have all workflow data.
 		const results = await this.runTests([...allWorkflows]);
+
+		let retries = flags.retries;
+
+		while(retries > 0 && (results.summary.warningExecutions + results.summary.failedExecutions > 0)) {
+			const failedWorkflowIds = results.summary.errors.map(execution => execution.workflowId);
+			failedWorkflowIds.push(...results.summary.warnings.map(execution => execution.workflowId));
+
+			const newWorkflowList = allWorkflows.filter(workflow => failedWorkflowIds.includes(workflow.id));
+
+			const retryResults = await this.runTests(newWorkflowList);
+
+			this.mergeResults(results, retryResults);
+			// By now, `results` has been updated with the new successful executions.
+			retries--;
+		}
+
+		if(flags.output !== undefined){
+			fs.writeFileSync(flags.output,JSON.stringify(results, null, 2));
+			console.log('\nExecution finished.');
+			console.log('Summary:');
+			console.log(`\tSuccess: ${results.summary.succeededExecution}`);
+			console.log(`\tFailures: ${results.summary.failedExecutions}`);
+			console.log(`\tWarnings: ${results.summary.warningExecutions}`);
+			console.log('\nNodes successfully tested:');
+			Object.entries(results.coveredNodes).map(entry => {
+				console.log(`\t${entry[0]}: ${entry[1]}`);
+			});
+			console.log('\nCheck the JSON file for more details.');
+		}else{
+			console.log(JSON.stringify(results, null, 2));
+		}
+		if(results.summary.failedExecutions > 0){
+			this.exit(1);
+		}
+		
 		console.log(results);
 		
 		// const result:IResult = {
@@ -641,6 +635,41 @@ export class ExecuteBatch extends Command {
 
 		this.exit(0);
 	}
+
+	mergeResults(results: IResult, retryResults: IResult) {
+
+		if (retryResults.summary.succeededExecution === 0) {
+			// Nothing to replace.
+			return;
+		}
+
+		// Find successful executions and replace them on previous result.
+		retryResults.executions.forEach(newExecution => {
+			if (newExecution.executionStatus === 'success') {
+				// Remove previous execution from list.
+				results.executions.filter(previousExecutions => previousExecutions.workflowId !== newExecution.workflowId);
+
+				const errorIndex = results.summary.errors.findIndex(summaryInformation => summaryInformation.workflowId === newExecution.workflowId);
+				if (errorIndex !== -1) {
+					// This workflow errored previously. Decrement error count.
+					results.summary.failedExecutions--;
+					// Remove from the list of errors.
+					results.summary.errors.splice(errorIndex, 1);
+				}
+
+				const warningIndex = results.summary.warnings.findIndex(summaryInformation => summaryInformation.workflowId === newExecution.workflowId);
+				if (warningIndex !== -1) {
+					// This workflow errored previously. Decrement error count.
+					results.summary.warningExecutions--;
+					// Remove from the list of errors.
+					results.summary.warnings.splice(warningIndex, 1);
+				}
+				// Increment successful executions count and push it to all executions array.
+				results.summary.succeededExecution++;
+				results.executions.push(newExecution);
+			}
+		});
+	}
 	
 	async runTests(allWorkflows: IWorkflowDb[]): Promise<IResult> {
 		const result:IResult = {
@@ -662,7 +691,6 @@ export class ExecuteBatch extends Command {
 
 		return new Promise(async (res) => {
 			const promisesArray = [];
-			let finishedThreads = 0;
 			for (let i = 0; i < ExecuteBatch.concurrency; i++) {
 				const promise = new Promise(async (resolve) => {
 					let workflow: IWorkflowDb | undefined;
@@ -671,7 +699,6 @@ export class ExecuteBatch extends Command {
 						// This if shouldn't be really needed
 						// but it's a concurrency precaution.
 						if (workflow === undefined) {
-							finishedThreads++;
 							resolve(true);
 							return;
 						}
@@ -698,7 +725,14 @@ export class ExecuteBatch extends Command {
 									this.updateStatus();
 								}
 								result.summary.succeededExecution++;
-								// TODO: merge success nodes.
+								const nodeNames = Object.keys(executionResult.coveredNodes);
+
+								nodeNames.map(nodeName => {
+									if (result.coveredNodes[nodeName] === undefined) {
+										result.coveredNodes[nodeName] = 0;
+									}
+									result.coveredNodes[nodeName] += result.coveredNodes[nodeName];
+								});
 							} else if (executionResult.executionStatus === 'warning') {
 								result.summary.warningExecutions++;
 								result.summary.warnings.push({
@@ -732,7 +766,6 @@ export class ExecuteBatch extends Command {
 					}
 
 					resolve(true);
-					finishedThreads++;
 				});
 
 				promisesArray.push(promise);
@@ -926,7 +959,7 @@ export class ExecuteBatch extends Command {
 						}
 						
 						const serializedData = JSON.stringify(data, null, 2);
-						if (ExecuteBatch.compare === ''){
+						if (ExecuteBatch.compare === undefined){
 							executionResult.executionStatus = 'success';
 						} else {
 							const fileName = (ExecuteBatch.compare.endsWith(sep) ? ExecuteBatch.compare : ExecuteBatch.compare + sep) + `${workflowData.id}-snapshot.json`;
