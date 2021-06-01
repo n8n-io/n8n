@@ -230,15 +230,10 @@ const adjustCustomFields = (allFields: AllFields) => {
 
 	if (!customFields?.customFields.length) return allFields;
 
-	const customFieldsObject = customFields.customFields.reduce((acc, cur) => {
+	return customFields.customFields.reduce((acc, cur) => {
 		acc[cur.fieldId] = cur.value;
 		return acc;
-	}, {} as { [key: string]: string });
-
-	return {
-		...customFieldsObject,
-		...rest,
-	};
+	}, rest);
 };
 
 // ----------------------------------------
