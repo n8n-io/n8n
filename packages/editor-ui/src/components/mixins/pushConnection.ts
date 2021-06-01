@@ -1,6 +1,7 @@
 import {
 	IExecutionsCurrentSummaryExtended,
 	IPushData,
+	IPushDataConsoleMessage,
 	IPushDataExecutionFinished,
 	IPushDataExecutionStarted,
 	IPushDataNodeExecuteAfter,
@@ -12,6 +13,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
+import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
 
@@ -20,6 +22,7 @@ export const pushConnection = mixins(
 	nodeHelpers,
 	showMessage,
 	titleChange,
+	workflowHelpers,
 )
 	.extend({
 		data () {
@@ -159,6 +162,12 @@ export const pushConnection = mixins(
 					return false;
 				}
 
+				if (receivedData.type === 'sendConsoleMessage') {
+					const pushData = receivedData.data as IPushDataConsoleMessage;
+					console.log(pushData.source, pushData.message); // eslint-disable-line no-console
+					return true;
+				}
+
 				if (!['testWebhookReceived'].includes(receivedData.type) && isRetry !== true && this.pushMessageQueue.length) {
 					// If there are already messages in the queue add the new one that all of them
 					// get executed in order
@@ -227,7 +236,7 @@ export const pushConnection = mixins(
 
 						runDataExecutedErrorMessage = errorMessage;
 
-						this.$titleSet(workflow.name, 'ERROR');
+						this.$titleSet(workflow.name as string, 'ERROR');
 						this.$showMessage({
 							title: 'Problem executing workflow',
 							message: errorMessage,
@@ -235,7 +244,7 @@ export const pushConnection = mixins(
 						});
 					} else {
 						// Workflow did execute without a problem
-						this.$titleSet(workflow.name, 'IDLE');
+						this.$titleSet(workflow.name as string, 'IDLE');
 						this.$showMessage({
 							title: 'Workflow got executed',
 							message: 'Workflow did get executed successfully!',
