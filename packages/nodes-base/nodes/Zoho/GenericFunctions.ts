@@ -21,13 +21,16 @@ import {
 
 import {
 	AllFields,
+	CamelCaseResource,
 	DateType,
+	GetAllFilterOptions,
 	IdType,
 	LoadedFields,
 	LocationType,
 	NameType,
 	ProductDetails,
 	ResourceItems,
+	SnakeCaseResource,
 	ZohoOAuth2ApiCredentials,
 } from './types';
 
@@ -62,6 +65,7 @@ export async function zohoApiRequest(
 	}
 
 	try {
+		console.log(options);
 		const responseData = await this.helpers.requestOAuth2?.call(this, 'zohoOAuth2Api', options);
 
 		if (responseData === undefined) return [];
@@ -127,7 +131,7 @@ export async function handleListing(
 	return responseData.slice(0, limit);
 }
 
-export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: string) {
+export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: CamelCaseResource) {
 	throw new NodeOperationError(
 		this.getNode(),
 		`Please enter at least one field to update for the ${resource}.`,
@@ -291,7 +295,7 @@ export const toLoadOptions = (items: ResourceItems, nameProperty: NameType) =>
 /**
  * Retrieve all fields for a resource, sorted alphabetically.
  */
-export async function getFields(this: ILoadOptionsFunctions, resource: string) {
+export async function getFields(this: ILoadOptionsFunctions, resource: SnakeCaseResource) {
 	const { fields } = await zohoApiRequest.call(
 		this, 'GET', '/settings/fields', {}, { module: `${resource}s` },
 	) as LoadedFields;
@@ -299,3 +303,13 @@ export async function getFields(this: ILoadOptionsFunctions, resource: string) {
 
 	return sortBy(options, o => o.name);
 }
+
+/**
+ * Add filter options to a query string object.
+ */
+export const addGetAllFilterOptions = (qs: IDataObject, options: GetAllFilterOptions) => {
+	if (Object.keys(options).length) {
+		const { fields, ...rest } = options;
+		Object.assign(qs, fields && { fields: fields.join(',') }, rest);
+	}
+};

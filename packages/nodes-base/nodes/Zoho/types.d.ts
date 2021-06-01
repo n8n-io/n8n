@@ -1,6 +1,24 @@
 import { IDataObject } from "n8n-workflow";
 
 // ----------------------------------------
+//          for generic functions
+// ----------------------------------------
+
+export type CamelCaseResource = 'account' | 'contact' | 'deal' | 'invoice' | 'lead' | 'product' | 'purchaseOrder' | 'quote' | 'salesOrder' | 'vendor';
+
+export type SnakeCaseResource = CamelToSnakeCase<CamelCaseResource>
+
+type CamelToSnakeCase<S extends string> =
+  S extends `${infer S1}${infer S2}`
+	? `${S1 extends Capitalize<S1> ? "_" : ""}${Lowercase<S1>}${CamelToSnakeCase<S2>}`
+	: S
+
+export type GetAllFilterOptions = {
+	fields: string[],
+	[otherOptions: string]: unknown;
+};
+
+// ----------------------------------------
 //               for auth
 // ----------------------------------------
 

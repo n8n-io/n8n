@@ -1,3 +1,5 @@
+import { CamelCaseResource } from '../types';
+
 export const billingAddress = {
 	displayName: 'Billing Address',
 	name: 'Billing_Address',
@@ -310,46 +312,144 @@ export const makeProductDetails = (resource: string, operation: string, { hasUps
 	],
 });
 
-export const makeGetAllFields = (resource: string) => [
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		default: false,
-		description: 'Return all results.',
-		displayOptions: {
-			show: {
-				resource: [
-					resource,
-				],
-				operation: [
-					'getAll',
-				],
+export const makeGetAllFields = (resource: CamelCaseResource) => {
+	const loadOptionsMethod = {
+		account: 'getAccountFields',
+		contact: 'getContactFields',
+		deal: 'getDealFields',
+		invoice: 'getInvoiceFields',
+		lead: 'getLeadFields',
+		product: 'getProductFields',
+		purchaseOrder: 'getPurchaseOrderFields',
+		quote: 'getQuoteFields',
+		salesOrder: 'getSalesOrderFields',
+		vendor: 'getVendorFields',
+	}[resource];
+
+	return [
+		{
+			displayName: 'Return All',
+			name: 'returnAll',
+			type: 'boolean',
+			default: false,
+			description: 'Return all results.',
+			displayOptions: {
+				show: {
+					resource: [
+						resource,
+					],
+					operation: [
+						'getAll',
+					],
+				},
 			},
 		},
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		default: 5,
-		description: 'The number of results to return.',
-		typeOptions: {
-			minValue: 1,
-			maxValue: 1000,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					resource,
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+		{
+			displayName: 'Limit',
+			name: 'limit',
+			type: 'number',
+			default: 5,
+			description: 'The number of results to return.',
+			typeOptions: {
+				minValue: 1,
+				maxValue: 1000,
+			},
+			displayOptions: {
+				show: {
+					resource: [
+						resource,
+					],
+					operation: [
+						'getAll',
+					],
+					returnAll: [
+						false,
+					],
+				},
 			},
 		},
-	},
-];
+		{
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
+			placeholder: 'Add Option',
+			default: {},
+			displayOptions: {
+				show: {
+					resource: [
+						resource,,
+					],
+					operation: [
+						'getAll',
+					],
+				},
+			},
+			options: [
+				{
+					displayName: 'Approved',
+					name: 'approved',
+					type: 'boolean',
+					default: true,
+					description: 'Retrieve only approved leads. Defaults to true.',
+				},
+				{
+					displayName: 'Converted',
+					name: 'converted',
+					type: 'boolean',
+					default: false,
+					description: 'Retrieve only converted leads. Defaults to false.',
+				},
+				{
+					displayName: 'Fields',
+					name: 'fields',
+					type: 'multiOptions',
+					typeOptions: {
+						loadOptionsMethod,
+					},
+					default: [],
+				},
+				{
+					displayName: 'Include Child',
+					name: 'include_child',
+					type: 'boolean',
+					default: false,
+					description: 'Retrieve only leads from child territories.',
+				},
+				{
+					displayName: 'Sort By',
+					name: 'sort_by',
+					type: 'multiOptions',
+					typeOptions: {
+						loadOptionsMethod,
+					},
+					default: [],
+					description: 'Field to sort leads by.',
+				},
+				{
+					displayName: 'Sort Order',
+					name: 'sort_order',
+					type: 'options',
+					options: [
+						{
+							name: 'Ascending',
+							value: 'asc',
+						},
+						{
+							name: 'Descending',
+							value: 'desc',
+						},
+					],
+					default: 'desc',
+					description: 'Ascending or descending order sort order.',
+				},
+				{
+					displayName: 'Territory ID',
+					name: 'territory_id',
+					type: 'string',
+					default: '',
+					description: 'Retrieve only leads from this territory.',
+				},
+			],
+		},
+	];
+};

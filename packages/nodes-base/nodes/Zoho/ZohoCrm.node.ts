@@ -11,6 +11,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	addGetAllFilterOptions,
 	adjustAccountPayload,
 	adjustContactPayload,
 	adjustDealPayload,
@@ -30,10 +31,11 @@ import {
 } from './GenericFunctions';
 
 import {
+	CamelCaseResource,
+	GetAllFilterOptions,
 	LoadedAccounts,
 	LoadedContacts,
 	LoadedDeals,
-	LoadedFields,
 	LoadedProducts,
 	LoadedVendors,
 	ProductDetails,
@@ -158,6 +160,10 @@ export class ZohoCrm implements INodeType {
 
 	methods = {
 		loadOptions: {
+			// ----------------------------------------
+			//               resources
+			// ----------------------------------------
+
 			async getAccounts(this: ILoadOptionsFunctions) {
 				const accounts = await zohoApiRequestAllItems.call(this, 'GET', '/accounts') as LoadedAccounts;
 				return toLoadOptions(accounts, 'Account_Name');
@@ -173,10 +179,6 @@ export class ZohoCrm implements INodeType {
 				return toLoadOptions(deals, 'Deal_Name');
 			},
 
-			async getLeadFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'lead');
-			},
-
 			async getProducts(this: ILoadOptionsFunctions) {
 				const products = await zohoApiRequestAllItems.call(this, 'GET', '/products') as LoadedProducts;
 				return toLoadOptions(products, 'Product_Name');
@@ -186,6 +188,54 @@ export class ZohoCrm implements INodeType {
 				const vendors = await zohoApiRequestAllItems.call(this, 'GET', '/vendors') as LoadedVendors;
 				return toLoadOptions(vendors, 'Vendor_Name');
 			},
+
+			// ----------------------------------------
+			//             resource fields
+			// ----------------------------------------
+
+			async getAccountFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'account');
+			},
+
+			async getContactFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'contact');
+			},
+
+			async getDealFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'deal');
+			},
+
+			async getInvoiceFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'invoice');
+			},
+
+			async getLeadFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'lead');
+			},
+
+			async getProductFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'product');
+			},
+
+			async getPurchaseOrderFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'purchase_order');
+			},
+
+			async getVendorOrderFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'vendor');
+			},
+
+			async getQuoteFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'quote');
+			},
+
+			async getSalesOrderFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'sales_order');
+			},
+
+			async getVendorFields(this: ILoadOptionsFunctions) {
+				return getFields.call(this, 'vendor');
+			},
 		},
 	};
 
@@ -193,7 +243,7 @@ export class ZohoCrm implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const resource = this.getNodeParameter('resource', 0) as CamelCaseResource;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let responseData;
@@ -205,7 +255,7 @@ export class ZohoCrm implements INodeType {
 			// https://www.zoho.com/crm/developer/docs/api/update-specific-record.html
 			// https://www.zoho.com/crm/developer/docs/api/delete-specific-record.html
 
-			//try {
+			// try {
 
 				if (resource === 'account') {
 
@@ -264,7 +314,12 @@ export class ZohoCrm implements INodeType {
 						//             account: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/accounts');
+						const qs: IDataObject = {};
+						const options = this.getNodeParameter('options', i) as GetAllFilterOptions;
+
+						addGetAllFilterOptions(qs, options);
+
+						responseData = await handleListing.call(this, 'GET', '/accounts', {}, qs);
 
 					} else if (operation === 'update') {
 
@@ -365,7 +420,12 @@ export class ZohoCrm implements INodeType {
 						//             contact: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/contacts');
+						const qs: IDataObject = {};
+						const options = this.getNodeParameter('options', i) as GetAllFilterOptions;
+
+						addGetAllFilterOptions(qs, options);
+
+						responseData = await handleListing.call(this, 'GET', '/contacts', {}, qs);
 
 					} else if (operation === 'update') {
 
@@ -465,7 +525,12 @@ export class ZohoCrm implements INodeType {
 						//               deal: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/deals');
+						const qs: IDataObject = {};
+						const options = this.getNodeParameter('options', i) as GetAllFilterOptions;
+
+						addGetAllFilterOptions(qs, options);
+
+						responseData = await handleListing.call(this, 'GET', '/deals', {}, qs);
 
 					} else if (operation === 'update') {
 
@@ -569,7 +634,12 @@ export class ZohoCrm implements INodeType {
 						//             invoice: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/invoices');
+						const qs: IDataObject = {};
+						const options = this.getNodeParameter('options', i) as GetAllFilterOptions;
+
+						addGetAllFilterOptions(qs, options);
+
+						responseData = await handleListing.call(this, 'GET', '/invoices', {}, qs);
 
 					} else if (operation === 'update') {
 
@@ -672,11 +742,9 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const qs: IDataObject = {};
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i) as GetAllFilterOptions;
 
-						if (Object.keys(options).length) {
-							Object.assign(qs, options);
-						}
+						addGetAllFilterOptions(qs, options);
 
 						responseData = await handleListing.call(this, 'GET', '/leads', {}, qs);
 
@@ -779,7 +847,12 @@ export class ZohoCrm implements INodeType {
 						//            product: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/products');
+						const qs: IDataObject = {};
+						const options = this.getNodeParameter('options', i) as GetAllFilterOptions;
+
+						addGetAllFilterOptions(qs, options);
+
+						responseData = await handleListing.call(this, 'GET', '/products', {}, qs);
 
 					} else if (operation === 'update') {
 
@@ -884,7 +957,12 @@ export class ZohoCrm implements INodeType {
 						//          purchaseOrder: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/purchase_orders');
+						const qs: IDataObject = {};
+						const options = this.getNodeParameter('options', i) as GetAllFilterOptions;
+
+						addGetAllFilterOptions(qs, options);
+
+						responseData = await handleListing.call(this, 'GET', '/purchase_orders', {}, qs);
 
 					} else if (operation === 'update') {
 
@@ -990,7 +1068,12 @@ export class ZohoCrm implements INodeType {
 						//              quote: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/quotes');
+						const qs: IDataObject = {};
+						const options = this.getNodeParameter('options', i) as GetAllFilterOptions;
+
+						addGetAllFilterOptions(qs, options);
+
+						responseData = await handleListing.call(this, 'GET', '/quotes', {}, qs);
 
 					} else if (operation === 'update') {
 
@@ -1097,7 +1180,12 @@ export class ZohoCrm implements INodeType {
 						//            salesOrder: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/sales_orders');
+						const qs: IDataObject = {};
+						const options = this.getNodeParameter('options', i) as GetAllFilterOptions;
+
+						addGetAllFilterOptions(qs, options);
+
+						responseData = await handleListing.call(this, 'GET', '/sales_orders', {}, qs);
 
 					} else if (operation === 'update') {
 
@@ -1202,7 +1290,12 @@ export class ZohoCrm implements INodeType {
 						//            vendor: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/vendors');
+						const qs: IDataObject = {};
+						const options = this.getNodeParameter('options', i) as GetAllFilterOptions;
+
+						addGetAllFilterOptions(qs, options);
+
+						responseData = await handleListing.call(this, 'GET', '/sales_orders');
 
 					} else if (operation === 'update') {
 
