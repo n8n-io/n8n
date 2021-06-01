@@ -67,7 +67,7 @@ const descriptions: {[category: string]: {[subcategory: string]: string}} = {
 };
 
 const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
-const UNCATEGORIZED_SUBCATEGORY = 'Other';
+const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
 
 import { externalHooks } from "@/components/mixins/externalHooks";
 import { INodeTypeDescription } from 'n8n-workflow';
@@ -80,7 +80,11 @@ import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY } from "@/constants";
 
 interface ICategoriesWithNodes {
 	[category: string]: {
-		[subcategory: string]: INodeCreateElement[]
+		[subcategory: string]: {
+			regularCount: number;
+			triggerCount: number;
+			nodes: INodeCreateElement[]
+		}
 	};
 }
 
@@ -139,6 +143,7 @@ export default mixins(externalHooks).extend({
 			return returnData.map((nodeType) => ({
 				type: 'node',
 				nodeType,
+				category: '',
 			}));
 		},
 
@@ -147,12 +152,13 @@ export default mixins(externalHooks).extend({
 
 			const categorized = nodeTypes.reduce((accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
 				if (!nodeType.codex || !nodeType.codex.categories) {
-					accu[UNCATEGORIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].push({
+					accu[UNCATEGORIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].nodes.push({
 						type: 'node',
 						category: UNCATEGORIZED_CATEGORY,
 						subcategory: UNCATEGORIZED_SUBCATEGORY,
 						nodeType,
-						isTrigger: nodeType.group.includes('trigger'),
+						includedByTrigger: nodeType.group.includes('trigger'),
+						includedByRegular: !nodeType.group.includes('trigger'),
 					});
 					return accu;
 				}
@@ -164,20 +170,36 @@ export default mixins(externalHooks).extend({
 						accu[category] = {};
 					}
 					if (!accu[category][subcategory]) {
-						accu[category][subcategory] = [];
+						accu[category][subcategory] = {
+							triggerCount: 0,
+							regularCount: 0,
+							nodes: [],
+						};
 					}
-					accu[category][subcategory].push({
+					const isTrigger = nodeType.group.includes('trigger');
+					if (isTrigger) {
+						accu[category][subcategory].triggerCount++;
+					}
+					if (!isTrigger) {
+						accu[category][subcategory].regularCount++;
+					}
+					accu[category][subcategory].nodes.push({
 						type: 'node',
 						category,
 						nodeType,
 						subcategory,
-						isTrigger: nodeType.group.includes('trigger'),
+						includedByTrigger: isTrigger,
+						includedByRegular: !isTrigger,
 					});
 				});
 				return accu;
 			}, {
 				[UNCATEGORIZED_CATEGORY]: {
-					[UNCATEGORIZED_SUBCATEGORY]: [],
+					[UNCATEGORIZED_SUBCATEGORY]: {
+						triggerCount: 0,
+						regularCount: 0,
+						nodes: [],
+					},
 				},
 			});
 
@@ -199,24 +221,40 @@ export default mixins(externalHooks).extend({
 
 		nodesWithCategories(): INodeCreateElement[] {
 			const collapsed = this.categories.reduce((accu: INodeCreateElement[], category: string) => {
-				const categoryEl = {
+				const categoryEl: INodeCreateElement = {
 					type: 'category',
-					active: false,
 					category,
 				};
 
 				const subcategories = Object.keys(this.categoriesWithNodes[category]);
 				if (subcategories.length === 1) {
-					return [...accu, categoryEl, ...this.categoriesWithNodes[category][subcategories[0]]];
+					const subcategory = this.categoriesWithNodes[category][subcategories[0]];
+					if (subcategory.triggerCount > 0) {
+						categoryEl.includedByTrigger = subcategory.triggerCount > 0;
+					}
+					if (subcategory.regularCount > 0) {
+						categoryEl.includedByRegular = subcategory.regularCount > 0;
+					}
+					return [...accu, categoryEl, ...subcategory.nodes];
 				}
 
+				subcategories.sort();
 				const subcategorized = subcategories.reduce((accu: INodeCreateElement[], subcategory: string) => {
-					const subcategoryEl = {
+					const subcategoryEl: INodeCreateElement = {
 						type: 'subcategory',
 						category,
 						subcategory,
 						description: descriptions[category][subcategory],
+						includedByTrigger: this.categoriesWithNodes[category][subcategory].triggerCount > 0,
+						includedByRegular: this.categoriesWithNodes[category][subcategory].regularCount > 0,
 					};
+
+					if (subcategoryEl.includedByTrigger) {
+						categoryEl.includedByTrigger = true;
+					}
+					if (subcategoryEl.includedByRegular) {
+						categoryEl.includedByRegular = true;
+					}
 
 					return [...accu, subcategoryEl];
 				}, []);
@@ -229,38 +267,40 @@ export default mixins(externalHooks).extend({
 
 		categorized() {
 			// @ts-ignore
-			return this.nodesWithCategories.map((el: INodeCreateElement) => {
-				if (el.type === 'category' && el.category) {
+			return this.nodesWithCategories
+			.filter((el: INodeCreateElement) => {
+				if (el.type !== 'category' && !this.activeCategory.includes(el.category)) {
+					return false;
+				}
+				if (this.selectedType === 'Trigger' && el.includedByTrigger) {
+					return true;
+				}
+				if (this.selectedType === 'Regular' && el.includedByRegular) {
+					return true;
+				}
+
+				return this.selectedType === 'All';
+			})
+			.map((el: INodeCreateElement) => {
+				if (el.type === 'category') {
 					return {
 						...el,
 						expanded: this.activeCategory.includes(el.category),
 					};
 				}
-				else if (el.type === 'subcategory' && el.category && this.activeCategory.includes(el.category)) {
-					return el;
-				}
-				else if (el.type === 'node' && el.category && this.activeCategory.includes(el.category)) {
-					if (this.selectedType === 'All' || (this.selectedType === 'Trigger' && el.isTrigger)) {
-						return el;
-					}
-					if (this.selectedType === 'Regular' && !el.isTrigger) {
-						return el;
-					}
-				}
 
-				return null;
-			})
-				.filter((el: INodeCreateElement) => !!el);
+				return el;
+			});
 		},
 
 		subcategorizedNodes() {
 			// @ts-ignore
-			return this.activeSubcategory && this.categoriesWithNodes[this.activeSubcategory.category][this.activeSubcategory.subcategory]
+			return this.activeSubcategory && this.categoriesWithNodes[this.activeSubcategory.category][this.activeSubcategory.subcategory].nodes
 				.filter((el: INodeCreateElement) => {
-					if (el.isTrigger && this.selectedType === 'Trigger') {
+					if (el.includedByTrigger && this.selectedType === 'Trigger') {
 						return true;
 					}
-					if (!el.isTrigger && this.selectedType === 'Regular') {
+					if (el.includedByRegular && this.selectedType === 'Regular') {
 						return true;
 					}
 					return this.selectedType === 'All';

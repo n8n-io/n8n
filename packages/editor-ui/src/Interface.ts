@@ -463,12 +463,13 @@ export interface ICodex {
 
 export interface INodeCreateElement {
 	type: string;
+	category: string;
 	nodeType?: INodeTypeDescription;
-	category?: string;
 	expanded?: boolean;
-	isTrigger?: boolean;
 	subcategory?: string;
 	description?: string;
+	includedByTrigger?: boolean;
+	includedByRegular?: boolean;
 }
 
 
