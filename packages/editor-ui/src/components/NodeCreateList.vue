@@ -600,7 +600,7 @@ export default mixins(externalHooks).extend({
 	.el-icon-circle-close{
 		&:hover {
 			&:before {
-				background-color: #3d3f46 !important;
+				background-color: #3d3f46;
 			}
 		}
 
@@ -609,7 +609,7 @@ export default mixins(externalHooks).extend({
 			background-color: #8D939C;
 			color: $--node-creator-search-background-color;
 			border-radius: 50%;
-			font-size: 16px;
+			font-size: 15px;
 			padding: 1px;
 		}
 	}
