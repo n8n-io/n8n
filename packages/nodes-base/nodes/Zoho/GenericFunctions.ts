@@ -296,10 +296,10 @@ export const toLoadOptions = (items: ResourceItems, nameProperty: NameType) =>
  * Retrieve all fields for a resource, sorted alphabetically.
  */
 export async function getFields(this: ILoadOptionsFunctions, resource: SnakeCaseResource) {
-	const { fields } = await zohoApiRequest.call(
-		this, 'GET', '/settings/fields', {}, { module: `${resource}s` },
-	) as LoadedFields;
-	const options = fields.map(({field_label, api_name}) => ({ name: field_label, value: api_name }));
+	const endpoint = '/settings/fields';
+	const qs = { module: `${resource}s` };
+	const { fields } = await zohoApiRequest.call(this, 'GET', endpoint, {}, qs) as LoadedFields;
+	const options = fields.map(({ field_label, api_name }) => ({ name: field_label, value: api_name }));
 
 	return sortBy(options, o => o.name);
 }
