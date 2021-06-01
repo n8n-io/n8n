@@ -61,7 +61,7 @@ jobs:
         shell: bash
       -
         name: Run tests
-        run: n8n/packages/cli/bin/n8n executeBatch
+        run: n8n/packages/cli/bin/n8n executeBatch --concurrency=4
         shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
