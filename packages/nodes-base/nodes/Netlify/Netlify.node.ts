@@ -117,7 +117,6 @@ export class Netlify implements INodeType {
 					'GET',
 					'/sites',
 				);
-				console.log(sites);
 				for (const site of sites) {
 					returnData.push({
 						name: site.name,
