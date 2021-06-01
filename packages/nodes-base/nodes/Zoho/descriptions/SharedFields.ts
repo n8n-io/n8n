@@ -409,7 +409,7 @@ export const makeGetAllFields = (resource: CamelCaseResource) => {
 				{
 					displayName: 'Sort By',
 					name: 'sort_by',
-					type: 'multiOptions',
+					type: 'options',
 					typeOptions: {
 						loadOptionsMethod,
 					},
