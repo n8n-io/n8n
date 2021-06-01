@@ -432,8 +432,6 @@ export default mixins(
 						if (importConfirm === true) {
 							this.$store.commit('setStateDirty', false);
 							if (this.$router.currentRoute.name === 'NodeViewNew') {
-								// using event emitter pattern
-								// to avoid duplicate navigation issue
 								this.$root.$emit('newWorkflow');
 							} else {
 								this.$router.push({ name: 'NodeViewNew' });
