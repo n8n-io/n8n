@@ -169,6 +169,7 @@
       "dist/credentials/Msg91Api.credentials.js",
       "dist/credentials/MySql.credentials.js",
       "dist/credentials/NasaApi.credentials.js",
+      "dist/credentials/NetlifyApi.credentials.js",
       "dist/credentials/NetlifyOAuth2Api.credentials.js",
       "dist/credentials/NextCloudApi.credentials.js",
       "dist/credentials/NextCloudOAuth2Api.credentials.js",

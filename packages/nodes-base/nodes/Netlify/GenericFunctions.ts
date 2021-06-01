@@ -15,23 +15,20 @@ import {
 
 export async function netlifyApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
-	const authenticationMethod = this.getNodeParameter('authentication', 0);
+	// const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const options: OptionsWithUri = {
 		method,
 		headers: {
-			'Accept': 'application/json',
 			'Content-Type': 'application/json',
-			'Accept-Charset': 'utf-8',
 		},
 		qs: query,
 		uri: uri || `https://api.netlify.com/api/v1${endpoint}`,
-		body,
 		json: true,
 	};
 
 	try {
-		if (authenticationMethod === 'accessToken') {
+		// if (authenticationMethod === 'accessToken') {
 			const credentials = this.getCredentials('netlifyApi');
 
 			if (credentials === undefined) {
@@ -41,10 +38,10 @@ export async function netlifyApiRequest(this: IHookFunctions | IExecuteFunctions
 			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
 
 			return await this.helpers.request!(options);
-		}
-		else {
-			return await this.helpers.requestOAuth2!.call(this, 'netlifyOAuth2Api', options);
-		}
+		// }
+		// else {
+		// 	return await this.helpers.requestOAuth2!.call(this, 'netlifyOAuth2Api', options);
+		// }
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
