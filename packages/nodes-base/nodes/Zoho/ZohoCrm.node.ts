@@ -18,6 +18,7 @@ import {
 	adjustInvoicePayload,
 	adjustLeadPayload,
 	adjustProductDetails,
+	adjustProductPayload,
 	adjustPurchaseOrderPayload,
 	adjustQuotePayload,
 	adjustSalesOrderPayload,
@@ -860,7 +861,7 @@ export class ZohoCrm implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						if (Object.keys(additionalFields).length) {
-							Object.assign(body, additionalFields);
+							Object.assign(body, adjustProductPayload(additionalFields));
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/products', body);
@@ -913,7 +914,7 @@ export class ZohoCrm implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						if (Object.keys(updateFields).length) {
-							Object.assign(body, updateFields);
+							Object.assign(body, adjustProductPayload(updateFields));
 						} else {
 							throwOnEmptyUpdate.call(this, resource);
 						}
@@ -937,7 +938,7 @@ export class ZohoCrm implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						if (Object.keys(additionalFields).length) {
-							Object.assign(body, additionalFields);
+							Object.assign(body, adjustProductPayload(additionalFields));
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/products/upsert', body);

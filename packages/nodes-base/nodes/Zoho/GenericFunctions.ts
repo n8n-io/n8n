@@ -302,6 +302,8 @@ export const adjustVendorPayload = flow(
 	adjustCustomFields,
 );
 
+export const adjustProductPayload = adjustCustomFields;
+
 // ----------------------------------------
 //               helpers
 // ----------------------------------------
