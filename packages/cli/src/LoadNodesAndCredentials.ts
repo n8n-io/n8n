@@ -215,8 +215,8 @@ class LoadNodesAndCredentialsClass {
 	getCodex(filePath: string): CodexCategories {
 		const { categories, subcategories } = require(`${filePath}on`); // .js to .json
 		return {
-			...categories && { categories },
-			...subcategories && { subcategories },
+			...(categories && { categories }),
+			...(subcategories && { subcategories }),
 		};
 	}
 
