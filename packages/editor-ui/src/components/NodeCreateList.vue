@@ -10,7 +10,9 @@
 					<span>{{activeSubcategory.subcategory}}</span>
 				</div>
 				
-				<NodeCreateIterator class="scrollable" :elements="subcategorizedNodes" :activeIndex="activeNodeTypeIndex" @nodeTypeSelected="nodeTypeSelected" />
+				<div class="scrollable" >
+					<NodeCreateIterator :elements="subcategorizedNodes" :activeIndex="activeNodeTypeIndex" @nodeTypeSelected="nodeTypeSelected" />
+				</div>
 			</div>
 		</transition>
 		<div class="main-panel">
@@ -478,6 +480,11 @@ export default mixins(externalHooks).extend({
 	&::-webkit-scrollbar {
  		display: none;
 	}
+}
+
+.subcategory-panel .scrollable {
+	height: calc(100% - 100px);
+	padding-bottom: 30px;
 }
 
 .main-panel .scrollable {
