@@ -50,6 +50,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
+import { debounce } from 'lodash';
 
 export default mixins(
 	externalHooks,
@@ -70,6 +71,7 @@ export default mixins(
 		return {
 			displayValue: '',
 			latestValue: '',
+			debouncedFunctions: [] as any[], // tslint:disable-line:no-any
 		};
 	},
 	mounted () {
@@ -77,6 +79,18 @@ export default mixins(
 		this.latestValue = this.value;
 	},
 	methods: {
+		async callDebounced (...inputParameters: any[]): Promise<void> { // tslint:disable-line:no-any
+			const functionName = inputParameters.shift() as string;
+			const debounceTime = inputParameters.shift() as number;
+
+			// @ts-ignore
+			if (this.debouncedFunctions[functionName] === undefined) {
+				// @ts-ignore
+				this.debouncedFunctions[functionName] = debounce(this[functionName], debounceTime, { leading: true });
+			}
+			// @ts-ignore
+			await this.debouncedFunctions[functionName].apply(this, inputParameters);
+		},
 		valueChanged (value: string, forceUpdate = false) {
 			this.latestValue = value;
 
