@@ -23,9 +23,14 @@ export async function netlifyApiRequest(this: IHookFunctions | IExecuteFunctions
 			'Content-Type': 'application/json',
 		},
 		qs: query,
+		body,
 		uri: uri || `https://api.netlify.com/api/v1${endpoint}`,
 		json: true,
 	};
+
+	if (!Object.keys(body).length) {
+		delete options.body;
+	}
 
 	try {
 		// if (authenticationMethod === 'accessToken') {
