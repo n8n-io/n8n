@@ -210,10 +210,11 @@ class LoadNodesAndCredentialsClass {
 	 * @returns {CodexCategories}
 	 */
 	getCodex(filePath: string): CodexCategories {
-		const { categories, subcategories } = require(`${filePath}on`); // .js to .json
+		const { categories, subcategories, alias } = require(`${filePath}on`); // .js to .json
 		return {
 			...(categories && { categories }),
 			...(subcategories && { subcategories }),
+			...(alias && { alias }),
 		};
 	}
 
