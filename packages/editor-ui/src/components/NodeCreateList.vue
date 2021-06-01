@@ -609,7 +609,7 @@ export default mixins(externalHooks).extend({
 			background-color: #8D939C;
 			color: $--node-creator-search-background-color;
 			border-radius: 50%;
-			font-size: 15px;
+			font-size: 12px;
 			padding: 1px;
 		}
 	}
