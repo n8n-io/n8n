@@ -28,6 +28,8 @@ import {
 	paymentOperations,
 	vendorFields,
 	vendorOperations,
+	purchaseFields,
+	purchaseOperations,
 } from './descriptions';
 
 import {
@@ -108,6 +110,10 @@ export class QuickBooks implements INodeType {
 						name: 'Vendor',
 						value: 'vendor',
 					},
+					{
+						name: 'Purchase',
+						value: 'purchase'
+					}
 				],
 				default: 'customer',
 				description: 'Resource to consume',
@@ -128,6 +134,8 @@ export class QuickBooks implements INodeType {
 			...paymentFields,
 			...vendorOperations,
 			...vendorFields,
+			...purchaseOperations,
+			...purchaseFields,
 		],
 	};
 
@@ -147,6 +155,10 @@ export class QuickBooks implements INodeType {
 
 			async getVendors(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'vendor');
+			},
+
+			async getPurchases(this: ILoadOptionsFunctions) {
+				return await loadResource.call(this, 'purchase');
 			},
 		},
 	};
@@ -971,6 +983,36 @@ export class QuickBooks implements INodeType {
 					const endpoint = `/v3/company/${companyId}/${resource}`;
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 					responseData = responseData[capitalCase(resource)];
+
+				}
+
+			} else if (resource === 'purchase') {
+
+				// *********************************************************************
+				//         purchase
+				// *********************************************************************
+
+				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/purchase
+
+				if (operation === 'get') {
+
+					// ----------------------------------
+					//         purchase: get
+					// ----------------------------------
+
+					const purchaseId = this.getNodeParameter('purchaseId', i);
+					const endpoint = `/v3/company/${companyId}/${resource}/${purchaseId}`;
+					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = responseData[capitalCase(resource)];
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------
+					//         purchase: getAll
+					// ----------------------------------
+
+					const endpoint = `/v3/company/${companyId}/query`;
+					responseData = await handleListing.call(this, i, endpoint, resource);
 
 				}
 
