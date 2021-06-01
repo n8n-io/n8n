@@ -431,7 +431,14 @@ export default mixins(
 						const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
 						if (importConfirm === true) {
 							this.$store.commit('setStateDirty', false);
-							this.$router.push({ name: 'NodeViewNew' });
+							if (this.$router.currentRoute.name === 'NodeViewNew') {
+								// the default router mode is : Hash
+								// HACK; so changing the query will make the route seems different
+								// the added query attribute can be used in the NodeViewNew for extra behavior
+								this.$router.push({ name: 'NodeViewNew', query: {ref:'NodeViewNew'} });
+							} else {
+								this.$router.push({ name: 'NodeViewNew' });
+							}
 
 							this.$showMessage({
 								title: 'Workflow created',
@@ -440,7 +447,9 @@ export default mixins(
 							});
 						}
 					} else {
-						this.$router.push({ name: 'NodeViewNew' });
+						if (this.$router.currentRoute.name !== 'NodeViewNew') {
+							this.$router.push({ name: 'NodeViewNew' });
+						}
 
 						this.$showMessage({
 							title: 'Workflow created',
