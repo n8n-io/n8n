@@ -17,8 +17,24 @@ export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const WORKLOW_OPEN_MODAL_KEY = 'workflowOpen';
 
+// breakpoints
 export const BREAKPOINT_SM = 768;
 export const BREAKPOINT_MD = 992;
 export const BREAKPOINT_LG = 1200;
 export const BREAKPOINT_XL = 1920;
 
+// Node creator
+export const SUBCATEGORY_DESCRIPTIONS: {
+	[category: string]: { [subcategory: string]: string };
+} = {
+	'Core Nodes': {
+		Flow: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what dkd kj j jksksk dsjfsdkj flsdkjf ldskjf lsj flkdsj',
+		Files:  'Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what dkd kj j jksksk dsjfsdkj flsdkjf ldskjf lsj flkdsj',
+		'Data Transformation': 'Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what dkd kj j jksksk dsjfsdkj flsdkjf ldskjf lsj flkdsj',
+		Helpers: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what dkd kj j jksksk dsjfsdkj flsdkjf ldskjf lsj flkdsj',
+	},
+};
+
+export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
+export const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
+export const HIDDEN_NODES = ['n8n-nodes-base.start'];

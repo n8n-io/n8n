@@ -92,20 +92,6 @@
 </template>
 
 <script lang="ts">
-const descriptions: {
-	[category: string]: { [subcategory: string]: string };
-} = {
-	"Core Nodes": {
-		Flow: "Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what dkd kj j jksksk dsjfsdkj flsdkjf ldskjf lsj flkdsj",
-		Files:  "Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what dkd kj j jksksk dsjfsdkj flsdkjf ldskjf lsj flkdsj",
-		"Data Transformation": "Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what dkd kj j jksksk dsjfsdkj flsdkjf ldskjf lsj flkdsj",
-		Helpers: "Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what dkd kj j jksksk dsjfsdkj flsdkjf ldskjf lsj flkdsj",
-	},
-};
-
-const UNCATEGORIZED_CATEGORY = "Miscellaneous";
-const UNCATEGORIZED_SUBCATEGORY = "Helpers";
-const HIDDEN_NODES = ["n8n-nodes-base.start"];
 
 import { externalHooks } from "@/components/mixins/externalHooks";
 import { INodeTypeDescription } from "n8n-workflow";
@@ -114,7 +100,7 @@ import NodeCreateItem from "@/components/NodeCreateItem.vue";
 import mixins from "vue-typed-mixins";
 import NodeCreateIterator from "./NodeCreateIterator.vue";
 import { INodeCreateElement } from "@/Interface";
-import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY } from "@/constants";
+import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, SUBCATEGORY_DESCRIPTIONS, UNCATEGORIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY, HIDDEN_NODES  } from "@/constants";
 
 interface ICategoriesWithNodes {
 	[category: string]: {
@@ -319,7 +305,7 @@ export default mixins(externalHooks).extend({
 								type: "subcategory",
 								category,
 								subcategory,
-								description: descriptions[category][subcategory],
+								description: SUBCATEGORY_DESCRIPTIONS[category][subcategory],
 								includedByTrigger:
 									this.categoriesWithNodes[category][subcategory].triggerCount >
 									0,
