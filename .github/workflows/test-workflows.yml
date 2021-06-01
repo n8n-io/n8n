@@ -1,13 +1,7 @@
 name: Run test workflows
 
-# on:
-#   schedule:
-#     - cron: "0 1 * * *"
+on: [push, workflow_dispatch]
 
-# on: [push]
-
-
-on: workflow_dispatch
 
 # TODO: add files to /tmp
 
@@ -58,8 +52,16 @@ jobs:
         shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
+      - 
+        name: Copy static assets
+        run: |
+          cp n8n/assets/n8n-logo.png /tmp/n8n-logo.png
+          cp n8n/assets/n8n-screenshot.png /tmp/n8n-screenshot.png
+          cp n8n/node_modules/pdf-parse/test/data/05-versions-space.pdf /tmp/05-versions-space.pdf
+        shell: bash
       -
         name: Run tests
         run: n8n/packages/cli/bin/n8n executeBatch
+        shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
