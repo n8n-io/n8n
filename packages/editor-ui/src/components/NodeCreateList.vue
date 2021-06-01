@@ -92,12 +92,10 @@ const descriptions: {
 	[category: string]: { [subcategory: string]: string };
 } = {
 	"Core Nodes": {
-		Flow:
-			"Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what",
-		Files: "Lorem ipsum dolor sit amet",
-		"Data Transformation":
-			"Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla",
-		Helpers: "Sup",
+		Flow: "Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what dkd kj j jksksk dsjfsdkj flsdkjf ldskjf lsj flkdsj",
+		Files:  "Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what dkd kj j jksksk dsjfsdkj flsdkjf ldskjf lsj flkdsj",
+		"Data Transformation": "Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what dkd kj j jksksk dsjfsdkj flsdkjf ldskjf lsj flkdsj",
+		Helpers: "Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what dkd kj j jksksk dsjfsdkj flsdkjf ldskjf lsj flkdsj",
 	},
 };
 
