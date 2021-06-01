@@ -392,6 +392,7 @@ export default mixins(externalHooks).extend({
 		onBackArrowClick() {
 			this.activeSubcategory = null;
 			this.activeNodeTypeIndex = 0;
+			this.nodeFilter = '';
 		},
 
 		onClickInside() {
