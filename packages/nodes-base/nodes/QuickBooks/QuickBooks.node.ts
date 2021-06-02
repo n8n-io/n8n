@@ -50,6 +50,7 @@ import {
 import {
 	isEmpty,
 } from 'lodash';
+import { QuickBooksOAuth2Credentials } from './types';
 
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {
@@ -172,8 +173,8 @@ export class QuickBooks implements INodeType {
 		let responseData;
 		const returnData: IDataObject[] = [];
 
-		const { oauthTokenData } = this.getCredentials('quickBooksOAuth2Api') as IDataObject;
-		// @ts-ignore
+		const { oauthTokenData } = this.getCredentials('quickBooksOAuth2Api') as QuickBooksOAuth2Credentials;
+
 		const companyId = oauthTokenData.callbackQueryString.realmId;
 
 		for (let i = 0; i < items.length; i++) {
