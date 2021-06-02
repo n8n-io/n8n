@@ -16,6 +16,10 @@ import {
 	microsoftApiRequestAllItems,
 } from './GenericFunctions';
 
+import {
+	taskListFields,
+	taskListOperations,
+} from './TaskListDescription';
 
 export class MicrosoftTodo implements INodeType {
 	description: INodeTypeDescription = {
@@ -60,6 +64,8 @@ export class MicrosoftTodo implements INodeType {
 				default: 'task',
 				description: 'The resource to operate on.',
 			},
+			...taskListOperations,
+			...taskListFields,
 		],
 	};
 
@@ -78,7 +84,50 @@ export class MicrosoftTodo implements INodeType {
 
 			} else if (resource === 'taskList' ) {
 
+				if (operation === 'getAll') {
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === true) {
+						responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', '/todo/lists', undefined, qs);
+					} else {
+						qs['$top'] = this.getNodeParameter('limit', i) as number;
+						responseData = await microsoftApiRequest.call(this, 'GET', '/todo/lists', undefined, qs);
+						responseData = responseData.value;
+					}
+
+				} else if (operation === 'delete') {
+
+					const taskListId = this.getNodeParameter('taskListId', i) as string;
+					responseData = await microsoftApiRequest.call(this, 'DELETE', `/todo/lists/${taskListId}`, undefined, qs);
+
+				} else if (operation === 'get') {
+
+					const taskListId = this.getNodeParameter('taskListId', i) as string;
+					responseData = await microsoftApiRequest.call(this, 'GET', `/todo/lists/${taskListId}`, undefined, qs);
+
+				} else if (operation === 'create') {
+
+					const body = {
+						displayName:  this.getNodeParameter('displayName', i) as string,
+					};
+
+					responseData = await microsoftApiRequest.call(this, 'POST', '/todo/lists/', body, qs);
+
+				} else if (operation === 'update') {
+
+					const taskListId = this.getNodeParameter('taskListId', i) as string;
+					const body = {
+						displayName : this.getNodeParameter('displayName', i) as string,
+					};
+
+					responseData = await microsoftApiRequest.call(this, 'PATCH', `/todo/lists/${taskListId}`, body, qs);
+
+				}
+
 			}
+			Array.isArray(responseData)
+					? returnData.push(...responseData)
+					: returnData.push(responseData);
 		}
 			return [this.helpers.returnJsonArray(returnData)];
 

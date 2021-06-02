@@ -159,7 +159,7 @@
       "dist/credentials/MicrosoftOutlookOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftSql.credentials.js",
       "dist/credentials/MicrosoftTeamsOAuth2Api.credentials.js",
-      "dist/credentials/MicrosoftTodo2Api.credentials.js",
+      "dist/credentials/MicrosoftTodoOAuth2Api.credentials.js",
       "dist/credentials/MindeeReceiptApi.credentials.js",
       "dist/credentials/MindeeInvoiceApi.credentials.js",
       "dist/credentials/MoceanApi.credentials.js",
