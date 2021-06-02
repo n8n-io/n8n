@@ -34,7 +34,7 @@ export const purchaseFields = [
 	//         purchase: get
 	// ----------------------------------
 	{
-		displayName: 'purchase ID',
+		displayName: 'Purchase ID',
 		name: 'purchaseId',
 		type: 'string',
 		required: true,
