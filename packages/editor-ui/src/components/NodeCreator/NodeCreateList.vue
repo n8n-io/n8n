@@ -82,7 +82,7 @@ export default mixins(externalHooks).extend({
 	},
 	data() {
 		return {
-			activeCategory: [CORE_NODES_CATEGORY],
+			activeCategory: [] as string[],
 			activeSubcategory: null as INodeCreateElement | null,
 			activeIndex: 1,
 			nodeFilter: "",
@@ -440,6 +440,9 @@ export default mixins(externalHooks).extend({
 		},
 	},
 	async mounted() {
+		setTimeout(() => {
+			this.activeCategory = [CORE_NODES_CATEGORY];
+		}, 0);
 		this.$externalHooks().run("nodeCreateList.mounted");
 	},
 	async destroyed() {
