@@ -1,7 +1,7 @@
 <template>
 	<div @click="onClickInside" class="container">
 		<SlideTransition>
-			<SubcategoryPanel v-if="activeSubcategory" :elements="subcategorizedNodes" :title="activeSubcategory.subcategory" :activeIndex="activeNodeTypeIndex" @close="onSubcategoryClose" @nodeTypeSelected="nodeTypeSelected" />
+			<SubcategoryPanel v-if="activeSubcategory" :elements="subcategorizedNodes" :title="activeSubcategory.subcategory" :activeIndex="activeIndex" @close="onSubcategoryClose" @nodeTypeSelected="nodeTypeSelected" />
 		</SlideTransition>
 		<div class="main-panel">
 			<div>
@@ -27,7 +27,7 @@
 				<NodeCreateIterator
 					:elements="categorized"
 					:disabled="!!activeSubcategory"
-					:activeIndex="activeNodeTypeIndex"
+					:activeIndex="activeIndex"
 					@categorySelected="onCategorySelected"
 					@nodeTypeSelected="nodeTypeSelected"
 					@subcategorySelected="onSubcategorySelected"
@@ -39,7 +39,7 @@
 			>
 				<NodeCreateIterator
 					:elements="filteredNodeTypes"
-					:activeIndex="activeNodeTypeIndex"
+					:activeIndex="activeIndex"
 					@nodeTypeSelected="nodeTypeSelected"
 				/>
 			</div>
@@ -72,12 +72,6 @@ interface ICategoriesWithNodes {
 	};
 }
 
-// todo get rid of
-interface IActiveSubCategory {
-	category: string;
-	subcategory: string;
-}
-
 export default mixins(externalHooks).extend({
 	name: "NodeCreateList",
 	components: {
@@ -90,8 +84,8 @@ export default mixins(externalHooks).extend({
 	data() {
 		return {
 			activeCategory: [CORE_NODES_CATEGORY],
-			activeSubcategory: null as IActiveSubCategory | null,
-			activeNodeTypeIndex: 1,
+			activeSubcategory: null as INodeCreateElement | null,
+			activeIndex: 1,
 			nodeFilter: "",
 			selectedType: "All",
 		};
@@ -346,7 +340,7 @@ export default mixins(externalHooks).extend({
 	watch: {
 		nodeFilter(newValue, oldValue) {
 			// Reset the index whenver the filter-value changes
-			this.activeNodeTypeIndex = 0;
+			this.activeIndex = 0;
 			this.$externalHooks().run("nodeCreateList.nodeFilterChanged", {
 				oldValue,
 				newValue,
@@ -371,19 +365,19 @@ export default mixins(externalHooks).extend({
 			} else {
 				activeList = this.categorized;
 			}
-			const activeNodeType = activeList[this.activeNodeTypeIndex];
+			const activeNodeType = activeList[this.activeIndex];
 
 			if (e.key === "ArrowDown") {
-				this.activeNodeTypeIndex++;
+				this.activeIndex++;
 				// Make sure that we stop at the last nodeType
-				this.activeNodeTypeIndex = Math.min(
-					this.activeNodeTypeIndex,
+				this.activeIndex = Math.min(
+					this.activeIndex,
 					activeList.length - 1,
 				);
 			} else if (e.key === "ArrowUp") {
-				this.activeNodeTypeIndex--;
+				this.activeIndex--;
 				// Make sure that we do not get before the first nodeType
-				this.activeNodeTypeIndex = Math.max(this.activeNodeTypeIndex, 0);
+				this.activeIndex = Math.max(this.activeIndex, 0);
 			} else if (e.key === "Enter" && activeNodeType) {
 				if (activeNodeType.type === "node" && activeNodeType.nodeType) {
 					this.nodeTypeSelected(activeNodeType.nodeType.name);
@@ -396,10 +390,7 @@ export default mixins(externalHooks).extend({
 					activeNodeType.type === "subcategory" &&
 					activeNodeType.subcategory
 				) {
-					this.onSubcategorySelected({
-						category: activeNodeType.category,
-						subcategory: activeNodeType.subcategory,
-					});
+					this.onSubcategorySelected(activeNodeType);
 				}
 			}
 
@@ -421,18 +412,18 @@ export default mixins(externalHooks).extend({
 				this.activeCategory = [...this.activeCategory, category];
 			}
 
-			this.activeNodeTypeIndex = this.categorized.findIndex(
+			this.activeIndex = this.categorized.findIndex(
 				(el: INodeCreateElement) => el.category === category,
 			);
 		},
-		onSubcategorySelected(selected: IActiveSubCategory) {
+		onSubcategorySelected(selected: INodeCreateElement) {
 			this.activeSubcategory = selected;
-			this.activeNodeTypeIndex = 0;
+			this.activeIndex = 0;
 		},
 
 		onSubcategoryClose() {
 			this.activeSubcategory = null;
-			this.activeNodeTypeIndex = 0;
+			this.activeIndex = 0;
 			this.nodeFilter = "";
 		},
 

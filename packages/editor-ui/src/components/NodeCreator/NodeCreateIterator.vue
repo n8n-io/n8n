@@ -58,7 +58,7 @@ export default Vue.extend({
 				this.$emit('categorySelected', element.category);
 			}
 			else if (element.type === 'subcategory') {
-				this.$emit('subcategorySelected', {category: element.category, subcategory: element.subcategory});
+				this.$emit('subcategorySelected', element);
 			}
 		},
 		getKey (element: INodeCreateElement) {
