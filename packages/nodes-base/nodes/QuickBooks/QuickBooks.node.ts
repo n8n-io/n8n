@@ -182,7 +182,7 @@ export class QuickBooks implements INodeType {
 			if (resource === 'bill') {
 
 				// *********************************************************************
-				//           bill
+				//                            bill
 				// *********************************************************************
 
 				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/estimate
@@ -301,7 +301,7 @@ export class QuickBooks implements INodeType {
 			} else if (resource === 'customer') {
 
 				// *********************************************************************
-				//         customer
+				//                            customer
 				// *********************************************************************
 
 				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/customer
@@ -373,7 +373,7 @@ export class QuickBooks implements INodeType {
 			} else if (resource === 'employee') {
 
 				// *********************************************************************
-				//         employee
+				//                            employee
 				// *********************************************************************
 
 				if (operation === 'create') {
@@ -444,7 +444,7 @@ export class QuickBooks implements INodeType {
 			} else if (resource === 'estimate') {
 
 				// *********************************************************************
-				//         estimate
+				//                            estimate
 				// *********************************************************************
 
 				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/estimate
@@ -587,7 +587,7 @@ export class QuickBooks implements INodeType {
 			} else if (resource === 'invoice') {
 
 				// *********************************************************************
-				//         invoice
+				//                            invoice
 				// *********************************************************************
 
 				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/invoice
@@ -746,7 +746,7 @@ export class QuickBooks implements INodeType {
 			} else if (resource === 'item') {
 
 				// *********************************************************************
-				//           item
+				//                            item
 				// *********************************************************************
 
 				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/item
@@ -776,7 +776,7 @@ export class QuickBooks implements INodeType {
 			} else if (resource === 'payment') {
 
 				// *********************************************************************
-				//         payment
+				//                            payment
 				// *********************************************************************
 
 				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/payment
@@ -918,7 +918,7 @@ export class QuickBooks implements INodeType {
 			} else if (resource === 'purchase') {
 
 				// *********************************************************************
-				//         purchase
+				//                            purchase
 				// *********************************************************************
 
 				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/purchase
@@ -948,7 +948,7 @@ export class QuickBooks implements INodeType {
 			} else if (resource === 'vendor') {
 
 				// *********************************************************************
-				//         vendor
+				//                            vendor
 				// *********************************************************************
 
 				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/vendor
