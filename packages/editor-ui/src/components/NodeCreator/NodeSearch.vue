@@ -79,8 +79,8 @@ input, input:focus-visible {
 	outline: none;
 	font-size: 18px;
 
-	::placeholder {
-		color: #909399
+	&::placeholder {
+		color: #909399;
 	}
 }
 
