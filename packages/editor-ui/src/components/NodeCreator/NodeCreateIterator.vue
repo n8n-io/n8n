@@ -13,7 +13,7 @@
 			</div>
 
 			<div 
-				v-if="element.type === 'subcategory'">
+				v-else-if="element.type === 'subcategory'">
 				<div class="details">
 					<div class="title">{{element.subcategory}}</div>
 					<div v-if="element.description" class="description">{{element.description}}</div>
@@ -24,7 +24,7 @@
 			</div>
 
 			<NodeCreateItem
-				v-if="element.type === 'node'"
+				v-else-if="element.type === 'node'"
 				:nodeType="element.nodeType"
 				:bordered="index < elements.length - 1 && elements[index + 1].type === 'node'"
 			></NodeCreateItem>
@@ -96,8 +96,9 @@ export default Vue.extend({
   font-weight: bold;
   letter-spacing: 1px;
   line-height: 11px;
-	padding: 10px 12px 10px 0;
+	padding: 10px 0;
 	margin-left: 12px;
+	margin-right: 12px;
 	border-bottom: 1px solid $--node-creator-border-color;
 	display: flex;
 	text-transform: uppercase;

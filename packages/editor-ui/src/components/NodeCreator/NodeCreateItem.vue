@@ -52,8 +52,9 @@ export default Vue.extend({
 <style scoped lang="scss">
 
 .node-item {
-	padding: 11px 20px 11px 0;
+	padding: 11px 8px 11px 0;
 	margin-left: 15px;
+	margin-right: 12px;
 	display: flex;
 
 	&.bordered {

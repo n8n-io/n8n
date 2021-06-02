@@ -482,6 +482,12 @@ export default mixins(externalHooks).extend({
 		min-height: 60px;
 	}
 
+	.el-icon-search {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+
 	&.active .el-icon-search {
 		color: $--color-primary !important;
 	}
