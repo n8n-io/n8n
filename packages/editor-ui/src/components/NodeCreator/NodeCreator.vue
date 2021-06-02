@@ -1,6 +1,6 @@
 <template>
 	<div class="node-creator-wrapper">
-		<transition name="slide">
+		<SlideTransition>
 			<div class="node-creator" v-if="active" v-click-outside="closeCreator">
 				<div class="border"></div>
 				<div class="close-button clickable close-on-click" @click="closeCreator" title="Close">
@@ -9,13 +9,14 @@
 
 				<node-create-list ref="list" @nodeTypeSelected="nodeTypeSelected"></node-create-list>
 			</div>
-		</transition>
+		</SlideTransition>
 	</div>
 </template>
 
 <script lang="ts">
 
 import Vue from 'vue';
+import SlideTransition from '../transitions/SlideTransition.vue';
 
 import NodeCreateList from './NodeCreateList.vue';
 
@@ -23,14 +24,11 @@ export default Vue.extend({
 	name: 'NodeCreator',
 	components: {
 		NodeCreateList,
+		SlideTransition,
 	},
 	props: [
 		'active',
 	],
-	data () {
-		return {
-		};
-	},
 	watch: {
 		active (newValue, oldValue) {
 			if (newValue === true) {
@@ -57,16 +55,8 @@ export default Vue.extend({
 </script>
 
 <style scoped lang="scss">
-.slide-leave-active,
-.slide-enter-active {
-  transition: .3s ease;
-}
-.slide-enter {
-  transform: translateX(100%);
-}
-
-.slide-leave-to {
-	transform: translateX(120%);
+/deep/ *, *:before, *:after {
+	box-sizing: border-box;
 }
 
 .close-button {
@@ -104,12 +94,24 @@ export default Vue.extend({
 	color: #555;
 }
 
-.border {
+/deep/ .border {
 	position: absolute;
 	height: 100%;
 	width: 100%;
 	border-left: 1px solid $--node-creator-border-color;
 	z-index: -1;
+}
+
+/deep/ .scrollable {
+	overflow-y: auto;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
+
+	> div {
+		padding-bottom: 30px;
+	}
 }
 
 </style>

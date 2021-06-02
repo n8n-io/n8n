@@ -471,10 +471,6 @@ export default mixins(externalHooks).extend({
 </script>
 
 <style lang="scss" scoped>
-*, *:before, *:after {
-	box-sizing: border-box;
-}
-
 /deep/ .el-tabs__active-bar {
 	height: 1px;
 }

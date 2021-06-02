@@ -38,7 +38,7 @@ import { HTTP_REQUEST_NODE_NAME, WEBHOOK_NODE_NAME, REQUEST_NODE_FORM_URL } from
 import Vue from 'vue';
 
 export default Vue.extend({
-	name: "NodeCreateList",
+	name: "NoResults",
 	data() {
 		return {
 			REQUEST_NODE_FORM_URL,
