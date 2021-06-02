@@ -222,11 +222,11 @@ export default mixins(externalHooks).extend({
 			const categories = Object.keys(this.categoriesWithNodes);
 			const sorted = categories.filter(
 				(category: string) =>
-					category !== CORE_NODES_CATEGORY && category !== CUSTOM_NODES_CATEGORY,
+					category !== CORE_NODES_CATEGORY && category !== CUSTOM_NODES_CATEGORY && category !== UNCATEGORIZED_CATEGORY,
 			);
 			sorted.sort();
 
-			return [CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, ...sorted];
+			return [CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, ...sorted, UNCATEGORIZED_CATEGORY];
 		},
 
 		nodesWithCategories(): INodeCreateElement[] {
