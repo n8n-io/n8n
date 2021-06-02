@@ -9,7 +9,7 @@
 		</div>
 
 		<div class="scrollable">
-			<NodeCreateIterator
+			<NodeItemIterator
 				:elements="elements"
 				:activeIndex="activeIndex"
 				@nodeTypeSelected="nodeTypeSelected"
@@ -21,12 +21,12 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import NodeCreateIterator from './NodeCreateIterator.vue';
+import NodeItemIterator from './NodeItemIterator.vue';
 
 export default Vue.extend({
 	name: 'SubcategoryPanel',
 	components: {
-		NodeCreateIterator,
+		NodeItemIterator,
 	},
 	props: ['title', 'elements', 'activeIndex'],
 	methods: {

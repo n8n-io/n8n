@@ -17,7 +17,7 @@
 				</el-tabs>
 			</div>
 			<div v-if="nodeFilter.length === 0" class="scrollable">
-				<NodeCreateIterator
+				<NodeCategoryIterator
 					:elements="categorized"
 					:disabled="!!activeSubcategory"
 					:activeIndex="activeIndex"
@@ -30,7 +30,7 @@
 				class="node-create-list-wrapper scrollable"
 				v-else-if="filteredNodeTypes.length > 0"
 			>
-				<NodeCreateIterator
+				<NodeItemIterator
 					:elements="filteredNodeTypes"
 					:activeIndex="activeIndex"
 					@nodeTypeSelected="nodeTypeSelected"
@@ -49,7 +49,8 @@ import { externalHooks } from "@/components/mixins/externalHooks";
 import { INodeTypeDescription } from "n8n-workflow";
 
 import mixins from "vue-typed-mixins";
-import NodeCreateIterator from "./NodeCreateIterator.vue";
+import NodeCategoryIterator from "./NodeCategoryIterator.vue";
+import NodeItemIterator from "./NodeItemIterator.vue";
 import NoResults from "./NoResults.vue";
 import NodeSearch from "./NodeSearch.vue";
 import SubcategoryPanel from "./SubcategoryPanel.vue";
@@ -72,7 +73,8 @@ export default mixins(externalHooks).extend({
 	name: "NodeCreateList",
 	components: {
 		NodeCreateItem,
-		NodeCreateIterator,
+		NodeCategoryIterator,
+		NodeItemIterator,
 		NoResults,
 		SubcategoryPanel,
 		SlideTransition,

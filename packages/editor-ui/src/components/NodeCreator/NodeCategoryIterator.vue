@@ -1,34 +1,38 @@
 <template>
   <div>
-		<div
-			v-for="(element, index) in elements"
-			:key="getKey(element)"
-			@click="() => selected(element)"
-			:class="{container: true, active: activeIndex === index && !disabled, clickable: !disabled, [element.type]: true}"
-		>
-			<div v-if="element.type === 'category'">
-				<span class="name">{{ element.category }}</span>
-				<font-awesome-icon class="arrow" icon="chevron-down" v-if="element.expanded" />
-				<font-awesome-icon class="arrow" icon="chevron-up" v-else />
-			</div>
-
-			<div 
-				v-else-if="element.type === 'subcategory'">
-				<div class="details">
-					<div class="title">{{element.subcategory}}</div>
-					<div v-if="element.description" class="description">{{element.description}}</div>
+		<transition-group name="accordion"
+      @before-enter="beforeEnter" @enter="enter"
+      @before-leave="beforeLeave" @leave="leave">
+			<div
+				v-for="(element, index) in elements"
+				:key="getKey(element)"
+				@click="() => selected(element)"
+				:class="{container: true, active: activeIndex === index && !disabled, clickable: !disabled, [element.type]: true}"
+			>
+				<div v-if="element.type === 'category'">
+					<span class="name">{{ element.category }}</span>
+					<font-awesome-icon class="arrow" icon="chevron-down" v-if="element.expanded" />
+					<font-awesome-icon class="arrow" icon="chevron-up" v-else />
 				</div>
-				<div class="action">
-					<font-awesome-icon class="arrow" icon="arrow-right" />
-				</div>
-			</div>
 
-			<NodeCreateItem
-				v-else-if="element.type === 'node'"
-				:nodeType="element.nodeType"
-				:bordered="index < elements.length - 1 && elements[index + 1].type === 'node'"
-			></NodeCreateItem>
-		</div>
+				<div 
+					v-else-if="element.type === 'subcategory'">
+					<div class="details">
+						<div class="title">{{element.subcategory}}</div>
+						<div v-if="element.description" class="description">{{element.description}}</div>
+					</div>
+					<div class="action">
+						<font-awesome-icon class="arrow" icon="arrow-right" />
+					</div>
+				</div>
+
+				<NodeCreateItem
+					v-else-if="element.type === 'node'"
+					:nodeType="element.nodeType"
+					:bordered="index < elements.length - 1 && elements[index + 1].type === 'node'"
+				></NodeCreateItem>
+			</div>
+		</transition-group>
 	</div>
 </template>
 
@@ -68,9 +72,24 @@ export default Vue.extend({
 			if (element.type === 'subcategory') {
 				return `${element.category}_${element.subcategory}`;
 			}
+			if (element.nodeType) {
+				return `${element.category}_${element.nodeType.name}`
+			}
 
-			return element.nodeType && element.nodeType.name;
+			return '';
 		},
+		beforeEnter(el: HTMLElement) {
+   	  el.style.height = '0';
+    },
+    enter(el: HTMLElement) {
+   	  el.style.height = el.scrollHeight + 'px';
+    },
+    beforeLeave(el: HTMLElement) {
+   	  el.style.height = el.scrollHeight + 'px';
+    },
+		leave(el: HTMLElement) {
+   	  el.style.height = '0';
+    },
 	},
 });
 
@@ -89,6 +108,26 @@ export default Vue.extend({
 	&.active {
 		border-left: 1px solid $--color-primary !important;
 	}
+}
+
+.accordion-enter {
+	opacity: 0;
+}
+
+.accordion-leave-active {
+	opacity: 1;
+}
+
+.accordion-enter-active, .accordion-leave-active {
+	transition: all .25s ease, opacity .25s ease;
+}
+
+.accordion-leave-to {
+	opacity: 0;
+}
+
+.accordion-enter-to {
+	opacity: 1;
 }
 
 .category > div {
