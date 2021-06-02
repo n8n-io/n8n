@@ -188,7 +188,7 @@ export class QuickBooks implements INodeType {
 				//                            bill
 				// *********************************************************************
 
-				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/estimate
+				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/bill
 
 				if (operation === 'create') {
 
