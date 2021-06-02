@@ -2,10 +2,6 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import {
-	purchaseAdditionalFieldsOptions,
-} from './PurchaseAdditionalFieldsOptions';
-
 export const purchaseOperations = [
 	{
 		displayName: 'Operation',
@@ -34,7 +30,6 @@ export const purchaseOperations = [
 ] as INodeProperties[];
 
 export const purchaseFields = [
-
 	// ----------------------------------
 	//         purchase: get
 	// ----------------------------------
