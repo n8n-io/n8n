@@ -1,25 +1,39 @@
 <template>
-  <div>
-		<transition-group name="accordion"
-      @before-enter="beforeEnter" @enter="enter"
-      @before-leave="beforeLeave" @leave="leave">
+	<div>
+		<transition-group
+			name="accordion"
+			@before-enter="beforeEnter"
+			@enter="enter"
+			@before-leave="beforeLeave"
+			@leave="leave"
+		>
 			<div
 				v-for="(element, index) in elements"
 				:key="getKey(element)"
 				@click="() => selected(element)"
-				:class="{container: true, active: activeIndex === index && !disabled, clickable: !disabled, [element.type]: true}"
+				:class="{
+					container: true,
+					active: activeIndex === index && !disabled,
+					clickable: !disabled,
+					[element.type]: true,
+				}"
 			>
 				<div v-if="element.type === 'category'">
 					<span class="name">{{ element.category }}</span>
-					<font-awesome-icon class="arrow" icon="chevron-down" v-if="element.expanded" />
+					<font-awesome-icon
+						class="arrow"
+						icon="chevron-down"
+						v-if="element.expanded"
+					/>
 					<font-awesome-icon class="arrow" icon="chevron-up" v-else />
 				</div>
 
-				<div 
-					v-else-if="element.type === 'subcategory'">
+				<div v-else-if="element.type === 'subcategory'">
 					<div class="details">
-						<div class="title">{{element.subcategory}}</div>
-						<div v-if="element.description" class="description">{{element.description}}</div>
+						<div class="title">{{ element.subcategory }}</div>
+						<div v-if="element.description" class="description">
+							{{ element.description }}
+						</div>
 					</div>
 					<div class="action">
 						<font-awesome-icon class="arrow" icon="arrow-right" />
@@ -29,7 +43,9 @@
 				<NodeCreateItem
 					v-else-if="element.type === 'node'"
 					:nodeType="element.nodeType"
-					:bordered="index < elements.length - 1 && elements[index + 1].type === 'node'"
+					:bordered="
+						index < elements.length - 1 && elements[index + 1].type === 'node'
+					"
 				></NodeCreateItem>
 			</div>
 		</transition-group>
@@ -37,62 +53,58 @@
 </template>
 
 <script lang="ts">
+import NodeCreateItem from "./NodeCreateItem.vue";
+import { INodeCreateElement } from "@/Interface";
 
-import NodeCreateItem from './NodeCreateItem.vue';
-import { INodeCreateElement } from '@/Interface';
-
-import Vue from 'vue';
+import Vue from "vue";
 
 export default Vue.extend({
-	name: 'NodeCreateIterator',
+	name: "NodeCreateIterator",
 	components: {
 		NodeCreateItem,
 	},
-	props: ['elements', 'activeIndex', 'disabled'],
+	props: ["elements", "activeIndex", "disabled"],
 	methods: {
-		selected (element: INodeCreateElement) {
+		selected(element: INodeCreateElement) {
 			if (this.$props.disabled) {
 				return;
 			}
 
-			if (element.type === 'node' && element.nodeType) {
-				this.$emit('nodeTypeSelected', element.nodeType.name);
-			}
-			else if (element.type === 'category') {
-				this.$emit('categorySelected', element.category);
-			}
-			else if (element.type === 'subcategory') {
-				this.$emit('subcategorySelected', element);
+			if (element.type === "node" && element.nodeType) {
+				this.$emit("nodeTypeSelected", element.nodeType.name);
+			} else if (element.type === "category") {
+				this.$emit("categorySelected", element.category);
+			} else if (element.type === "subcategory") {
+				this.$emit("subcategorySelected", element);
 			}
 		},
-		getKey (element: INodeCreateElement) {
-			if (element.type === 'category') {
+		getKey(element: INodeCreateElement) {
+			if (element.type === "category") {
 				return element.category;
 			}
-			if (element.type === 'subcategory') {
+			if (element.type === "subcategory") {
 				return `${element.category}_${element.subcategory}`;
 			}
 			if (element.nodeType) {
-				return `${element.category}_${element.nodeType.name}`
+				return `${element.category}_${element.nodeType.name}`;
 			}
 
-			return '';
+			return "";
 		},
 		beforeEnter(el: HTMLElement) {
-   	  el.style.height = '0';
-    },
-    enter(el: HTMLElement) {
-   	  el.style.height = el.scrollHeight + 'px';
-    },
-    beforeLeave(el: HTMLElement) {
-   	  el.style.height = el.scrollHeight + 'px';
-    },
+			el.style.height = "0";
+		},
+		enter(el: HTMLElement) {
+			el.style.height = el.scrollHeight + "px";
+		},
+		beforeLeave(el: HTMLElement) {
+			el.style.height = el.scrollHeight + "px";
+		},
 		leave(el: HTMLElement) {
-   	  el.style.height = '0';
-    },
+			el.style.height = "0";
+		},
 	},
 });
-
 </script>
 
 
@@ -100,7 +112,7 @@ export default Vue.extend({
 .container {
 	border-left: 1px solid transparent;
 
-  &:hover {
+	&:hover {
 		border-left: 1px solid $--node-creator-item-hover-border-color;
 		background-color: $--node-creator-item-hover-background-color;
 	}
@@ -118,8 +130,9 @@ export default Vue.extend({
 	opacity: 1;
 }
 
-.accordion-enter-active, .accordion-leave-active {
-	transition: all .25s ease, opacity .25s ease;
+.accordion-enter-active,
+.accordion-leave-active {
+	transition: all 0.25s ease, opacity 0.25s ease;
 }
 
 .accordion-leave-to {
@@ -131,10 +144,10 @@ export default Vue.extend({
 }
 
 .category > div {
-  font-size: 11px;
-  font-weight: bold;
-  letter-spacing: 1px;
-  line-height: 11px;
+	font-size: 11px;
+	font-weight: bold;
+	letter-spacing: 1px;
+	line-height: 11px;
 	padding: 10px 0;
 	margin-left: 12px;
 	margin-right: 12px;
@@ -181,10 +194,9 @@ export default Vue.extend({
 	margin-top: 15px;
 }
 
-
 .arrow {
 	font-size: 12px;
 	width: 12px;
-	color: #8D939C;
+	color: #8d939c;
 }
 </style>
