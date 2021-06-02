@@ -441,7 +441,6 @@ export class AwsTranscribe implements INodeType {
 
 						if (options.maxAlternatives) {
 							Object.assign(body.Settings, {
-								ShowAlternatives: options.maxAlternatives,
 								MaxAlternatives: options.maxAlternatives,
 							});
 						}
