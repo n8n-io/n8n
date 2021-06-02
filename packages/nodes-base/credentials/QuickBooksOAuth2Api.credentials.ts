@@ -3,10 +3,10 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-const scopes = [
-	'com.intuit.quickbooks.accounting',
-	'com.intuit.quickbooks.payment',
-];
+const scopes = {
+	accounting: 'com.intuit.quickbooks.accounting',
+	payment: 'com.intuit.quickbooks.payment',
+};
 
 // https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization
 
@@ -34,19 +34,19 @@ export class QuickBooksOAuth2Api implements ICredentialType {
  			displayName: 'Scopes',
  			name: 'scope',
  			type: 'options' as NodePropertyTypes,
- 			default: scopes.join(' '),
+ 			default: Object.values(scopes).join(' '),
  			options: [
  				{
  					name: 'Accounting only',
- 					value: 'com.intuit.quickbooks.accounting',
+ 					value: scopes.accounting,
  				},
  				{
  					name: 'Payment only',
- 					value: 'com.intuit.quickbooks.payment',
+ 					value: scopes.payment,
  				},
  				{
  					name: 'Accounting and Payment',
- 					value: scopes.join(' '),
+ 					value: Object.values(scopes).join(' '),
  				},
  			],
  		},
