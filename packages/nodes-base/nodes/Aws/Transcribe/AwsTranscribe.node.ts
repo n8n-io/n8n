@@ -426,6 +426,7 @@ export class AwsTranscribe implements INodeType {
 							Media: {
 								MediaFileUri: mediaFileUri,
 							},
+							Settings: {}
 						};
 
 						if (detectLang) {
