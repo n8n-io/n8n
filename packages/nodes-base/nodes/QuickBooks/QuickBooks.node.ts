@@ -50,7 +50,10 @@ import {
 import {
 	isEmpty,
 } from 'lodash';
-import { QuickBooksOAuth2Credentials } from './types';
+
+import {
+	QuickBooksOAuth2Credentials,
+} from './types';
 
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {
