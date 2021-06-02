@@ -27,7 +27,9 @@ export default Vue.extend({
 				this.focus();
 			});
 		}
-		this.focus();
+		setTimeout(() => {
+			this.focus();
+		}, 0);
 	},
 	methods: {
 		focus() {
