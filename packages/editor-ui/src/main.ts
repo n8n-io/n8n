@@ -84,6 +84,7 @@ import {
 	faSave,
 	faSearchMinus,
 	faSearchPlus,
+	faSearch,
 	faServer,
 	faSignInAlt,
 	faSlidersH,
@@ -169,6 +170,7 @@ library.add(faQuestionCircle);
 library.add(faRedo);
 library.add(faRss);
 library.add(faSave);
+library.add(faSearch);
 library.add(faSearchMinus);
 library.add(faSearchPlus);
 library.add(faServer);

@@ -4,18 +4,11 @@
 			<SubcategoryPanel v-if="activeSubcategory" :elements="subcategorizedNodes" :title="activeSubcategory.subcategory" :activeIndex="activeIndex" @close="onSubcategoryClose" @nodeTypeSelected="nodeTypeSelected" />
 		</SlideTransition>
 		<div class="main-panel">
-			<div>
-				<el-input
-					:class="{ custom: true, active: nodeFilter.length > 0 }"
-					placeholder="Search nodes..."
-					v-model="nodeFilter"
-					ref="inputField"
-					type="text"
-					prefix-icon="el-icon-search"
-					@keydown.native="nodeFilterKeyDown"
-					clearable
-				></el-input>
-			</div>
+			<NodeSearch
+				v-model="nodeFilter"	
+				:eventBus="searchEventBus"
+				@keydown.native="nodeFilterKeyDown"
+			/>
 			<div class="type-selector">
 				<el-tabs v-model="selectedType" stretch>
 					<el-tab-pane label="All" name="All"></el-tab-pane>
@@ -50,12 +43,15 @@
 
 <script lang="ts">
 
+import Vue from 'vue';
+
 import { externalHooks } from "@/components/mixins/externalHooks";
 import { INodeTypeDescription } from "n8n-workflow";
 
 import mixins from "vue-typed-mixins";
 import NodeCreateIterator from "./NodeCreateIterator.vue";
 import NoResults from "./NoResults.vue";
+import NodeSearch from "./NodeSearch.vue";
 import SubcategoryPanel from "./SubcategoryPanel.vue";
 import NodeCreateItem from "./NodeCreateItem.vue";
 import { INodeCreateElement } from "@/Interface";
@@ -80,6 +76,7 @@ export default mixins(externalHooks).extend({
 		NoResults,
 		SubcategoryPanel,
 		SlideTransition,
+		NodeSearch,
 	},
 	data() {
 		return {
@@ -88,6 +85,7 @@ export default mixins(externalHooks).extend({
 			activeIndex: 1,
 			nodeFilter: "",
 			selectedType: "All",
+			searchEventBus: new Vue(),
 		};
 	},
 	computed: {
@@ -428,8 +426,7 @@ export default mixins(externalHooks).extend({
 		},
 
 		onClickInside() {
-			// keep focus on input field as user clicks around
-			(this.$refs.inputField as HTMLInputElement).focus();
+			this.searchEventBus.$emit('focus');
 		},
 
 		selectWebhook() {
@@ -468,46 +465,6 @@ export default mixins(externalHooks).extend({
 
 .main-panel .scrollable {
 	height: calc(100% - 160px);
-}
-
-/deep/ .el-input {
-	background-color: $--node-creator-search-background-color;
-	color: $--node-creator-search-placeholder-color;
-	font-size: 18px;
-
-	input,
-	input:focus {
-		border: 1px solid $--node-creator-border-color;
-		border-radius: 0;
-		min-height: 60px;
-	}
-
-	.el-icon-search {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-	}
-
-	&.active .el-icon-search {
-		color: $--color-primary !important;
-	}
-
-	.el-icon-circle-close{
-		&:hover {
-			&:before {
-				background-color: #3d3f46;
-			}
-		}
-
-		&:before {
-			content: "\E6DB";
-			background-color: #8D939C;
-			color: $--node-creator-search-background-color;
-			border-radius: 50%;
-			font-size: 12px;
-			padding: 1px;
-		}
-	}
 }
 
 .type-selector {
