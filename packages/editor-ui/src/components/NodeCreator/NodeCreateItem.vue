@@ -83,6 +83,7 @@ export default Vue.extend({
 	margin-top: 4px;
   font-size: 11px;
   line-height: 15px;
+	font-weight: 400;
 }
 
 .trigger-icon {

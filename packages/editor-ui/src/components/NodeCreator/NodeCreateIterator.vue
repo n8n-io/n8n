@@ -100,6 +100,7 @@ export default Vue.extend({
 	margin-left: 12px;
 	border-bottom: 1px solid $--node-creator-border-color;
 	display: flex;
+	text-transform: uppercase;
 
 	.name {
 		flex-grow: 1;
@@ -126,6 +127,7 @@ export default Vue.extend({
 		font-size: 11px;
 		letter-spacing: 0;
 		line-height: 15px;
+		font-weight: 400;
 	}
 
 	.action {
