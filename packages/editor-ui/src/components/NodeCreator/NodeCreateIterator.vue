@@ -34,7 +34,7 @@
 
 <script lang="ts">
 
-import NodeCreateItem from '@/components/NodeCreateItem.vue';
+import NodeCreateItem from './NodeCreateItem.vue';
 import { INodeCreateElement } from '@/Interface';
 
 import Vue from 'vue';

@@ -18,8 +18,8 @@
 import Vue from 'vue';
 import { INodeTypeDescription } from 'n8n-workflow';
 
-import NodeIcon from '@/components/NodeIcon.vue';
-import TriggerIcon from './TriggerIcon.vue';
+import NodeIcon from '../NodeIcon.vue';
+import TriggerIcon from '../TriggerIcon.vue';
 
 export default Vue.extend({
 	name: 'NodeCreateItem',

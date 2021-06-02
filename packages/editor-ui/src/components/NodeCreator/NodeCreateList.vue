@@ -59,34 +59,7 @@
 					@nodeTypeSelected="nodeTypeSelected"
 				/>
 			</div>
-			<div v-else class="no-results">
-				<div class="img">
-					<img :src="`${basePath}no-nodes-icon.png`" alt="" />
-				</div>
-				<div class="title">
-					<div>We didn't make that... yet</div>
-					<div class="action">
-						Don’t worry, you can probably do it with the
-						<a @click="selectHttpRequest">HTTP Request</a> or
-						<a @click="selectWebhook">Webhook</a> node
-					</div>
-				</div>
-
-				<div class="action">
-					<div>Want us to make it faster?</div>
-					<div>
-						<a
-							href="https://n8n-community.typeform.com/to/K1fBVTZ3"
-							target="_blank"
-							>	
-								<span>Request the node</span>&nbsp;
-								<span>
-									<font-awesome-icon icon="external-link-alt" title="Request the node" />
-								</span>	
-							</a>
-					</div>
-				</div>
-			</div>
+			<NoResults v-else />
 		</div>
 	</div>
 </template>
@@ -95,10 +68,11 @@
 
 import { externalHooks } from "@/components/mixins/externalHooks";
 import { INodeTypeDescription } from "n8n-workflow";
-import NodeCreateItem from "@/components/NodeCreateItem.vue";
 
 import mixins from "vue-typed-mixins";
 import NodeCreateIterator from "./NodeCreateIterator.vue";
+import NoResults from "./NoResults.vue";
+import NodeCreateItem from "./NodeCreateItem.vue";
 import { INodeCreateElement } from "@/Interface";
 import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, SUBCATEGORY_DESCRIPTIONS, UNCATEGORIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY, HIDDEN_NODES  } from "@/constants";
 
@@ -123,6 +97,7 @@ export default mixins(externalHooks).extend({
 	components: {
 		NodeCreateItem,
 		NodeCreateIterator,
+		NoResults,
 	},
 	data() {
 		return {
@@ -269,16 +244,16 @@ export default mixins(externalHooks).extend({
 			);
 			sorted.sort();
 
-			if (categories.includes(CUSTOM_NODES_CATEGORY)) {
-				return [CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, ...sorted];
-			}
-
-			return [CORE_NODES_CATEGORY, ...sorted];
+			return [CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, ...sorted];
 		},
 
 		nodesWithCategories(): INodeCreateElement[] {
 			const collapsed = this.categories.reduce(
 				(accu: INodeCreateElement[], category: string) => {
+					if (!this.categoriesWithNodes[category]) {
+						return accu;
+					}
+
 					const categoryEl: INodeCreateElement = {
 						type: "category",
 						category,

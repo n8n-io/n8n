@@ -17,7 +17,7 @@
 
 import Vue from 'vue';
 
-import NodeCreateList from '@/components/NodeCreateList.vue';
+import NodeCreateList from './NodeCreateList.vue';
 
 export default Vue.extend({
 	name: 'NodeCreator',
