@@ -41,6 +41,13 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" scoped>
+.subcategory-panel {
+	position: absolute;
+	background: $--node-creator-search-background-color;
+	z-index: 100;
+	height: 100%;
+	width: 100%;
+}
 
 .subcategory-header {
 	border: #dbdfe7 solid 1px;

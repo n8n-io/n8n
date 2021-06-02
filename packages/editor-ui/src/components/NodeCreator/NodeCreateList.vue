@@ -1,24 +1,8 @@
 <template>
 	<div @click="onClickInside" class="container">
-		<transition name="slide">
-			<div v-if="activeSubcategory" class="subcategory-panel">
-				<div class="border"></div>
-				<div class="subcategory-header">
-					<div class="clickable" @click="onBackArrowClick">
-						<font-awesome-icon class="back-arrow" icon="arrow-left" />
-					</div>
-					<span>{{ activeSubcategory.subcategory }}</span>
-				</div>
-
-				<div class="scrollable">
-					<NodeCreateIterator
-						:elements="subcategorizedNodes"
-						:activeIndex="activeNodeTypeIndex"
-						@nodeTypeSelected="nodeTypeSelected"
-					/>
-				</div>
-			</div>
-		</transition>
+		<SlideTransition>
+			<SubcategoryPanel v-if="activeSubcategory" :elements="subcategorizedNodes" :title="activeSubcategory.subcategory" :activeIndex="activeNodeTypeIndex" @close="onSubcategoryClose" @nodeTypeSelected="nodeTypeSelected" />
+		</SlideTransition>
 		<div class="main-panel">
 			<div>
 				<el-input
@@ -72,9 +56,11 @@ import { INodeTypeDescription } from "n8n-workflow";
 import mixins from "vue-typed-mixins";
 import NodeCreateIterator from "./NodeCreateIterator.vue";
 import NoResults from "./NoResults.vue";
+import SubcategoryPanel from "./SubcategoryPanel.vue";
 import NodeCreateItem from "./NodeCreateItem.vue";
 import { INodeCreateElement } from "@/Interface";
 import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, SUBCATEGORY_DESCRIPTIONS, UNCATEGORIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY, HIDDEN_NODES  } from "@/constants";
+import SlideTransition from "../transitions/SlideTransition.vue";
 
 interface ICategoriesWithNodes {
 	[category: string]: {
@@ -98,6 +84,8 @@ export default mixins(externalHooks).extend({
 		NodeCreateItem,
 		NodeCreateIterator,
 		NoResults,
+		SubcategoryPanel,
+		SlideTransition,
 	},
 	data() {
 		return {
@@ -442,7 +430,7 @@ export default mixins(externalHooks).extend({
 			this.activeNodeTypeIndex = 0;
 		},
 
-		onBackArrowClick() {
+		onSubcategoryClose() {
 			this.activeSubcategory = null;
 			this.activeNodeTypeIndex = 0;
 			this.nodeFilter = "";
@@ -485,59 +473,6 @@ export default mixins(externalHooks).extend({
 	> div {
 		height: 100%;
 	}
-}
-
-.subcategory-panel {
-	position: absolute;
-	background: $--node-creator-search-background-color;
-	z-index: 100;
-	height: 100%;
-	width: 100%;
-}
-
-.border {
-	position: absolute;
-	height: 100%;
-	width: 100%;
-	border-left: 1px solid $--node-creator-border-color;
-	z-index: -1;
-}
-
-.subcategory-header {
-	border: #dbdfe7 solid 1px;
-	height: 50px;
-	background-color: #f2f4f8;
-
-	font-size: 18px;
-	font-weight: 600;
-	line-height: 16px;
-
-	display: flex;
-	align-items: center;
-	padding: 11px 15px;
-}
-
-.back-arrow {
-	color: #8d939c;
-	height: 16px;
-	width: 16px;
-	margin-right: 24px;
-}
-
-.scrollable {
-	overflow-y: auto;
-
-	&::-webkit-scrollbar {
-		display: none;
-	}
-
-	> div {
-		padding-bottom: 30px;
-	}
-}
-
-.subcategory-panel .scrollable {
-	height: calc(100% - 100px);
 }
 
 .main-panel .scrollable {
@@ -590,52 +525,6 @@ export default mixins(externalHooks).extend({
 		.el-tabs__nav {
 			height: 43px;
 		}
-	}
-}
-
-.slide-leave-active,
-.slide-enter-active {
-	transition: 0.3s ease;
-}
-.slide-enter,
-.slide-leave-to {
-	transform: translate(100%);
-}
-
-.no-results {
-	background-color: #f8f9fb;
-	text-align: center;
-	height: 100%;
-	border-left: 1px solid $--node-creator-border-color;
-	padding: 100px 56px 60px 56px;
-	display: flex;
-	flex-direction: column;
-
-	.title {
-		font-size: 22px;
-		line-height: 16px;
-		margin-top: 50px;
-		margin-bottom: 200px;
-
-		div {
-			margin-bottom: 15px;
-		}
-	}
-
-	.action {
-		font-size: 14px;
-		line-height: 19px;
-	}
-
-	a {
-		font-weight: 600;
-		color: $--color-primary;
-		text-decoration: none;
-		cursor: pointer;
-	}
-
-	img {
-		min-height: 67px;
 	}
 }
 </style>

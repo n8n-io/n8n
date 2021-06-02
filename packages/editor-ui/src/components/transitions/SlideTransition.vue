@@ -7,12 +7,8 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import NodeCreateIterator from './NodeCreateIterator.vue';
-import SlideTransition from '../transitions/SlideTransition.vue';
-
 export default Vue.extend({
 	name: 'SlideTransition',
-	props: ['leaveToPercent'],
 });
 </script>
 

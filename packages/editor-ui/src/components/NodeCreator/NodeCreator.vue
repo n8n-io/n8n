@@ -94,6 +94,7 @@ export default Vue.extend({
 	color: #555;
 }
 
+// todo
 /deep/ .border {
 	position: absolute;
 	height: 100%;
@@ -102,6 +103,7 @@ export default Vue.extend({
 	z-index: -1;
 }
 
+// todo
 /deep/ .scrollable {
 	overflow-y: auto;
 
