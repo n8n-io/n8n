@@ -88,6 +88,7 @@ input, input:focus-visible {
 	min-width: 20px;
 	text-align: center;
 	visibility: hidden;
+	display: inline-block;
 }
 
 .close {
@@ -97,9 +98,16 @@ input, input:focus-visible {
 	width: 16px;
 	font-size: 16px;
 	color: $--node-creator-search-background-color;
+	display: inline-flex;
+	align-items: center;
 
 	&:hover {
 		background-color: #3d3f46;
+	}
+
+	&:before {
+		line-height: 16px;
+		display: block;
 	}
 }
 </style>
