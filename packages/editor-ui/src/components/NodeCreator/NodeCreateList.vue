@@ -59,7 +59,7 @@
 					@nodeTypeSelected="nodeTypeSelected"
 				/>
 			</div>
-			<NoResults v-else />
+			<NoResults v-else @nodeTypeSelected="nodeTypeSelected" />
 		</div>
 	</div>
 </template>
@@ -471,7 +471,7 @@ export default mixins(externalHooks).extend({
 </script>
 
 <style lang="scss" scoped>
-* {
+*, *:before, *:after {
 	box-sizing: border-box;
 }
 

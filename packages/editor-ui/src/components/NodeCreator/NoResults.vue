@@ -16,7 +16,7 @@
 			<div>Want us to make it faster?</div>
 			<div>
 				<a
-					href="https://n8n-community.typeform.com/to/K1fBVTZ3"
+					:href="REQUEST_NODE_FORM_URL"
 					target="_blank"
 				>
 					<span>Request the node</span>&nbsp;
@@ -34,10 +34,16 @@
 
 
 <script lang="ts">
+import { HTTP_REQUEST_NODE_NAME, WEBHOOK_NODE_NAME, REQUEST_NODE_FORM_URL } from '@/constants';
 import Vue from 'vue';
 
 export default Vue.extend({
 	name: "NodeCreateList",
+	data() {
+		return {
+			REQUEST_NODE_FORM_URL,
+		};
+	},
 	computed: {
 		basePath(): string {
 			return this.$store.getters.getBaseUrl;
@@ -45,11 +51,11 @@ export default Vue.extend({
 	},
 	methods: {
 		selectWebhook() {
-			this.$emit("nodeTypeSelected", "n8n-nodes-base.webhook");
+			this.$emit("nodeTypeSelected", WEBHOOK_NODE_NAME);
 		},
 
 		selectHttpRequest() {
-			this.$emit("nodeTypeSelected", "n8n-nodes-base.httpRequest");
+			this.$emit("nodeTypeSelected", HTTP_REQUEST_NODE_NAME);
 		},
 	},
 });
@@ -68,32 +74,32 @@ export default Vue.extend({
 	padding: 100px 56px 60px 56px;
 	display: flex;
 	flex-direction: column;
+}
 
-	.title {
-		font-size: 22px;
-		line-height: 16px;
-		margin-top: 50px;
-		margin-bottom: 200px;
+.title {
+	font-size: 22px;
+	line-height: 16px;
+	margin-top: 50px;
+	margin-bottom: 200px;
 
-		div {
-			margin-bottom: 15px;
-		}
+	div {
+		margin-bottom: 15px;
 	}
+}
 
-	.action {
-		font-size: 14px;
-		line-height: 19px;
-	}
+.action {
+	font-size: 14px;
+	line-height: 19px;
+}
 
-	a {
-		font-weight: 600;
-		color: $--color-primary;
-		text-decoration: none;
-		cursor: pointer;
-	}
+a {
+	font-weight: 600;
+	color: $--color-primary;
+	text-decoration: none;
+	cursor: pointer;
+}
 
-	img {
-		min-height: 67px;
-	}
+img {
+	min-height: 67px;
 }
 </style>

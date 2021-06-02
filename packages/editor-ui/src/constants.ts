@@ -38,3 +38,6 @@ export const SUBCATEGORY_DESCRIPTIONS: {
 export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
 export const HIDDEN_NODES = ['n8n-nodes-base.start'];
+export const WEBHOOK_NODE_NAME = 'n8n-nodes-base.webhook';
+export const HTTP_REQUEST_NODE_NAME = 'n8n-nodes-base.httpRequest';
+export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
