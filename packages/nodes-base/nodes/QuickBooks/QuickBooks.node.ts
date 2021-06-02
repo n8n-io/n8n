@@ -26,10 +26,10 @@ import {
 	itemOperations,
 	paymentFields,
 	paymentOperations,
-	vendorFields,
-	vendorOperations,
 	purchaseFields,
 	purchaseOperations,
+	vendorFields,
+	vendorOperations,
 } from './descriptions';
 
 import {
@@ -107,13 +107,13 @@ export class QuickBooks implements INodeType {
 						value: 'payment',
 					},
 					{
+						name: 'Purchase',
+						value: 'purchase',
+					},
+					{
 						name: 'Vendor',
 						value: 'vendor',
 					},
-					{
-						name: 'Purchase',
-						value: 'purchase'
-					}
 				],
 				default: 'customer',
 				description: 'Resource to consume',
@@ -132,10 +132,10 @@ export class QuickBooks implements INodeType {
 			...itemFields,
 			...paymentOperations,
 			...paymentFields,
-			...vendorOperations,
-			...vendorFields,
 			...purchaseOperations,
 			...purchaseFields,
+			...vendorOperations,
+			...vendorFields,
 		],
 	};
 
@@ -153,12 +153,12 @@ export class QuickBooks implements INodeType {
 				return await loadResource.call(this, 'item');
 			},
 
-			async getVendors(this: ILoadOptionsFunctions) {
-				return await loadResource.call(this, 'vendor');
-			},
-
 			async getPurchases(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'purchase');
+			},
+
+			async getVendors(this: ILoadOptionsFunctions) {
+				return await loadResource.call(this, 'vendor');
 			},
 		},
 	};
@@ -914,6 +914,36 @@ export class QuickBooks implements INodeType {
 
 				}
 
+			} else if (resource === 'purchase') {
+
+				// *********************************************************************
+				//         purchase
+				// *********************************************************************
+
+				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/purchase
+
+				if (operation === 'get') {
+
+					// ----------------------------------
+					//         purchase: get
+					// ----------------------------------
+
+					const purchaseId = this.getNodeParameter('purchaseId', i);
+					const endpoint = `/v3/company/${companyId}/${resource}/${purchaseId}`;
+					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = responseData[capitalCase(resource)];
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------
+					//         purchase: getAll
+					// ----------------------------------
+
+					const endpoint = `/v3/company/${companyId}/query`;
+					responseData = await handleListing.call(this, i, endpoint, resource);
+
+				}
+
 			} else if (resource === 'vendor') {
 
 				// *********************************************************************
@@ -986,37 +1016,8 @@ export class QuickBooks implements INodeType {
 
 				}
 
-			} else if (resource === 'purchase') {
-
-				// *********************************************************************
-				//         purchase
-				// *********************************************************************
-
-				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/purchase
-
-				if (operation === 'get') {
-
-					// ----------------------------------
-					//         purchase: get
-					// ----------------------------------
-
-					const purchaseId = this.getNodeParameter('purchaseId', i);
-					const endpoint = `/v3/company/${companyId}/${resource}/${purchaseId}`;
-					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
-					responseData = responseData[capitalCase(resource)];
-
-				} else if (operation === 'getAll') {
-
-					// ----------------------------------
-					//         purchase: getAll
-					// ----------------------------------
-
-					const endpoint = `/v3/company/${companyId}/query`;
-					responseData = await handleListing.call(this, i, endpoint, resource);
-
-				}
-
 			}
+
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
 				: returnData.push(responseData);
