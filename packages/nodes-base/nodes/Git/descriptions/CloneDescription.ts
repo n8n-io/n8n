@@ -4,7 +4,7 @@ import {
 
 export const cloneFields = [
 	{
-		displayName: 'Repository Path',
+		displayName: 'Repository',
 		name: 'repositoryPath',
 		type: 'string',
 		displayOptions: {
@@ -16,7 +16,7 @@ export const cloneFields = [
 		},
 		default: '',
 		placeholder: 'https://github.com/n8n-io/n8n',
-		description: 'The path of the remote repository to clone.',
+		description: 'The URL or path of the repository to clone.',
 		required: true,
 	},
 ] as INodeProperties[];

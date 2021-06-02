@@ -12,6 +12,7 @@ import {
 	cloneFields,
 	commitFields,
 	logFields,
+	pushFields,
 	tagFields,
 } from './descriptions';
 
@@ -20,6 +21,8 @@ import simpleGit, {
 	SimpleGit,
 	SimpleGitOptions,
 } from 'simple-git';
+
+import { URL } from 'url';
 
 export class Git implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,7 +38,45 @@ export class Git implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		credentials: [
+			{
+				name: 'gitPassword',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'gitPassword',
+						],
+					},
+				},
+			},
+		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Authenticate',
+						value: 'gitPassword',
+					},
+					{
+						name: 'None',
+						value: 'none',
+					},
+				],
+				displayOptions: {
+					show: {
+						operation: [
+							'clone',
+							'push',
+						],
+					},
+				},
+				default: 'none',
+				description: 'The way to authenticate.',
+			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -46,67 +87,67 @@ export class Git implements INodeType {
 					{
 						name: 'Add',
 						value: 'add',
-						description: 'Add a file or folder to commit.',
+						description: 'Add a file or folder to commit',
 					},
 					{
 						name: 'Add Config',
 						value: 'addConfig',
-						description: 'Add configuration property.',
+						description: 'Add configuration property',
 					},
 					{
 						name: 'Clone',
 						value: 'clone',
-						description: 'Clone a repository.',
+						description: 'Clone a repository',
 					},
 					{
 						name: 'Commit',
 						value: 'commit',
-						description: 'Commit files or folders to git.',
+						description: 'Commit files or folders to git',
 					},
 					{
 						name: 'Fetch',
 						value: 'fetch',
-						description: 'Fetch from remote repository.',
+						description: 'Fetch from remote repository',
 					},
 					{
 						name: 'List Config',
 						value: 'listConfig',
-						description: 'Return current configuration.',
+						description: 'Return current configuration',
 					},
 					{
 						name: 'Log',
 						value: 'log',
-						description: 'Return git commit history.',
+						description: 'Return git commit history',
 					},
 					{
 						name: 'Pull',
 						value: 'pull',
-						description: 'Pull from remote repository.',
+						description: 'Pull from remote repository',
 					},
 					{
 						name: 'Push',
 						value: 'push',
-						description: 'Push to remote repository.',
+						description: 'Push to remote repository',
 					},
 					{
 						name: 'Push Tags',
 						value: 'pushTags',
-						description: 'Push Tags to remote repository.',
+						description: 'Push Tags to remote repository',
 					},
 					{
 						name: 'Status',
 						value: 'status',
-						description: 'Return status of current repository.',
+						description: 'Return status of current repository',
 					},
 					{
 						name: 'Tag',
 						value: 'tag',
-						description: 'Create a new tag.',
+						description: 'Create a new tag',
 					},
 					{
 						name: 'User Setup',
 						value: 'userSetup',
-						description: 'Set the user.',
+						description: 'Set the user',
 					},
 				],
 			},
@@ -116,9 +157,9 @@ export class Git implements INodeType {
 				name: 'baseDirectory',
 				type: 'string',
 				default: '',
-				placeholder: '/data/repository',
+				placeholder: '/tmp/repository',
 				required: true,
-				description: 'Path to the git repository to operate on.',
+				description: 'Local path of the git repository to operate on.',
 			},
 
 			...addFields,
@@ -126,6 +167,7 @@ export class Git implements INodeType {
 			...cloneFields,
 			...commitFields,
 			...logFields,
+			...pushFields,
 			...tagFields,
 			// ...userSetupFields,
 		],
@@ -135,8 +177,25 @@ export class Git implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const operation = this.getNodeParameter('operation', 0) as string;
 
+		const prepareRepository = (repositoryPath: string): string => {
+			// TODO: Still think about final name "repository", "repositoryPath", "repositoryUrl", ...?
+			const authentication = this.getNodeParameter('authentication', 0) as string;
+
+			if (authentication === 'gitPassword') {
+				const gitCredentials = this.getCredentials('gitPassword') as IDataObject;
+
+				const url = new URL(repositoryPath);
+				url.username = gitCredentials.username as string;
+				url.password = gitCredentials.password as string;
+
+				return url.toString();
+			}
+
+			return repositoryPath;
+		};
+
+		const operation = this.getNodeParameter('operation', 0) as string;
 		let item: INodeExecutionData;
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -148,12 +207,13 @@ export class Git implements INodeType {
 
 				const gitOptions: Partial<SimpleGitOptions> = {
 					baseDir,
-					binary: 'git',
-					maxConcurrentProcesses: 6,
 				};
 
-				// TODO: Allow to set credentials
-				const git: SimpleGit = simpleGit(gitOptions);
+				const git: SimpleGit = simpleGit(gitOptions)
+					// Tell git not to ask for any information via the terminal like for
+					// example the username. As nobody will be able to answer it would
+					// n8n keep on waiting forever.
+					.env('GIT_TERMINAL_PROMPT', '0');
 
 				// TODO: Make it possible to auto-confirm RSA key fingerprint
 
@@ -185,7 +245,8 @@ export class Git implements INodeType {
 					//         clone
 					// ----------------------------------
 
-					const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
+					let repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
+					repositoryPath = prepareRepository(repositoryPath);
 
 					const a = await git.clone(repositoryPath, '.');
 
@@ -248,7 +309,30 @@ export class Git implements INodeType {
 					//         push
 					// ----------------------------------
 
-					await git.push();
+					if (options.repositoryPath) {
+						const repositoryPath = prepareRepository(options.repositoryPath as string);
+						await git.push(repositoryPath);
+					} else {
+						const authentication = this.getNodeParameter('authentication', 0) as string;
+						if (authentication === 'gitPassword') {
+							// Try to get remote repository path from git repository itself to add
+							// authentication data
+							const config = await git.listConfig();
+							let repositoryPath;
+							for (const fileName of Object.keys(config.values)) {
+								if (config.values[fileName]['remote.origin.url']) {
+									repositoryPath = config.values[fileName]['remote.origin.url'];
+									break;
+								}
+							}
+
+							repositoryPath = prepareRepository(repositoryPath as string);
+							await git.push(repositoryPath);
+						} else {
+							await git.push();
+						}
+					}
+
 					returnItems.push({ json: { success: true } });
 
 				} else if (operation === 'pushTags') {

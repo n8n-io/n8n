@@ -88,6 +88,7 @@
       "dist/credentials/GetResponseOAuth2Api.credentials.js",
       "dist/credentials/GhostAdminApi.credentials.js",
       "dist/credentials/GhostContentApi.credentials.js",
+      "dist/credentials/GitPassword.credentials.js",
       "dist/credentials/GithubApi.credentials.js",
       "dist/credentials/GithubOAuth2Api.credentials.js",
       "dist/credentials/GitlabApi.credentials.js",
