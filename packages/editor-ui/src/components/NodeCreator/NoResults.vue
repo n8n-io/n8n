@@ -1,6 +1,6 @@
 <template>
 	<div class="no-results">
-		<div class="img">
+		<div class="icon">
 			<img :src="`${basePath}no-nodes-icon.png`" alt="" />
 		</div>
 		<div class="title">
@@ -71,14 +71,16 @@ export default Vue.extend({
 	text-align: center;
 	height: 100%;
 	border-left: 1px solid $--node-creator-border-color;
-	padding: 100px 56px 60px 56px;
-	display: flex;
 	flex-direction: column;
+	font-weight: 600;
+	display: flex;
+	align-items: center;
+	align-content: center;
 }
 
 .title {
 	font-size: 22px;
-	line-height: 16px;
+	line-height: 22px;
 	margin-top: 50px;
 	margin-bottom: 200px;
 
@@ -93,13 +95,14 @@ export default Vue.extend({
 }
 
 a {
-	font-weight: 600;
 	color: $--color-primary;
 	text-decoration: none;
 	cursor: pointer;
 }
 
-img {
+.icon {
+	margin-top: 100px;
 	min-height: 67px;
+	opacity: 60%;
 }
 </style>
