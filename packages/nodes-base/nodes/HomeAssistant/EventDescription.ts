@@ -16,7 +16,7 @@ export const eventOperations = [
 		},
 		options: [
 			{
-				name: 'Get',
+				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all events',
 			},
@@ -34,7 +34,7 @@ export const eventOperations = [
 export const eventFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                event:getAll                                 */
+	/*                                event:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -78,7 +78,7 @@ export const eventFields = [
 		description: 'How many results to return.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                event:post                                 */
+	/*                                event:post                                  */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Event Type',
@@ -96,7 +96,7 @@ export const eventFields = [
 		},
 		required: true,
 		default: '',
-		description: 'The entity ID for which will create a event.',
+		description: 'The Entity ID for which will create a event.',
 	},
 	{
 		displayName: 'Additional Fields',

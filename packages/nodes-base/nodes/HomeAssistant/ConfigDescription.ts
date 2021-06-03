@@ -21,7 +21,7 @@ export const configOperations = [
 				description: 'Get the configuration',
 			},
 			{
-				name: 'Check configuration',
+				name: 'Check Configuration',
 				value: 'check',
 				description: 'Check the configuration',
 			},

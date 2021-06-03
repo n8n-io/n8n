@@ -33,7 +33,7 @@ export const serviceOperations = [
 
 export const serviceFields = [
 	/* -------------------------------------------------------------------------- */
-	/*                                service:getAll                                 */
+	/*                                service:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -77,7 +77,7 @@ export const serviceFields = [
 		description: 'How many results to return.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                service:Call                                 */
+	/*                                service:Call                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Domain',
@@ -135,40 +135,12 @@ export const serviceFields = [
 				displayName: 'Field',
 				values: [
 					{
-						displayName: 'JSON/RAW Parameters',
-						name: 'jsonParameters',
-						type: 'boolean',
-						default: false,
-						description: 'If the service data fields should be set via the value-key pair UI or JSON/RAW.',
-					},
-					{
-						displayName: 'Body Parameters',
-						name: 'bodyParametersJson',
-						type: 'json',
-						displayOptions: {
-							show: {
-								jsonParameters: [
-									true,
-								],
-							},
-						},
-						default: '',
-						description: 'Body data as JSON or RAW.',
-					},
-					{
 						displayName: 'Service Data',
 						name: 'serviceDataUi',
 						placeholder: 'Add Field',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
-						},
-						displayOptions: {
-							show: {
-								jsonParameters: [
-									false,
-								],
-							},
 						},
 						default: {},
 						options: [

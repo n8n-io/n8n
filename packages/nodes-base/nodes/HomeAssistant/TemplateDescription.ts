@@ -29,7 +29,7 @@ export const templateOperations = [
 export const templateFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                template:create                              */
+	/*                                template:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Template',
@@ -47,6 +47,6 @@ export const templateFields = [
 		},
 		required: true,
 		default: '',
-		description: 'The Home Assistant template.',
+		description: 'Render a Home Assistant template. <a href="https://www.home-assistant.io/docs/configuration/templating/" target="_blank">See template docs for more information.</a>',
 	},
 ] as INodeProperties[];

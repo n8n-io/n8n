@@ -1,13 +1,14 @@
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+
 import {
 	configFields,
 	configOperations,
@@ -50,14 +51,14 @@ import {
 
 import {
 	homeAssistantApiRequest,
-	validateJSON,
 } from './GenericFunctions';
+
 export class HomeAssistant implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Home Assistant',
 		name: 'homeAssistant',
 		icon: 'file:homeAssistant.svg',
-		group: [ 'output' ],
+		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Home Assistant Io API',
@@ -65,8 +66,8 @@ export class HomeAssistant implements INodeType {
 			name: 'Home Assistant',
 			color: '#3578e5',
 		},
-		inputs: [ 'main' ],
-		outputs: [ 'main' ],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'homeAssistantApi',
@@ -91,10 +92,10 @@ export class HomeAssistant implements INodeType {
 						name: 'Event',
 						value: 'event',
 					},
-					{
-						name: 'History',
-						value: 'history',
-					},
+					// {
+					// 	name: 'History',
+					// 	value: 'history',
+					// },
 					{
 						name: 'Log',
 						value: 'log',
@@ -171,32 +172,23 @@ export class HomeAssistant implements INodeType {
 						const service = this.getNodeParameter('service', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						let body = {};
+						const body: IDataObject = {};
 
 						if (additionalFields) {
-							const isJson = (additionalFields!.field as IDataObject).jsonParameters as boolean;
-							if (isJson) {
-								const parseResult = validateJSON((additionalFields!.field as IDataObject).bodyParametersJson as string);
-								if (parseResult === undefined) {
-									throw new NodeOperationError(this.getNode(), 'Body Parameters: Invalid JSON');
-								}
-								body = { ...parseResult };
-							} else {
-								const serviceDataUi = ((additionalFields!.field as IDataObject).serviceDataUi as IDataObject);
-								if (serviceDataUi.field !== undefined) {
-									(serviceDataUi.field as IDataObject[]).map(
-										param => {
-											// @ts-ignore
-											body[ param.name as string ] = param.value;
-										},
-									);
-								}
+							const serviceDataUi = ((additionalFields!.field as IDataObject).serviceDataUi as IDataObject);
+							if (serviceDataUi.field !== undefined) {
+								(serviceDataUi.field as IDataObject[]).map(
+									param => {
+										// @ts-ignore
+										body[param.name as string] = param.value;
+									},
+								);
 							}
 						}
 
 						responseData = await homeAssistantApiRequest.call(this, 'POST', `/services/${domain}/${service}`, body);
 						if (Array.isArray(responseData) && responseData.length === 0) {
-							responseData = { sucess: true };
+							responseData = {};
 						}
 					}
 				} else if (resource === 'state') {
@@ -226,7 +218,7 @@ export class HomeAssistant implements INodeType {
 								(stateAttributesUi.attribute as IDataObject[]).map(
 									attribute => {
 										// @ts-ignore
-										body.attributes[ attribute.name as string ] = attribute.value;
+										body.attributes[attribute.name as string] = attribute.value;
 									},
 								);
 							}
@@ -255,7 +247,7 @@ export class HomeAssistant implements INodeType {
 								(eventAttributesUi.attribute as IDataObject[]).map(
 									attribute => {
 										// @ts-ignore
-										body[ attribute.name as string ] = attribute.value;
+										body[attribute.name as string] = attribute.value;
 									},
 								);
 							}
@@ -332,7 +324,7 @@ export class HomeAssistant implements INodeType {
 						}
 					}
 				} else if (resource === 'cameraProxy') {
-					if (operation === 'get') {
+					if (operation === 'getScreenshot') {
 						const cameraEntityId = this.getNodeParameter('cameraEntityId', i) as string;
 						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
 						const endpoint = `/camera_proxy/${cameraEntityId}`;
@@ -389,7 +381,7 @@ export class HomeAssistant implements INodeType {
 		if (resource === 'cameraProxy' && operation === 'get') {
 			return this.prepareOutputData(items);
 		} else {
-			return [ this.helpers.returnJsonArray(returnData) ];
+			return [this.helpers.returnJsonArray(returnData)];
 		}
 	}
 }

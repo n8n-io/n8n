@@ -16,9 +16,9 @@ export const cameraProxyOperations = [
 		},
 		options: [
 			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get the Camera screenshot',
+				name: 'Get Screenshot',
+				value: 'getScreenshot',
+				description: 'Get the camera screenshot',
 			},
 		],
 		default: 'get',

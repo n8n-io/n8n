@@ -16,6 +16,11 @@ export const stateOperations = [
 		},
 		options: [
 			{
+				name: 'Create/Update',
+				value: 'upsert',
+				description: 'Create or update a state',
+			},
+			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all states',
@@ -25,11 +30,6 @@ export const stateOperations = [
 				value: 'get',
 				description: 'Get a state for a specific entity',
 			},
-			{
-				name: 'Upsert',
-				value: 'upsert',
-				description: 'Create or update a state',
-			},
 		],
 		default: 'get',
 		description: 'The operation to perform.',
@@ -38,7 +38,7 @@ export const stateOperations = [
 
 export const stateFields = [
 	/* -------------------------------------------------------------------------- */
-	/*                                state:get                                 */
+	/*                                state:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Entity ID',
@@ -59,7 +59,7 @@ export const stateFields = [
 		description: 'The entity ID.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                state:getAll                                 */
+	/*                                state:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -103,7 +103,7 @@ export const stateFields = [
 		description: 'How many results to return.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                state:upsert                                 */
+	/*                                state:upsert                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Entity ID',

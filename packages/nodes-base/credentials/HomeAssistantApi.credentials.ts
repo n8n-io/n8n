@@ -9,12 +9,6 @@ export class HomeAssistantApi implements ICredentialType {
 	documentationUrl = 'homeAssistant';
 	properties = [
 		{
-			displayName: 'Access Token',
-			name: 'accessToken',
-			type: 'string' as NodePropertyTypes,
-			default: '',
-		},
-		{
 			displayName: 'Host',
 			name: 'host',
 			type: 'string' as NodePropertyTypes,
@@ -31,6 +25,12 @@ export class HomeAssistantApi implements ICredentialType {
 			name: 'ssl',
 			type: 'boolean' as NodePropertyTypes,
 			default: false,
+		},
+		{
+			displayName: 'Access Token',
+			name: 'accessToken',
+			type: 'string' as NodePropertyTypes,
+			default: '',
 		},
 	];
 }
