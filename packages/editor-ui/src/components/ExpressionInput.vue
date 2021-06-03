@@ -233,7 +233,7 @@ export default mixins(
 					this.update();
 				} else {
 					// If no position got found add it to end
-					let newValue = this.value;
+					let newValue = this.getValue();
 					if (newValue === '=' || newValue === '=0') {
 						newValue = `{{${eventData.variable}}}\n`;
 					} else {
