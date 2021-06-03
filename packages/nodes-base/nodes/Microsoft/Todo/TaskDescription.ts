@@ -112,7 +112,7 @@ export const taskFields = [
 								name: 'content',
 								type: 'string',
 								default: '',
-								description: 'The task note content.'
+								description: 'The task note content.',
 							},
 							{
 								displayName: 'Content Type',
@@ -129,10 +129,10 @@ export const taskFields = [
 									},
 								],
 								default: 'text',
-								description: 'The task note content type.'
+								description: 'The task note content type.',
 							},
 						],
-					}
+					},
 				],
 				default: '',
 				description: 'The task body that typically contains information about the task.',
@@ -165,23 +165,23 @@ export const taskFields = [
 				options: [
 					{
 						name:'Notstarted',
-						value: 'notStarted'
+						value: 'notStarted',
 					},
 					{
 							name:'In progress',
-							value: 'inProgress'
+							value: 'inProgress',
 					},
 					{
 							name:'Completed',
-							value: 'completed'
+							value: 'completed',
 					},
 					{
 							name:'Waiting On Others',
-							value: 'waitingOnOthers'
+							value: 'waitingOnOthers',
 					},
 					{
 							name:'Deferred',
-							value: 'deferred'
+							value: 'deferred',
 					},
 				],
 				default: 'notStarted',
@@ -326,7 +326,7 @@ export const taskFields = [
 								name: 'content',
 								type: 'string',
 								default: '',
-								description: 'The task note content.'
+								description: 'The task note content.',
 							},
 							{
 								displayName: 'Content Type',
@@ -343,10 +343,10 @@ export const taskFields = [
 									},
 								],
 								default: 'text',
-								description: 'The task note content type.'
+								description: 'The task note content type.',
 							},
 						],
-					}
+					},
 				],
 				default: '',
 				description: 'The task body that typically contains information about the task.',
@@ -379,23 +379,23 @@ export const taskFields = [
 				options: [
 					{
 						name:'Notstarted',
-						value: 'notStarted'
+						value: 'notStarted',
 					},
 					{
 							name:'In progress',
-							value: 'inProgress'
+							value: 'inProgress',
 					},
 					{
 							name:'Completed',
-							value: 'completed'
+							value: 'completed',
 					},
 					{
 							name:'Waiting On Others',
-							value: 'waitingOnOthers'
+							value: 'waitingOnOthers',
 					},
 					{
 							name:'Deferred',
-							value: 'deferred'
+							value: 'deferred',
 					},
 				],
 				default: 'notStarted',

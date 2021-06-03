@@ -11,7 +11,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-export async function microsoftApiRequest(this: IExecuteFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = { json: true }) {
+export async function microsoftApiRequest(this: IExecuteFunctions, method: string, resource: string, body: IDataObject = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = { json: true }) {
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -36,7 +36,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions, method: strin
 	}
 }
 
-export async function microsoftApiRequestAllItems(this: IExecuteFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}) {
+export async function microsoftApiRequestAllItems(this: IExecuteFunctions, propertyName: string ,method: string, endpoint: string, body: IDataObject = {}, query: IDataObject = {}) {
 
 	const returnData: IDataObject[] = [];
 
@@ -55,7 +55,7 @@ export async function microsoftApiRequestAllItems(this: IExecuteFunctions, prope
 	return returnData;
 }
 
-export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}) {
+export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions, propertyName: string ,method: string, endpoint: string, body: IDataObject = {}, query: IDataObject = {}) {
 
 	const returnData: IDataObject[] = [];
 

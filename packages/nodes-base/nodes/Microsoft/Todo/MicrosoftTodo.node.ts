@@ -172,7 +172,7 @@ export class MicrosoftTodo implements INodeType {
 
 						if (body.bodyUI) {
 							body.body = (body.bodyUI as IDataObject).body;
-							delete body.bodyUI
+							delete body.bodyUI;
 						}
 						responseData = await microsoftApiRequest.call(this, 'POST', `/todo/lists/${taskListId}/tasks`, body, qs);
 
@@ -219,7 +219,7 @@ export class MicrosoftTodo implements INodeType {
 
 						if (body.bodyUI) {
 							body.body = (body.bodyUI as IDataObject).body;
-							delete body.bodyUI
+							delete body.bodyUI;
 						}
 
 						responseData = await microsoftApiRequest.call(this, 'PATCH', `/todo/lists/${taskListId}/tasks/${taskId}`, body, qs);
