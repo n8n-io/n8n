@@ -62,7 +62,7 @@ import { INodeCreateElement } from "@/Interface";
 import Vue from "vue";
 
 export default Vue.extend({
-	name: "NodeCreateIterator",
+	name: "CreatorItemIterator",
 	components: {
 		NodeCreateItem,
 	},
