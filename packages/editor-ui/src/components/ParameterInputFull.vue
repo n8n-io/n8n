@@ -1,14 +1,14 @@
 <template>
 	<el-row class="parameter-wrapper">
 		<el-col :span="isMultiLineParameter ? 24 : 10" class="parameter-name" :class="{'multi-line': isMultiLineParameter}">
-			<span class="title" :title="parameter.displayName">{{parameter.displayName}}</span>:
-			<el-tooltip class="parameter-info" placement="top" v-if="parameter.description" effect="light">
-				<div slot="content" v-html="parameter.description"></div>
+			<span class="title" :title="$translateName(parameter)">{{ $translateName(parameter) }}</span>:
+			<el-tooltip class="parameter-info" placement="top" v-if="$translateDescription(parameter)" effect="light">
+				<div slot="content" v-html="$translateDescription(parameter)"></div>
 				<font-awesome-icon icon="question-circle" />
 			</el-tooltip>
 		</el-col>
 		<el-col :span="isMultiLineParameter ? 24 : 14" class="parameter-value">
-			<parameter-input :parameter="parameter" :value="value" :displayOptions="displayOptions" :path="path" @valueChanged="valueChanged" />
+			<parameter-input :parameter="parameter" :value="value" :displayOptions="displayOptions" :path="path"  @valueChanged="valueChanged" />
 		</el-col>
 	</el-row>
 </template>
@@ -22,7 +22,10 @@ import {
 
 import ParameterInput from '@/components/ParameterInput.vue';
 
-export default Vue
+import { translate } from '@/components/mixins/translate';
+import mixins from 'vue-typed-mixins';
+
+export default mixins(translate)
 	.extend({
 		name: 'ParameterInputFull',
 		components: {
