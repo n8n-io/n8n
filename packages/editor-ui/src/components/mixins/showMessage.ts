@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import { Notification } from 'element-ui';
 import { ElNotificationOptions } from 'element-ui/types/notification';
 import mixins from 'vue-typed-mixins';
@@ -36,6 +34,7 @@ export const showMessage = mixins(externalHooks).extend({
 			);
 		},
 
+		// @ts-ignore
 		collapsibleDetails ({ description, node }: Error) {
 			if (!description) return '';
 
