@@ -350,7 +350,7 @@ export class ExecuteBatch extends Command {
 			} else {
 				output = results;
 			}
-			console.log(JSON.stringify(results, null, 2));
+			console.log(JSON.stringify(output, null, 2));
 		}
 
 		await ExecuteBatch.stopProcess(true);
