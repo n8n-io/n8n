@@ -109,7 +109,12 @@ input, input:focus-visible {
 
 	&:before {
 		line-height: 16px;
-		display: block;
+		display: flex;
+		height: 16px;
+		width: 16px;
+		font-size: 15px;
+		align-items: center;
+		justify-content: center;
 	}
 }
 </style>

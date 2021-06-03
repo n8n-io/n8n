@@ -441,6 +441,7 @@ export default mixins(externalHooks).extend({
 	},
 	async mounted() {
 		setTimeout(() => {
+			// initial opening effect
 			this.activeCategory = [CORE_NODES_CATEGORY];
 		}, 0);
 		this.$externalHooks().run("nodeCreateList.mounted");
