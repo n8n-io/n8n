@@ -1,28 +1,25 @@
 <template>
 	<div>
-		<keep-alive>
-			<div
-				:is="transitionsEnabled ? 'transition-group' : 'div'"
-				name="accordion"
-				@before-enter="beforeEnter"
-				@enter="enter"
-				@before-leave="beforeLeave"
-				@leave="leave"
-			>
-				<div 
-					v-for="(item, index) in elements"
-					:key="getKey(item)"
-					>
-					<CreatorItem
-						:item="item"
-						:active="activeIndex === index && !disabled"
-						:clickable="!disabled"
-						:lastNode="index === elements.length - 1 || elements[index + 1].type !== 'node'"
-						@click="() => selected(item)"
-					/>
-				</div>
+		<div
+			:is="transitionsEnabled ? 'transition-group' : 'div'"
+			name="accordion"
+			@before-enter="beforeEnter"
+			@enter="enter"
+			@before-leave="beforeLeave"
+			@leave="leave"
+		>
+			<div v-for="(item, index) in elements" :key="getKey(item)">
+				<CreatorItem
+					:item="item"
+					:active="activeIndex === index && !disabled"
+					:clickable="!disabled"
+					:lastNode="
+						index === elements.length - 1 || elements[index + 1].type !== 'node'
+					"
+					@click="() => selected(item)"
+				/>
 			</div>
-		</keep-alive>
+		</div>
 	</div>
 </template>
 
