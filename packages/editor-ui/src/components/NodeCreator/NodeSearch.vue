@@ -3,12 +3,14 @@
 		<div :class="{prefix: true, active: value.length > 0}">
 			<font-awesome-icon icon="search" />
 		</div>
-		<input
-			placeholder="Search nodes..."
-			ref="input"
-			:value="value"
-			@input="onInput"
-		/>
+		<div class="text">
+			<input
+				placeholder="Search nodes..."
+				ref="input"
+				:value="value"
+				@input="onInput"
+			/>
+		</div>
 		<div class="suffix" v-if="value.length > 0" @click="clear">
 			<span class="close el-icon-close clickable"></span>
 		</div>
@@ -75,15 +77,20 @@ export default Vue.extend({
 	}
 }
 
-input, input:focus-visible {
+.text {
 	flex-grow: 1;
-	border: none;
-	outline: none;
-	font-size: 18px;
 
-	&::placeholder {
+  input {
+		width: 100%;
+		border: none !important;
+		outline: none;
+		font-size: 18px;
+		-webkit-appearance: none;
+
+	&::placeholder, &::-webkit-input-placeholder {
 		color: #909399;
 	}
+}
 }
 
 .suffix {
