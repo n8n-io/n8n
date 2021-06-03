@@ -34,8 +34,8 @@ export const translate = Vue.extend({
 		 * Translate the parameter description in the tooltip for the circled question mark.
 		 */
 		$translateDescription(
-			{ displayName: parameterName, description }:
-			{ displayName: string; description: string; },
+			{ name: parameterName, description }:
+			{ name: string; description: string; },
 		) {
 			return this.translate({
 				key: `${this.nodeType}.parameters.${parameterName}.description`,
@@ -51,8 +51,8 @@ export const translate = Vue.extend({
 		 * Translate the placeholder inside the input field for a string-type parameter.
 		 */
 		$translatePlaceholder(
-			{ displayName: parameterName, placeholder }:
-			{ displayName: string; placeholder: string; },
+			{ name: parameterName, placeholder }:
+			{ name: string; placeholder: string; },
 		) {
 			return this.translate({
 				key: `${this.nodeType}.parameters.${parameterName}.placeholder`,
@@ -71,7 +71,8 @@ export const translate = Vue.extend({
 		},
 
 		/**
-		 * Translate the description for an option inside the dropdown menu for an options-type parameter.
+		 * Translate the description for an option inside the dropdown for an options-type parameter.
+		 * An option's `value`, here `optionName`, is equivalent to a parameter's `name`.
 		 */
 		$translateOptionDescription(parameterName: string, optionName: string, description: string) {
 			return this.translate({
@@ -88,8 +89,8 @@ export const translate = Vue.extend({
 		 * Translate the label for a button to add another field-input pair to a collection.
 		 */
 		$translateMultipleValueButtonText(
-			{ displayName: parameterName, typeOptions: { multipleValueButtonText } }:
-			{ displayName: string, typeOptions: { multipleValueButtonText: string } },
+			{ name: parameterName, typeOptions: { multipleValueButtonText } }:
+			{ name: string, typeOptions: { multipleValueButtonText: string } },
 		) {
 			return this.translate({
 				key: `${this.nodeType}.parameters.${parameterName}.multipleValueButtonText`,
