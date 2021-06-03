@@ -1,6 +1,6 @@
 <template>
 	<div class="no-results">
-		<div class="icon">
+		<div class="image">
 			<img :src="`${basePath}no-nodes-icon.png`" alt="" />
 		</div>
 		<div class="title">
@@ -109,7 +109,7 @@ a {
 	cursor: pointer;
 }
 
-.icon {
+.image {
 	margin-top: 100px;
 	min-height: 67px;
 	opacity: 60%;
