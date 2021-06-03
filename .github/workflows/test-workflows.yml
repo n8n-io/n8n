@@ -61,7 +61,8 @@ jobs:
         shell: bash
       -
         name: Run tests
-        run: n8n/packages/cli/bin/n8n executeBatch --shallow --skipList=test-workflows/skipList.txt --debug --shortOutput
+        # run: n8n/packages/cli/bin/n8n executeBatch --shallow --skipList=test-workflows/skipList.txt --debug --shortOutput
+        run: node --trace-exit --trace-uncaught  --trace-warnings n8n/packages/cli/bin/n8n executeBatch --shallow --skipList=test-workflows/skipList.txt --debug --shortOutput
         shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
