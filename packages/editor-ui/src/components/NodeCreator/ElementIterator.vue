@@ -1,54 +1,57 @@
 <template>
 	<div>
-		<transition-group
-			name="accordion"
-			@before-enter="beforeEnter"
-			@enter="enter"
-			@before-leave="beforeLeave"
-			@leave="leave"
-		>
+		<keep-alive>
 			<div
-				v-for="(element, index) in elements"
-				:key="getKey(element)"
-				@click="() => selected(element)"
-				:class="{
-					container: true,
-					active: activeIndex === index && !disabled,
-					clickable: !disabled,
-					[element.type]: true,
-				}"
+				:is="transitionsEnabled ? 'transition-group' : 'div'"
+				name="accordion"
+				@before-enter="beforeEnter"
+				@enter="enter"
+				@before-leave="beforeLeave"
+				@leave="leave"
 			>
-				<div v-if="element.type === 'category'">
-					<span class="name">{{ element.category }}</span>
-					<font-awesome-icon
-						class="arrow"
-						icon="chevron-down"
-						v-if="element.expanded"
-					/>
-					<font-awesome-icon class="arrow" icon="chevron-up" v-else />
-				</div>
+				<div
+					v-for="(element, index) in elements"
+					:key="getKey(element)"
+					@click="() => selected(element)"
+					:class="{
+						container: true,
+						active: activeIndex === index && !disabled,
+						clickable: !disabled,
+						[element.type]: true,
+					}"
+				>
+					<div v-if="element.type === 'category'">
+						<span class="name">{{ element.category }}</span>
+						<font-awesome-icon
+							class="arrow"
+							icon="chevron-down"
+							v-if="element.expanded"
+						/>
+						<font-awesome-icon class="arrow" icon="chevron-up" v-else />
+					</div>
 
-				<div v-else-if="element.type === 'subcategory'">
-					<div class="details">
-						<div class="title">{{ element.subcategory }}</div>
-						<div v-if="element.description" class="description">
-							{{ element.description }}
+					<div v-else-if="element.type === 'subcategory'">
+						<div class="details">
+							<div class="title">{{ element.subcategory }}</div>
+							<div v-if="element.description" class="description">
+								{{ element.description }}
+							</div>
+						</div>
+						<div class="action">
+							<font-awesome-icon class="arrow" icon="arrow-right" />
 						</div>
 					</div>
-					<div class="action">
-						<font-awesome-icon class="arrow" icon="arrow-right" />
-					</div>
-				</div>
 
-				<NodeCreateItem
-					v-else-if="element.type === 'node'"
-					:nodeType="element.nodeType"
-					:bordered="
-						index < elements.length - 1 && elements[index + 1].type === 'node'
-					"
-				></NodeCreateItem>
+					<NodeCreateItem
+						v-else-if="element.type === 'node'"
+						:nodeType="element.nodeType"
+						:bordered="
+							index < elements.length - 1 && elements[index + 1].type === 'node'
+						"
+					></NodeCreateItem>
+				</div>
 			</div>
-		</transition-group>
+		</keep-alive>
 	</div>
 </template>
 
@@ -63,7 +66,7 @@ export default Vue.extend({
 	components: {
 		NodeCreateItem,
 	},
-	props: ["elements", "activeIndex", "disabled"],
+	props: ["elements", "activeIndex", "disabled", "transitionsEnabled"],
 	methods: {
 		selected(element: INodeCreateElement) {
 			if (this.$props.disabled) {
