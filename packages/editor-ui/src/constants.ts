@@ -4,8 +4,6 @@ export const NODE_NAME_PREFIX = 'node-';
 
 // workflows
 export const PLACEHOLDER_EMPTY_WORKFLOW_ID = '__EMPTY__';
-export const CORE_NODES_CATEGORY = 'Core Nodes';
-export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 export const DEFAULT_NEW_WORKFLOW_NAME = 'My workflow';
 export const MIN_WORKFLOW_NAME_LENGTH = 1;
 export const MAX_WORKFLOW_NAME_LENGTH = 128;
@@ -24,6 +22,8 @@ export const BREAKPOINT_LG = 1200;
 export const BREAKPOINT_XL = 1920;
 
 // Node creator
+export const CORE_NODES_CATEGORY = 'Core Nodes';
+export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 export const SUBCATEGORY_DESCRIPTIONS: {
 	[category: string]: { [subcategory: string]: string };
 } = {
