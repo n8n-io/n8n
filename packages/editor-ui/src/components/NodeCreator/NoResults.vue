@@ -12,7 +12,7 @@
 			</div>
 		</div>
 
-		<div class="action">
+		<div class="request">
 			<div>Want us to make it faster?</div>
 			<div>
 				<a
@@ -82,16 +82,25 @@ export default Vue.extend({
 	font-size: 22px;
 	line-height: 22px;
 	margin-top: 50px;
-	margin-bottom: 200px;
 
 	div {
 		margin-bottom: 15px;
 	}
 }
 
-.action {
+.action, .request {
 	font-size: 14px;
 	line-height: 19px;
+}
+
+.request {
+	position: fixed;
+	bottom: 20px;
+	display: none;
+
+	@media (min-height: 550px) {
+		display: block;
+	}
 }
 
 a {
