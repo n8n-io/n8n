@@ -20,9 +20,9 @@
 		<div class="header">
 			<div class="title-text">
 				<strong v-if="dataCount < maxDisplayItems">
-					Items: {{ dataCount }}
+					{{ $t('runData.items') }}: {{ dataCount }}
 				</strong>
-				<strong v-else>Items:
+				<strong v-else>{{ $t('runData.items') }}:
 					<el-select v-model="maxDisplayItems" @click.stop>
 						<el-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
 					</el-select>&nbsp;/
@@ -186,9 +186,9 @@
 			</span>
 			<div v-else class="message">
 				<div>
-					<strong>No data</strong><br />
+					<strong>{{ $t('runData.noData') }}</strong><br />
 					<br />
-					Data returned by this node will display here<br />
+					{{ $t('runData.dataReturnedByTheNodeWillDisplayHere') }}<br />
 				</div>
 			</div>
 		</div>
