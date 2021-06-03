@@ -4,15 +4,14 @@ import {
 
 import {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError
+	IDataObject,
+	NodeApiError,
 } from 'n8n-workflow';
 
-export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = { json: true }): Promise<any> { // tslint:disable-line:no-any
+export async function microsoftApiRequest(this: IExecuteFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = { json: true }) {
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -24,23 +23,20 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 	};
 	try {
 		Object.assign(options, option);
-		if (Object.keys(headers).length !== 0) {
-			options.headers = Object.assign({}, options.headers, headers);
-		}
 		if (Object.keys(qs).length === 0) {
 			delete options.qs;
 		}
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		//@ts-ignore
+
 		return await this.helpers.requestOAuth2.call(this, 'microsoftTodoOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function microsoftApiRequestAllItems(this: IExecuteFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}) {
 
 	const returnData: IDataObject[] = [];
 
@@ -59,7 +55,7 @@ export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoa
 	return returnData;
 }
 
-export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}) {
 
 	const returnData: IDataObject[] = [];
 

@@ -18,27 +18,22 @@ export const taskOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a task list',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a task list',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a task list',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get All a task list',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a task list',
 			},
 		],
 		default: 'get',
@@ -47,7 +42,6 @@ export const taskOperations = [
 ] as INodeProperties[];
 
 export const taskFields = [
-
 /* -------------------------------------------------------------------------- */
 /*                                 task:create                            */
 /* -------------------------------------------------------------------------- */
@@ -67,7 +61,6 @@ export const taskFields = [
 		},
 		required: true,
 		default: '',
-		description: 'Task list ID.',
 	},
 	{
 		displayName: 'Task Title',
@@ -119,7 +112,7 @@ export const taskFields = [
 								name: 'content',
 								type: 'string',
 								default: '',
-								description: 'The task note content'
+								description: 'The task note content.'
 							},
 							{
 								displayName: 'Content Type',
@@ -136,13 +129,13 @@ export const taskFields = [
 									},
 								],
 								default: 'text',
-								description: 'The task note content type'
+								description: 'The task note content type.'
 							},
 						],
 					}
 				],
 				default: '',
-				description: 'Task note content.',
+				description: 'The task body that typically contains information about the task.',
 			},
 			{
 				displayName: 'Importance',
@@ -192,7 +185,7 @@ export const taskFields = [
 					},
 				],
 				default: 'notStarted',
-				description: 'Indicates the state or progress of the task..',
+				description: 'Indicates the state or progress of the task.',
 			},
 		],
 	},
@@ -206,9 +199,9 @@ export const taskFields = [
 		displayOptions: {
 			show: {
 				operation: [
+					'delete',
 					'get',
 					'getAll',
-					'delete',
 					'update',
 				],
 				resource: [
@@ -218,7 +211,6 @@ export const taskFields = [
 		},
 		required: true,
 		default: '',
-		description: 'Task List ID',
 	},
 	{
 		displayName: 'Task ID',
@@ -227,8 +219,8 @@ export const taskFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'get',
 					'delete',
+					'get',
 					'update',
 				],
 				resource: [
@@ -238,7 +230,6 @@ export const taskFields = [
 		},
 		required: true,
 		default: '',
-		description: 'Task ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 task:getAll                            */
@@ -301,7 +292,7 @@ export const taskFields = [
 		},
 		required: true,
 		default: '',
-		description: 'A brief updated description of the task.',
+		description: 'A brief description of the task.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -335,7 +326,7 @@ export const taskFields = [
 								name: 'content',
 								type: 'string',
 								default: '',
-								description: 'The task note content'
+								description: 'The task note content.'
 							},
 							{
 								displayName: 'Content Type',
@@ -352,13 +343,13 @@ export const taskFields = [
 									},
 								],
 								default: 'text',
-								description: 'The task note content type'
+								description: 'The task note content type.'
 							},
 						],
 					}
 				],
 				default: '',
-				description: 'Task note content.',
+				description: 'The task body that typically contains information about the task.',
 			},
 			{
 				displayName: 'Importance',

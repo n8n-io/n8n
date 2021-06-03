@@ -18,27 +18,22 @@ export const taskListOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a task list',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a task list',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a task list',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get All a task list',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a task list',
 			},
 		],
 		default: 'get',
@@ -47,7 +42,6 @@ export const taskListOperations = [
 ] as INodeProperties[];
 
 export const taskListFields = [
-
 /* -------------------------------------------------------------------------- */
 /*                                 taskList:create                            */
 /* -------------------------------------------------------------------------- */
@@ -79,8 +73,8 @@ export const taskListFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'get',
 					'delete',
+					'get',
 					'update',
 				],
 				resource: [
@@ -90,7 +84,6 @@ export const taskListFields = [
 		},
 		required: true,
 		default: '',
-		description: 'Task List ID',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 taskList:getAll                            */

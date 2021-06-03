@@ -18,27 +18,22 @@ export const linkedResourceOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a linked resource',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a linked resource',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a linked resource',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get All a linked resource',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a linked resource',
 			},
 		],
 		default: 'get',
@@ -57,11 +52,11 @@ export const linkedResourceFields = [
 	displayOptions: {
 		show: {
 			operation: [
+				'create',
+				'delete',
 				'get',
 				'getAll',
-				'delete',
 				'update',
-				'create',
 			],
 			resource: [
 				'linkedResource',
@@ -70,7 +65,6 @@ export const linkedResourceFields = [
 	},
 	required: true,
 	default: '',
-	description: 'Task List ID',
 },
 {
 	displayName: 'Task ID',
@@ -79,11 +73,11 @@ export const linkedResourceFields = [
 	displayOptions: {
 		show: {
 			operation: [
+				'create',
+				'delete',
 				'get',
 				'getAll',
-				'delete',
 				'update',
-				'create',
 			],
 			resource: [
 				'linkedResource',
@@ -92,7 +86,6 @@ export const linkedResourceFields = [
 	},
 	required: true,
 	default: '',
-	description: 'Task ID',
 },
 /* -------------------------------------------------------------------------- */
 /*                           linkedResource:create                            */
@@ -176,7 +169,6 @@ export const linkedResourceFields = [
 		},
 		default: '',
 		required: true,
-		description: 'Linked Resource ID.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                           linkedResource:getAll                            */
