@@ -172,8 +172,8 @@ export default Vue.extend({
 	align-items: center;
 
 	/deep/ input {
-		border: 1px solid $--color-primary !important;
-		background: white !important;
+		border: 1px solid $--color-primary;
+		background: white;
 	}
 }
 

@@ -25,8 +25,8 @@ export default Vue.extend({
 <style lang="scss" scoped>
 input,
 input:hover {
-	background-color: unset !important;
-	transition: unset !important;
+	background-color: unset;
+	transition: unset;
 	pointer-events: none; // fix firefox bug
 }
 
