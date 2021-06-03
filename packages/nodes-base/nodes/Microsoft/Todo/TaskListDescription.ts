@@ -1,7 +1,6 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
-import { resource } from '../../Contentful/AssetDescription';
 
 export const taskListOperations = [
 	{
