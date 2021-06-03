@@ -37,7 +37,6 @@ import {
 
 import { 
 	diff,
-	diffString
 } from 'json-diff';
 import { 
 	ObjectID,
@@ -515,10 +514,12 @@ export class ExecuteBatch extends Command {
 			return;
 		}
 
-		// process.stdout.moveCursor(0,- (ExecuteBatch.concurrency));
-		// process.stdout.cursorTo(0);
-		// process.stdout.clearLine(1);
-
+		if (process.stdout.isTTY === true) {
+			process.stdout.moveCursor(0,- (ExecuteBatch.concurrency));
+			process.stdout.cursorTo(0);
+			process.stdout.clearLine(0);
+		}
+		
 
 		ExecuteBatch.workflowExecutionsProgress.map((concurrentThread, index) => {
 			let message = `${index + 1}: `;
@@ -542,8 +543,10 @@ export class ExecuteBatch extends Command {
 				}
 				message += (workflowIndex > 0 ? ', ' : '') + `${openColor}${executionItem.workflowId}${closeColor}`;
 			});
-			// process.stdout.cursorTo(0);
-			// process.stdout.clearLine(1);
+			if (process.stdout.isTTY === true) {
+				process.stdout.cursorTo(0);
+				process.stdout.clearLine(0);
+			}
 			process.stdout.write(message + '\n');
 		});
 	}
