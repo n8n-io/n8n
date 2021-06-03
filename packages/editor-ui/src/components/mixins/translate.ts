@@ -23,10 +23,12 @@ export const translate = Vue.extend({
 		/**
 		 * Translate the top-level parameter name, including options nested inside collections.
 		 */
-		$translateName({ name: parameterName }: { name: string }) {
+		$translateName(
+			{ name: parameterName, displayName }: { name: string; displayName: string; },
+		) {
 			return this.translate({
 				key: `${this.nodeType}.parameters.${parameterName}.displayName`,
-				fallback: parameterName,
+				fallback: displayName,
 			});
 		},
 
@@ -34,8 +36,7 @@ export const translate = Vue.extend({
 		 * Translate the parameter description in the tooltip for the circled question mark.
 		 */
 		$translateDescription(
-			{ name: parameterName, description }:
-			{ name: string; description: string; },
+			{ name: parameterName, description }: { name: string; description: string; },
 		) {
 			return this.translate({
 				key: `${this.nodeType}.parameters.${parameterName}.description`,
@@ -51,8 +52,7 @@ export const translate = Vue.extend({
 		 * Translate the placeholder inside the input field for a string-type parameter.
 		 */
 		$translatePlaceholder(
-			{ name: parameterName, placeholder }:
-			{ name: string; placeholder: string; },
+			{ name: parameterName, placeholder }: { name: string; placeholder: string; },
 		) {
 			return this.translate({
 				key: `${this.nodeType}.parameters.${parameterName}.placeholder`,
@@ -63,18 +63,23 @@ export const translate = Vue.extend({
 		/**
 		 * Translate the name for an option inside the dropdown menu for an options-type parameter.
 		 */
-		$translateOptionName(parameterName: string, optionName: string) {
+		$translateOptionName(
+			{ name: parameterName }: { name: string },
+			{ value: optionName, name: displayName }: { value: string; name: string; },
+		) {
 			return this.translate({
 				key: `${this.nodeType}.parameters.${parameterName}.options.${optionName}.displayName`,
-				fallback: optionName,
+				fallback: displayName,
 			});
 		},
 
 		/**
 		 * Translate the description for an option inside the dropdown for an options-type parameter.
-		 * An option's `value`, here `optionName`, is equivalent to a parameter's `name`.
 		 */
-		$translateOptionDescription(parameterName: string, optionName: string, description: string) {
+		$translateOptionDescription(
+			{ name: parameterName }: { name: string },
+			{ value: optionName, description }: { value: string; description: string; },
+		) {
 			return this.translate({
 				key: `${this.nodeType}.parameters.${parameterName}.options.${optionName}.description`,
 				fallback: description,
@@ -90,7 +95,7 @@ export const translate = Vue.extend({
 		 */
 		$translateMultipleValueButtonText(
 			{ name: parameterName, typeOptions: { multipleValueButtonText } }:
-			{ name: string, typeOptions: { multipleValueButtonText: string } },
+			{ name: string, typeOptions: { multipleValueButtonText: string }; },
 		) {
 			return this.translate({
 				key: `${this.nodeType}.parameters.${parameterName}.multipleValueButtonText`,
