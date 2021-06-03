@@ -1,5 +1,6 @@
 import * as express from 'express';
 import {
+	existsSync,
 	readFileSync,
 } from 'fs';
 import {
@@ -26,6 +27,7 @@ import { createHmac } from 'crypto';
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
 import * as promClient from 'prom-client';
+import path = require('path');
 
 import {
 	ActiveExecutions,
@@ -904,8 +906,24 @@ class App {
 			const nodeNames = _.get(req, 'body.nodeNames', []) as string[];
 			const nodeTypes = NodeTypes();
 
+			const language = req.headers['accept-language'] ?? '';
+			const requiresTranslation = language.length === 2;
+
 			return nodeNames.map(name => {
 				try {
+					if (!requiresTranslation || language === 'en') {
+						return nodeTypes.getByName(name);
+					}
+
+					const { type, sourcePath } = nodeTypes.getByName(name, true);
+
+					if (sourcePath && name !== 'n8n-nodes-base.start') {
+						const translation = path.join(path.dirname(sourcePath), 'translations', `${language}.js`);
+						if (existsSync(translation)) {
+							type.description.translation = require(translation);
+						}
+					}
+
 					return nodeTypes.getByName(name);
 				} catch (e) {
 					return undefined;

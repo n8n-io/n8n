@@ -550,6 +550,7 @@ export interface INodeTypeDescription {
 	group: string[];
 	version: number;
 	description: string;
+	translation?: { [key: string]: string | object};
 	defaults: INodeParameters;
 	documentationUrl?: string;
 	inputs: string[];
@@ -635,10 +636,12 @@ export interface INodeTypes {
 
 
 export interface INodeTypeData {
-	[key: string]: {
-		type: INodeType;
-		sourcePath: string;
-	};
+	[key: string]: INodeTypeDataContent;
+}
+
+export interface INodeTypeDataContent {
+	type: INodeType;
+	sourcePath: string;
 }
 
 export interface IRun {
