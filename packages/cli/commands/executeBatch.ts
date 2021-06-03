@@ -9,6 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	INode, 
 	INodeExecutionData, 
 	IRun, 
@@ -49,14 +50,9 @@ import {
 import {
 	LoggerProxy,
 } from 'n8n-workflow';
-import { resolve } from 'p-cancelable';
 
 const colorOutput = true;
 const executionTimeout = 3 * 60 * 1000;
-
-// TODO:
-// - handle CTRL + C correctly
-// - test with and without debug
 
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
@@ -114,6 +110,9 @@ export class ExecuteBatch extends Command {
 		retries: flags.integer({
 			description: 'Retries failed workflows up to N tries. Default is 1. Set 0 to disable.',
 			default: 1,
+		}),
+		shortOutput: flags.boolean({
+			description: 'Ommits the full execution information from output, displaying only summary.',
 		}),
 	};
 
@@ -345,6 +344,13 @@ export class ExecuteBatch extends Command {
 			});
 			console.log('\nCheck the JSON file for more details.');
 		}else{
+			let output;
+			if (flags.shortOutput === true) {
+				const {executions, ...data} = results;
+				output = data;
+			} else {
+				output = results;
+			}
 			console.log(JSON.stringify(results, null, 2));
 		}
 
@@ -498,7 +504,6 @@ export class ExecuteBatch extends Command {
 			}
 
 			await Promise.allSettled(promisesArray);
-			console.log('all promises settled');
 
 			res(result);
 		});
@@ -510,9 +515,9 @@ export class ExecuteBatch extends Command {
 			return;
 		}
 
-		process.stdout.moveCursor(0,- (ExecuteBatch.concurrency));
-		process.stdout.cursorTo(0);
-		process.stdout.clearLine(1);
+		// process.stdout.moveCursor(0,- (ExecuteBatch.concurrency));
+		// process.stdout.cursorTo(0);
+		// process.stdout.clearLine(1);
 
 
 		ExecuteBatch.workflowExecutionsProgress.map((concurrentThread, index) => {
@@ -537,8 +542,8 @@ export class ExecuteBatch extends Command {
 				}
 				message += (workflowIndex > 0 ? ', ' : '') + `${openColor}${executionItem.workflowId}${closeColor}`;
 			});
-			process.stdout.cursorTo(0);
-			process.stdout.clearLine(1);
+			// process.stdout.cursorTo(0);
+			// process.stdout.clearLine(1);
 			process.stdout.write(message + '\n');
 		});
 	}
@@ -576,15 +581,39 @@ export class ExecuteBatch extends Command {
 
 		const requiredNodeTypes = ['n8n-nodes-base.start'];
 		let startNode: INode | undefined = undefined;
-		for (const node of workflowData!.nodes) {
+		for (const node of workflowData.nodes) {
 			if (requiredNodeTypes.includes(node.type)) {
 				startNode = node;
 				break;
 			}
 		}
 
+		// We have a cool feature here.
+		// On each node, on the Settings tab in the node editor you can change
+		// the `Notes` field to add special cases for comparison and snapshots.
+		// You need to set one configuration per line with the following possible keys:
+		// CAP_RESULTS_LENGTH=x where x is a number. Cap the number of rows from this node to x.
+		// IGNORED_PROPERTIES=x,y,z where x, y and z are json property names. Removes these
+		//    properties from the JSON object (useful for optional properties that can
+		//    cause the comparison to detect changes when not true).
+		const nodeEdgeCases = {} as INodeSpecialCases;
 		workflowData.nodes.forEach(node => {
-			executionResult.coveredNodes[node.type] = (executionResult.coveredNodes[node.type] || 0) +1; 
+			executionResult.coveredNodes[node.type] = (executionResult.coveredNodes[node.type] || 0) +1;
+			if (node.notes !== undefined && node.notes !== '') {
+				const settings = node.notes.split('\n').map(note => {
+					const parts = note.split('=');
+					if (parts.length === 2) {
+						if (nodeEdgeCases[node.name] === undefined) {
+							nodeEdgeCases[node.name] = {} as INodeSpecialCase;
+						}
+						if (parts[0] === 'CAP_RESULTS_LENGTH') {
+							nodeEdgeCases[node.name].capResults = parseInt(parts[1], 10);
+						} else if (parts[0] === 'IGNORED_PROPERTIES') {
+							nodeEdgeCases[node.name].ignoredProperties = parts[1].split(',').map(property => property.trim());
+						}
+					}
+				});
+			}
 		});
 			
 		return new Promise(async (resolve) => {
@@ -669,11 +698,21 @@ export class ExecuteBatch extends Command {
 											if (executionDataArray === null) {
 												return;
 											}
+
+											if (nodeEdgeCases[nodeName] !== undefined && nodeEdgeCases[nodeName].capResults !== undefined) {
+												executionDataArray.splice(nodeEdgeCases[nodeName].capResults!);
+											}
+
 											executionDataArray.map(executionData => {
 												if (executionData.json === undefined) {
 													return;
 												}
+												if (nodeEdgeCases[nodeName] !== undefined && nodeEdgeCases[nodeName].ignoredProperties !== undefined) {
+													nodeEdgeCases[nodeName].ignoredProperties!.forEach(ignoredProperty => delete executionData.json[ignoredProperty]);
+												}
+
 												const jsonProperties = executionData.json;
+
 												const nodeOutputAttributes = Object.keys(jsonProperties);
 												nodeOutputAttributes.map(attributeName => {
 													if (Array.isArray(jsonProperties[attributeName])) {
@@ -683,6 +722,39 @@ export class ExecuteBatch extends Command {
 													}
 												});
 											});
+										});
+										
+									});
+								});
+							});
+						} else {
+							// If not using shallow comparison then we only treat nodeEdgeCases.
+							const specialCases = Object.keys(nodeEdgeCases);
+
+							specialCases.forEach(nodeName => {
+								data.data.resultData.runData[nodeName].map((taskData: ITaskData) => {
+									if (taskData.data === undefined) {
+										return;
+									}
+									Object.keys(taskData.data).map(connectionName => {
+										const connection = taskData.data![connectionName] as Array<INodeExecutionData[] | null>;
+										connection.map(executionDataArray => {
+											if (executionDataArray === null) {
+												return;
+											}
+
+											if (nodeEdgeCases[nodeName].capResults !== undefined) {
+												executionDataArray.splice(nodeEdgeCases[nodeName].capResults!);
+											}
+
+											if (nodeEdgeCases[nodeName].ignoredProperties !== undefined) {
+												executionDataArray.map(executionData => {
+													if (executionData.json === undefined) {
+														return;
+													}
+													nodeEdgeCases[nodeName].ignoredProperties!.forEach(ignoredProperty => delete executionData.json[ignoredProperty]);
+												});
+											}
 										});
 										
 									});
@@ -773,6 +845,15 @@ interface IExecutionError {
 interface IWorkflowExecutionProgress {
 	workflowId: string | number | ObjectID;
 	status: executionStatus;
+}
+
+interface INodeSpecialCases {
+	[key: string]: INodeSpecialCase;
+}
+
+interface INodeSpecialCase {
+	ignoredProperties?: string[];
+	capResults?: number;
 }
 
 type executionStatus = 'success' | 'error' | 'warning' | 'running';

@@ -61,7 +61,7 @@ jobs:
         shell: bash
       -
         name: Run tests
-        run: n8n/packages/cli/bin/n8n executeBatch --concurrency=4 --skipList=test-workflows/skipList.txt
+        run: n8n/packages/cli/bin/n8n executeBatch --shallow --skipList=test-workflows/skipList.txt --retries=1 --compare=test-workflows/snapshots --shortOutput
         shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
