@@ -22,7 +22,7 @@ import NodeIcon from '../NodeIcon.vue';
 import TriggerIcon from '../TriggerIcon.vue';
 
 export default Vue.extend({
-	name: 'NodeCreateItem',
+	name: 'NodeItem',
 	components: {
 		NodeIcon,
 		TriggerIcon,

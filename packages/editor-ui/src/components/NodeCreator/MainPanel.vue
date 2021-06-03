@@ -4,7 +4,7 @@
 			<SubcategoryPanel v-if="activeSubcategory" :elements="subcategorizedNodes" :title="activeSubcategory.subcategory" :activeIndex="activeIndex" @close="onSubcategoryClose" @nodeTypeSelected="nodeTypeSelected" />
 		</SlideTransition>
 		<div class="main-panel">
-			<NodeSearch
+			<SearchBar
 				v-model="nodeFilter"	
 				:eventBus="searchEventBus"
 				@keydown.native="nodeFilterKeyDown"
@@ -17,7 +17,7 @@
 				</el-tabs>
 			</div>
 			<div v-if="nodeFilter.length === 0" class="scrollable">
-				<CreatorItemIterator
+				<ItemIterator
 					:elements="categorized"
 					:disabled="!!activeSubcategory"
 					:activeIndex="activeIndex"
@@ -31,7 +31,7 @@
 				class="node-create-list-wrapper scrollable"
 				v-else-if="filteredNodeTypes.length > 0"
 			>
-				<CreatorItemIterator
+				<ItemIterator
 					:elements="filteredNodeTypes"
 					:activeIndex="activeIndex"
 					@nodeTypeSelected="nodeTypeSelected"
@@ -50,11 +50,10 @@ import { externalHooks } from "@/components/mixins/externalHooks";
 import { INodeTypeDescription } from "n8n-workflow";
 
 import mixins from "vue-typed-mixins";
-import CreatorItemIterator from "./CreatorItemIterator.vue";
+import ItemIterator from "./ItemIterator.vue";
 import NoResults from "./NoResults.vue";
-import NodeSearch from "./NodeSearch.vue";
+import SearchBar from "./SearchBar.vue";
 import SubcategoryPanel from "./SubcategoryPanel.vue";
-import NodeCreateItem from "./NodeCreateItem.vue";
 import { INodeCreateElement } from "@/Interface";
 import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, SUBCATEGORY_DESCRIPTIONS, UNCATEGORIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY, HIDDEN_NODES  } from "@/constants";
 import SlideTransition from "../transitions/SlideTransition.vue";
@@ -72,12 +71,11 @@ interface ICategoriesWithNodes {
 export default mixins(externalHooks).extend({
 	name: "NodeCreateList",
 	components: {
-		NodeCreateItem,
-		CreatorItemIterator,
+		ItemIterator,
 		NoResults,
 		SubcategoryPanel,
 		SlideTransition,
-		NodeSearch,
+		SearchBar,
 	},
 	data() {
 		return {

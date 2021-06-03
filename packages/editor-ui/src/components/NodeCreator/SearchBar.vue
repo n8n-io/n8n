@@ -21,7 +21,7 @@
 import Vue from "vue";
 
 export default Vue.extend({
-	name: 'NodeSeach',
+	name: 'SearchBar',
 	props: ['value', 'eventBus'],
 	mounted() {
 		if (this.$props.eventBus) {

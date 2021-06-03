@@ -7,7 +7,7 @@
 					<i class="el-icon-close close-on-click"></i>
 				</div>
 
-				<node-create-list ref="list" @nodeTypeSelected="nodeTypeSelected"></node-create-list>
+				<MainPanel ref="list" @nodeTypeSelected="nodeTypeSelected"></MainPanel>
 			</div>
 		</SlideTransition>
 	</div>
@@ -18,12 +18,12 @@
 import Vue from 'vue';
 import SlideTransition from '../transitions/SlideTransition.vue';
 
-import NodeCreateList from './NodeCreateList.vue';
+import MainPanel from './MainPanel.vue';
 
 export default Vue.extend({
 	name: 'NodeCreator',
 	components: {
-		NodeCreateList,
+		MainPanel,
 		SlideTransition,
 	},
 	props: [

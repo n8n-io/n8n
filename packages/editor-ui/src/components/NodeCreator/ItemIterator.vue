@@ -42,13 +42,13 @@
 						</div>
 					</div>
 
-					<NodeCreateItem
+					<NodeItem
 						v-else-if="element.type === 'node'"
 						:nodeType="element.nodeType"
 						:bordered="
 							index < elements.length - 1 && elements[index + 1].type === 'node'
 						"
-					></NodeCreateItem>
+					></NodeItem>
 				</div>
 			</div>
 		</keep-alive>
@@ -56,15 +56,15 @@
 </template>
 
 <script lang="ts">
-import NodeCreateItem from "./NodeCreateItem.vue";
+import NodeItem from "./NodeItem.vue";
 import { INodeCreateElement } from "@/Interface";
 
 import Vue from "vue";
 
 export default Vue.extend({
-	name: "CreatorItemIterator",
+	name: "ItemIterator",
 	components: {
-		NodeCreateItem,
+		NodeItem,
 	},
 	props: ["elements", "activeIndex", "disabled", "transitionsEnabled"],
 	methods: {
