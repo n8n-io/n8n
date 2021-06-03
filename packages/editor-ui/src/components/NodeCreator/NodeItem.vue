@@ -1,13 +1,17 @@
-<template>
-	<div :class="{'node-item': true, bordered}" :data-node-name="nodeName">
-		<NodeIcon class="node-icon" :nodeType="nodeType" :style="nodeIconStyle" />
-		<div>
-			<div class="details">
-				<span class="name">{{nodeType.displayName}}</span>
-				<TriggerIcon v-if="isTrigger" class="trigger-icon" />
-			</div>
-			<div class="description">
-				{{nodeType.description}}
+<template functional>
+	<div class="wrapper">
+		<div :class="{'node-item': true, bordered: props.bordered}">
+			<NodeIcon class="node-icon" :nodeType="props.nodeType" :style="{color: props.nodeType.defaults.color}" />
+			<div>
+				<div class="details">
+					<span class="name">{{props.nodeType.displayName}}</span>
+					<span class="trigger-icon">
+						<TriggerIcon v-if="$options.isTrigger(props.nodeType)" />
+					</span>
+				</div>
+				<div class="description">
+					{{props.nodeType.description}}
+				</div>
 			</div>
 		</div>
 	</div>
@@ -21,36 +25,23 @@ import { INodeTypeDescription } from 'n8n-workflow';
 import NodeIcon from '../NodeIcon.vue';
 import TriggerIcon from '../TriggerIcon.vue';
 
-export default Vue.extend({
-	name: 'NodeItem',
-	components: {
-		NodeIcon,
-		TriggerIcon,
-	},
+Vue.component('NodeIcon', NodeIcon);
+Vue.component('TriggerIcon', TriggerIcon);
+
+export default {
 	props: [
 		'active',
 		'filter',
 		'nodeType',
 		'bordered',
 	],
-	computed: {
-		nodeIconStyle (): object {
-			return {
-				color: this.nodeType.defaults.color,
-			};
-		},
-		nodeName (): string {
-			return this.nodeType.name;
-		},
-		isTrigger (): boolean {
-			return (this.nodeType as INodeTypeDescription).group.includes('trigger');
-		},
+	isTrigger (nodeType: INodeTypeDescription): boolean {
+		return nodeType.group.includes('trigger');
 	},
-});
+};
 </script>
 
-<style scoped lang="scss">
-
+<style lang="scss" scoped>
 .node-item {
 	padding: 11px 8px 11px 0;
 	margin-left: 15px;
