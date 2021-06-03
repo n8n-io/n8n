@@ -166,6 +166,7 @@ import {
 	IPushDataExecutionFinished,
 	ITag,
 } from '../Interface';
+import { addNodeTranslations } from '@/i18n/i18n';
 import { mapGetters } from 'vuex';
 
 export default mixins(
@@ -2052,6 +2053,11 @@ export default mixins(
 					// Only call API if node information is actually missing
 					this.startLoading();
 					const nodeInfo = await this.restApi().getNodesInformation(nodesToBeFetched);
+
+					if (nodeInfo[0].translation) {
+						addNodeTranslations(nodeInfo[0].translation);
+					}
+
 					this.$store.commit('updateNodeTypes', nodeInfo);
 					this.stopLoading();
 				}

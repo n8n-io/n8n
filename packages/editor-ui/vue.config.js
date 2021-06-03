@@ -1,7 +1,11 @@
 const GoogleFontsPlugin = require('@beyonk/google-fonts-webpack-plugin');
 
 module.exports = {
-	chainWebpack: config => config.resolve.symlinks(false),
+	chainWebpack: config => {
+		config.resolve.symlinks(false);
+		// enable when language package grows
+		// config.plugins.delete("prefetch");
+	},
 	// transpileDependencies: [
 	//   // 'node_modules/quill'
 	//   /\/node_modules\/quill\//
@@ -9,6 +13,12 @@ module.exports = {
 	pluginOptions: {
 		webpackBundleAnalyzer: {
 			openAnalyzer: false,
+		},
+		i18n: {
+			locale: "en",
+			fallbackLocale: "en",
+			localeDir: "./src/i18n/locales",
+			enableInSFC: false,
 		},
 	},
 	configureWebpack: {
