@@ -53,13 +53,55 @@ export const documentFields = [
 			},
 		},
 	},
-
+	{
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'document',
+				],
+			},
+		},
+		default: true,
+		description: 'When set to true a simplify version of the response will be used else the raw data.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'document',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Content',
+				name: 'content',
+				type: 'string',
+				default: '',
+				description: 'Document content.',
+			},
+		],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 document:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Document ID',
-		name: 'documentId',
+		displayName: 'Document URL',
+		name: 'documentURL',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -73,15 +115,14 @@ export const documentFields = [
 			},
 		},
 		default: '',
-		description: 'The ID of the Google Document. <br />Found as part of the sheet URL https://docs.google.com/document/d/${ID}/',
+		description: 'The document URL.',
 	},
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 document:update                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Document ID',
-		name: 'documentId',
+		displayName: 'Document URL',
+		name: 'documentURL',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -95,7 +136,7 @@ export const documentFields = [
 			},
 		},
 		default: '',
-		description: 'The ID of the Google Document. <br />Found as part of the sheet URL https://docs.google.com/document/d/${ID}/',
+		description: 'The document URL.',
 	},
 	{
 		displayName: 'Simple',

@@ -38,3 +38,8 @@ export async function googleApiRequest(
 }
 
 export const hasKeys = (obj = {}) => Object.keys(obj).length > 0;
+export const extractID = ( url: string) => {
+	const regex  = new RegExp('https://docs.google.com/document/d/([a-zA-Z0-9-_]+)/');
+	const results = regex.exec(url);
+	return results ? results[1] : undefined;
+};

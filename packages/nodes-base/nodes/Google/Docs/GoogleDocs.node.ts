@@ -7,9 +7,11 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError
 } from 'n8n-workflow';
 
 import {
+	extractID,
 	googleApiRequest,
 	hasKeys,
 } from './GenericFunctions';
@@ -84,26 +86,67 @@ export class GoogleDocs implements INodeType {
 
 					// https://developers.google.com/docs/api/reference/rest/v1/documents/create
 
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const simple = this.getNodeParameter('simple', i) as boolean;
+
 					const body: IDataObject = {
 						title: this.getNodeParameter('title', i) as string,
 					};
 
 					responseData = await googleApiRequest.call(this, 'POST', '/documents', body);
+					if (additionalFields!.content) {
+						const documentId = responseData.documentId;
+						const content = additionalFields!.content;
+						const body = {
+							requests: [
+								{
+									insertText: {
+										text: content,
+										location: {
+											index: 1,
+										},
+									},
+								},
+							],
+						} as IUpdateBody;
+
+						responseData = await googleApiRequest.call(this, 'POST', `/documents/${documentId}:batchUpdate`, body);
+
+						if (simple === true) {
+							if (Object.keys(responseData.replies[0]).length !== 0) {
+								const key = Object.keys(responseData.replies[0])[0];
+								responseData = responseData.replies[0][key];
+							} else {
+								responseData = {};
+							}
+						}
+					}
+
 
 				} else if (operation === 'get') {
 
 					// https://developers.google.com/docs/api/reference/rest/v1/documents/get
 
-					const documentId = this.getNodeParameter('documentId', i) as string;
+					const documentURL = this.getNodeParameter('documentURL', i) as string;
+					const documentId = extractID(documentURL);
+
+					if (!documentId) {
+						throw new NodeOperationError(this.getNode(), 'Incorrect document URL');
+					}
 					responseData = await googleApiRequest.call(this, 'GET', `/documents/${documentId}`);
 
 				} else if (operation === 'update') {
 
 					// https://developers.google.com/docs/api/reference/rest/v1/documents/batchUpdate
 
-					const documentId = this.getNodeParameter('documentId', i) as string;
+					const documentURL = this.getNodeParameter('documentURL', i) as string;
+					const documentId = extractID(documentURL);
 					const simple = this.getNodeParameter('simple', 0) as boolean;
 					const { writeControl, requestsUi } = this.getNodeParameter('updateFields', i) as IUpdateFields;
+
+					if (!documentId) {
+						throw new NodeOperationError(this.getNode(), 'Incorrect document URL');
+					}
 
 					const body = {
 						requests: [],
