@@ -12,7 +12,6 @@ import {
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { operations } from '../Contentful/AssetDescription';
 
 import {
 	accountFields,

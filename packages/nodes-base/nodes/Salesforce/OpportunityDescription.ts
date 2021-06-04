@@ -26,9 +26,9 @@ export const opportunityOperations = [
 				description: 'Create an opportunity',
 			},
 			{
-				name: 'Create/Update',
+				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create/Update an opportunity',
+				description: 'Create a new opportunity, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',

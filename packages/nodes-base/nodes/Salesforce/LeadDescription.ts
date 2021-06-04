@@ -31,9 +31,9 @@ export const leadOperations = [
 				description: 'Create a lead',
 			},
 			{
-				name: 'Create/Update',
+				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create/Update a lead',
+				description: 'Create a new lead, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',

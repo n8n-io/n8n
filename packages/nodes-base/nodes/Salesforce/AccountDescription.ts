@@ -26,9 +26,9 @@ export const accountOperations = [
 				description: 'Create an account',
 			},
 			{
-				name: 'Create/Update',
+				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create/Update an account',
+				description: 'Create a new account, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Get',

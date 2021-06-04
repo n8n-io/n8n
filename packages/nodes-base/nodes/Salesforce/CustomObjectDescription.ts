@@ -21,9 +21,9 @@ export const customObjectOperations = [
 				description: 'Create a custom object record',
 			},
 			{
-				name: 'Create/Update',
+				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create/Update a custom object record',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Get',
