@@ -3,8 +3,8 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class MicrosoftTodoOAuth2Api implements ICredentialType {
-	name = 'microsoftTodoOAuth2Api';
+export class MicrosoftToDoOAuth2Api implements ICredentialType {
+	name = 'microsoftToDoOAuth2Api';
 	extends = [
 		'microsoftOAuth2Api',
 	];

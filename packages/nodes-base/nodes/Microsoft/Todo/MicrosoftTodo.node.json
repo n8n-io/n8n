@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-base.microsoftTodo",
+	"node": "n8n-nodes-base.microsoftToDo",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [
@@ -13,7 +13,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.microsoftTodo/"
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.microsoftToDo/"
 			}
 		],
 		"generic": [

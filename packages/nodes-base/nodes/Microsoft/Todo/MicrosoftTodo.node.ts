@@ -34,11 +34,11 @@ import {
 
 import * as moment from 'moment-timezone';
 
-export class MicrosoftTodo implements INodeType {
+export class MicrosoftToDo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft To Do',
-		name: 'microsoftTodo',
-		icon: 'file:todo.svg',
+		name: 'microsoftToDo',
+		icon: 'file:toDo.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -51,7 +51,7 @@ export class MicrosoftTodo implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'microsoftTodoOAuth2Api',
+				name: 'microsoftToDoOAuth2Api',
 				required: true,
 			},
 		],

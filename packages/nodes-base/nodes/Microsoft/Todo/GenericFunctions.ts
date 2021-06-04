@@ -31,7 +31,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | ILoadOptions
 			delete options.body;
 		}
 		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'microsoftTodoOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, 'microsoftToDoOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
