@@ -344,7 +344,7 @@ export class ExecuteBatch extends Command {
 			console.log('\nCheck the JSON file for more details.');
 		}else{
 			if (flags.shortOutput === true) {
-				results.executions.filter(execution => execution.executionStatus !== 'success');
+				results.executions.filter(execution => execution.executionStatus === 'success');
 			}
 			console.log(JSON.stringify(results, null, 2));
 		}
