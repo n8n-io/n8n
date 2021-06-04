@@ -71,7 +71,7 @@ export default Vue.extend({
 	margin-right: 24px;
 }
 
-.subcategory-panel .scrollable {
+.scrollable {
 	height: calc(100% - 100px);
 }
 </style>

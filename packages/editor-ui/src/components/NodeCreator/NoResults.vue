@@ -38,7 +38,7 @@ import { HTTP_REQUEST_NODE_NAME, WEBHOOK_NODE_NAME, REQUEST_NODE_FORM_URL } from
 import Vue from 'vue';
 
 export default Vue.extend({
-	name: "NoResults",
+	name: 'NoResults',
 	data() {
 		return {
 			REQUEST_NODE_FORM_URL,
@@ -51,21 +51,17 @@ export default Vue.extend({
 	},
 	methods: {
 		selectWebhook() {
-			this.$emit("nodeTypeSelected", WEBHOOK_NODE_NAME);
+			this.$emit('nodeTypeSelected', WEBHOOK_NODE_NAME);
 		},
 
 		selectHttpRequest() {
-			this.$emit("nodeTypeSelected", HTTP_REQUEST_NODE_NAME);
+			this.$emit('nodeTypeSelected', HTTP_REQUEST_NODE_NAME);
 		},
 	},
 });
 </script>
 
 <style lang="scss" scoped>
-* {
-	box-sizing: border-box;
-}
-
 .no-results {
 	background-color: $--node-creator-no-results-background-color;
 	text-align: center;
