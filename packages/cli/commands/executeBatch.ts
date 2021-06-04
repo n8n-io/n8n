@@ -343,14 +343,10 @@ export class ExecuteBatch extends Command {
 			});
 			console.log('\nCheck the JSON file for more details.');
 		}else{
-			let output;
 			if (flags.shortOutput === true) {
-				const {executions, ...data} = results;
-				output = data;
-			} else {
-				output = results;
+				results.executions.filter(execution => execution.executionStatus !== 'success');
 			}
-			console.log(JSON.stringify(output, null, 2));
+			console.log(JSON.stringify(results, null, 2));
 		}
 
 		await ExecuteBatch.stopProcess(true);
@@ -462,7 +458,7 @@ export class ExecuteBatch extends Command {
 									if (result.coveredNodes[nodeName] === undefined) {
 										result.coveredNodes[nodeName] = 0;
 									}
-									result.coveredNodes[nodeName] += result.coveredNodes[nodeName];
+									result.coveredNodes[nodeName] += executionResult.coveredNodes[nodeName];
 								});
 							} else if (executionResult.executionStatus === 'warning') {
 								result.summary.warningExecutions++;
