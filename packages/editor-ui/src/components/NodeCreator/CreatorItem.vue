@@ -39,7 +39,6 @@ Vue.component('NodeItem', NodeItem);
 export default {
 	props: ['item', 'active', 'clickable', 'lastNode'],
 };
-
 </script>
 
 <style lang="scss" scoped>
@@ -56,42 +55,8 @@ export default {
 	}
 }
 
-.subcategory > div {
-	display: flex;
-	padding: 11px 16px 11px 30px;
-
-	.details {
-		flex-grow: 1;
-	}
-
-	.title {
-		font-size: 14px;
-		font-weight: bold;
-		line-height: 16px;
-		margin-bottom: 3px;
-	}
-
-	.description {
-		font-size: 11px;
-		line-height: 15px;
-		font-weight: 400;
-	}
-
-	.action {
-		display: flex;
-		align-items: center;
-	}
-}
-
 .subcategory + .category,
 .node + .category {
 	margin-top: 15px;
 }
-
-.arrow {
-	font-size: 12px;
-	width: 12px;
-	color: $--node-creator-arrow-color;
-}
-
 </style>
