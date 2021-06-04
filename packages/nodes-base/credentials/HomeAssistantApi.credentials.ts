@@ -5,7 +5,7 @@ import {
 
 export class HomeAssistantApi implements ICredentialType {
 	name = 'homeAssistantApi';
-	displayName = 'Home Assistant Api';
+	displayName = 'Home Assistant API';
 	documentationUrl = 'homeAssistant';
 	properties = [
 		{

@@ -121,7 +121,7 @@ export const stateFields = [
 		},
 		required: true,
 		default: '',
-		description: 'The entity ID for which will create a state.',
+		description: 'The entity ID for which a state will be created.',
 	},
 	{
 		displayName: 'State',

@@ -10,7 +10,6 @@ import {
 } from 'n8n-workflow';
 
 import {
-	configFields,
 	configOperations,
 } from './ConfigDescription';
 
@@ -61,7 +60,7 @@ export class HomeAssistant implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Home Assistant Io API',
+		description: 'Consume Home Assistant API',
 		defaults: {
 			name: 'Home Assistant',
 			color: '#3578e5',
@@ -116,28 +115,19 @@ export class HomeAssistant implements INodeType {
 				default: 'config',
 				description: 'Resource to consume.',
 			},
-			// Camera proxy
 			...cameraProxyOperations,
 			...cameraProxyFields,
-			// Configuration
 			...configOperations,
-			...configFields,
-			// Event
 			...eventOperations,
 			...eventFields,
-			// History
 			...historyOperations,
 			...historyFields,
-			// Log
 			...logOperations,
 			...logFields,
-			// Service
 			...serviceOperations,
 			...serviceFields,
-			// State
 			...stateOperations,
 			...stateFields,
-			// Template
 			...templateOperations,
 			...templateFields,
 		],
@@ -146,7 +136,7 @@ export class HomeAssistant implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const qs: IDataObject = {};
@@ -162,22 +152,28 @@ export class HomeAssistant implements INodeType {
 				} else if (resource === 'service') {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						responseData = await homeAssistantApiRequest.call(this, 'GET', '/services');
+						responseData = await homeAssistantApiRequest.call(this, 'GET', '/services') as IDataObject[];
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
-							responseData = (responseData as IDataObject[]).slice(0, limit);
+							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'call') {
 						const domain = this.getNodeParameter('domain', i) as string;
 						const service = this.getNodeParameter('service', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as {
+							field: {
+								serviceDataUi: {
+									field: IDataObject[],
+								},
+							},
+						};
 
 						const body: IDataObject = {};
 
-						if (additionalFields) {
-							const serviceDataUi = ((additionalFields!.field as IDataObject).serviceDataUi as IDataObject);
+						if (Object.entries(additionalFields).length) {
+							const serviceDataUi = additionalFields.field.serviceDataUi;
 							if (serviceDataUi.field !== undefined) {
-								(serviceDataUi.field as IDataObject[]).map(
+								serviceDataUi.field.map(
 									param => {
 										// @ts-ignore
 										body[param.name as string] = param.value;
@@ -185,6 +181,7 @@ export class HomeAssistant implements INodeType {
 								);
 							}
 						}
+
 
 						responseData = await homeAssistantApiRequest.call(this, 'POST', `/services/${domain}/${service}`, body);
 						if (Array.isArray(responseData) && responseData.length === 0) {
@@ -194,10 +191,10 @@ export class HomeAssistant implements INodeType {
 				} else if (resource === 'state') {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						responseData = await homeAssistantApiRequest.call(this, 'GET', '/states');
+						responseData = await homeAssistantApiRequest.call(this, 'GET', '/states') as IDataObject[];
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
-							responseData = (responseData as IDataObject[]).slice(0, limit);
+							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'get') {
 						const entityId = this.getNodeParameter('entityId', i) as string;
@@ -205,17 +202,23 @@ export class HomeAssistant implements INodeType {
 					} else if (operation === 'upsert') {
 						const entityId = this.getNodeParameter('entityId', i) as string;
 						const state = this.getNodeParameter('state', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as {
+							attributes: {
+								stateAttributesUi: {
+									attribute: IDataObject[]
+								}
+							}
+						};
 
 						const body = {
 							state,
 							attributes: {},
 						};
 
-						if (Object.entries(additionalFields).length !== 0) {
-							const stateAttributesUi = ((additionalFields!.attributes as IDataObject).stateAttributesUi as IDataObject);
+						if (Object.entries(additionalFields).length) {
+							const stateAttributesUi = additionalFields.attributes.stateAttributesUi;
 							if (stateAttributesUi.attribute !== undefined) {
-								(stateAttributesUi.attribute as IDataObject[]).map(
+								stateAttributesUi.attribute.map(
 									attribute => {
 										// @ts-ignore
 										body.attributes[attribute.name as string] = attribute.value;
@@ -229,22 +232,27 @@ export class HomeAssistant implements INodeType {
 				} else if (resource === 'event') {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						responseData = await homeAssistantApiRequest.call(this, 'GET', '/events');
+						responseData = await homeAssistantApiRequest.call(this, 'GET', '/events')  as IDataObject[];
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
-							responseData = (responseData as IDataObject[]).slice(0, limit);
+							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'post') {
 						const eventType = this.getNodeParameter('eventType', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-						const body = {
+						const additionalFields = this.getNodeParameter('additionalFields', i) as {
+							attributes: {
+								eventAttributesUi: {
+									attribute: IDataObject[],
+								}
+							}
 						};
 
-						if (Object.entries(additionalFields).length !== 0) {
-							const eventAttributesUi = ((additionalFields!.attributes as IDataObject).eventAttributesUi as IDataObject);
+						const body = {};
+
+						if (Object.entries(additionalFields).length) {
+							const eventAttributesUi = additionalFields.attributes.eventAttributesUi;
 							if (eventAttributesUi.attribute !== undefined) {
-								(eventAttributesUi.attribute as IDataObject[]).map(
+								eventAttributesUi.attribute.map(
 									attribute => {
 										// @ts-ignore
 										body[attribute.name as string] = attribute.value;
@@ -268,7 +276,7 @@ export class HomeAssistant implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						let endpoint = '/logbook';
 
-						if (Object.entries(additionalFields).length !== 0) {
+						if (Object.entries(additionalFields).length) {
 							if (additionalFields.startTime) {
 								endpoint = `/logbook/${additionalFields.startTime}`;
 							}
@@ -299,7 +307,7 @@ export class HomeAssistant implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						let endpoint = '/history/period';
 
-						if (Object.entries(additionalFields).length !== 0) {
+						if (Object.entries(additionalFields).length) {
 							if (additionalFields.startTime) {
 								endpoint = `/history/period/${additionalFields.startTime}`;
 							}
@@ -317,10 +325,10 @@ export class HomeAssistant implements INodeType {
 							}
 						}
 
-						responseData = await homeAssistantApiRequest.call(this, 'GET', endpoint, {}, qs);
+						responseData = await homeAssistantApiRequest.call(this, 'GET', endpoint, {}, qs) as IDataObject[];
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
-							responseData = (responseData as IDataObject[]).slice(0, limit);
+							responseData = responseData.slice(0, limit);
 						}
 					}
 				} else if (resource === 'cameraProxy') {
@@ -356,7 +364,7 @@ export class HomeAssistant implements INodeType {
 
 						const data = Buffer.from(responseData.body as string);
 
-						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, `screenshot.jpg`, mimeType);
+						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data, 'screenshot.jpg', mimeType);
 					}
 				}
 			} catch (error) {
@@ -371,14 +379,12 @@ export class HomeAssistant implements INodeType {
 				throw error;
 			}
 
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
-			}
+			Array.isArray(responseData)
+			? returnData.push(...responseData)
+			: returnData.push(responseData);
 		}
 
-		if (resource === 'cameraProxy' && operation === 'get') {
+		if (resource === 'cameraProxy' && operation === 'getScreenshot') {
 			return this.prepareOutputData(items);
 		} else {
 			return [this.helpers.returnJsonArray(returnData)];

@@ -21,14 +21,14 @@ export const cameraProxyOperations = [
 				description: 'Get the camera screenshot',
 			},
 		],
-		default: 'get',
+		default: 'getScreenshot',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 
 export const cameraProxyFields = [
 	/* -------------------------------------------------------------------------- */
-	/*                                cameraProxy:get                             */
+	/*                       cameraProxy:getScreenshot                            */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Camera Entity ID',
@@ -39,7 +39,7 @@ export const cameraProxyFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'get',
+					'getScreenshot',
 				],
 				resource: [
 					'cameraProxy',
@@ -57,7 +57,7 @@ export const cameraProxyFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'get',
+					'getScreenshot',
 				],
 				resource: [
 					'cameraProxy',

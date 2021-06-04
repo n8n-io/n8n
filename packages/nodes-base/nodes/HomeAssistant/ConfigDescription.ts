@@ -30,5 +30,3 @@ export const configOperations = [
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
-
-export const configFields = [] as INodeProperties[];

@@ -96,7 +96,7 @@ export const eventFields = [
 		},
 		required: true,
 		default: '',
-		description: 'The Entity ID for which will create a event.',
+		description: 'The Entity ID for which an event will be created.',
 	},
 	{
 		displayName: 'Additional Fields',

@@ -20,15 +20,15 @@ export async function homeAssistantApiRequest(this: IExecuteFunctions, method: s
 	}
 
 	let options: OptionsWithUri = {
-		headers: {},
+		headers: {
+			Authorization: `Bearer ${credentials.accessToken}`,
+		},
 		method,
 		qs,
 		body,
-		uri: uri || `${credentials.ssl === true ? 'https' : 'http'}://${credentials.host}:${credentials.port}/api${resource}`,
+		uri: uri ?? `${credentials.ssl === true ? 'https' : 'http'}://${credentials.host}:${credentials.port}/api${resource}`,
 		json: true,
 	};
-
-	options.headers![ 'Authorization' ] = `Bearer ${credentials.accessToken}`;
 
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {
