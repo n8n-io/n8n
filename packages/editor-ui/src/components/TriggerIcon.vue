@@ -30,7 +30,7 @@ export default {
 .trigger {
 	background-color: $--trigger-icon-background-color;
 	border: 1px solid $--trigger-icon-border-color;
-  border-radius: 4px;
+	border-radius: 4px;
 	display: inline-flex;
 
 	> svg {
