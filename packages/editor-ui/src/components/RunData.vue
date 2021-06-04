@@ -762,7 +762,7 @@ export default mixins(
 				background: #fff;;
 			}
 			tr:nth-child(odd) {
-				background: $--custom-table-background-alternative;
+				background: $--custom-table-background-stripe-color;
 			}
 		}
 	}

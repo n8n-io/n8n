@@ -6,6 +6,7 @@
 $--font-path: '~element-ui/lib/theme-chalk/fonts';
 
 @import "~element-ui/packages/theme-chalk/src/index";
+@import "~element-ui/lib/theme-chalk/display.css";
 
 body {
 	font-family: 'Open Sans', sans-serif;
@@ -197,14 +198,14 @@ h1, h2, h3, h4, h5, h6 {
 .el-table--striped {
 	.el-table__body {
 		tr.el-table__row--striped {
-			background-color: $--custom-table-background-alternative;
+			background-color: $--custom-table-background-stripe-color;
 			td {
 				background: none;
 			}
 		}
 		tr.el-table__row:hover,
 		tr.el-table__row:hover > td {
-			background-color: $--custom-table-background-alternative2;
+			background-color: $--custom-table-background-hover-color;
 		}
 	}
 }
@@ -327,7 +328,7 @@ h1, h2, h3, h4, h5, h6 {
 	}
 	.el-input-number__decrease.is-disabled,
 	.el-input-number__increase.is-disabled {
-		background-color: $--custom-table-background-alternative2;
+		background-color: $--custom-input-background-disabled;
 	}
 }
 
@@ -384,7 +385,11 @@ h1, h2, h3, h4, h5, h6 {
 	border-color: #555;
 	color: $--custom-input-font-disabled;
 }
-
+.el-button.is-plain,.el-button.is-plain:hover {
+	color: $--color-primary;
+	border: 1px solid $--color-primary;
+	background-color: #fff;
+}
 
 // Textarea
 .ql-editor,
@@ -477,7 +482,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 ::-webkit-scrollbar-thumb {
 	border-radius: 6px;
-	background: lighten($--color-primary, 20%);
+	background: $--scrollbar-thumb-color;
 }
 ::-webkit-scrollbar-thumb:hover {
 	background: $--color-primary;
@@ -493,3 +498,28 @@ h1, h2, h3, h4, h5, h6 {
 		border-radius: 6px;
 	}
 }
+
+.tags-container {
+	.el-tag {
+		color: $--tag-text-color;
+		font-size: 12px;
+		background-color: $--tag-background-color;
+		border-radius: 12px;
+		height: auto;
+		border-color: $--tag-background-color;
+		font-weight: 400;
+
+		.el-icon-close {
+			color: $--tag-background-color;
+			background-color: $--tag-close-background-color !important;
+			max-height: 15px;
+			max-width: 15px;
+			margin-right: 6px;
+
+			&:hover {
+				background-color: $--tag-close-background-hover-color !important;
+			}
+		}
+	}
+}
+

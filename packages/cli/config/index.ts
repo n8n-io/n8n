@@ -149,6 +149,15 @@ const config = convict({
 		},
 	},
 
+	workflows: {
+		defaultName: {
+			doc: 'Default name for workflow',
+			format: String,
+			default: 'My workflow',
+			env: 'WORKFLOWS_DEFAULT_NAME',
+		},
+	},
+
 	executions: {
 
 		// By default workflows get always executed in their own process.

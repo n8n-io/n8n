@@ -67,15 +67,15 @@ export class ActiveWorkflowRunner {
 
 			for (const workflowData of workflowsData) {
 				console.log(`   - ${workflowData.name}`);
-				Logger.debug(`Initializing active workflow "${workflowData.name}" (startup)`, {workflowName: workflowData.name, workflowId: workflowData.id});
+				Logger.debug(`Initializing active workflow "${workflowData.name}" (startup)`, { workflowName: workflowData.name, workflowId: workflowData.id });
 				try {
 					await this.add(workflowData.id.toString(), 'init', workflowData);
-					Logger.verbose(`Successfully started workflow "${workflowData.name}"`, {workflowName: workflowData.name, workflowId: workflowData.id});
+					Logger.verbose(`Successfully started workflow "${workflowData.name}"`, { workflowName: workflowData.name, workflowId: workflowData.id });
 					console.log(`     => Started`);
 				} catch (error) {
 					console.log(`     => ERROR: Workflow could not be activated:`);
 					console.log(`               ${error.message}`);
-					Logger.error(`Unable to initialize workflow "${workflowData.name}" (startup)`, {workflowName: workflowData.name, workflowId: workflowData.id});
+					Logger.error(`Unable to initialize workflow "${workflowData.name}" (startup)`, { workflowName: workflowData.name, workflowId: workflowData.id });
 				}
 			}
 			Logger.verbose('Finished initializing active workflows (startup)');
@@ -188,7 +188,7 @@ export class ActiveWorkflowRunner {
 		}
 
 		const nodeTypes = NodeTypes();
-		const workflow = new Workflow({ id: webhook.workflowId.toString(), name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings});
+		const workflow = new Workflow({ id: webhook.workflowId.toString(), name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings });
 
 		const credentials = await WorkflowCredentials([workflow.getNode(webhook.node as string) as INode]);
 
@@ -225,8 +225,8 @@ export class ActiveWorkflowRunner {
 	 * @returns {Promise<string[]>}
 	 * @memberof ActiveWorkflowRunner
 	 */
-	async getWebhookMethods(path: string) : Promise<string[]> {
-		const webhooks = await Db.collections.Webhook?.find({ webhookPath: path}) as IWebhookDb[];
+	async getWebhookMethods(path: string): Promise<string[]> {
+		const webhooks = await Db.collections.Webhook?.find({ webhookPath: path }) as IWebhookDb[];
 
 		// Gather all request methods in string array
 		const webhookMethods: string[] = webhooks.map(webhook => webhook.method);
@@ -253,7 +253,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async isActive(id: string): Promise<boolean> {
-		const workflow = await Db.collections.Workflow?.findOne({ id }) as IWorkflowDb;
+		const workflow = await Db.collections.Workflow?.findOne({ id: Number(id) }) as IWorkflowDb;
 		return workflow?.active as boolean;
 	}
 
@@ -462,7 +462,7 @@ export class ActiveWorkflowRunner {
 	 * @returns {IGetExecuteTriggerFunctions}
 	 * @memberof ActiveWorkflowRunner
 	 */
-	getExecuteTriggerFunctions(workflowData: IWorkflowDb, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): IGetExecuteTriggerFunctions{
+	getExecuteTriggerFunctions(workflowData: IWorkflowDb, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): IGetExecuteTriggerFunctions {
 		return ((workflow: Workflow, node: INode) => {
 			const returnFunctions = NodeExecuteFunctions.getExecuteTriggerFunctions(workflow, node, additionalData, mode, activation);
 			returnFunctions.emit = (data: INodeExecutionData[][]): void => {
@@ -516,8 +516,8 @@ export class ActiveWorkflowRunner {
 
 			if (workflowInstance.getTriggerNodes().length !== 0
 				|| workflowInstance.getPollNodes().length !== 0) {
-					await this.activeWorkflows.add(workflowId, workflowInstance, additionalData, mode, activation, getTriggerFunctions, getPollFunctions);
-				Logger.info(`Successfully activated workflow "${workflowData.name}"`);
+				await this.activeWorkflows.add(workflowId, workflowInstance, additionalData, mode, activation, getTriggerFunctions, getPollFunctions);
+				Logger.verbose(`Successfully activated workflow "${workflowData.name}"`, { workflowId, workflowName: workflowData.name });
 			}
 
 			if (this.activationErrors[workflowId] !== undefined) {
@@ -568,7 +568,8 @@ export class ActiveWorkflowRunner {
 			// if it's active in memory then it's a trigger
 			// so remove from list of actives workflows
 			if (this.activeWorkflows.isActive(workflowId)) {
-				this.activeWorkflows.remove(workflowId);
+				await this.activeWorkflows.remove(workflowId);
+				Logger.verbose(`Successfully deactivated workflow "${workflowId}"`, { workflowId });
 			}
 
 			return;

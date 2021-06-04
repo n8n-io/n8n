@@ -4,12 +4,11 @@
 		<executions-list :dialogVisible="executionsListDialogVisible" @closeDialog="closeExecutionsListOpenDialog"></executions-list>
 		<credentials-list :dialogVisible="credentialOpenDialogVisible" @closeDialog="closeCredentialOpenDialog"></credentials-list>
 		<credentials-edit :dialogVisible="credentialNewDialogVisible" @closeDialog="closeCredentialNewDialog"></credentials-edit>
-		<workflow-open @openWorkflow="openWorkflow" :dialogVisible="workflowOpenDialogVisible" @closeDialog="closeWorkflowOpenDialog"></workflow-open>
 		<workflow-settings :dialogVisible="workflowSettingsDialogVisible" @closeDialog="closeWorkflowSettingsDialog"></workflow-settings>
 		<input type="file" ref="importFile" style="display: none" v-on:change="handleFileImport()">
 
 		<div class="side-menu-wrapper" :class="{expanded: !isCollapsed}">
-			<div id="collapse-change-button" class="clickable" @click="isCollapsed=!isCollapsed">
+			<div id="collapse-change-button" class="clickable" @click="toggleCollapse">
 				<font-awesome-icon icon="angle-right" class="icon" />
 			</div>
 			<el-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
@@ -41,22 +40,16 @@
 							<span slot="title" class="item-title">Open</span>
 						</template>
 					</el-menu-item>
-					<el-menu-item index="workflow-save" :disabled="!currentWorkflow">
+					<el-menu-item index="workflow-save">
 						<template slot="title">
 							<font-awesome-icon icon="save"/>
 							<span slot="title" class="item-title">Save</span>
 						</template>
 					</el-menu-item>
-					<el-menu-item index="workflow-save-as">
+					<el-menu-item index="workflow-duplicate" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="copy"/>
-							<span slot="title" class="item-title">Save As</span>
-						</template>
-					</el-menu-item>
-					<el-menu-item index="workflow-rename" :disabled="!currentWorkflow">
-						<template slot="title">
-							<font-awesome-icon icon="edit"/>
-							<span slot="title" class="item-title">Rename</span>
+							<span slot="title" class="item-title">Duplicate</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-delete" :disabled="!currentWorkflow">
@@ -143,7 +136,6 @@
 
 <script lang="ts">
 
-import Vue from 'vue';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 
 import {
@@ -157,7 +149,6 @@ import About from '@/components/About.vue';
 import CredentialsEdit from '@/components/CredentialsEdit.vue';
 import CredentialsList from '@/components/CredentialsList.vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
-import WorkflowOpen from '@/components/WorkflowOpen.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -170,6 +161,7 @@ import { workflowRun } from '@/components/mixins/workflowRun';
 import { saveAs } from 'file-saver';
 
 import mixins from 'vue-typed-mixins';
+import { mapGetters } from 'vuex';
 import MenuItemsIterator from './MainSidebarMenuItemsIterator.vue';
 
 const helpMenuItems: IMenuItem[] = [
@@ -220,7 +212,6 @@ export default mixins(
 			CredentialsEdit,
 			CredentialsList,
 			ExecutionsList,
-			WorkflowOpen,
 			WorkflowSettings,
 			MenuItemsIterator,
 		},
@@ -229,17 +220,18 @@ export default mixins(
 				aboutDialogVisible: false,
 				// @ts-ignore
 				basePath: this.$store.getters.getBaseUrl,
-				isCollapsed: true,
 				credentialNewDialogVisible: false,
 				credentialOpenDialogVisible: false,
 				executionsListDialogVisible: false,
 				stopExecutionInProgress: false,
-				workflowOpenDialogVisible: false,
 				workflowSettingsDialogVisible: false,
 				helpMenuItems,
 			};
 		},
 		computed: {
+			...mapGetters('ui', {
+				isCollapsed: 'sidebarMenuCollapsed',
+			}),
 			exeuctionId (): string | undefined {
 				return this.$route.params.id;
 			},
@@ -294,15 +286,15 @@ export default mixins(
 			},
 		},
 		methods: {
+			toggleCollapse () {
+				this.$store.commit('ui/toggleSidebarMenuCollapse');
+			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
 			},
 			closeAboutDialog () {
 				this.aboutDialogVisible = false;
-			},
-			closeWorkflowOpenDialog () {
-				this.workflowOpenDialogVisible = false;
 			},
 			closeWorkflowSettingsDialog () {
 				this.workflowSettingsDialogVisible = false;
@@ -315,6 +307,9 @@ export default mixins(
 			},
 			closeCredentialNewDialog () {
 				this.credentialNewDialogVisible = false;
+			},
+			openTagManager() {
+				this.$store.dispatch('ui/openTagsManagerModal');
 			},
 			async stopExecution () {
 				const executionId = this.$store.getters.activeExecutionId;
@@ -342,7 +337,7 @@ export default mixins(
 					params: { name: workflowId },
 				});
 
-				this.workflowOpenDialogVisible = false;
+				this.$store.commit('ui/closeTopModal');
 			},
 			async handleFileImport () {
 				const reader = new FileReader();
@@ -372,7 +367,7 @@ export default mixins(
 			},
 			async handleSelect (key: string, keyPath: string) {
 				if (key === 'workflow-open') {
-					this.workflowOpenDialogVisible = true;
+					this.$store.dispatch('ui/openWorklfowOpenModal');
 				} else if (key === 'workflow-import-file') {
 					(this.$refs.importFile as HTMLInputElement).click();
 				} else if (key === 'workflow-import-url') {
@@ -386,49 +381,6 @@ export default mixins(
 
 						this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
 					} catch (e) {}
-				} else if (key === 'workflow-rename') {
-					const workflowName = await this.$prompt(
-						'Enter new workflow name',
-						'Rename',
-						{
-							inputValue: this.workflowName,
-							confirmButtonText: 'Rename',
-							cancelButtonText: 'Cancel',
-						},
-					)
-						.then((data) => {
-							// @ts-ignore
-							return data.value;
-						})
-						.catch(() => {
-							// User did cancel
-							return undefined;
-						});
-
-					if (workflowName === undefined || workflowName === this.workflowName) {
-						return;
-					}
-
-					const workflowId = this.$store.getters.workflowId;
-
-					const updateData = {
-						name: workflowName,
-					};
-
-					try {
-						await this.restApi().updateWorkflow(workflowId, updateData);
-					} catch (error) {
-						this.$showError(error, 'Problem renaming the workflow', 'There was a problem renaming the workflow:');
-						return;
-					}
-
-					this.$store.commit('setWorkflowName', {newName: workflowName, setStateDirty: false});
-
-					this.$showMessage({
-						title: 'Workflow renamed',
-						message: `The workflow got renamed to "${workflowName}"!`,
-						type: 'success',
-					});
 				} else if (key === 'workflow-delete') {
 					const deleteConfirmed = await this.confirmMessage(`Are you sure that you want to delete the workflow "${this.workflowName}"?`, 'Delete Workflow?', 'warning', 'Yes, delete!');
 
@@ -454,7 +406,9 @@ export default mixins(
 					this.$router.push({ name: 'NodeViewNew' });
 				} else if (key === 'workflow-download') {
 					const workflowData = await this.getWorkflowDataToSave();
-					const blob = new Blob([JSON.stringify(workflowData, null, 2)], {
+
+					const {tags, ...data} = workflowData;
+					const blob = new Blob([JSON.stringify(data, null, 2)], {
 						type: 'application/json;charset=utf-8',
 					});
 
@@ -465,8 +419,8 @@ export default mixins(
 					saveAs(blob, workflowName + '.json');
 				} else if (key === 'workflow-save') {
 					this.saveCurrentWorkflow();
-				} else if (key === 'workflow-save-as') {
-					this.saveCurrentWorkflow(true);
+				} else if (key === 'workflow-duplicate') {
+					this.$store.dispatch('ui/openDuplicateModal');
 				} else if (key === 'help-about') {
 					this.aboutDialogVisible = true;
 				} else if (key === 'workflow-settings') {
@@ -507,11 +461,6 @@ export default mixins(
 					this.executionsListDialogVisible = true;
 				}
 			},
-		},
-		async mounted () {
-			this.$root.$on('openWorkflowDialog', async () => {
-				this.workflowOpenDialogVisible = true;
-			});
 		},
 	});
 </script>
@@ -568,7 +517,7 @@ export default mixins(
 
 	&.logo-item {
 		background-color: $--color-primary !important;
-		height: 65px;
+		height: $--header-height;
 
 		.icon {
 			position: relative;
@@ -610,10 +559,10 @@ a.logo {
 
 .side-menu-wrapper {
 	height: 100%;
-	width: 65px;
+	width: $--sidebar-width;
 
 	&.expanded {
-		width: 200px;
+		width: $--sidebar-expanded-width;
 	}
 }
 
