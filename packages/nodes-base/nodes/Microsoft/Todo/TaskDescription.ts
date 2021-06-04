@@ -42,13 +42,16 @@ export const taskOperations = [
 ] as INodeProperties[];
 
 export const taskFields = [
-/* -------------------------------------------------------------------------- */
-/*                                 task:create                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:create                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task List ID',
 		name: 'taskListId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTaskLists',
+		},
 		displayOptions: {
 			show: {
 				operation: [
@@ -108,13 +111,6 @@ export const taskFields = [
 						name: 'body',
 						values: [
 							{
-								displayName: 'Content',
-								name: 'content',
-								type: 'string',
-								default: '',
-								description: 'The task note content.',
-							},
-							{
 								displayName: 'Content Type',
 								name: 'contentType',
 								type: 'options',
@@ -131,6 +127,13 @@ export const taskFields = [
 								default: 'text',
 								description: 'The task note content type.',
 							},
+							{
+								displayName: 'Content',
+								name: 'content',
+								type: 'string',
+								default: '',
+								description: 'The task note content.',
+							},
 						],
 					},
 				],
@@ -138,21 +141,28 @@ export const taskFields = [
 				description: 'The task body that typically contains information about the task.',
 			},
 			{
+				displayName: 'Due Date Time',
+				name: 'dueDateTime',
+				type: 'dateTime',
+				default: '',
+				description: 'The date in the specified time zone that the task is to be finished.',
+			},
+			{
 				displayName: 'Importance',
 				name: 'importance',
 				type: 'options',
 				options: [
 					{
-						name:'Low',
+						name: 'Low',
 						value: 'low',
 					},
 					{
-							name:'Normal',
-							value: 'normal',
+						name: 'Normal',
+						value: 'normal',
 					},
 					{
-							name:'High',
-							value: 'high',
+						name: 'High',
+						value: 'high',
 					},
 				],
 				default: 'normal',
@@ -164,24 +174,24 @@ export const taskFields = [
 				type: 'options',
 				options: [
 					{
-						name:'Notstarted',
+						name: 'Not started',
 						value: 'notStarted',
 					},
 					{
-							name:'In progress',
-							value: 'inProgress',
+						name: 'In progress',
+						value: 'inProgress',
 					},
 					{
-							name:'Completed',
-							value: 'completed',
+						name: 'Completed',
+						value: 'completed',
 					},
 					{
-							name:'Waiting On Others',
-							value: 'waitingOnOthers',
+						name: 'Waiting On Others',
+						value: 'waitingOnOthers',
 					},
 					{
-							name:'Deferred',
-							value: 'deferred',
+						name: 'Deferred',
+						value: 'deferred',
 					},
 				],
 				default: 'notStarted',
@@ -189,13 +199,16 @@ export const taskFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 task:get/delete/update/getAll              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:get/delete/update/getAll              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task List ID',
 		name: 'taskListId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTaskLists',
+		},
 		displayOptions: {
 			show: {
 				operation: [
@@ -231,9 +244,9 @@ export const taskFields = [
 		required: true,
 		default: '',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 task:getAll                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:getAll                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -273,9 +286,9 @@ export const taskFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 task:update                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:update                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task Title',
 		name: 'title',
@@ -352,21 +365,28 @@ export const taskFields = [
 				description: 'The task body that typically contains information about the task.',
 			},
 			{
+				displayName: 'Due Date Time',
+				name: 'dueDateTime',
+				type: 'dateTime',
+				default: '',
+				description: 'The date in the specified time zone that the task is to be finished.',
+			},
+			{
 				displayName: 'Importance',
 				name: 'importance',
 				type: 'options',
 				options: [
 					{
-						name:'Low',
+						name: 'Low',
 						value: 'low',
 					},
 					{
-							name:'Normal',
-							value: 'normal',
+						name: 'Normal',
+						value: 'normal',
 					},
 					{
-							name:'High',
-							value: 'high',
+						name: 'High',
+						value: 'high',
 					},
 				],
 				default: 'normal',
@@ -378,24 +398,24 @@ export const taskFields = [
 				type: 'options',
 				options: [
 					{
-						name:'Notstarted',
+						name: 'Not started',
 						value: 'notStarted',
 					},
 					{
-							name:'In progress',
-							value: 'inProgress',
+						name: 'In progress',
+						value: 'inProgress',
 					},
 					{
-							name:'Completed',
-							value: 'completed',
+						name: 'Completed',
+						value: 'completed',
 					},
 					{
-							name:'Waiting On Others',
-							value: 'waitingOnOthers',
+						name: 'Waiting On Others',
+						value: 'waitingOnOthers',
 					},
 					{
-							name:'Deferred',
-							value: 'deferred',
+						name: 'Deferred',
+						value: 'deferred',
 					},
 				],
 				default: 'notStarted',

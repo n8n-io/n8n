@@ -42,54 +42,57 @@ export const linkedResourceOperations = [
 ] as INodeProperties[];
 
 export const linkedResourceFields = [
-/* -------------------------------------------------------------------------- */
-/*                       linkedResource:ALL                                   */
-/* -------------------------------------------------------------------------- */
-{
-	displayName: 'Task List ID',
-	name: 'taskListId',
-	type: 'string',
-	displayOptions: {
-		show: {
-			operation: [
-				'create',
-				'delete',
-				'get',
-				'getAll',
-				'update',
-			],
-			resource: [
-				'linkedResource',
-			],
+	/* -------------------------------------------------------------------------- */
+	/*                       linkedResource:ALL                                   */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Task List ID',
+		name: 'taskListId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTaskLists',
 		},
-	},
-	required: true,
-	default: '',
-},
-{
-	displayName: 'Task ID',
-	name: 'taskId',
-	type: 'string',
-	displayOptions: {
-		show: {
-			operation: [
-				'create',
-				'delete',
-				'get',
-				'getAll',
-				'update',
-			],
-			resource: [
-				'linkedResource',
-			],
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+					'delete',
+					'get',
+					'getAll',
+					'update',
+				],
+				resource: [
+					'linkedResource',
+				],
+			},
 		},
+		required: true,
+		default: '',
 	},
-	required: true,
-	default: '',
-},
-/* -------------------------------------------------------------------------- */
-/*                           linkedResource:create                            */
-/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Task ID',
+		name: 'taskId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+					'delete',
+					'get',
+					'getAll',
+					'update',
+				],
+				resource: [
+					'linkedResource',
+				],
+			},
+		},
+		required: true,
+		default: '',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                           linkedResource:create                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Application Name',
 		name: 'applicationName',
@@ -148,9 +151,9 @@ export const linkedResourceFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                           linkedResource:get/delete/update                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                           linkedResource:get/delete/update                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Linked Resource ID',
 		name: 'linkedResourceId',
@@ -170,9 +173,9 @@ export const linkedResourceFields = [
 		default: '',
 		required: true,
 	},
-/* -------------------------------------------------------------------------- */
-/*                           linkedResource:getAll                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                           linkedResource:getAll                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -212,27 +215,9 @@ export const linkedResourceFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                           linkedResource:update                            */
-/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Application Name',
-		name: 'applicationName',
-		type: 'string',
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'linkedResource',
-				],
-			},
-		},
-		required: true,
-		default: '',
-		description: 'Field indicating app name of the source that is sending the linked entity.',
-	},
+	/* -------------------------------------------------------------------------- */
+	/*                           linkedResource:update                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -250,6 +235,13 @@ export const linkedResourceFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Application Name',
+				name: 'applicationName',
+				type: 'string',
+				default: '',
+				description: 'Field indicating app name of the source that is sending the linked entity.',
+			},
 			{
 				displayName: 'Display Name',
 				name: 'displayName',

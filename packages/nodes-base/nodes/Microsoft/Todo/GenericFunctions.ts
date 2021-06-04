@@ -8,10 +8,11 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
 
-export async function microsoftApiRequest(this: IExecuteFunctions, method: string, resource: string, body: IDataObject = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = { json: true }) {
+export async function microsoftApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: IDataObject = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = { json: true }) {
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -29,14 +30,15 @@ export async function microsoftApiRequest(this: IExecuteFunctions, method: strin
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-
+		console.log(options);
+		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftTodoOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function microsoftApiRequestAllItems(this: IExecuteFunctions, propertyName: string ,method: string, endpoint: string, body: IDataObject = {}, query: IDataObject = {}) {
+export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: IDataObject = {}, query: IDataObject = {}) {
 
 	const returnData: IDataObject[] = [];
 
