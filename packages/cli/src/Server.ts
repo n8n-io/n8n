@@ -945,7 +945,7 @@ class App {
 			const filepath = nodeType.description.icon.substr(5);
 
 			const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
-			res.setHeader('Cache-control', `private max-age=${maxAge}`)
+			res.setHeader('Cache-control', `private max-age=${maxAge}`);
 
 			res.sendFile(filepath);
 		});
