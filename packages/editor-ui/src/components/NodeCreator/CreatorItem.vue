@@ -32,9 +32,9 @@ import NodeItem from './NodeItem.vue';
 import CategoryItem from './CategoryItem.vue';
 import SubcategoryItem from './SubcategoryItem.vue';
 
-Vue.component("CategoryItem", CategoryItem);
-Vue.component("SubcategoryItem", SubcategoryItem);
-Vue.component("NodeItem", NodeItem);
+Vue.component('CategoryItem', CategoryItem);
+Vue.component('SubcategoryItem', SubcategoryItem);
+Vue.component('NodeItem', NodeItem);
 
 export default {
 	props: ['item', 'active', 'clickable', 'lastNode'],

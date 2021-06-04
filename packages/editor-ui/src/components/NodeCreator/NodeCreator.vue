@@ -29,20 +29,6 @@ export default Vue.extend({
 	props: [
 		'active',
 	],
-	watch: {
-		active (newValue, oldValue) {
-			if (newValue === true) {
-				// Try to set focus directly on the filter-input-field
-				setTimeout(() => {
-					// @ts-ignore
-					if (this.$refs.list && this.$refs.list.$refs.inputField) {
-						// @ts-ignore
-						this.$refs.list.$refs.inputField.focus();
-					}
-				});
-			}
-		},
-	},
 	methods: {
 		closeCreator () {
 			this.$emit('closeNodeCreator');

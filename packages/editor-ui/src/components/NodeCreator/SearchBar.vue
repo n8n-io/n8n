@@ -36,7 +36,9 @@ export default Vue.extend({
 	methods: {
 		focus() {
 			const input = this.$refs.input as HTMLInputElement;
-			input.focus();
+			if (input) {
+				input.focus();
+			}
 		},
 		onInput(event: InputEvent) {
 			const input = event.target as HTMLInputElement;

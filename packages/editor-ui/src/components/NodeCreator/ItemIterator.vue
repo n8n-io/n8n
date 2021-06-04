@@ -24,17 +24,17 @@
 </template>
 
 <script lang="ts">
-import { INodeCreateElement } from "@/Interface";
+import { INodeCreateElement } from '@/Interface';
 
-import Vue from "vue";
-import CreatorItem from "./CreatorItem.vue";
+import Vue from 'vue';
+import CreatorItem from './CreatorItem.vue';
 
 export default Vue.extend({
-	name: "ItemIterator",
+	name: 'ItemIterator',
 	components: {
 		CreatorItem,
 	},
-	props: ["elements", "activeIndex", "disabled", "transitionsEnabled"],
+	props: ['elements', 'activeIndex', 'disabled', 'transitionsEnabled'],
 	methods: {
 		selected(element: INodeCreateElement) {
 			if (this.$props.disabled) {
@@ -44,16 +44,16 @@ export default Vue.extend({
 			this.$emit('selected', element);
 		},
 		beforeEnter(el: HTMLElement) {
-			el.style.height = "0";
+			el.style.height = '0';
 		},
 		enter(el: HTMLElement) {
-			el.style.height = el.scrollHeight + "px";
+			el.style.height = `${el.scrollHeight}px`;
 		},
 		beforeLeave(el: HTMLElement) {
-			el.style.height = el.scrollHeight + "px";
+			el.style.height = `${el.scrollHeight}px`;
 		},
 		leave(el: HTMLElement) {
-			el.style.height = "0";
+			el.style.height = '0';
 		},
 	},
 });

@@ -44,17 +44,17 @@
 
 import Vue from 'vue';
 
-import { externalHooks } from "@/components/mixins/externalHooks";
-import { INodeTypeDescription } from "n8n-workflow";
+import { externalHooks } from '@/components/mixins/externalHooks';
+import { INodeTypeDescription } from 'n8n-workflow';
 
-import mixins from "vue-typed-mixins";
-import ItemIterator from "./ItemIterator.vue";
-import NoResults from "./NoResults.vue";
-import SearchBar from "./SearchBar.vue";
-import SubcategoryPanel from "./SubcategoryPanel.vue";
-import { INodeCreateElement } from "@/Interface";
-import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, SUBCATEGORY_DESCRIPTIONS, UNCATEGORIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY, HIDDEN_NODES  } from "@/constants";
-import SlideTransition from "../transitions/SlideTransition.vue";
+import mixins from 'vue-typed-mixins';
+import ItemIterator from './ItemIterator.vue';
+import NoResults from './NoResults.vue';
+import SearchBar from './SearchBar.vue';
+import SubcategoryPanel from './SubcategoryPanel.vue';
+import { INodeCreateElement } from '@/Interface';
+import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, SUBCATEGORY_DESCRIPTIONS, UNCATEGORIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY, HIDDEN_NODES  } from '@/constants';
+import SlideTransition from '../transitions/SlideTransition.vue';
 
 interface ICategoriesWithNodes {
 	[category: string]: {
@@ -67,7 +67,7 @@ interface ICategoriesWithNodes {
 }
 
 export default mixins(externalHooks).extend({
-	name: "NodeCreateList",
+	name: 'NodeCreateList',
 	components: {
 		ItemIterator,
 		NoResults,
@@ -80,8 +80,8 @@ export default mixins(externalHooks).extend({
 			activeCategory: [] as string[],
 			activeSubcategory: null as INodeCreateElement | null,
 			activeIndex: 1,
-			nodeFilter: "",
-			selectedType: "All",
+			nodeFilter: '',
+			selectedType: 'All',
 			searchEventBus: new Vue(),
 		};
 	},
@@ -106,15 +106,15 @@ export default mixins(externalHooks).extend({
 				) {
 					return false;
 				}
-				if (this.selectedType !== "All") {
+				if (this.selectedType !== 'All') {
 					if (
-						this.selectedType === "Trigger" &&
-						!nodeType.group.includes("trigger")
+						this.selectedType === 'Trigger' &&
+						!nodeType.group.includes('trigger')
 					) {
 						return false;
 					} else if (
-						this.selectedType === "Regular" &&
-						nodeType.group.includes("trigger")
+						this.selectedType === 'Regular' &&
+						nodeType.group.includes('trigger')
 					) {
 						return false;
 					}
@@ -130,19 +130,19 @@ export default mixins(externalHooks).extend({
 				return textA < textB ? -1 : textA > textB ? 1 : 0;
 			});
 
-			this.$externalHooks().run("nodeCreateList.filteredNodeTypesComputed", {
+			this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
 				nodeFilter: this.nodeFilter,
 				result: returnData,
 				selectedType: this.selectedType,
 			});
 
 			return returnData.map((nodeType) => ({
-				type: "node",
-				category: "",
+				type: 'node',
+				category: '',
 				key: `${nodeType.name}`,
 				properties: {
 					nodeType,
-					subcategory: "",
+					subcategory: '',
 				},
 			}));
 		},
@@ -158,15 +158,15 @@ export default mixins(externalHooks).extend({
 
 					if (!nodeType.codex || !nodeType.codex.categories) {
 						accu[UNCATEGORIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].nodes.push({
-							type: "node",
+							type: 'node',
 							category: UNCATEGORIZED_CATEGORY,
 							key: `${UNCATEGORIZED_CATEGORY}_${nodeType.name}`,
 							properties: {
 								subcategory: UNCATEGORIZED_SUBCATEGORY,
 								nodeType,
 							},
-							includedByTrigger: nodeType.group.includes("trigger"),
-							includedByRegular: !nodeType.group.includes("trigger"),
+							includedByTrigger: nodeType.group.includes('trigger'),
+							includedByRegular: !nodeType.group.includes('trigger'),
 						});
 						return accu;
 					}
@@ -188,7 +188,7 @@ export default mixins(externalHooks).extend({
 								nodes: [],
 							};
 						}
-						const isTrigger = nodeType.group.includes("trigger");
+						const isTrigger = nodeType.group.includes('trigger');
 						if (isTrigger) {
 							accu[category][subcategory].triggerCount++;
 						}
@@ -196,7 +196,7 @@ export default mixins(externalHooks).extend({
 							accu[category][subcategory].regularCount++;
 						}
 						accu[category][subcategory].nodes.push({
-							type: "node",
+							type: 'node',
 							key: `${category}_${nodeType.name}`,
 							category,
 							properties: {
@@ -242,7 +242,7 @@ export default mixins(externalHooks).extend({
 					}
 
 					const categoryEl: INodeCreateElement = {
-						type: "category",
+						type: 'category',
 						key: category,
 						category,
 						properties: {
@@ -268,7 +268,7 @@ export default mixins(externalHooks).extend({
 					const subcategorized = subcategories.reduce(
 						(accu: INodeCreateElement[], subcategory: string) => {
 							const subcategoryEl: INodeCreateElement = {
-								type: "subcategory",
+								type: 'subcategory',
 								key: `${category}_${subcategory}`,
 								category,
 								properties: {
@@ -308,22 +308,22 @@ export default mixins(externalHooks).extend({
 			return this.nodesWithCategories
 				.filter((el: INodeCreateElement) => {
 					if (
-						el.type !== "category" &&
+						el.type !== 'category' &&
 						!this.activeCategory.includes(el.category)
 					) {
 						return false;
 					}
-					if (this.selectedType === "Trigger" && el.includedByTrigger) {
+					if (this.selectedType === 'Trigger' && el.includedByTrigger) {
 						return true;
 					}
-					if (this.selectedType === "Regular" && el.includedByRegular) {
+					if (this.selectedType === 'Regular' && el.includedByRegular) {
 						return true;
 					}
 
-					return this.selectedType === "All";
+					return this.selectedType === 'All';
 				})
 				.map((el: INodeCreateElement) => {
-					if (el.type === "category") {
+					if (el.type === 'category') {
 						return {
 							...el,
 							expanded: this.activeCategory.includes(el.category),
@@ -343,13 +343,13 @@ export default mixins(externalHooks).extend({
 			// @ts-ignore
 			return activeSubcategory && this.categoriesWithNodes[category][subcategory]
 				.nodes.filter((el: INodeCreateElement) => {
-					if (el.includedByTrigger && this.selectedType === "Trigger") {
+					if (el.includedByTrigger && this.selectedType === 'Trigger') {
 						return true;
 					}
-					if (el.includedByRegular && this.selectedType === "Regular") {
+					if (el.includedByRegular && this.selectedType === 'Regular') {
 						return true;
 					}
-					return this.selectedType === "All";
+					return this.selectedType === 'All';
 				});
 		},
 	},
@@ -357,7 +357,7 @@ export default mixins(externalHooks).extend({
 		nodeFilter(newValue, oldValue) {
 			// Reset the index whenver the filter-value changes
 			this.activeIndex = 0;
-			this.$externalHooks().run("nodeCreateList.nodeFilterChanged", {
+			this.$externalHooks().run('nodeCreateList.nodeFilterChanged', {
 				oldValue,
 				newValue,
 				selectedType: this.selectedType,
@@ -365,7 +365,7 @@ export default mixins(externalHooks).extend({
 			});
 		},
 		selectedType(newValue, oldValue) {
-			this.$externalHooks().run("nodeCreateList.selectedTypeChanged", {
+			this.$externalHooks().run('nodeCreateList.selectedTypeChanged', {
 				oldValue,
 				newValue,
 			});
@@ -383,38 +383,38 @@ export default mixins(externalHooks).extend({
 			}
 			const activeNodeType = activeList[this.activeIndex];
 
-			if (e.key === "ArrowDown") {
+			if (e.key === 'ArrowDown') {
 				this.activeIndex++;
 				// Make sure that we stop at the last nodeType
 				this.activeIndex = Math.min(
 					this.activeIndex,
 					activeList.length - 1,
 				);
-			} else if (e.key === "ArrowUp") {
+			} else if (e.key === 'ArrowUp') {
 				this.activeIndex--;
 				// Make sure that we do not get before the first nodeType
 				this.activeIndex = Math.max(this.activeIndex, 0);
-			} else if (e.key === "Enter" && activeNodeType) {
+			} else if (e.key === 'Enter' && activeNodeType) {
 				this.selected(activeNodeType);
 			}
 
-			if (!["Escape", "Tab"].includes(e.key)) {
-				// We only want to propagate "Escape" as it closes the node-creator and
-				// "Tab" which toggles it
+			if (!['Escape', 'Tab'].includes(e.key)) {
+				// We only want to propagate 'Escape' as it closes the node-creator and
+				// 'Tab' which toggles it
 				e.stopPropagation();
 			}
 		},
 		selected(element: INodeCreateElement) {
-			if (element.type === "node" && element.properties.nodeType) {
+			if (element.type === 'node' && element.properties.nodeType) {
 				this.nodeTypeSelected(element.properties.nodeType.name);
-			} else if (element.type === "category") {
+			} else if (element.type === 'category') {
 				this.onCategorySelected(element.category);
-			} else if (element.type === "subcategory") {
+			} else if (element.type === 'subcategory') {
 				this.onSubcategorySelected(element);
 			}
 		},
 		nodeTypeSelected(nodeTypeName: string) {
-			this.$emit("nodeTypeSelected", nodeTypeName);
+			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
 		onCategorySelected(category: string) {
 			if (this.activeCategory.includes(category)) {
@@ -437,7 +437,7 @@ export default mixins(externalHooks).extend({
 		onSubcategoryClose() {
 			this.activeSubcategory = null;
 			this.activeIndex = 0;
-			this.nodeFilter = "";
+			this.nodeFilter = '';
 		},
 
 		onClickInside() {
@@ -445,11 +445,11 @@ export default mixins(externalHooks).extend({
 		},
 
 		selectWebhook() {
-			this.$emit("nodeTypeSelected", "n8n-nodes-base.webhook");
+			this.$emit('nodeTypeSelected', 'n8n-nodes-base.webhook');
 		},
 
 		selectHttpRequest() {
-			this.$emit("nodeTypeSelected", "n8n-nodes-base.httpRequest");
+			this.$emit('nodeTypeSelected', 'n8n-nodes-base.httpRequest');
 		},
 	},
 	async mounted() {
@@ -457,10 +457,10 @@ export default mixins(externalHooks).extend({
 			// initial opening effect
 			this.activeCategory = [CORE_NODES_CATEGORY];
 		}, 0);
-		this.$externalHooks().run("nodeCreateList.mounted");
+		this.$externalHooks().run('nodeCreateList.mounted');
 	},
 	async destroyed() {
-		this.$externalHooks().run("nodeCreateList.destroyed");
+		this.$externalHooks().run('nodeCreateList.destroyed');
 	},
 });
 </script>
