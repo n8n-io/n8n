@@ -102,7 +102,7 @@ export class Ftp implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete a file.',
+						description: 'Delete a file/folder.',
 					},
 					{
 						name: 'Download',
@@ -146,6 +146,46 @@ export class Ftp implements INodeType {
 				default: '',
 				description: 'The file path of the file to delete. Has to contain the full path.',
 				required: true,
+			},
+
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Folder',
+						name: 'folder',
+						type: 'boolean',
+						default: false,
+						description: 'When set to true, folders can be deleted.',
+						required: true,
+					},
+					{
+						displayName: 'Recursive',
+						displayOptions: {
+							show: {
+								folder: [
+									true,
+								],
+							},
+						},
+						name: 'recursive',
+						type: 'boolean',
+						default: false,
+						description: 'If true, remove all files and directories in target directory.',
+						required: true,
+					},
+				],
 			},
 
 			// ----------------------------------
@@ -401,8 +441,13 @@ export class Ftp implements INodeType {
 
 				if (operation === 'delete') {
 					const path = this.getNodeParameter('path', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
-					responseData = await sftp!.delete(path);
+					if (options.folder === true) {
+						responseData = await sftp!.rmdir(path, !!options.recursive);
+					} else {
+						responseData = await sftp!.delete(path);
+					}
 
 					returnItems.push({ json: { success: true } });
 				}
@@ -488,8 +533,13 @@ export class Ftp implements INodeType {
 
 				if (operation === 'delete') {
 					const path = this.getNodeParameter('path', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
-					responseData = await ftp!.delete(path);
+					if (options.folder === true) {
+						responseData = await ftp!.rmdir(path, !!options.recursive);
+					} else {
+						responseData = await ftp!.delete(path);
+					}
 
 					returnItems.push({ json: { success: true } });
 				}

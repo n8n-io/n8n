@@ -37,6 +37,14 @@ import {
 	WorkflowExecuteAdditionalData,
 } from '../src';
 
+import { 
+	getLogger,
+} from '../src/Logger';
+
+import {
+	LoggerProxy,
+} from 'n8n-workflow';
+
 import * as config from '../config';
 import * as Bull from 'bull';
 import * as Queue from '../src/Queue';
@@ -71,7 +79,7 @@ export class Worker extends Command {
 	 * get removed.
 	 */
 	static async stopProcess() {
-		console.log(`\nStopping n8n...`);
+		LoggerProxy.info(`Stopping n8n...`);
 
 		// Stop accepting new jobs
 		Worker.jobQueue.pause(true);
@@ -95,7 +103,7 @@ export class Worker extends Command {
 			while (Object.keys(Worker.runningJobs).length !== 0) {
 				if (count++ % 4 === 0) {
 					const waitLeft = Math.ceil((stopTime - new Date().getTime()) / 1000);
-					console.log(`Waiting for ${Object.keys(Worker.runningJobs).length} active executions to finish... (wait ${waitLeft} more seconds)`);
+					LoggerProxy.info(`Waiting for ${Object.keys(Worker.runningJobs).length} active executions to finish... (wait ${waitLeft} more seconds)`);
 				}
 				await new Promise((resolve) => {
 					setTimeout(resolve, 500);
@@ -103,7 +111,7 @@ export class Worker extends Command {
 			}
 
 		} catch (error) {
-			console.error('There was an error shutting down n8n.', error);
+			LoggerProxy.error('There was an error shutting down n8n.', error);
 		}
 
 		process.exit(Worker.processExistCode);
@@ -113,7 +121,7 @@ export class Worker extends Command {
 		const jobData = job.data as IBullJobData;
 		const executionDb = await Db.collections.Execution!.findOne(jobData.executionId) as IExecutionFlattedDb;
 		const currentExecutionDb = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
-		console.log(`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id} | Execution: ${jobData.executionId})`);
+		LoggerProxy.info(`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id} | Execution: ${jobData.executionId})`);
 
 		let staticData = currentExecutionDb.workflowData!.staticData;
 		if (jobData.loadStaticData === true) {
@@ -170,7 +178,10 @@ export class Worker extends Command {
 	}
 
 	async run() {
-		console.log('Starting n8n worker...');
+		const logger = getLogger();
+		LoggerProxy.init(logger);
+
+		console.info('Starting n8n worker...');
 
 		// Make sure that n8n shuts down gracefully if possible
 		process.on('SIGTERM', Worker.stopProcess);
@@ -183,11 +194,12 @@ export class Worker extends Command {
 
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch(error => {
-					console.error(`There was an error initializing DB: ${error.message}`);
+					logger.error(`There was an error initializing DB: "${error.message}"`);
 
 					Worker.processExistCode = 1;
 					// @ts-ignore
 					process.emit('SIGINT');
+					process.exit(1);
 				});
 
 				// Make sure the settings exist
@@ -221,10 +233,10 @@ export class Worker extends Command {
 
 				const versions = await GenericHelpers.getVersions();
 
-				console.log('\nn8n worker is now ready');
-				console.log(` * Version: ${versions.cli}`);
-				console.log(` * Concurrency: ${flags.concurrency}`);
-				console.log('');
+				console.info('\nn8n worker is now ready');
+				console.info(` * Version: ${versions.cli}`);
+				console.info(` * Concurrency: ${flags.concurrency}`);
+				console.info('');
 
 				Worker.jobQueue.on('global:progress', (jobId, progress) => {
 					// Progress of a job got updated which does get used
@@ -252,27 +264,28 @@ export class Worker extends Command {
 							cumulativeTimeout += now - lastTimer;
 							lastTimer = now;
 							if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-								console.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + '. Exiting process.');
+								logger.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + ". Exiting process.");
 								process.exit(1);
 							}
 						}
-						console.warn('Redis unavailable - trying to reconnect...');
+						logger.warn('Redis unavailable - trying to reconnect...');
 					} else if (error.toString().includes('Error initializing Lua scripts') === true) {
 						// This is a non-recoverable error
 						// Happens when worker starts and Redis is unavailable
 						// Even if Redis comes back online, worker will be zombie
-						console.error('Error initializing worker.');
+						logger.error('Error initializing worker.');
 						process.exit(2);
 					} else {
-						console.error('Error from queue: ', error);
+						logger.error('Error from queue: ', error);
 					}
 				});
 			} catch (error) {
-				this.error(`There was an error: ${error.message}`);
+				logger.error(`Worker process cannot continue. "${error.message}"`);
 
 				Worker.processExistCode = 1;
 				// @ts-ignore
 				process.emit('SIGINT');
+				process.exit(1);
 			}
 		})();
 

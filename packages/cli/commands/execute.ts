@@ -13,7 +13,6 @@ import {
 	CredentialTypes,
 	Db,
 	ExternalHooks,
-	GenericHelpers,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	LoadNodesAndCredentials,
@@ -23,6 +22,13 @@ import {
 	WorkflowRunner,
 } from '../src';
 
+import { 
+	getLogger,
+} from '../src/Logger';
+
+import {
+	LoggerProxy,
+} from 'n8n-workflow';
 
 export class Execute extends Command {
 	static description = '\nExecutes a given workflow';
@@ -44,6 +50,9 @@ export class Execute extends Command {
 
 
 	async run() {
+		const logger = getLogger();
+		LoggerProxy.init(logger);
+
 		const { flags } = this.parse(Execute);
 
 		// Start directly with the init of the database to improve startup time
@@ -54,12 +63,12 @@ export class Execute extends Command {
 		const loadNodesAndCredentialsPromise = loadNodesAndCredentials.init();
 
 		if (!flags.id && !flags.file) {
-			GenericHelpers.logOutput(`Either option "--id" or "--file" have to be set!`);
+			console.info(`Either option "--id" or "--file" have to be set!`);
 			return;
 		}
 
 		if (flags.id && flags.file) {
-			GenericHelpers.logOutput(`Either "id" or "file" can be set never both!`);
+			console.info(`Either "id" or "file" can be set never both!`);
 			return;
 		}
 
@@ -71,7 +80,7 @@ export class Execute extends Command {
 				workflowData = JSON.parse(await fs.readFile(flags.file, 'utf8'));
 			} catch (error) {
 				if (error.code === 'ENOENT') {
-					GenericHelpers.logOutput(`The file "${flags.file}" could not be found.`);
+					console.info(`The file "${flags.file}" could not be found.`);
 					return;
 				}
 
@@ -81,7 +90,7 @@ export class Execute extends Command {
 			// Do a basic check if the data in the file looks right
 			// TODO: Later check with the help of TypeScript data if it is valid or not
 			if (workflowData === undefined || workflowData.nodes === undefined || workflowData.connections === undefined) {
-				GenericHelpers.logOutput(`The file "${flags.file}" does not contain valid workflow data.`);
+				console.info(`The file "${flags.file}" does not contain valid workflow data.`);
 				return;
 			}
 			workflowId = workflowData.id!.toString();
@@ -95,8 +104,8 @@ export class Execute extends Command {
 			workflowId = flags.id;
 			workflowData = await Db.collections!.Workflow!.findOne(workflowId);
 			if (workflowData === undefined) {
-				GenericHelpers.logOutput(`The workflow with the id "${workflowId}" does not exist.`);
-				return;
+				console.info(`The workflow with the id "${workflowId}" does not exist.`);
+				process.exit(1);
 			}
 		}
 
@@ -138,7 +147,7 @@ export class Execute extends Command {
 		if (startNode === undefined) {
 			// If the workflow does not contain a start-node we can not know what
 			// should be executed and with which data to start.
-			GenericHelpers.logOutput(`The workflow does not contain a "Start" node. So it can not be executed.`);
+			console.info(`The workflow does not contain a "Start" node. So it can not be executed.`);
 			return Promise.resolve();
 		}
 
@@ -163,9 +172,10 @@ export class Execute extends Command {
 			}
 
 			if (data.data.resultData.error) {
-				this.log('Execution was NOT successfull:');
-				this.log('====================================');
-				this.log(JSON.stringify(data, null, 2));
+				console.info('Execution was NOT successful. See log message for details.');
+				logger.info('Execution error:');
+				logger.info('====================================');
+				logger.info(JSON.stringify(data, null, 2));
 
 				const { error } = data.data.resultData;
 				throw {
@@ -174,14 +184,15 @@ export class Execute extends Command {
 				};
 			}
 
-			this.log('Execution was successfull:');
-			this.log('====================================');
-			this.log(JSON.stringify(data, null, 2));
+			console.info('Execution was successful:');
+			console.info('====================================');
+			console.info(JSON.stringify(data, null, 2));
 		} catch (e) {
-			console.error('\nGOT ERROR');
-			console.log('====================================');
-			console.error(e.message);
-			console.error(e.stack);
+			console.error('Error executing workflow. See log messages for details.');
+			logger.error('\nExecution error:');
+			logger.info('====================================');
+			logger.error(e.message);
+			logger.error(e.stack);
 			this.exit(1);
 		}
 

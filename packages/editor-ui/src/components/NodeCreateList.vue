@@ -24,10 +24,13 @@
 <script lang="ts">
 
 import Vue from 'vue';
+import { externalHooks } from "@/components/mixins/externalHooks";
 import { INodeTypeDescription } from 'n8n-workflow';
 import NodeCreateItem from '@/components/NodeCreateItem.vue';
 
-export default Vue.extend({
+import mixins from "vue-typed-mixins";
+
+export default mixins(externalHooks).extend({
 	name: 'NodeCreateList',
 	components: {
 		NodeCreateItem,
@@ -70,13 +73,18 @@ export default Vue.extend({
 				return (textA < textB) ? -1 : (textA > textB) ? 1 : 0;
 			});
 
+			this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', { nodeFilter: this.nodeFilter, result: returnData, selectedType: this.selectedType });
 			return returnData;
 		},
 	},
 	watch: {
-		nodeFilter (newVal, oldVal) {
+		nodeFilter (newValue, oldValue) {
 			// Reset the index whenver the filter-value changes
 			this.activeNodeTypeIndex = 0;
+			this.$externalHooks().run('nodeCreateList.nodeFilterChanged', { oldValue, newValue, selectedType: this.selectedType, filteredNodes: this.filteredNodeTypes });
+		},
+		selectedType (newValue, oldValue) {
+			this.$externalHooks().run('nodeCreateList.selectedTypeChanged', { oldValue, newValue });
 		},
 	},
 	methods: {
@@ -104,6 +112,12 @@ export default Vue.extend({
 		nodeTypeSelected (nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
+	},
+	async mounted() {
+		this.$externalHooks().run('nodeCreateList.mounted');
+	},
+	async destroyed() {
+		this.$externalHooks().run('nodeCreateList.destroyed');
 	},
 });
 </script>

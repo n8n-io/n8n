@@ -13,7 +13,9 @@
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "lerna run test",
     "tslint": "lerna exec npm run tslint",
-    "watch": "lerna run --parallel watch"
+    "watch": "lerna run --parallel watch",
+    "webhook": "./packages/cli/bin/n8n webhook",
+    "worker": "./packages/cli/bin/n8n worker"
   },
   "devDependencies": {
     "lerna": "^3.13.1",

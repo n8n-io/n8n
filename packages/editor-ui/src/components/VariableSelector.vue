@@ -379,7 +379,7 @@ export default mixins(
 					return returnData;
 				}
 
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, 'manual');
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual');
 				const proxy = dataProxy.getDataProxy();
 
 				// @ts-ignore

@@ -24,8 +24,8 @@ export async function erpNextApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ) {
-
-	const credentials = this.getCredentials('erpNextApi');
+	const credentials = this.getCredentials('erpNextApi') as ERPNextApiCredentials;
+	const baseUrl = getBaseUrl(credentials);
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -40,7 +40,7 @@ export async function erpNextApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri || `https://${credentials.subdomain}.erpnext.com${resource}`,
+		uri: uri || `${baseUrl}${resource}`,
 		json: true,
 	};
 
@@ -56,13 +56,12 @@ export async function erpNextApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
 		if (error.statusCode === 403) {
-			throw new NodeApiError(this.getNode(), { message: `DocType unavailable.` });
+			throw new NodeApiError(this.getNode(), { message: 'DocType unavailable.' });
 		}
 
 		if (error.statusCode === 307) {
-			throw new NodeApiError(this.getNode(), { message:`Please ensure the subdomain is correct.` });
+			throw new NodeApiError(this.getNode(), { message: 'Please ensure the subdomain is correct.' });
 		}
 
 		throw new NodeApiError(this.getNode(), error);
@@ -95,3 +94,19 @@ export async function erpNextApiRequestAllItems(
 
 	return returnData;
 }
+
+/**
+ * Return the base API URL based on the user's environment.
+ */
+const getBaseUrl = ({ environment, domain, subdomain }: ERPNextApiCredentials) =>
+	environment === 'cloudHosted'
+		? `https://${subdomain}.erpnext.com`
+		: domain;
+
+type ERPNextApiCredentials = {
+	apiKey: string;
+	apiSecret: string;
+	environment: 'cloudHosted' | 'selfHosted';
+	subdomain?: string;
+	domain?: string;
+};
