@@ -42,7 +42,7 @@ export class Spotify implements INodeType {
 		properties: [
 			// ----------------------------------------------------------------
 			//         Resource to Operate on
-			//		   Player, Album, Artisits, Playlists, Tracks, Follow
+			//         Album, Artist, Library, My Data, Player, Playlist, Track
 			// ----------------------------------------------------------------
 			{
 				displayName: 'Resource',
@@ -62,8 +62,8 @@ export class Spotify implements INodeType {
 						value: 'library',
 					},
 					{
-						name: 'Me',
-						value: 'me',
+						name: 'My Data',
+						value: 'myData',
 					},
 					{
 						name: 'Player',
@@ -81,9 +81,10 @@ export class Spotify implements INodeType {
 				default: 'player',
 				description: 'The resource to operate on.',
 			},
+
 			// --------------------------------------------------------------------------------------------------------
 			//         Player Operations
-			//		   Pause, Play, Get Recently Played, Get Currently Playing, Next Song, Previous Song, Add to Queue
+			//         Pause, Play, Get Recently Played, Get Currently Playing, Next Song, Previous Song, Add to Queue
 			// --------------------------------------------------------------------------------------------------------
 			{
 				displayName: 'Operation',
@@ -174,9 +175,10 @@ export class Spotify implements INodeType {
 				placeholder: 'spotify:track:0xE4LEFzSNGsz1F6kvXsHU',
 				description: `Enter a track URI or ID.`,
 			},
+
 			// -----------------------------------------------
 			//         Album Operations
-			//		   Get an Album, Get an Album's Tracks
+			//         Get an Album, Get an Album's Tracks
 			// -----------------------------------------------
 			{
 				displayName: 'Operation',
@@ -229,9 +231,10 @@ export class Spotify implements INodeType {
 				placeholder: 'spotify:album:1YZ3k65Mqw3G8FzYlW1mmp',
 				description: `The album's Spotify URI or ID.`,
 			},
+
 			// -------------------------------------------------------------------------------------------------------------
 			//         Artist Operations
-			//		   Get an Artist, Get an Artist's Related Artists, Get an Artist's Top Tracks, Get an Artist's Albums
+			//         Get an Artist, Get an Artist's Related Artists, Get an Artist's Top Tracks, Get an Artist's Albums
 			// -------------------------------------------------------------------------------------------------------------
 			{
 				displayName: 'Operation',
@@ -304,9 +307,10 @@ export class Spotify implements INodeType {
 				placeholder: 'US',
 				description: `Top tracks in which country? Enter the postal abbriviation.`,
 			},
+
 			// -------------------------------------------------------------------------------------------------------------
 			//         Playlist Operations
-			//		   Get a Playlist, Get a Playlist's Tracks, Add/Remove a Song from a Playlist, Get a User's Playlists
+			//         Get a Playlist, Get a Playlist's Tracks, Add/Remove a Song from a Playlist, Get a User's Playlists
 			// -------------------------------------------------------------------------------------------------------------
 			{
 				displayName: 'Operation',
@@ -482,7 +486,7 @@ export class Spotify implements INodeType {
 
 			// -----------------------------------------------------
 			//         Track Operations
-			//		   Get a Track, Get a Track's Audio Features
+			//         Get a Track, Get a Track's Audio Features
 			// -----------------------------------------------------
 			{
 				displayName: 'Operation',
@@ -526,10 +530,11 @@ export class Spotify implements INodeType {
 				placeholder: 'spotify:track:0xE4LEFzSNGsz1F6kvXsHU',
 				description: `The track's Spotify URI or ID.`,
 			},
-			// --------------------------------------------------------------------------------------------------------
+
+			// -----------------------------------------------------
 			//         Library Operations
-			//		   Get liked tracks
-			// --------------------------------------------------------------------------------------------------------
+			//         Get liked tracks
+			// -----------------------------------------------------
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -550,9 +555,10 @@ export class Spotify implements INodeType {
 				],
 				default: 'getLikedTracks',
 			},
+
 			// ---------------------------------------
-			//         Me Operations
-			//		    Get Followed Artists
+			//         My Data Operations
+			//         Get Followed Artists
 			// ---------------------------------------
 			{
 				displayName: 'Operation',
@@ -561,7 +567,7 @@ export class Spotify implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'me',
+							'myData',
 						],
 					},
 				},
@@ -587,8 +593,8 @@ export class Spotify implements INodeType {
 							'album',
 							'artist',
 							'library',
+							'myData',
 							'playlist',
-							'me',
 						],
 						operation: [
 							'getTracks',
@@ -643,12 +649,12 @@ export class Spotify implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
+							'myData',
 							'player',
-							'me',
 						],
 						operation: [
-							'recentlyPlayed',
 							'getFollowingArtists',
+							'recentlyPlayed',
 						],
 					},
 				},
@@ -1079,7 +1085,7 @@ export class Spotify implements INodeType {
 						responseData = responseData.items;
 					}
 				}
-			} else if (resource === 'me') {
+			} else if (resource === 'myData') {
 
 				if (operation === 'getFollowingArtists') {
 					requestMethod = 'GET';
