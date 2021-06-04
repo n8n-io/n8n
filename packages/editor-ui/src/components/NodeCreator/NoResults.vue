@@ -67,7 +67,7 @@ export default Vue.extend({
 }
 
 .no-results {
-	background-color: #f8f9fb;
+	background-color: $--node-creator-no-results-background-color;
 	text-align: center;
 	height: 100%;
 	border-left: 1px solid $--node-creator-border-color;

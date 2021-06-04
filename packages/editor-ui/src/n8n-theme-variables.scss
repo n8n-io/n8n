@@ -65,14 +65,21 @@ $--tag-close-background-hover-color: #3d3f46;
 
 // Node creator 
 $--node-creator-width: 385px;
+$--node-creator-text-color: #555;
 $--node-creator-select-background-color: #f2f4f8;
 $--node-creator-background-color: #fff;
-$--node-creator-search-placeholder-color: #909399;
 $--node-creator-search-background-color: #fff;
-$--node-creator-border-color: #dBdfe7;
-$--node-creator-item-hover-border-color: #8D939C;
-$--node-creator-item-hover-background-color: #FFFAF9;
+$--node-creator-border-color: #dbdfe7;
+$--node-creator-item-hover-border-color: #8d939c;
+$--node-creator-item-hover-background-color: #fffaf9;
+$--node-creator-arrow-color: #8d939c;
+$--node-creator-no-results-background-color: #f8f9fb;
+$--node-creator-close-button-color: #fff;
+$--node-creator-search-clear-background-color: #8d939c;
+$--node-creator-search-clear-background-color-hover: #3d3f46;
+$--node-creator-search-placeholder-color: #909399;
+$--node-creator-subcategory-panel-header-bacground-color: #f2f4f8;
 
 // trigger icon
-$--trigger-icon-border-color: #DCDFE6;
+$--trigger-icon-border-color: #dcdfe6;
 $--trigger-icon-background-color: #fff;

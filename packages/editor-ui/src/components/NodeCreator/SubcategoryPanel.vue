@@ -51,9 +51,9 @@ export default Vue.extend({
 }
 
 .subcategory-header {
-	border: #dbdfe7 solid 1px;
+	border: $--node-creator-border-color solid 1px;
 	height: 50px;
-	background-color: #f2f4f8;
+	background-color: $--node-creator-subcategory-panel-header-bacground-color;
 
 	font-size: 18px;
 	font-weight: 600;
@@ -65,7 +65,7 @@ export default Vue.extend({
 }
 
 .back-arrow {
-	color: #8d939c;
+	color: $--node-creator-arrow-color;
 	height: 16px;
 	width: 16px;
 	margin-right: 24px;

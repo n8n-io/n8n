@@ -14,7 +14,6 @@
 export default {
 	props: ['item'],
 };
-
 </script>
 
 
@@ -39,6 +38,6 @@ export default {
 .arrow {
 	font-size: 12px;
 	width: 12px;
-	color: #8d939c;
+	color: $--node-creator-arrow-color;
 }
 </style>

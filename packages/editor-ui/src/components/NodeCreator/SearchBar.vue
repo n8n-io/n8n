@@ -1,6 +1,6 @@
 <template>
 	<div class="search-container">
-		<div :class="{prefix: true, active: value.length > 0}">
+		<div :class="{ prefix: true, active: value.length > 0 }">
 			<font-awesome-icon icon="search" />
 		</div>
 		<div class="text">
@@ -12,7 +12,7 @@
 			/>
 		</div>
 		<div class="suffix" v-if="value.length > 0" @click="clear">
-			<span class="close el-icon-close clickable"></span>
+			<span class="clear el-icon-close clickable"></span>
 		</div>
 	</div>
 </template>
@@ -21,11 +21,11 @@
 import Vue from "vue";
 
 export default Vue.extend({
-	name: 'SearchBar',
-	props: ['value', 'eventBus'],
+	name: "SearchBar",
+	props: ["value", "eventBus"],
 	mounted() {
 		if (this.$props.eventBus) {
-			this.$props.eventBus.$on('focus', () => {
+			this.$props.eventBus.$on("focus", () => {
 				this.focus();
 			});
 		}
@@ -42,10 +42,10 @@ export default Vue.extend({
 		},
 		onInput(event: InputEvent) {
 			const input = event.target as HTMLInputElement;
-			this.$emit('input', input.value);
+			this.$emit("input", input.value);
 		},
 		clear() {
-			this.$emit('input', '');
+			this.$emit("input", "");
 		},
 	},
 });
@@ -82,17 +82,18 @@ export default Vue.extend({
 .text {
 	flex-grow: 1;
 
-  input {
+	input {
 		width: 100%;
 		border: none !important;
 		outline: none;
 		font-size: 18px;
 		-webkit-appearance: none;
 
-	&::placeholder, &::-webkit-input-placeholder {
-		color: #909399;
+		&::placeholder,
+		&::-webkit-input-placeholder {
+			color: $--node-creator-search-placeholder-color;
+		}
 	}
-}
 }
 
 .suffix {
@@ -102,8 +103,8 @@ export default Vue.extend({
 	display: inline-block;
 }
 
-.close {
-	background-color: #8D939C;
+.clear {
+	background-color: $--node-creator-search-clear-background-color;
 	border-radius: 50%;
 	height: 16px;
 	width: 16px;
@@ -113,7 +114,7 @@ export default Vue.extend({
 	align-items: center;
 
 	&:hover {
-		background-color: #3d3f46;
+		background-color: $--node-creator-search-clear-background-color-hover;
 	}
 
 	&:before {
