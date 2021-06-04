@@ -45,26 +45,17 @@
 import Vue from 'vue';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { INodeTypeDescription } from 'n8n-workflow';
 
 import mixins from 'vue-typed-mixins';
 import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
 import SubcategoryPanel from './SubcategoryPanel.vue';
-import { INodeCreateElement } from '@/Interface';
-import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, SUBCATEGORY_DESCRIPTIONS, UNCATEGORIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY, HIDDEN_NODES  } from '@/constants';
+import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Interface';
+import { CORE_NODES_CATEGORY  } from '@/constants';
 import SlideTransition from '../transitions/SlideTransition.vue';
+import { matchesSelectType } from './helpers';
 
-interface ICategoriesWithNodes {
-	[category: string]: {
-		[subcategory: string]: {
-			regularCount: number;
-			triggerCount: number;
-			nodes: INodeCreateElement[];
-		};
-	};
-}
 
 export default mixins(externalHooks).extend({
 	name: 'NodeCreateList',
@@ -75,6 +66,7 @@ export default mixins(externalHooks).extend({
 		SlideTransition,
 		SearchBar,
 	},
+	props: ['categorizedItems', 'categoriesWithNodes', 'searchItems'],
 	data() {
 		return {
 			activeCategory: [] as string[],
@@ -86,271 +78,58 @@ export default mixins(externalHooks).extend({
 		};
 	},
 	computed: {
-		basePath(): string {
-			return this.$store.getters.getBaseUrl;
-		},
 		filteredNodeTypes(): INodeCreateElement[] {
+			const nodeTypes: INodeCreateElement[] = this.searchItems;
 			const filter = this.nodeFilter.toLowerCase();
-			const nodeTypes: INodeTypeDescription[] = this.$store.getters
-				.allNodeTypes;
 
-			// Apply the filters
-			const returnData = nodeTypes.filter((nodeType) => {
-				if (HIDDEN_NODES.includes(nodeType.name)) {
-					return false;
-				}
-
-				if (
-					filter &&
-					nodeType.displayName.toLowerCase().indexOf(filter) === -1
-				) {
-					return false;
-				}
-				if (this.selectedType !== 'All') {
-					if (
-						this.selectedType === 'Trigger' &&
-						!nodeType.group.includes('trigger')
-					) {
-						return false;
-					} else if (
-						this.selectedType === 'Regular' &&
-						nodeType.group.includes('trigger')
-					) {
-						return false;
-					}
-				}
-				return true;
+			const returnData = nodeTypes.filter((el: INodeCreateElement) => {
+				const nodeType = (el.properties as INodeItemProps).nodeType;
+				return filter && nodeType.displayName.toLowerCase().indexOf(filter) === -1;
 			});
 
-			// Sort the node types
-			let textA, textB;
-			returnData.sort((a, b) => {
-				textA = a.displayName.toLowerCase();
-				textB = b.displayName.toLowerCase();
-				return textA < textB ? -1 : textA > textB ? 1 : 0;
-			});
+			setTimeout(() => {
+				this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
+					nodeFilter: this.nodeFilter,
+					result: returnData,
+					selectedType: this.selectedType,
+				});
+			}, 0);
 
-			this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
-				nodeFilter: this.nodeFilter,
-				result: returnData,
-				selectedType: this.selectedType,
-			});
-
-			return returnData.map((nodeType) => ({
-				type: 'node',
-				category: '',
-				key: `${nodeType.name}`,
-				properties: {
-					nodeType,
-					subcategory: '',
-				},
-			}));
-		},
-
-		categoriesWithNodes(): ICategoriesWithNodes {
-			const nodeTypes = this.$store.getters.allNodeTypes;
-
-			const categorized = nodeTypes.reduce(
-				(accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
-					if (HIDDEN_NODES.includes(nodeType.name)) {
-						return accu;
-					}
-
-					if (!nodeType.codex || !nodeType.codex.categories) {
-						accu[UNCATEGORIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].nodes.push({
-							type: 'node',
-							category: UNCATEGORIZED_CATEGORY,
-							key: `${UNCATEGORIZED_CATEGORY}_${nodeType.name}`,
-							properties: {
-								subcategory: UNCATEGORIZED_SUBCATEGORY,
-								nodeType,
-							},
-							includedByTrigger: nodeType.group.includes('trigger'),
-							includedByRegular: !nodeType.group.includes('trigger'),
-						});
-						return accu;
-					}
-					nodeType.codex.categories.forEach((_category: string) => {
-						const category = _category.trim();
-						const subcategory =
-							nodeType.codex &&
-							nodeType.codex.subcategories &&
-							nodeType.codex.subcategories[category]
-								? nodeType.codex.subcategories[category][0]
-								: UNCATEGORIZED_SUBCATEGORY;
-						if (!accu[category]) {
-							accu[category] = {};
-						}
-						if (!accu[category][subcategory]) {
-							accu[category][subcategory] = {
-								triggerCount: 0,
-								regularCount: 0,
-								nodes: [],
-							};
-						}
-						const isTrigger = nodeType.group.includes('trigger');
-						if (isTrigger) {
-							accu[category][subcategory].triggerCount++;
-						}
-						if (!isTrigger) {
-							accu[category][subcategory].regularCount++;
-						}
-						accu[category][subcategory].nodes.push({
-							type: 'node',
-							key: `${category}_${nodeType.name}`,
-							category,
-							properties: {
-								nodeType,
-								subcategory,
-							},
-							includedByTrigger: isTrigger,
-							includedByRegular: !isTrigger,
-						});
-					});
-					return accu;
-				},
-				{
-					[UNCATEGORIZED_CATEGORY]: {
-						[UNCATEGORIZED_SUBCATEGORY]: {
-							triggerCount: 0,
-							regularCount: 0,
-							nodes: [],
-						},
-					},
-				},
-			);
-
-			return categorized;
-		},
-
-		categories(): string[] {
-			const categories = Object.keys(this.categoriesWithNodes);
-			const sorted = categories.filter(
-				(category: string) =>
-					category !== CORE_NODES_CATEGORY && category !== CUSTOM_NODES_CATEGORY && category !== UNCATEGORIZED_CATEGORY,
-			);
-			sorted.sort();
-
-			return [CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, ...sorted, UNCATEGORIZED_CATEGORY];
-		},
-
-		nodesWithCategories(): INodeCreateElement[] {
-			const collapsed = this.categories.reduce(
-				(accu: INodeCreateElement[], category: string) => {
-					if (!this.categoriesWithNodes[category]) {
-						return accu;
-					}
-
-					const categoryEl: INodeCreateElement = {
-						type: 'category',
-						key: category,
-						category,
-						properties: {
-							expanded: false,
-						},
-					};
-
-					const subcategories = Object.keys(this.categoriesWithNodes[category]);
-					if (subcategories.length === 1) {
-						const subcategory = this.categoriesWithNodes[category][
-							subcategories[0]
-						];
-						if (subcategory.triggerCount > 0) {
-							categoryEl.includedByTrigger = subcategory.triggerCount > 0;
-						}
-						if (subcategory.regularCount > 0) {
-							categoryEl.includedByRegular = subcategory.regularCount > 0;
-						}
-						return [...accu, categoryEl, ...subcategory.nodes];
-					}
-
-					subcategories.sort();
-					const subcategorized = subcategories.reduce(
-						(accu: INodeCreateElement[], subcategory: string) => {
-							const subcategoryEl: INodeCreateElement = {
-								type: 'subcategory',
-								key: `${category}_${subcategory}`,
-								category,
-								properties: {
-									subcategory,
-									description: SUBCATEGORY_DESCRIPTIONS[category][subcategory],
-								},
-								includedByTrigger:
-									this.categoriesWithNodes[category][subcategory].triggerCount >
-									0,
-								includedByRegular:
-									this.categoriesWithNodes[category][subcategory].regularCount >
-									0,
-							};
-
-							if (subcategoryEl.includedByTrigger) {
-								categoryEl.includedByTrigger = true;
-							}
-							if (subcategoryEl.includedByRegular) {
-								categoryEl.includedByRegular = true;
-							}
-
-							return [...accu, subcategoryEl];
-						},
-						[],
-					);
-
-					return [...accu, categoryEl, ...subcategorized];
-				},
-				[],
-			);
-
-			return collapsed;
+			return returnData;
 		},
 
 		categorized() {
-			// @ts-ignore
-			return this.nodesWithCategories
-				.filter((el: INodeCreateElement) => {
+			return this.categorizedItems && this.categorizedItems
+				.reduce((accu: INodeCreateElement[], el: INodeCreateElement) => {
 					if (
 						el.type !== 'category' &&
 						!this.activeCategory.includes(el.category)
 					) {
-						return false;
-					}
-					if (this.selectedType === 'Trigger' && el.includedByTrigger) {
-						return true;
-					}
-					if (this.selectedType === 'Regular' && el.includedByRegular) {
-						return true;
+						return accu;
 					}
 
-					return this.selectedType === 'All';
-				})
-				.map((el: INodeCreateElement) => {
+					if (!matchesSelectType(el, this.selectedType)) {
+						return accu;
+					}
+
 					if (el.type === 'category') {
-						return {
+						return [...accu, {
 							...el,
 							expanded: this.activeCategory.includes(el.category),
-						};
+						}];
 					}
 
-					return el;
-				});
+					return [...accu, el];
+				}, []);
 		},
 
 		subcategorizedNodes() {
 			const activeSubcategory = this.activeSubcategory as INodeCreateElement;
 			const category = activeSubcategory.category;
-			// @ts-ignore
-			const subcategory = activeSubcategory.properties.subcategory;
+			const subcategory = (activeSubcategory.properties as ISubcategoryItemProps).subcategory;
 
-			// @ts-ignore
 			return activeSubcategory && this.categoriesWithNodes[category][subcategory]
-				.nodes.filter((el: INodeCreateElement) => {
-					if (el.includedByTrigger && this.selectedType === 'Trigger') {
-						return true;
-					}
-					if (el.includedByRegular && this.selectedType === 'Regular') {
-						return true;
-					}
-					return this.selectedType === 'All';
-				});
+				.nodes.filter((el: INodeCreateElement) => matchesSelectType(el, this.selectedType));
 		},
 	},
 	watch: {
@@ -405,8 +184,10 @@ export default mixins(externalHooks).extend({
 			}
 		},
 		selected(element: INodeCreateElement) {
-			if (element.type === 'node' && element.properties.nodeType) {
-				this.nodeTypeSelected(element.properties.nodeType.name);
+			if (element.type === 'node') {
+				const properties = element.properties as INodeItemProps;
+
+				this.nodeTypeSelected(properties.nodeType.name);
 			} else if (element.type === 'category') {
 				this.onCategorySelected(element.category);
 			} else if (element.type === 'subcategory') {

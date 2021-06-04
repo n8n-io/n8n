@@ -7,7 +7,7 @@
 					<i class="el-icon-close"></i>
 				</div>
 
-				<MainPanel ref="list" @nodeTypeSelected="nodeTypeSelected"></MainPanel>
+				<MainPanel @nodeTypeSelected="nodeTypeSelected" :categorizedItems="categorizedItems" :categoriesWithNodes="categoriesWithNodes" :searchItems="searchItems"></MainPanel>
 			</div>
 		</SlideTransition>
 	</div>
@@ -16,9 +16,14 @@
 <script lang="ts">
 
 import Vue from 'vue';
+
+import { ICategoriesWithNodes, INodeCreateElement } from '@/Interface';
+import { INodeTypeDescription } from 'n8n-workflow';
 import SlideTransition from '../transitions/SlideTransition.vue';
+import { HIDDEN_NODES  } from '@/constants';
 
 import MainPanel from './MainPanel.vue';
+import { getCategoriesWithNodes, getCategorizedList } from './helpers';
 
 export default Vue.extend({
 	name: 'NodeCreator',
@@ -29,6 +34,38 @@ export default Vue.extend({
 	props: [
 		'active',
 	],
+	computed: {
+		visibleNodeTypes(): INodeTypeDescription[] {
+			return this.$store.getters.allNodeTypes
+				.filter((nodeType: INodeTypeDescription) => {
+					return !HIDDEN_NODES.includes(nodeType.name);
+				});
+		},
+		categoriesWithNodes(): ICategoriesWithNodes {
+			return getCategoriesWithNodes(this.visibleNodeTypes);
+		},
+		categorizedItems(): INodeCreateElement[] {
+			return getCategorizedList(this.categoriesWithNodes);
+		},
+		searchItems(): INodeCreateElement[] {
+			const sorted = [...this.visibleNodeTypes];
+			sorted.sort((a, b) => {
+				const textA = a.displayName.toLowerCase();
+				const textB = b.displayName.toLowerCase();
+				return textA < textB ? -1 : textA > textB ? 1 : 0;
+			});
+
+			return sorted.map((nodeType) => ({
+				type: 'node',
+				category: '',
+				key: `${nodeType.name}`,
+				properties: {
+					nodeType,
+					subcategory: '',
+				},
+			}));
+		},
+	},
 	methods: {
 		closeCreator () {
 			this.$emit('closeNodeCreator');

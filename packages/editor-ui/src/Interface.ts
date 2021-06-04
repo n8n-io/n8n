@@ -461,17 +461,17 @@ export interface ICodex {
 	subcategories?: {[category: string]: string[]};
 }
 
-interface ISubcategoryItemProps {
+export interface ISubcategoryItemProps {
 	subcategory: string;
 	description: string;
 }
 
-interface INodeItemProps {
+export interface INodeItemProps {
 	subcategory: string;
 	nodeType: INodeTypeDescription;
 }
 
-interface ICategoryItemProps {
+export interface ICategoryItemProps {
 	expanded: boolean;
 }
 
@@ -484,6 +484,15 @@ export interface INodeCreateElement {
 	properties: ISubcategoryItemProps | INodeItemProps | ICategoryItemProps;
 }
 
+export interface ICategoriesWithNodes {
+	[category: string]: {
+		[subcategory: string]: {
+			regularCount: number;
+			triggerCount: number;
+			nodes: INodeCreateElement[];
+		};
+	};
+}
 
 export interface ITag {
 	id: string;
