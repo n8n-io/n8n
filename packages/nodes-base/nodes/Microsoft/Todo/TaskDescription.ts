@@ -109,7 +109,7 @@ export const taskFields = [
 				description: 'The content of the task.',
 			},
 			{
-				displayName: 'Due Date Time',
+				displayName: 'Due',
 				name: 'dueDateTime',
 				type: 'dateTime',
 				default: '',

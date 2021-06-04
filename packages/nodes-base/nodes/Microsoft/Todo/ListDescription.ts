@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const taskListOperations = [
+export const listOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const taskListOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'taskList',
+					'list',
 				],
 			},
 		},
@@ -41,9 +41,9 @@ export const taskListOperations = [
 	},
 ] as INodeProperties[];
 
-export const taskListFields = [
+export const listFields = [
 /* -------------------------------------------------------------------------- */
-/*                                 taskList:create                            */
+/*                                 list:create                                */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'List Name',
@@ -55,7 +55,7 @@ export const taskListFields = [
 					'create',
 				],
 				resource: [
-					'taskList',
+					'list',
 				],
 			},
 		},
@@ -64,11 +64,11 @@ export const taskListFields = [
 		description: 'List display name.',
 	},
 /* -------------------------------------------------------------------------- */
-/*                                 taskList:get/delete/update                 */
+/*                                 list:get/delete/update                     */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'List ID',
-		name: 'taskListId',
+		name: 'listId',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -78,7 +78,7 @@ export const taskListFields = [
 					'update',
 				],
 				resource: [
-					'taskList',
+					'list',
 				],
 			},
 		},
@@ -87,7 +87,7 @@ export const taskListFields = [
 		description: 'The identifier of the list, unique in the user\'s mailbox.',
 	},
 /* -------------------------------------------------------------------------- */
-/*                                 taskList:getAll                            */
+/*                                 list:getAll                                */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -96,7 +96,7 @@ export const taskListFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'taskList',
+					'list',
 				],
 				operation: [
 					'getAll',
@@ -113,7 +113,7 @@ export const taskListFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'taskList',
+					'list',
 				],
 				operation: [
 					'getAll',
@@ -129,7 +129,7 @@ export const taskListFields = [
 		description: 'How many results to return.',
 	},
 /* -------------------------------------------------------------------------- */
-/*                                 taskList:update                            */
+/*                                 list:update                                */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'New List Name',
@@ -141,7 +141,7 @@ export const taskListFields = [
 					'update',
 				],
 				resource: [
-					'taskList',
+					'list',
 				],
 			},
 		},

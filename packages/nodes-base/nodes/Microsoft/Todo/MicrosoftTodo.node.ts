@@ -28,9 +28,9 @@ import {
 } from './TaskDescription';
 
 import {
-	taskListFields,
-	taskListOperations,
-} from './TaskListDescription';
+	listFields,
+	listOperations,
+} from './ListDescription';
 
 import * as moment from 'moment-timezone';
 
@@ -66,12 +66,12 @@ export class MicrosoftTodo implements INodeType {
 						value: 'linkedResource',
 					},
 					{
-						name: 'Task',
-						value: 'task',
+						name: 'List',
+						value: 'list',
 					},
 					{
-						name: 'Task List',
-						value: 'taskList',
+						name: 'Task',
+						value: 'task',
 					},
 				],
 				default: 'task',
@@ -81,8 +81,8 @@ export class MicrosoftTodo implements INodeType {
 			...linkedResourceFields,
 			...taskOperations,
 			...taskFields,
-			...taskListOperations,
-			...taskListFields,
+			...listOperations,
+			...listFields,
 		],
 	};
 
@@ -268,7 +268,7 @@ export class MicrosoftTodo implements INodeType {
 						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 					}
 
-				} else if (resource === 'taskList') {
+				} else if (resource === 'list') {
 
 					// https://docs.microsoft.com/en-us/graph/api/todo-post-lists?view=graph-rest-1.0&tabs=http
 					if (operation === 'create') {
