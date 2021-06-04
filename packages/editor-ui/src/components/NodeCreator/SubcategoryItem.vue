@@ -33,14 +33,12 @@ export default {
 .title {
 	font-size: 14px;
 	font-weight: bold;
-	letter-spacing: 0;
 	line-height: 16px;
 	margin-bottom: 3px;
 }
 
 .description {
 	font-size: 11px;
-	letter-spacing: 0;
 	line-height: 15px;
 	font-weight: 400;
 }

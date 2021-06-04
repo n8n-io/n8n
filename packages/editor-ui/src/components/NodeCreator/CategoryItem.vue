@@ -24,8 +24,7 @@ export default {
 	letter-spacing: 1px;
 	line-height: 11px;
 	padding: 10px 0;
-	margin-left: 12px;
-	margin-right: 12px;
+	margin: 0 12px;
 	border-bottom: 1px solid $--node-creator-border-color;
 	display: flex;
 	text-transform: uppercase;
