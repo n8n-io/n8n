@@ -61,13 +61,13 @@ export default Vue.extend({
 	font-weight: 400;
 
 	> i:hover {
-			transform: scale(1.2);
+		transform: scale(1.2);
 	}
 }
 
 .node-creator {
 	position: fixed;
-	top: 65px;
+	top: $--header-height;
 	right: 0;
 	width: $--node-creator-width;
 	height: 100%;

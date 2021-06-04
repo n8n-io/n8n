@@ -64,15 +64,15 @@ export default {
 
 .name {
 	font-weight: bold;
-  font-size: 14px;
-  line-height: 18px;
+	font-size: 14px;
+	line-height: 18px;
 	margin-right: 5px;
 }
 
 .description {
 	margin-top: 4px;
-  font-size: 11px;
-  line-height: 15px;
+	font-size: 11px;
+	line-height: 15px;
 	font-weight: 400;
 }
 
