@@ -476,7 +476,7 @@ export interface ICategoryItemProps {
 }
 
 export interface INodeCreateElement {
-	type: string;
+	type: 'node' | 'category' | 'subcategory';
 	category: string;
 	key: string;
 	includedByTrigger?: boolean;
