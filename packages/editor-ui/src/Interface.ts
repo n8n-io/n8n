@@ -456,11 +456,6 @@ export interface ILinkMenuItemProperties {
 	newWindow?: boolean;
 }
 
-export interface ICodex {
-	categories?: string[];
-	subcategories?: {[category: string]: string[]};
-}
-
 export interface ISubcategoryItemProps {
 	subcategory: string;
 	description: string;
