@@ -2,14 +2,14 @@
 	<div v-if="webhooksNode.length" class="webhoooks">
 		<div class="clickable headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? 'Click to display Webhook URLs' : 'Click to hide Webhook URLs'">
 			<font-awesome-icon icon="angle-up" class="minimize-button minimize-icon" />
-			Webhook URLs
+			{{ $t('nodeWebhooks.webhookUrls') }}
 		</div>
 		<el-collapse-transition>
 			<div class="node-webhooks" v-if="!isMinimized">
 				<div class="url-selection">
 					<el-row>
 						<el-col :span="10" class="mode-selection-headline">
-							Display URL for:
+							{{ $t('nodeWebhooks.displayUrlFor') }}:
 						</el-col>
 						<el-col :span="14">
 							<el-radio-group v-model="showUrlFor" size="mini">

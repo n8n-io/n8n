@@ -6,7 +6,7 @@
 				<div class="title-right">
 					<div v-if="credentialType && documentationUrl" class="docs-container">
 						<svg class="help-logo" target="_blank" width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-							<title>Node Documentation</title>
+							<title>{{ $t('credentialsEdit.nodeDocumentation') }}</title>
 							<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
 								<g transform="translate(-1127.000000, -836.000000)" fill-rule="nonzero">
 									<g transform="translate(1117.000000, 825.000000)">
@@ -20,14 +20,14 @@
 								</g>
 							</g>
 						</svg>
-						<span class="doc-link-text">Need help? <a class="doc-hyperlink" :href="documentationUrl" target="_blank">Open credential docs</a></span>
+						<span class="doc-link-text">{{ $t('credentialsEdit.needHelp') }} <a class="doc-hyperlink" :href="documentationUrl" target="_blank">{{ $t('credentialsEdit.openCredentialDocs') }}</a></span>
 					</div>
 				</div>
 			</div>
 			<div class="credential-type-item">
 				<el-row v-if="!setCredentialType">
 					<el-col :span="6">
-						Credential type:
+						{{ $t('credentialsEdit.credentialType') }}:
 					</el-col>
 					<el-col :span="18">
 						<el-select v-model="credentialType" filterable placeholder="Select Type" size="small" ref="credentialsDropdown">

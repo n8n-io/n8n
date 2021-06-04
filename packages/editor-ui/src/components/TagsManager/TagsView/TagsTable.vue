@@ -9,7 +9,7 @@
 		:row-class-name="getRowClasses"
 		v-loading="isLoading"
 	>
-		<el-table-column label="Name">
+		<el-table-column :label="$t('tagsTable.name')">
 			<template slot-scope="scope">
 				<div class="name" :key="scope.row.id" @keydown.stop>
 					<transition name="fade" mode="out-in">
@@ -21,7 +21,7 @@
 							ref="nameInput"
 						></el-input>
 						<span v-else-if="scope.row.delete">
-							<span>Are you sure you want to delete this tag?</span>
+							<span>{{ $t('tagsTable.areYouSureYouWantToDeleteThisTag') }}</span>
 							<input ref="deleteHiddenInput" class="hidden" />
 						</span>
 						<span v-else :class="{ disabled: scope.row.disable }">
@@ -31,7 +31,7 @@
 				</div>
 			</template>
 		</el-table-column>
-		<el-table-column label="Usage" width="150">
+		<el-table-column :label="$t('tagsTable.usage')" width="150">
 			<template slot-scope="scope">
 				<transition name="fade" mode="out-in">
 						<div v-if="!scope.row.create && !scope.row.delete" :class="{ disabled: scope.row.disable }">
@@ -46,20 +46,20 @@
 					<div class="ops" v-if="scope.row.create">
 						<el-button title="Cancel" @click.stop="cancel" size="small" plain :disabled="isSaving">Cancel</el-button>
 						<el-button title="Create Tag" @click.stop="apply" size="small" :loading="isSaving">
-							Create tag
+							{{ $t('tagsTable.createTag') }}
 						</el-button>
 					</div>
 					<div class="ops" v-else-if="scope.row.update">
-						<el-button title="Cancel" @click.stop="cancel" size="small" plain :disabled="isSaving">Cancel</el-button>
-						<el-button title="Save Tag" @click.stop="apply" size="small" :loading="isSaving">Save changes</el-button>
+						<el-button :title="$t('tagsTable.cancel')" @click.stop="cancel" size="small" plain :disabled="isSaving">{{ $t('tagsTable.cancel') }}</el-button>
+						<el-button :title="$t('tagsTable.saveChanges')" @click.stop="apply" size="small" :loading="isSaving">{{ $t('tagsTable.saveChanges') }}</el-button>
 					</div>
 					<div class="ops" v-else-if="scope.row.delete">
-						<el-button title="Cancel" @click.stop="cancel" size="small" plain :disabled="isSaving">Cancel</el-button>
-						<el-button title="Delete Tag" @click.stop="apply" size="small" :loading="isSaving">Delete tag</el-button>
+						<el-button title="Cancel" @click.stop="cancel" size="small" plain :disabled="isSaving">{{ $t('tagsTable.cancel') }}</el-button>
+						<el-button title="$t('tagsTable.deleteTag')" @click.stop="apply" size="small" :loading="isSaving">{{ $t('tagsTable.deleteTag') }}</el-button>
 					</div>
 					<div class="ops main" v-else-if="!scope.row.disable">
-						<el-button title="Edit Tag" @click.stop="enableUpdate(scope.row)" icon="el-icon-edit" circle></el-button>
-						<el-button title="Delete Tag" @click.stop="enableDelete(scope.row)" icon="el-icon-delete" circle></el-button>
+						<el-button :title="$t('tagsTable.editTag')" @click.stop="enableUpdate(scope.row)" icon="el-icon-edit" circle></el-button>
+						<el-button :title="$t('tagsTable.deleteTag')" @click.stop="enableDelete(scope.row)" icon="el-icon-delete" circle></el-button>
 					</div>
 				</transition>
 			</template>

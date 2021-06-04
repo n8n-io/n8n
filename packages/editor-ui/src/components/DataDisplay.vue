@@ -10,7 +10,7 @@
 				<transition name="fade">
 					<div v-if="showDocumentHelp && nodeType" class="doc-help-wrapper">
 								<svg id="help-logo" v-if="showDocumentHelp && nodeType" :href="documentationUrl" target="_blank" width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-									<title>Node Documentation</title>
+									<title>{{ $t('dataDisplay.nodeDocumentation') }}</title>
 									<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
 										<g transform="translate(-1127.000000, -836.000000)" fill-rule="nonzero">
 											<g transform="translate(1117.000000, 825.000000)">
@@ -26,7 +26,7 @@
 								</svg>
 
 							<div v-if="showDocumentHelp && nodeType" class="text">
-								Need help? <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">Open {{nodeType.displayName}} documentation</a>
+								{{ $t('dataDisplay.needHelp') }} <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick"> {{ $t('dataDisplay.openDocumentationFor') }} {{nodeType.displayName}}</a>
 							</div>
 					</div>
 				</transition>

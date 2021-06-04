@@ -2,7 +2,7 @@
 	<el-row class="tags-header">
 		<el-col :span="10">
 			<el-input
-				placeholder="Search tags"
+				:placeholder="$t('tagsTableHeader.searchTags')"
 				:value="search"
 				@input="onSearchChange"
 				:disabled="disabled"
@@ -15,7 +15,7 @@
 		<el-col :span="14">
 			<el-button @click="onAddNew" :disabled="disabled" plain>
 				<font-awesome-icon icon="plus" />
-				<div class="next-icon-text">Add new</div>
+				<div class="next-icon-text">{{ $t('tagsTableHeader.addNew') }}</div>
 			</el-button>
 		</el-col>
 	</el-row>

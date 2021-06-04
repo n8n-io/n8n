@@ -4,13 +4,13 @@
 
 		<el-dialog :visible="dialogVisible" append-to-body width="80%" title="Credentials" :before-close="closeDialog">
 			<div class="text-very-light">
-				Your saved credentials:
+				{{ $t('credentialsList.yourSavedCredentials') }}:
 			</div>
 
 			<el-button title="Create New Credentials" class="new-credentials-button" @click="createCredential()">
 				<font-awesome-icon icon="plus" />
 				<div class="next-icon-text">
-					Add New
+					{{ $t('credentialsList.addNew') }}
 				</div>
 			</el-button>
 

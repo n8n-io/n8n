@@ -4,6 +4,9 @@ export default {
 		nodeViewError: {
 			error: 'ERROR',
 			details: 'Details',
+			time: 'Time',
+			httpCode: 'HTTP-Code',
+			cause: 'Cause',
 			dataBelowMayContain: 'Data below may contain sensitive information. Proceed with caution when sharing.',
 			stack: 'Stack',
 		},
@@ -14,15 +17,25 @@ export default {
 			createATag: 'Create a tag',
 		},
 
+		workflowDetails: {
+			addTag: 'Add tag',
+			active: 'Active',
+		},
+
 		tagsTable: {
 			areYouSureYouWantToDeleteThisTag: 'Are you sure you want to delete this tag?',
 			createTag: 'Create tag',
 			saveChanges: 'Save changes',
+			cancel: 'Cancel',
 			deleteTag: 'Delete tag',
+			name: 'Name',
+			usage: 'Usage',
+			editTag: 'Edit Tag',
 		},
 
 		tagsTableHeader: {
 			addNew: 'Add new',
+			searchTags: 'Search Tags',
 		},
 
 		about: {
@@ -47,13 +60,13 @@ export default {
 			nodeDocumentation: 'Node Documentation',
 			needHelp: 'Need help?',
 			openCredentialDocs: 'Open credential docs',
-			credentialType: 'Credential type:',
+			credentialType: 'Credential type',
 		},
 
 		credentialsInput: {
 			credentialsName: 'Credentials Name:',
 			credentialData: 'Credential Data:',
-			enterAllProperties: 'Enter all required properties',
+			enterAllRequiredProperties: 'Enter all required properties',
 			connected: 'Connected',
 			notConnected: 'Not connected',
 			oAuth2CallbackUrl: 'OAuth Callback URL',
@@ -62,6 +75,8 @@ export default {
 			addAtLeastOneNodeWhichHasAccessToTheCredentials: 'Add at least one node which has access to the credentials!',
 			save: 'Save',
 			create: 'Create',
+			noAccess: 'No Access',
+			access: 'Access ',
 		},
 
 		credentialsList: {
@@ -71,22 +86,25 @@ export default {
 
 		dataDisplay: {
 			nodeDocumentation: 'Node Documentation',
-			openDocumentationFor: 'Open documentation for',
+			needHelp: 'Need help?',
+			openDocumentationFor: 'Open documentation for', // middle problem
 		},
 
 		duplicateWorkflowDialog: {
 			enterWorkflowName: 'Enter workflow name',
-			// search: placeholder="
 			save: 'Save',
 			cancel: 'Cancel',
+			duplicateWorkflow: 'Duplicate Workflow',
+			chooseOrCreateATag: 'Choose or create a tag',
 		},
 
 		executionsList: {
 			filters: 'Filters:',
 			autoRefresh: 'Auto refresh',
-			selected: 'Selected', // mind the whitespace+colon
+			selected: 'Selected',
 			checkAll: 'Check all',
-			runningParens: '(running)',
+			runningParens: 'running',
+			retryOf: 'Retry of',
 			successRetry: 'Success retry',
 			running: 'Running',
 			success: 'Success',
@@ -110,6 +128,7 @@ export default {
 
 		mainSideBar: {
 			workflows: 'Workflows',
+			workflow: 'Workflow',
 			new: 'New',
 			open: 'Open',
 			save: 'Save',
@@ -123,6 +142,11 @@ export default {
 			executions: 'Executions',
 			help: 'Help',
 			aboutN8n: 'About n8n',
+			helpMenuItems: {
+				documentation: 'Documentation',
+				forum: 'Forum',
+				workflows: 'workflows',
+			},
 		},
 
 		multipleParameter: {
@@ -131,6 +155,10 @@ export default {
 
 		nodeCreateList: {
 			noNodesMatchYourSearchCriteria: '🙃 no nodes matching your search criteria',
+			typeToFilter: 'Type to filter...',
+			regular: 'Regular',
+			trigger: 'Trigger',
+			all: 'All',
 		},
 
 		nodeCreator: {
@@ -203,10 +231,11 @@ export default {
 		runData: {
 			executeNode: 'Execute Node',
 			items: 'Items',
-			startTime: 'Start Time', // semicolon
-			executionTime: 'Execution Time', // semicolon
-			output: 'Output', // pipe and colon
-			dataOfExecution: 'Data of Execution', // pipe and colon
+			startTime: 'Start Time',
+			executionTime: 'Execution Time',
+			ms: 'ms',
+			output: 'Output',
+			dataOfExecution: 'Data of Execution',
 			copyItemPath: 'Copy Item Path',
 			copyParameterPath: 'Copy Parameter Path',
 			copyValue: 'Copy Value',
@@ -226,6 +255,7 @@ export default {
 
 		saveWorkflowButton: {
 			save: 'Save',
+			saved: 'Saved',
 		},
 
 		tagsDropdown: {
@@ -235,16 +265,26 @@ export default {
 			manageTags: 'Manage tags',
 		},
 
+		tagsManager: {
+			manageTags: 'Manage tags',
+			done: 'Done',
+			couldNotDeleteTag: 'Could not delete tag',
+		},
+
 		variableSelectorItem: {
 			selectItem: 'Select Item',
-			empty: 'EMPTY', // middle
+			empty: '--- EMPTY ---',
 		},
 
 		workflowActivator: {
-			theWorkflowIsSetToBeActiveBut: 'The workflow is set to be active but could not be started.<br />Click to display error message.</div>',
+			theWorkflowIsSetToBeActiveBut: 'The workflow is set to be active but could not be started.<br />Click to display error message.',
+			deactivateWorkflow: 'Deactivate workflow',
+			activateWorkflow: 'Activate workflow',
 		},
 
 		workflowSettings: {
+			workflowSettings: 'Workflow Settings',
+			noWorkflow: '- No Workflow -',
 			errorWorkflow: 'Error Workflow',
 			timezone: 'Timezone',
 			saveDataErrorExecution: 'Save Data Error Execution', // colon
@@ -258,14 +298,33 @@ export default {
 			minutes: 'minutes',
 			seconds: 'seconds',
 			save: 'Save',
+			helpTexts: {
+				errorWorkflow: 'The workflow to run in case the current one fails.<br />To function correctly that workflow has to contain an "Error Trigger" node!',
+				timezone: 'The timezone in which the workflow should run. Gets for example used by "Cron" node.',
+				saveDataErrorExecution: 'If data data of executions should be saved in case they failed.',
+				saveDataSuccessExecution: 'If data data of executions should be saved in case they succeed.',
+				saveExecutionProgress: 'If data should be saved after each node, allowing you to resume in case of errors from where it stopped. May increase latency.',
+				saveManualExecutions: 'If data data of executions should be saved when started manually from the editor.',
+				executionTimeoutToggle: 'Cancel workflow execution after defined time',
+				executionTimeout: 'After what time the workflow should timeout.',
+			},
 		},
 
 		nodeView: {
-			currentlyNoItemsExist: 'Currently no items exist',
-			parameters: 'Parameters',
-			settings: 'Settings',
+			stoppingCurrentExecution: 'Stopping current execution',
+			stopCurrentExecution:'Stop current execution',
+			executesTheWorkflowFromTheStartOrWebhookNode: 'Executes the Workflow from the Start or Webhook Node.',
+			runButtonText: {
+				executeWorkflow: 'Execute Workflow',
+				waitingForWebhookCall: 'Waiting for Webhook-Call',
+				executingWorkflow: 'Executing Workflow',
+			},
 		},
 
-		'n8n-nodes-base': {},
+		'n8n-nodes-base': {
+			start: {
+				hello: "hallöchen",
+			},
+		},
 	},
 };

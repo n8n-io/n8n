@@ -26,9 +26,9 @@
 				<span>Create tag "{{ filter }}"</span>
 			</el-option>
 			<el-option v-else-if="options.length === 0" value="message" disabled>
-				<span v-if="createEnabled">Type to create a tag</span>
-				<span v-else-if="allTags.length > 0">No matching tags exist</span>
-				<span v-else>No tags exist</span>
+				<span v-if="createEnabled">{{ $t('tagsDropdown.typeToCreateATag') }}</span>
+				<span v-else-if="allTags.length > 0">{{ $t('tagsDropdown.noMatchingTagsExist') }}</span>
+				<span v-else>{{ $t('tagsDropdown.noTagsExist') }}</span>
 			</el-option>
 
 			<!-- key is id+index for keyboard navigation to work well with filter -->
@@ -43,7 +43,7 @@
 
 			<el-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
 				<font-awesome-icon icon="cog" />
-				<span>Manage tags</span>
+				<span>{{ $t('tagsDropdown.manageTags') }}</span>
 			</el-option>
 		</el-select>
 	</div>
@@ -318,7 +318,7 @@ $--border-radius: 20px;
 	}
 
 	li {
-		height: $--item-height; 
+		height: $--item-height;
 		background-color: white;
 		padding: $--item-padding;
 		margin: 0;

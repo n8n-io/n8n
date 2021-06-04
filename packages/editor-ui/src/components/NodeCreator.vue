@@ -6,7 +6,7 @@
 					<i class="el-icon-close close-on-click"></i>
 				</div>
 				<div class="header">
-					Create Node
+					{{ $t('nodeCreator.createNode') }}
 				</div>
 
 				<node-create-list v-if="active" ref="list" @nodeTypeSelected="nodeTypeSelected"></node-create-list>

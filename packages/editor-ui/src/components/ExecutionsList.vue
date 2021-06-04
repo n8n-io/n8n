@@ -4,7 +4,7 @@
 			<div class="filters">
 				<el-row>
 					<el-col :span="4" class="filter-headline">
-						Filters:
+						{{ $t('executionsList.filters') }}:
 					</el-col>
 					<el-col :span="6">
 						<el-select v-model="filter.workflowId" placeholder="Select Workflow" size="small" filterable @change="handleFilterChanged">
@@ -31,14 +31,14 @@
 					<el-col :span="4">&nbsp;
 					</el-col>
 					<el-col :span="4" class="autorefresh">
-						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">Auto refresh</el-checkbox>
+						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">{{ $t('executionsList.autoRefresh') }}</el-checkbox>
 					</el-col>
 				</el-row>
 			</div>
 
 			<div class="selection-options">
 				<span v-if="checkAll === true || isIndeterminate === true">
-					Selected: {{numSelected}}/{{finishedExecutionsCount}}
+					{{ $t('executionsList.selected') }}: {{numSelected}}/{{finishedExecutionsCount}}
 					<el-button type="danger" title="Delete Selected" icon="el-icon-delete" size="mini" @click="handleDeleteSelected" circle></el-button>
 				</span>
 			</div>
@@ -47,7 +47,7 @@
 				<el-table-column label="" width="30">
 					<!-- eslint-disable-next-line vue/no-unused-vars -->
 					<template slot="header" slot-scope="scope">
-						<el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange">Check all</el-checkbox>
+						<el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange">{{ $t('executionsList.checkAll') }}</el-checkbox>
 					</template>
 					<template slot-scope="scope">
 						<el-checkbox v-if="scope.row.stoppedAt !== undefined && scope.row.id" :value="selectedItems[scope.row.id.toString()] || checkAll" @change="handleCheckboxChanged(scope.row.id)" >Check all</el-checkbox>
@@ -66,13 +66,13 @@
 						</span>
 
 						<span v-if="scope.row.stoppedAt === undefined">
-							(running)
+							({{ $t('executionsList.runningParens') }})
 						</span>
 						<span v-if="scope.row.retryOf !== undefined">
-							<br /><small>Retry of "{{scope.row.retryOf}}"</small>
+							<br /><small>{{ $t('executionsList.retryOf') }} "{{scope.row.retryOf}}"</small>
 						</span>
 						<span v-else-if="scope.row.retrySuccessId !== undefined">
-							<br /><small>Success retry "{{scope.row.retrySuccessId}}"</small>
+							<br /><small>{{ $t('executionsList.successRetry') }} "{{scope.row.retrySuccessId}}"</small>
 						</span>
 					</template>
 				</el-table-column>
@@ -83,16 +83,16 @@
 							<div slot="content" v-html="statusTooltipText(scope.row)"></div>
 
 							<span class="status-badge running" v-if="scope.row.stoppedAt === undefined">
-								Running
+								{{ $t('executionsList.running') }}
 							</span>
 							<span class="status-badge success" v-else-if="scope.row.finished">
-								Success
+								{{ $t('executionsList.success') }}
 							</span>
 							<span class="status-badge error" v-else-if="scope.row.stoppedAt !== null">
-								Error
+								{{ $t('executionsList.error') }}
 							</span>
 							<span class="status-badge warning" v-else>
-								Unknown
+								{{ $t('executionsList.unknown') }}
 							</span>
 						</el-tooltip>
 
@@ -103,8 +103,8 @@
 								</el-button>
 							</span>
 							<el-dropdown-menu slot="dropdown">
-								<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">Retry with currently saved workflow</el-dropdown-item>
-								<el-dropdown-item :command="{command: 'original', row: scope.row}">Retry with original workflow</el-dropdown-item>
+								<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">{{ $t('executionsList.retryWithCurrentlySavedWorkflow') }}</el-dropdown-item>
+								<el-dropdown-item :command="{command: 'original', row: scope.row}">{{ $t('executionsList.retryWithOriginalworkflow') }}</el-dropdown-item>
 							</el-dropdown-menu>
 						</el-dropdown>
 

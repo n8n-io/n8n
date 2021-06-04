@@ -4,12 +4,12 @@
 			<div class="icon">🗄️</div>
 			<div>
 				<div class="headline">Ready to organize your workflows?</div>
+				{{ $t('noTagsView.readyToOrganizeYourWorkflows') }}
 				<div class="description">
-					With workflow tags, you're free to create the perfect tagging system for
-					your flows
+					{{ $t('noTagsView.withWorkflowTagsYouReFree') }}
 				</div>
 			</div>
-			<el-button ref="create" @click="$emit('enableCreate')"> Create a tag </el-button>
+			<el-button ref="create" @click="$emit('enableCreate')"> {{ $t('noTagsView.createATag') }} </el-button>
 		</el-col>
 	</div>
 </template>

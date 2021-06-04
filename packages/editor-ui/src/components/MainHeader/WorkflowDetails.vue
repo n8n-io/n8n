@@ -8,7 +8,7 @@
 					:custom="true"
 				>
 					<template v-slot="{ shortenedName }">
-						<InlineTextEdit 
+						<InlineTextEdit
 							:value="workflowName"
 							:previewValue="shortenedName"
 							:isEditEnabled="isNameEditEnabled"
@@ -45,8 +45,8 @@
 			<span
 				class="add-tag clickable"
 				@click="onTagsEditEnable"
-			>	
-				+ Add tag
+			>
+				+ {{ $t('workflowDetails.addTag') }}
 			</span>
 		</div>
 		<TagsContainer
@@ -62,7 +62,7 @@
 		<PushConnectionTracker class="actions">
 			<template>
 				<span class="activator">
-					<span>Active:</span>
+					<span>{{ $t('workflowDetails.active') }}:</span>
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" :disabled="!currentWorkflowId"/>
 				</span>
 				<SaveWorkflowButton />
@@ -120,7 +120,7 @@ export default mixins(workflowHelpers).extend({
 	},
 	computed: {
 		...mapGetters({
-			isWorkflowActive: "isActive", 
+			isWorkflowActive: "isActive",
 			workflowName: "workflowName",
 			isDirty: "getStateIsDirty",
 			currentWorkflowTagIds: "workflowTags",

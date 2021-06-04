@@ -4,14 +4,14 @@
 		:eventBus="modalBus"
 		@enter="save"
 		size="sm"
-		title="Duplicate Workflow"	
+		:title="$t('duplicateWorkflowDialog.duplicateWorkflow')"
 	>
 		<template v-slot:content>
 			<el-row>
 				<el-input
 					v-model="name"
 					ref="nameInput"
-					placeholder="Enter workflow name"
+					:placeholder="$t('duplicateWorkflowDialog.enterWorkflowName')"
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
 			</el-row>
@@ -23,14 +23,14 @@
 					@blur="onTagsBlur"
 					@esc="onTagsEsc"
 					@update="onTagsUpdate"
-					placeholder="Choose or create a tag"
+					:placeholder="$t('duplicateWorkflowDialog.chooseOrCreateATag')"
 					ref="dropdown"
 				/>
 			</el-row>
 		</template>
 		<template v-slot:footer="{ close }">
-			<el-button size="small" @click="save" :loading="isSaving">Save</el-button>
-			<el-button size="small" @click="close" :disabled="isSaving">Cancel</el-button>
+			<el-button size="small" @click="save" :loading="isSaving">{{ $t('duplicateWorkflowDialog.save') }}</el-button>
+			<el-button size="small" @click="close" :disabled="isSaving">{{ $t('duplicateWorkflowDialog.cancel') }}</el-button>
 		</template>
 	</Modal>
 </template>

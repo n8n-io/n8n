@@ -27,7 +27,7 @@
 
 		<div class="add-item-wrapper">
 			<div v-if="values && Object.keys(values).length === 0 || isReadOnly" class="no-items-exist">
-				Currently no items exist
+				{{ $t('multipleParameter.currentlyNoItemsExist') }}
 			</div>
 			<el-button v-if="!isReadOnly" size="small" class="add-item" @click="addItem()">{{ addButtonText }}</el-button>
 		</div>

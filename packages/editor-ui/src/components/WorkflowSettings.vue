@@ -1,10 +1,10 @@
 <template>
 	<span>
-		<el-dialog class="workflow-settings" :visible="dialogVisible" append-to-body width="65%" title="Workflow Settings" :before-close="closeDialog">
+		<el-dialog class="workflow-settings" :visible="dialogVisible" append-to-body width="65%" :title="$t('workflowSettings.workflowSettings')" :before-close="closeDialog">
 			<div v-loading="isLoading">
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						Error Workflow:
+						{{ $t('workflowSettings.errorWorkflow') }}:
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.errorWorkflow"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -23,7 +23,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						Timezone:
+						{{ $t('workflowSettings.timezone') }}:
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.timezone"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -42,7 +42,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						Save Data Error Execution:
+						{{ $t('workflowSettings.saveDataErrorExecution') }}:
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.saveDataErrorExecution"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -61,7 +61,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						Save Data Success Execution:
+						{{ $t('workflowSettings.saveDataSuccessExecution') }}::
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.saveDataSuccessExecution"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -80,7 +80,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						Save Manual Executions:
+						{{ $t('workflowSettings.saveManualExecutions') }}::
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.saveManualExecutions"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -99,7 +99,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						Save Execution Progress:
+						{{ $t('workflowSettings.saveExecutionProgress') }}:
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.saveExecutionProgress"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -118,7 +118,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						Timeout Workflow:
+						{{ $t('workflowSettings.timeoutWorkflow') }}:
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.executionTimeoutToggle"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -127,36 +127,36 @@
 					<el-col :span="14">
 						<div>
 							<el-switch ref="inputField" :value="workflowSettings.executionTimeout > -1" @change="toggleTimeout" active-color="#13ce66"></el-switch>
-							<div class="expression-info clickable" @click="expressionEditDialogVisible = true">Edit Expression</div>
+							<div class="expression-info clickable" @click="expressionEditDialogVisible = true">{{ $t('workflowSettings.editExpression') }}</div>
 						</div>
 					</el-col>
 				</el-row>
 				<div v-if="workflowSettings.executionTimeout > -1">
 					<el-row>
 						<el-col :span="10" class="setting-name">
-							Timeout After:
+							{{ $t('workflowSettings.timeoutAfter') }}:
 							<el-tooltip class="setting-info" placement="top" effect="light">
 								<div slot="content" v-html="helpTexts.executionTimeout"></div>
 								<font-awesome-icon icon="question-circle" />
 							</el-tooltip>
 						</el-col>
 						<el-col :span="4">
-							<el-input-number size="small" v-model="timeoutHMS.hours" :min="0" placeholder="hours" type="number" class="el-input_inner"></el-input-number><br />
-							<div class="timeout-setting-name">hours</div>
+							<el-input-number size="small" v-model="timeoutHMS.hours" :min="0" :placeholder="$t('workflowSettings.hours')" type="number" class="el-input_inner"></el-input-number><br />
+							<div class="timeout-setting-name">{{ $t('workflowSettings.hours') }}</div>
 						</el-col>
 						<el-col :span="4">
-							<el-input-number size="small" v-model="timeoutHMS.minutes" :min="0" placeholder="minutes" type="number" class="el-input_inner"></el-input-number><br />
+							<el-input-number size="small" v-model="timeoutHMS.minutes" :min="0" :placeholder="$t('workflowSettings.minutes')" type="number" class="el-input_inner"></el-input-number><br />
 							<div class="timeout-setting-name">minutes</div>
 						</el-col>
 						<el-col :span="4">
-							<el-input-number size="small" v-model="timeoutHMS.seconds" :min="0" placeholder="seconds" type="number" class="el-input_inner"></el-input-number><br />
+							<el-input-number size="small" v-model="timeoutHMS.seconds" :min="0" :placeholder="$t('workflowSettings.seconds')" type="number" class="el-input_inner"></el-input-number><br />
 							<div class="timeout-setting-name">seconds</div>
 						</el-col>
 					</el-row>
 				</div>
 				<div class="action-buttons">
 					<el-button type="success" @click="saveSettings">
-						Save
+						{{ $t('workflowSettings.save') }}
 					</el-button>
 				</div>
 			</div>
@@ -194,14 +194,14 @@ export default mixins(
 		return {
 			isLoading: true,
 			helpTexts: {
-				errorWorkflow: 'The workflow to run in case the current one fails.<br />To function correctly that workflow has to contain an "Error Trigger" node!',
-				timezone: 'The timezone in which the workflow should run. Gets for example used by "Cron" node.',
-				saveDataErrorExecution: 'If data data of executions should be saved in case they failed.',
-				saveDataSuccessExecution: 'If data data of executions should be saved in case they succeed.',
-				saveExecutionProgress: 'If data should be saved after each node, allowing you to resume in case of errors from where it stopped. May increase latency.',
-				saveManualExecutions: 'If data data of executions should be saved when started manually from the editor.',
-				executionTimeoutToggle: 'Cancel workflow execution after defined time',
-				executionTimeout: 'After what time the workflow should timeout.',
+				errorWorkflow: this.$t('workflowSettings.helpTexts.errorWorkflow'),
+				timezone: this.$t('workflowSettings.helpTexts.timezone'),
+				saveDataErrorExecution: this.$t('workflowSettings.helpTexts.saveDataErrorExecution'),
+				saveDataSuccessExecution: this.$t('workflowSettings.helpTexts.saveDataSuccessExecution'),
+				saveExecutionProgress: this.$t('workflowSettings.helpTexts.saveExecutionProgress'),
+				saveManualExecutions: this.$t('workflowSettings.helpTexts.saveManualExecutions'),
+				executionTimeoutToggle: this.$t('workflowSettings.helpTexts.executionTimeoutToggle'),
+				executionTimeout: this.$t('workflowSettings.helpTexts.executionTimeout'),
 			},
 			defaultValues: {
 				timezone: 'America/New_York',
@@ -349,7 +349,7 @@ export default mixins(
 			// @ts-ignore
 			workflows.unshift({
 				id: undefined as unknown as string,
-				name: '- No Workflow -',
+				name: this.$t('workflowSettings.noWorkflow') as string,
 			});
 
 			Vue.set(this, 'workflows', workflows);
@@ -472,7 +472,7 @@ export default mixins(
 			});
 
 			this.closeDialog();
-			
+
 			this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
 		},
 		toggleTimeout() {

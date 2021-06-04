@@ -22,97 +22,97 @@
 
 				<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
-				<el-submenu index="workflow" title="Workflow">
+				<el-submenu index="workflow" :title="$t('mainSideBar.workflow')">
 					<template slot="title">
 						<font-awesome-icon icon="network-wired"/>&nbsp;
-						<span slot="title" class="item-title-root">Workflows</span>
+						<span slot="title" class="item-title-root">{{ $t('mainSideBar.workflows') }}</span>
 					</template>
 
 					<el-menu-item index="workflow-new">
 						<template slot="title">
 							<font-awesome-icon icon="file"/>&nbsp;
-							<span slot="title" class="item-title">New</span>
+							<span slot="title" class="item-title">{{ $t('mainSideBar.new') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-open">
 						<template slot="title">
 							<font-awesome-icon icon="folder-open"/>&nbsp;
-							<span slot="title" class="item-title">Open</span>
+							<span slot="title" class="item-title">{{ $t('mainSideBar.open') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-save">
 						<template slot="title">
 							<font-awesome-icon icon="save"/>
-							<span slot="title" class="item-title">Save</span>
+							<span slot="title" class="item-title">{{ $t('mainSideBar.save') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-duplicate" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="copy"/>
-							<span slot="title" class="item-title">Duplicate</span>
+							<span slot="title" class="item-title">{{ $t('mainSideBar.duplicate') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-delete" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="trash"/>
-							<span slot="title" class="item-title">Delete</span>
+							<span slot="title" class="item-title">{{ $t('mainSideBar.delete') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-download">
 						<template slot="title">
 							<font-awesome-icon icon="file-download"/>
-							<span slot="title" class="item-title">Download</span>
+							<span slot="title" class="item-title">{{ $t('mainSideBar.download') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-import-url">
 						<template slot="title">
 							<font-awesome-icon icon="cloud"/>
-							<span slot="title" class="item-title">Import from URL</span>
+							<span slot="title" class="item-title">{{ $t('mainSideBar.importFromUrl') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-import-file">
 						<template slot="title">
 							<font-awesome-icon icon="hdd"/>
-							<span slot="title" class="item-title">Import from File</span>
+							<span slot="title" class="item-title">{{ $t('mainSideBar.importFromFile') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-settings" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="cog"/>
-							<span slot="title" class="item-title">Settings</span>
+							<span slot="title" class="item-title">{{ $t('mainSideBar.settings') }}</span>
 						</template>
 					</el-menu-item>
 				</el-submenu>
 
-				<el-submenu index="credentials" title="Credentials">
+				<el-submenu index="credentials" :title="$t('mainSideBar.credentials')">
 					<template slot="title">
 						<font-awesome-icon icon="key"/>&nbsp;
-						<span slot="title" class="item-title-root">Credentials</span>
+						<span slot="title" class="item-title-root">{{ $t('mainSideBar.credentials') }}</span>
 					</template>
 
 					<el-menu-item index="credentials-new">
 						<template slot="title">
 							<font-awesome-icon icon="file"/>
-							<span slot="title" class="item-title">New</span>
+							<span slot="title" class="item-title">{{ $t('mainSideBar.new') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="credentials-open">
 						<template slot="title">
 							<font-awesome-icon icon="folder-open"/>
-							<span slot="title" class="item-title">Open</span>
+							<span slot="title" class="item-title">{{ $t('mainSideBar.open') }}</span>
 						</template>
 					</el-menu-item>
 				</el-submenu>
 
 				<el-menu-item index="executions">
 					<font-awesome-icon icon="tasks"/>&nbsp;
-					<span slot="title" class="item-title-root">Executions</span>
+					<span slot="title" class="item-title-root">{{ $t('mainSideBar.executions') }}</span>
 				</el-menu-item>
 
-				<el-submenu index="help" class="help-menu" title="Help">
+				<el-submenu index="help" class="help-menu" :title="$t('mainSideBar.help')">
 					<template slot="title">
 						<font-awesome-icon icon="question"/>&nbsp;
-						<span slot="title" class="item-title-root">Help</span>
+						<span slot="title" class="item-title-root">{{ $t('mainSideBar.executions') }}</span>
 					</template>
 
 					<MenuItemsIterator :items="helpMenuItems" />
@@ -120,7 +120,7 @@
 					<el-menu-item index="help-about">
 						<template slot="title">
 							<font-awesome-icon class="about-icon" icon="info"/>
-							<span slot="title" class="item-title">About n8n</span>
+							<span slot="title" class="item-title">{{ $t('mainSideBar.aboutN8n') }}</span>
 						</template>
 					</el-menu-item>
 				</el-submenu>
@@ -164,39 +164,6 @@ import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import MenuItemsIterator from './MainSidebarMenuItemsIterator.vue';
 
-const helpMenuItems: IMenuItem[] = [
-	{
-		id: 'docs',
-		type: 'link',
-		properties: {
-			href: 'https://docs.n8n.io',
-			title: 'Documentation',
-			icon: 'book',
-			newWindow: true,
-		},
-	},
-	{
-		id: 'forum',
-		type: 'link',
-		properties: {
-			href: 'https://community.n8n.io',
-			title: 'Forum',
-			icon: 'users',
-			newWindow: true,
-		},
-	},
-	{
-		id: 'examples',
-		type: 'link',
-		properties: {
-			href: 'https://n8n.io/workflows',
-			title: 'Workflows',
-			icon: 'network-wired',
-			newWindow: true,
-		},
-	},
-];
-
 export default mixins(
 	genericHelpers,
 	restApi,
@@ -225,7 +192,38 @@ export default mixins(
 				executionsListDialogVisible: false,
 				stopExecutionInProgress: false,
 				workflowSettingsDialogVisible: false,
-				helpMenuItems,
+				helpMenuItems: [
+					{
+						id: 'docs',
+						type: 'link',
+						properties: {
+							href: 'https://docs.n8n.io',
+							title: this.$t('mainSideBar.helpMenuItems.documentation'),
+							icon: 'book',
+							newWindow: true,
+						},
+					},
+					{
+						id: 'forum',
+						type: 'link',
+						properties: {
+							href: 'https://community.n8n.io',
+							title: this.$t('mainSideBar.helpMenuItems.forum'),
+							icon: 'users',
+							newWindow: true,
+						},
+					},
+					{
+						id: 'examples',
+						type: 'link',
+						properties: {
+							href: 'https://n8n.io/workflows',
+							title: this.$t('mainSideBar.helpMenuItems.workflows'),
+							icon: 'network-wired',
+							newWindow: true,
+						},
+					},
+				],
 			};
 		},
 		computed: {

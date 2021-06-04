@@ -1,6 +1,21 @@
 module.exports = {
 	de: {
 		github: {
+			credentials: {
+				githubOAuth2Api: {
+					server: {
+						displayName: 'Deutsch',
+						description: 'Deutsch',
+					},
+				},
+				githubApi: {
+					server: {
+						displayName: 'Deutsch',
+						description: 'Deutsch',
+					},
+				},
+			},
+
 			parameters: {
 				authentication: {
 					displayName: 'Authentifizierung',

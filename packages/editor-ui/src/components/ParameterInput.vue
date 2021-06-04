@@ -97,9 +97,9 @@
 					<font-awesome-icon icon="cogs" class="reset-icon clickable" title="Parameter Options"/>
 				</span>
 				<el-dropdown-menu slot="dropdown">
-					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">Add Expression</el-dropdown-item>
-					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">Remove Expression</el-dropdown-item>
-					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>Reset Value</el-dropdown-item>
+					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">{{ $t('parameterInput.addExpression') }}</el-dropdown-item>
+					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">{{ $t('parameterInput.removeExpression') }}</el-dropdown-item>
+					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>{{ $t('parameterInput.resetValue') }}</el-dropdown-item>
 				</el-dropdown-menu>
 			</el-dropdown>
 
@@ -165,6 +165,7 @@ export default mixins(
 			'path', // string
 			'value',
 			'isCredential', // boolean
+			'credentialName', // string
 		],
 		data () {
 			return {
@@ -623,6 +624,13 @@ export default mixins(
 					}
 				}
 			}
+		},
+		beforeMount() {
+			this.initTranslate({
+				isCredential: this.isCredential,
+				nodeType: `n8n-nodes-base.${this.nodeName}`,
+				credentialName: this.credentialName,
+			});
 		},
 	});
 </script>

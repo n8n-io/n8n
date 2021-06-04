@@ -2,7 +2,7 @@
 	<div @keydown.stop class="credentials-input-wrapper">
 		<el-row>
 			<el-col :span="6" class="headline-regular">
-				Credentials Name:
+				{{ $t('credentialsInput.credentialsName') }}:
 				<el-tooltip class="credentials-info" placement="top" effect="light">
 					<div slot="content" v-html="helpTexts.credentialsName"></div>
 					<font-awesome-icon icon="question-circle" />
@@ -14,7 +14,7 @@
 		</el-row>
 		<br />
 		<div class="headline" v-if="credentialProperties.length">
-			Credential Data:
+			{{ $t('credentialsInput.credentialData') }}:
 			<el-tooltip class="credentials-info" placement="top" effect="light">
 				<div slot="content" v-html="helpTexts.credentialsData"></div>
 				<font-awesome-icon icon="question-circle" />
@@ -30,7 +30,7 @@
 					</el-tooltip>
 				</el-col>
 				<el-col :span="18">
-					<parameter-input :parameter="parameter" :value="propertyValue[parameter.name]" :path="parameter.name" :isCredential="true" :displayOptions="true" @valueChanged="valueChanged" />
+					<parameter-input :parameter="parameter" :credentialName="credentialTypeData.name" :value="propertyValue[parameter.name]" :path="parameter.name" :isCredential="true" :displayOptions="true" @valueChanged="valueChanged" />
 				</el-col>
 			</el-row>
 		</div>
@@ -44,13 +44,13 @@
 					<el-button title="Connect OAuth Credentials" circle :disabled="true">
 						<font-awesome-icon icon="redo" />
 					</el-button>
-					Enter all required properties
+					{{ $t('credentialsInput.enterAllRequiredProperties') }}
 				</span>
 				<span v-else-if="isOAuthConnected === true">
 					<el-button title="Reconnect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" circle>
 						<font-awesome-icon icon="redo" />
 					</el-button>
-					Connected
+					{{ $t('credentialsInput.connected') }}
 				</span>
 				<span v-else>
 					<span v-if="isGoogleOAuthType">
@@ -60,14 +60,14 @@
 						<el-button title="Connect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" circle>
 							<font-awesome-icon icon="sign-in-alt" />
 						</el-button>
-						Not connected
+						{{ $t('credentialsInput.notConnected') }}
 					</span>
 				</span>
 
 				<div v-if="credentialProperties.length">
 					<div class="clickable oauth-callback-headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? 'Click to display Webhook URLs' : 'Click to hide Webhook URLs'">
 						<font-awesome-icon icon="angle-up" class="minimize-button minimize-icon" />
-						OAuth Callback URL
+						{{ $t('credentialsInput.oAuth2CallbackUrl') }}
 					</div>
 					<el-tooltip v-if="!isMinimized" class="item" effect="light" content="Click to copy Callback URL" placement="right">
 						<div class="callback-url left-ellipsis clickable" @click="copyCallbackUrl">
@@ -81,7 +81,7 @@
 
 		<el-row class="nodes-access-wrapper">
 			<el-col :span="6" class="headline">
-				Nodes with access:
+				{{ $t('credentialsInput.nodesWithAccess') }}:
 				<el-tooltip class="credentials-info" placement="top" effect="light">
 					<div slot="content" v-html="helpTexts.nodesWithAccess"></div>
 					<font-awesome-icon icon="question-circle" />
@@ -96,19 +96,19 @@
 
 				<div v-if="nodesAccess.length === 0" class="no-nodes-access">
 					<strong>
-						Important
+						{{ $t('credentialsInput.important') }}
 					</strong><br />
-					Add at least one node which has access to the credentials!
+					{{ $t('credentialsInput.addAtLeastOneNodeWhichHasAccessToTheCredentials') }}
 				</div>
 			</el-col>
 		</el-row>
 
 		<div class="action-buttons">
 			<el-button type="success" @click="updateCredentials(true)" v-if="credentialDataDynamic">
-				Save
+				{{ $t('credentialsInput.save') }}
 			</el-button>
 			<el-button type="success" @click="createCredentials(true)" v-else>
-				Create
+				{{ $t('credentialsInput.create') }}
 			</el-button>
 		</div>
 

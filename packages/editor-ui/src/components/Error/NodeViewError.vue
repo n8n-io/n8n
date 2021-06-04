@@ -1,18 +1,18 @@
 <template>
 	<div>
 		<div class="error-header">
-			<div class="error-message">ERROR: {{error.message}}</div>
+			<div class="error-message">{{ $t('nodeViewError.error') }}: {{error.message}}</div>
 			<div class="error-description" v-if="error.description">{{error.description}}</div>
 		</div>
 		<details>
 			<summary class="error-details__summary">
-				<font-awesome-icon class="error-details__icon" icon="angle-right" /> Details
+				<font-awesome-icon class="error-details__icon" icon="angle-right" /> {{ $t('nodeViewError.details') }}
 			</summary>
 			<div class="error-details__content">
 				<div v-if="error.timestamp">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
-							<span>Time</span>
+							<span>{{ $t('nodeViewError.time') }}</span>
 						</div>
 						<div>
 							{{new Date(error.timestamp).toLocaleString()}}
@@ -22,7 +22,7 @@
 				<div v-if="error.httpCode">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
-							<span>HTTP-Code</span>
+							<span>{{ $t('nodeViewError.httpCode') }}</span>
 						</div>
 						<div>
 							{{error.httpCode}}
@@ -32,9 +32,9 @@
 				<div v-if="error.cause">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
-							<span>Cause</span>
+							<span>{{ $t('nodeViewError.cause') }}</span>
 							<br>
-							<span class="box-card__subtitle">Data below may contain sensitive information. Proceed with caution when sharing.</span>
+							<span class="box-card__subtitle">{{ $t('nodeViewError.dataBelowMayContain') }}</span>
 						</div>
 						<div>
 							<el-button class="copy-button" @click="copyCause" circle type="text" title="Copy to clipboard">
@@ -54,7 +54,7 @@
 				<div v-if="error.stack">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
-							<span>Stack</span>
+							<span>{{ $t('nodeViewError.stack') }}</span>
 						</div>
 						<div>
 							<pre><code>{{error.stack}}</code></pre>

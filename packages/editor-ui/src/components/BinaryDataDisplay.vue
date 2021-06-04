@@ -7,12 +7,12 @@
 			title="Back to overview page"
 			icon="el-icon-arrow-left"
 		>
-			Back to list
+			{{ $t('binaryDataDisplay.backToList') }}
 		</el-button>
 
 		<div class="binary-data-window-wrapper">
 			<div v-if="!binaryData">
-				Data to display did not get found
+				{{ $t('binaryDataDisplay.dataToDisplayDidNotGetFound') }}
 			</div>
 			<embed v-else :src="'data:' + binaryData.mimeType + ';base64,' + binaryData.data" class="binary-data" :class="embedClass"/>
 		</div>

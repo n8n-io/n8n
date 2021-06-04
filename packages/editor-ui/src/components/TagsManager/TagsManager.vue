@@ -1,6 +1,6 @@
 <template>
 	<Modal
-		title="Manage tags"
+		:title="$t('tagsManager.manageTags')"
 		:name="modalName"
 		:eventBus="modalBus"
 		@enter="onEnter"
@@ -18,13 +18,13 @@
 					@delete="onDelete"
 					@disableCreate="onDisableCreate"
 				/>
-				<NoTagsView 
+				<NoTagsView
 					@enableCreate="onEnableCreate"
 					v-else />
 			</el-row>
 		</template>
 		<template v-slot:footer="{ close }">
-				<el-button size="small" @click="close">Done</el-button>
+				<el-button size="small" @click="close">{{ $t('tagsManager.done') }}</el-button>
 		</template>
 	</Modal>
 </template>
@@ -114,10 +114,10 @@ export default mixins(showMessage).extend({
 					cb(true);
 					return;
 				}
-				
+
 				const updatedTag = await this.$store.dispatch("tags/rename", { id, name });
 				cb(!!updatedTag);
-			
+
 				const escapedName = escape(name);
 				const escapedOldName = escape(oldName);
 
@@ -144,7 +144,7 @@ export default mixins(showMessage).extend({
 			try {
 				const deleted = await this.$store.dispatch("tags/delete", id);
 				if (!deleted) {
-					throw new Error('Could not delete tag');
+					throw new Error(this.$t('tagsManager.couldNotDeleteTag') as string);
 				}
 
 				this.$data.tagIds = this.$data.tagIds.filter((tagId: string) => tagId !== id);
@@ -183,7 +183,7 @@ export default mixins(showMessage).extend({
 });
 </script>
 
-<style lang="scss" scoped>	
+<style lang="scss" scoped>
 .el-row {
 	min-height: $--tags-manager-min-height;
 }

@@ -5,7 +5,7 @@
 			element-loading-spinner="el-icon-loading"
 			:value="workflowActive"
 			@change="activeChanged"
-			:title="workflowActive?'Deactivate Workflow':'Activate Workflow'"
+			:title="workflowActive?$t('workflowActivator.deactivateWorkflow'):$t('workflowActivator.activateWorkflow')"
 			:disabled="disabled || loading"
 			:active-color="getActiveColor"
 			inactive-color="#8899AA">
@@ -13,7 +13,7 @@
 
 		<div class="could-not-be-started" v-if="couldNotBeStarted">
 			<el-tooltip placement="top">
-				<div @click="displayActivationError" slot="content">The workflow is set to be active but could not be started.<br />Click to display error message.</div>
+				<div @click="displayActivationError" slot="content">{{ $t('workflowActivator.theWorkflowIsSetToBeActiveBut') }}</div>
 				<font-awesome-icon @click="displayActivationError" icon="exclamation-triangle" />
 			</el-tooltip>
 		</div>

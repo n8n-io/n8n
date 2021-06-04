@@ -4,8 +4,16 @@ export default {
 		nodeViewError: {
 			error: 'Deutsch',
 			details: 'Deutsch',
+			time: 'Deutsch',
+			httpCode: 'Deutsch',
+			cause: 'Deutsch',
 			dataBelowMayContain: 'Deutsch',
 			stack: 'Deutsch',
+		},
+
+		workflowDetails: {
+			addTag: 'Deutsch',
+			active: 'Deutsch',
 		},
 
 		noTagsView: {
@@ -18,11 +26,16 @@ export default {
 			areYouSureYouWantToDeleteThisTag: 'Deutsch',
 			createTag: 'Deutsch',
 			saveChanges: 'Deutsch',
+			cancel: 'Deutsch',
 			deleteTag: 'Deutsch',
+			name: 'Deutsch',
+			usage: 'Deutsch',
+			editTag: 'Deutsch',
 		},
 
 		tagsTableHeader: {
 			addNew: 'Deutsch',
+			searchTags: 'Deutsch',
 		},
 
 		about: {
@@ -53,7 +66,7 @@ export default {
 		credentialsInput: {
 			credentialsName: 'Deutsch',
 			credentialData: 'Deutsch',
-			enterAllProperties: 'Deutsch',
+			enterAllRequiredProperties: 'Deutsch',
 			connected: 'Deutsch',
 			notConnected: 'Deutsch',
 			oAuth2CallbackUrl: 'Deutsch',
@@ -62,6 +75,8 @@ export default {
 			addAtLeastOneNodeWhichHasAccessToTheCredentials: 'Deutsch',
 			save: 'Deutsch',
 			create: 'Deutsch',
+			noAccess: 'No Access',
+			access: 'Access ',
 		},
 
 		credentialsList: {
@@ -71,21 +86,25 @@ export default {
 
 		dataDisplay: {
 			nodeDocumentation: 'Deutsch',
+			needHelp: 'Deutsch',
 			openDocumentationFor: 'Deutsch',
 		},
 
 		duplicateWorkflowDialog: {
-			enterWorkflowName: 'Deutsch', // search: placeholder="
+			enterWorkflowName: 'Deutsch',
 			save: 'Deutsch',
 			cancel: 'Deutsch',
+			duplicateWorkflow: 'Deutsch',
+			chooseOrCreateATag: 'Deutsch',
 		},
 
 		executionsList: {
 			filters: 'Deutsch',
 			autoRefresh: 'Deutsch',
-			selected: 'Deutsch', // whitespace and colon
+			selected: 'Deutsch',
 			checkAll: 'Deutsch',
 			runningParens: 'Deutsch',
+			retryOf: 'Deutsch',
 			successRetry: 'Deutsch',
 			running: 'Deutsch',
 			success: 'Deutsch',
@@ -109,6 +128,7 @@ export default {
 
 		mainSideBar: {
 			workflows: 'Deutsch',
+			workflow: 'Deutsch',
 			new: 'Deutsch',
 			open: 'Deutsch',
 			save: 'Deutsch',
@@ -122,6 +142,11 @@ export default {
 			executions: 'Deutsch',
 			help: 'Deutsch',
 			aboutN8n: 'Deutsch',
+			helpMenuItems: {
+				documentation: 'Deutsch',
+				forum: 'Deutsch',
+				workflows: 'Deutsch',
+			},
 		},
 
 		multipleParameter: {
@@ -130,6 +155,10 @@ export default {
 
 		nodeCreateList: {
 			noNodesMatchYourSearchCriteria: 'Deutsch',
+			typeToFilter: 'Deutsch',
+			regular: 'Deutsch',
+			trigger: 'Deutsch',
+			all: 'Deutsch',
 		},
 
 		nodeCreator: {
@@ -202,10 +231,11 @@ export default {
 		runData: {
 			executeNode: 'Deutsch',
 			items: 'Deutsch',
-			startTime: 'Deutsch', // semicolon
-			executionTime: 'Deutsch', // semicolon
-			output: 'Deutsch', // pipe and colon
-			dataOfExecution: 'Deutsch', // pipe and colon
+			startTime: 'Deutsch',
+			executionTime: 'Deutsch',
+			ms: 'ms',
+			output: 'Deutsch',
+			dataOfExecution: 'Deutsch',
 			copyItemPath: 'Deutsch',
 			copyParameterPath: 'Deutsch',
 			copyValue: 'Deutsch',
@@ -215,7 +245,7 @@ export default {
 			noTextDataFound: 'Deutsch',
 			entriesExistButThey: 'Deutsch',
 			noBinaryDataFound: 'Deutsch',
-			fileName: 'Deutsch', // mind the colon
+			fileName: 'Deutsch',
 			fileExtension: 'Deutsch',
 			mimeType: 'Deutsch',
 			showBinaryData: 'Deutsch',
@@ -225,6 +255,7 @@ export default {
 
 		saveWorkflowButton: {
 			save: 'Deutsch',
+			saved: 'Deutsch',
 		},
 
 		tagsDropdown: {
@@ -234,19 +265,29 @@ export default {
 			manageTags: 'Deutsch',
 		},
 
+		tagsManager: {
+			manageTags: 'Deutsch',
+			done: 'Deutsch',
+			couldNotDeleteTag: 'Deutsch',
+		},
+
 		variableSelectorItem: {
 			selectItem: 'Deutsch',
-			empty: 'Deutsch', // middle
+			empty: 'Deutsch', // middle problem
 		},
 
 		workflowActivator: {
 			theWorkflowIsSetToBeActiveBut: 'Deutsch',
+			deactivateWorkflow: 'Deutsch',
+			activateWorkflow: 'Deutsch',
 		},
 
 		workflowSettings: {
+			workflowSettings: 'Deutsch',
+			noWorkflow: 'Deutsch',
 			errorWorkflow: 'Deutsch',
 			timezone: 'Deutsch',
-			saveDataErrorExecution: 'Deutsch', // colon
+			saveDataErrorExecution: 'Deutsch',
 			saveDataSuccessExecution: 'Deutsch',
 			saveManualExecutions: 'Deutsch',
 			saveExecutionProgress: 'Deutsch',
@@ -257,14 +298,33 @@ export default {
 			minutes: 'Deutsch',
 			seconds: 'Deutsch',
 			save: 'Deutsch',
+			helpTexts: {
+				errorWorkflow: 'Deutsch',
+				timezone: 'Deutsch',
+				saveDataErrorExecution: 'Deutsch',
+				saveDataSuccessExecution: 'Deutsch',
+				saveExecutionProgress: 'Deutsch',
+				saveManualExecutions: 'Deutsch',
+				executionTimeoutToggle: 'Deutsch',
+				executionTimeout: 'Deutsch',
+			},
 		},
 
 		nodeView: {
-			currentlyNoItemsExist: 'Deutsch',
-			parameters: 'Deutsch',
-			settings: 'Deutsch',
+			stoppingCurrentExecution: 'Deutsch',
+			stopCurrentExecution:'Deutsch',
+			executesTheWorkflowFromTheStartOrWebhookNode: 'Deutsch',
+			runButtonText: {
+				executeWorkflow: 'Deutsch',
+				waitingForWebhookCall: 'Deutsch',
+				executingWorkflow: 'Deutsch',
+			},
 		},
 
-		'n8n-nodes-base': {},
+		'n8n-nodes-base': {
+			start: {
+				hello: "hallöchen",
+			},
+		},
 	},
 };

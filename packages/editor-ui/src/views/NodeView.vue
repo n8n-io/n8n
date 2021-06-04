@@ -61,7 +61,7 @@
 				class="workflow-run-button"
 				:class="{'running': workflowRunning}"
 				:disabled="workflowRunning"
-				title="Executes the Workflow from the Start or Webhook Node."
+				:title="$t('nodeView.executesTheWorkflowFromTheStartOrWebhookNode')"
 			>
 				<div class="run-icon">
 					<font-awesome-icon icon="spinner" spin v-if="workflowRunning"/>
@@ -77,7 +77,7 @@
 				type="text"
 				@click.stop="stopExecution()"
 				class="stop-execution"
-				:title="stopExecutionInProgress ? 'Stopping current execution':'Stop current execution'"
+				:title="stopExecutionInProgress ? $t('nodeView.stoppingCurrentExecution') :$t('nodeView.stopCurrentExecution')"
 			>
 				<font-awesome-icon icon="stop" :class="{'fa-spin': stopExecutionInProgress}"/>
 			</el-button>
@@ -168,6 +168,7 @@ import {
 } from '../Interface';
 import { addNodeTranslations } from '@/i18n/i18n';
 import { mapGetters } from 'vuex';
+import { TranslateResult } from 'vue-i18n';
 
 export default mixins(
 	copyPaste,
@@ -257,16 +258,16 @@ export default mixins(
 			nodes (): INodeUi[] {
 				return this.$store.getters.allNodes;
 			},
-			runButtonText (): string {
+			runButtonText (): string | TranslateResult {
 				if (this.workflowRunning === false) {
-					return 'Execute Workflow';
+					return this.$t('nodeView.runButtonText.executeWorkflow');
 				}
 
 				if (this.executionWaitingForWebhook === true) {
-					return 'Waiting for Webhook-Call';
+					return this.$t('nodeView.runButtonText.waitingForWebhookCall');
 				}
 
-				return 'Executing Workflow';
+				return this.$t('nodeView.runButtonText.executingWorkflow');
 			},
 			workflowStyle (): object {
 				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;

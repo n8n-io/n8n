@@ -5,10 +5,10 @@
 				<el-col :span="8">
 					<div class="header-side-menu">
 						<div class="headline">
-							Edit Expression
+							{{ $t('expressionEdit.editExpression') }}
 						</div>
 						<div class="sub-headline">
-							Variable Selector
+							{{ $t('expressionEdit.variableSelector') }}
 						</div>
 					</div>
 
@@ -19,7 +19,7 @@
 				<el-col :span="16" class="right-side">
 					<div class="expression-editor-wrapper">
 						<div class="editor-description">
-							Expression
+							{{ $t('expressionEdit.expression') }}
 						</div>
 						<div class="expression-editor">
 							<expression-input :parameter="parameter" ref="inputFieldExpression" rows="8" :value="value" :path="path" @change="valueChanged" @keydown.stop="noOp"></expression-input>
@@ -28,7 +28,7 @@
 
 					<div class="expression-result-wrapper">
 						<div class="editor-description">
-							Result
+							{{ $t('expressionEdit.result') }}
 						</div>
 						<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input>
 					</div>

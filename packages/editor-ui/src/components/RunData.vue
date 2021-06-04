@@ -14,7 +14,7 @@
 				<font-awesome-icon v-else icon="spinner" spin />
 			</div>
 
-			Execute Node
+			{{ $t('runData.executeNode') }}
 		</el-button>
 
 		<div class="header">
@@ -35,19 +35,19 @@
 					width="400"
 					trigger="hover"
 				>
-					<strong>Start Time:</strong> {{runMetadata.startTime}}<br/>
-					<strong>Execution Time:</strong> {{runMetadata.executionTime}} ms
+					<strong>{{ $t('runData.startTime') }}:</strong> {{runMetadata.startTime}}<br/>
+					<strong>{{ $t('runData.executionTime') }}:</strong> {{runMetadata.executionTime}} {{ $t('runData.ms') }}
 					<font-awesome-icon icon="info-circle" class="primary-color" slot="reference" />
 				</el-popover>
 				<span v-if="maxOutputIndex > 0">
-					| Output:
+					| {{ $t('runData.output') }}:
 					<el-select v-model="outputIndex" @click.stop>
 						<el-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
 						</el-option>
 					</el-select>
 				</span>
 				<span v-if="maxRunIndex > 0">
-					| Data of Execution:
+					| {{ $t('runData.dataOfExecution') }}:
 					<el-select v-model="runIndex" @click.stop>
 						<el-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
 						</el-option>
@@ -70,9 +70,9 @@
 						</el-button>
 					</span>
 					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item :command="{command: 'itemPath'}">Copy Item Path</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'parameterPath'}">Copy Parameter Path</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'value'}">Copy Value</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'itemPath'}">{{ $t('runData.copyItemPath') }}</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'parameterPath'}">{{ $t('runData.copyParameterPath') }}</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'value'}">{{ $t('runData.copyValue') }}</el-dropdown-item>
 					</el-dropdown-menu>
 				</el-dropdown>
 
@@ -86,7 +86,7 @@
 				<span v-else>
 					<div v-if="showData === false" class="to-much-data">
 						<h3>
-							Node returned a large amount of data
+							{{ $t('runData.nodeReturnedALargeAmountOfData') }}
 						</h3>
 
 						<div class="text">
@@ -98,16 +98,16 @@
 
 						<el-button size="small" @click="displayMode = 'Table';showData = true;">
 							<font-awesome-icon icon="eye"/>
-							Display Data Anyway
+							{{ $t('runData.displayDataAnyway') }}
 						</el-button>
 					</div>
 					<div v-else-if="['JSON', 'Table'].includes(displayMode)">
 						<div v-if="jsonData.length === 0" class="no-data">
-							No text data found
+							{{ $t('runData.noTextDataFound') }}
 						</div>
 						<div v-else-if="displayMode === 'Table'">
 							<div v-if="tableData !== null && tableData.columns.length === 0" class="no-data">
-								Entries exist but they do not contain any JSON data.
+								{{ $t('runData.entriesExistButThey') }}
 							</div>
 							<table v-else-if="tableData !== null">
 								<tr>
@@ -135,7 +135,7 @@
 					</div>
 					<div v-else-if="displayMode === 'Binary'">
 						<div v-if="binaryData.length === 0" class="no-data">
-							No binary data found
+							{{ $t('runData.noBinaryDataFound') }}
 						</div>
 
 						<div v-else>
@@ -153,11 +153,11 @@
 												{{key}}
 											</div>
 											<div v-if="binaryData.fileName">
-												<div class="label">File Name: </div>
+												<div class="label">{{ $t('runData.fileName') }}: </div>
 												<div class="value">{{binaryData.fileName}}</div>
 											</div>
 											<div v-if="binaryData.directory">
-												<div class="label">Directory: </div>
+												<div class="label">{{ $t('runData.fileExtension') }}: </div>
 												<div class="value">{{binaryData.directory}}</div>
 											</div>
 											<div v-if="binaryData.fileExtension">
@@ -165,14 +165,14 @@
 												<div class="value">{{binaryData.fileExtension}}</div>
 											</div>
 											<div v-if="binaryData.mimeType">
-												<div class="label">Mime Type: </div>
+												<div class="label">{{ $t('runData.mimeType') }}: </div>
 												<div class="value">{{binaryData.mimeType}}</div>
 											</div>
 
 											<!-- <el-button @click="displayBinaryData(binaryData)"> -->
 											<div class="binary-data-show-data-button-wrapper">
 												<el-button size="mini" class="binary-data-show-data-button" @click="displayBinaryData(index, key)">
-													Show Binary Data
+													{{ $t('runData.showBinaryData') }}
 												</el-button>
 											</div>
 
