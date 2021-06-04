@@ -1,7 +1,7 @@
 <template>
 	<div @keydown.stop class="fixed-collection-parameter">
 		<div v-if="getProperties.length === 0" class="no-items-exist">
-			{{ $t('nodeView.currentlyNoItemsExist') }}:
+			Currently no items exist
 		</div>
 
 		<div v-for="property in getProperties" :key="property.name" class="fixed-collection-parameter-property">

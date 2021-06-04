@@ -27,7 +27,7 @@
 
 		<div class="add-item-wrapper">
 			<div v-if="values && Object.keys(values).length === 0 || isReadOnly" class="no-items-exist">
-				{{ $t('nodeView.currentlyNoItemsExist') }}:
+				Currently no items exist
 			</div>
 			<el-button v-if="!isReadOnly" size="small" class="add-item" @click="addItem()">{{ addButtonText }}</el-button>
 		</div>
