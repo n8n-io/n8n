@@ -495,10 +495,14 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.$router.push({ name: 'NodeViewNew' });
+					if (this.$router.currentRoute.name === 'NodeViewNew') {
+						this.$root.$emit('newWorkflow');
+					} else {
+						this.$router.push({ name: 'NodeViewNew' });
+					}
 
 					this.$showMessage({
-						title: 'Created',
+						title: 'Workflow created',
 						message: 'A new workflow got created!',
 						type: 'success',
 					});
