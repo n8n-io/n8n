@@ -58,7 +58,8 @@ export default Vue.extend({
 	align-items: center;
 	padding-left: 14px;
 	padding-right: 20px;
-	border: 1px solid $--node-creator-border-color;
+	border-top: 1px solid $--node-creator-border-color;
+	border-bottom: 1px solid $--node-creator-border-color;
 	background-color: $--node-creator-search-background-color;
 	color: $--node-creator-search-placeholder-color;
 

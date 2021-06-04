@@ -1,6 +1,5 @@
 <template>
 	<div class="subcategory-panel">
-		<div class="border"></div>
 		<div class="subcategory-header">
 			<div class="clickable" @click="onBackArrowClick">
 				<font-awesome-icon class="back-arrow" icon="arrow-left" />
@@ -48,6 +47,15 @@ export default Vue.extend({
 	z-index: 100;
 	height: 100%;
 	width: 100%;
+
+	&:before {
+		box-sizing: border-box;
+		content: ' ';
+		border-left: 1px solid $--node-creator-border-color;
+		width: 1px;
+		position: absolute;
+		height: 100%;
+	}
 }
 
 .subcategory-header {
@@ -72,6 +80,17 @@ export default Vue.extend({
 }
 
 .scrollable {
+	overflow-y: auto;
+	overflow-x: visible;
 	height: calc(100% - 100px);
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
+
+	> div {
+		padding-bottom: 30px;
+	}
 }
+
 </style>

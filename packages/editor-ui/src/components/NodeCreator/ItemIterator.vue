@@ -8,7 +8,7 @@
 			@before-leave="beforeLeave"
 			@leave="leave"
 		>
-			<div v-for="(item, index) in elements" :key="item.key">
+			<div v-for="(item, index) in elements" :key="item.key" :class="item.type">
 				<CreatorItem
 					:item="item"
 					:active="activeIndex === index && !disabled"
@@ -69,9 +69,14 @@ export default Vue.extend({
 	opacity: 1;
 }
 
-.accordion-enter-active,
 .accordion-leave-active {
+	transition: all 0.25s ease, opacity 0.1s ease;
+	margin-top: 0;
+}
+
+.accordion-enter-active {
 	transition: all 0.25s ease, opacity 0.25s ease;
+	margin-top: 0;
 }
 
 .accordion-leave-to {
@@ -80,5 +85,10 @@ export default Vue.extend({
 
 .accordion-enter-to {
 	opacity: 1;
+}
+
+.subcategory + .category,
+.node + .category {
+	margin-top: 15px;
 }
 </style>

@@ -259,11 +259,22 @@ export default mixins(externalHooks).extend({
 	height: calc(100% - 160px);
 }
 
+.scrollable {
+	overflow-y: auto;
+	overflow-x: visible;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
+
+	> div {
+		padding-bottom: 30px;
+	}
+}
+
 .type-selector {
 	text-align: center;
 	background-color: $--node-creator-select-background-color;
-	border-right: 1px solid $--node-creator-border-color;
-	border-left: 1px solid $--node-creator-border-color;
 
 	/deep/ .el-tabs > div {
 		margin-bottom: 0;

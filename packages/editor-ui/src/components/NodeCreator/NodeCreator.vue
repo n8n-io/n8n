@@ -2,7 +2,6 @@
 	<div>
 		<SlideTransition>
 			<div class="node-creator" v-if="active" v-click-outside="closeCreator">
-				<div class="border"></div>
 				<div class="close-button clickable" @click="closeCreator" title="Close">
 					<i class="el-icon-close"></i>
 				</div>
@@ -113,28 +112,14 @@ export default Vue.extend({
 	background-color: $--node-creator-background-color;
 	z-index: 200;
 	color: $--node-creator-text-color;
-}
 
-// todo
-/deep/ .border {
-	position: absolute;
-	height: 100%;
-	width: 100%;
-	border-left: 1px solid $--node-creator-border-color;
-	z-index: -1;
-}
-
-// todo
-/deep/ .scrollable {
-	overflow-y: auto;
-
-	&::-webkit-scrollbar {
-		display: none;
-	}
-
-	> div {
-		padding-bottom: 30px;
+	&:before {
+		box-sizing: border-box;
+		content: ' ';
+		border-left: 1px solid $--node-creator-border-color;
+		width: 1px;
+		position: absolute;
+		height: 100%;
 	}
 }
-
 </style>

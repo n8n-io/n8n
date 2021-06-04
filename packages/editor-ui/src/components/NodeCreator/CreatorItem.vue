@@ -2,7 +2,6 @@
 	<div
 		:class="{
 			container: true,
-			[props.item.type]: true,
 			clickable: props.clickable,
 			active: props.active,
 		}"
@@ -43,20 +42,17 @@ export default {
 
 <style lang="scss" scoped>
 .container {
+	position: relative;
 	border-left: 1px solid transparent;
 
 	&:hover {
-		border-left: 1px solid $--node-creator-item-hover-border-color;
 		background-color: $--node-creator-item-hover-background-color;
+		border-color: $--node-creator-item-hover-border-color;
 	}
 
-	&.active {
-		border-left: 1px solid $--color-primary !important;
+	&.active  {
+		border-color: $--color-primary !important;
 	}
 }
 
-.subcategory + .category,
-.node + .category {
-	margin-top: 15px;
-}
 </style>
