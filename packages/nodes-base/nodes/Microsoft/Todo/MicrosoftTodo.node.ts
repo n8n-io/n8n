@@ -36,15 +36,15 @@ import * as moment from 'moment-timezone';
 
 export class MicrosoftTodo implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Microsoft Todo',
+		displayName: 'Microsoft To Do',
 		name: 'microsoftTodo',
 		icon: 'file:todo.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Microsoft Todo API.',
+		description: 'Consume Microsoft To Do API.',
 		defaults: {
-			name: 'Microsoft Todo',
+			name: 'Microsoft To Do',
 			color: '#0078D7',
 		},
 		inputs: ['main'],
@@ -124,6 +124,7 @@ export class MicrosoftTodo implements INodeType {
 						const taskId = this.getNodeParameter('taskId', i) as string;
 						const body: IDataObject = {
 							applicationName: this.getNodeParameter('applicationName', i) as string,
+							displayName: this.getNodeParameter('displayName', i) as string,
 							...this.getNodeParameter('additionalFields', i) as IDataObject[],
 						};
 
@@ -191,9 +192,11 @@ export class MicrosoftTodo implements INodeType {
 							...this.getNodeParameter('additionalFields', i) as IDataObject[],
 						};
 
-						if (body.bodyUI) {
-							body.body = (body.bodyUI as IDataObject).body;
-							delete body.bodyUI;
+						if (body.content) {
+							body.body = {
+								content: body.content,
+								contentType: 'html',
+							};
 						}
 
 						if (body.dueDateTime) {
@@ -242,13 +245,14 @@ export class MicrosoftTodo implements INodeType {
 						const taskListId = this.getNodeParameter('taskListId', i) as string;
 						const taskId = this.getNodeParameter('taskId', i) as string;
 						const body: IDataObject = {
-							title: this.getNodeParameter('title', i) as string,
 							...this.getNodeParameter('updateFields', i) as IDataObject[],
 						};
 
-						if (body.bodyUI) {
-							body.body = (body.bodyUI as IDataObject).body;
-							delete body.bodyUI;
+						if (body.content) {
+							body.body = {
+								content: body.content,
+								contentType: 'html',
+							};
 						}
 
 						if (body.dueDateTime) {

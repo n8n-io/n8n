@@ -46,7 +46,7 @@ export const taskFields = [
 	/*                                 task:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Task List ID',
+		displayName: 'List ID',
 		name: 'taskListId',
 		type: 'options',
 		typeOptions: {
@@ -64,9 +64,10 @@ export const taskFields = [
 		},
 		required: true,
 		default: '',
+		description: 'The identifier of the list, unique in the user\'s mailbox.',
 	},
 	{
-		displayName: 'Task Title',
+		displayName: 'Subject',
 		name: 'title',
 		type: 'string',
 		displayOptions: {
@@ -101,44 +102,11 @@ export const taskFields = [
 		},
 		options: [
 			{
-				displayName: 'Body',
-				name: 'bodyUI',
-				type: 'fixedCollection',
-				placeholder: 'Add Task Body',
-				options: [
-					{
-						displayName: 'Body',
-						name: 'body',
-						values: [
-							{
-								displayName: 'Content Type',
-								name: 'contentType',
-								type: 'options',
-								options: [
-									{
-										name: 'Text',
-										value: 'text',
-									},
-									{
-										name: 'HTML',
-										value: 'html',
-									},
-								],
-								default: 'text',
-								description: 'The task note content type.',
-							},
-							{
-								displayName: 'Content',
-								name: 'content',
-								type: 'string',
-								default: '',
-								description: 'The task note content.',
-							},
-						],
-					},
-				],
+				displayName: 'Content',
+				name: 'content',
+				type: 'string',
 				default: '',
-				description: 'The task body that typically contains information about the task.',
+				description: 'The content of the task.',
 			},
 			{
 				displayName: 'Due Date Time',
@@ -203,7 +171,7 @@ export const taskFields = [
 	/*                                 task:get/delete/update/getAll              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Task List ID',
+		displayName: 'List ID',
 		name: 'taskListId',
 		type: 'options',
 		typeOptions: {
@@ -224,6 +192,7 @@ export const taskFields = [
 		},
 		required: true,
 		default: '',
+		description: 'The identifier of the list, unique in the user\'s mailbox.',
 	},
 	{
 		displayName: 'Task ID',
@@ -289,24 +258,7 @@ export const taskFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:update                                */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Task Title',
-		name: 'title',
-		type: 'string',
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'task',
-				],
-			},
-		},
-		required: true,
-		default: '',
-		description: 'A brief description of the task.',
-	},
+
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -325,44 +277,18 @@ export const taskFields = [
 		},
 		options: [
 			{
-				displayName: 'Body',
-				name: 'bodyUI',
-				type: 'fixedCollection',
-				placeholder: 'Add Task Body',
-				options: [
-					{
-						displayName: 'Body',
-						name: 'body',
-						values: [
-							{
-								displayName: 'Content',
-								name: 'content',
-								type: 'string',
-								default: '',
-								description: 'The task note content.',
-							},
-							{
-								displayName: 'Content Type',
-								name: 'contentType',
-								type: 'options',
-								options: [
-									{
-										name: 'Text',
-										value: 'text',
-									},
-									{
-										name: 'HTML',
-										value: 'html',
-									},
-								],
-								default: 'text',
-								description: 'The task note content type.',
-							},
-						],
-					},
-				],
+				displayName: 'Subject',
+				name: 'title',
+				type: 'string',
 				default: '',
-				description: 'The task body that typically contains information about the task.',
+				description: 'A brief description of the task.',
+			},
+			{
+				displayName: 'Content',
+				name: 'content',
+				type: 'string',
+				default: '',
+				description: 'The content of the task.',
 			},
 			{
 				displayName: 'Due Date Time',

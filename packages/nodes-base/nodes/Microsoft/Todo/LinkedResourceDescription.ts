@@ -94,6 +94,23 @@ export const linkedResourceFields = [
 	/*                           linkedResource:create                            */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Name',
+		name: 'displayName',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'linkedResource',
+				],
+			},
+		},
+		description: 'Field indicating title of the linked entity.',
+	},
+	{
 		displayName: 'Application Name',
 		name: 'applicationName',
 		type: 'string',
@@ -109,7 +126,7 @@ export const linkedResourceFields = [
 		},
 		required: true,
 		default: '',
-		description: 'Field indicating app name of the source that is sending the linked entity.',
+		description: 'App name of the source that is sending the linked entity.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -128,13 +145,6 @@ export const linkedResourceFields = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Display Name',
-				name: 'displayName',
-				type: 'string',
-				default: '',
-				description: 'Field indicating title of the linked entity.',
-			},
 			{
 				displayName: 'External ID',
 				name: 'externalId',
@@ -240,10 +250,10 @@ export const linkedResourceFields = [
 				name: 'applicationName',
 				type: 'string',
 				default: '',
-				description: 'Field indicating app name of the source that is sending the linked entity.',
+				description: 'App name of the source that is sending the linked entity.',
 			},
 			{
-				displayName: 'Display Name',
+				displayName: 'Name',
 				name: 'displayName',
 				type: 'string',
 				default: '',

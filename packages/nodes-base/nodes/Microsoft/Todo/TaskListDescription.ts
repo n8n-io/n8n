@@ -46,7 +46,7 @@ export const taskListFields = [
 /*                                 taskList:create                            */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Display Name',
+		displayName: 'List Name',
 		name: 'displayName',
 		type: 'string',
 		displayOptions: {
@@ -61,13 +61,13 @@ export const taskListFields = [
 		},
 		required: true,
 		default: '',
-		description: 'Task list display name.',
+		description: 'List display name.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 taskList:get/delete/update                 */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Task List ID',
+		displayName: 'List ID',
 		name: 'taskListId',
 		type: 'string',
 		displayOptions: {
@@ -84,6 +84,7 @@ export const taskListFields = [
 		},
 		required: true,
 		default: '',
+		description: 'The identifier of the list, unique in the user\'s mailbox.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 taskList:getAll                            */
@@ -131,7 +132,7 @@ export const taskListFields = [
 /*                                 taskList:update                            */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Display Name',
+		displayName: 'New List Name',
 		name: 'displayName',
 		type: 'string',
 		displayOptions: {
@@ -146,6 +147,6 @@ export const taskListFields = [
 		},
 		required: true,
 		default: '',
-		description: 'Task list display name.',
+		description: 'List display name.',
 	},
 ] as INodeProperties[];
