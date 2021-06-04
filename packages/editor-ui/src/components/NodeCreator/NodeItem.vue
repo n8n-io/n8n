@@ -1,17 +1,15 @@
 <template functional>
-	<div class="wrapper">
-		<div :class="{'node-item': true, bordered: props.bordered}">
-			<NodeIcon class="node-icon" :nodeType="props.nodeType" :style="{color: props.nodeType.defaults.color}" />
-			<div>
-				<div class="details">
-					<span class="name">{{props.nodeType.displayName}}</span>
-					<span class="trigger-icon">
-						<TriggerIcon v-if="$options.isTrigger(props.nodeType)" />
-					</span>
-				</div>
-				<div class="description">
-					{{props.nodeType.description}}
-				</div>
+	<div :class="{[$style['node-item']]: true, [$style.bordered]: props.bordered}">
+		<NodeIcon :class="$style['node-icon']" :nodeType="props.nodeType" :style="{color: props.nodeType.defaults.color}" />
+		<div>
+			<div :class="$style.details">
+				<span :class="$style.name">{{props.nodeType.displayName}}</span>
+				<span :class="$style['trigger-icon']">
+					<TriggerIcon v-if="$options.isTrigger(props.nodeType)" />
+				</span>
+			</div>
+			<div :class="$style.description">
+				{{props.nodeType.description}}
 			</div>
 		</div>
 	</div>
@@ -41,7 +39,7 @@ export default {
 };
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss" module>
 .node-item {
 	padding: 11px 8px 11px 0;
 	margin-left: 15px;
