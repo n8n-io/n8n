@@ -8,27 +8,15 @@
 		}"
 		@click="listeners['click']"
 		>
-		<div v-if="props.item.type === 'category'">
-			<span class="name">{{ props.item.category }}</span>
-			<font-awesome-icon
-				class="arrow"
-				icon="chevron-down"
-				v-if="props.item.expanded"
-			/>
-			<font-awesome-icon class="arrow" icon="chevron-up" v-else />
-		</div>
+		<CategoryItem
+			v-if="props.item.type === 'category'"
+			:item="props.item"
+		/>
 
-		<div v-else-if="props.item.type === 'subcategory'">
-			<div class="details">
-				<div class="title">{{ props.item.properties.subcategory }}</div>
-				<div v-if="props.item.properties.description" class="description">
-					{{ props.item.properties.description }}
-				</div>
-			</div>
-			<div class="action">
-				<font-awesome-icon class="arrow" icon="arrow-right" />
-			</div>
-		</div>
+		<SubcategoryItem
+			v-else-if="props.item.type === 'subcategory'"
+			:item="props.item"
+		/>
 
 		<NodeItem
 			v-else-if="props.item.type === 'node'"
@@ -39,9 +27,13 @@
 </template>
 
 <script lang="ts">
-import NodeItem from './NodeItem.vue';
 import Vue from 'vue';
+import NodeItem from './NodeItem.vue';
+import CategoryItem from './CategoryItem.vue';
+import SubcategoryItem from './SubcategoryItem.vue';
 
+Vue.component("CategoryItem", CategoryItem);
+Vue.component("SubcategoryItem", SubcategoryItem);
 Vue.component("NodeItem", NodeItem);
 
 export default {
@@ -49,7 +41,6 @@ export default {
 };
 
 </script>
-
 
 <style lang="scss" scoped>
 .container {
@@ -62,23 +53,6 @@ export default {
 
 	&.active {
 		border-left: 1px solid $--color-primary !important;
-	}
-}
-
-.category > div {
-	font-size: 11px;
-	font-weight: bold;
-	letter-spacing: 1px;
-	line-height: 11px;
-	padding: 10px 0;
-	margin-left: 12px;
-	margin-right: 12px;
-	border-bottom: 1px solid $--node-creator-border-color;
-	display: flex;
-	text-transform: uppercase;
-
-	.name {
-		flex-grow: 1;
 	}
 }
 
