@@ -8,7 +8,7 @@
 			@before-leave="beforeLeave"
 			@leave="leave"
 		>
-			<div v-for="(item, index) in elements" :key="getKey(item)">
+			<div v-for="(item, index) in elements" :key="item.key">
 				<CreatorItem
 					:item="item"
 					:active="activeIndex === index && !disabled"
@@ -41,26 +41,7 @@ export default Vue.extend({
 				return;
 			}
 
-			if (element.type === "node" && element.nodeType) {
-				this.$emit("nodeTypeSelected", element.nodeType.name);
-			} else if (element.type === "category") {
-				this.$emit("categorySelected", element.category);
-			} else if (element.type === "subcategory") {
-				this.$emit("subcategorySelected", element);
-			}
-		},
-		getKey(element: INodeCreateElement) {
-			if (element.type === "category") {
-				return element.category;
-			}
-			if (element.type === "subcategory") {
-				return `${element.category}_${element.subcategory}`;
-			}
-			if (element.nodeType) {
-				return `${element.category}_${element.nodeType.name}`;
-			}
-
-			return "";
+			this.$emit('selected', element);
 		},
 		beforeEnter(el: HTMLElement) {
 			el.style.height = "0";

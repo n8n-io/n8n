@@ -12,13 +12,14 @@
 			<ItemIterator
 				:elements="elements"
 				:activeIndex="activeIndex"
-				@nodeTypeSelected="nodeTypeSelected"
+				@selected="selected"
 			/>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
+import { INodeCreateElement } from '@/Interface';
 import Vue from 'vue';
 
 import ItemIterator from './ItemIterator.vue';
@@ -30,8 +31,8 @@ export default Vue.extend({
 	},
 	props: ['title', 'elements', 'activeIndex'],
 	methods: {
-		nodeTypeSelected(nodeName: string) {
-			this.$emit('nodeTypeSelected', nodeName);
+		selected(element: INodeCreateElement) {
+			this.$emit('selected', element);
 		},
 		onBackArrowClick() {
 			this.$emit('close');

@@ -20,9 +20,9 @@
 
 		<div v-else-if="props.item.type === 'subcategory'">
 			<div class="details">
-				<div class="title">{{ props.item.subcategory }}</div>
-				<div v-if="props.item.description" class="description">
-					{{ props.item.description }}
+				<div class="title">{{ props.item.properties.subcategory }}</div>
+				<div v-if="props.item.properties.description" class="description">
+					{{ props.item.properties.description }}
 				</div>
 			</div>
 			<div class="action">
@@ -32,7 +32,7 @@
 
 		<NodeItem
 			v-else-if="props.item.type === 'node'"
-			:nodeType="props.item.nodeType"
+			:nodeType="props.item.properties.nodeType"
 			:bordered="!props.lastNode"
 		></NodeItem>
 	</div>

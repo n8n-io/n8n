@@ -461,15 +461,27 @@ export interface ICodex {
 	subcategories?: {[category: string]: string[]};
 }
 
+interface ISubcategoryItemProps {
+	subcategory: string;
+	description: string;
+}
+
+interface INodeItemProps {
+	subcategory: string;
+	nodeType: INodeTypeDescription;
+}
+
+interface ICategoryItemProps {
+	expanded: boolean;
+}
+
 export interface INodeCreateElement {
 	type: string;
 	category: string;
-	nodeType?: INodeTypeDescription;
-	expanded?: boolean;
-	subcategory?: string;
-	description?: string;
+	key: string;
 	includedByTrigger?: boolean;
 	includedByRegular?: boolean;
+	properties: ISubcategoryItemProps | INodeItemProps | ICategoryItemProps;
 }
 
 

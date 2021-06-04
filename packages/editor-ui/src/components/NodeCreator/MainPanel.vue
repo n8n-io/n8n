@@ -1,7 +1,7 @@
 <template>
 	<div @click="onClickInside" class="container">
 		<SlideTransition>
-			<SubcategoryPanel v-if="activeSubcategory" :elements="subcategorizedNodes" :title="activeSubcategory.subcategory" :activeIndex="activeIndex" @close="onSubcategoryClose" @nodeTypeSelected="nodeTypeSelected" />
+			<SubcategoryPanel v-if="activeSubcategory" :elements="subcategorizedNodes" :title="activeSubcategory.properties.subcategory" :activeIndex="activeIndex" @close="onSubcategoryClose" @selected="selected" />
 		</SlideTransition>
 		<div class="main-panel">
 			<SearchBar
@@ -22,9 +22,7 @@
 					:disabled="!!activeSubcategory"
 					:activeIndex="activeIndex"
 					:transitionsEnabled="true"
-					@categorySelected="onCategorySelected"
-					@nodeTypeSelected="nodeTypeSelected"
-					@subcategorySelected="onSubcategorySelected"
+					@selected="selected"
 				/>
 			</div>
 			<div
@@ -34,7 +32,7 @@
 				<ItemIterator
 					:elements="filteredNodeTypes"
 					:activeIndex="activeIndex"
-					@nodeTypeSelected="nodeTypeSelected"
+					@selected="selected"
 				/>
 			</div>
 			<NoResults v-else @nodeTypeSelected="nodeTypeSelected" />
@@ -140,8 +138,12 @@ export default mixins(externalHooks).extend({
 
 			return returnData.map((nodeType) => ({
 				type: "node",
-				nodeType,
 				category: "",
+				key: `${nodeType.name}`,
+				properties: {
+					nodeType,
+					subcategory: "",
+				},
 			}));
 		},
 
@@ -158,8 +160,11 @@ export default mixins(externalHooks).extend({
 						accu[UNCATEGORIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].nodes.push({
 							type: "node",
 							category: UNCATEGORIZED_CATEGORY,
-							subcategory: UNCATEGORIZED_SUBCATEGORY,
-							nodeType,
+							key: `${UNCATEGORIZED_CATEGORY}_${nodeType.name}`,
+							properties: {
+								subcategory: UNCATEGORIZED_SUBCATEGORY,
+								nodeType,
+							},
 							includedByTrigger: nodeType.group.includes("trigger"),
 							includedByRegular: !nodeType.group.includes("trigger"),
 						});
@@ -192,9 +197,12 @@ export default mixins(externalHooks).extend({
 						}
 						accu[category][subcategory].nodes.push({
 							type: "node",
+							key: `${category}_${nodeType.name}`,
 							category,
-							nodeType,
-							subcategory,
+							properties: {
+								nodeType,
+								subcategory,
+							},
 							includedByTrigger: isTrigger,
 							includedByRegular: !isTrigger,
 						});
@@ -235,7 +243,11 @@ export default mixins(externalHooks).extend({
 
 					const categoryEl: INodeCreateElement = {
 						type: "category",
+						key: category,
 						category,
+						properties: {
+							expanded: false,
+						},
 					};
 
 					const subcategories = Object.keys(this.categoriesWithNodes[category]);
@@ -257,9 +269,12 @@ export default mixins(externalHooks).extend({
 						(accu: INodeCreateElement[], subcategory: string) => {
 							const subcategoryEl: INodeCreateElement = {
 								type: "subcategory",
+								key: `${category}_${subcategory}`,
 								category,
-								subcategory,
-								description: SUBCATEGORY_DESCRIPTIONS[category][subcategory],
+								properties: {
+									subcategory,
+									description: SUBCATEGORY_DESCRIPTIONS[category][subcategory],
+								},
 								includedByTrigger:
 									this.categoriesWithNodes[category][subcategory].triggerCount >
 									0,
@@ -320,8 +335,13 @@ export default mixins(externalHooks).extend({
 		},
 
 		subcategorizedNodes() {
+			const activeSubcategory = this.activeSubcategory as INodeCreateElement;
+			const category = activeSubcategory.category;
 			// @ts-ignore
-			return (this.activeSubcategory && this.categoriesWithNodes[this.activeSubcategory.category][this.activeSubcategory.subcategory]
+			const subcategory = activeSubcategory.properties.subcategory;
+
+			// @ts-ignore
+			return activeSubcategory && this.categoriesWithNodes[category][subcategory]
 				.nodes.filter((el: INodeCreateElement) => {
 					if (el.includedByTrigger && this.selectedType === "Trigger") {
 						return true;
@@ -330,8 +350,7 @@ export default mixins(externalHooks).extend({
 						return true;
 					}
 					return this.selectedType === "All";
-				})
-			);
+				});
 		},
 	},
 	watch: {
@@ -376,25 +395,22 @@ export default mixins(externalHooks).extend({
 				// Make sure that we do not get before the first nodeType
 				this.activeIndex = Math.max(this.activeIndex, 0);
 			} else if (e.key === "Enter" && activeNodeType) {
-				if (activeNodeType.type === "node" && activeNodeType.nodeType) {
-					this.nodeTypeSelected(activeNodeType.nodeType.name);
-				} else if (
-					activeNodeType.type === "category" &&
-					activeNodeType.category
-				) {
-					this.onCategorySelected(activeNodeType.category);
-				} else if (
-					activeNodeType.type === "subcategory" &&
-					activeNodeType.subcategory
-				) {
-					this.onSubcategorySelected(activeNodeType);
-				}
+				this.selected(activeNodeType);
 			}
 
 			if (!["Escape", "Tab"].includes(e.key)) {
 				// We only want to propagate "Escape" as it closes the node-creator and
 				// "Tab" which toggles it
 				e.stopPropagation();
+			}
+		},
+		selected(element: INodeCreateElement) {
+			if (element.type === "node" && element.properties.nodeType) {
+				this.nodeTypeSelected(element.properties.nodeType.name);
+			} else if (element.type === "category") {
+				this.onCategorySelected(element.category);
+			} else if (element.type === "subcategory") {
+				this.onSubcategorySelected(element);
 			}
 		},
 		nodeTypeSelected(nodeTypeName: string) {
