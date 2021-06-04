@@ -13,7 +13,7 @@ import {
 import {
 	extractID,
 	googleApiRequest,
-	hasKeys,
+	upperFirst,
 } from './GenericFunctions';
 
 import {
@@ -23,7 +23,6 @@ import {
 
 import {
 	IUpdateBody,
-	IUpdateFields,
 } from './interfaces';
 
 export class GoogleDocs implements INodeType {
@@ -142,7 +141,9 @@ export class GoogleDocs implements INodeType {
 					const documentURL = this.getNodeParameter('documentURL', i) as string;
 					const documentId = extractID(documentURL);
 					const simple = this.getNodeParameter('simple', 0) as boolean;
-					const { writeControl, requestsUi } = this.getNodeParameter('updateFields', i) as IUpdateFields;
+					const actionsUi = this.getNodeParameter('actionsUi', i) as {
+						actionFields: IDataObject[]
+					};
 
 					if (!documentId) {
 						throw new NodeOperationError(this.getNode(), 'Incorrect document URL');
@@ -152,256 +153,176 @@ export class GoogleDocs implements INodeType {
 						requests: [],
 					} as IUpdateBody;
 
-					if (hasKeys(writeControl)) {
-						const { control, value } = writeControl.writeControlObject;
-						body.writeControl = {
-							[control]: value,
-						};
-					}
+					if (actionsUi) {
 
-					if (hasKeys(requestsUi)) {
-						const {
-							createFooterValues,
-							createHeaderValues,
-							createNamedRangeValues,
-							createParagraphBulletsValues,
-							deleteFooterValues,
-							deleteHeaderValues,
-							deleteNamedRangeValues,
-							deleteParagraphBulletsValues,
-							deletePositionedObjectValues,
-							deleteTableColumnValues,
-							deleteTableRowValues,
-							insertPageBreakValues,
-							insertTableValues,
-							insertTableColumnValues,
-							insertTableRowValues,
-							insertTextValues,
-							replaceAllTextValues,
-						} = requestsUi;
+						let requestBody: IDataObject;
+						actionsUi.actionFields.forEach( actionField => {
+							const {action, object} = actionField;
+							if (object === 'positionedObject') {
+								if (action === 'delete') {
+									requestBody = {
+										objectId: actionField.objectId,
+									};
+								}
 
-						// ----------------------------------
-						//         replace values
-						// ----------------------------------
+							} else if (object === 'pageBreak') {
 
-						if (replaceAllTextValues?.length) {
-							replaceAllTextValues.forEach(({ replaceText, text, matchCase }) => {
-								body.requests.push({
-									replaceAllText: {
-										replaceText,
-										containsText: { text, matchCase },
-									},
-								});
-							});
-						}
-
-						// ----------------------------------
-						//         insert values
-						// ----------------------------------
-
-						if (insertTextValues?.length) {
-							insertTextValues.forEach(({ text, locationChoice, segmentId, index }) => {
-								body.requests.push({
-									insertText: {
-										text,
-										[locationChoice]: {
-											segmentId,
+								if (action === 'insert') {
+									const {insertSegment,segmentId,locationChoice,index} = actionField;
+									requestBody = {
+										[locationChoice as string]: {
+											segmentId: (insertSegment !== 'body') ? segmentId : '',
 											...(locationChoice === 'location') ? { index } : {},
 										},
-									},
-								});
-							});
-						}
+									};
+								}
 
-						if (insertPageBreakValues?.length) {
-							insertPageBreakValues.forEach(({ locationChoice, segmentId, index }) => {
-								body.requests.push({
-									insertPageBreak: {
-										[locationChoice]: {
-											segmentId,
-											...(locationChoice === 'location') ? { index } : {},
-										},
-									},
-								});
-							});
-						}
+							} else if (object === 'table') {
 
-						if (insertTableValues?.length) {
-							insertTableValues.forEach(value => {
-								const { rows, columns, locationChoice, segmentId, index } = value;
-								body.requests.push({
-									insertTable: {
+								if (action === 'insert') {
+									const {rows, columns, insertSegment,locationChoice, segmentId, index} = actionField;
+									requestBody = {
 										rows,
 										columns,
-										[locationChoice]: {
-											segmentId,
+										[locationChoice as string]: {
+											segmentId: (insertSegment !== 'body') ? segmentId : '',
 											...(locationChoice === 'location') ? { index } : {},
 										},
-									},
-								});
-							});
-						}
+									};
+								}
 
-						if (insertTableRowValues?.length) {
-							insertTableRowValues.forEach(value => {
-								const { insertBelow, rowIndex, columnIndex, segmentId, index } = value;
-								body.requests.push({
-									insertTableRow: {
-										insertBelow,
+							} else if (object === 'footer') {
+
+								if (action === 'create') {
+									const {insertSegment,locationChoice, segmentId, index} = actionField;
+									requestBody = {
+										type: 'DEFAULT',
+										sectionBreakLocation: {
+											segmentId: (insertSegment !== 'body') ? segmentId : '',
+											...(locationChoice === 'location') ? { index } : {},
+										},
+									};
+								} else if (action === 'delete') {
+									requestBody = {
+										footerId: actionField.footerId,
+									};
+								}
+
+							} else if (object === 'header') {
+
+								if (action === 'create') {
+									const {insertSegment, locationChoice, segmentId, index} = actionField;
+									requestBody = {
+										type: 'DEFAULT',
+										sectionBreakLocation: {
+											segmentId: (insertSegment !== 'body') ? segmentId : '',
+											...(locationChoice === 'location') ? { index } : {},
+										},
+									};
+								} else if (action === 'delete') {
+									requestBody = {
+										headerId: actionField.headerId,
+									};
+								}
+
+							} else if (object === 'tableColumn') {
+
+								if(action === 'insert') {
+									const { insertPosition, rowIndex, columnIndex, insertSegment, segmentId, index } = actionField;
+									requestBody = {
+										insertRight: insertPosition,
 										tableCellLocation: {
 											rowIndex,
 											columnIndex,
-											tableStartLocation: { segmentId, index },
+											tableStartLocation: { segmentId: (insertSegment !== 'body') ? segmentId : '', index,},
 										},
-									},
-								});
-							});
-						}
-
-						if (insertTableColumnValues?.length) {
-							insertTableColumnValues.forEach(value => {
-								const { insertRight, rowIndex, columnIndex, segmentId, index } = value;
-								body.requests.push({
-									insertTableColumn: {
-										insertRight,
+									};
+								} else if (action === 'delete') {
+									const { rowIndex, columnIndex, insertSegment, segmentId, index } = actionField;
+									requestBody = {
 										tableCellLocation: {
 											rowIndex,
 											columnIndex,
-											tableStartLocation: { segmentId, index },
+											tableStartLocation: { segmentId: (insertSegment !== 'body') ? segmentId : '', index,},
 										},
-									},
-								});
-							});
-						}
+									};
+								}
 
-						// ----------------------------------
-						//         create values
-						// ----------------------------------
+							} else if (object === 'tableRow') {
 
-						if (createParagraphBulletsValues?.length) {
-							createParagraphBulletsValues.forEach(value => {
-								const { bulletPreset, segmentId, startIndex, endIndex } = value;
-								body.requests.push({
-									createParagraphBullets: {
+								if(action === 'insert') {
+									const { insertPosition, rowIndex, columnIndex, insertSegment, segmentId, index } = actionField;
+									requestBody = {
+										insertBelow: insertPosition,
+										tableCellLocation: {
+											rowIndex,
+											columnIndex,
+											tableStartLocation: { segmentId: (insertSegment !== 'body') ? segmentId : '', index,},
+										},
+									};
+								} else if (action === 'delete') {
+									const { rowIndex, columnIndex, insertSegment, segmentId, index } = actionField;
+									requestBody = {
+										tableCellLocation: {
+											rowIndex,
+											columnIndex,
+											tableStartLocation: { segmentId: (insertSegment !== 'body') ? segmentId : '', index,},
+										},
+									};
+								}
+
+							} else if (object === 'text') {
+
+								if (action === 'insert') {
+									const {text, locationChoice, insertSegment,segmentId, index} = actionField;
+									requestBody = {
+										text,
+										[locationChoice as string]: {
+											segmentId: (insertSegment !== 'body') ? segmentId : '',
+											...(locationChoice === 'location') ? { index } : {},
+										},
+									};
+								} else if (action === 'replaceAll') {
+									const {text, replaceText, matchCase} = actionField;
+									requestBody = {
+										replaceText,
+										containsText: { text, matchCase },
+									};
+								}
+
+							} else if (object === 'paragraphBullets') {
+								if (action === 'create') {
+									const {bulletPreset, startIndex, insertSegment,segmentId, endIndex} = actionField;
+									requestBody = {
 										bulletPreset,
-										range: { segmentId, startIndex, endIndex },
-									},
-								});
-							});
-						}
-
-						if (createNamedRangeValues?.length) {
-							createNamedRangeValues.forEach(value => {
-								const { name, segmentId, startIndex, endIndex } = value;
-								body.requests.push({
-									createNamedRange: {
+										range: { segmentId: (insertSegment !== 'body') ? segmentId : '', startIndex, endIndex },
+									};
+								} else if (action === 'delete') {
+									const {startIndex, insertSegment,segmentId, endIndex} = actionField;
+									requestBody = {
+										range: { segmentId: (insertSegment !== 'body') ? segmentId : '', startIndex, endIndex },
+									};
+								}
+							} else if (object === 'namedRange') {
+								if (action === 'create') {
+									const { name, insertSegment, segmentId, startIndex, endIndex } = actionField;
+									requestBody = {
 										name,
-										range: { segmentId, startIndex, endIndex },
-									},
-								});
-							});
-						}
+										range: { segmentId: (insertSegment !== 'body') ? segmentId : '', startIndex, endIndex },
+									};
+								} else if (action === 'delete') {
+									const {namedRangeReference, value} = actionField;
+									requestBody = {
+										[namedRangeReference as string]: value,
+									};
+								}
+							}
 
-						if (createHeaderValues?.length) {
-							createHeaderValues.forEach(({ segmentId, index }) => {
-								body.requests.push({
-									createHeader: {
-										type: 'DEFAULT',
-										sectionBreakLocation: { segmentId, index },
-									},
-								});
+							body.requests.push({
+								[`${action}${upperFirst(object as string)}`]: requestBody,
 							});
-						}
 
-						if (createFooterValues?.length) {
-							createFooterValues.forEach(({ segmentId, index }) => {
-								body.requests.push({
-									createFooter: {
-										type: 'DEFAULT',
-										sectionBreakLocation: { segmentId, index },
-									},
-								});
-							});
-						}
-
-						// ----------------------------------
-						//         delete values
-						// ----------------------------------
-
-						if (deleteParagraphBulletsValues?.length) {
-							deleteParagraphBulletsValues.forEach(value => {
-								const { segmentId, startIndex, endIndex } = value;
-								body.requests.push({
-									deleteParagraphBullets: {
-										range: { segmentId, startIndex, endIndex },
-									},
-								});
-							});
-						}
-
-						if (deleteNamedRangeValues?.length) {
-							deleteNamedRangeValues.forEach(({ namedRangeReference, value }) => {
-								body.requests.push({
-									deleteNamedRange: {
-										[namedRangeReference]: value,
-									},
-								});
-							});
-						}
-
-						if (deletePositionedObjectValues?.length) {
-							deletePositionedObjectValues.forEach(({ objectId }) => {
-								body.requests.push({
-									deletePositionedObject: { objectId },
-								});
-							});
-						}
-
-						if (deleteTableRowValues?.length) {
-							deleteTableRowValues.forEach(value => {
-								const { rowIndex, columnIndex, segmentId, index } = value;
-								body.requests.push({
-									deleteTableRow: {
-										tableCellLocation: {
-											rowIndex,
-											columnIndex,
-											tableStartLocation: { segmentId, index },
-										},
-									},
-								});
-							});
-						}
-
-						if (deleteTableColumnValues?.length) {
-							deleteTableColumnValues.forEach(value => {
-								const { rowIndex, columnIndex, segmentId, index } = value;
-								body.requests.push({
-									deleteTableColumn: {
-										tableCellLocation: {
-											rowIndex,
-											columnIndex,
-											tableStartLocation: { segmentId, index },
-										},
-									},
-								});
-							});
-						}
-
-						if (deleteHeaderValues?.length) {
-							deleteHeaderValues.forEach(({ headerId }) => {
-								body.requests.push({
-									deleteHeader: { headerId },
-								});
-							});
-						}
-
-						if (deleteFooterValues?.length) {
-							deleteFooterValues.forEach(({ footerId }) => {
-								body.requests.push({
-									deleteFooter: { footerId },
-								});
-							});
-						}
+						});
 					}
 
 					responseData = await googleApiRequest.call(this, 'POST', `/documents/${documentId}:batchUpdate`, body);

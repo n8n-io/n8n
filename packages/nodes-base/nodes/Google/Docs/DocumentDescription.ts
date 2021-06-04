@@ -35,7 +35,7 @@ export const documentOperations = [
 
 export const documentFields = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 document:create                             */
+	/*                                 document: create                             */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Title',
@@ -97,7 +97,7 @@ export const documentFields = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 document:get                                */
+	/*                                 document: get                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Document URL',
@@ -118,7 +118,7 @@ export const documentFields = [
 		description: 'The document URL.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 document:update                            */
+	/*                                 document: update                            */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Document URL',
@@ -156,6 +156,1016 @@ export const documentFields = [
 		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
 	{
+		displayName: 'Actions',
+		name: 'actionsUi',
+		description: 'Actions applied to update the document.',
+		type: 'fixedCollection',
+		placeholder: 'Add Action',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'document',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'actionFields',
+				displayName: 'Action Fields',
+				values: [
+					// Object field
+					{
+						displayName: 'Object',
+						name: 'object',
+						type: 'options',
+						options: [
+							{
+								name: 'Positioned Object',
+								value: 'positionedObject',
+							},
+							{
+								name: 'Page Break',
+								value: 'pageBreak',
+							},
+							{
+								name: 'Table',
+								value: 'table',
+							},
+							{
+								name: 'Footer',
+								value: 'footer',
+							},
+							{
+								name: 'Header',
+								value: 'header',
+							},
+							{
+								name: 'Table Column',
+								value: 'tableColumn',
+							},
+							{
+								name: 'Table Row',
+								value: 'tableRow',
+							},
+							{
+								name: 'Text',
+								value: 'text',
+							},
+							{
+								name: 'Paragraph Bullets',
+								value: 'paragraphBullets',
+							},
+							{
+								name: 'Named Range',
+								value: 'namedRange',
+							},
+						],
+						description: 'The action object.',
+						default: 'text',
+					},
+					// Action field
+					{
+						displayName: 'Action',
+						name: 'action',
+						type: 'options',
+						typeOptions: {
+							loadOptionsDependsOn: 'object',
+						},
+						options: [
+							{
+								name: 'Create',
+								value: 'create',
+							},
+							{
+								name: 'Delete',
+								value: 'delete',
+							},
+						],
+						displayOptions: {
+							show: {
+								object: [
+									'footer',
+									'header',
+									'paragraphBullets',
+									'namedRange',
+								],
+							},
+						},
+						description: 'The action object.',
+						default: 'create',
+					},
+					{
+						displayName: 'Action',
+						name: 'action',
+						type: 'options',
+						typeOptions: {
+							loadOptionsDependsOn: 'object',
+						},
+						options: [
+							{
+								name: 'Delete',
+								value: 'delete',
+							},
+							{
+								name: 'Insert',
+								value: 'insert',
+							},
+						],
+						displayOptions: {
+							show: {
+								object: [
+									'tableColumn',
+									'tableRow',
+								],
+							},
+						},
+						description: 'The action itself.',
+						default: 'insert',
+					},
+					{
+						displayName: 'Action',
+						name: 'action',
+						type: 'options',
+						typeOptions: {
+							loadOptionsDependsOn: 'object',
+						},
+						options: [
+							{
+								name: 'Insert',
+								value: 'insert',
+							},
+							{
+								name: 'Find and replace text',
+								value: 'replaceAll',
+							},
+						],
+						displayOptions: {
+							show: {
+								object: [
+									'text',
+								],
+							},
+						},
+						description: 'The action itself.',
+						default: 'insert',
+					},
+					{
+						displayName: 'Action',
+						name: 'action',
+						type: 'options',
+						typeOptions: {
+							loadOptionsDependsOn: 'object',
+						},
+						options: [
+							{
+								name: 'Insert',
+								value: 'insert',
+							},
+						],
+						displayOptions: {
+							show: {
+								object: [
+									'pageBreak',
+									'table',
+								],
+							},
+						},
+						description: 'The action itself.',
+						default: 'insert',
+					},
+					{
+						displayName: 'Action',
+						name: 'action',
+						type: 'options',
+						typeOptions: {
+							loadOptionsDependsOn: 'object',
+						},
+						options: [
+							{
+								name: 'Delete',
+								value: 'delete',
+							},
+						],
+						displayOptions: {
+							show: {
+								object: [
+									'positionedObject',
+								],
+							},
+						},
+						description: 'The action itself.',
+						default: 'delete',
+					},
+					// Operation fields
+					// create footer
+					{
+						displayName: 'Index',
+						name: 'index',
+						type: 'number',
+						description: 'The zero-based index, relative to the beginning of the specified segment.',
+						default: 0,
+						displayOptions: {
+							show: {
+								object: [
+									'footer',
+								],
+								action: [
+									'create',
+								],
+							},
+						},
+					},
+					// create header
+					{
+						displayName: 'Index',
+						name: 'index',
+						type: 'number',
+						description: 'The zero-based index, relative to the beginning of the specified segment.',
+						default: 0,
+						displayOptions: {
+							show: {
+								object: [
+									'header',
+								],
+								action: [
+									'create',
+								],
+							},
+						},
+					},
+					// create named range
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						description: 'The name of the Named Range. Names do not need to be unique.',
+						default: '',
+						displayOptions: {
+							show: {
+								object: [
+									'namedRange',
+								],
+								action: [
+									'create',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Start Index',
+						name: 'startIndex',
+						type: 'number',
+						description: 'The zero-based start index of this range.',
+						default: 0,
+						displayOptions: {
+							show: {
+								object: [
+									'namedRange',
+								],
+								action: [
+									'create',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'End Index',
+						name: 'endIndex',
+						type: 'number',
+						description: 'The zero-based end index of this range.',
+						default: 0,
+						displayOptions: {
+							show: {
+								object: [
+									'namedRange',
+								],
+								action: [
+									'create',
+								],
+							},
+						},
+					},
+					// create bullets
+					{
+						displayName: 'Style',
+						name: 'bulletPreset',
+						type: 'options',
+						options: [
+							{
+								name: 'Checkbox List',
+								value: 'BULLET_CHECKBOX',
+								description: 'A bulleted list with CHECKBOX bullet glyphs for all list nesting levels.',
+							},
+							{
+								name: 'Bullet List',
+								value: 'BULLET_DISC_CIRCLE_SQUARE',
+								description: 'A bulleted list with a <code>DISC</code>, <code>CIRCLE</code> and <code>SQUARE</code> bullet glyph for the first 3 list nesting levels.',
+							},
+							{
+								name: 'Numbered List',
+								value: 'NUMBERED_DECIMAL_NESTED',
+								description: 'A numbered list with <code>DECIMAL</code> numeric glyphs separated by periods, where each nesting level uses the previous nesting level\'s glyph as a prefix. For example: 1., 1.1., 2., 2.2 .',
+							},
+						],
+						description: 'Preset pattern of bullet glyphs for list.',
+						default: 'BULLET_DISC_CIRCLE_SQUARE',
+						displayOptions: {
+							show: {
+								object: [
+									'paragraphBullets',
+								],
+								action: [
+									'create',
+								],
+							},
+						},
+					},
+					// delete footer
+					{
+						displayName: 'Footer ID',
+						name: 'footerId',
+						type: 'string',
+						description: 'The ID of the footer to delete.',
+						default: '',
+						displayOptions: {
+							show: {
+								object: [
+									'footer',
+								],
+								action: [
+									'delete',
+								],
+							},
+						},
+					},
+					// delete header
+					{
+						displayName: 'Header ID',
+						name: 'headerId',
+						type: 'string',
+						description: 'The ID of the header to delete.',
+						default: '',
+						displayOptions: {
+							show: {
+								object: [
+									'header',
+								],
+								action: [
+									'delete',
+								],
+							},
+						},
+					},
+					// delete named range
+					{
+						displayName: 'Specify range by',
+						name: 'namedRangeReference',
+						type: 'options',
+						options: [
+							{
+								name: 'Name',
+								value: 'name',
+							},
+							{
+								name: 'ID',
+								value: 'namedRangeId',
+							},
+						],
+						description: 'The value that determines which range or ranges to delete.',
+						default: 'namedRangeId',
+						displayOptions: {
+							show: {
+								object: [
+									'namedRange',
+								],
+								action: [
+									'delete',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'value',
+						type: 'string',
+						description: 'The ID of the range.',
+						default: '',
+						displayOptions: {
+							show: {
+								object: [
+									'namedRange',
+								],
+								action: [
+									'delete',
+								],
+								namedRangeReference: [
+									'namedRangeId',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Name',
+						name: 'value',
+						type: 'string',
+						description: 'The name of the range.',
+						default: '',
+						displayOptions: {
+							show: {
+								object: [
+									'namedRange',
+								],
+								action: [
+									'delete',
+								],
+								namedRangeReference: [
+									'name',
+								],
+							},
+						},
+					},
+					// delete bullets
+
+					// delete positioned object
+					{
+						displayName: 'Object ID',
+						name: 'objectId',
+						type: 'string',
+						description: 'The ID of the positioned object to delete (An object that is tied to a paragraph and positioned relative to its beginning), See the Google <a href="https://developers.google.com/docs/api/reference/rest/v1/PositionedObject">documentation</a>.',
+						default: '',
+						displayOptions: {
+							show: {
+								object: [
+									'positionedObject',
+								],
+								action: [
+									'delete',
+								],
+							},
+						},
+					},
+					// delete table column
+
+					// delete table row
+
+					// insert page break
+					{
+						displayName: 'Index',
+						name: 'index',
+						type: 'number',
+						description: 'The zero-based index, relative to the beginning of the specified segment.',
+						displayOptions: {
+							show: {
+								locationChoice: [
+									'location',
+								],
+								object: [
+									'pageBreak',
+								],
+								action: [
+									'insert',
+								],
+							},
+						},
+						default: 0,
+					},
+					{
+						displayName: 'Insertion Location',
+						name: 'locationChoice',
+						type: 'options',
+						options: [
+							{
+								name: 'End Of Segment Location',
+								value: 'endOfSegmentLocation',
+								description: 'Inserts the text at the end of a header, footer, footnote or the document body.',
+							},
+							{
+								name: 'Location',
+								value: 'location',
+								description: 'Inserts the text at a specific index in the document.',
+							},
+						],
+						description: 'The location where the text will be inserted.',
+						default: 'endOfSegmentLocation',
+						displayOptions: {
+							show: {
+								object: [
+									'pageBreak',
+								],
+								action: [
+									'insert',
+								],
+							},
+						},
+					},
+					// insert table
+					{
+						displayName: 'Rows',
+						name: 'rows',
+						type: 'number',
+						description: 'The number of rows in the table.',
+						default: 0,
+						displayOptions: {
+							show: {
+								object: [
+									'table',
+								],
+								action: [
+									'insert',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Columns',
+						name: 'columns',
+						type: 'number',
+						description: 'The number of columns in the table.',
+						default: 0,
+						displayOptions: {
+							show: {
+								object: [
+									'table',
+								],
+								action: [
+									'insert',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Insertion Location',
+						name: 'locationChoice',
+						type: 'options',
+						options: [
+							{
+								name: 'End Of Segment Location',
+								value: 'endOfSegmentLocation',
+								description: 'Inserts the text at the end of a header, footer, footnote or the document body.',
+							},
+							{
+								name: 'Location',
+								value: 'location',
+								description: 'Inserts the text at a specific index in the document.',
+							},
+						],
+						description: 'The location where the text will be inserted.',
+						default: 'endOfSegmentLocation',
+						displayOptions: {
+							show: {
+								object: [
+									'table',
+								],
+								action: [
+									'insert',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Index',
+						name: 'index',
+						type: 'number',
+						description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer a table).',
+						displayOptions: {
+							show: {
+								locationChoice: [
+									'location',
+								],
+								object: [
+									'table',
+								],
+								action: [
+									'insert',
+								],
+							},
+						},
+						default: 0,
+					},
+					// insert text
+					{
+						displayName: 'Insertion Location',
+						name: 'locationChoice',
+						type: 'options',
+						options: [
+							{
+								name: 'End Of Segment Location',
+								value: 'endOfSegmentLocation',
+								description: 'Inserts the text at the end of a header, footer, footnote or the document body.',
+							},
+							{
+								name: 'Location',
+								value: 'location',
+								description: 'Inserts the text at a specific index in the document.',
+							},
+						],
+						description: 'The location where the text will be inserted.',
+						default: 'endOfSegmentLocation',
+						displayOptions: {
+							show: {
+								object: [
+									'text',
+								],
+								action: [
+									'insert',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Index',
+						name: 'index',
+						type: 'number',
+						description: 'The zero-based index, relative to the beginning of the specified segment.',
+						displayOptions: {
+							show: {
+								locationChoice: [
+									'location',
+								],
+								object: [
+									'text',
+								],
+								action: [
+									'insert',
+								],
+							},
+						},
+						default: 0,
+					},
+					{
+						displayName: 'Text',
+						name: 'text',
+						type: 'string',
+						description: 'The text to insert in the document.',
+						default: '',
+						displayOptions: {
+							show: {
+								object: [
+									'text',
+								],
+								action: [
+									'insert',
+								],
+							},
+						},
+					},
+					// insert table column
+
+					// insert table row
+
+					// replace all text
+					{
+						displayName: 'New Text',
+						name: 'replaceText',
+						type: 'string',
+						description: 'The text that will replace the matched text.',
+						default: '',
+						displayOptions: {
+							show: {
+								object: [
+									'text',
+								],
+								action: [
+									'replaceAll',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Old Text',
+						name: 'text',
+						type: 'string',
+						description: 'The text to search for in the document.',
+						default: '',
+						displayOptions: {
+							show: {
+								object: [
+									'text',
+								],
+								action: [
+									'replaceAll',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Match Case',
+						name: 'matchCase',
+						type: 'boolean',
+						description: 'Indicates whether the search should respect case sensitivity.',
+						default: false,
+						displayOptions: {
+							show: {
+								object: [
+									'text',
+								],
+								action: [
+									'replaceAll',
+								],
+							},
+						},
+					},
+					/*                                                */
+					/*                 Common Fields                  */
+					/*                                                */
+
+					// Segment ID related inputs
+
+					// Create action
+					{
+						displayName: 'Insert Segment',
+						name: 'insertSegment',
+						type: 'options',
+						options: [
+							{
+								name: 'Header',
+								value: 'header',
+							},
+							{
+								name: 'Body',
+								value: 'body',
+							},
+							{
+								name: 'Footer',
+								value: 'footer',
+							},
+						],
+						description: 'The location where to create the boject.',
+						default: 'body',
+						displayOptions: {
+							show: {
+								object: [
+									'footer',
+									'header',
+									'paragraphBullets',
+									'namedRange',
+								],
+								action: [
+									'create',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Segment ID',
+						name: 'segmentId',
+						type: 'string',
+						description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
+						default: '',
+						displayOptions: {
+							show: {
+								object: [
+									'footer',
+									'header',
+									'paragraphBullets',
+									'namedRange',
+								],
+								action: [
+									'create',
+								],
+							},
+							hide: {
+								insertSegment: [
+									'body',
+								],
+							},
+						},
+					},
+					// insert action
+					{
+						displayName: 'Insert Segment',
+						name: 'insertSegment',
+						type: 'options',
+						options: [
+							{
+								name: 'Header',
+								value: 'header',
+							},
+							{
+								name: 'Body',
+								value: 'body',
+							},
+							{
+								name: 'Footer',
+								value: 'footer',
+							},
+						],
+						description: 'The location where to create the boject.',
+						default: 'body',
+						displayOptions: {
+							show: {
+								object: [
+									'pageBreak',
+									'table',
+									'tableColumn',
+									'tableRow',
+									'text',
+								],
+								action: [
+									'insert',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Segment ID',
+						name: 'segmentId',
+						type: 'string',
+						description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
+						default: '',
+						displayOptions: {
+							show: {
+								object: [
+									'pageBreak',
+									'table',
+									'tableColumn',
+									'tableRow',
+									'text',
+								],
+								action: [
+									'insert',
+								],
+							},
+							hide: {
+								insertSegment: [
+									'body',
+								],
+							},
+						},
+					},
+					// delete action
+					{
+						displayName: 'Insert Segment',
+						name: 'insertSegment',
+						type: 'options',
+						options: [
+							{
+								name: 'Header',
+								value: 'header',
+							},
+							{
+								name: 'Body',
+								value: 'body',
+							},
+							{
+								name: 'Footer',
+								value: 'footer',
+							},
+						],
+						description: 'The location where to create the boject.',
+						default: 'body',
+						displayOptions: {
+							show: {
+								object: [
+									'paragraphBullets',
+									'tableColumn',
+									'tableRow',
+								],
+								action: [
+									'delete',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Segment ID',
+						name: 'segmentId',
+						type: 'string',
+						description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
+						default: '',
+						displayOptions: {
+							show: {
+								object: [
+									'paragraphBullets',
+									'tableColumn',
+									'tableRow',
+								],
+								action: [
+									'delete',
+								],
+							},
+							hide: {
+								insertSegment: [
+									'body',
+								],
+							},
+						},
+					},
+
+					// Shared between paragrahs oeprations
+					{
+						displayName: 'Start Index',
+						name: 'startIndex',
+						type: 'number',
+						description: 'The zero-based start index of this range.',
+						default: 0,
+						displayOptions: {
+							show: {
+								object: [
+									'paragraphBullets',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'End Index',
+						name: 'endIndex',
+						type: 'number',
+						description: 'The zero-based end index of this range.',
+						default: 0,
+						displayOptions: {
+							show: {
+								object: [
+									'paragraphBullets',
+								],
+							},
+						},
+					},
+					// share between table column and table row
+					{
+						displayName: 'Index',
+						name: 'index',
+						type: 'number',
+						description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer a table).',
+						default: 0,
+						displayOptions: {
+							show: {
+								object: [
+									'tableColumn',
+									'tableRow',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Row Index',
+						name: 'rowIndex',
+						type: 'number',
+						description: 'The zero-based row index.',
+						default: 0,
+						displayOptions: {
+							show: {
+								object: [
+									'tableColumn',
+									'tableRow',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Column Index',
+						name: 'columnIndex',
+						type: 'number',
+						description: 'The zero-based column index.',
+						default: 0,
+						displayOptions: {
+							show: {
+								object: [
+									'tableColumn',
+									'tableRow',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Insert',
+						name: 'insertPosition',
+						type: 'options',
+						options: [
+							{
+								name: 'Before content at index',
+								value: false,
+							},
+							{
+								name: 'After content at index',
+								value: true,
+							},
+						],
+						default: true,
+						displayOptions: {
+							show: {
+								object: [
+									'tableColumn',
+									'tableRow',
+								],
+								action: [
+									'insert',
+								],
+							},
+						},
+					},
+				],
+			},
+		],
+	},
+	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -172,636 +1182,6 @@ export const documentFields = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Requests',
-				name: 'requestsUi',
-				description: 'Requests to update a document.',
-				type: 'fixedCollection',
-				default: '',
-				placeholder: 'Add Request',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						name: 'createFooterValues',
-						displayName: 'Create Footer',
-						values: [
-							{
-								displayName: 'Segment ID',
-								name: 'segmentId',
-								type: 'string',
-								description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
-								default: '',
-							},
-							{
-								displayName: 'Index',
-								name: 'index',
-								type: 'number',
-								description: 'The zero-based index, relative to the beginning of the specified segment.',
-								default: 0,
-							},
-						],
-					},
-					{
-						name: 'createHeaderValues',
-						displayName: 'Create Header',
-						values: [
-							{
-								displayName: 'Segment ID',
-								name: 'segmentId',
-								type: 'string',
-								description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
-								default: '',
-							},
-							{
-								displayName: 'Index',
-								name: 'index',
-								type: 'number',
-								description: 'The zero-based index, relative to the beginning of the specified segment.',
-								default: 0,
-							},
-						],
-					},
-					{
-						name: 'createNamedRangeValues',
-						displayName: 'Create Named Range',
-						values: [
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								description: 'The name of the Named Range. Names do not need to be unique.',
-								default: '',
-							},
-							{
-								displayName: 'Segment ID',
-								name: 'segmentId',
-								type: 'string',
-								description: 'The ID of the header, footer or footnote that this range is contained in. An empty segment ID signifies the document\'s body.',
-								default: '',
-							},
-							{
-								displayName: 'Start Index',
-								name: 'startIndex',
-								type: 'number',
-								description: 'The zero-based start index of this range.',
-								default: 0,
-							},
-							{
-								displayName: 'End Index',
-								name: 'endIndex',
-								type: 'number',
-								description: 'The zero-based end index of this range.',
-								default: 0,
-							},
-						],
-					},
-					{
-						name: 'createParagraphBulletsValues',
-						displayName: 'Create Paragraph Bullets Style',
-						values: [
-							{
-								displayName: 'Bullet Preset',
-								name: 'bulletPreset',
-								type: 'options',
-								options: [
-									{
-										name: 'Bullet Glyphs: Disc, Circle, Square',
-										value: 'BULLET_DISC_CIRCLE_SQUARE',
-										description: 'A bulleted list with a <code>DISC</code>, <code>CIRCLE</code> and <code>SQUARE</code> bullet glyph for the first 3 list nesting levels.',
-									},
-									{
-										name: 'Bullet Glyphs: Diamond X, Arrow 3d, Square',
-										value: 'BULLET_DIAMONDX_ARROW3D_SQUARE',
-										description: 'A bulleted list with a <code>DIAMONDX</code>, <code>ARROW3D</code> and <code>SQUARE</code> bullet glyph for the first 3 list nesting levels.',
-									},
-									{
-										name: 'Bullet Glyph: Checkbox',
-										value: 'BULLET_CHECKBOX',
-										description: 'A bulleted list with CHECKBOX bullet glyphs for all list nesting levels.',
-									},
-									{
-										name: 'Bullet Glyphs: Arrow, Diamond, Disc',
-										value: 'BULLET_ARROW_DIAMOND_DISC',
-										description: 'A bulleted list with a <code>ARROW</code>, <code>DIAMOND</code> and <code>DISC</code> bullet glyph for the first 3 list nesting levels.',
-									},
-									{
-										name: 'Bullet Glyphs: Star, Circle, Square',
-										value: 'BULLET_STAR_CIRCLE_SQUARE',
-										description: 'A bulleted list with a <code>STAR</code>, <code>CIRCLE</code> and <code>SQUARE</code> bullet glyph for the first 3 list nesting levels.',
-									},
-									{
-										name: 'Bullet Glyphs: Arrow 3d, Circle, Square',
-										value: 'BULLET_ARROW3D_CIRCLE_SQUARE',
-										description: 'A bulleted list with a <code>ARROW3D</code>, <code>CIRCLE</code> and <code>SQUARE</code> bullet glyph for the first 3 list nesting levels.',
-									},
-									{
-										name: 'Bullet Glyphs: Left Triangle, Diamond, Disc',
-										value: 'BULLET_LEFTTRIANGLE_DIAMOND_DISC',
-										description: 'A bulleted list with a <code>LEFTTRIANGLE</code>, <code>DIAMOND</code> and <code>DISC</code> bullet glyph for the first 3 list nesting levels.',
-									},
-									{
-										name: 'Bullet Glyphs: Diamond X, Hollow Diamond, Square',
-										value: 'BULLET_DIAMONDX_HOLLOWDIAMOND_SQUARE',
-										description: 'A bulleted list with a <code>DIAMONDX</code>, <code>HOLLOWDIAMOND</code> and <code>SQUARE</code> bullet glyph for the first 3 list nesting levels.',
-									},
-									{
-										name: 'Bullet Glyphs: Diamond, Circle, Square',
-										value: 'BULLET_DIAMOND_CIRCLE_SQUARE',
-										description: 'A bulleted list with a <cpde>DIAMOND</code>, <code>CIRCLE</code> and <code>SQUARE</code> bullet glyph for the first 3 list nesting levels.',
-									},
-									{
-										name: 'Numbered Decimal: Alphabetic, Roman',
-										value: 'NUMBERED_DECIMAL_ALPHA_ROMAN',
-										description: 'An ordered list with <code>DECIMAL</code>, <code>ALPHA</code> and <code>ROMAN</code> numeric glyphs for the first 3 list nesting levels, followed by periods.',
-									},
-									{
-										name: 'Numbered Decimal: Alphabetic, Roman, Parens',
-										value: 'NUMBERED_DECIMAL_ALPHA_ROMAN_PARENS',
-										description: 'An ordered list with <code>DECIMAL</code>, <code>ALPHA</code> and <code>ROMAN</code> numeric glyphs for the first 3 list nesting levels, followed by parenthesis.',
-									},
-									{
-										name: 'Numbered Decimal: Nested',
-										value: 'NUMBERED_DECIMAL_NESTED',
-										description: 'A numbered list with <code>DECIMAL</code> numeric glyphs separated by periods, where each nesting level uses the previous nesting level\'s glyph as a prefix. For example: 1., 1.1., 2., 2.2 .',
-									},
-									{
-										name: 'Numbered: Upper Alphabetic, Alphabetic, Roman',
-										value: 'NUMBERED_UPPERALPHA_ALPHA_ROMAN',
-										description: 'An ordered list with <code>UPPERALPHA</code>, <code>ALPHA</code> and <code>ROMAN</code> numeric glyphs for the first 3 list nesting levels, followed by periods.',
-									},
-									{
-										name: 'Numbered: Upper Roman, Upper Alphabetic, Decimal',
-										value: 'NUMBERED_UPPERROMAN_UPPERALPHA_DECIMAL',
-										description: 'An ordered list with <code>UPPERROMAN</code>, <code>UPPERALPHA</code> and <code>DECIMAL</code> numeric glyphs for the first 3 list nesting levels, followed by periods.',
-									},
-									{
-										name: 'Numbered: Zero Decimal, Alphabetic, Roman',
-										value: 'NUMBERED_ZERODECIMAL_ALPHA_ROMAN',
-										description: 'An ordered list with <code>ZERODECIMAL</code>, <code>ALPHA</code> and <code>ROMAN</code> numeric glyphs for the first 3 list nesting levels, followed by periods.',
-									},
-								],
-								description: 'Preset pattern of bullet glyphs for list.',
-								default: 'BULLET_DISC_CIRCLE_SQUARE',
-							},
-							{
-								displayName: 'Segment ID',
-								name: 'segmentId',
-								type: 'string',
-								description: 'The ID of the header, footer or footnote that this range is contained in. An empty segment ID signifies the document\'s body.',
-								default: '',
-							},
-							{
-								displayName: 'Start Index',
-								name: 'startIndex',
-								type: 'number',
-								description: 'The zero-based start index of this range.',
-								default: 0,
-							},
-							{
-								displayName: 'End Index',
-								name: 'endIndex',
-								type: 'number',
-								description: 'The zero-based end index of this range.',
-								default: 0,
-							},
-						],
-					},
-					{
-						name: 'deleteFooterValues',
-						displayName: 'Delete Footer',
-						values: [
-							{
-								displayName: 'Footer ID',
-								name: 'footerId',
-								type: 'string',
-								description: 'The ID of the footer to delete.',
-								default: '',
-							},
-						],
-					},
-					{
-						name: 'deleteHeaderValues',
-						displayName: 'Delete Header',
-						values: [
-							{
-								displayName: 'Header ID',
-								name: 'headerId',
-								type: 'string',
-								description: 'The ID of the header to delete.',
-								default: '',
-							},
-						],
-					},
-					{
-						name: 'deleteNamedRangeValues',
-						displayName: 'Delete Named Range',
-						values: [
-							{
-								displayName: 'Named Range Reference',
-								name: 'namedRangeReference',
-								type: 'options',
-								options: [
-									{
-										name: 'Name',
-										value: 'name',
-									},
-									{
-										name: 'Named Range ID',
-										value: 'namedRangeId',
-									},
-								],
-								description: 'The value that determines which range or ranges to delete.',
-								default: 'namedRangeId',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								description: 'The value of the range reference.',
-								default: '',
-							},
-						],
-					},
-					{
-						name: 'deleteParagraphBulletsValues',
-						displayName: 'Delete Paragraph Bullets',
-						values: [
-							{
-								displayName: 'Segment ID',
-								name: 'segmentId',
-								type: 'string',
-								description: 'The ID of the header, footer or footnote that this range is contained in. An empty segment ID signifies the document\'s body.',
-								default: '',
-							},
-							{
-								displayName: 'Start Index',
-								name: 'startIndex',
-								type: 'number',
-								description: 'The zero-based start index of this range.',
-								default: 0,
-							},
-							{
-								displayName: 'End Index',
-								name: 'endIndex',
-								type: 'number',
-								description: 'The zero-based end index of this range.',
-								default: 0,
-							},
-						],
-					},
-					{
-						name: 'deletePositionedObjectValues',
-						displayName: 'Delete Positioned Object',
-						values: [
-							{
-								displayName: 'Object ID',
-								name: 'objectId',
-								type: 'string',
-								description: 'The ID of the positioned object to delete (An object that is tied to a paragraph and positioned relative to its beginning), See the Google <a href="https://developers.google.com/docs/api/reference/rest/v1/PositionedObject">documentation</a>.',
-								default: '',
-							},
-						],
-					},
-					{
-						name: 'deleteTableColumnValues',
-						displayName: 'Delete Table Column',
-						values: [
-							{
-								displayName: 'Table Cell Row Index',
-								name: 'rowIndex',
-								type: 'number',
-								description: 'The zero-based row index.',
-								default: 0,
-							},
-							{
-								displayName: 'Table Cell Column Index',
-								name: 'columnIndex',
-								type: 'number',
-								description: 'The zero-based column index.',
-								default: 0,
-							},
-							{
-								displayName: 'Segment ID',
-								name: 'segmentId',
-								type: 'string',
-								description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
-								default: '',
-							},
-							{
-								displayName: 'Index',
-								name: 'index',
-								type: 'number',
-								description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer a table).',
-								default: 0,
-							},
-						],
-					},
-					{
-						name: 'deleteTableRowValues',
-						displayName: 'Delete Table Row',
-						values: [
-							{
-								displayName: 'Table Cell Row Index',
-								name: 'rowIndex',
-								type: 'number',
-								description: 'The zero-based row index.',
-								default: 0,
-							},
-							{
-								displayName: 'Table Cell Column Index',
-								name: 'columnIndex',
-								type: 'number',
-								description: 'The zero-based column index.',
-								default: 0,
-							},
-							{
-								displayName: 'Segment ID',
-								name: 'segmentId',
-								type: 'string',
-								description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
-								default: '',
-							},
-							{
-								displayName: 'Index',
-								name: 'index',
-								type: 'number',
-								description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer a table).',
-								default: 0,
-							},
-						],
-					},
-					{
-						name: 'insertPageBreakValues',
-						displayName: 'Insert Page Break',
-						values: [
-							{
-								displayName: 'Index',
-								name: 'index',
-								type: 'number',
-								description: 'The zero-based index, relative to the beginning of the specified segment.',
-								displayOptions: {
-									show: {
-										locationChoice: [
-											'location',
-										],
-									},
-								},
-								default: 0,
-							},
-							{
-								displayName: 'Insertion Location',
-								name: 'locationChoice',
-								type: 'options',
-								options: [
-									{
-										name: 'End Of Segment Location',
-										value: 'endOfSegmentLocation',
-										description: 'Inserts the text at the end of a header, footer, footnote or the document body.',
-									},
-									{
-										name: 'Location',
-										value: 'location',
-										description: 'Inserts the text at a specific index in the document.',
-									},
-								],
-								description: 'The location where the text will be inserted.',
-								default: 'endOfSegmentLocation',
-							},
-							{
-								displayName: 'Segment ID',
-								name: 'segmentId',
-								type: 'string',
-								description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
-								default: '',
-							},
-						],
-					},
-					{
-						name: 'insertTableValues',
-						displayName: 'Insert Table',
-						values: [
-							{
-								displayName: 'Rows',
-								name: 'rows',
-								type: 'number',
-								description: 'The number of rows in the table.',
-								default: 0,
-							},
-							{
-								displayName: 'Columns',
-								name: 'columns',
-								type: 'number',
-								description: 'The number of columns in the table.',
-								default: 0,
-							},
-							{
-								displayName: 'Insertion Location',
-								name: 'locationChoice',
-								type: 'options',
-								options: [
-									{
-										name: 'End Of Segment Location',
-										value: 'endOfSegmentLocation',
-										description: 'Inserts the text at the end of a header, footer, footnote or the document body.',
-									},
-									{
-										name: 'Location',
-										value: 'location',
-										description: 'Inserts the text at a specific index in the document.',
-									},
-								],
-								description: 'The location where the text will be inserted.',
-								default: 'endOfSegmentLocation',
-							},
-							{
-								displayName: 'Segment ID',
-								name: 'segmentId',
-								type: 'string',
-								description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
-								default: '',
-							},
-							{
-								displayName: 'Index',
-								name: 'index',
-								type: 'number',
-								description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer a table).',
-								displayOptions: {
-									show: {
-										locationChoice: [
-											'location',
-										],
-									},
-								},
-								default: 0,
-							},
-						],
-					},
-					{
-						name: 'insertTextValues',
-						displayName: 'Insert Text',
-						values: [
-							{
-								displayName: 'Insertion Location',
-								name: 'locationChoice',
-								type: 'options',
-								options: [
-									{
-										name: 'End Of Segment Location',
-										value: 'endOfSegmentLocation',
-										description: 'Inserts the text at the end of a header, footer, footnote or the document body.',
-									},
-									{
-										name: 'Location',
-										value: 'location',
-										description: 'Inserts the text at a specific index in the document.',
-									},
-								],
-								description: 'The location where the text will be inserted.',
-								default: 'endOfSegmentLocation',
-							},
-							{
-								displayName: 'Index',
-								name: 'index',
-								type: 'number',
-								description: 'The zero-based index, relative to the beginning of the specified segment.',
-								displayOptions: {
-									show: {
-										locationChoice: [
-											'location',
-										],
-									},
-								},
-								default: 0,
-							},
-							{
-								displayName: 'Segment ID',
-								name: 'segmentId',
-								type: 'string',
-								description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
-								default: '',
-							},
-							{
-								displayName: 'Text',
-								name: 'text',
-								type: 'string',
-								description: 'The text to insert in the document.',
-								default: '',
-							},
-						],
-					},
-					{
-						name: 'insertTableColumnValues',
-						displayName: 'Insert Table Column',
-						values: [
-							{
-								displayName: 'Insert Right',
-								name: 'insertRight',
-								type: 'boolean',
-								description: 'Whether to insert new column to the right of the reference cell location.',
-								default: true,
-							},
-							{
-								displayName: 'Table Cell Row Index',
-								name: 'rowIndex',
-								type: 'number',
-								description: 'The zero-based row index.',
-								default: 0,
-							},
-							{
-								displayName: 'Table Cell Column Index',
-								name: 'columnIndex',
-								type: 'number',
-								description: 'The zero-based column index.',
-								default: 0,
-							},
-							{
-								displayName: 'Segment ID',
-								name: 'segmentId',
-								type: 'string',
-								description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
-								default: '',
-							},
-							{
-								displayName: 'Index',
-								name: 'index',
-								type: 'number',
-								description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer a table).',
-								default: 0,
-							},
-						],
-					},
-					{
-						name: 'insertTableRowValues',
-						displayName: 'Insert Table Row',
-						values: [
-							{
-								displayName: 'Insert Below',
-								name: 'insertBelow',
-								type: 'boolean',
-								description: 'Whether to insert a new row below the reference cell location.',
-								default: true,
-							},
-							{
-								displayName: 'Table Cell Row Index',
-								name: 'rowIndex',
-								type: 'number',
-								description: 'The zero-based row index.',
-								default: 0,
-							},
-							{
-								displayName: 'Table Cell Column Index',
-								name: 'columnIndex',
-								type: 'number',
-								description: 'The zero-based column index.',
-								default: 0,
-							},
-							{
-								displayName: 'Segment ID',
-								name: 'segmentId',
-								type: 'string',
-								description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
-								default: '',
-							},
-							{
-								displayName: 'Index',
-								name: 'index',
-								type: 'number',
-								description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer a table).',
-								default: 0,
-							},
-						],
-					},
-					{
-						name: 'replaceAllTextValues',
-						displayName: 'Replace All Text',
-						values: [
-							{
-								displayName: 'Match Case',
-								name: 'matchCase',
-								type: 'boolean',
-								description: 'Indicates whether the search should respect case sensitivity.',
-								default: false,
-							},
-							{
-								displayName: 'New Text',
-								name: 'replaceText',
-								type: 'string',
-								description: 'The text that will replace the matched text.',
-								default: '',
-							},
-							{
-								displayName: 'Old Text',
-								name: 'text',
-								type: 'string',
-								description: 'The text to search for in the document.',
-								default: '',
-							},
-						],
-					},
-				],
-			},
 			{
 				displayName: 'Write Control',
 				name: 'writeControl',
