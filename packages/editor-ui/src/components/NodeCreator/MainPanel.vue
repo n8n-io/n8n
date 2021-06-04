@@ -224,14 +224,6 @@ export default mixins(externalHooks).extend({
 		onClickInside() {
 			this.searchEventBus.$emit('focus');
 		},
-
-		selectWebhook() {
-			this.$emit('nodeTypeSelected', 'n8n-nodes-base.webhook');
-		},
-
-		selectHttpRequest() {
-			this.$emit('nodeTypeSelected', 'n8n-nodes-base.httpRequest');
-		},
 	},
 	async mounted() {
 		setTimeout(() => {

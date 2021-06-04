@@ -87,7 +87,7 @@ const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
 export const getCategorizedList = (categoriesWithNodes: ICategoriesWithNodes): INodeCreateElement[] => {
 	const categories = getCategories(categoriesWithNodes);
 
-	const collapsed = categories.reduce(
+	const allItems = categories.reduce(
 		(accu: INodeCreateElement[], category: string) => {
 			if (!categoriesWithNodes[category]) {
 				return accu;
@@ -127,12 +127,8 @@ export const getCategorizedList = (categoriesWithNodes: ICategoriesWithNodes): I
 							subcategory,
 							description: SUBCATEGORY_DESCRIPTIONS[category][subcategory],
 						},
-						includedByTrigger:
-							categoriesWithNodes[category][subcategory].triggerCount >
-							0,
-						includedByRegular:
-							categoriesWithNodes[category][subcategory].regularCount >
-							0,
+						includedByTrigger: categoriesWithNodes[category][subcategory].triggerCount > 0,
+						includedByRegular: categoriesWithNodes[category][subcategory].regularCount > 0,
 					};
 
 					if (subcategoryEl.includedByTrigger) {
@@ -152,7 +148,7 @@ export const getCategorizedList = (categoriesWithNodes: ICategoriesWithNodes): I
 		[],
 	);
 
-	return collapsed;
+	return allItems;
 };
 
 export const matchesSelectType = (el: INodeCreateElement, selectedType: string) => {
