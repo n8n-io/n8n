@@ -63,6 +63,8 @@ export default Vue.extend({
 					nodeType,
 					subcategory: '',
 				},
+				includedByTrigger: nodeType.group.includes('trigger'),
+				includedByRegular: !nodeType.group.includes('trigger'),
 			}));
 		},
 	},

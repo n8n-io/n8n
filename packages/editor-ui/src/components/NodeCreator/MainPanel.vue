@@ -84,7 +84,7 @@ export default mixins(externalHooks).extend({
 
 			const returnData = nodeTypes.filter((el: INodeCreateElement) => {
 				const nodeType = (el.properties as INodeItemProps).nodeType;
-				return filter && nodeType.displayName.toLowerCase().indexOf(filter) === -1;
+				return filter && matchesSelectType(el, this.selectedType) && nodeType.displayName.toLowerCase().indexOf(filter) !== -1;
 			});
 
 			setTimeout(() => {
