@@ -18,8 +18,8 @@ export const pushFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Repository',
-				name: 'repositoryPath',
+				displayName: 'Target Repository',
+				name: 'targetRepository',
 				type: 'string',
 				default: '',
 				placeholder: 'https://github.com/n8n-io/n8n',

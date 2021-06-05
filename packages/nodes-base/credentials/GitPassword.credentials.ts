@@ -5,7 +5,7 @@ import {
 
 export class GitPassword implements ICredentialType {
 	name = 'gitPassword';
-	displayName = 'Git Password';
+	displayName = 'Git';
 	properties = [
 		{
 			displayName: 'Username',

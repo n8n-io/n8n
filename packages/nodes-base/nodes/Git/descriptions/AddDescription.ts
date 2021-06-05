@@ -4,8 +4,8 @@ import {
 
 export const addFields = [
 	{
-		displayName: 'Paths',
-		name: 'paths',
+		displayName: 'Paths to Add',
+		name: 'pathsToAdd',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -15,8 +15,8 @@ export const addFields = [
 			},
 		},
 		default: '',
-		placeholder: '/data/file1.json',
-		description: 'Comma separated list of paths of files or folders to add.',
+		placeholder: 'README.md',
+		description: 'Comma separated list of paths (absolute or relative to Repository Path) of files or folders to add.',
 		required: true,
 	},
 ] as INodeProperties[];

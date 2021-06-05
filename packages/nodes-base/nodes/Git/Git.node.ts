@@ -153,13 +153,36 @@ export class Git implements INodeType {
 			},
 
 			{
-				displayName: 'Base Directory',
-				name: 'baseDirectory',
+				displayName: 'Repository Path',
+				name: 'repositoryPath',
 				type: 'string',
+				displayOptions: {
+					hide: {
+						operation: [
+							'clone',
+						],
+					},
+				},
 				default: '',
 				placeholder: '/tmp/repository',
 				required: true,
 				description: 'Local path of the git repository to operate on.',
+			},
+			{
+				displayName: 'New Repository Path',
+				name: 'repositoryPath',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'clone',
+						],
+					},
+				},
+				default: '',
+				placeholder: '/tmp/repository',
+				required: true,
+				description: 'Local path to which the git repository should be cloned into.',
 			},
 
 			...addFields,
@@ -202,7 +225,7 @@ export class Git implements INodeType {
 			try {
 				item = items[itemIndex];
 
-				const baseDir = this.getNodeParameter('baseDirectory', itemIndex, '') as string;
+				const baseDir = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
 				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 
 				const gitOptions: Partial<SimpleGitOptions> = {
@@ -222,9 +245,9 @@ export class Git implements INodeType {
 					//         add
 					// ----------------------------------
 
-					const paths = this.getNodeParameter('paths', itemIndex, '') as string;
+					const pathsToAdd = this.getNodeParameter('pathsToAdd', itemIndex, '') as string;
 
-					await git.add(paths.split(','));
+					await git.add(pathsToAdd.split(','));
 
 					returnItems.push({ json: { success: true } });
 
@@ -245,10 +268,11 @@ export class Git implements INodeType {
 					//         clone
 					// ----------------------------------
 
-					let repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
-					repositoryPath = prepareRepository(repositoryPath);
+					// TODO: Check if folder exists else create
+					let sourceRepository = this.getNodeParameter('sourceRepository', itemIndex, '') as string;
+					sourceRepository = prepareRepository(sourceRepository);
 
-					const a = await git.clone(repositoryPath, '.');
+					const a = await git.clone(sourceRepository, '.');
 
 					returnItems.push({ json: { success: true } });
 
@@ -259,12 +283,12 @@ export class Git implements INodeType {
 
 					const message = this.getNodeParameter('message', itemIndex, '') as string;
 
-					let files: string[] | undefined = undefined;
+					let pathsToAdd: string[] | undefined = undefined;
 					if (options.files !== undefined) {
-						files = (options.files as string).split(',');
+						pathsToAdd = (options.pathsToAdd as string).split(',');
 					}
 
-					await git.commit(message, files);
+					await git.commit(message, pathsToAdd);
 
 					returnItems.push({ json: { success: true } });
 
@@ -309,25 +333,25 @@ export class Git implements INodeType {
 					//         push
 					// ----------------------------------
 
-					if (options.repositoryPath) {
-						const repositoryPath = prepareRepository(options.repositoryPath as string);
-						await git.push(repositoryPath);
+					if (options.repository) {
+						const targetRepository = prepareRepository(options.targetRepository as string);
+						await git.push(targetRepository);
 					} else {
 						const authentication = this.getNodeParameter('authentication', 0) as string;
 						if (authentication === 'gitPassword') {
 							// Try to get remote repository path from git repository itself to add
 							// authentication data
 							const config = await git.listConfig();
-							let repositoryPath;
+							let targetRepository;
 							for (const fileName of Object.keys(config.values)) {
 								if (config.values[fileName]['remote.origin.url']) {
-									repositoryPath = config.values[fileName]['remote.origin.url'];
+									targetRepository = config.values[fileName]['remote.origin.url'];
 									break;
 								}
 							}
 
-							repositoryPath = prepareRepository(repositoryPath as string);
-							await git.push(repositoryPath);
+							targetRepository = prepareRepository(targetRepository as string);
+							await git.push(targetRepository);
 						} else {
 							await git.push();
 						}

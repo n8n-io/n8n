@@ -4,8 +4,8 @@ import {
 
 export const cloneFields = [
 	{
-		displayName: 'Repository',
-		name: 'repositoryPath',
+		displayName: 'Source Repository',
+		name: 'sourceRepository',
 		type: 'string',
 		displayOptions: {
 			show: {
