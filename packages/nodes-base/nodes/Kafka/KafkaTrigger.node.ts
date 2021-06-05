@@ -5,6 +5,8 @@ import {
 	SASLOptions,
 } from 'kafkajs';
 
+import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
+
 import {
 	ITriggerFunctions,
 } from 'n8n-core';
@@ -98,6 +100,27 @@ export class KafkaTrigger implements INodeType {
 						default: 30000,
 						description: 'The time to await a response in ms.',
 					},
+					{
+						displayName: 'Use Schema Registry',
+						name: 'useSchemaRegistry',
+						type: 'boolean',
+						default: false,
+						description: 'Use Apache Avro serialization format and Confluent\' wire formats.',
+					},
+					{
+						displayName: 'Schema Registry URL',
+						name: 'schemaRegistryUrl',
+						type: 'string',
+						displayOptions: {
+							show: {
+								useSchemaRegistry: [
+									true,
+								],
+							},
+						},
+						default: '',
+						description: 'URL of the schema registry.',
+					},
 				],
 			},
 		],
@@ -147,6 +170,11 @@ export class KafkaTrigger implements INodeType {
 
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
+		let registry: SchemaRegistry;
+		if (options.useSchemaRegistry) {
+			registry = new SchemaRegistry({ host: options.schemaRegistryUrl as string });
+		}
+
 		const startConsumer = async () => {
 			await consumer.run({
 				eachMessage: async ({ topic, message }) => {
@@ -157,6 +185,12 @@ export class KafkaTrigger implements INodeType {
 					if (options.jsonParseMessage) {
 						try {
 							value = JSON.parse(value);
+						} catch (error) { }
+					}
+
+					if (options.useSchemaRegistry) {
+						try {
+							value = await registry.decode(message.value as Buffer);
 						} catch (error) { }
 					}
 
