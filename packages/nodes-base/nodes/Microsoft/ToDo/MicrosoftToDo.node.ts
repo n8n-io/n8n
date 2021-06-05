@@ -38,7 +38,7 @@ export class MicrosoftToDo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft To Do',
 		name: 'microsoftToDo',
-		icon: 'file:toDo.svg',
+		icon: 'file:todo.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -282,15 +282,15 @@ export class MicrosoftToDo implements INodeType {
 						// https://docs.microsoft.com/en-us/graph/api/todotasklist-delete?view=graph-rest-1.0&tabs=http
 					} else if (operation === 'delete') {
 
-						const taskListId = this.getNodeParameter('taskListId', i) as string;
-						responseData = await microsoftApiRequest.call(this, 'DELETE', `/todo/lists/${taskListId}`, undefined, qs);
+						const listId = this.getNodeParameter('listId', i) as string;
+						responseData = await microsoftApiRequest.call(this, 'DELETE', `/todo/lists/${listId}`, undefined, qs);
 						responseData = { success: true };
 
 						//https://docs.microsoft.com/en-us/graph/api/todotasklist-get?view=graph-rest-1.0&tabs=http
 					} else if (operation === 'get') {
 
-						const taskListId = this.getNodeParameter('taskListId', i) as string;
-						responseData = await microsoftApiRequest.call(this, 'GET', `/todo/lists/${taskListId}`, undefined, qs);
+						const listId = this.getNodeParameter('listId', i) as string;
+						responseData = await microsoftApiRequest.call(this, 'GET', `/todo/lists/${listId}`, undefined, qs);
 
 						// https://docs.microsoft.com/en-us/graph/api/todo-list-lists?view=graph-rest-1.0&tabs=http
 					} else if (operation === 'getAll') {
@@ -307,12 +307,12 @@ export class MicrosoftToDo implements INodeType {
 						// https://docs.microsoft.com/en-us/graph/api/todotasklist-update?view=graph-rest-1.0&tabs=http
 					} else if (operation === 'update') {
 
-						const taskListId = this.getNodeParameter('taskListId', i) as string;
+						const listId = this.getNodeParameter('listId', i) as string;
 						const body = {
 							displayName: this.getNodeParameter('displayName', i) as string,
 						};
 
-						responseData = await microsoftApiRequest.call(this, 'PATCH', `/todo/lists/${taskListId}`, body, qs);
+						responseData = await microsoftApiRequest.call(this, 'PATCH', `/todo/lists/${listId}`, body, qs);
 
 					} else {
 						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);

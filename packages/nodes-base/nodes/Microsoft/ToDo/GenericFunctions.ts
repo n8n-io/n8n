@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -37,7 +37,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | ILoadOptions
 	}
 }
 
-export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: IDataObject = {}, query: IDataObject = {}) {
+export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: IDataObject = {}, query: IDataObject = {}) {
 
 	const returnData: IDataObject[] = [];
 
@@ -56,7 +56,7 @@ export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoa
 	return returnData;
 }
 
-export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions, propertyName: string ,method: string, endpoint: string, body: IDataObject = {}, query: IDataObject = {}) {
+export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions, propertyName: string, method: string, endpoint: string, body: IDataObject = {}, query: IDataObject = {}) {
 
 	const returnData: IDataObject[] = [];
 

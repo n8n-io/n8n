@@ -167,6 +167,7 @@ export const taskFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:get/delete/update/getAll              */
 	/* -------------------------------------------------------------------------- */
@@ -213,6 +214,7 @@ export const taskFields = [
 		required: true,
 		default: '',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:getAll                            */
 	/* -------------------------------------------------------------------------- */
@@ -255,10 +257,10 @@ export const taskFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:update                                */
 	/* -------------------------------------------------------------------------- */
-
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -276,13 +278,6 @@ export const taskFields = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Subject',
-				name: 'title',
-				type: 'string',
-				default: '',
-				description: 'A brief description of the task.',
-			},
 			{
 				displayName: 'Content',
 				name: 'content',
@@ -346,6 +341,13 @@ export const taskFields = [
 				],
 				default: 'notStarted',
 				description: 'Indicates the state or progress of the task.',
+			},
+			{
+				displayName: 'Subject',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'A brief description of the task.',
 			},
 		],
 	},
