@@ -314,7 +314,11 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 	// tslint:disable-next-line: no-any
 	return filters.reduce((obj, value: { [key: string]: any }) => {
 		let key = getNameAndType(value.key).type;
-		let valuePropertyName = value[`${camelCase(key)}Value`];
+
+		let valuePropertyName = key === 'last_edited_time'
+			? value[camelCase(key)]
+			: value[`${camelCase(key)}Value`];
+
 		if (['is_empty', 'is_not_empty'].includes(value.condition as string)) {
 			valuePropertyName = true;
 		} else if (['past_week', 'past_month', 'past_year', 'next_week', 'next_month', 'next_year'].includes(value.condition as string)) {

@@ -163,7 +163,7 @@ export const pushConnection = mixins(
 				}
 
 				if (receivedData.type === 'sendConsoleMessage') {
-					const pushData = receivedData.data as IPushDataConsoleMessage;
+					const pushData = receivedData.data;
 					console.log(pushData.source, pushData.message); // eslint-disable-line no-console
 					return true;
 				}
@@ -175,12 +175,12 @@ export const pushConnection = mixins(
 					return false;
 				}
 
-				if (['nodeExecuteAfter', 'nodeExecuteBefore'].includes(receivedData.type)) {
+				if (receivedData.type === 'nodeExecuteAfter' || receivedData.type === 'nodeExecuteBefore') {
 					if (this.$store.getters.isActionActive('workflowRunning') === false) {
 						// No workflow is running so ignore the messages
 						return false;
 					}
-					const pushData = receivedData.data as IPushDataNodeExecuteBefore;
+					const pushData = receivedData.data;
 					if (this.$store.getters.activeExecutionId !== pushData.executionId) {
 						// The data is not for the currently active execution or
 						// we do not have the execution id yet.
@@ -193,7 +193,7 @@ export const pushConnection = mixins(
 
 				if (receivedData.type === 'executionFinished') {
 					// The workflow finished executing
-					const pushData = receivedData.data as IPushDataExecutionFinished;
+					const pushData = receivedData.data;
 
 					this.$store.commit('finishActiveExecution', pushData);
 
@@ -279,7 +279,7 @@ export const pushConnection = mixins(
 					});
 
 				} else if (receivedData.type === 'executionStarted') {
-					const pushData = receivedData.data as IPushDataExecutionStarted;
+					const pushData = receivedData.data;
 
 					const executionData: IExecutionsCurrentSummaryExtended = {
 						id: pushData.executionId,
@@ -294,15 +294,15 @@ export const pushConnection = mixins(
 					this.$store.commit('addActiveExecution', executionData);
 				} else if (receivedData.type === 'nodeExecuteAfter') {
 					// A node finished to execute. Add its data
-					const pushData = receivedData.data as IPushDataNodeExecuteAfter;
+					const pushData = receivedData.data;
 					this.$store.commit('addNodeExecutionData', pushData);
 				} else if (receivedData.type === 'nodeExecuteBefore') {
 					// A node started to be executed. Set it as executing.
-					const pushData = receivedData.data as IPushDataNodeExecuteBefore;
+					const pushData = receivedData.data;
 					this.$store.commit('setExecutingNode', pushData.nodeName);
 				} else if (receivedData.type === 'testWebhookDeleted') {
 					// A test-webhook got deleted
-					const pushData = receivedData.data as IPushDataTestWebhook;
+					const pushData = receivedData.data;
 
 					if (pushData.workflowId === this.$store.getters.workflowId) {
 						this.$store.commit('setExecutionWaitingForWebhook', false);
@@ -310,7 +310,7 @@ export const pushConnection = mixins(
 					}
 				} else if (receivedData.type === 'testWebhookReceived') {
 					// A test-webhook did get called
-					const pushData = receivedData.data as IPushDataTestWebhook;
+					const pushData = receivedData.data;
 
 					if (pushData.workflowId === this.$store.getters.workflowId) {
 						this.$store.commit('setExecutionWaitingForWebhook', false);
