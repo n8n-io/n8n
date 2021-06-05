@@ -1,6 +1,7 @@
 {
 	"compilerOptions": {
 		"lib": [
+			"dom",
 			"es2017",
 			"es2019.array"
 		],
