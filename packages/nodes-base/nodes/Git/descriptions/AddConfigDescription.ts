@@ -36,9 +36,9 @@ export const addConfigFields = [
 		required: true,
 	},
 	{
-		displayName: 'Append',
-		name: 'append',
-		type: 'boolean',
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
 		displayOptions: {
 			show: {
 				operation: [
@@ -46,8 +46,26 @@ export const addConfigFields = [
 				],
 			},
 		},
-		default: false,
-		description: 'Append setting rather than set it in the local config.',
-		required: true,
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				options: [
+					{
+						name: 'Append',
+						value: 'append',
+					},
+					{
+						name: 'Set',
+						value: 'set',
+					},
+				],
+				default: 'set',
+				description: 'Append setting rather than set it in the local config.',
+			},
+		],
 	},
 ] as INodeProperties[];

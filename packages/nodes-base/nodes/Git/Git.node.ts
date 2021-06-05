@@ -22,6 +22,11 @@ import simpleGit, {
 	SimpleGitOptions,
 } from 'simple-git';
 
+import {
+	access,
+	mkdir,
+} from 'fs/promises';
+
 import { URL } from 'url';
 
 export class Git implements INodeType {
@@ -202,7 +207,6 @@ export class Git implements INodeType {
 
 
 		const prepareRepository = (repositoryPath: string): string => {
-			// TODO: Still think about final name "repository", "repositoryPath", "repositoryUrl", ...?
 			const authentication = this.getNodeParameter('authentication', 0) as string;
 
 			if (authentication === 'gitPassword') {
@@ -225,11 +229,20 @@ export class Git implements INodeType {
 			try {
 				item = items[itemIndex];
 
-				const baseDir = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
+				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
 				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 
+				if (operation === 'clone') {
+					// Create repository folder if it does not exist
+					try {
+						await access(repositoryPath);
+					} catch (error) {
+						await mkdir(repositoryPath);
+					}
+				}
+
 				const gitOptions: Partial<SimpleGitOptions> = {
-					baseDir,
+					baseDir: repositoryPath,
 				};
 
 				const git: SimpleGit = simpleGit(gitOptions)
@@ -237,8 +250,6 @@ export class Git implements INodeType {
 					// example the username. As nobody will be able to answer it would
 					// n8n keep on waiting forever.
 					.env('GIT_TERMINAL_PROMPT', '0');
-
-				// TODO: Make it possible to auto-confirm RSA key fingerprint
 
 				if (operation === 'add') {
 					// ----------------------------------
@@ -258,7 +269,11 @@ export class Git implements INodeType {
 
 					const key = this.getNodeParameter('key', itemIndex, '') as string;
 					const value = this.getNodeParameter('value', itemIndex, '') as string;
-					const append = this.getNodeParameter('append', itemIndex, '') as boolean;
+					let append = false;
+
+					if (options.mode === 'append') {
+						append = true;
+					}
 
 					await git.addConfig(key, value, append);
 					returnItems.push({ json: { success: true } });
@@ -268,11 +283,10 @@ export class Git implements INodeType {
 					//         clone
 					// ----------------------------------
 
-					// TODO: Check if folder exists else create
 					let sourceRepository = this.getNodeParameter('sourceRepository', itemIndex, '') as string;
 					sourceRepository = prepareRepository(sourceRepository);
 
-					const a = await git.clone(sourceRepository, '.');
+					await git.clone(sourceRepository, '.');
 
 					returnItems.push({ json: { success: true } });
 
