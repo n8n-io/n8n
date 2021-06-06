@@ -441,13 +441,14 @@ export class AwsTranscribe implements INodeType {
 
 						if (options.maxAlternatives) {
 							Object.assign(body.Settings, {
+								ShowAlternatives: true,
 								MaxAlternatives: options.maxAlternatives,
 							});
-						}
+						} 
 
-						if (options.showSpeakerLabels) {
+						if (options.maxSpeakerLabels) {
 							Object.assign(body.Settings, {
-								ShowSpeakerLabels: options.showSpeakerLabels,
+								ShowSpeakerLabels: true,
 								MaxSpeakerLabels: options.maxSpeakerLabels,
 							});
 						}
