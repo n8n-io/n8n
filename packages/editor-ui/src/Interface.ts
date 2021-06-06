@@ -131,7 +131,7 @@ export interface IRestApi {
 	getSettings(): Promise<IN8nUISettings>;
 	getNodeTypes(): Promise<INodeTypeDescription[]>;
 	getNodesInformation(nodeList: string[]): Promise<INodeTypeDescription[]>;
-	getNodeParameterOptions(nodeType: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
+	getNodeParameterOptions(nodeType: string, path: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
 	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
@@ -241,7 +241,7 @@ export interface IWorkflowShortResponse {
 	active: boolean;
 	createdAt: number | string;
 	updatedAt: number | string;
-	tags?: ITag[];
+	tags: ITag[];
 }
 
 
@@ -356,12 +356,45 @@ export interface IExecutionDeleteFilter {
 	ids?: string[];
 }
 
-export interface IPushData {
-	data: IPushDataExecutionFinished | IPushDataNodeExecuteAfter | IPushDataNodeExecuteBefore | IPushDataTestWebhook;
-	type: IPushDataType;
-}
+export type IPushDataType = IPushData['type'];
 
-export type IPushDataType = 'executionFinished' | 'executionStarted' | 'nodeExecuteAfter' | 'nodeExecuteBefore' | 'testWebhookDeleted' | 'testWebhookReceived';
+export type IPushData =
+	| PushDataExecutionFinished
+	| PushDataExecutionStarted
+	| PushDataExecuteAfter
+	| PushDataExecuteBefore
+	| PushDataConsoleMessage
+	| PushDataTestWebhook;
+
+type PushDataExecutionFinished = {
+	data: IPushDataExecutionFinished;
+	type: 'executionFinished';
+};
+
+type PushDataExecutionStarted = {
+	data: IPushDataExecutionStarted;
+	type: 'executionStarted';
+};
+
+type PushDataExecuteAfter = {
+	data: IPushDataNodeExecuteAfter;
+	type: 'nodeExecuteAfter';
+};
+
+type PushDataExecuteBefore = {
+	data: IPushDataNodeExecuteBefore;
+	type: 'nodeExecuteBefore';
+};
+
+type PushDataConsoleMessage = {
+	data: IPushDataConsoleMessage;
+	type: 'sendConsoleMessage';
+};
+
+type PushDataTestWebhook = {
+	data: IPushDataTestWebhook;
+	type: 'testWebhookDeleted' | 'testWebhookReceived';
+};
 
 export interface IPushDataExecutionStarted {
 	executionId: string;
@@ -396,6 +429,11 @@ export interface IPushDataNodeExecuteBefore {
 export interface IPushDataTestWebhook {
 	executionId: string;
 	workflowId: string;
+}
+
+export interface IPushDataConsoleMessage {
+	source: string;
+	message: string;
 }
 
 export interface IN8nUISettings {
@@ -525,6 +563,8 @@ export interface IUiState {
 	isPageLoading: boolean;
 }
 
+export interface IWorkflowsState {
+}
 
 export interface IRestApiContext {
 	baseUrl: string;

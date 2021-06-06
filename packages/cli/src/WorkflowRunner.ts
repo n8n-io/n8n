@@ -181,6 +181,8 @@ export class WorkflowRunner {
 
 		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
 
+		additionalData.sendMessageToUI = WorkflowExecuteAdditionalData.sendMessageToUI.bind({sessionId: data.sessionId});
+
 		let workflowExecution: PCancelable<IRun>;
 		if (data.executionData !== undefined) {
 			Logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {executionId});
@@ -466,6 +468,9 @@ export class WorkflowRunner {
 			} else if (message.type === 'end') {
 				clearTimeout(executionTimeout);
 				this.activeExecutions.remove(executionId!, message.data.runData);
+
+			} else if (message.type === 'sendMessageToUI') {
+				WorkflowExecuteAdditionalData.sendMessageToUI.bind({ sessionId: data.sessionId })(message.data.source, message.data.message);
 
 			} else if (message.type === 'processError') {
 				clearTimeout(executionTimeout);

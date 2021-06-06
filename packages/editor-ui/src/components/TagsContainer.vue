@@ -3,12 +3,12 @@
 		<template>
 			<span class="tags">
 				<span
-					v-for="tag in tags" 
+					v-for="tag in tags"
 					:key="tag.id"
 					:class="{clickable: !tag.hidden}"
-					@click="!tag.hidden && onClick()"
+					@click="(e) => onClick(e, tag)"
 				>
-					<el-tag 
+					<el-tag
 						:title="tag.title"
 						type="info"
 						size="small"
@@ -23,10 +23,11 @@
 						:enabled="responsive"
 						v-else
 					>
-						<el-tag 
+						<el-tag
 							:title="tag.name"
 							type="info"
 							size="small"
+							:class="{hoverable}"
 						>
 							{{ tag.name }}
 						</el-tag>
@@ -61,6 +62,7 @@ export default Vue.extend({
 		"limit",
 		"clickable",
 		"responsive",
+		"hoverable",
 	],
 	data() {
 		return {
@@ -106,8 +108,15 @@ export default Vue.extend({
 				Vue.set(this.$data.visibility, el.dataset.id, isIntersecting);
 			}
 		},
-		onClick() {
-			this.$emit('click');
+		onClick(e: MouseEvent, tag: TagEl) {
+			if (this.clickable) {
+				e.stopPropagation();
+			}
+
+			// if tag is hidden or not displayed
+			if (!tag.hidden) {
+				this.$emit('click', tag.id);
+			}
 		},
 	},
 });
@@ -120,7 +129,7 @@ export default Vue.extend({
 	}
 
 	.tags {
-		display: flex; 
+		display: flex;
 
 		> span {
 			padding-right: 4px; // why not margin? for space between tags to be clickable
@@ -129,6 +138,10 @@ export default Vue.extend({
 
 	.hidden {
 		visibility: hidden;
+	}
+
+	.el-tag.hoverable:hover {
+		border-color: $--color-primary;
 	}
 
 	.count-container {

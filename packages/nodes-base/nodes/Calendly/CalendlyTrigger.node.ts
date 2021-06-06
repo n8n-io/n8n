@@ -20,7 +20,7 @@ export class CalendlyTrigger implements INodeType {
 		icon: 'file:calendly.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Calendly events occure.',
+		description: 'Starts the workflow when Calendly events occur.',
 		defaults: {
 			name: 'Calendly Trigger',
 			color: '#374252',

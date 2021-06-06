@@ -1,6 +1,6 @@
 <template>
 	<div class="container" v-if="workflowName">
-		<BreakpointsObserver :valueXS="15" :valueSM="25" :valueMD="50" :valueLG="100" class="name-container">
+		<BreakpointsObserver :valueXS="15" :valueSM="25" :valueMD="50" class="name-container">
 			<template v-slot="{ value }">
 				<WorkflowNameShort
 					:name="workflowName"
@@ -8,7 +8,7 @@
 					:custom="true"
 				>
 					<template v-slot="{ shortenedName }">
-						<InlineTextEdit 
+						<InlineTextEdit
 							:value="workflowName"
 							:previewValue="shortenedName"
 							:isEditEnabled="isNameEditEnabled"
@@ -45,7 +45,7 @@
 			<span
 				class="add-tag clickable"
 				@click="onTagsEditEnable"
-			>	
+			>
 				+ Add tag
 			</span>
 		</div>
@@ -115,11 +115,12 @@ export default mixins(workflowHelpers).extend({
 			appliedTagIds: [],
 			tagsEditBus: new Vue(),
 			MAX_WORKFLOW_NAME_LENGTH,
+			tagsSaving: false,
 		};
 	},
 	computed: {
 		...mapGetters({
-			isWorkflowActive: "isActive", 
+			isWorkflowActive: "isActive",
 			workflowName: "workflowName",
 			isDirty: "getStateIsDirty",
 			currentWorkflowTagIds: "workflowTags",
@@ -154,8 +155,13 @@ export default mixins(workflowHelpers).extend({
 
 				return;
 			}
+			if (this.$data.tagsSaving) {
+				return;
+			}
+			this.$data.tagsSaving = true;
 
 			const saved = await this.saveCurrentWorkflow({ tags });
+			this.$data.tagsSaving = false;
 			if (saved) {
 				this.$data.isTagsEditEnabled = false;
 			}
@@ -179,7 +185,7 @@ export default mixins(workflowHelpers).extend({
 			if (!newName) {
 				this.$showMessage({
 					title: "Name missing",
-					message: `No name for the workflow got entered and so could not be saved!`,
+					message: `Please enter a name, or press 'esc' to go back to the old one.`,
 					type: "error",
 				});
 
@@ -212,7 +218,7 @@ export default mixins(workflowHelpers).extend({
 
 <style scoped lang="scss">
 $--text-line-height: 24px;
-$--header-spacing: 30px;
+$--header-spacing: 20px;
 
 .container {
 	width: 100%;
@@ -236,7 +242,7 @@ $--header-spacing: 30px;
 	line-height: $--text-line-height;
 	display: flex;
 	align-items: center;
-	margin-right: $--header-spacing;
+	margin-right: 30px;
 
 	> span {
 		margin-right: 5px;

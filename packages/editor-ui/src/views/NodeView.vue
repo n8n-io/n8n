@@ -495,10 +495,14 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.$router.push({ name: 'NodeViewNew' });
+					if (this.$router.currentRoute.name === 'NodeViewNew') {
+						this.$root.$emit('newWorkflow');
+					} else {
+						this.$router.push({ name: 'NodeViewNew' });
+					}
 
 					this.$showMessage({
-						title: 'Created',
+						title: 'Workflow created',
 						message: 'A new workflow got created!',
 						type: 'success',
 					});
@@ -507,7 +511,9 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.$store.commit('setStateDirty', false);
+					if (this.isReadOnly) {
+						return;
+					}
 
 					this.callDebounced('saveCurrentWorkflow', 1000);
 				} else if (e.key === 'Enter') {
@@ -1396,7 +1402,8 @@ export default mixins(
 			},
 			async newWorkflow (): Promise<void> {
 				await this.resetWorkspace();
-				this.$store.commit('setWorkflowName', {newName: NEW_WORKFLOW_NAME, setStateDirty: false});
+				await this.$store.dispatch('workflows/setNewWorkflowName');
+				this.$store.commit('setStateDirty', false);
 
 				// Create start node
 				const defaultNodes = [
@@ -1859,21 +1866,19 @@ export default mixins(
 					for (type of Object.keys(currentConnections[sourceNode])) {
 						connection[type] = [];
 						for (sourceIndex = 0; sourceIndex < currentConnections[sourceNode][type].length; sourceIndex++) {
-							if (!currentConnections[sourceNode][type][sourceIndex]) {
-								// There is so something wrong with the data so ignore
-								continue;
-							}
 							const nodeSourceConnections = [];
-							for (connectionIndex = 0; connectionIndex < currentConnections[sourceNode][type][sourceIndex].length; connectionIndex++) {
-								const nodeConnection: NodeInputConnections = [];
-								connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
-								if (!createNodeNames.includes(connectionData.node)) {
-									// Node does not get created so skip input connection
-									continue;
-								}
+							if (currentConnections[sourceNode][type][sourceIndex]) {
+								for (connectionIndex = 0; connectionIndex < currentConnections[sourceNode][type][sourceIndex].length; connectionIndex++) {
+									const nodeConnection: NodeInputConnections = [];
+									connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
+									if (!createNodeNames.includes(connectionData.node)) {
+										// Node does not get created so skip input connection
+										continue;
+									}
 
-								nodeSourceConnections.push(connectionData);
-								// Add connection
+									nodeSourceConnections.push(connectionData);
+									// Add connection
+								}
 							}
 							connection[type].push(nodeSourceConnections);
 						}
@@ -2061,6 +2066,8 @@ export default mixins(
 			this.$root.$on('importWorkflowData', async (data: IDataObject) => {
 				const resData = await this.importWorkflowData(data.data as IWorkflowDataUpdate);
 			});
+
+			this.$root.$on('newWorkflow', this.newWorkflow);
 
 			this.$root.$on('importWorkflowUrl', async (data: IDataObject) => {
 				const workflowData = await this.getWorkflowDataFromUrl(data.url as string);

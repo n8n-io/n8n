@@ -1,4 +1,8 @@
 import {
+	Length,
+} from 'class-validator';
+
+import {
 	IConnections,
 	IDataObject,
 	INode,
@@ -6,12 +10,16 @@ import {
 } from 'n8n-workflow';
 
 import {
+	BeforeUpdate,
 	Column,
 	ColumnOptions,
+	CreateDateColumn,
 	Entity,
+	Index,
 	JoinTable,
 	ManyToMany,
 	PrimaryGeneratedColumn,
+	UpdateDateColumn,
 } from 'typeorm';
 
 import {
@@ -19,6 +27,7 @@ import {
 } from '../../';
 
 import {
+	getTimestampSyntax,
 	resolveDataType
 } from '../utils';
 
@@ -32,9 +41,9 @@ export class WorkflowEntity implements IWorkflowDb {
 	@PrimaryGeneratedColumn()
 	id: number;
 
-	@Column({
-		length: 128,
-	})
+	@Index({ unique: true })
+	@Length(1, 128, { message: 'Workflow name must be 1 to 128 characters long.' })
+	@Column({ length: 128 })
 	name: string;
 
 	@Column()
@@ -46,10 +55,10 @@ export class WorkflowEntity implements IWorkflowDb {
 	@Column(resolveDataType('json'))
 	connections: IConnections;
 
-	@Column(resolveDataType('datetime'))
+	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
 	createdAt: Date;
 
-	@Column(resolveDataType('datetime'))
+	@UpdateDateColumn({ precision: 3, default: () => getTimestampSyntax(), onUpdate: getTimestampSyntax() })
 	updatedAt: Date;
 
 	@Column({
@@ -77,4 +86,9 @@ export class WorkflowEntity implements IWorkflowDb {
 		},
 	})
 	tags: TagEntity[];
+
+	@BeforeUpdate()
+	setUpdateDate() {
+		this.updatedAt = new Date();
+	}
 }

@@ -1,8 +1,6 @@
 <template>
 	<span @keydown.stop class="inline-edit" >
-		<span
-			v-if="isEditEnabled"
-		>
+		<span v-if="isEditEnabled">
 			<ExpandableInputEdit
 				:placeholder="placeholder"
 				:value="newValue"
@@ -15,7 +13,8 @@
 				@enter="submit"
 			/>
 		</span>
-		<span @click="onClick"  v-else>
+
+		<span @click="onClick" class="preview"  v-else>
 			<ExpandableInputPreview
 				:value="previewValue || value"
 			/>
@@ -93,3 +92,9 @@ export default Vue.extend({
 	},
 });
 </script>
+
+<style lang="scss" scoped>
+.preview {
+	cursor: pointer;
+}
+</style>

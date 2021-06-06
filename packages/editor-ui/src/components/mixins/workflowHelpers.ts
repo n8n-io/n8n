@@ -2,9 +2,12 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 
 import {
 	IConnections,
+	IDataObject,
 	INode,
 	INodeExecutionData,
 	INodeIssues,
+	INodeParameters,
+	NodeParameterValue,
 	INodeType,
 	INodeTypes,
 	INodeTypeData,
@@ -337,8 +340,8 @@ export const workflowHelpers = mixins(
 				return nodeData;
 			},
 
-			// Executes the given expression and returns its value
-			resolveExpression (expression: string) {
+
+			resolveParameter(parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[]) {
 				const inputIndex = 0;
 				const itemIndex = 0;
 				const runIndex = 0;
@@ -364,7 +367,22 @@ export const workflowHelpers = mixins(
 					connectionInputData = [];
 				}
 
-				return workflow.expression.getParameterValue(expression, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', true);
+				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', false) as IDataObject;
+			},
+
+			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {
+
+				const parameters = {
+					'__xxxxxxx__': expression,
+					...siblingParameters,
+				};
+				const returnData = this.resolveParameter(parameters) as IDataObject;
+
+				if (typeof returnData['__xxxxxxx__'] === 'object') {
+					const workflow = this.getWorkflow();
+					return workflow.expression.convertObjectValueToString(returnData['__xxxxxxx__'] as object);
+				}
+				return returnData['__xxxxxxx__'];
 			},
 
 			async saveCurrentWorkflow({name, tags}: {name?: string, tags?: string[]} = {}): Promise<boolean> {
@@ -396,8 +414,24 @@ export const workflowHelpers = mixins(
 					if (tags) {
 						const createdTags = (workflowData.tags || []) as ITag[];
 						const tagIds = createdTags.map((tag: ITag): string => tag.id);
-						this.$store.commit('setWorkflowTagIds', tagIds || []);
+						this.$store.commit('setWorkflowTagIds', tagIds);
 					}
+					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
+
+					this.$store.commit('setActive', workflowData.active || false);
+					this.$store.commit('setWorkflowId', workflowData.id);
+					this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
+					this.$store.commit('setWorkflowSettings', workflowData.settings || {});
+					this.$store.commit('setStateDirty', false);
+
+					const createdTags = (workflowData.tags || []) as ITag[];
+					const tagIds = createdTags.map((tag: ITag): string => tag.id);
+					this.$store.commit('setWorkflowTagIds', tagIds || []);
+
+					this.$router.push({
+						name: 'NodeViewExisting',
+						params: { name: workflowData.id as string, action: 'workflowSave' },
+					});
 
 					this.$store.commit('setStateDirty', false);
 					this.$store.commit('removeActiveAction', 'workflowSaving');
@@ -442,7 +476,7 @@ export const workflowHelpers = mixins(
 
 					const createdTags = (workflowData.tags || []) as ITag[];
 					const tagIds = createdTags.map((tag: ITag): string => tag.id);
-					this.$store.commit('setWorkflowTagIds', tagIds || []);
+					this.$store.commit('setWorkflowTagIds', tagIds);
 
 					this.$router.push({
 						name: 'NodeViewExisting',
@@ -451,11 +485,6 @@ export const workflowHelpers = mixins(
 
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 					this.$store.commit('setStateDirty', false);
-					this.$showMessage({
-						title: 'Workflow saved',
-						message: `The workflow "${workflowData.name}" got saved!`,
-						type: 'success',
-					});
 					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 					return true;

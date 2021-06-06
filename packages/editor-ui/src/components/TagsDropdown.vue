@@ -35,7 +35,7 @@
 			<el-option
 				v-for="(tag, i) in options"
 				:value="tag.id"
-				:key="tag.id + i"
+				:key="tag.id + '_' + i"
 				:label="tag.name"
 				class="tag"
 				ref="tag"
@@ -134,11 +134,6 @@ export default mixins(showMessage).extend({
 				this.$emit("update", [...this.$props.currentTagIds, newTag.id]);
 				this.$nextTick(() => this.focusOnTag(newTag.id));
 
-				this.$showMessage({
-					title: "New tag was created",
-					message: `"${name}" was added to your tag collection`,
-					type: "success",
-				});
 				this.$data.filter = "";
 			} catch (error) {
 				this.$showError(
@@ -253,12 +248,12 @@ $--border-radius: 20px;
 /deep/ .el-select {
 	.el-select__tags {
 		max-height: $--max-input-height;
-		overflow: scroll;
 		border-radius: $--border-radius;
+		overflow-y: scroll;
+		overflow-x: hidden;
 
-		&::-webkit-scrollbar {
-			display: none;
-		}
+		// firefox fix for scrollbars
+		scrollbar-color: $--scrollbar-thumb-color transparent;
 	}
 
 	.el-input.is-focus {
@@ -315,10 +310,15 @@ $--border-radius: 20px;
 			width: $--dropdown-width;
 			padding: $--item-padding;
 		}
+
+		// override theme scrollbars in safari when overscrolling
+		::-webkit-scrollbar-thumb {
+			display: none;
+		}
 	}
 
 	li {
-		height: $--item-height; 
+		height: $--item-height;
 		background-color: white;
 		padding: $--item-padding;
 		margin: 0;

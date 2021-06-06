@@ -224,6 +224,7 @@ export interface IExecuteFunctions {
 	getWorkflow(): IWorkflowMetadata;
 	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
 	putExecutionToSleep(sleepTill: Date): Promise<void>;
+	sendMessageToUI(message: string): void;
 	helpers: {
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
 	};
@@ -748,6 +749,7 @@ export interface IWorkflowExecuteAdditionalData {
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
 	restApiUrl: string;
+	sendMessageToUI?: (source: string, message: string) => void;
 	timezone: string;
 	webhookBaseUrl: string;
 	webhookTestBaseUrl: string;
