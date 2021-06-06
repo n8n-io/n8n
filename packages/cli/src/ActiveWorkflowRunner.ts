@@ -282,7 +282,7 @@ export class ActiveWorkflowRunner {
 	 * @memberof ActiveWorkflowRunner
 	 */
 	async addWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): Promise<void> {
-		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData);
+		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 		let path = '' as string | undefined;
 
 		for (const webhookData of webhooks) {
@@ -370,7 +370,7 @@ export class ActiveWorkflowRunner {
 		const credentials = await WorkflowCredentials(workflowData.nodes);
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
 
-		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData);
+		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
 		for (const webhookData of webhooks) {
 			await workflow.runWebhookMethod('delete', webhookData, NodeExecuteFunctions, mode, 'update', false);

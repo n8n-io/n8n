@@ -749,7 +749,7 @@ export async function prepareOutputData(outputData: INodeExecutionData[], output
  * @param {INode} node
  * @returns {IWebhookData[]}
  */
-export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData): IWebhookData[] {
+export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, ignoreRestartWehbooks = false): IWebhookData[] {
 	if (node.disabled === true) {
 		// Node is disabled so webhooks will also not be enabled
 		return [];
@@ -785,6 +785,10 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 
 		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['isFullPath'], 'internal', false) as boolean;
 		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath);
+
+		if (ignoreRestartWehbooks === true && webhookDescription.restartWebhook === true) {
+			continue;
+		}
 
 		const httpMethod = workflow.expression.getSimpleParameterValue(node, webhookDescription['httpMethod'], mode, 'GET');
 

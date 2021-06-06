@@ -163,8 +163,7 @@ export class TestWebhooks {
 	 * @memberof TestWebhooks
 	 */
 	async needsWebhookData(workflowData: IWorkflowDb, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode, sessionId?: string, destinationNode?: string): Promise<boolean> {
-		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, destinationNode);
-
+		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, destinationNode, true);
 		if (webhooks.filter(webhook => webhook.webhookDescription.restartWebhook !== true).length === 0) {
 			// No webhooks found to start a workflow
 			return false;

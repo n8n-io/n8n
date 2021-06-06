@@ -47,7 +47,7 @@ const activeExecutions = ActiveExecutions.getInstance();
  * @param {Workflow} workflow
  * @returns {IWebhookData[]}
  */
-export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, destinationNode?: string): IWebhookData[] {
+export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, destinationNode?: string, ignoreRestartWehbooks = false): IWebhookData[] {
 	// Check all the nodes in the workflow if they have webhooks
 
 	const returnData: IWebhookData[] = [];
@@ -65,7 +65,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 			// and no other ones
 			continue;
 		}
-		returnData.push.apply(returnData, NodeHelpers.getNodeWebhooks(workflow, node, additionalData));
+		returnData.push.apply(returnData, NodeHelpers.getNodeWebhooks(workflow, node, additionalData, ignoreRestartWehbooks));
 	}
 
 	return returnData;
