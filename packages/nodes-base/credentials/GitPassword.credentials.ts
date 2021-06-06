@@ -1,23 +1,23 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class GitPassword implements ICredentialType {
 	name = 'gitPassword';
 	displayName = 'Git';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',
 			name: 'username',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
-			decription: 'The username to authenticate with.',
+			description: 'The username to authenticate with.',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				password: true,
 			},
