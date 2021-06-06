@@ -35,7 +35,7 @@ import {
 } from 'n8n-workflow';
 
 import * as express from 'express';
-import { 
+import {
 	LoggerProxy as Logger,
 } from 'n8n-workflow';
 

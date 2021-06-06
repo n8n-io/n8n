@@ -106,7 +106,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
   * @param {((error: Error | null, data: IResponseCallbackData) => void)} responseCallback
   * @returns {(Promise<string | undefined>)}
   */
- export async function executeWebhook(workflow: Workflow, webhookData: IWebhookData, workflowData: IWorkflowDb, workflowStartNode: INode, executionMode: WorkflowExecuteMode, sessionId: string | undefined, req: express.Request, res: express.Response, responseCallback: (error: Error | null, data: IResponseCallbackData) => void): Promise<string | undefined> {
+export async function executeWebhook(workflow: Workflow, webhookData: IWebhookData, workflowData: IWorkflowDb, workflowStartNode: INode, executionMode: WorkflowExecuteMode, sessionId: string | undefined, runExecutionData: IRunExecutionData | undefined, executionId: string | undefined, req: express.Request, res: express.Response, responseCallback: (error: Error | null, data: IResponseCallbackData) => void): Promise<string | undefined> {
 	// Get the nodeType to know which responseMode is set
 	const nodeType = workflow.nodeTypes.getByName(workflowStartNode.type);
 	if (nodeType === undefined) {
@@ -257,7 +257,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 			}
 		);
 
-		const runExecutionData: IRunExecutionData = {
+		runExecutionData = runExecutionData || {
 			startData: {
 			},
 			resultData: {
@@ -268,7 +268,13 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 				nodeExecutionStack,
 				waitingExecution: {},
 			},
-		};
+		} as IRunExecutionData;
+
+		if (executionId !== undefined) {
+			// Set the data the webhook node did return on the waiting node if executionId
+			// already exists as it means that we are restarting an existing execution.
+			runExecutionData.executionData!.nodeExecutionStack[0].data.main = webhookResultData.workflowData;
+		}
 
 		if (Object.keys(runExecutionDataMerge).length !== 0) {
 			// If data to merge got defined add it to the execution data
@@ -285,7 +291,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 
 		// Start now to run the workflow
 		const workflowRunner = new WorkflowRunner();
-		const executionId = await workflowRunner.run(runData, true, !didSendResponse);
+		executionId = await workflowRunner.run(runData, true, !didSendResponse, executionId);
 
 		Logger.verbose(`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`, { executionId });
 

@@ -235,6 +235,10 @@ export default mixins(
 					name: 'Running',
 				},
 				{
+					id: 'sleeping',
+					name: 'Sleeping',
+				},
+				{
 					id: 'success',
 					name: 'Success',
 				},
@@ -290,7 +294,9 @@ export default mixins(
 			if (this.filter.workflowId !== 'ALL') {
 				filter.workflowId = this.filter.workflowId;
 			}
-			if (['error', 'success'].includes(this.filter.status)) {
+			if (this.filter.status === 'sleeping') {
+				filter.sleepTill = true;
+			} else if (['error', 'success'].includes(this.filter.status)) {
 				filter.finished = this.filter.status === 'success';
 			}
 			return filter;

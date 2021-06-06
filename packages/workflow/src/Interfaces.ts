@@ -594,6 +594,7 @@ export interface IWebhookDescription {
 	responsePropertyName?: string;
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
+	restartWebhook?: boolean;
 }
 
 export interface IWorkflowDataProxyData {
