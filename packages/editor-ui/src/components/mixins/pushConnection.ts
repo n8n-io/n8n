@@ -218,7 +218,7 @@ export const pushConnection = mixins(
 					const workflow = this.getWorkflow();
 					if (runDataExecuted.sleepTill !== undefined) {
 						// Workflow did start but had been put to sleep
-						this.$titleSet(workflow.name, 'IDLE');
+						this.$titleSet(workflow.name as string, 'IDLE');
 						this.$showMessage({
 							title: 'Workflow got started',
 							message: 'Workflow execution got started and is now sleeping!',

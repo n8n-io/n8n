@@ -4,13 +4,9 @@
 		:eventBus="modalBus"
 		@enter="save"
 		size="sm"
-		title="Duplicate Workflow"	
+		title="Duplicate Workflow"
 	>
-<<<<<<< HEAD
-		<template slot="content">
-=======
 		<template v-slot:content>
->>>>>>> master
 			<el-row>
 				<el-input
 					v-model="name"
@@ -43,11 +39,7 @@
 import Vue from "vue";
 import mixins from "vue-typed-mixins";
 
-<<<<<<< HEAD
-import { DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH } from "@/constants";
-=======
 import { MAX_WORKFLOW_NAME_LENGTH } from "@/constants";
->>>>>>> master
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
 import TagsDropdown from "@/components/TagsDropdown.vue";
@@ -62,19 +54,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 			"workflowTags"
 		] as string[];
 
-<<<<<<< HEAD
-		const currentWorkflowName  = this.$store.getters["workflowName"];
-		let name = currentWorkflowName;
-		if (currentWorkflowName && currentWorkflowName.length <= (MAX_WORKFLOW_NAME_LENGTH - DUPLICATE_POSTFFIX.length)) {
-			name = `${currentWorkflowName}${DUPLICATE_POSTFFIX}`;
-		}
-
-		return {
-			name,
-=======
 		return {
 			name: '',
->>>>>>> master
 			currentTagIds,
 			isSaving: false,
 			modalBus: new Vue(),
@@ -83,12 +64,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 			prevTagIds: currentTagIds,
 		};
 	},
-<<<<<<< HEAD
-	mounted() {
-=======
 	async mounted() {
 		this.$data.name = await this.$store.dispatch('workflows/getDuplicateCurrentWorkflowName');
->>>>>>> master
 		this.$nextTick(() => this.focusOnNameInput());
 	},
 	watch: {
@@ -123,11 +100,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			if (!name) {
 				this.$showMessage({
 					title: "Name missing",
-<<<<<<< HEAD
-					message: `No name for the workflow got entered and so could not be saved!`,
-=======
 					message: `Please enter a name.`,
->>>>>>> master
 					type: "error",
 				});
 
@@ -140,14 +113,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 			if (saved) {
 				this.closeDialog();
-<<<<<<< HEAD
-				this.$data.isSaving = false;
-			}
-=======
 			}
 
 			this.$data.isSaving = false;
->>>>>>> master
 		},
 		closeDialog(): void {
 			this.modalBus.$emit("close");

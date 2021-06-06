@@ -416,22 +416,6 @@ export const workflowHelpers = mixins(
 						const tagIds = createdTags.map((tag: ITag): string => tag.id);
 						this.$store.commit('setWorkflowTagIds', tagIds);
 					}
-					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
-
-					this.$store.commit('setActive', workflowData.active || false);
-					this.$store.commit('setWorkflowId', workflowData.id);
-					this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
-					this.$store.commit('setWorkflowSettings', workflowData.settings || {});
-					this.$store.commit('setStateDirty', false);
-
-					const createdTags = (workflowData.tags || []) as ITag[];
-					const tagIds = createdTags.map((tag: ITag): string => tag.id);
-					this.$store.commit('setWorkflowTagIds', tagIds || []);
-
-					this.$router.push({
-						name: 'NodeViewExisting',
-						params: { name: workflowData.id as string, action: 'workflowSave' },
-					});
 
 					this.$store.commit('setStateDirty', false);
 					this.$store.commit('removeActiveAction', 'workflowSaving');

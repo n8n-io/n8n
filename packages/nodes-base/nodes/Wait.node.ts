@@ -413,7 +413,7 @@ export class Wait implements INodeType {
 				],
 			],
 		};
-	},
+	}
 
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
