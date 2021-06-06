@@ -193,7 +193,7 @@ export class KafkaTrigger implements INodeType {
 						} catch (error) { }
 					}
 
-					if (options.useSchemaRegistry) {
+					if (useSchemaRegistry) {
 						try {
 							value = await registry.decode(message.value as Buffer);
 						} catch (error) { }
