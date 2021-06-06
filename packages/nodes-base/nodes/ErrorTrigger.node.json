@@ -20,5 +20,10 @@
 				"url": "https://n8n.io/blog/creating-error-workflows-in-n8n/"
 			}
 		]
+	},
+	"subcategories": {
+		"Core Nodes": [
+			"Helpers"
+		]
 	}
 }

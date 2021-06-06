@@ -21,7 +21,7 @@ import {
 	Workflow
 } from './Workflow';
 
-import { get } from 'lodash';
+import { get, isEqual } from 'lodash';
 
 
 
@@ -585,7 +585,9 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 					nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name] || nodeProperties.default;
 				}
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
-			} else if (nodeValues[nodeProperties.name] !== nodeProperties.default || (nodeValues[nodeProperties.name] !== undefined && parentType === 'collection')) {
+			} else if ((nodeValues[nodeProperties.name] !== nodeProperties.default && typeof nodeValues[nodeProperties.name] !== 'object') ||
+				(typeof nodeValues[nodeProperties.name] === 'object' && !isEqual(nodeValues[nodeProperties.name], nodeProperties.default)) ||
+				(nodeValues[nodeProperties.name] !== undefined && parentType === 'collection')) {
 				// Set only if it is different to the default value
 				nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name];
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
@@ -610,9 +612,14 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 				if (nodeValues[nodeProperties.name] !== undefined) {
 					nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name];
 				} else if (returnDefaults === true) {
-					// Does not have values defined but defaults should be returned which is in the
-					// case of a collection with multipleValues always an empty array
-					nodeParameters[nodeProperties.name] = [];
+					// Does not have values defined but defaults should be returned
+					if (Array.isArray(nodeProperties.default)) {
+						nodeParameters[nodeProperties.name] = JSON.parse(JSON.stringify(nodeProperties.default));
+					} else {
+						// As it is probably wrong for many nodes, do we keep on returning an empty array if
+						// anything else than an array is set as default
+						nodeParameters[nodeProperties.name] = [];
+					}
 				}
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 			} else {
