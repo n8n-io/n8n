@@ -2678,18 +2678,18 @@ export class Pipedrive implements INodeType {
 						description: 'Whether the Activity is done or not. 0 = Not done, 1 = Done. If omitted returns both Done and Not done activities.',
 					},
 					{
-						displayName: 'Filter ID ',
-						name: 'filterId',
-						type: 'string',
-						default: '',
-						description: 'The ID of the Filter to use (will narrow down results if used together with user_id parameter)',
-					},
-					{
 						displayName: 'End Date',
 						name: 'end_date',
 						type: 'dateTime',
 						default: '',
 						description: 'Use the Activity due date where you wish to stop fetching Activities from. Insert due date in YYYY-MM-DD format.',
+					},
+					{
+						displayName: 'Filter ID ',
+						name: 'filterId',
+						type: 'string',
+						default: '',
+						description: 'The ID of the Filter to use (will narrow down results if used together with user_id parameter)',
 					},
 					{
 						displayName: 'Star Date',
@@ -2735,8 +2735,15 @@ export class Pipedrive implements INodeType {
 						name: activity.name,
 						value: activity.key_string,
 					});
-
 				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
 
 				return returnData;
 			},
@@ -2746,13 +2753,19 @@ export class Pipedrive implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/organizations', {});
 				for (const org of data) {
-
 					returnData.push({
 						name: org.name,
 						value: org.id,
 					});
-
 				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
 
 				return returnData;
 			},
@@ -2768,8 +2781,15 @@ export class Pipedrive implements INodeType {
 							value: user.id,
 						});
 					}
-
 				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
 
 				return returnData;
 			},
@@ -2779,13 +2799,19 @@ export class Pipedrive implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/stages', {});
 				for (const stage of data) {
-
 					returnData.push({
 						name: `${stage.pipeline_name} > ${stage.name}`,
 						value: stage.id,
 					});
-
 				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
 
 				return returnData;
 			},
@@ -2796,13 +2822,20 @@ export class Pipedrive implements INodeType {
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/organizationFields', {});
 				for (const field of data) {
 					if (field.key.length === 40) {
-
 						returnData.push({
 							name: field.name,
 							value: field.key,
 						});
 					}
 				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
 
 				return returnData;
 			},
@@ -2813,13 +2846,20 @@ export class Pipedrive implements INodeType {
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/dealFields', {});
 				for (const field of data) {
 					if (field.key.length === 40) {
-
 						returnData.push({
 							name: field.name,
 							value: field.key,
 						});
 					}
 				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
 
 				return returnData;
 			},
@@ -2830,13 +2870,20 @@ export class Pipedrive implements INodeType {
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/personFields', {});
 				for (const field of data) {
 					if (field.key.length === 40) {
-
 						returnData.push({
 							name: field.name,
 							value: field.key,
 						});
 					}
 				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
 
 				return returnData;
 			},
@@ -2853,6 +2900,15 @@ export class Pipedrive implements INodeType {
 						value: filterId,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 			// Get all the person labels to display them to user so that he can
@@ -2873,6 +2929,15 @@ export class Pipedrive implements INodeType {
 						}
 					}
 				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
 				if (operation === 'update') {
 					returnData.push({
 						name: 'No Label',
@@ -2899,6 +2964,15 @@ export class Pipedrive implements INodeType {
 						}
 					}
 				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
 				if (operation === 'update') {
 					returnData.push({
 						name: 'No Label',
@@ -2925,6 +2999,15 @@ export class Pipedrive implements INodeType {
 						}
 					}
 				}
+
+				returnData.sort((a, b) => {
+					const aName = a.name.toLowerCase();
+					const bName = b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
 				if (operation === 'update') {
 					returnData.push({
 						name: 'No Label',
