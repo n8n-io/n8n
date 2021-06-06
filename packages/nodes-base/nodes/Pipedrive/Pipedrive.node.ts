@@ -38,11 +38,7 @@ function addAdditionalFields(body: IDataObject, additionalFields: IDataObject) {
 			for (const customProperty of (additionalFields.customProperties as IDataObject)!.property! as CustomProperty[]) {
 				body[customProperty.name] = customProperty.value;
 			}
-		} else if (key === 'customFields' && (additionalFields.customFields as IDataObject).property !== undefined) {
-			for (const customProperty of (additionalFields.customFields as IDataObject)!.property! as CustomProperty[]) {
-				body[customProperty.name] = customProperty.value;
-			}
-		}  else {
+		} else {
 			body[key] = additionalFields[key];
 		}
 	}
@@ -228,14 +224,14 @@ export class Pipedrive implements INodeType {
 						description: 'Get data of all deals',
 					},
 					{
-						name: 'Update',
-						value: 'update',
-						description: 'Update a deal',
-					},
-					{
 						name: 'Search',
 						value: 'search',
 						description: 'Search a deal',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a deal',
 					},
 				],
 				default: 'create',
@@ -562,7 +558,7 @@ export class Pipedrive implements INodeType {
 						name: 'org_id',
 						type: 'options',
 						typeOptions: {
-							loadOptionsMethod: 'getOrganizationIds'
+							loadOptionsMethod: 'getOrganizationIds',
 						},
 						default: '',
 						description: 'ID of the organization this activity will be associated with',
@@ -579,7 +575,7 @@ export class Pipedrive implements INodeType {
 						name: 'user_id',
 						type: 'options',
 						typeOptions: {
-							loadOptionsMethod: 'getUserIds'
+							loadOptionsMethod: 'getUserIds',
 						},
 						default: '',
 						description: 'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
@@ -664,7 +660,6 @@ export class Pipedrive implements INodeType {
 				required: true,
 				description: 'ID of the activity to get.',
 			},
-
 			// ----------------------------------
 			//         activity:update
 			// ----------------------------------
@@ -750,8 +745,8 @@ export class Pipedrive implements INodeType {
 						displayName: 'Organization ID',
 						name: 'org_id',
 						type: 'options',
-						typeOptions:{
-							loadOptionsMethod: 'getOrganizationIds'
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationIds',
 						},
 						default: '',
 						description: 'ID of the organization this activity will be associated with',
@@ -783,7 +778,7 @@ export class Pipedrive implements INodeType {
 						name: 'user_id',
 						type: 'options',
 						typeOptions: {
-							loadOptionsMethod: 'getUserIds'
+							loadOptionsMethod: 'getUserIds',
 						},
 						default: '',
 						description: 'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
@@ -876,45 +871,6 @@ export class Pipedrive implements INodeType {
 						description: 'Currency of the deal. Accepts a 3-character currency code. Like EUR, USD, ...',
 					},
 					{
-						displayName: 'Custom Fields',
-						name: 'customFields',
-						placeholder: 'Add Custom Field',
-						description: 'Adds a custom field to set also values which have not been predefined.',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
-						options: [
-							{
-								name: 'property',
-								displayName: 'Custom Field',
-								typeOptions: {
-									multipleValueButtonText: 'Add Cutom Field'
-								},
-								values: [
-									{
-										displayName: 'Property Name',
-										name: 'name',
-										type: 'options',
-										typeOptions: {
-											loadOptionsMethod: 'getDealCustomFields'
-										},
-										default: '',
-										description: 'Name of the custom field to set.',
-									},
-									{
-										displayName: 'Property Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the property to set.',
-									},
-								],
-							},
-						],
-					},
-					{
 						displayName: 'Custom Properties',
 						name: 'customProperties',
 						placeholder: 'Add Custom Property',
@@ -932,7 +888,10 @@ export class Pipedrive implements INodeType {
 									{
 										displayName: 'Property Name',
 										name: 'name',
-										type: 'string',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getDealCustomFields',
+										},
 										default: '',
 										description: 'Name of the property to set.',
 									},
@@ -996,7 +955,7 @@ export class Pipedrive implements INodeType {
 						name: 'stage_id',
 						type: 'options',
 						typeOptions: {
-							loadOptionsMethod: 'getStageIds'
+							loadOptionsMethod: 'getStageIds',
 						},
 						default: '',
 						description: 'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline. (PIPELINE > STAGE)',
@@ -1031,7 +990,7 @@ export class Pipedrive implements INodeType {
 						name: 'user_id',
 						type: 'options',
 						typeOptions: {
-							loadOptionsMethod: 'getUserIds'
+							loadOptionsMethod: 'getUserIds',
 						},
 						default: '',
 						description: 'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
@@ -1175,45 +1134,6 @@ export class Pipedrive implements INodeType {
 						description: 'Currency of the deal. Accepts a 3-character currency code. Like EUR, USD, ...',
 					},
 					{
-						displayName: 'Custom Fields',
-						name: 'customFields',
-						placeholder: 'Add Custom Field',
-						description: 'Adds a custom field to set also values which have not been predefined.',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
-						options: [
-							{
-								name: 'property',
-								displayName: 'Custom Field',
-								typeOptions: {
-									multipleValueButtonText: 'Add Cutom Field'
-								},
-								values: [
-									{
-										displayName: 'Property Name',
-										name: 'name',
-										type: 'options',
-										typeOptions: {
-											loadOptionsMethod: 'getDealCustomFields'
-										},
-										default: '',
-										description: 'Name of the custom field to set.',
-									},
-									{
-										displayName: 'Property Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the property to set.',
-									},
-								],
-							},
-						],
-					},
-					{
 						displayName: 'Custom Properties',
 						name: 'customProperties',
 						placeholder: 'Add Custom Property',
@@ -1231,9 +1151,12 @@ export class Pipedrive implements INodeType {
 									{
 										displayName: 'Property Name',
 										name: 'name',
-										type: 'string',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getDealCustomFields',
+										},
 										default: '',
-										description: 'Name of the property to set.',
+										description: 'Name of the custom field to set.',
 									},
 									{
 										displayName: 'Property Value',
@@ -1251,7 +1174,7 @@ export class Pipedrive implements INodeType {
 						name: 'user_id',
 						type: 'options',
 						typeOptions: {
-							loadOptionsMethod: 'getUserIds'
+							loadOptionsMethod: 'getUserIds',
 						},
 						default: '',
 						description: 'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
@@ -1305,7 +1228,7 @@ export class Pipedrive implements INodeType {
 						name: 'stage_id',
 						type: 'options',
 						typeOptions: {
-							loadOptionsMethod: 'getStageIds'
+							loadOptionsMethod: 'getStageIds',
 						},
 						default: '',
 						description: 'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline. (PIPELINE > STAGE)',
@@ -1393,10 +1316,54 @@ export class Pipedrive implements INodeType {
 				displayName: 'Exact Match',
 				name: 'exactMatch',
 				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
 				default: false,
 				description: 'When enabled, only full exact matches against the given term are returned. It is not case sensitive.',
 			},
 			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			}, {
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
@@ -1414,18 +1381,11 @@ export class Pipedrive implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Fields',
-						name: 'fields',
-						type: 'string',
-						default: '',
-						description: 'A comma-separated string array. The fields to perform the search from. Defaults to all of them.',
-					},
-					{
 						displayName: 'Include Fields',
 						name: 'includeFields',
 						type: 'string',
 						default: '',
-						description: 'Supports including optional fields in the results which are not provided by default.',
+						description: 'Supports including optional fields in the results which are not provided by default. Example: deal.cc_email',
 					},
 					{
 						displayName: 'Organization ID',
@@ -1440,6 +1400,31 @@ export class Pipedrive implements INodeType {
 						type: 'string',
 						default: '',
 						description: 'Will filter Deals by the provided Person ID.',
+					},
+					{
+						displayName: 'Search Fields',
+						name: 'fields',
+						type: 'multiOptions',
+						options: [
+							{
+								name: 'Custom Fields',
+								value: 'custom_fields',
+							},
+							{
+								name: 'Notes',
+								value: 'notes',
+							},
+							{
+								name: 'Title',
+								value: 'title',
+							},
+						],
+						default: [
+							'custom_fields',
+							'notes',
+							'title',
+						],
+						description: 'A comma-separated string array. The fields to perform the search from. Defaults to all of them.',
 					},
 					{
 						displayName: 'Status',
@@ -1457,17 +1442,10 @@ export class Pipedrive implements INodeType {
 							{
 								name: 'Lost',
 								value: 'lost',
-							}
+							},
 						],
 						default: 'open',
 						description: 'The status of the deal. If not provided it will automatically be set to "open".',
-					},
-					{
-						displayName: 'RAW Data',
-						name: 'rawData',
-						type: 'boolean',
-						default: false,
-						description: `Returns the data exactly in the way it got received from the API.`,
 					},
 				],
 			},
@@ -1672,50 +1650,50 @@ export class Pipedrive implements INodeType {
 				},
 				description: 'The content of the note to create',
 			},
-			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
-				type: 'collection',
-				placeholder: 'Add Field',
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-							'getAll',
-						],
-						resource: [
-							'note',
-						],
-					},
-				},
-				default: {},
-				options: [
-					{
-						displayName: 'Deal ID',
-						name: 'deal_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the deal this note will be associated with',
-					},
-					{
-						displayName: 'Organization ID',
-						name: 'org_id',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getOrganizationIds',
-						},
-						default: '',
-						description: 'ID of the organization this deal will be associated with.',
-					},
-					{
-						displayName: 'Person ID',
-						name: 'person_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the person this note will be associated with.',
-					},
-				],
-			},
+			// {
+			// 	displayName: 'Additional Fields',
+			// 	name: 'additionalFields',
+			// 	type: 'collection',
+			// 	placeholder: 'Add Field',
+			// 	displayOptions: {
+			// 		show: {
+			// 			operation: [
+			// 				'create',
+			// 				'getAll',
+			// 			],
+			// 			resource: [
+			// 				'note',
+			// 			],
+			// 		},
+			// 	},
+			// 	default: {},
+			// 	options: [
+			// 		{
+			// 			displayName: 'Deal ID',
+			// 			name: 'deal_id',
+			// 			type: 'number',
+			// 			default: 0,
+			// 			description: 'ID of the deal this note will be associated with',
+			// 		},
+			// 		{
+			// 			displayName: 'Organization ID',
+			// 			name: 'org_id',
+			// 			type: 'options',
+			// 			typeOptions: {
+			// 				loadOptionsMethod: 'getOrganizationIds',
+			// 			},
+			// 			default: '',
+			// 			description: 'ID of the organization this deal will be associated with.',
+			// 		},
+			// 		{
+			// 			displayName: 'Person ID',
+			// 			name: 'person_id',
+			// 			type: 'number',
+			// 			default: 0,
+			// 			description: 'ID of the person this note will be associated with.',
+			// 		},
+			// 	],
+			// },
 
 			// ----------------------------------
 			//         note:delete
@@ -2145,45 +2123,6 @@ export class Pipedrive implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Custom Fields',
-						name: 'customFields',
-						placeholder: 'Add Custom Field',
-						description: 'Adds a custom field to set also values which have not been predefined.',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
-						options: [
-							{
-								name: 'property',
-								displayName: 'Custom Field',
-								typeOptions: {
-									multipleValueButtonText: 'Add Cutom Field'
-								},
-								values: [
-									{
-										displayName: 'Property Name',
-										name: 'name',
-										type: 'options',
-										typeOptions: {
-											loadOptionsMethod: 'getPersonCustomFields'
-										},
-										default: '',
-										description: 'Name of the custom field to set.',
-									},
-									{
-										displayName: 'Property Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the property to set.',
-									},
-								],
-							},
-						],
-					},
-					{
 						displayName: 'Custom Properties',
 						name: 'customProperties',
 						placeholder: 'Add Custom Property',
@@ -2201,9 +2140,12 @@ export class Pipedrive implements INodeType {
 									{
 										displayName: 'Property Name',
 										name: 'name',
-										type: 'string',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getPersonCustomFields',
+										},
 										default: '',
-										description: 'Name of the property to set.',
+										description: 'Name of the custom field to set.',
 									},
 									{
 										displayName: 'Property Value',
@@ -2359,45 +2301,6 @@ export class Pipedrive implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Custom Fields',
-						name: 'customFields',
-						placeholder: 'Add Custom Field',
-						description: 'Adds a custom field to set also values which have not been predefined.',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
-						options: [
-							{
-								name: 'property',
-								displayName: 'Custom Field',
-								typeOptions: {
-									multipleValueButtonText: 'Add Cutom Field'
-								},
-								values: [
-									{
-										displayName: 'Property Name',
-										name: 'name',
-										type: 'options',
-										typeOptions: {
-											loadOptionsMethod: 'getPersonCustomFields'
-										},
-										default: '',
-										description: 'Name of the custom field to set.',
-									},
-									{
-										displayName: 'Property Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the property to set.',
-									},
-								],
-							},
-						],
-					},
-					{
 						displayName: 'Custom Properties',
 						name: 'customProperties',
 						placeholder: 'Add Custom Property',
@@ -2415,9 +2318,12 @@ export class Pipedrive implements INodeType {
 									{
 										displayName: 'Property Name',
 										name: 'name',
-										type: 'string',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getPersonCustomFields',
+										},
 										default: '',
-										description: 'Name of the property to set.',
+										description: 'Name of the custom field to set.',
 									},
 									{
 										displayName: 'Property Value',
@@ -2553,7 +2459,6 @@ export class Pipedrive implements INodeType {
 					show: {
 						operation: [
 							'getAll',
-							'search',
 						],
 					},
 				},
@@ -2568,7 +2473,6 @@ export class Pipedrive implements INodeType {
 					show: {
 						operation: [
 							'getAll',
-							'search',
 						],
 						returnAll: [
 							false,
@@ -2746,6 +2650,76 @@ export class Pipedrive implements INodeType {
 					},
 				],
 			},
+			// ----------------------------------
+			//         activity:getAll
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'activity',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Done',
+						name: 'done',
+						type: 'boolean',
+						default: false,
+						description: 'Whether the Activity is done or not. 0 = Not done, 1 = Done. If omitted returns both Done and Not done activities.',
+					},
+					{
+						displayName: 'Filter ID ',
+						name: 'filterId',
+						type: 'string',
+						default: '',
+						description: 'The ID of the Filter to use (will narrow down results if used together with user_id parameter)',
+					},
+					{
+						displayName: 'End Date',
+						name: 'end_date',
+						type: 'dateTime',
+						default: '',
+						description: 'Use the Activity due date where you wish to stop fetching Activities from. Insert due date in YYYY-MM-DD format.',
+					},
+					{
+						displayName: 'Star Date',
+						name: 'start_date',
+						type: 'dateTime',
+						default: '',
+						description: 'Use the Activity due date where you wish to begin fetching Activities from. Insert due date in YYYY-MM-DD format.',
+					},
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getActivityTypes',
+						},
+						default: [],
+						description: 'Type of the Activity.',
+					},
+					{
+						displayName: 'User ID',
+						name: 'user_id',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUserIds',
+						},
+						default: '',
+						description: 'The ID of the User whose Activities will be fetched. If omitted, the User associated with the API token will be used. If 0, Activities for all company Users will be fetched based on the permission sets.',
+					},
+				],
+			},
 		],
 	};
 
@@ -2753,108 +2727,117 @@ export class Pipedrive implements INodeType {
 		loadOptions: {
 			// Get all Organizations to display them to user so that he can
 			// select them easily
+			async getActivityTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/activityTypes', {});
+				for (const activity of data) {
+					returnData.push({
+						name: activity.name,
+						value: activity.key_string,
+					});
+
+				}
+
+				return returnData;
+			},
+			// Get all Organizations to display them to user so that he can
+			// select them easily
 			async getOrganizationIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const operation = this.getCurrentNodeParameter('operation') as string;
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/organizations', {});
 				for (const org of data) {
-					
+
 					returnData.push({
 						name: org.name,
 						value: org.id,
 					});
-							
+
 				}
-				
+
 				return returnData;
 			},
 			// Get all Organizations to display them to user so that he can
 			// select them easily
 			async getUserIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const operation = this.getCurrentNodeParameter('operation') as string;
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/users', {});
 				for (const user of data) {
-					if(user.active_flag === true){
+					if (user.active_flag === true) {
 						returnData.push({
 							name: user.name,
 							value: user.id,
 						});
 					}
-							
+
 				}
-				
+
 				return returnData;
 			},
 			// Get all Stages to display them to user so that he can
 			// select them easily
 			async getStageIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const operation = this.getCurrentNodeParameter('operation') as string;
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/stages', {});
 				for (const stage of data) {
-					
+
 					returnData.push({
 						name: `${stage.pipeline_name} > ${stage.name}`,
 						value: stage.id,
 					});
-							
+
 				}
-				
+
 				return returnData;
 			},
 			// Get all the Organization Custom Fields to display them to user so that he can
 			// select them easily
 			async getOrganizationCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const operation = this.getCurrentNodeParameter('operation') as string;
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/organizationFields', {});
 				for (const field of data) {
-					if (field.key.length == 40) {
-						
+					if (field.key.length === 40) {
+
 						returnData.push({
 							name: field.name,
 							value: field.key,
 						});
 					}
 				}
-				
+
 				return returnData;
 			},
 			// Get all the Deal Custom Fields to display them to user so that he can
 			// select them easily
 			async getDealCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const operation = this.getCurrentNodeParameter('operation') as string;
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/dealFields', {});
 				for (const field of data) {
-					if (field.key.length == 40) {
-						
+					if (field.key.length === 40) {
+
 						returnData.push({
 							name: field.name,
 							value: field.key,
 						});
 					}
 				}
-				
+
 				return returnData;
 			},
 			// Get all the Person Custom Fields to display them to user so that he can
 			// select them easily
 			async getPersonCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const operation = this.getCurrentNodeParameter('operation') as string;
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/personFields', {});
 				for (const field of data) {
-					if (field.key.length == 40) {
-						
+					if (field.key.length === 40) {
+
 						returnData.push({
 							name: field.name,
 							value: field.key,
 						});
 					}
 				}
-				
+
 				return returnData;
 			},
 			// Get all the filters to display them to user so that he can
@@ -3048,6 +3031,13 @@ export class Pipedrive implements INodeType {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
 
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(qs, additionalFields);
+
+					if (qs.type) {
+						qs.type = (qs.type as string[]).join(',');
+					}
+
 					endpoint = `/activities`;
 
 				} else if (operation === 'update') {
@@ -3154,12 +3144,8 @@ export class Pipedrive implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (additionalFields.fields) {
-						qs.fields = additionalFields.fields as string;
+						qs.fields = (additionalFields.fields as string[]).join(',');
 					}
-
-					// if (additionalFields.exactMatch) {
-					// 	qs.exact_match = additionalFields.exactMatch as boolean;
-					// }
 
 					if (additionalFields.organizationId) {
 						qs.organization_id = parseInt(additionalFields.organizationId as string, 10);
@@ -3169,7 +3155,7 @@ export class Pipedrive implements INodeType {
 						qs.include_fields = additionalFields.includeFields as string;
 					}
 
-					if(additionalFields.personId){
+					if (additionalFields.personId) {
 						qs.person_id = parseInt(additionalFields.personId as string, 10);
 					}
 					if (additionalFields.status) {
