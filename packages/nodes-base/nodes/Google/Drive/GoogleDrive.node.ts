@@ -1970,7 +1970,6 @@ export class GoogleDrive implements INodeType {
 					// ----------------------------------
 					//         list
 					// ----------------------------------
-
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					const qs: IDataObject = {};
@@ -1986,6 +1985,7 @@ export class GoogleDrive implements INodeType {
 						const data = await googleApiRequest.call(this, 'GET', `/drive/v3/drives`, {}, qs);
 						response = data.drives as IDataObject[];
 					}
+
 					returnData.push.apply(returnData, response);
 				}
 				if (operation === 'update') {
@@ -2004,7 +2004,8 @@ export class GoogleDrive implements INodeType {
 					returnData.push(response as IDataObject);
 				}
 
-			} else if (resource === 'file') {
+			}
+			if (resource === 'file') {
 				if (operation === 'copy') {
 					// ----------------------------------
 					//         copy
@@ -2026,7 +2027,7 @@ export class GoogleDrive implements INodeType {
 					const qs = {
 						supportsAllDrives: true,
 					};
-					
+
 					const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/copy`, body, qs);
 
 					returnData.push(response as IDataObject);
@@ -2264,7 +2265,8 @@ export class GoogleDrive implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 
-			} else if (resource === 'folder') {
+			}
+			if (resource === 'folder') {
 				if (operation === 'create') {
 					// ----------------------------------
 					//         folder:create
@@ -2326,11 +2328,8 @@ export class GoogleDrive implements INodeType {
 
 					returnData.push(response as IDataObject);
 				}
-			} else {
-				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 			}
 		}
-
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
 			return this.prepareOutputData(items);

@@ -4,11 +4,18 @@ import {
 } from 'n8n-core';
 import {
 	ICredentialType,
+	ILogger,
 	INodeType,
 	INodeTypeData,
+	LoggerProxy,
 } from 'n8n-workflow';
 
 import * as config from '../config';
+
+import {
+	getLogger,
+} from '../src/Logger';
+
 import {
 	access as fsAccess,
 	readdir as fsReaddir,
@@ -31,7 +38,12 @@ class LoadNodesAndCredentialsClass {
 
 	nodeModulesPath = '';
 
+	logger: ILogger;
+
 	async init() {
+		this.logger = getLogger();
+		LoggerProxy.init(this.logger);
+
 		// Get the path to the node-modules folder to be later able
 		// to load the credentials and nodes
 		const checkPaths = [
@@ -169,6 +181,10 @@ class LoadNodesAndCredentialsClass {
 			tempNode.description.icon.startsWith('file:')) {
 			// If a file icon gets used add the full path
 			tempNode.description.icon = 'file:' + path.join(path.dirname(filePath), tempNode.description.icon.substr(5));
+		}
+
+		if (tempNode.executeSingle) {
+			this.logger.warn(`"executeSingle" will get deprecated soon. Please update the code of node "${packageName}.${nodeName}" to use "execute" instead!`, { filePath });
 		}
 
 		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
