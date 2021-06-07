@@ -185,7 +185,7 @@ export const opportunityFields = [
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getLeadCustomFields',
+									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
 								description: 'The ID of the field to add custom field to.',
@@ -381,7 +381,7 @@ export const opportunityFields = [
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getLeadCustomFields',
+									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
 								description: 'The ID of the field to add custom field to.',

@@ -1,5 +1,7 @@
 import { Workflow } from './Workflow';
 import { WorkflowHooks } from './WorkflowHooks';
+import { WorkflowOperationError } from './WorkflowErrors';
+import { NodeApiError, NodeOperationError } from './NodeErrors';
 import * as express from 'express';
 
 export type IAllExecuteFunctions = IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions | IPollFunctions | ITriggerFunctions | IWebhookFunctions;
@@ -32,11 +34,7 @@ export interface IConnection {
 	index: number;
 }
 
-export interface IExecutionError {
-	message: string;
-	node?: string;
-	stack?: string;
-}
+export type ExecutionError = WorkflowOperationError | NodeOperationError | NodeApiError;
 
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
@@ -225,6 +223,7 @@ export interface IExecuteFunctions {
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
 	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
+	sendMessageToUI(message: string): void;
 	helpers: {
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
 	};
@@ -660,7 +659,7 @@ export interface IRunExecutionData {
 		runNodeFilter?: string[];
 	};
 	resultData: {
-		error?: IExecutionError;
+		error?: ExecutionError;
 		runData: IRunData;
 		lastNodeExecuted?: string;
 	};
@@ -683,7 +682,7 @@ export interface ITaskData {
 	startTime: number;
 	executionTime: number;
 	data?: ITaskDataConnections;
-	error?: IExecutionError;
+	error?: ExecutionError;
 }
 
 
@@ -746,10 +745,12 @@ export interface IWorkflowExecuteAdditionalData {
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
 	restApiUrl: string;
+	sendMessageToUI?: (source: string, message: string) => void;
 	timezone: string;
 	webhookBaseUrl: string;
 	webhookTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
+	executionTimeoutTimestamp?: number;
 }
 
 export type WorkflowExecuteMode = 'cli' | 'error' | 'integrated' | 'internal' | 'manual' | 'retry' | 'trigger' | 'webhook';
@@ -761,7 +762,24 @@ export interface IWorkflowHooksOptionalParameters {
 	sessionId?: string;
 }
 
-
 export interface IWorkflowSettings {
 	[key: string]: IDataObject | string | number | boolean | undefined;
+}
+
+export type LogTypes = 'debug' | 'verbose' | 'info' | 'warn' | 'error';
+
+export interface ILogger {
+	log: (type: LogTypes, message: string, meta?: object) => void;
+	debug: (message: string, meta?: object) => void;
+	verbose: (message: string, meta?: object) => void;
+	info: (message: string, meta?: object) => void;
+	warn: (message: string, meta?: object) => void;
+	error: (message: string, meta?: object) => void;
+}
+export interface IRawErrorObject {
+	[key: string]: string | object | number | boolean | undefined | null | string[] | object[] | number[] | boolean[];
+}
+
+export interface IStatusCodeMessages {
+	[key: string]: string;
 }

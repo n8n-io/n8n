@@ -11,6 +11,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 export class Amqp implements INodeType {
@@ -98,7 +99,7 @@ export class Amqp implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = this.getCredentials('amqp');
 		if (!credentials) {
-			throw new Error('Credentials are mandatory!');
+			throw new NodeOperationError(this.getNode(), 'Credentials are mandatory!');
 		}
 
 		const sink = this.getNodeParameter('sink', 0, '') as string;
@@ -116,7 +117,7 @@ export class Amqp implements INodeType {
 		}
 
 		if (sink === '') {
-			throw new Error('Queue or Topic required!');
+			throw new NodeOperationError(this.getNode(), 'Queue or Topic required!');
 		}
 
 		const container = create_container();

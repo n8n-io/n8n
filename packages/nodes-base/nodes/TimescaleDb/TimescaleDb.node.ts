@@ -7,10 +7,10 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
-	getItemCopy,
 	pgInsert,
 	pgQuery,
 	pgUpdate,
@@ -76,15 +76,13 @@ export class TimescaleDb implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'executeQuery',
-						],
+						operation: ['executeQuery'],
 					},
 				},
 				default: '',
-				placeholder: 'SELECT id, name FROM product WHERE id < 40',
+				placeholder: 'SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
 				required: true,
-				description: 'The SQL query to execute.',
+				description: 'The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.',
 			},
 
 			// ----------------------------------
@@ -135,20 +133,6 @@ export class TimescaleDb implements INodeType {
 				placeholder: 'id,name,description',
 				description:
 					'Comma separated list of the properties which should used as columns for the new rows.',
-			},
-			{
-				displayName: 'Return Fields',
-				name: 'returnFields',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: [
-							'insert',
-						],
-					},
-				},
-				default: '*',
-				description: 'Comma separated list of the fields that the operation will return',
 			},
 
 			// ----------------------------------
@@ -216,6 +200,76 @@ export class TimescaleDb implements INodeType {
 				description:
 					'Comma separated list of the properties which should used as columns for rows to update.',
 			},
+			// ----------------------------------
+			//         insert,update
+			// ----------------------------------
+			{
+				displayName: 'Return Fields',
+				name: 'returnFields',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['insert', 'update'],
+					},
+				},
+				default: '*',
+				description: 'Comma separated list of the fields that the operation will return',
+			},
+			// ----------------------------------
+			//         additional fields
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{
+								name: 'Independently',
+								value: 'independently',
+								description: 'Execute each query independently',
+							},
+							{
+								name: 'Multiple queries',
+								value: 'multiple',
+								description: '<b>Default</b>. Sends multiple queries at once to database.',
+							},
+							{
+								name: 'Transaction',
+								value: 'transaction',
+								description: 'Executes all queries in a single transaction',
+							},
+						],
+						default: 'multiple',
+						description: [
+							'The way queries should be sent to database.',
+							'Can be used in conjunction with <b>Continue on Fail</b>.',
+							'See the docs for more examples',
+						].join('<br>'),
+					},
+					{
+						displayName: 'Query Parameters',
+						name: 'queryParams',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'executeQuery',
+								],
+							},
+						},
+						default: '',
+						placeholder: 'quantity,price',
+						description: 'Comma separated list of properties which should be used as query parameters.',
+					},
+				],
+			},
 		],
 	};
 
@@ -223,7 +277,7 @@ export class TimescaleDb implements INodeType {
 		const credentials = this.getCredentials('timescaleDb');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		const pgp = pgPromise();
@@ -250,22 +304,20 @@ export class TimescaleDb implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items);
+			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
-			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+			returnItems = this.helpers.returnJsonArray(queryResult);
 		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
 			// ----------------------------------
 
-			const [insertData, insertItems] = await pgInsert(this.getNodeParameter, pgp, db, items);
+			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
 			// Add the id to the data
 			for (let i = 0; i < insertData.length; i++) {
 				returnItems.push({
-					json: {
-						...insertData[i],
-					},
+					json: insertData[i],
 				});
 			}
 		} else if (operation === 'update') {
@@ -273,13 +325,13 @@ export class TimescaleDb implements INodeType {
 			//         update
 			// ----------------------------------
 
-			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items);
+			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, this.continueOnFail());
 
 			returnItems = this.helpers.returnJsonArray(updateItems);
 
 		} else {
 			await pgp.end();
-			throw new Error(`The operation "${operation}" is not supported!`);
+			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 		}
 
 		// Close the connection

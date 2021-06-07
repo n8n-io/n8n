@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function gotifyApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, uri?: string | undefined, option = {}): Promise<any> { // tslint:disable-line:no-any
@@ -35,15 +35,7 @@ export async function gotifyApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
-
-		if (error.response && error.response.body && error.response.body.errorDescription) {
-			const message = error.response.body.errorDescription;
-			// Try to return the error prettier
-			throw new Error(
-				`Gotify error response [${error.statusCode}]: ${message}`,
-			);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

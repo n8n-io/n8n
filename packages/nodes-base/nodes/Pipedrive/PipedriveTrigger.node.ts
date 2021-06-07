@@ -43,7 +43,7 @@ export class PipedriveTrigger implements INodeType {
 		icon: 'file:pipedrive.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Pipedrive events occure.',
+		description: 'Starts the workflow when Pipedrive events occur.',
 		defaults: {
 			name: 'Pipedrive Trigger',
 			color: '#559922',
@@ -300,7 +300,7 @@ export class PipedriveTrigger implements INodeType {
 
 					try {
 						await pipedriveApiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

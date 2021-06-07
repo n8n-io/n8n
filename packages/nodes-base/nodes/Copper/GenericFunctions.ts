@@ -17,6 +17,7 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -72,12 +73,7 @@ export async function copperApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		let errorMessage = error.message;
-		if (error.response.body?.message) {
-			errorMessage = error.response.body.message;
-		}
-
-		throw new Error(`Copper error response [${error.statusCode}]: ${errorMessage}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

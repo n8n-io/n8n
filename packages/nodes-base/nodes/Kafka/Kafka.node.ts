@@ -15,6 +15,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 export class Kafka implements INodeType {
@@ -195,7 +196,7 @@ export class Kafka implements INodeType {
 
 		if (credentials.authentication === true) {
 			if(!(credentials.username && credentials.password)) {
-				throw new Error('Username and password are required for authentication');
+				throw new NodeOperationError(this.getNode(), 'Username and password are required for authentication');
 			}
 			config.sasl = {
 				username: credentials.username as string,
@@ -230,7 +231,7 @@ export class Kafka implements INodeType {
 				try {
 					headers = JSON.parse(headers);
 				} catch (exception) {
-					throw new Error('Headers must be a valid json');
+					throw new NodeOperationError(this.getNode(), 'Headers must be a valid json');
 				}
 			} else {
 				const values = (this.getNodeParameter('headersUi', i) as IDataObject).headerValues as IDataObject[];

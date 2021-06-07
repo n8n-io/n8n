@@ -19,6 +19,9 @@ import router from './router';
 
 import { runExternalHook } from './components/mixins/externalHooks';
 
+// @ts-ignore
+import vClickOutside from 'v-click-outside';
+
 import { library } from '@fortawesome/fontawesome-svg-core';
 import {
 	faAngleDoubleLeft,
@@ -56,6 +59,7 @@ import {
 	faFilePdf,
 	faFolderOpen,
 	faHdd,
+	faHome,
 	faHourglass,
 	faImage,
 	faInbox,
@@ -69,6 +73,7 @@ import {
 	faPlay,
 	faPlayCircle,
 	faPlus,
+	faPlusCircle,
 	faQuestion,
 	faQuestionCircle,
 	faRedo,
@@ -92,6 +97,7 @@ import {
 	faTrash,
 	faUndo,
 	faUsers,
+	faClock,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
@@ -100,6 +106,7 @@ import { store } from './store';
 Vue.use(Vue2TouchEvents);
 
 Vue.use(ElementUI, { locale });
+Vue.use(vClickOutside);
 
 library.add(faAngleDoubleLeft);
 library.add(faAngleDown);
@@ -136,6 +143,7 @@ library.add(faFileImport);
 library.add(faFilePdf);
 library.add(faFolderOpen);
 library.add(faHdd);
+library.add(faHome);
 library.add(faHourglass);
 library.add(faImage);
 library.add(faInbox);
@@ -149,6 +157,7 @@ library.add(faPen);
 library.add(faPlay);
 library.add(faPlayCircle);
 library.add(faPlus);
+library.add(faPlusCircle);
 library.add(faQuestion);
 library.add(faQuestionCircle);
 library.add(faRedo);
@@ -172,6 +181,7 @@ library.add(faTimes);
 library.add(faTrash);
 library.add(faUndo);
 library.add(faUsers);
+library.add(faClock);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
 

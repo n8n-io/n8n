@@ -12,6 +12,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 
@@ -133,7 +134,7 @@ export class AmqpTrigger implements INodeType {
 
 		const credentials = this.getCredentials('amqp');
 		if (!credentials) {
-			throw new Error('Credentials are mandatory!');
+			throw new NodeOperationError(this.getNode(), 'Credentials are mandatory!');
 		}
 
 		const sink = this.getNodeParameter('sink', '') as string;
@@ -146,7 +147,7 @@ export class AmqpTrigger implements INodeType {
 		const containerReconnectLimit = options.reconnectLimit as number || 50;
 
 		if (sink === '') {
-			throw new Error('Queue or Topic required!');
+			throw new NodeOperationError(this.getNode(), 'Queue or Topic required!');
 		}
 
 		let durable = false;

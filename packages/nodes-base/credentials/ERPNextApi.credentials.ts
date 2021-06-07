@@ -21,12 +21,50 @@ export class ERPNextApi implements ICredentialType {
 			default: '',
 		},
 		{
+			displayName: 'Environment',
+			name: 'environment',
+			type: 'options' as NodePropertyTypes,
+			default: 'cloudHosted',
+			options: [
+				{
+					name: 'Cloud-hosted',
+					value: 'cloudHosted',
+				},
+				{
+					name: 'Self-hosted',
+					value: 'selfHosted',
+				},
+			],
+		},
+		{
 			displayName: 'Subdomain',
 			name: 'subdomain',
 			type: 'string' as NodePropertyTypes,
 			default: '',
 			placeholder: 'n8n',
-			description: 'ERPNext subdomain. For instance, entering n8n will make the url look like: https://n8n.erpnext.com/.',
+			description: 'Subdomain of cloud-hosted ERPNext instance. For example, "n8n" is the subdomain in: <code>https://n8n.erpnext.com</code>',
+			displayOptions: {
+				show: {
+					environment: [
+						'cloudHosted',
+					],
+				},
+			},
+		},
+		{
+			displayName: 'Domain',
+			name: 'domain',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+			placeholder: 'https://www.mydomain.com',
+			description: 'Fully qualified domain name of self-hosted ERPNext instance.',
+			displayOptions: {
+				show: {
+					environment: [
+						'selfHosted',
+					],
+				},
+			},
 		},
 	];
 }

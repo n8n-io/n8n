@@ -5,6 +5,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 const { NodeVM } = require('vm2');
@@ -33,7 +34,16 @@ export class FunctionItem implements INodeType {
 					rows: 10,
 				},
 				type: 'string',
-				default: 'item.myVariable = 1;\nreturn item;',
+				default: `// Code here will run once per input item.
+// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.functionItem
+
+// Add a new field called 'myNewField' to the JSON of the item
+item.myNewField = 1;
+
+// You can write logs to the browser console
+console.log('Done!');
+
+return item;`,
 				description: 'The JavaScript code to execute for each item.',
 				noDataExpression: true,
 			},
@@ -72,8 +82,10 @@ export class FunctionItem implements INodeType {
 			const dataProxy = this.getWorkflowDataProxy(itemIndex);
 			Object.assign(sandbox, dataProxy);
 
+			const mode = this.getMode();
+
 			const options = {
-				console: 'inherit',
+				console: (mode === 'manual') ? 'redirect' : 'inherit',
 				sandbox,
 				require: {
 					external: false as boolean | { modules: string[] },
@@ -91,21 +103,24 @@ export class FunctionItem implements INodeType {
 
 			const vm = new NodeVM(options);
 
+			if (mode === 'manual') {
+				vm.on('console.log', this.sendMessageToUI);
+			}
+
 			// Get the code to execute
 			const functionCode = this.getNodeParameter('functionCode', itemIndex) as string;
-
 
 			let jsonData: IDataObject;
 			try {
 				// Execute the function code
 				jsonData = await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname);
-			} catch (e) {
-				return Promise.reject(e);
+			} catch (error) {
+				return Promise.reject(error);
 			}
 
 			// Do very basic validation of the data
 			if (jsonData === undefined) {
-				throw new Error('No data got returned. Always an object has to be returned!');
+				throw new NodeOperationError(this.getNode(), 'No data got returned. Always an object has to be returned!');
 			}
 
 			const returnItem: INodeExecutionData = {

@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -284,6 +285,26 @@ export class Github implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Creates a new release.',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get a release.',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all repository releases.',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a release.',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a release.',
 					},
 				],
 				default: 'create',
@@ -1037,6 +1058,143 @@ export class Github implements INodeType {
 				],
 			},
 
+			// ----------------------------------
+			//         release:get/delete/update
+			// ----------------------------------
+			{
+				displayName: 'Release ID',
+				name: 'release_id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'release',
+						],
+						operation: [
+							'get',
+							'delete',
+							'update',
+						],
+					},
+				},
+				description: 'The release ID.',
+			},
+
+			// ----------------------------------
+			//         release:update
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				typeOptions: {
+					multipleValueButtonText: 'Add Field',
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'release',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Body',
+						name: 'body',
+						type: 'string',
+						typeOptions: {
+							rows: 5,
+						},
+						default: '',
+						description: 'The body of the release.',
+					},
+					{
+						displayName: 'Draft',
+						name: 'draft',
+						type: 'boolean',
+						default: false,
+						description: 'Set "true" to create a draft (unpublished) release, "false" to create a published one.',
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'The name of the release.',
+					},
+					{
+						displayName: 'Prerelease',
+						name: 'prerelease',
+						type: 'boolean',
+						default: false,
+						description: 'If set to "true" it will point out that the release is non-production ready.',
+					},
+					{
+						displayName: 'Tag Name',
+						name: 'tag_name',
+						type: 'string',
+						default: '',
+						description: 'The name of the tag.',
+					},
+					{
+						displayName: 'Target Commitish',
+						name: 'target_commitish',
+						type: 'string',
+						default: '',
+						description: 'Specifies the commitish value that determines where the Git tag is created from. Can be any branch or commit SHA. Unused if the Git tag already exists. Default: the repository\'s default branch(usually master).',
+					},
+				],
+			},
+			// ----------------------------------
+			//         release:getAll
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'release',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'release',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'How many results to return.',
+			},
 
 
 			// ----------------------------------
@@ -1560,6 +1718,9 @@ export class Github implements INodeType {
 			'issue:edit',
 			'issue:get',
 			'release:create',
+			'release:delete',
+			'release:get',
+			'release:update',
 			'repository:get',
 			'repository:getLicense',
 			'repository:getProfile',
@@ -1575,6 +1736,7 @@ export class Github implements INodeType {
 			'repository:listPopularPaths',
 			'repository:listReferrers',
 			'user:getRepositories',
+			'release:getAll',
 			'review:getAll',
 		];
 
@@ -1643,13 +1805,13 @@ export class Github implements INodeType {
 						const item = items[i];
 
 						if (item.binary === undefined) {
-							throw new Error('No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
 
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
 						if (item.binary[binaryPropertyName] === undefined) {
-							throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 						}
 
 						// Currently internally n8n uses base64 and also Github expects it base64 encoded.
@@ -1777,6 +1939,56 @@ export class Github implements INodeType {
 					body.tag_name = this.getNodeParameter('releaseTag', i) as string;
 
 					endpoint = `/repos/${owner}/${repository}/releases`;
+				}
+				if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const releaseId = this.getNodeParameter('release_id', i) as string;
+
+					endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
+				}
+				if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const releaseId = this.getNodeParameter('release_id', i) as string;
+
+					endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
+				}
+				if (operation === 'getAll') {
+					// ----------------------------------
+					//         getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					endpoint = `/repos/${owner}/${repository}/releases`;
+
+					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					if (returnAll === false) {
+						qs.per_page = this.getNodeParameter('limit', 0) as number;
+					}
+				}
+				if (operation === 'update') {
+					// ----------------------------------
+					//         update
+					// ----------------------------------
+
+					requestMethod = 'PATCH';
+
+					const releaseId = this.getNodeParameter('release_id', i) as string;
+
+					body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+					endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
 				}
 			} else if (resource === 'repository') {
 				if (operation === 'listPopularPaths') {
@@ -1914,7 +2126,7 @@ export class Github implements INodeType {
 				}
 
 			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 			}
 
 			if (returnAll === true) {
@@ -1948,6 +2160,9 @@ export class Github implements INodeType {
 
 					return this.prepareOutputData(items);
 				}
+			}
+			if (fullOperation === 'release:delete') {
+				responseData = { success: true };
 			}
 
 			if (overwriteDataOperations.includes(fullOperation)) {
