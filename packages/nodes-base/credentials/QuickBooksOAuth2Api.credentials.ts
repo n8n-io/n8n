@@ -33,8 +33,8 @@ export class QuickBooksOAuth2Api implements ICredentialType {
 		{
  			displayName: 'Scopes',
  			name: 'scope',
- 			type: 'options' as NodePropertyTypes,
- 			default: Object.values(scopes).join(' '),
+ 			type: 'multiOptions' as NodePropertyTypes,
+ 			default: [scopes.accounting, scopes.payment],
  			options: [
  				{
  					name: 'Accounting only',
@@ -43,10 +43,6 @@ export class QuickBooksOAuth2Api implements ICredentialType {
  				{
  					name: 'Payment only',
  					value: scopes.payment,
- 				},
- 				{
- 					name: 'Accounting and Payment',
- 					value: Object.values(scopes).join(' '),
  				},
  			],
  		},
