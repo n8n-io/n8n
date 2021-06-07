@@ -167,6 +167,7 @@ export class ExecuteBatch extends Command {
 			'econnreset',
 			'429',
 			'econnrefused',
+			'missing a required parameter',
 		];
 
 		errorMessage = errorMessage.toLowerCase();
