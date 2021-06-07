@@ -77,6 +77,10 @@ export class Spotify implements INodeType {
 						name: 'Track',
 						value: 'track',
 					},
+					{
+						name: 'Search',
+						value: 'search',
+					},
 				],
 				default: 'player',
 				description: 'The resource to operate on.',
@@ -84,7 +88,8 @@ export class Spotify implements INodeType {
 
 			// --------------------------------------------------------------------------------------------------------
 			//         Player Operations
-			//         Pause, Play, Get Recently Played, Get Currently Playing, Next Song, Previous Song, Add to Queue
+			//         Pause, Play, Resume, Get Recently Played, Get Currently Playing, Next Song, Previous Song, 
+			//         Add to Queue, Set Volume
 			// --------------------------------------------------------------------------------------------------------
 			{
 				displayName: 'Operation',
@@ -691,6 +696,109 @@ export class Spotify implements INodeType {
 					},
 				],
 			},
+			// --------------------------------------------------------------------------------------------------------
+			//         Search Operations
+			//		   Find an item
+			// --------------------------------------------------------------------------------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'search',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Search for an Item',
+						value: 'searchItem',
+						description: 'Search for an item on Spotify.',
+					},
+				],
+				default: 'searchItem',
+				description: 'The operation to perform.',
+			},
+			{
+				displayName: 'Search Keyword',
+				name: 'q',
+				type: 'string',
+				required: true,
+				placeholder: 'Linkin Park',
+				default: '',
+				description: 'The keyword term to search for.',
+				displayOptions: {
+					show: {
+						operation: [
+							'searchItem'
+						]
+					}
+				}
+			},
+			{
+				displayName: 'Type',
+				name: 'type',
+				type: 'multiOptions',
+				displayOptions: {
+					show: {
+						operation: [
+							'searchItem'
+						]
+					}
+				},
+				options: [
+					{
+						name: 'Album',
+						value: 'album',
+					},
+					{
+						name: 'Artist',
+						value: 'artist',
+					},
+					{
+						name: 'Playlist',
+						value: 'playlist',
+					},
+					{
+						name: 'Track',
+						value: 'track',
+					},
+					{
+						name: 'Show',
+						value: 'show',
+					},
+					{
+						name: 'Episode',
+						value: 'episode',
+					},
+				],
+				default: ['album', 'artist', 'track'],
+				description: 'The types of content to search for.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				default: 20,
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'search',
+						],
+						operation: [
+							'searchItem',
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 50,
+				},
+				description: `The number of items to return for each selected type.`,
+			},
 		],
 	};
 
@@ -1103,6 +1211,32 @@ export class Spotify implements INodeType {
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 						responseData = responseData.artists.items;
 					}
+				}
+			} else if (resource === 'search') {
+				// -----------------------------
+				//      Search Operations
+				// -----------------------------
+				if (operation === 'searchItem') {
+					requestMethod = 'GET';
+
+					endpoint = '/search';
+		
+					var limit = this.getNodeParameter('limit', i) as number;
+					const q = this.getNodeParameter('q', i) as string;
+					const type = this.getNodeParameter('type', i)?.toString();
+
+					qs = {
+						q, type, limit
+					};
+
+					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					var resp = {};
+					for (var key of Object.keys(responseData)) {
+						resp[key] = responseData[key].items; 
+					}
+
+					responseData = resp;
 				}
 			}
 
