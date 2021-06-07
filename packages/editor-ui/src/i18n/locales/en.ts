@@ -89,7 +89,7 @@ export default {
 		dataDisplay: {
 			nodeDocumentation: 'Node Documentation',
 			needHelp: 'Need help?',
-			openDocumentationFor: 'Open documentation for', // middle problem
+			openDocumentationFor: 'Open {{nodeType.displayName}} documentation', // interpolation problem
 		},
 
 		duplicateWorkflowDialog: {
@@ -115,6 +115,25 @@ export default {
 			retryWithCurrentlySavedWorkflow: 'Retry with currently saved workflow',
 			retryWithOriginalworkflow: 'Retry with original workflow',
 			loadMore: 'Load More',
+			workflowExecutions: 'Workflow Executions',
+			allWorkflows: 'All Workflows',
+			anyStatus: 'Any Status',
+			startedAtId: 'Started At / ID',
+			name: 'Name',
+			status: 'Status',
+			mode: 'Mode',
+			runningTime: 'Running Time',
+			retryExecution: 'Retry execution',
+			openPastExecution: 'Open Past Execution',
+			statusTooltipText: {
+				theWorkflowIsCurrentlyExecuting: 'The worklow is currently executing.',
+				theWorkflowExecutionWasARetryOfAndItWasSuccessful: `The workflow execution was a retry of "\${entry.retryOf}" and it was successful.`, // interpolation problem
+				theWorkflowExecutionWasSuccessful: 'The worklow execution was successful.',
+				theWorkflowExecutionWasARetryOfAndFailed: `The workflow execution was a retry of "\${entry.retryOf}" and failed.<br />New retries have to be,started from the original execution.`, // interpolation problem
+				theWorkflowExecutionFailedButTheRetryWasSuccessful: `The workflow execution failed but the retry "\${entry.retrySuccessId}" was successful.`,
+				theWorkflowExecutionIsProbablyStillRunning: 'The workflow execution is probably still running but it may have crashed and n8n cannot safely tell. ',
+				theWorkflowExecutionFailed: 'The workflow execution failed.',
+			},
 		},
 
 		expressionEdit: {
@@ -172,7 +191,7 @@ export default {
 		},
 
 		nodeSettings: {
-			theNodeIsNotValidAsItsTypeIsUnknown: 'The node is not valid as its type is unknown.', // middle problem
+			theNodeIsNotValidAsItsTypeIsUnknown: 'The node is not valid as its type {{ node.type }} is unknown.', // interpolation problem
 			thisNodeDoesNotHaveAnyParameters: 'This node does not have any parameters.',
 			settings: {
 				notes: {
@@ -242,12 +261,12 @@ export default {
 			copyParameterPath: 'Copy Parameter Path',
 			copyValue: 'Copy Value',
 			nodeReturnedALargeAmountOfData: 'Node returned a large amount of data',
-			theNodeContains: 'The node contains {{parseInt(dataSize/1024).toLocaleString()}} KB of data.<br />Displaying it could cause problems!<br /><br />If you do decide to display it, avoid the JSON view!', // middle problem
+			theNodeContains: 'The node contains {{parseInt(dataSize/1024).toLocaleString()}} KB of data.<br />Displaying it could cause problems!<br /><br />If you do decide to display it, avoid the JSON view!', // interpolation problem
 			displayDataAnyway: 'Display Data Anyway',
 			noTextDataFound: 'No text data found',
 			entriesExistButThey: 'Entries exist but they do not contain any JSON data.',
 			noBinaryDataFound: 'No binary data found',
-			fileName: 'File Name', // mind the colon
+			fileName: 'File Name',
 			fileExtension: 'File Extension',
 			mimeType: 'Mime Type',
 			showBinaryData: 'Show Binary Data',

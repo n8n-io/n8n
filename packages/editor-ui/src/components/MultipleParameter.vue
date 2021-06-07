@@ -49,7 +49,6 @@ import { get } from 'lodash';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { translate } from '@/components/mixins/translate';
-import { TranslateResult } from 'vue-i18n';
 
 import mixins from 'vue-typed-mixins';
 
@@ -67,7 +66,7 @@ export default mixins(genericHelpers, translate)
 			'values', // NodeParameters[]
 		],
 		computed: {
-			addButtonText (): string | TranslateResult {
+			addButtonText (): string {
 				if (!this.parameter.typeOptions) return 'Add item';
 				return this.$translateMultipleValueButtonText(this.parameter);
 			},

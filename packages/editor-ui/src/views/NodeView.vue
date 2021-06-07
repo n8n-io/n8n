@@ -168,7 +168,6 @@ import {
 } from '../Interface';
 import { addNodeTranslations } from '@/i18n/i18n';
 import { mapGetters } from 'vuex';
-import { TranslateResult } from 'vue-i18n';
 
 export default mixins(
 	copyPaste,
@@ -258,16 +257,16 @@ export default mixins(
 			nodes (): INodeUi[] {
 				return this.$store.getters.allNodes;
 			},
-			runButtonText (): string | TranslateResult {
+			runButtonText (): string {
 				if (this.workflowRunning === false) {
-					return this.$t('nodeView.runButtonText.executeWorkflow');
+					return this.$t('nodeView.runButtonText.executeWorkflow').toString();
 				}
 
 				if (this.executionWaitingForWebhook === true) {
-					return this.$t('nodeView.runButtonText.waitingForWebhookCall');
+					return this.$t('nodeView.runButtonText.waitingForWebhookCall').toString();
 				}
 
-				return this.$t('nodeView.runButtonText.executingWorkflow');
+				return this.$t('nodeView.runButtonText.executingWorkflow').toString();
 			},
 			workflowStyle (): object {
 				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;

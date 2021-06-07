@@ -115,6 +115,25 @@ export default {
 			retryWithCurrentlySavedWorkflow: 'Deutsch',
 			retryWithOriginalworkflow: 'Deutsch',
 			loadMore: 'Deutsch',
+			workflowExecutions: 'Deutsch',
+			allWorkflows: 'Deutsch',
+			anyStatus: 'Deutsch',
+			startedAtId: 'Deutsch',
+			name: 'Deutsch',
+			status: 'Deutsch',
+			mode: 'Deutsch',
+			runningTime: 'Deutsch',
+			retryExecution: 'Deutsch',
+			openPastExecution: 'Deutsch',
+			statusTooltipText: {
+				theWorkflowIsCurrentlyExecuting: 'Deutsch',
+				theWorkflowExecutionWasARetryOfAndItWasSuccessful: `Deutsch`, // interpolation problem
+				theWorkflowExecutionWasSuccessful: 'Deutsch',
+				theWorkflowExecutionWasARetryOfAndFailed: `Deutsch`, // interpolation problem
+				theWorkflowExecutionFailedButTheRetryWasSuccessful: `Deutsch`,
+				theWorkflowExecutionIsProbablyStillRunning: 'Deutsch',
+				theWorkflowExecutionFailed: 'Deutsch',
+			},
 		},
 
 		expressionEdit: {
@@ -172,7 +191,7 @@ export default {
 		},
 
 		nodeSettings: {
-			theNodeIsNotValidAsItsTypeIsUnknown: 'Deutsch', // middle problem
+			theNodeIsNotValidAsItsTypeIsUnknown: 'Deutsch', // interpolation problem
 			thisNodeDoesNotHaveAnyParameters: 'Deutsch',
 			settings: {
 				notes: {
@@ -242,7 +261,7 @@ export default {
 			copyParameterPath: 'Deutsch',
 			copyValue: 'Deutsch',
 			nodeReturnedALargeAmountOfData: 'Deutsch',
-			theNodeContains: 'Deutsch', // middle problem
+			theNodeContains: 'Deutsch', // interpolation problem
 			displayDataAnyway: 'Deutsch',
 			noTextDataFound: 'Deutsch',
 			entriesExistButThey: 'Deutsch',
@@ -275,7 +294,7 @@ export default {
 
 		variableSelectorItem: {
 			selectItem: 'Deutsch',
-			empty: 'Deutsch', // middle problem
+			empty: 'Deutsch', // interpolation problem
 		},
 
 		workflowActivator: {

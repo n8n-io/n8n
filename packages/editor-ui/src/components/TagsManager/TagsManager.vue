@@ -144,7 +144,7 @@ export default mixins(showMessage).extend({
 			try {
 				const deleted = await this.$store.dispatch("tags/delete", id);
 				if (!deleted) {
-					throw new Error(this.$t('tagsManager.couldNotDeleteTag') as string);
+					throw new Error(this.$t('tagsManager.couldNotDeleteTag').toString());
 				}
 
 				this.$data.tagIds = this.$data.tagIds.filter((tagId: string) => tagId !== id);

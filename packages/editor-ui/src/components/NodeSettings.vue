@@ -13,7 +13,7 @@
 			<span v-else>No node active</span>
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
-			{{ $t('nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown') }}: "{{node.type}}"
+			{{ $t('nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown') }}
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<el-tabs stretch>

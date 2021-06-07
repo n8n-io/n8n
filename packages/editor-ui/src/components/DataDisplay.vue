@@ -26,7 +26,7 @@
 								</svg>
 
 							<div v-if="showDocumentHelp && nodeType" class="text">
-								{{ $t('dataDisplay.needHelp') }} <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick"> {{ $t('dataDisplay.openDocumentationFor') }} {{nodeType.displayName}}</a>
+								{{ $t('dataDisplay.needHelp') }} <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick"> {{ $t('dataDisplay.openDocumentationFor') }}</a>
 							</div>
 					</div>
 				</transition>

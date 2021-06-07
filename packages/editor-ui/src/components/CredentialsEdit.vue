@@ -109,7 +109,7 @@ export default mixins(
 					const credentialType = this.$store.getters.credentialType(this.credentialType);
 					return this.$t('credentialsEdit.createNewCredentials') + ": " + credentialType.displayName;
 				} else {
-					return this.$t('credentialsEdit.createNewCredentials') as string;
+					return this.$t('credentialsEdit.createNewCredentials').toString();
 				}
 			}
 		},

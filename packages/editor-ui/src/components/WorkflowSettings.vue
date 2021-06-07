@@ -349,7 +349,7 @@ export default mixins(
 			// @ts-ignore
 			workflows.unshift({
 				id: undefined as unknown as string,
-				name: this.$t('workflowSettings.noWorkflow') as string,
+				name: this.$t('workflowSettings.noWorkflow').toString(),
 			});
 
 			Vue.set(this, 'workflows', workflows);

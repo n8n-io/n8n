@@ -1,5 +1,4 @@
 import Vue from 'vue';
-import { TranslateResult } from 'vue-i18n';
 
 export const translate = Vue.extend({
 	data() {
@@ -35,8 +34,8 @@ export const translate = Vue.extend({
 		/**
 		 * Translate the value at the translation key, or return a fallback.
 		 */
-		translate({ key, fallback }: { key: string, fallback: string }): TranslateResult {
-			return this.$te(key) ? this.$t(key) : fallback;
+		translate({ key, fallback }: { key: string, fallback: string }): string {
+			return this.$te(key) ? this.$t(key).toString() : fallback;
 		},
 
 		// ----------------------------------

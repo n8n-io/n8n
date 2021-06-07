@@ -1,6 +1,6 @@
 <template>
 	<span>
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`Workflow Executions (${combinedExecutions.length}/${combinedExecutionsCount})`" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${this.$t('executionsList.workflowExecutions')} (${combinedExecutions.length}/${combinedExecutionsCount})`" :before-close="closeDialog">
 			<div class="filters">
 				<el-row>
 					<el-col :span="4" class="filter-headline">
@@ -53,13 +53,13 @@
 						<el-checkbox v-if="scope.row.stoppedAt !== undefined && scope.row.id" :value="selectedItems[scope.row.id.toString()] || checkAll" @change="handleCheckboxChanged(scope.row.id)" >Check all</el-checkbox>
 					</template>
 				</el-table-column>
-				<el-table-column property="startedAt" label="Started At / ID" width="205">
+				<el-table-column property="startedAt" :label="this.$t('executionsList.startedAtId')" width="205">
 					<template slot-scope="scope">
 						{{convertToDisplayDate(scope.row.startedAt)}}<br />
 						<small v-if="scope.row.id">ID: {{scope.row.id}}</small>
 					</template>
 				</el-table-column>
-				<el-table-column property="workflowName" label="Name">
+				<el-table-column property="workflowName" :label="this.$t('executionsList.name')">
 					<template slot-scope="scope">
 						<span class="workflow-name">
 							{{scope.row.workflowName || '[UNSAVED WORKFLOW]'}}
@@ -76,7 +76,7 @@
 						</span>
 					</template>
 				</el-table-column>
-				<el-table-column label="Status" width="120" align="center">
+				<el-table-column :label="this.$t('executionsList.status')" width="120" align="center">
 					<template slot-scope="scope" align="center">
 
 						<el-tooltip placement="top" effect="light">
@@ -98,7 +98,7 @@
 
 						<el-dropdown trigger="click" @command="handleRetryClick">
 							<span class="el-dropdown-link">
-								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" type="text" size="small" title="Retry execution">
+								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" type="text" size="small" :title="$t('executionsList.retryExecution')">
 									<font-awesome-icon icon="redo" />
 								</el-button>
 							</span>
@@ -110,8 +110,8 @@
 
 					</template>
 				</el-table-column>
-				<el-table-column property="mode" label="Mode" width="100" align="center"></el-table-column>
-				<el-table-column label="Running Time" width="150" align="center">
+				<el-table-column property="mode" :label="this.$t('executionsList.mode')" width="100" align="center"></el-table-column>
+				<el-table-column :label="this.$t('executionsList.runningTime')" width="150" align="center">
 					<template slot-scope="scope">
 						<span v-if="scope.row.stoppedAt === undefined">
 							<font-awesome-icon icon="spinner" spin />
@@ -134,7 +134,7 @@
 							</el-button>
 						</span>
 						<span v-else-if="scope.row.id">
-							<el-button circle title="Open Past Execution" @click.stop="displayExecution(scope.row)" size="mini">
+							<el-button circle :title="$t('executionsList.openPastExecution')" @click.stop="displayExecution(scope.row)" size="mini">
 								<font-awesome-icon icon="folder-open" />
 							</el-button>
 						</span>
@@ -162,6 +162,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
+import { translate } from '@/components/mixins/translate';
 import {
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
@@ -187,6 +188,7 @@ export default mixins(
 	genericHelpers,
 	restApi,
 	showMessage,
+	translate,
 ).extend({
 	name: 'ExecutionsList',
 	props: [
@@ -221,19 +223,19 @@ export default mixins(
 			statuses: [
 				{
 					id: 'ALL',
-					name: 'Any Status',
+					name: this.$t('executionsList.anyStatus'),
 				},
 				{
 					id: 'error',
-					name: 'Error',
+					name: this.$t('executionsList.error'),
 				},
 				{
 					id: 'running',
-					name: 'Running',
+					name: this.$t('executionsList.running'),
 				},
 				{
 					id: 'success',
-					name: 'Success',
+					name: this.$t('executionsList.success'),
 				},
 			],
 
@@ -545,7 +547,7 @@ export default mixins(
 				// @ts-ignore
 				workflows.unshift({
 					id: 'ALL',
-					name: 'All Workflows',
+					name: this.$t('executionsList.allWorkflows').toString(),
 				});
 
 				Vue.set(this, 'workflows', workflows);
@@ -606,19 +608,19 @@ export default mixins(
 		},
 		statusTooltipText (entry: IExecutionsSummary): string {
 			if (entry.stoppedAt === undefined) {
-				return 'The worklow is currently executing.';
+				return this.$t('executionsList.statusTooltipText.theWorkflowIsCurrentlyExecuting').toString();
 			} else if (entry.finished === true && entry.retryOf !== undefined) {
-				return `The workflow execution was a retry of "${entry.retryOf}" and it was successful.`;
+				return this.$t('executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndItWasSuccessful').toString();
 			} else if (entry.finished === true) {
-				return 'The worklow execution was successful.';
+				return this.$t('executionsList.statusTooltipText.theWorkflowExecutionWasSuccessful').toString();
 			} else if (entry.retryOf !== undefined) {
-				return `The workflow execution was a retry of "${entry.retryOf}" and failed.<br />New retries have to be started from the original execution.`;
+				return this.$t('executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndFailed').toString();
 			} else if (entry.retrySuccessId !== undefined) {
-				return `The workflow execution failed but the retry "${entry.retrySuccessId}" was successful.`;
+				return this.$t('executionsList.statusTooltipText.theWorkflowExecutionFailedButTheRetryWasSuccessful').toString();
 			} else if (entry.stoppedAt === null) {
-				return 'The workflow execution is probably still running but it may have crashed and n8n cannot safely tell. ';
+				return this.$t('executionsList.statusTooltipText.theWorkflowExecutionIsProbablyStillRunning').toString();
 			} else {
-				return 'The workflow execution failed.';
+				return this.$t('executionsList.statusTooltipText.theWorkflowExecutionFailed').toString();
 			}
 		},
 		async stopExecution (activeExecutionId: string) {
