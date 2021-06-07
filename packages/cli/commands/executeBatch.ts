@@ -72,11 +72,11 @@ export class ExecuteBatch extends Command {
 	
 	static examples = [
 		`$ n8n executeAll`,
-		`$ n8n executeAll --concurrency=10`,
+		`$ n8n executeAll --concurrency=10 --skipList=/data/skipList.txt`,
 		`$ n8n executeAll --debug --output=/data/output.json`,
-		`$ n8n executeAll --ids=10,13,15`,
+		`$ n8n executeAll --ids=10,13,15 --shortOutput`,
 		`$ n8n executeAll --snapshot=/data/snapshots --shallow`,
-		`$ n8n executeAll --compare=/data/previousExecutionData`,
+		`$ n8n executeAll --compare=/data/previousExecutionData --retries=2`,
 	];
 	
 	static flags = {
