@@ -205,7 +205,7 @@ export const indexFields = [
 			{
 				displayName: 'Allow No Indices',
 				name: 'allow_no_indices',
-				description: 'If false, the request returns an error if any wildcard expression, index alias,<br>or <code>_all</code> value targets only missing or closed indices. Defaults to true.',
+				description: 'If false, return an error if any of the following targets only missing/closed indices: wildcard expression, index alias, or <code>_all</code> value. Defaults to true.',
 				type: 'boolean',
 				default: true,
 			},

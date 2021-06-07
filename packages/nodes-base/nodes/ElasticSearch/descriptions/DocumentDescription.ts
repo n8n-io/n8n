@@ -252,7 +252,7 @@ export const documentFields = [
 			{
 				displayName: 'Allow No Indices',
 				name: 'allow_no_indices',
-				description: 'If false, return an error if any wildcard expression, index alias, or <code>_all</code> value targets only missing or closed indices. Defaults to true.',
+				description: 'If false, return an error if any of the following targets only missing/closed indices: wildcard expression, index alias, or <code>_all</code> value. Defaults to true.',
 				type: 'boolean',
 				default: true,
 			},
@@ -340,7 +340,7 @@ export const documentFields = [
 			{
 				displayName: 'Max Concurrent Shard Requests',
 				name: 'max_concurrent_shard_requests',
-				description: 'Define the number of concurrent shard requests per node this search executes concurrently. Defaults to 5.',
+				description: 'Define the number of shard requests per node this search executes concurrently. Defaults to 5.',
 				type: 'number',
 				default: 5,
 			},
