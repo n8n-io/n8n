@@ -533,7 +533,7 @@ export default mixins(
 					// @ts-ignore
 					if (this.$refs.inputField.$el) {
 						// @ts-ignore
-						(this.$refs.inputField.$el.querySelector('input') as HTMLInputElement).focus();
+						(this.$refs.inputField.$el.querySelector(this.getStringInputType === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
 					}
 				});
 			},
