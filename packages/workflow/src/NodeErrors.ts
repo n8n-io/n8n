@@ -1,4 +1,4 @@
-import { INode, IRawErrorObject, IStatusCodeMessages} from '.';
+import { INode, IStatusCodeMessages, JsonObject } from '.';
 import { parseString } from 'xml2js';
 
 /**
@@ -46,11 +46,11 @@ const ERROR_NESTING_PROPERTIES = ['error', 'err', 'response', 'body', 'data'];
  */
 abstract class NodeError extends Error {
 	description: string | null | undefined;
-	cause: Error | IRawErrorObject;
+	cause: Error | JsonObject;
 	node: INode;
 	timestamp: number;
 
-	constructor(node: INode, error: Error | IRawErrorObject) {
+	constructor(node: INode, error: Error | JsonObject) {
 		super();
 		this.name = this.constructor.name;
 		this.cause = error;
@@ -83,22 +83,22 @@ abstract class NodeError extends Error {
 	 * Otherwise, if all the paths have been exhausted and no value is eligible, `null` is
 	 * returned.
 	 *
-	 * @param {IRawErrorObject} error
+	 * @param {JsonObject} error
 	 * @param {string[]} potentialKeys
 	 * @param {string[]} traversalKeys
 	 * @returns {string | null}
 	 */
 	protected findProperty(
-		error: IRawErrorObject,
+		error: JsonObject,
 		potentialKeys: string[],
 		traversalKeys: string[],
 	): string | null {
-		for(const key of potentialKeys) {
+		for (const key of potentialKeys) {
 			if (error[key]) {
 				if (typeof error[key] === 'string') return error[key] as string;
 				if (typeof error[key] === 'number') return error[key]!.toString();
 				if (Array.isArray(error[key])) {
-					// @ts-ignore
+					// @ts-ignore TODO: Currently not handling array of `null`
 					const resolvedErrors: string[] = error[key].map((error) => {
 							if (typeof error === 'string') return error;
 							if (typeof error === 'number') return error.toString();
@@ -118,8 +118,9 @@ abstract class NodeError extends Error {
 		}
 
 		for (const key of traversalKeys) {
-			if (this.isTraversableObject(error[key])) {
-				const property = this.findProperty(error[key] as IRawErrorObject, potentialKeys, traversalKeys);
+			const value = error[key];
+			if (this.isTraversableObject(value)) {
+				const property = this.findProperty(value, potentialKeys, traversalKeys);
 				if (property) {
 					return property;
 				}
@@ -132,7 +133,7 @@ abstract class NodeError extends Error {
 	/**
 	 * Check if a value is an object with at least one key, i.e. it can be traversed.
 	 */
-	protected isTraversableObject(value: any): value is IRawErrorObject { // tslint:disable-line:no-any
+	protected isTraversableObject(value: any): value is JsonObject { // tslint:disable-line:no-any
 		return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
 	}
 }
@@ -178,7 +179,7 @@ export class NodeApiError extends NodeError {
 
 	constructor(
 		node: INode,
-		error: IRawErrorObject,
+		error: JsonObject,
 		{ message, description, httpCode, parseXml }: { message?: string, description?: string, httpCode?: string, parseXml?: boolean } = {},
 	) {
 		super(node, error);
@@ -232,11 +233,11 @@ export class NodeApiError extends NodeError {
 	}
 
 	/**
-	 * Set the error's message based on the HTTP status code.
+	 * Set the error message based on the HTTP status code.
 	 *
 	 * @returns {void}
 	 */
-	private setMessage() {
+	private setMessage(): void {
 		if (!this.httpCode) {
 			this.httpCode = null;
 			this.message = UNKNOWN_ERROR_MESSAGE;
@@ -261,6 +262,3 @@ export class NodeApiError extends NodeError {
 	}
 }
 
-type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
-
-type JsonObject = { [key: string]: JsonValue };
