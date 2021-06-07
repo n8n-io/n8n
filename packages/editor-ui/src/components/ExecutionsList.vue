@@ -345,7 +345,13 @@ export default mixins(
 			}
 		},
 		async handleDeleteSelected () {
-			const deleteExecutions = await this.confirmMessage(`Are you sure that you want to delete the ${this.numSelected} selected executions?`, 'Delete Executions?', 'warning', 'Yes, delete!');
+			const deleteExecutions = await this.confirmMessage(
+				this.$t('executionsList.confirmMessage.message').toString(),
+				this.$t('executionsList.confirmMessage.headline').toString(),
+				'warning',
+				this.$t('executionsList.confirmMessage.confirmButtonText').toString(),
+				this.$t('executionsList.confirmMessage.cancelButtonText').toString(),
+			);
 
 			if (deleteExecutions === false) {
 				return;

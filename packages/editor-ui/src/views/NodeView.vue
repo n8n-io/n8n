@@ -226,7 +226,13 @@ export default mixins(
 		async beforeRouteLeave(to, from, next) {
 			const result = this.$store.getters.getStateIsDirty;
 			if(result) {
-				const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+				const importConfirm = await this.confirmMessage(
+					this.$t('nodeView.confirmMessage.beforeRouteLeave.message').toString(),
+					this.$t('nodeView.confirmMessage.beforeRouteLeave.headline').toString(),
+					'warning',
+					this.$t('nodeView.confirmMessage.beforeRouteLeave.confirmButtonText').toString(),
+					this.$t('nodeView.confirmMessage.beforeRouteLeave.cancelButtonText').toString(),
+				);
 				if (importConfirm === false) {
 					next(false);
 				} else {
@@ -802,7 +808,13 @@ export default mixins(
 						return;
 					}
 
-					const importConfirm = await this.confirmMessage(`Import workflow from this URL:<br /><i>${plainTextData}<i>`, 'Import Workflow from URL?', 'warning', 'Yes, import!');
+					const importConfirm = await this.confirmMessage(
+						this.$t('nodeView.confirmMessage.receivedCopyPasteData.message').toString(),
+						this.$t('nodeView.confirmMessage.receivedCopyPasteData.headline').toString(),
+						'warning',
+						this.$t('nodeView.confirmMessage.receivedCopyPasteData.confirmButtonText').toString(),
+						this.$t('nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText').toString(),
+					);
 
 					if (importConfirm === false) {
 						return;
@@ -1436,7 +1448,13 @@ export default mixins(
 
 					const result = this.$store.getters.getStateIsDirty;
 					if(result) {
-						const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+						const importConfirm = await this.confirmMessage(
+							this.$t('nodeView.confirmMessage.initView.message').toString(),
+							this.$t('nodeView.confirmMessage.initView.headline').toString(),
+							'warning',
+							this.$t('nodeView.confirmMessage.initView.confirmButtonText').toString(),
+							this.$t('nodeView.confirmMessage.initView.cancelButtonText').toString(),
+						);
 						if (importConfirm === false) {
 							return Promise.resolve();
 						}

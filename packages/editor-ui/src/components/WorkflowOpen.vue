@@ -144,7 +144,13 @@ export default mixins(
 
 				const result = this.$store.getters.getStateIsDirty;
 				if(result) {
-					const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+					const importConfirm = await this.confirmMessage(
+						this.$t('workflowOpen.confirmMessage.message').toString(),
+						this.$t('workflowOpen.confirmMessage.headline').toString(),
+						'warning',
+						this.$t('workflowOpen.confirmMessage.confirmButtonText').toString(),
+						this.$t('workflowOpen.confirmMessage.cancelButtonText').toString(),
+					);
 					if (importConfirm === false) {
 						return;
 					} else {

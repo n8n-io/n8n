@@ -100,7 +100,13 @@ export default mixins(
 						// workflow. If that would not happen then it could be quite confusing
 						// for people because it would activate a different version of the workflow
 						// than the one they can currently see.
-						const importConfirm = await this.confirmMessage(`When you activate the workflow all currently unsaved changes of the workflow will be saved.`, 'Activate and save?', 'warning', 'Yes, activate and save!');
+						const importConfirm = await this.confirmMessage(
+							this.$t('workflowActivator.confirmMessage.message').toString(),
+							this.$t('workflowActivator.confirmMessage.headline').toString(),
+							'warning',
+							this.$t('workflowActivator.confirmMessage.confirmButtonText').toString(),
+							this.$t('workflowActivator.confirmMessage.cancelButtonText').toString(),
+						);
 						if (importConfirm === false) {
 							return;
 						}

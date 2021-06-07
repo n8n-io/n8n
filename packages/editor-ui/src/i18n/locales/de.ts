@@ -89,6 +89,12 @@ export default {
 			yourSavedCredentials: 'Deutsch',
 			addNew: 'Deutsch',
 			createNewCredentials: 'Deutsch',
+			confirmMessage: {
+				message: 'Deutsch',
+				headline: 'Deutsch',
+				confirmButtonText: 'Deutsch',
+				cancelButtonText: 'Deutsch',
+			},
 		},
 
 		dataDisplay: {
@@ -130,6 +136,12 @@ export default {
 			runningTime: 'Deutsch',
 			retryExecution: 'Deutsch',
 			openPastExecution: 'Deutsch',
+			confirmMessage: {
+				message: 'Deutsch',
+				headline: 'Deutsch',
+				confirmButtonText: 'Deutsch',
+				cancelButtonText: 'Deutsch',
+			},
 			statusTooltipText: {
 				theWorkflowIsCurrentlyExecuting: 'Deutsch',
 				theWorkflowExecutionWasARetryOfAndItWasSuccessful: `Deutsch`, // interpolation problem
@@ -168,6 +180,12 @@ export default {
 			executions: 'Deutsch',
 			help: 'Deutsch',
 			aboutN8n: 'Deutsch',
+			confirmMessage: {
+				message: 'Deutsch',
+				headline: 'Deutsch',
+				confirmButtonText: 'Deutsch',
+				cancelButtonText: 'Deutsch',
+			},
 			helpMenuItems: {
 				documentation: 'Deutsch',
 				forum: 'Deutsch',
@@ -299,13 +317,19 @@ export default {
 
 		variableSelectorItem: {
 			selectItem: 'Deutsch',
-			empty: 'Deutsch', // interpolation problem
+			empty: 'Deutsch',
 		},
 
 		workflowActivator: {
 			theWorkflowIsSetToBeActiveBut: 'Deutsch',
 			deactivateWorkflow: 'Deutsch',
 			activateWorkflow: 'Deutsch',
+			confirmMessage: {
+				message: 'Deutsch',
+				headline: 'Deutsch',
+				confirmButtonText: 'Deutsch',
+				cancelButtonText: 'Deutsch',
+			},
 		},
 
 		workflowOpen: {
@@ -316,6 +340,12 @@ export default {
 			created: 'Deutsch',
 			updated: 'Deutsch',
 			active: 'Deutsch',
+			confirmMessage: {
+				message: 'Deutsch',
+				headline: 'Deutsch',
+				confirmButtonText: 'Deutsch',
+				cancelButtonText: 'Deutsch',
+			},
 		},
 
 		workflowSettings: {
@@ -379,6 +409,26 @@ export default {
 				executeWorkflow: 'Deutsch',
 				waitingForWebhookCall: 'Deutsch',
 				executingWorkflow: 'Deutsch',
+			},
+			confirmMessage: {
+				beforeRouteLeave: {
+					message: 'Deutsch',
+					headline: 'Deutsch',
+					confirmButtonText: 'Deutsch',
+					cancelButtonText: 'Deutsch',
+				},
+				receivedCopyPasteData: {
+					message: 'Deutsch',
+					headline: 'Deutsch',
+					confirmButtonText: 'Deutsch',
+					cancelButtonText: 'Deutsch',
+				},
+				initView: {
+					message: 'Deutsch',
+					headline: 'Deutsch',
+					confirmButtonText: 'Deutsch',
+					cancelButtonText: 'Deutsch',
+				},
 			},
 		},
 

@@ -143,7 +143,13 @@ export default mixins(
 		},
 
 		async deleteCredential (credential: ICredentialsResponse) {
-			const deleteConfirmed = await this.confirmMessage(`Are you sure you want to delete "${credential.name}" credentials?`, 'Delete Credentials?', 'warning', 'Yes, delete!');
+			const deleteConfirmed = await this.confirmMessage(
+				this.$t('credentialsList.confirmMessage.message').toString(),
+				this.$t('credentialsList.confirmMessage.headline').toString(),
+				'warning',
+				this.$t('credentialsList.confirmMessage.confirmButtonText').toString(),
+				this.$t('credentialsList.confirmMessage.cancelButtonText').toString(),
+			);
 
 			if (deleteConfirmed === false) {
 				return;

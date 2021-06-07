@@ -89,6 +89,12 @@ export default {
 			yourSavedCredentials: 'Your saved credentials:',
 			addNew: 'Add New',
 			createNewCredentials: 'Create New Credentials',
+			confirmMessage: {
+				message: `Are you sure you want to delete "\${credential.name}" credentials?`, // interpolation problem
+				headline: 'Delete Credentials?',
+				confirmButtonText: 'Yes, delete!',
+				cancelButtonText: '',
+			},
 		},
 
 		dataDisplay: {
@@ -130,6 +136,12 @@ export default {
 			runningTime: 'Running Time',
 			retryExecution: 'Retry execution',
 			openPastExecution: 'Open Past Execution',
+			confirmMessage: {
+				message: `Are you sure that you want to delete the $\{this.numSelected} selected executions?`, // interpolation problem
+				headline: 'Delete Executions?',
+				confirmButtonText: 'Yes, delete!',
+				cancelButtonText: '',
+			},
 			statusTooltipText: {
 				theWorkflowIsCurrentlyExecuting: 'The worklow is currently executing.',
 				theWorkflowExecutionWasARetryOfAndItWasSuccessful: `The workflow execution was a retry of "\${entry.retryOf}" and it was successful.`, // interpolation problem
@@ -168,6 +180,12 @@ export default {
 			executions: 'Executions',
 			help: 'Help',
 			aboutN8n: 'About n8n',
+			confirmMessage: {
+				message: `Are you sure that you want to delete the workflow "$\{this.workflowName}"?`, // interpolation problem
+				headline: 'Delete Workflow?',
+				confirmButtonText: 'Yes, delete!',
+				cancelButtonText: '',
+			},
 			helpMenuItems: {
 				documentation: 'Documentation',
 				forum: 'Forum',
@@ -306,6 +324,12 @@ export default {
 			theWorkflowIsSetToBeActiveBut: 'The workflow is set to be active but could not be started.<br />Click to display error message.',
 			deactivateWorkflow: 'Deactivate workflow',
 			activateWorkflow: 'Activate workflow',
+			confirmMessage: {
+				message: 'When you activate the workflow all currently unsaved changes of the workflow will be saved.',
+				headline: 'Activate and save?',
+				confirmButtonText: 'Yes, activate and save!',
+				cancelButtonText: '',
+			},
 		},
 
 		workflowOpen: {
@@ -316,6 +340,12 @@ export default {
 			created: 'Created',
 			updated: 'Updated',
 			active: 'Active',
+			confirmMessage: {
+				message: 'When you switch workflows your current workflow changes will be lost.',
+				headline: 'Save your Changes?',
+				confirmButtonText: 'Yes, switch workflows and forget changes',
+				cancelButtonText: '',
+			},
 		},
 
 		workflowSettings: {
@@ -374,6 +404,26 @@ export default {
 				executeWorkflow: 'Execute Workflow',
 				waitingForWebhookCall: 'Waiting for Webhook-Call',
 				executingWorkflow: 'Executing Workflow',
+			},
+			confirmMessage: {
+				beforeRouteLeave: {
+					message: 'When you switch workflows your current workflow changes will be lost.',
+					headline: 'Save your Changes?',
+					confirmButtonText: 'Yes, switch workflows and forget changes',
+					cancelButtonText: '',
+				},
+				receivedCopyPasteData: {
+					message: `Import workflow from this URL:<br /><i>$\{plainTextData}<i>`, // interpolation problem
+					headline: 'Import Workflow from URL?',
+					confirmButtonText: 'Yes, import!',
+					cancelButtonText: '',
+				},
+				initView: {
+					message: 'When you switch workflows your current workflow changes will be lost.',
+					headline: 'Save your Changes?',
+					confirmButtonText: 'Yes, switch workflows and forget changes',
+					cancelButtonText: '',
+				},
 			},
 		},
 

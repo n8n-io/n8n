@@ -380,7 +380,13 @@ export default mixins(
 						this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
 					} catch (e) {}
 				} else if (key === 'workflow-delete') {
-					const deleteConfirmed = await this.confirmMessage(`Are you sure that you want to delete the workflow "${this.workflowName}"?`, 'Delete Workflow?', 'warning', 'Yes, delete!');
+					const deleteConfirmed = await this.confirmMessage(
+						this.$t('mainSideBar.confirmMessage.message').toString(),
+						this.$t('mainSideBar.confirmMessage.headline').toString(),
+						'warning',
+						this.$t('mainSideBar.confirmMessage.confirmButtonText').toString(),
+						this.$t('mainSideBar.confirmMessage.cancelButtonText').toString(),
+					);
 
 					if (deleteConfirmed === false) {
 						return;
