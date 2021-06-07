@@ -62,12 +62,6 @@ export default Vue.extend({
 	border-bottom: 1px solid $--node-creator-border-color;
 	background-color: $--node-creator-search-background-color;
 	color: $--node-creator-search-placeholder-color;
-
-	&:hover {
-		.suffix {
-			visibility: visible;
-		}
-	}
 }
 
 .prefix {
@@ -100,7 +94,6 @@ export default Vue.extend({
 .suffix {
 	min-width: 20px;
 	text-align: center;
-	visibility: hidden;
 	display: inline-block;
 }
 
