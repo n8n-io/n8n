@@ -124,6 +124,11 @@ export class Spotify implements INodeType {
 						description: 'Pause your music.',
 					},
 					{
+						name: 'Resume',
+						value: 'resume',
+						description: 'Resume playback on the current active device.',
+					},
+					{
 						name: 'Previous Song',
 						value: 'previousSong',
 						description: 'Skip to your previous song.',
@@ -137,6 +142,11 @@ export class Spotify implements INodeType {
 						name: 'Start Music',
 						value: 'startMusic',
 						description: 'Start playing a playlist, artist, or album.',
+					},
+					{
+						name: 'Set Volume',
+						value: 'volume',
+						description: 'Set volume on the current active device.',
 					},
 				],
 				default: 'addSongToQueue',
@@ -670,6 +680,28 @@ export class Spotify implements INodeType {
 				description: `The number of items to return.`,
 			},
 			{
+				displayName: 'Volume',
+				name: 'volume_percent',
+				type: 'number',
+				default: 50,
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'player',
+						],
+						operation: [
+							'volume',
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 0,
+					maxValue: 100,
+				},
+				description: `The volume percentage to set.`,
+			},
+			{
 				displayName: 'Filters',
 				name: 'filters',
 				type: 'collection',
@@ -907,6 +939,28 @@ export class Spotify implements INodeType {
 
 					qs = {
 						uri: id,
+					};
+
+					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = { success: true };
+				} else if (operation === 'resume') {
+					requestMethod = 'PUT';
+
+					endpoint = `/me/player/play`;
+
+					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = { success: true };
+				} else if (operation === 'volume') {
+					requestMethod = 'PUT';
+
+					endpoint = `/me/player/volume`;
+
+					const volume_percent = this.getNodeParameter('volume_percent', i) as number;
+
+					qs = {
+						volume_percent,
 					};
 
 					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
