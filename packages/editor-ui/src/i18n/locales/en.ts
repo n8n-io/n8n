@@ -61,6 +61,7 @@ export default {
 			needHelp: 'Need help?',
 			openCredentialDocs: 'Open credential docs',
 			credentialType: 'Credential type',
+			createNewCredentials: 'Create New Credentials',
 		},
 
 		credentialsInput: {
@@ -82,6 +83,7 @@ export default {
 		credentialsList: {
 			yourSavedCredentials: 'Your saved credentials:',
 			addNew: 'Add New',
+			createNewCredentials: 'Create New Credentials',
 		},
 
 		dataDisplay: {

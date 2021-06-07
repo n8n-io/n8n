@@ -68,11 +68,13 @@ import {
 
 import mixins from 'vue-typed-mixins';
 import { INodeUi } from '../Interface';
+import { translate } from '@/components/mixins/translate';
 
 export default mixins(
 	restApi,
 	showMessage,
 	externalHooks,
+	translate,
 ).extend({
 	name: 'CredentialsEdit',
 	props: [
@@ -105,9 +107,9 @@ export default mixins(
 			} else {
 				if (this.credentialType) {
 					const credentialType = this.$store.getters.credentialType(this.credentialType);
-					return `Create New Credentials: "${credentialType.displayName}"`;
+					return this.$t('credentialsEdit.createNewCredentials') + ": " + credentialType.displayName;
 				} else {
-					return `Create New Credentials`;
+					return this.$t('credentialsEdit.createNewCredentials') as string;
 				}
 			}
 		},

@@ -61,6 +61,7 @@ export default {
 			needHelp: 'Deutsch',
 			openCredentialDocs: 'Deutsch',
 			credentialType: 'Deutsch',
+			createNewCredentials: 'Deutsch',
 		},
 
 		credentialsInput: {
@@ -82,6 +83,7 @@ export default {
 		credentialsList: {
 			yourSavedCredentials: 'Deutsch',
 			addNew: 'Deutsch',
+			createNewCredentials: 'Deutsch',
 		},
 
 		dataDisplay: {

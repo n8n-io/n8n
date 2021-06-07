@@ -7,7 +7,7 @@
 				{{ $t('credentialsList.yourSavedCredentials') }}:
 			</div>
 
-			<el-button title="Create New Credentials" class="new-credentials-button" @click="createCredential()">
+			<el-button :title="$t('credentialsList.createNewCredentials')" class="new-credentials-button" @click="createCredential()">
 				<font-awesome-icon icon="plus" />
 				<div class="next-icon-text">
 					{{ $t('credentialsList.addNew') }}
@@ -44,6 +44,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import CredentialsEdit from '@/components/CredentialsEdit.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { translate } from '@/components/mixins/translate';
 
 import mixins from 'vue-typed-mixins';
 
@@ -53,6 +54,7 @@ export default mixins(
 	nodeHelpers,
 	restApi,
 	showMessage,
+	translate,
 ).extend({
 	name: 'CredentialsList',
 	props: [
