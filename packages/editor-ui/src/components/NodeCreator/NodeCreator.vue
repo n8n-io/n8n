@@ -2,10 +2,6 @@
 	<div>
 		<SlideTransition>
 			<div class="node-creator" v-if="active" v-click-outside="closeCreator">
-				<div class="close-button clickable" @click="closeCreator" title="Close">
-					<i class="el-icon-close"></i>
-				</div>
-
 				<MainPanel @nodeTypeSelected="nodeTypeSelected" :categorizedItems="categorizedItems" :categoriesWithNodes="categoriesWithNodes" :searchItems="searchItems"></MainPanel>
 			</div>
 		</SlideTransition>
@@ -81,26 +77,6 @@ export default Vue.extend({
 <style scoped lang="scss">
 /deep/ *, *:before, *:after {
 	box-sizing: border-box;
-}
-
-.close-button {
-	position: absolute;
-	top: 0;
-	left: -50px;
-	color: $--node-creator-close-button-color;
-	background-color: $--custom-header-background;
-	border-radius: 18px 0 0 18px;
-	z-index: 110;
-	font-size: 1.7em;
-	text-align: center;
-	line-height: 50px;
-	height: 50px;
-	width: 50px;
-	font-weight: 400;
-
-	> i:hover {
-		transform: scale(1.2);
-	}
 }
 
 .node-creator {

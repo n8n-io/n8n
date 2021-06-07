@@ -68,10 +68,11 @@ export default Vue.extend({
 	height: 100%;
 	border-left: 1px solid $--node-creator-border-color;
 	flex-direction: column;
-	font-weight: 600;
+	font-weight: 400;
 	display: flex;
 	align-items: center;
 	align-content: center;
+	padding: 0 50px;
 }
 
 .title {
@@ -103,6 +104,7 @@ a {
 	color: $--color-primary;
 	text-decoration: none;
 	cursor: pointer;
+	font-weight: 500;
 }
 
 .icon {
