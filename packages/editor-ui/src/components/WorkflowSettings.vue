@@ -146,11 +146,11 @@
 						</el-col>
 						<el-col :span="4">
 							<el-input-number size="small" v-model="timeoutHMS.minutes" :min="0" :placeholder="$t('workflowSettings.minutes')" type="number" class="el-input_inner"></el-input-number><br />
-							<div class="timeout-setting-name">minutes</div>
+							<div class="timeout-setting-name">{{ $t('workflowSettings.minutes') }}</div>
 						</el-col>
 						<el-col :span="4">
 							<el-input-number size="small" v-model="timeoutHMS.seconds" :min="0" :placeholder="$t('workflowSettings.seconds')" type="number" class="el-input_inner"></el-input-number><br />
-							<div class="timeout-setting-name">seconds</div>
+							<div class="timeout-setting-name">{{ $t('workflowSettings.seconds') }}</div>
 						</el-col>
 					</el-row>
 				</div>
@@ -243,15 +243,15 @@ export default mixins(
 				this.saveDataErrorExecutionOptions, [
 					{
 						key: 'DEFAULT',
-						value: 'Default - ' + (this.defaultValues.saveDataErrorExecution === 'all' ? 'Save' : 'Do not save'),
+						value: this.$t('workflowSettings.saveDataErrorExecutionOptions.defaultSave').toString(),
 					},
 					{
 						key: 'all',
-						value: 'Save',
+						value: this.$t('workflowSettings.saveDataErrorExecutionOptions.save').toString(),
 					},
 					{
 						key: 'none',
-						value: 'Do not save',
+						value: this.$t('workflowSettings.saveDataErrorExecutionOptions.doNotSave').toString(),
 					},
 				],
 			);
@@ -262,15 +262,15 @@ export default mixins(
 				this.saveDataSuccessExecutionOptions, [
 					{
 						key: 'DEFAULT',
-						value: 'Default - ' + (this.defaultValues.saveDataSuccessExecution === 'all' ? 'Save' : 'Do not save'),
+						value: this.$t('workflowSettings.saveDataSuccessExecutionOptions.defaultSave').toString(),
 					},
 					{
 						key: 'all',
-						value: 'Save',
+						value: this.$t('workflowSettings.saveDataSuccessExecutionOptions.save').toString(),
 					},
 					{
 						key: 'none',
-						value: 'Do not save',
+						value: this.$t('workflowSettings.saveDataSuccessExecutionOptions.doNotSave').toString(),
 					},
 				],
 			);
@@ -281,15 +281,15 @@ export default mixins(
 				this.saveExecutionProgressOptions, [
 					{
 						key: 'DEFAULT',
-						value: 'Default - ' + (this.defaultValues.saveExecutionProgress === true ? 'Yes' : 'No'),
+						value: this.$t('workflowSettings.saveExecutionProgressOptions.defaultSave').toString(),
 					},
 					{
 						key: true,
-						value: 'Yes',
+						value: this.$t('workflowSettings.saveExecutionProgressOptions.yes').toString(),
 					},
 					{
 						key: false,
-						value: 'No',
+						value: this.$t('workflowSettings.saveExecutionProgressOptions.no').toString(),
 					},
 				],
 			);
@@ -298,15 +298,15 @@ export default mixins(
 			this.saveManualOptions.length = 0;
 			this.saveManualOptions.push({
 				key: 'DEFAULT',
-				value: 'Default - ' + (this.defaultValues.saveManualExecutions === true ? 'Yes' : 'No'),
+				value: this.$t('workflowSettings.saveManualOptions.defaultSave').toString(),
 			});
 			this.saveManualOptions.push({
 				key: true,
-				value: 'Yes',
+				value: this.$t('workflowSettings.saveManualOptions.yes').toString(),
 			});
 			this.saveManualOptions.push({
 				key: false,
-				value: 'No',
+				value: this.$t('workflowSettings.saveManualOptions.no').toString(),
 			});
 		},
 

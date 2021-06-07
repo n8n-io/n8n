@@ -6,11 +6,11 @@
 			<template v-slot:header>
 				<div class="workflows-header">
 					<div class="title">
-						<h1>Open Workflow</h1>
+						<h1>{{ $t('workflowOpen.openWorkflow') }}</h1>
 					</div>
 					<div class="tags-filter">
 						<TagsDropdown
-							placeholder="Filter by tags..."
+							:placeholder="$t('workflowOpen.openWorkflow')"
 							:currentTagIds="filterTagIds"
 							:createEnabled="false"
 							@update="updateTagsFilter"
@@ -19,7 +19,7 @@
 						/>
 					</div>
 					<div class="search-filter">
-						<el-input placeholder="Search workflows..." ref="inputFieldFilter" v-model="filterText">
+						<el-input :placeholder="$t('workflowOpen.searchWorkflows')" ref="inputFieldFilter" v-model="filterText">
 							<i slot="prefix" class="el-input__icon el-icon-search"></i>
 						</el-input>
 					</div>
@@ -36,9 +36,9 @@
 							</div>
 						</template>
 					</el-table-column>
-					<el-table-column property="createdAt" label="Created" class-name="clickable" width="155" sortable></el-table-column>
-					<el-table-column property="updatedAt" label="Updated" class-name="clickable" width="155" sortable></el-table-column>
-					<el-table-column label="Active" width="75">
+					<el-table-column property="createdAt" :label="$t('workflowOpen.created')" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column property="updatedAt" :label="$t('workflowOpen.updated')" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column :label="$t('workflowOpen.active')" width="75">
 						<template slot-scope="scope">
 							<workflow-activator :workflow-active="scope.row.active" :workflow-id="scope.row.id" @workflowActiveChanged="workflowActiveChanged" />
 						</template>
@@ -58,6 +58,7 @@ import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
+import { translate } from '@/components/mixins/translate';
 
 import Modal from '@/components/Modal.vue';
 import TagsContainer from '@/components/TagsContainer.vue';
@@ -69,6 +70,7 @@ export default mixins(
 	restApi,
 	showMessage,
 	workflowHelpers,
+	translate,
 ).extend({
 	name: 'WorkflowOpen',
 	components: {

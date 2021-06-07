@@ -3,8 +3,7 @@
 		<el-col class="notags" :span="16">
 			<div class="icon">🗄️</div>
 			<div>
-				<div class="headline">Ready to organize your workflows?</div>
-				{{ $t('noTagsView.readyToOrganizeYourWorkflows') }}
+				<div class="headline">{{ $t('noTagsView.readyToOrganizeYourWorkflows') }}</div>
 				<div class="description">
 					{{ $t('noTagsView.withWorkflowTagsYouReFree') }}
 				</div>

@@ -17,6 +17,11 @@ export default {
 			createATag: 'Create a tag',
 		},
 
+		tagsView: {
+			inUse: `$\{count} workflow$\{count > 1 ? "s" : ""}`, // interpolation problem
+			notBeingUsed: 'Not being used',
+		},
+
 		workflowDetails: {
 			addTag: 'Add tag',
 			active: 'Active',
@@ -303,6 +308,16 @@ export default {
 			activateWorkflow: 'Activate workflow',
 		},
 
+		workflowOpen: {
+			openWorkflow: 'Open Workflow',
+			filterByTags: 'Filter by tags...',
+			searchWorkflows: 'Deutsch',
+			name: 'Name',
+			created: 'Created',
+			updated: 'Updated',
+			active: 'Active',
+		},
+
 		workflowSettings: {
 			workflowSettings: 'Workflow Settings',
 			noWorkflow: '- No Workflow -',
@@ -319,6 +334,26 @@ export default {
 			minutes: 'minutes',
 			seconds: 'seconds',
 			save: 'Save',
+			saveDataErrorExecutionOptions: {
+				defaultSave: `Default - ' + (this.defaultValues.saveDataErrorExecution === 'all' ? 'Save' : 'Do not save')`, // interpolation problem
+				save: 'Save',
+				doNotSave: 'Do not save',
+			},
+			saveDataSuccessExecutionOptions: {
+				defaultSave: `Default - ' + (this.defaultValues.saveDataSuccessExecution === 'all' ? 'Save' : 'Do not save')`, // interpolation problem
+				save: 'Save',
+				doNotSave: 'Do not save',
+			},
+			saveExecutionProgressOptions: {
+				defaultSave: `Default - ' + (this.defaultValues.saveExecutionProgress === true ? 'Yes' : 'No')`, // interpolation problem
+				yes: 'Yes',
+				no: 'No',
+			},
+			saveManualOptions: {
+				defaultSave: `Default - ' + (this.defaultValues.saveManualExecutions === true ? 'Yes' : 'No')`, // interpolation problem
+				yes: 'Yes',
+				no: 'No',
+			},
 			helpTexts: {
 				errorWorkflow: 'The workflow to run in case the current one fails.<br />To function correctly that workflow has to contain an "Error Trigger" node!',
 				timezone: 'The timezone in which the workflow should run. Gets for example used by "Cron" node.',

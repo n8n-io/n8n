@@ -44,8 +44,8 @@
 			<template slot-scope="scope">
 				<transition name="fade" mode="out-in">
 					<div class="ops" v-if="scope.row.create">
-						<el-button title="Cancel" @click.stop="cancel" size="small" plain :disabled="isSaving">Cancel</el-button>
-						<el-button title="Create Tag" @click.stop="apply" size="small" :loading="isSaving">
+						<el-button :title="$t('tagsTable.cancel')" @click.stop="cancel" size="small" plain :disabled="isSaving">Cancel</el-button>
+						<el-button :title="$t('tagsTable.createTag')" @click.stop="apply" size="small" :loading="isSaving">
 							{{ $t('tagsTable.createTag') }}
 						</el-button>
 					</div>

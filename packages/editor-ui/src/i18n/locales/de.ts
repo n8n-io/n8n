@@ -22,6 +22,11 @@ export default {
 			createATag: 'Deutsch',
 		},
 
+		tagsView: {
+			inUse: 'Deutsch',
+			notBeingUsed: 'Deutsch',
+		},
+
 		tagsTable: {
 			areYouSureYouWantToDeleteThisTag: 'Deutsch',
 			createTag: 'Deutsch',
@@ -303,6 +308,16 @@ export default {
 			activateWorkflow: 'Deutsch',
 		},
 
+		workflowOpen: {
+			openWorkflow: 'Deutsch',
+			filterByTags: 'Deutsch',
+			searchWorkflows: 'Deutsch',
+			name: 'Deutsch',
+			created: 'Deutsch',
+			updated: 'Deutsch',
+			active: 'Deutsch',
+		},
+
 		workflowSettings: {
 			workflowSettings: 'Deutsch',
 			noWorkflow: 'Deutsch',
@@ -319,6 +334,31 @@ export default {
 			minutes: 'Deutsch',
 			seconds: 'Deutsch',
 			save: 'Deutsch',
+			executionOptions: {
+				defaultSave: 'Deutsch',
+				save: 'Deutsch',
+				doNotSave: 'Deutsch',
+			},
+			saveDataErrorExecutionOptions: {
+				defaultSave: 'Deutsch',
+				save: 'Deutsch',
+				doNotSave: 'Deutsch',
+			},
+			saveDataSuccessExecutionOptions: {
+				defaultSave: 'Deutsch',
+				save: 'Deutsch',
+				doNotSave: 'Deutsch',
+			},
+			saveExecutionProgressOptions: {
+				defaultSave: 'Deutsch',
+				yes: 'Deutsch',
+				no: 'Deutsch',
+			},
+			saveManualOptions: {
+				defaultSave: 'Deutsch',
+				yes: 'Deutsch',
+				no: 'Deutsch',
+			},
 			helpTexts: {
 				errorWorkflow: 'Deutsch',
 				timezone: 'Deutsch',
