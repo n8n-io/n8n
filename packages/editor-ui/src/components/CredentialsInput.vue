@@ -23,9 +23,9 @@
 		<div v-for="parameter in credentialProperties" :key="parameter.name">
 			<el-row class="parameter-wrapper">
 				<el-col :span="6" class="parameter-name">
-					{{ $translateCredentialParameterName(parameter) }}:
-					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
-						<div slot="content" v-html="parameter.description"></div>
+					{{ $translateCredentialsPropertyName(parameter) }}:
+					<el-tooltip placement="top" class="parameter-info" v-if="$translateCredentialsPropertyDescription(parameter)" effect="light">
+						<div slot="content" v-html="$translateCredentialsPropertyDescription(parameter)"></div>
 						<font-awesome-icon icon="question-circle"/>
 					</el-tooltip>
 				</el-col>

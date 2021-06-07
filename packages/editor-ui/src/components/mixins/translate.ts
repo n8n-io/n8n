@@ -20,11 +20,9 @@ export const translate = Vue.extend({
 	},
 
 	methods: {
-
-		// ----------------------------------
-		//           initializer
-		// ----------------------------------
-
+		/**
+		 * Initialize the `translate` mixin with credentials data.
+		 */
 		initTranslate(
 			{ credentialName, isCredential, nodeType }:
 			{ credentialName: string, isCredential: boolean, nodeType: string },
@@ -34,11 +32,6 @@ export const translate = Vue.extend({
 			this._nodeType = nodeType;
 		},
 
-
-		// ----------------------------------
-		//           main method
-		// ----------------------------------
-
 		/**
 		 * Translate the value at the translation key, or return a fallback.
 		 */
@@ -46,15 +39,15 @@ export const translate = Vue.extend({
 			return this.$te(key) ? this.$t(key) : fallback;
 		},
 
-
 		// ----------------------------------
-		//        label properties
+		//            node-only
 		// ----------------------------------
 
 		/**
-		 * Translate a top-level node parameter name, including those visually nested inside collections.
+		 * Translate a top-level node property name, i.e. leftmost parameter in `NodeView.vue`,
+		 * including those visually nested inside collections.
 		 */
-		$translateNodeParameterName(
+		$translateNodePropertyName(
 			{ name: parameterName, displayName }: { name: string; displayName: string; },
 		) {
 			return this.translate({
@@ -63,10 +56,15 @@ export const translate = Vue.extend({
 			});
 		},
 
+
+		// ----------------------------------
+		//         credentials-only
+		// ----------------------------------
+
 		/**
-		 * Translate a top-level credential parameter name.
+		 * Translate a credentials property name, i.e. leftmost parameter in `CredentialsEdit.vue`.
 		 */
-		$translateCredentialParameterName(
+		 $translateCredentialsPropertyName(
 			{ name: parameterName, displayName }: { name: string; displayName: string; },
 		) {
 			return this.translate({
@@ -76,9 +74,27 @@ export const translate = Vue.extend({
 		},
 
 		/**
-		 * Translate the parameter description in the tooltip for the circled question mark.
+		 * Translate a credentials property description, i.e. tooltip in `CredentialsEdit.vue`.
 		 */
-		$translateDescription(
+		$translateCredentialsPropertyDescription(
+			{ name: parameterName, description }: { name: string; description: string; },
+		) {
+			return this.translate({
+				key: `${this.nodeType}.credentials.${this._credentialName}.${parameterName}.description`,
+				fallback: description,
+			});
+		},
+
+
+		// ----------------------------------
+		//    description, placeholder and
+		//     option name & description
+		// ----------------------------------
+
+		/**
+		 * Translate a top-level (node or credential) parameter description.
+		 */
+		 $translateDescription(
 			{ name: parameterName, description }: { name: string; description: string; },
 		) {
 			const key = this._isCredential
@@ -90,11 +106,6 @@ export const translate = Vue.extend({
 				fallback: description,
 			});
 		},
-
-
-		// ----------------------------------
-		//         input properties
-		// ----------------------------------
 
 		/**
 		 * Translate the placeholder inside the input field for a string-type parameter.
