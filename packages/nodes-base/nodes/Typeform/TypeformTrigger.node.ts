@@ -204,7 +204,7 @@ export class TypeformTrigger implements INodeType {
 			throw new NodeApiError(
 				this.getNode(),
 				bodyData as JsonObject,
-				{ message: 'Expected definition/answers data is missing!' }
+				{ message: 'Expected definition/answers data is missing!' },
 			);
 		}
 
