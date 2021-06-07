@@ -38,7 +38,7 @@ export const documentOperations = [
 				value: 'update',
 			},
 		],
-		default: 'delete',
+		default: 'get',
 		description: 'Operation to perform',
 	},
 ] as INodeProperties[];
@@ -197,7 +197,7 @@ export const documentFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'If all results should be returned or only up to a given limit.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -214,7 +214,7 @@ export const documentFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'The number of results to return.',
+		description: 'The maximum number of results to return.',
 		typeOptions: {
 			minValue: 1,
 		},
@@ -314,7 +314,7 @@ export const documentFields = [
 						value: 'open',
 					},
 				],
-				default: 'all',
+				default: 'open',
 			},
 			{
 				displayName: 'Explain',
@@ -347,7 +347,7 @@ export const documentFields = [
 			{
 				displayName: 'Pre-Filter Shard Size',
 				name: 'pre_filter_shard_size',
-				description: 'Define a threshold that enforces a pre-filter roundtrip to prefilter search shards based on query rewriting<br>if the number of shards the search request expands to exceeds the threshold.',
+				description: 'Define a threshold that enforces a pre-filter roundtrip to prefilter search shards based on query rewriting.<br>Only used if the number of shards the search request expands to exceeds the threshold.',
 				type: 'number',
 				typeOptions: {
 					minValue: 1,
