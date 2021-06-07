@@ -17,11 +17,8 @@ export default Vue.extend({
 .slide-enter-active {
 	transition: 0.3s ease;
 }
+.slide-leave-to,
 .slide-enter {
 	transform: translateX(100%);
-}
-
-.slide-leave-to {
-	transform: translateX(120%);
 }
 </style>
