@@ -57,8 +57,8 @@ export default {
 }
 
 .node-icon {
-	min-width: 30px;
-	max-width: 30px;
+	min-width: 26px;
+	max-width: 26px;
 	margin-right: 15px;
 }
 

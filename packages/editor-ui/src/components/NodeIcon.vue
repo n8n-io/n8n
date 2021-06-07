@@ -79,11 +79,11 @@ export default Vue.extend({
 <style lang="scss">
 
 .node-icon-wrapper {
-	width: 30px;
-	height: 30px;
+	width: 26px;
+	height: 26px;
 	border-radius: 4px;
 	color: #444;
-	line-height: 30px;
+	line-height: 26px;
 	font-size: 1.1em;
 	overflow: hidden;
 	text-align: center;
