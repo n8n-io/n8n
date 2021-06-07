@@ -37,10 +37,50 @@ export const documentFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 document: create                             */
 	/* -------------------------------------------------------------------------- */
+	// {
+	// 	displayName: 'Drive',
+	// 	name: 'driveId',
+	// 	type: 'options',
+	// 	typeOptions: {
+	// 		loadOptionsMethod: 'getDrives',
+	// 	},
+	// 	default: '',
+	// 	displayOptions: {
+	// 		show: {
+	// 			operation: [
+	// 				'create',
+	// 			],
+	// 			resource: [
+	// 				'document',
+	// 			],
+	// 		},
+	// 	},
+	// },
+	{
+		displayName: 'Folder',
+		name: 'folderId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsDependsOn: 'driveId',
+			loadOptionsMethod: 'getFolders',
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'document',
+				],
+			},
+		},
+	},
 	{
 		displayName: 'Title',
 		name: 'title',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -492,7 +532,7 @@ export const documentFields = [
 						displayName: 'Footer ID',
 						name: 'footerId',
 						type: 'string',
-						description: 'The ID of the footer to delete.',
+						description: 'The ID of the footer to delete. To retrieve it, use the <code>get document</code> where you can find under <code>footers</code> attribute.',
 						default: '',
 						displayOptions: {
 							show: {
@@ -510,7 +550,7 @@ export const documentFields = [
 						displayName: 'Header ID',
 						name: 'headerId',
 						type: 'string',
-						description: 'The ID of the header to delete.',
+						description: 'The ID of the header to delete. To retrieve it, use the <code>get document</code> where you can find under <code>headers</code> attribute.',
 						default: '',
 						displayOptions: {
 							show: {
@@ -617,6 +657,35 @@ export const documentFields = [
 
 					// insert page break
 					{
+						displayName: 'Insertion Location',
+						name: 'locationChoice',
+						type: 'options',
+						options: [
+							{
+								name: 'Insert at end of specific position',
+								value: 'endOfSegmentLocation',
+								description: 'Inserts the text at the end of a header, footer, footnote or the document body.',
+							},
+							{
+								name: 'Insert at index',
+								value: 'location',
+								description: 'Inserts the text at a specific index in the document.',
+							},
+						],
+						description: 'The location where the text will be inserted.',
+						default: 'endOfSegmentLocation',
+						displayOptions: {
+							show: {
+								object: [
+									'pageBreak',
+								],
+								action: [
+									'insert',
+								],
+							},
+						},
+					},
+					{
 						displayName: 'Index',
 						name: 'index',
 						type: 'number',
@@ -635,35 +704,6 @@ export const documentFields = [
 							},
 						},
 						default: 0,
-					},
-					{
-						displayName: 'Insertion Location',
-						name: 'locationChoice',
-						type: 'options',
-						options: [
-							{
-								name: 'End Of Segment Location',
-								value: 'endOfSegmentLocation',
-								description: 'Inserts the text at the end of a header, footer, footnote or the document body.',
-							},
-							{
-								name: 'Location',
-								value: 'location',
-								description: 'Inserts the text at a specific index in the document.',
-							},
-						],
-						description: 'The location where the text will be inserted.',
-						default: 'endOfSegmentLocation',
-						displayOptions: {
-							show: {
-								object: [
-									'pageBreak',
-								],
-								action: [
-									'insert',
-								],
-							},
-						},
 					},
 					// insert table
 					{
@@ -706,12 +746,12 @@ export const documentFields = [
 						type: 'options',
 						options: [
 							{
-								name: 'End Of Segment Location',
+								name: 'Insert at end of specific position',
 								value: 'endOfSegmentLocation',
 								description: 'Inserts the text at the end of a header, footer, footnote or the document body.',
 							},
 							{
-								name: 'Location',
+								name: 'Insert at index',
 								value: 'location',
 								description: 'Inserts the text at a specific index in the document.',
 							},
@@ -756,12 +796,12 @@ export const documentFields = [
 						type: 'options',
 						options: [
 							{
-								name: 'End Of Segment Location',
+								name: 'Insert at end of specific position',
 								value: 'endOfSegmentLocation',
 								description: 'Inserts the text at the end of a header, footer, footnote or the document body.',
 							},
 							{
-								name: 'Location',
+								name: 'Insert at index',
 								value: 'location',
 								description: 'Inserts the text at a specific index in the document.',
 							},
@@ -1195,25 +1235,26 @@ export const documentFields = [
 						name: 'writeControlObject',
 						values: [
 							{
-								displayName: 'Control Field',
+								displayName: 'Revision mode',
 								name: 'control',
 								type: 'options',
 								options: [
 									{
-										name: 'Target Revision ID',
+										name: 'Target',
 										value: 'targetRevisionId',
-										description: 'The revision ID of the document that the write request will be applied to.',
+										description: 'Apply changes to the latest revision. Otherwise request changes will not be processed.',
 									},
 									{
-										name: 'Required Revision ID',
+										name: 'Required',
 										value: 'requiredRevisionId',
-										description: 'The target revision ID of the document that the write request will be applied to.',
+										description: 'Apply changes to the provided revision while incorporating other collaborators\' changes. This mode is used for the recent revision, Otherwise request changes will not be processed.',
 									},
 								],
 								default: 'requiredRevisionId',
+								description: 'Determines how the requests changes are applied to the revision.',
 							},
 							{
-								displayName: 'Value',
+								displayName: 'Revision ID',
 								name: 'value',
 								type: 'string',
 								default: '',

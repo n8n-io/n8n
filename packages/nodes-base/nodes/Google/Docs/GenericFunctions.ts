@@ -4,6 +4,7 @@ import {
 
 import {
 	IExecuteFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
@@ -12,10 +13,12 @@ import {
 } from 'n8n-workflow';
 
 export async function googleApiRequest(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 	body: IDataObject = {},
+	qs?: IDataObject,
+	uri?: string,
 ) {
 	const options: OptionsWithUri = {
 		headers: {
@@ -23,7 +26,8 @@ export async function googleApiRequest(
 		},
 		method,
 		body,
-		uri: `https://docs.googleapis.com/v1${endpoint}`,
+		qs,
+		uri: uri || `https://docs.googleapis.com/v1${endpoint}`,
 		json: true,
 	};
 
@@ -31,10 +35,32 @@ export async function googleApiRequest(
 		delete options.body;
 	}
 	try {
+		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'googleDocsOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
+}
+
+export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: IDataObject = {}, qs?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+	const query: IDataObject = {...qs};
+	query.maxResults = 100;
+	query.pageSize = 100;
+
+	do {
+		responseData = await googleApiRequest.call(this, method, endpoint, body, query, uri);
+		query.pageToken = responseData['nextPageToken'];
+		returnData.push.apply(returnData, responseData[propertyName]);
+	} while (
+		responseData['nextPageToken'] !== undefined &&
+		responseData['nextPageToken'] !== ''
+	);
+
+	return returnData;
 }
 
 export const hasKeys = (obj = {}) => Object.keys(obj).length > 0;

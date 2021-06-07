@@ -4,3 +4,12 @@ export interface IUpdateBody extends IDataObject {
 	requests: IDataObject[];
 	writeControl?: { [key: string]: string };
 }
+
+export interface IUpdateFields {
+	writeControl: {
+		writeControlObject: {
+			control: string,
+			value: string,
+		}
+	};
+}

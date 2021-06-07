@@ -1,10 +1,12 @@
 import {
 	IExecuteFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
 	IDataObject,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError
@@ -13,6 +15,8 @@ import {
 import {
 	extractID,
 	googleApiRequest,
+	googleApiRequestAllItems,
+	hasKeys,
 	upperFirst,
 } from './GenericFunctions';
 
@@ -23,6 +27,7 @@ import {
 
 import {
 	IUpdateBody,
+	IUpdateFields,
 } from './interfaces';
 
 export class GoogleDocs implements INodeType {
@@ -64,7 +69,49 @@ export class GoogleDocs implements INodeType {
 			...documentFields,
 		],
 	};
+	methods = {
+		loadOptions: {
+			// Get all the drives to display them to user so that he can
+			// select them easily
+			async getDrives(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [
+					{
+						name: 'My Drive',
+						value: 'myDrive',
+					},
+				];
+				const drives = await googleApiRequestAllItems.call(this, 'drives', 'GET', '', {}, {
+					useDomainAdminAccess:true,
+				}, 'https://www.googleapis.com/drive/v3/drives');
 
+				for (const drive of drives) {
+					returnData.push({
+						name: drive.title as string,
+						value: drive.id as string,
+					});
+				}
+				return returnData;
+			},
+			async getFolders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				//const driveId = this.getNodeParameter('driveId');
+				const qs = {
+					q: 'mimeType = \'application/vnd.google-apps.folder\'',
+					// ...(driveId && driveId!=='myDrive') ? {driveId} : {}
+				};
+
+				const folders = await googleApiRequestAllItems.call(this, 'files', 'GET', '', {}, qs, 'https://www.googleapis.com/drive/v3/files');
+
+				for (const folder of folders) {
+					returnData.push({
+						name: folder.name as string,
+						value: folder.id as string,
+					});
+				}
+				return returnData;
+			},
+		},
+	};
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
@@ -86,15 +133,19 @@ export class GoogleDocs implements INodeType {
 					// https://developers.google.com/docs/api/reference/rest/v1/documents/create
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const folderId = this.getNodeParameter('folderId', i) as string;
 					const simple = this.getNodeParameter('simple', i) as boolean;
 
 					const body: IDataObject = {
-						title: this.getNodeParameter('title', i) as string,
+						name: this.getNodeParameter('title', i) as string,
+						mimeType: 'application/vnd.google-apps.document',
+						parents: [folderId],
 					};
 
-					responseData = await googleApiRequest.call(this, 'POST', '/documents', body);
+					responseData = await googleApiRequest.call(this, 'POST', '', body, {}, 'https://www.googleapis.com/drive/v3/files');
+
 					if (additionalFields!.content) {
-						const documentId = responseData.documentId;
+						const documentId = responseData.id;
 						const content = additionalFields!.content;
 						const body = {
 							requests: [
@@ -144,6 +195,7 @@ export class GoogleDocs implements INodeType {
 					const actionsUi = this.getNodeParameter('actionsUi', i) as {
 						actionFields: IDataObject[]
 					};
+					const { writeControl } = this.getNodeParameter('updateFields', i) as IUpdateFields;
 
 					if (!documentId) {
 						throw new NodeOperationError(this.getNode(), 'Incorrect document URL');
@@ -152,6 +204,13 @@ export class GoogleDocs implements INodeType {
 					const body = {
 						requests: [],
 					} as IUpdateBody;
+
+					if (hasKeys(writeControl)) {
+						const { control, value } = writeControl.writeControlObject;
+						body.writeControl = {
+							[control]: value,
+						};
+					}
 
 					if (actionsUi) {
 
