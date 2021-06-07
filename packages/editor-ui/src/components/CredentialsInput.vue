@@ -89,7 +89,7 @@
 			</el-col>
 			<el-col :span="18">
 				<el-transfer
-					:titles="['No Access', 'Access ']"
+					:titles="[this.$t('credentialsInput.noAccess'), this.$t('credentialsInput.access')]"
 					v-model="nodesAccess"
 					:data="allNodesRequestingAccess">
 				</el-transfer>

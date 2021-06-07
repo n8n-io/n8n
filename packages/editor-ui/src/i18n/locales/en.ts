@@ -77,7 +77,7 @@ export default {
 			save: 'Save',
 			create: 'Create',
 			noAccess: 'No Access',
-			access: 'Access ',
+			access: 'Access',
 		},
 
 		credentialsList: {

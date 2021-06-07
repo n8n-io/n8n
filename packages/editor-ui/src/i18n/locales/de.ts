@@ -76,8 +76,8 @@ export default {
 			addAtLeastOneNodeWhichHasAccessToTheCredentials: 'Deutsch',
 			save: 'Deutsch',
 			create: 'Deutsch',
-			noAccess: 'No Access',
-			access: 'Access ',
+			noAccess: 'Deutsch',
+			access: 'Deutsch',
 		},
 
 		credentialsList: {
