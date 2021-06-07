@@ -2,7 +2,7 @@
 	<div @keydown.stop class="duplicate-parameter">
 
 		<div class="parameter-name">
-			{{ $translateName(parameter) }}:
+			{{ $translateNodeParameterName(parameter) }}:
 			<el-tooltip class="parameter-info" placement="top" v-if="$translateDescription(parameter)" effect="light">
 				<div slot="content" v-html="$translateDescription(parameter)"></div>
 				<font-awesome-icon icon="question-circle" />

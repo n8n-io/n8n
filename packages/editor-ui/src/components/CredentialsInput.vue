@@ -23,7 +23,7 @@
 		<div v-for="parameter in credentialProperties" :key="parameter.name">
 			<el-row class="parameter-wrapper">
 				<el-col :span="6" class="parameter-name">
-					{{parameter.displayName}}:
+					{{ $translateCredentialParameterName(parameter) }}:
 					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
 						<div slot="content" v-html="parameter.description"></div>
 						<font-awesome-icon icon="question-circle"/>
@@ -123,6 +123,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
+import { translate } from '@/components/mixins/translate';
 
 import {
 	ICredentialsDecryptedResponse,
@@ -146,12 +147,15 @@ import ParameterInput from '@/components/ParameterInput.vue';
 
 import mixins from 'vue-typed-mixins';
 
+import { addNodeTranslations } from '@/i18n/i18n';
+
 export default mixins(
 	copyPaste,
 	externalHooks,
 	nodeHelpers,
 	restApi,
 	showMessage,
+	translate,
 ).extend({
 	name: 'CredentialsInput',
 	props: [
@@ -180,6 +184,16 @@ export default mixins(
 			propertyValue: {} as ICredentialDataDecryptedObject,
 		};
 	},
+	beforeMount() {
+		this.loadNodesProperties();
+
+		this.initTranslate({
+			isCredential: true,
+			nodeType: `n8n-nodes-base.${this.credentialTypeData.documentationUrl}`,
+			credentialName: this.credentialTypeData.name,
+		});
+	},
+
 	computed: {
 		allNodesRequestingAccess (): Array<{key: string, label: string}> {
 			const returnNodeTypes: string[] = [];
@@ -266,6 +280,15 @@ export default mixins(
 		},
 	},
 	methods: {
+		async loadNodesProperties(): Promise<void> {
+			const nodesToFetch = [`n8n-nodes-base.${this.credentialTypeData.documentationUrl}`];
+			const nodeInfo = await this.restApi().getNodesInformation(nodesToFetch);
+
+			if (nodeInfo[0].translation) {
+				addNodeTranslations(nodeInfo[0].translation);
+			}
+		},
+
 		copyCallbackUrl (): void {
 			this.copyToClipboard(this.oAuthCallbackUrl);
 

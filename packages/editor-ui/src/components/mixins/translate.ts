@@ -5,29 +5,39 @@ export const translate = Vue.extend({
 	data() {
 		// TODO: State in mixin advisable?
 		return {
-			isCredentialParam: false,
-			nodeTypeFromCredential: '',
-			credentialNameForParam: '',
+			_isCredential: false,
+			_nodeType: '',
+			_credentialName: '',
 		};
 	},
 
 	computed: {
 		nodeType (): string {
-			return this.isCredentialParam
-				? this.nodeTypeFromCredential
+			return this._isCredential
+				? this._nodeType
 				: this.$store.getters.activeNode.type;
 		},
 	},
 
 	methods: {
+
+		// ----------------------------------
+		//           initializer
+		// ----------------------------------
+
 		initTranslate(
-			{ isCredential, nodeType, credentialName }:
-			{ isCredential: boolean, nodeType: string, credentialName: string },
+			{ credentialName, isCredential, nodeType }:
+			{ credentialName: string, isCredential: boolean, nodeType: string },
 		) {
-			this.isCredentialParam = isCredential;
-			this.nodeTypeFromCredential = nodeType;
-			this.credentialNameForParam = credentialName;
+			this._credentialName = credentialName;
+			this._isCredential = isCredential;
+			this._nodeType = nodeType;
 		},
+
+
+		// ----------------------------------
+		//           main method
+		// ----------------------------------
 
 		/**
 		 * Translate the value at the translation key, or return a fallback.
@@ -36,18 +46,31 @@ export const translate = Vue.extend({
 			return this.$te(key) ? this.$t(key) : fallback;
 		},
 
+
 		// ----------------------------------
-		//     node parameter properties
+		//        label properties
 		// ----------------------------------
 
 		/**
-		 * Translate the top-level parameter name, including options nested inside collections.
+		 * Translate a top-level node parameter name, including those visually nested inside collections.
 		 */
-		$translateName(
+		$translateNodeParameterName(
 			{ name: parameterName, displayName }: { name: string; displayName: string; },
 		) {
 			return this.translate({
 				key: `${this.nodeType}.parameters.${parameterName}.displayName`,
+				fallback: displayName,
+			});
+		},
+
+		/**
+		 * Translate a top-level credential parameter name.
+		 */
+		$translateCredentialParameterName(
+			{ name: parameterName, displayName }: { name: string; displayName: string; },
+		) {
+			return this.translate({
+				key: `${this.nodeType}.credentials.${this._credentialName}.${parameterName}.displayName`,
 				fallback: displayName,
 			});
 		},
@@ -58,11 +81,16 @@ export const translate = Vue.extend({
 		$translateDescription(
 			{ name: parameterName, description }: { name: string; description: string; },
 		) {
+			const key = this._isCredential
+				? `${this.nodeType}.credentials.${this._credentialName}.description`
+				: `${this.nodeType}.parameters.${parameterName}.description`;
+
 			return this.translate({
-				key: `${this.nodeType}.parameters.${parameterName}.description`,
+				key,
 				fallback: description,
 			});
 		},
+
 
 		// ----------------------------------
 		//         input properties
@@ -74,8 +102,8 @@ export const translate = Vue.extend({
 		$translatePlaceholder(
 			{ name: parameterName, placeholder }: { name: string; placeholder: string; },
 		) {
-			const key = this.isCredentialParam
-				? `${this.nodeType}.credentials.${this.credentialNameForParam}.placeholder`
+			const key = this._isCredential
+				? `${this.nodeType}.credentials.${this._credentialName}.placeholder`
 				: `${this.nodeType}.parameters.${parameterName}.placeholder`;
 
 			return this.translate({
@@ -91,8 +119,8 @@ export const translate = Vue.extend({
 			{ name: parameterName }: { name: string },
 			{ value: optionName, name: displayName }: { value: string; name: string; },
 		) {
-			const key = this.isCredentialParam
-				? `${this.nodeType}.credentials.${this.credentialNameForParam}.options.${optionName}.displayName`
+			const key = this._isCredential
+				? `${this.nodeType}.credentials.${this._credentialName}.options.${optionName}.displayName`
 				: `${this.nodeType}.parameters.${parameterName}.options.${optionName}.displayName`;
 
 			return this.translate({
@@ -108,8 +136,8 @@ export const translate = Vue.extend({
 			{ name: parameterName }: { name: string },
 			{ value: optionName, description }: { value: string; description: string; },
 		) {
-			const key = this.isCredentialParam
-				? `${this.nodeType}.credentials.${this.credentialNameForParam}.options.${optionName}.description`
+			const key = this._isCredential
+				? `${this.nodeType}.credentials.${this._credentialName}.options.${optionName}.description`
 				: `${this.nodeType}.parameters.${parameterName}.options.${optionName}.description`;
 
 			return this.translate({

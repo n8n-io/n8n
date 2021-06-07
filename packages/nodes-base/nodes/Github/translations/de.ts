@@ -7,6 +7,12 @@ module.exports = {
 						displayName: 'Deutsch',
 						description: 'Deutsch',
 					},
+					clientId: {
+						displayName: 'Client ID',
+					},
+					clientSecret: {
+						displayName: 'Client Secret',
+					},
 				},
 				githubApi: {
 					server: {
