@@ -25,7 +25,7 @@ export default Vue.extend({
 	props: [
 		'nodeType',
 		'size',
-		'shrink'
+		'shrink',
 	],
 	computed: {
 		iconStyleData (): object {
