@@ -27,6 +27,11 @@
 				"label": "Running n8n on ships: An interview with Maranics",
 				"icon": "🛳",
 				"url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/"
+			},
+			{
+				"label": "Automate your data processing pipeline in 9 steps",
+				"icon": "⚙️",
+				"url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/"
 			}
 		]
 	}
