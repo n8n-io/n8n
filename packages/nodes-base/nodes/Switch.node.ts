@@ -618,8 +618,6 @@ export class Switch implements INodeType {
 			}
 		};
 
-		const dataType = this.getNodeParameter('dataType', 0) as string;
-
 		// Itterate over all items to check to which output they should be routed to
 		itemLoop:
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -635,6 +633,8 @@ export class Switch implements INodeType {
 				returnData[outputIndex].push(item);
 			} else if (mode === 'rules') {
 				// Rules decide how to route item
+
+				const dataType = this.getNodeParameter('dataType', 0) as string;
 
 				value1 = this.getNodeParameter('value1', itemIndex) as NodeParameterValue;
 				if (dataType === 'dateTime') {

@@ -38,7 +38,7 @@
 			@nodeTypeSelected="nodeTypeSelected"
 			@closeNodeCreator="closeNodeCreator"
 			></node-creator>
-		<div class="zoom-menu">
+		<div :class="{ 'zoom-menu': true, expanded: !sidebarMenuCollapsed }">
 			<button @click="setZoom('in')" class="button-white" title="Zoom In">
 				<font-awesome-icon icon="search-plus"/>
 			</button>
@@ -102,6 +102,7 @@
 				<font-awesome-icon icon="trash" class="clear-execution-icon" />
 			</el-button>
 		</div>
+		<Modals />
 	</div>
 </template>
 
@@ -126,6 +127,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
 import DataDisplay from '@/components/DataDisplay.vue';
+import Modals from '@/components/Modals.vue';
 import Node from '@/components/Node.vue';
 import NodeCreator from '@/components/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
@@ -133,7 +135,6 @@ import RunData from '@/components/RunData.vue';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
-import { debounce } from 'lodash';
 import axios from 'axios';
 import {
 	IConnection,
@@ -163,7 +164,9 @@ import {
 	IWorkflowDataUpdate,
 	XYPositon,
 	IPushDataExecutionFinished,
+	ITag,
 } from '../Interface';
+import { mapGetters } from 'vuex';
 
 export default mixins(
 	copyPaste,
@@ -181,6 +184,7 @@ export default mixins(
 		name: 'NodeView',
 		components: {
 			DataDisplay,
+			Modals,
 			Node,
 			NodeCreator,
 			NodeSettings,
@@ -234,6 +238,9 @@ export default mixins(
 			}
 		},
 		computed: {
+			...mapGetters('ui', [
+				'sidebarMenuCollapsed',
+			]),
 			activeNode (): INodeUi | null {
 				return this.$store.getters.activeNode;
 			},
@@ -303,7 +310,6 @@ export default mixins(
 				lastClickPosition: [450, 450] as XYPositon,
 				nodeViewScale: 1,
 				ctrlKeyPressed: false,
-				debouncedFunctions: [] as any[], // tslint:disable-line:no-any
 				stopExecutionInProgress: false,
 			};
 		},
@@ -314,18 +320,6 @@ export default mixins(
 			document.removeEventListener('keyup', this.keyUp);
 		},
 		methods: {
-			async callDebounced (...inputParameters: any[]): Promise<void> { // tslint:disable-line:no-any
-				const functionName = inputParameters.shift() as string;
-				const debounceTime = inputParameters.shift() as number;
-
-				// @ts-ignore
-				if (this.debouncedFunctions[functionName] === undefined) {
-					// @ts-ignore
-					this.debouncedFunctions[functionName] = debounce(this[functionName], debounceTime, { leading: true });
-				}
-				// @ts-ignore
-				await this.debouncedFunctions[functionName].apply(this, inputParameters);
-			},
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
@@ -377,6 +371,12 @@ export default mixins(
 				this.$store.commit('setWorkflowId', workflowId);
 				this.$store.commit('setWorkflowName', {newName: data.name, setStateDirty: false});
 				this.$store.commit('setWorkflowSettings', data.settings || {});
+
+				const tags = (data.tags || []) as ITag[];
+				this.$store.commit('tags/upsertTags', tags);
+
+				const tagIds = tags.map((tag) => tag.id);
+				this.$store.commit('setWorkflowTagIds', tagIds || []);
 
 				await this.addNodes(data.nodes, data.connections);
 
@@ -440,6 +440,10 @@ export default mixins(
 						return;
 					}
 				}
+				const anyModalsOpen = this.$store.getters['ui/anyModalsOpen'];
+				if (anyModalsOpen) {
+					return;
+				}
 
 				if (e.key === 'd') {
 					this.callDebounced('deactivateSelectedNode', 350);
@@ -485,16 +489,20 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.$root.$emit('openWorkflowDialog');
+					this.$store.dispatch('ui/openWorklfowOpenModal');
 				} else if (e.key === 'n' && this.isCtrlKeyPressed(e) === true && e.altKey === true) {
 					// Create a new workflow
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.$router.push({ name: 'NodeViewNew' });
+					if (this.$router.currentRoute.name === 'NodeViewNew') {
+						this.$root.$emit('newWorkflow');
+					} else {
+						this.$router.push({ name: 'NodeViewNew' });
+					}
 
 					this.$showMessage({
-						title: 'Created',
+						title: 'Workflow created',
 						message: 'A new workflow got created!',
 						type: 'success',
 					});
@@ -503,7 +511,9 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.$store.commit('setStateDirty', false);
+					if (this.isReadOnly) {
+						return;
+					}
 
 					this.callDebounced('saveCurrentWorkflow', 1000);
 				} else if (e.key === 'Enter') {
@@ -1392,6 +1402,8 @@ export default mixins(
 			},
 			async newWorkflow (): Promise<void> {
 				await this.resetWorkspace();
+				await this.$store.dispatch('workflows/setNewWorkflowName');
+				this.$store.commit('setStateDirty', false);
 
 				// Create start node
 				const defaultNodes = [
@@ -1440,6 +1452,9 @@ export default mixins(
 					}
 					if (workflowId !== null) {
 						const workflow = await this.restApi().getWorkflow(workflowId);
+						if (!workflow) {
+							throw new Error('Could not find workflow');
+						}
 						this.$titleSet(workflow.name, 'IDLE');
 						// Open existing workflow
 						await this.openWorkflow(workflowId);
@@ -1851,21 +1866,19 @@ export default mixins(
 					for (type of Object.keys(currentConnections[sourceNode])) {
 						connection[type] = [];
 						for (sourceIndex = 0; sourceIndex < currentConnections[sourceNode][type].length; sourceIndex++) {
-							if (!currentConnections[sourceNode][type][sourceIndex]) {
-								// There is so something wrong with the data so ignore
-								continue;
-							}
 							const nodeSourceConnections = [];
-							for (connectionIndex = 0; connectionIndex < currentConnections[sourceNode][type][sourceIndex].length; connectionIndex++) {
-								const nodeConnection: NodeInputConnections = [];
-								connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
-								if (!createNodeNames.includes(connectionData.node)) {
-									// Node does not get created so skip input connection
-									continue;
-								}
+							if (currentConnections[sourceNode][type][sourceIndex]) {
+								for (connectionIndex = 0; connectionIndex < currentConnections[sourceNode][type][sourceIndex].length; connectionIndex++) {
+									const nodeConnection: NodeInputConnections = [];
+									connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
+									if (!createNodeNames.includes(connectionData.node)) {
+										// Node does not get created so skip input connection
+										continue;
+									}
 
-								nodeSourceConnections.push(connectionData);
-								// Add connection
+									nodeSourceConnections.push(connectionData);
+									// Add connection
+								}
 							}
 							connection[type].push(nodeSourceConnections);
 						}
@@ -1990,6 +2003,7 @@ export default mixins(
 				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				this.$store.commit('setWorkflowName', {newName: '', setStateDirty: false});
 				this.$store.commit('setWorkflowSettings', {});
+				this.$store.commit('setWorkflowTagIds', []);
 
 				this.$store.commit('setActiveExecutionId', null);
 				this.$store.commit('setExecutingNode', null);
@@ -2053,6 +2067,8 @@ export default mixins(
 				const resData = await this.importWorkflowData(data.data as IWorkflowDataUpdate);
 			});
 
+			this.$root.$on('newWorkflow', this.newWorkflow);
+
 			this.$root.$on('importWorkflowUrl', async (data: IDataObject) => {
 				const workflowData = await this.getWorkflowDataFromUrl(data.url as string);
 				if (workflowData !== undefined) {
@@ -2099,14 +2115,20 @@ export default mixins(
 <style scoped lang="scss">
 
 .zoom-menu {
+	$--zoom-menu-margin: 5;
+
 	position: fixed;
-	left: 70px;
+	left: $--sidebar-width + $--zoom-menu-margin;
 	width: 200px;
 	bottom: 45px;
 	line-height: 25px;
 	z-index: 18;
 	color: #444;
 	padding-right: 5px;
+
+	&.expanded {
+		left: $--sidebar-expanded-width + $--zoom-menu-margin;
+	}
 }
 
 .node-creator-button {

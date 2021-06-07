@@ -18,5 +18,10 @@
 				"url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/"
 			}
 		]
+	},
+	"subcategories": {
+		"Core Nodes": [
+			"Flow"
+		]
 	}
 }
