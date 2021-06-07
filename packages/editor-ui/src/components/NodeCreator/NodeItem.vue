@@ -70,7 +70,7 @@ export default {
 }
 
 .description {
-	margin-top: 4px;
+	margin-top: 2px;
 	font-size: 11px;
 	line-height: 15px;
 	font-weight: 400;
