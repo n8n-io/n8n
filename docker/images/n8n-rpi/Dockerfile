@@ -6,7 +6,7 @@ RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" 
 
 RUN \
 	apt-get update && \
-	apt-get -y install graphicsmagick gosu
+	apt-get -y install graphicsmagick gosu git
 
 RUN npm_config_user=root npm install -g full-icu n8n@${N8N_VERSION}
 
@@ -15,6 +15,7 @@ ENV NODE_ENV production
 
 WORKDIR /data
 
-USER node
+USER root
 
-CMD n8n
+CMD chown -R node:node /home/node/.n8n \
+&& gosu node n8n

@@ -18,9 +18,34 @@
 		],
 		"generic": [
 			{
+				"label": "How to host virtual coffee breaks with n8n",
+				"icon": "☕️",
+				"url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/"
+			},
+			{
+				"label": "Supercharging your conference registration process with n8n",
+				"icon": "🎫",
+				"url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/"
+			},
+			{
+				"label": "15 Google apps you can combine and automate to increase productivity",
+				"icon": "💡",
+				"url": "https://n8n.io/blog/automate-google-apps-for-productivity/"
+			},
+			{
+				"label": "Hey founders! Your business doesn't need you to operate",
+				"icon": " 🖥️",
+				"url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/"
+			},
+			{
+				"label": "5 workflow automations for Mattermost that we love at n8n",
+				"icon": "🤖",
+				"url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/"
+			},
+			{
 				"label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n",
 				"icon": "🗓",
-				"url": "https://medium.com/n8n-io/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n-a5d00f77da8c"
+				"url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/"
 			}
 		]
 	}

@@ -7,13 +7,17 @@ import {
 	IPollResponse,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
+	LoggerProxy as Logger,
 	Workflow,
+	WorkflowActivateMode,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import {
 	ITriggerTime,
 	IWorkflowData,
 } from './';
+
 
 export class ActiveWorkflows {
 	private workflowData: {
@@ -66,14 +70,14 @@ export class ActiveWorkflows {
 	 * @returns {Promise<void>}
 	 * @memberof ActiveWorkflows
 	 */
-	async add(id: string, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, getTriggerFunctions: IGetExecuteTriggerFunctions, getPollFunctions: IGetExecutePollFunctions): Promise<void> {
+	async add(id: string, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode, getTriggerFunctions: IGetExecuteTriggerFunctions, getPollFunctions: IGetExecutePollFunctions): Promise<void> {
 		this.workflowData[id] = {};
 		const triggerNodes = workflow.getTriggerNodes();
 
 		let triggerResponse: ITriggerResponse | undefined;
 		this.workflowData[id].triggerResponses = [];
 		for (const triggerNode of triggerNodes) {
-			triggerResponse = await workflow.runTrigger(triggerNode, getTriggerFunctions, additionalData, 'trigger');
+			triggerResponse = await workflow.runTrigger(triggerNode, getTriggerFunctions, additionalData, mode, activation);
 			if (triggerResponse !== undefined) {
 				// If a response was given save it
 				this.workflowData[id].triggerResponses!.push(triggerResponse);
@@ -84,7 +88,7 @@ export class ActiveWorkflows {
 		if (pollNodes.length) {
 			this.workflowData[id].pollResponses = [];
 			for (const pollNode of pollNodes) {
-				this.workflowData[id].pollResponses!.push(await this.activatePolling(pollNode, workflow, additionalData, getPollFunctions));
+				this.workflowData[id].pollResponses!.push(await this.activatePolling(pollNode, workflow, additionalData, getPollFunctions, mode, activation));
 			}
 		}
 	}
@@ -100,10 +104,8 @@ export class ActiveWorkflows {
 	 * @returns {Promise<IPollResponse>}
 	 * @memberof ActiveWorkflows
 	 */
-	async activatePolling(node: INode, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, getPollFunctions: IGetExecutePollFunctions): Promise<IPollResponse> {
-		const mode = 'trigger';
-
-		const pollFunctions = getPollFunctions(workflow, node, additionalData, mode);
+	async activatePolling(node: INode, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, getPollFunctions: IGetExecutePollFunctions, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): Promise<IPollResponse> {
+		const pollFunctions = getPollFunctions(workflow, node, additionalData, mode, activation);
 
 		const pollTimes = pollFunctions.getNodeParameter('pollTimes') as unknown as {
 			item: ITriggerTime[];
@@ -163,6 +165,7 @@ export class ActiveWorkflows {
 
 		// The trigger function to execute when the cron-time got reached
 		const executeTrigger = async () => {
+			Logger.info(`Polling trigger initiated for workflow "${workflow.name}"`, {workflowName: workflow.name, workflowId: workflow.id});
 			const pollResponse = await workflow.runPoll(node, pollFunctions);
 
 			if (pollResponse !== null) {

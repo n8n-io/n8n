@@ -8,7 +8,9 @@ import {
 import {
 	IDataObject,
 	IHookFunctions,
-	IWebhookFunctions
+	IWebhookFunctions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 export async function driftApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -36,7 +38,7 @@ export async function driftApiRequest(this: IExecuteFunctions | IWebhookFunction
 			const credentials = this.getCredentials('driftApi');
 
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
@@ -46,11 +48,6 @@ export async function driftApiRequest(this: IExecuteFunctions | IWebhookFunction
 			return await this.helpers.requestOAuth2!.call(this, 'driftOAuth2Api', options);
 		}
 	} catch (error) {
-
-		if (error.response && error.response.body && error.response.body.error) {
-			const errorMessage = error.response.body.error.message;
-			throw new Error(`Drift error response [${error.statusCode}]: ${errorMessage}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

@@ -308,7 +308,7 @@ export class CustomerIoTrigger implements INodeType {
 					const endpoint = `/reporting_webhooks/${webhookData.webhookId}`;
 					try {
 						await customerIoApiRequest.call(this, 'DELETE', endpoint, {}, 'beta');
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 					delete webhookData.webhookId;

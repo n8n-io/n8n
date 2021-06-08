@@ -15,6 +15,18 @@
 			{
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.twitter/"
 			}
+		],
+		"generic": [
+			{
+				"label": "Automate your data processing pipeline in 9 steps",
+				"icon": "⚙️",
+				"url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/"
+			},
+			{
+				"label": "5 workflow automations for Mattermost that we love at n8n",
+				"icon": "🤖",
+				"url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/"
+			}
 		]
 	}
 }

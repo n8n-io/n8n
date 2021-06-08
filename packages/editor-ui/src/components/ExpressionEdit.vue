@@ -30,7 +30,7 @@
 						<div class="editor-description">
 							Result
 						</div>
-						<expression-input :parameter="parameter" resolvedValue="true" rows="8" :value="value" :path="path"></expression-input>
+						<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input>
 					</div>
 
 				</el-col>
@@ -41,18 +41,20 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import ExpressionInput from '@/components/ExpressionInput.vue';
 import VariableSelector from '@/components/VariableSelector.vue';
 
 import { IVariableItemSelected } from '@/Interface';
 
-import {
-	Workflow,
-} from 'n8n-workflow';
+import { externalHooks } from '@/components/mixins/externalHooks';
+import { genericHelpers } from '@/components/mixins/genericHelpers';
 
-export default Vue.extend({
+import mixins from 'vue-typed-mixins';
+
+export default mixins(
+	externalHooks,
+	genericHelpers,
+).extend({
 	name: 'ExpressionEdit',
 	props: [
 		'dialogVisible',
@@ -66,22 +68,48 @@ export default Vue.extend({
 	},
 	data () {
 		return {
+			displayValue: '',
+			latestValue: '',
 		};
 	},
 	methods: {
-		valueChanged (value: string) {
-			this.$emit('valueChanged', value);
+		valueChanged (value: string, forceUpdate = false) {
+			this.latestValue = value;
+
+			if (forceUpdate === true) {
+				this.updateDisplayValue();
+				this.$emit('valueChanged', this.latestValue);
+			} else {
+				this.callDebounced('updateDisplayValue', 500);
+			}
+		},
+
+		updateDisplayValue () {
+			this.displayValue = this.latestValue;
 		},
 
 		closeDialog () {
 			// Handle the close externally as the visible parameter is an external prop
 			// and is so not allowed to be changed here.
+			this.$emit('valueChanged', this.latestValue);
 			this.$emit('closeDialog');
 			return false;
 		},
 
 		itemSelected (eventData: IVariableItemSelected) {
+			// User inserted item from Expression Editor variable selector
 			(this.$refs.inputFieldExpression as any).itemSelected(eventData); // tslint:disable-line:no-any
+
+			this.$externalHooks().run('expressionEdit.itemSelected', { parameter: this.parameter, value: this.value, selectedItem: eventData });
+		},
+	},
+	watch: {
+		dialogVisible (newValue) {
+			this.displayValue = this.value;
+			this.latestValue = this.value;
+
+			const resolvedExpressionValue = this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue() || undefined;  // tslint:disable-line:no-any
+			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
 		},
 	},
 });

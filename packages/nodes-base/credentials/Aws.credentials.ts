@@ -97,6 +97,21 @@ export class Aws implements ICredentialType {
 			placeholder: 'https://email.{region}.amazonaws.com',
 		},
 		{
+			displayName: 'SQS Endpoint',
+			name: 'sqsEndpoint',
+			description: 'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and SQS using a VPC endpoint. Leave blank to use the default endpoint.',
+			type: 'string' as NodePropertyTypes,
+			displayOptions: {
+				show: {
+					customEndpoints: [
+						true,
+					],
+				},
+			},
+			default: '',
+			placeholder: 'https://sqs.{region}.amazonaws.com',
+		},
+		{
 			displayName: 'S3 Endpoint',
 			name: 's3Endpoint',
 			description: 'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and S3 using a VPC endpoint. Leave blank to use the default endpoint.',

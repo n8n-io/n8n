@@ -41,5 +41,11 @@ export class TheHiveApi implements ICredentialType {
 				},
 			],
 		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean' as NodePropertyTypes,
+			default: false,
+		},
 	];
 }

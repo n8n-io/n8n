@@ -8,6 +8,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -177,7 +178,7 @@ export class Bitwarden implements INodeType {
 					const updateFields = this.getNodeParameter('updateFields', i) as CollectionUpdateFields;
 
 					if (isEmpty(updateFields)) {
-						throw new Error(`Please enter at least one field to update for the ${resource}.`);
+						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
 					}
 
 					const { groups, externalId } = updateFields;
@@ -303,15 +304,33 @@ export class Bitwarden implements INodeType {
 					//       group: update
 					// ----------------------------------
 
-					const body = {} as IDataObject;
+					const groupId = this.getNodeParameter('groupId', i);
 
 					const updateFields = this.getNodeParameter('updateFields', i) as GroupUpdateFields;
 
 					if (isEmpty(updateFields)) {
-						throw new Error(`Please enter at least one field to update for the ${resource}.`);
+						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
 					}
 
-					const { name, collections, externalId, accessAll } = updateFields;
+					// set defaults for `name` and `accessAll`, required by Bitwarden but optional in n8n
+
+					let { name, accessAll } = updateFields;
+
+					if (name === undefined) {
+						responseData = await bitwardenApiRequest.call(this, 'GET', `/public/groups/${groupId}`, {}, {}) as { name: string };
+						name = responseData.name;
+					}
+
+					if (accessAll === undefined) {
+						accessAll = false;
+					}
+
+					const body = {
+						name,
+						AccessAll: accessAll,
+					} as IDataObject;
+
+					const { collections, externalId } = updateFields;
 
 					if (collections) {
 						body.collections = collections.map((collectionId) => ({
@@ -320,20 +339,11 @@ export class Bitwarden implements INodeType {
 						}));
 					}
 
-					if (name) {
-						body.name = name;
-					}
-
 					if (externalId) {
 						body.externalId = externalId;
 					}
 
-					if (accessAll !== undefined) {
-						body.AccessAll = accessAll;
-					}
-
-					const id = this.getNodeParameter('groupId', i);
-					const endpoint = `/public/groups/${id}`;
+					const endpoint = `/public/groups/${groupId}`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 
 				} else if (operation === 'updateMembers') {
@@ -443,7 +453,7 @@ export class Bitwarden implements INodeType {
 					const updateFields = this.getNodeParameter('updateFields', i) as MemberUpdateFields;
 
 					if (isEmpty(updateFields)) {
-						throw new Error(`Please enter at least one field to update for the ${resource}.`);
+						throw new NodeOperationError(this.getNode(), `Please enter at least one field to update for the ${resource}.`);
 					}
 
 					const { accessAll, collections, externalId, type } = updateFields;

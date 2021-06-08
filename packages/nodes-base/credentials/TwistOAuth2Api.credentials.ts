@@ -6,7 +6,9 @@ import {
 const scopes = [
 	'attachments:write',
 	'channels:remove',
+	'comments:remove',
 	'messages:remove',
+	'threads:remove',
 	'workspaces:read',
 ];
 

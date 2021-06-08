@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -13,7 +13,9 @@ import {
 import {
 	IDataObject,
 	IOAuth2Options,
- } from 'n8n-workflow';
+	NodeApiError,
+} from 'n8n-workflow';
+
 
 export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const options: OptionsWithUri = {
@@ -23,7 +25,7 @@ export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions
 		method,
 		qs,
 		body,
-		uri: uri ||`https://api.clickup.com/api/v2${resource}`,
+		uri: uri || `https://api.clickup.com/api/v2${resource}`,
 		json: true,
 	};
 
@@ -34,15 +36,10 @@ export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions
 
 			const credentials = this.getCredentials('clickUpApi');
 
-			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
-			}
-
-			options.headers!['Authorization'] = credentials.accessToken;
+			options.headers!['Authorization'] = credentials?.accessToken;
 			return await this.helpers.request!(options);
 
 		} else {
-
 			const oAuth2Options: IOAuth2Options = {
 				keepBearer: false,
 				tokenType: 'Bearer',
@@ -50,18 +47,12 @@ export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions
 			// @ts-ignore
 			return await this.helpers.requestOAuth2!.call(this, 'clickUpOAuth2Api', options, oAuth2Options);
 		}
-
 	} catch(error) {
-		let errorMessage = error;
-		if (error.err) {
-			errorMessage = error.err;
-		}
-		throw new Error('ClickUp Error: ' + errorMessage);
+		throw new NodeApiError(this.getNode(), error);
 	}
-
 }
 
-export async function clickupApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string ,method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function clickupApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

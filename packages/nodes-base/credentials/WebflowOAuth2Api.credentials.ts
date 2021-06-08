@@ -3,7 +3,6 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-
 export class WebflowOAuth2Api implements ICredentialType {
 	name = 'webflowOAuth2Api';
 	extends = [
