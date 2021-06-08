@@ -2,7 +2,6 @@ import Vue from 'vue';
 
 export const translate = Vue.extend({
 	data() {
-		// TODO: State in mixin advisable?
 		return {
 			_isCredential: false,
 			_nodeType: '',
@@ -22,7 +21,7 @@ export const translate = Vue.extend({
 		/**
 		 * Initialize the `translate` mixin with credentials data.
 		 */
-		initTranslate(
+		initCredentialsData(
 			{ credentialName, isCredential, nodeType }:
 			{ credentialName: string, isCredential: boolean, nodeType: string },
 		) {

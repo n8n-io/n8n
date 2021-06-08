@@ -187,7 +187,7 @@ export default mixins(
 	beforeMount() {
 		this.loadNodesProperties();
 
-		this.initTranslate({
+		this.initCredentialsData({
 			isCredential: true,
 			nodeType: `n8n-nodes-base.${this.credentialTypeData.documentationUrl}`,
 			credentialName: this.credentialTypeData.name,
