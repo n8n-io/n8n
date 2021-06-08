@@ -52,6 +52,7 @@ abstract class NodeError extends Error {
 
 	constructor(node: INode, error: Error | IRawErrorObject) {
 		super();
+		this.removeCircularRefs(error);
 		this.name = this.constructor.name;
 		this.cause = error;
 		this.node = node;
@@ -135,6 +136,26 @@ abstract class NodeError extends Error {
 	protected isTraversableObject(value: any): value is IRawErrorObject { // tslint:disable-line:no-any
 		return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
 	}
+
+	/**
+	 * Remove circular references from objects.
+	 */
+	 protected removeCircularRefs(obj: { [key: string]: any }, seen = new Set()) { // tslint:disable-line:no-any
+		seen.add(obj);
+		Object.entries(obj).forEach(([key, value]) => {
+			if (this.isTraversableObject(value)) {
+				seen.has(value) ? obj[key] = '[circular]' : this.removeCircularRefs(value, seen);
+				return;
+			}
+			if (Array.isArray(value)) {
+				value.forEach((val, index) => {
+					seen.has(val)
+						? value[index] = '[circular]'
+						: (this.isTraversableObject(val) && this.removeCircularRefs(val, seen));
+				});
+			}
+		});
+	}
 }
 
 /**
@@ -198,28 +219,6 @@ export class NodeApiError extends NodeError {
 		}
 
 		this.description = this.findProperty(error, ERROR_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES);
-
-		this.removeCircular();
-	}
-
-	/**
-	 * Remove circular references from error objects to prevent `JSON.stringify()`
-	 * from throwing a conversion error in post-execution workflow hooks.
-	 */
-	removeCircular() {
-		const seen = new Set();
-
-		const findCircular = (obj: JsonObject) => {
-			seen.add(obj);
-			Object.entries(obj).forEach(([key, value]) => {
-				if (this.isTraversableObject(value)) {
-					if (seen.has(value)) delete obj[key];
-					findCircular(value);
-				}
-			});
-		};
-
-		findCircular(this.cause as JsonObject);
 	}
 
 	private setDescriptionFromXml(xml: string) {
@@ -260,7 +259,3 @@ export class NodeApiError extends NodeError {
 		}
 	}
 }
-
-type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
-
-type JsonObject = { [key: string]: JsonValue };
