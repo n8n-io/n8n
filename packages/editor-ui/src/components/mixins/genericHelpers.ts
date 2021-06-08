@@ -43,8 +43,8 @@ export const genericHelpers = mixins(showMessage).extend({
 		editAllowedCheck (): boolean {
 			if (this.isReadOnly) {
 				this.$showMessage({
-					title: 'Workflow can not be changed!',
-					message: `The workflow can not be edited as a past execution gets displayed. To make changed either open the original workflow of which the execution gets displayed or save it under a new name first.`,
+					title: this.$t('genericHelpers.showMessage.title').toString(),
+					message: this.$t('genericHelpers.showMessage.message').toString(),
 					type: 'error',
 					duration: 0,
 				});

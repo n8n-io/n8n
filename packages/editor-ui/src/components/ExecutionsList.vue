@@ -379,8 +379,8 @@ export default mixins(
 			this.isDataLoading = false;
 
 			this.$showMessage({
-				title: 'Execution deleted',
-				message: 'The executions got deleted!',
+				title: this.$t('executionsList.showMessage.handleDeleteSelected.title').toString(),
+				message: this.$t('executionsList.showMessage.handleDeleteSelected.message').toString(),
 				type: 'success',
 			});
 
@@ -580,14 +580,14 @@ export default mixins(
 
 				if (retrySuccessful === true) {
 					this.$showMessage({
-						title: 'Retry successful',
-						message: 'The retry was successful!',
+						title: this.$t('executionsList.showMessage.retrySuccessfulTrue.title').toString(),
+						message: this.$t('executionsList.showMessage.retrySuccessfulTrue.message').toString(),
 						type: 'success',
 					});
 				} else {
 					this.$showMessage({
-						title: 'Retry unsuccessful',
-						message: 'The retry was not successful!',
+						title: this.$t('executionsList.showMessage.retrySuccessfulFalse.title').toString(),
+						message: this.$t('executionsList.showMessage.retrySuccessfulFalse.message').toString(),
 						type: 'error',
 					});
 				}
@@ -642,8 +642,8 @@ export default mixins(
 				this.stoppingExecutions.splice(index, 1);
 
 				this.$showMessage({
-					title: 'Execution stopped',
-					message: `The execution with the id "${activeExecutionId}" got stopped!`,
+					title: this.$t('executionsList.showMessage.stopExecution.title').toString(),
+					message: this.$t('executionsList.showMessage.stopExecution.message').toString(),
 					type: 'success',
 				});
 

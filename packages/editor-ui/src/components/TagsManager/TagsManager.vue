@@ -122,8 +122,8 @@ export default mixins(showMessage).extend({
 				const escapedOldName = escape(oldName);
 
 				this.$showMessage({
-					title: "Tag was updated",
-					message: `The "${escapedOldName}" tag was successfully updated to "${escapedName}"`,
+					title: this.$t('tagsManager.showMessage.onUpdate.title').toString(),
+					message: this.$t('tagsManager.showMessage.onUpdate.message').toString(),
 					type: "success",
 				});
 			} catch (error) {
@@ -153,8 +153,8 @@ export default mixins(showMessage).extend({
 
 				const escapedName = escape(name);
 				this.$showMessage({
-					title: "Tag was deleted",
-					message: `The "${escapedName}" tag was successfully deleted from your tag collection`,
+					title: this.$t('tagsManager.showMessage.onDelete.title').toString(),
+					message: this.$t('tagsManager.showMessage.onDelete.message').toString(),
 					type: "success",
 				});
 			} catch (error) {

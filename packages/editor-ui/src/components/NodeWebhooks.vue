@@ -87,8 +87,8 @@ export default mixins(
 				this.copyToClipboard(webhookUrl);
 
 				this.$showMessage({
-					title: 'Copied',
-					message: `The webhook URL was successfully copied!`,
+					title: this.$t('nodeWebhooks.showMessage.title').toString(),
+					message: this.$t('nodeWebhooks.showMessage.message').toString(),
 					type: 'success',
 				});
 			},

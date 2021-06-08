@@ -133,8 +133,8 @@ export default mixins(
 
 				if (data.id === currentWorkflowId) {
 					this.$showMessage({
-						title: 'Already open',
-						message: 'This is the current workflow',
+						title: this.$t('workflowOpen.showMessage.title').toString(),
+						message: this.$t('workflowOpen.showMessage.message').toString(),
 						type: 'error',
 						duration: 1500,
 					});

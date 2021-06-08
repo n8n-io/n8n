@@ -9,6 +9,10 @@ export default {
 			cause: 'Cause',
 			dataBelowMayContain: 'Data below may contain sensitive information. Proceed with caution when sharing.',
 			stack: 'Stack',
+			showMessage: {
+				title: 'Copied to clipboard',
+				message: '',
+			},
 		},
 
 		noTagsView: {
@@ -22,9 +26,20 @@ export default {
 			notBeingUsed: 'Not being used',
 		},
 
+		genericHelpers: {
+			showMessage: {
+				title: 'Workflow can not be changed!',
+				message: 'The workflow can not be edited as a past execution gets displayed. To make changed either open the original workflow of which the execution gets displayed or save it under a new name first.',
+			},
+		},
+
 		workflowDetails: {
 			addTag: 'Add tag',
 			active: 'Active',
+			showMessage: {
+				title: 'Name missing',
+				message: 'Please enter a name, or press \'esc\' to go back to the old one.',
+			},
 		},
 
 		tagsTable: {
@@ -67,11 +82,41 @@ export default {
 			openCredentialDocs: 'Open credential docs',
 			credentialType: 'Credential type',
 			createNewCredentials: 'Create New Credentials',
+			showMessage: {
+				credentialTypeNull1: {
+					title: 'Credential type not known',
+					message: `Credentials of type "\${this.editCredentials.type}" are not known.`, // interpolation problem
+				},
+				editCredentialsIdUndefined: {
+					title: 'Credential ID missing',
+					message: 'The ID of the credentials which should be edited is missing!',
+				},
+				currentCredentialsUndefined1: {
+					title: 'Credentials not found',
+					message: 'Could not find the credentials with the id',
+				},
+				currentCredentialsUndefined2: {
+					title: 'Problem loading credentials',
+					message: 'No credentials could be loaded!',
+				},
+				credentialTypeNull2: {
+					title: 'Credential type not known',
+					message: `Credentials of type "$\{this.credentialType || this.setCredentialType}" are not known.`, // interpolation problem
+				},
+				credentialsCreated: {
+					title: 'Credentials created',
+					message: 'credentials were successfully created!',
+				},
+				credentialsUpdated: {
+					title: 'Credentials updated',
+					message: 'credentials were successfully updated!',
+				},
+			},
 		},
 
 		credentialsInput: {
-			credentialsName: 'Credentials Name:',
-			credentialData: 'Credential Data:',
+			credentialsName: 'Credentials Name',
+			credentialData: 'Credential Data',
 			enterAllRequiredProperties: 'Enter all required properties',
 			connected: 'Connected',
 			notConnected: 'Not connected',
@@ -83,6 +128,16 @@ export default {
 			create: 'Create',
 			noAccess: 'No Access',
 			access: 'Access',
+			showMessage: {
+				copyCallbackUrl: {
+					title: 'Copied',
+					message: 'Callback URL was successfully copied!',
+				},
+				receiveMessage: {
+					title: 'Connected',
+					message: 'Connected successfully!',
+				},
+			},
 		},
 
 		credentialsList: {
@@ -94,6 +149,10 @@ export default {
 				headline: 'Delete Credentials?',
 				confirmButtonText: 'Yes, delete!',
 				cancelButtonText: '',
+			},
+			showMessage: {
+				title: 'Credentials deleted',
+				message: `The credential "\${credential.name}" got deleted!`, // interpolation problem
 			},
 		},
 
@@ -109,6 +168,10 @@ export default {
 			cancel: 'Cancel',
 			duplicateWorkflow: 'Duplicate Workflow',
 			chooseOrCreateATag: 'Choose or create a tag',
+			showMessage: {
+				title: 'Name missing',
+				message: 'Please enter a name.',
+			},
 		},
 
 		executionsList: {
@@ -142,12 +205,30 @@ export default {
 				confirmButtonText: 'Yes, delete!',
 				cancelButtonText: '',
 			},
+			showMessage: {
+				handleDeleteSelected: {
+					title: 'Execution deleted',
+					message: 'The executions got deleted!',
+				},
+				retrySuccessfulTrue: {
+					title: 'Retry successful',
+					message: 'The retry was successful!',
+				},
+				retrySuccessfulFalse: {
+					title: 'Retry unsuccessful',
+					message: 'The retry was not successful!',
+				},
+				stopExecution: {
+					title: 'Execution stopped',
+					message: `The execution with the id "$\{activeExecutionId}" got stopped!`, // interpolation problem
+				},
+			},
 			statusTooltipText: {
 				theWorkflowIsCurrentlyExecuting: 'The worklow is currently executing.',
 				theWorkflowExecutionWasARetryOfAndItWasSuccessful: `The workflow execution was a retry of "\${entry.retryOf}" and it was successful.`, // interpolation problem
 				theWorkflowExecutionWasSuccessful: 'The worklow execution was successful.',
 				theWorkflowExecutionWasARetryOfAndFailed: `The workflow execution was a retry of "\${entry.retryOf}" and failed.<br />New retries have to be,started from the original execution.`, // interpolation problem
-				theWorkflowExecutionFailedButTheRetryWasSuccessful: `The workflow execution failed but the retry "\${entry.retrySuccessId}" was successful.`,
+				theWorkflowExecutionFailedButTheRetryWasSuccessful: `The workflow execution failed but the retry "\${entry.retrySuccessId}" was successful.`, // interpolation problem
 				theWorkflowExecutionIsProbablyStillRunning: 'The workflow execution is probably still running but it may have crashed and n8n cannot safely tell. ',
 				theWorkflowExecutionFailed: 'The workflow execution failed.',
 			},
@@ -198,6 +279,28 @@ export default {
 				forum: 'Forum',
 				workflows: 'workflows',
 			},
+			showMessage: {
+				stopExecution: {
+					title: 'Execution stopped',
+					message: `The execution with the id "$\{executionId}" got stopped!`, // interpolation problem
+				},
+				handleFileImport: {
+					title: '',
+					message: '',
+				},
+				workflowDelete: {
+					title: '',
+					message: '',
+				},
+				worklowNewImportConfirmTrue: {
+					title: '',
+					message: '',
+				},
+				worklowNewImportConfirmFalse: {
+					title: '',
+					message: '',
+				},
+			},
 		},
 
 		multipleParameter: {
@@ -218,6 +321,10 @@ export default {
 
 		nodeCredentials: {
 			credentials: 'Credentials',
+			showMessage: {
+				title: 'Credentials not found',
+				message: `The credentials named "$\{name}" of type "$\{credentialType}" could not be found!`, // interpolation problem
+			},
 		},
 
 		nodeSettings: {
@@ -266,6 +373,10 @@ export default {
 		nodeWebhooks: {
 			webhookUrls: 'Webhook URLs',
 			displayUrlFor: 'Display URL for:',
+			showMessage: {
+				title: 'Copied',
+				message: 'The webhook URL was successfully copied!',
+			},
 		},
 
 		parameterInput: {
@@ -277,6 +388,22 @@ export default {
 		pushConnectionTracker: {
 			cannotConnectToServer: 'Cannot connect to server.<br />It is either down or you have a connection issue. <br />It should reconnect automatically once the issue is resolved.',
 			connectionLost: 'Connection lost',
+		},
+
+		pushConnection: {
+			showMessage: {
+				runDataExecutedFinishedFalse: {
+					title: 'Problem executing workflow',
+					message: {
+						errorMessage1: 'There was a problem executing the workflow!',
+						errorMessage2: `There was a problem executing the workflow:<br /><strong>"$\{receivedError}"</strong>`, // interpolation problem
+					},
+				},
+				runDataExecutedFinishedTrue: {
+					title: 'Workflow got executed',
+					message: 'Workflow did get executed successfully!',
+				},
+			},
 		},
 
 		runData: {
@@ -320,6 +447,16 @@ export default {
 			manageTags: 'Manage tags',
 			done: 'Done',
 			couldNotDeleteTag: 'Could not delete tag',
+			showMessage: {
+				onUpdate: {
+					title: 'Tag was updated',
+					message: `The "$\{escapedOldName}" tag was successfully updated to "$\{escapedName}"`, // interpolation problem
+				},
+				onDelete: {
+					title: 'Tag was deleted',
+					message: `A problem occurred when trying to delete the "\${escapedName}" tag`, // interpolation problem
+				},
+			},
 		},
 
 		variableSelectorItem: {
@@ -337,6 +474,24 @@ export default {
 				confirmButtonText: 'Yes, activate and save!',
 				cancelButtonText: '',
 			},
+			showMessage: {
+				activeChangedWorkflowIdUndefined: {
+					title: 'Problem activating workflow',
+					message: 'The workflow did not get saved yet so can not be set active!',
+				},
+				activeChangedNodesIssuesExistTrue: {
+					title: 'Problem activating workflow',
+					message: 'It is only possible to activate a workflow when all issues on all nodes got resolved!',
+				},
+				displayActivationError: {
+					title: 'Problem activating workflow',
+					message: {
+						errorDataUndefined: 'Sorry there was a problem. No error got found to display.',
+						errorDataNotUndefined: `The following error occurred on workflow activation:<br /><i>$\{errorData.error.message}</i>`, // interpolation problem
+						catchBlock: 'Sorry there was a problem requesting the error',
+					},
+				},
+			},
 		},
 
 		workflowOpen: {
@@ -352,6 +507,30 @@ export default {
 				headline: 'Save your Changes?',
 				confirmButtonText: 'Yes, switch workflows and forget changes',
 				cancelButtonText: '',
+			},
+			showMessage: {
+				title: 'Already open',
+				message: 'This is the current workflow',
+			},
+		},
+
+		workflowHelpers: {
+			showMessage: {
+				saveCurrentWorkflow: {
+					title: 'Problem saving workflow',
+					message: 'There was a problem saving the workflow',
+				},
+				saveAsNewWorkflow: {
+					title: 'Problem saving workflow',
+					message: 'There was a problem saving the workflow',
+				},
+			},
+		},
+
+		workflowRun: {
+			showMessage: {
+				title: 'Workflow can not be executed',
+				message: 'The workflow has issues. Please fix them first',
 			},
 		},
 
@@ -401,6 +580,16 @@ export default {
 				executionTimeoutToggle: 'Cancel workflow execution after defined time',
 				executionTimeout: 'After what time the workflow should timeout.',
 			},
+			showMessage: {
+				openDialog: {
+					title: 'No workflow active',
+					message: 'No workflow active to display settings of.',
+				},
+				saveSettings: {
+					title: 'Settings saved',
+					message: 'The workflow settings got saved!',
+				},
+			},
 		},
 
 		nodeView: {
@@ -437,6 +626,32 @@ export default {
 					headline: 'Save your Changes?',
 					confirmButtonText: 'Yes, switch workflows and forget changes',
 					cancelButtonText: '',
+				},
+			},
+			showMessage: {
+				keyDown: {
+					title: 'Created',
+					message: 'A new workflow got created!',
+				},
+				stopWaitingForWebhook: {
+					title: 'Webhook got deleted',
+					message: 'The webhook got deleted!',
+				},
+				stopExecutionTry: {
+					title: 'Execution stopped',
+					message: `The execution with the id "$\{executionId}" got stopped!`, // interpolation problem
+				},
+				stopExecutionCatch: {
+					title: 'Workflow finished executing',
+					message: 'Unable to stop operation in time. Workflow finished executing already.',
+				},
+				addNodeButton: {
+					title: 'Could not create node!',
+					message: `Node of type "$\{nodeTypeName}" could not be created as it is not known.`, // interpolation problem
+				},
+				showMaxNodeTypeError: {
+					title: 'Could not create node!',
+					message: `Node can not be created because in a workflow max. $\{maxNodes} $\{maxNodes === 1 ? 'node' : 'nodes'} of type "$\{nodeTypeData.displayName}" $\{maxNodes === 1 ? 'is' : 'are'} allowed!`, // interpolation problem
 				},
 			},
 		},

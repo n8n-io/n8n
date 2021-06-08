@@ -78,8 +78,8 @@ export const workflowRun = mixins(
 						}
 
 						this.$showMessage({
-							title: 'Workflow can not be executed',
-							message: 'The workflow has issues. Please fix them first:<br />&nbsp;&nbsp;- ' + errorMessages.join('<br />&nbsp;&nbsp;- '),
+							title: this.$t('workflowRun.showMessage.title').toString(),
+							message: this.$t('workflowRun.showMessage.message').toString() + ':<br />&nbsp;&nbsp;- ' + errorMessages.join('<br />&nbsp;&nbsp;- '),
 							type: 'error',
 							duration: 0,
 						});

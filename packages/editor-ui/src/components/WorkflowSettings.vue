@@ -358,8 +358,8 @@ export default mixins(
 			const workflowId = this.$route.params.name;
 			if (this.$route.params.name === undefined) {
 				this.$showMessage({
-					title: 'No workflow active',
-					message: `No workflow active to display settings of.`,
+					title: this.$t('workflowSettings.showMessage.openDialog.title').toString(),
+					message: this.$t('workflowSettings.showMessage.openDialog.message').toString(),
 					type: 'error',
 					duration: 0,
 				});
@@ -466,8 +466,8 @@ export default mixins(
 			this.isLoading = false;
 
 			this.$showMessage({
-				title: 'Settings saved',
-				message: 'The workflow settings got saved!',
+				title: this.$t('workflowSettings.showMessage.saveSettings.title').toString(),
+				message: this.$t('workflowSettings.showMessage.saveSettings.message').toString(),
 				type: 'success',
 			});
 

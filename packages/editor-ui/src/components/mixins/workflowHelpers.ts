@@ -426,8 +426,8 @@ export const workflowHelpers = mixins(
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
 					this.$showMessage({
-						title: 'Problem saving workflow',
-						message: `There was a problem saving the workflow: "${e.message}"`,
+						title: this.$t('workflowSettings.showMessage.saveCurrentWorkflow.title').toString(),
+						message: `${this.$t('workflowSettings.showMessage.saveCurrentWorkflow.message').toString()}: "${e.message}"`,
 						type: 'error',
 					});
 
@@ -476,8 +476,8 @@ export const workflowHelpers = mixins(
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
 					this.$showMessage({
-						title: 'Problem saving workflow',
-						message: `There was a problem saving the workflow: "${e.message}"`,
+						title: this.$t('workflowHelpers.showMessage.saveAsNewWorkflow.title').toString(),
+						message: `${this.$t('workflowHelpers.showMessage.saveAsNewWorkflow.message').toString()}: "${e.message}"`,
 						type: 'error',
 					});
 

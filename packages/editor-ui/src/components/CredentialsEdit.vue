@@ -152,8 +152,8 @@ export default mixins(
 
 					if (credentialType === null) {
 						this.$showMessage({
-							title: 'Credential type not known',
-							message: `Credentials of type "${this.editCredentials.type}" are not known.`,
+							title: this.$t('credentialsEdit.showMessage.credentialTypeNull1.title').toString(),
+							message: this.$t('credentialsEdit.showMessage.credentialTypeNull1.message').toString(),
 							type: 'error',
 							duration: 0,
 						});
@@ -163,8 +163,8 @@ export default mixins(
 
 					if (this.editCredentials.id === undefined) {
 						this.$showMessage({
-							title: 'Credential ID missing',
-							message: 'The ID of the credentials which should be edited is missing!',
+							title: this.$t('credentialsEdit.showMessage.editCredentialsIdUndefined.title').toString(),
+							message: this.$t('credentialsEdit.showMessage.editCredentialsIdUndefined.message').toString(),
 							type: 'error',
 						});
 						this.closeDialog();
@@ -182,8 +182,8 @@ export default mixins(
 
 					if (currentCredentials === undefined) {
 						this.$showMessage({
-							title: 'Credentials not found',
-							message: `Could not find the credentials with the id: ${this.editCredentials.id}`,
+							title: this.$t('credentialsEdit.showMessage.currentCredentialsUndefined1.title').toString(),
+							message: this.$t('credentialsEdit.showMessage.currentCredentialsUndefined1.message').toString() + ': ' + this.editCredentials.id,
 							type: 'error',
 							duration: 0,
 						});
@@ -193,8 +193,8 @@ export default mixins(
 
 					if (currentCredentials === undefined) {
 						this.$showMessage({
-							title: 'Problem loading credentials',
-							message: 'No credentials could be loaded!',
+							title: this.$t('credentialsEdit.showMessage.currentCredentialsUndefined2.title').toString(),
+							message: this.$t('credentialsEdit.showMessage.currentCredentialsUndefined2.message').toString(),
 							type: 'error',
 						});
 						return;
@@ -208,8 +208,8 @@ export default mixins(
 						const credentialType = this.$store.getters.credentialType(this.credentialType || this.setCredentialType);
 						if (credentialType === null) {
 							this.$showMessage({
-								title: 'Credential type not known',
-								message: `Credentials of type "${this.credentialType || this.setCredentialType}" are not known.`,
+								title: this.$t('credentialsEdit.showMessage.credentialTypeNull2.title').toString(),
+								message: this.$t('credentialsEdit.showMessage.credentialTypeNull2.message').toString(),
 								type: 'error',
 								duration: 0,
 							});
@@ -275,8 +275,8 @@ export default mixins(
 			this.$emit('credentialsCreated', eventData);
 
 			this.$showMessage({
-				title: 'Credentials created',
-				message: `"${eventData.data.name}" credentials were successfully created!`,
+				title: this.$t('credentialsEdit.showMessage.credentialsCreated.title').toString(),
+				message: `"${eventData.data.name}" ${this.$t('credentialsEdit.showMessage.credentialsCreated.message')}`,
 				type: 'success',
 			});
 
@@ -288,8 +288,8 @@ export default mixins(
 			this.$emit('credentialsUpdated', eventData);
 
 			this.$showMessage({
-				title: 'Credentials updated',
-				message: `"${eventData.data.name}" credentials were successfully updated!`,
+				title: this.$t('credentialsEdit.showMessage.credentialsUpdated.title').toString(),
+				message: `"${eventData.data.name}" ${this.$t('credentialsEdit.showMessage.credentialsUpdated.message')}`,
 				type: 'success',
 			});
 

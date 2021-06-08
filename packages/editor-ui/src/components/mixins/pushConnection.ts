@@ -218,7 +218,7 @@ export const pushConnection = mixins(
 					const workflow = this.getWorkflow();
 					if (runDataExecuted.finished !== true) {
 						// There was a problem with executing the workflow
-						let errorMessage = 'There was a problem executing the workflow!';
+						let errorMessage = this.$t('pushConnection.showMessage.runDataExecutedFinishedFalse.message.errorMessage1').toString();
 
 						if (runDataExecuted.data.resultData.error && runDataExecuted.data.resultData.error.message) {
 							let nodeName: string | undefined;
@@ -231,14 +231,14 @@ export const pushConnection = mixins(
 							const receivedError = nodeName
 								? `${nodeName}: ${runDataExecuted.data.resultData.error.message}`
 								: runDataExecuted.data.resultData.error.message;
-							errorMessage = `There was a problem executing the workflow:<br /><strong>"${receivedError}"</strong>`;
+							errorMessage = this.$t('pushConnection.showMessage.runDataExecutedFinishedFalse.message.errorMessage2').toString();
 						}
 
 						runDataExecutedErrorMessage = errorMessage;
 
 						this.$titleSet(workflow.name as string, 'ERROR');
 						this.$showMessage({
-							title: 'Problem executing workflow',
+							title: this.$t('pushConnection.showMessage.runDataExecutedFinishedFalse.title').toString(),
 							message: errorMessage,
 							type: 'error',
 						});
@@ -246,8 +246,8 @@ export const pushConnection = mixins(
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');
 						this.$showMessage({
-							title: 'Workflow got executed',
-							message: 'Workflow did get executed successfully!',
+							title: this.$t('pushConnection.showMessage.runDataExecutedFinishedTrue.title').toString(),
+							message: this.$t('pushConnection.showMessage.runDataExecutedFinishedTrue.message').toString(),
 							type: 'success',
 						});
 					}

@@ -505,8 +505,8 @@ export default mixins(
 					this.$router.push({ name: 'NodeViewNew' });
 
 					this.$showMessage({
-						title: 'Created',
-						message: 'A new workflow got created!',
+						title: this.$t('nodeView.showMessage.keyDown.title').toString(),
+						message: this.$t('nodeView.showMessage.keyDown.message').toString(),
 						type: 'success',
 					});
 				} else if ((e.key === 's') && (this.isCtrlKeyPressed(e) === true)) {
@@ -741,8 +741,8 @@ export default mixins(
 					this.stopExecutionInProgress = true;
 					const stopData: IExecutionsStopData = await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
-						title: 'Execution stopped',
-						message: `The execution with the id "${executionId}" got stopped!`,
+						title: this.$t('nodeView.showMessage.stopExecutionTry.title').toString(),
+						message: this.$t('nodeView.showMessage.stopExecutionTry.message').toString(),
 						type: 'success',
 					});
 				} catch (error) {
@@ -767,8 +767,8 @@ export default mixins(
 						this.$store.commit('setWorkflowExecutionData', executedData);
 						this.$store.commit('removeActiveAction', 'workflowRunning');
 						this.$showMessage({
-							title: 'Workflow finished executing',
-							message: 'Unable to stop operation in time. Workflow finished executing already.',
+							title: this.$t('nodeView.showMessage.stopExecutionCatch.title').toString(),
+							message: this.$t('nodeView.showMessage.stopExecutionCatch.message').toString(),
 							type: 'success',
 						});
 					} else {
@@ -788,8 +788,8 @@ export default mixins(
 				}
 
 				this.$showMessage({
-					title: 'Webhook got deleted',
-					message: `The webhook got deleted!`,
+					title: this.$t('nodeView.showMessage.stopWaitingForWebhook.title').toString(),
+					message: this.$t('nodeView.showMessage.stopWaitingForWebhook.message').toString(),
 					type: 'success',
 				});
 			},
@@ -1013,8 +1013,8 @@ export default mixins(
 			showMaxNodeTypeError (nodeTypeData: INodeTypeDescription) {
 				const maxNodes = nodeTypeData.maxNodes;
 				this.$showMessage({
-					title: 'Could not create node!',
-					message: `Node can not be created because in a workflow max. ${maxNodes} ${maxNodes === 1 ? 'node' : 'nodes'} of type "${nodeTypeData.displayName}" ${maxNodes === 1 ? 'is' : 'are'} allowed!`,
+					title: this.$t('nodeView.showMessage.showMaxNodeTypeError.title').toString(),
+					message: this.$t('nodeView.showMessage.showMaxNodeTypeError.message').toString(),
 					type: 'error',
 					duration: 0,
 				});
@@ -1028,8 +1028,8 @@ export default mixins(
 
 				if (nodeTypeData === null) {
 					this.$showMessage({
-						title: 'Could not create node!',
-						message: `Node of type "${nodeTypeName}" could not be created as it is not known.`,
+						title: this.$t('nodeView.showMessage.addNodeButton.title').toString(),
+						message: this.$t('nodeView.showMessage.addNodeButton.message').toString(),
 						type: 'error',
 					});
 					return;

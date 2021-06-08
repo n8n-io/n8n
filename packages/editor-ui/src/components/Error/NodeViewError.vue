@@ -93,8 +93,8 @@ export default mixins(
 		},
 		copySuccess() {
 			this.$showMessage({
-				title: 'Copied to clipboard',
-				message: '',
+				title: this.$t('workflowSettings.showMessage.title').toString(),
+				message: this.$t('workflowSettings.showMessage.message').toString(),
 				type: 'info',
 			});
 		},

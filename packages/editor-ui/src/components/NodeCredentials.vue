@@ -218,8 +218,8 @@ export default mixins(
 			const credentialData = this.credentialOptions[credentialType].find((optionData: ICredentialsResponse) => optionData.name === name);
 			if (credentialData === undefined) {
 				this.$showMessage({
-					title: 'Credentials not found',
-					message: `The credentials named "${name}" of type "${credentialType}" could not be found!`,
+					title: this.$t('nodeCredentials.showMessage.title').toString(),
+					message: this.$t('nodeCredentials.showMessage.message').toString(),
 					type: 'error',
 				});
 				return;

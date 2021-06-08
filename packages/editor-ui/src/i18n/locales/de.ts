@@ -9,11 +9,26 @@ export default {
 			cause: 'Deutsch',
 			dataBelowMayContain: 'Deutsch',
 			stack: 'Deutsch',
+			showMessage: {
+				title: 'Copied to clipboard',
+				message: '',
+			},
+		},
+
+		genericHelpers: {
+			showMessage: {
+				title: 'Deutsch',
+				message: 'Deutsch',
+			},
 		},
 
 		workflowDetails: {
 			addTag: 'Deutsch',
 			active: 'Deutsch',
+			showMessage: {
+				title: 'Deutsch',
+				message: 'Deutsch',
+			},
 		},
 
 		noTagsView: {
@@ -67,6 +82,36 @@ export default {
 			openCredentialDocs: 'Deutsch',
 			credentialType: 'Deutsch',
 			createNewCredentials: 'Deutsch',
+			showMessage: {
+				credentialTypeNull1: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				editCredentialsIdUndefined: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				currentCredentialsUndefined1: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				currentCredentialsUndefined2: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				credentialTypeNull2: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				credentialsCreated: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				credentialsUpdated: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+			},
 		},
 
 		credentialsInput: {
@@ -83,6 +128,16 @@ export default {
 			create: 'Deutsch',
 			noAccess: 'Deutsch',
 			access: 'Deutsch',
+			showMessage: {
+				copyCallbackUrl: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				receiveMessage: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+			},
 		},
 
 		credentialsList: {
@@ -94,6 +149,10 @@ export default {
 				headline: 'Deutsch',
 				confirmButtonText: 'Deutsch',
 				cancelButtonText: 'Deutsch',
+			},
+			showMessage: {
+				title: 'Deutsch',
+				message: 'Deutsch',
 			},
 		},
 
@@ -109,6 +168,10 @@ export default {
 			cancel: 'Deutsch',
 			duplicateWorkflow: 'Deutsch',
 			chooseOrCreateATag: 'Deutsch',
+			showMessage: {
+				title: 'Deutsch',
+				message: 'Deutsch',
+			},
 		},
 
 		executionsList: {
@@ -142,12 +205,30 @@ export default {
 				confirmButtonText: 'Deutsch',
 				cancelButtonText: 'Deutsch',
 			},
+			showMessage: {
+				handleDeleteSelected: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				retrySuccessfulTrue: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				retrySuccessfulFalse: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				stopExecution: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+			},
 			statusTooltipText: {
 				theWorkflowIsCurrentlyExecuting: 'Deutsch',
-				theWorkflowExecutionWasARetryOfAndItWasSuccessful: `Deutsch`, // interpolation problem
+				theWorkflowExecutionWasARetryOfAndItWasSuccessful: 'Deutsch',
 				theWorkflowExecutionWasSuccessful: 'Deutsch',
-				theWorkflowExecutionWasARetryOfAndFailed: `Deutsch`, // interpolation problem
-				theWorkflowExecutionFailedButTheRetryWasSuccessful: `Deutsch`,
+				theWorkflowExecutionWasARetryOfAndFailed: 'Deutsch',
+				theWorkflowExecutionFailedButTheRetryWasSuccessful: 'Deutsch',
 				theWorkflowExecutionIsProbablyStillRunning: 'Deutsch',
 				theWorkflowExecutionFailed: 'Deutsch',
 			},
@@ -198,6 +279,28 @@ export default {
 				forum: 'Deutsch',
 				workflows: 'Deutsch',
 			},
+			showMessage: {
+				stopExecution: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				handleFileImport: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				workflowDelete: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				worklowNewImportConfirmTrue: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				worklowNewImportConfirmFalse: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+			},
 		},
 
 		multipleParameter: {
@@ -218,6 +321,10 @@ export default {
 
 		nodeCredentials: {
 			credentials: 'Deutsch',
+			showMessage: {
+				title: 'Deutsch',
+				message: 'Deutsch',
+			},
 		},
 
 		nodeSettings: {
@@ -266,6 +373,10 @@ export default {
 		nodeWebhooks: {
 			webhookUrls: 'Deutsch',
 			displayUrlFor: 'Deutsch',
+			showMessage: {
+				title: 'Deutsch',
+				message: 'Deutsch',
+			},
 		},
 
 		parameterInput: {
@@ -277,6 +388,22 @@ export default {
 		pushConnectionTracker: {
 			cannotConnectToServer: 'Deutsch',
 			connectionLost: 'Deutsch',
+		},
+
+		pushConnection: {
+			showMessage: {
+				runDataExecutedFinishedFalse: {
+					title: 'Deutsch',
+					message: {
+						errorMessage1: 'Deutsch',
+						errorMessage2: 'Deutsch',
+					},
+				},
+				runDataExecutedFinishedTrue: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+			},
 		},
 
 		runData: {
@@ -320,6 +447,16 @@ export default {
 			manageTags: 'Deutsch',
 			done: 'Deutsch',
 			couldNotDeleteTag: 'Deutsch',
+			showMessage: {
+				onUpdate: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				onDelete: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+			},
 		},
 
 		variableSelectorItem: {
@@ -337,6 +474,24 @@ export default {
 				confirmButtonText: 'Deutsch',
 				cancelButtonText: 'Deutsch',
 			},
+			showMessage: {
+				activeChangedWorkflowIdUndefined: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				activeChangedNodesIssuesExistTrue: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				displayActivationError: {
+					title: 'Deutsch',
+					message: {
+						errorDataUndefined: 'Deutsch',
+						errorDataNotUndefined: 'Deutsch',
+						catchBlock: 'Deutsch',
+					},
+				},
+			},
 		},
 
 		workflowOpen: {
@@ -352,6 +507,30 @@ export default {
 				headline: 'Deutsch',
 				confirmButtonText: 'Deutsch',
 				cancelButtonText: 'Deutsch',
+			},
+			showMessage: {
+				title: 'Deutsch',
+				message: 'Deutsch',
+			},
+		},
+
+		workflowHelpers: {
+			showMessage: {
+				saveCurrentWorkflow: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				saveAsNewWorkflow: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+			},
+		},
+
+		workflowRun: {
+			showMessage: {
+				title: 'Deutsch',
+				message: 'Deutsch',
 			},
 		},
 
@@ -406,6 +585,16 @@ export default {
 				executionTimeoutToggle: 'Deutsch',
 				executionTimeout: 'Deutsch',
 			},
+			showMessage: {
+				openDialog: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				saveSettings: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+			},
 		},
 
 		nodeView: {
@@ -442,6 +631,32 @@ export default {
 					headline: 'Deutsch',
 					confirmButtonText: 'Deutsch',
 					cancelButtonText: 'Deutsch',
+				},
+			},
+			showMessage: {
+				keyDown: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				stopWaitingForWebhook: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				stopExecutionTry: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				stopExecutionCatch: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				addNodeButton: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				showMaxNodeTypeError: {
+					title: 'Deutsch',
+					message: 'Deutsch',
 				},
 			},
 		},

@@ -99,8 +99,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 			const name = this.name.trim();
 			if (!name) {
 				this.$showMessage({
-					title: "Name missing",
-					message: `Please enter a name.`,
+					title: this.$t('duplicateWorkflowDialog.showMessage.title').toString(),
+					message: this.$t('duplicateWorkflowDialog.showMessage.message').toString(),
 					type: "error",
 				});
 

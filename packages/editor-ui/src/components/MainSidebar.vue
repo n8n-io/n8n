@@ -319,8 +319,8 @@ export default mixins(
 					this.stopExecutionInProgress = true;
 					const stopData: IExecutionsStopData = await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
-						title: 'Execution stopped',
-						message: `The execution with the id "${executionId}" got stopped!`,
+						title: this.$t('mainSideBar.showMessage.stopExecution.title').toString(),
+						message: this.$t('mainSideBar.showMessage.stopExecution.message').toString(),
 						type: 'success',
 					});
 				} catch (error) {
@@ -348,8 +348,8 @@ export default mixins(
 						worflowData = JSON.parse(data as string);
 					} catch (error) {
 						this.$showMessage({
-							title: 'Could not import file',
-							message: `The file does not contain valid JSON data.`,
+							title: this.$t('mainSideBar.showMessage.handleFileImport.title').toString(),
+							message: this.$t('mainSideBar.showMessage.handleFileImport.message').toString(),
 							type: 'error',
 						});
 						return;
@@ -406,8 +406,8 @@ export default mixins(
 					// Reset tab title since workflow is deleted.
 					this.$titleReset();
 					this.$showMessage({
-						title: 'Workflow got deleted',
-						message: `The workflow "${this.workflowName}" got deleted!`,
+						title: this.$t('mainSideBar.showMessage.workflowDelete.title').toString(),
+						message: this.$t('mainSideBar.showMessage.workflowDelete.message').toString(),
 						type: 'success',
 					});
 
@@ -442,8 +442,8 @@ export default mixins(
 							this.$router.push({ name: 'NodeViewNew' });
 
 							this.$showMessage({
-								title: 'Workflow created',
-								message: 'A new workflow got created!',
+								title: this.$t('mainSideBar.showMessage.worklowNewImportConfirmTrue.title').toString(),
+								message: this.$t('mainSideBar.showMessage.worklowNewImportConfirmTrue.message').toString(),
 								type: 'success',
 							});
 						}
@@ -451,8 +451,8 @@ export default mixins(
 						this.$router.push({ name: 'NodeViewNew' });
 
 						this.$showMessage({
-							title: 'Workflow created',
-							message: 'A new workflow got created!',
+							title: this.$t('mainSideBar.showMessage.worklowNewImportConfirmFalse.title').toString(),
+								message: this.$t('mainSideBar.showMessage.worklowNewImportConfirmFalse.message').toString(),
 							type: 'success',
 						});
 					}

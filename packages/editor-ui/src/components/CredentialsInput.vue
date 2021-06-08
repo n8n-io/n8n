@@ -293,8 +293,8 @@ export default mixins(
 			this.copyToClipboard(this.oAuthCallbackUrl);
 
 			this.$showMessage({
-				title: 'Copied',
-				message: `Callback URL was successfully copied!`,
+				title: this.$t('credentialsEdit.showMessage.copyCallbackUrl.title').toString(),
+				message: this.$t('credentialsEdit.showMessage.copyCallbackUrl.message').toString(),
 				type: 'success',
 			});
 		},
@@ -440,8 +440,8 @@ export default mixins(
 					}
 
 					this.$showMessage({
-						title: 'Connected',
-						message: 'Connected successfully!',
+						title: this.$t('credentialsEdit.showMessage.receiveMessage.title').toString(),
+						message: this.$t('credentialsEdit.showMessage.receiveMessage.message').toString(),
 						type: 'success',
 					});
 

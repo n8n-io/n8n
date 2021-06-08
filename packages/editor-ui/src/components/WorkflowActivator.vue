@@ -75,8 +75,8 @@ export default mixins(
 				async activeChanged (newActiveState: boolean) {
 					if (this.workflowId === undefined) {
 						this.$showMessage({
-							title: 'Problem activating workflow',
-							message: 'The workflow did not get saved yet so can not be set active!',
+							title: this.$t('workflowActivator.showMessage.activeChangedWorkflowIdUndefined.title').toString(),
+							message: this.$t('workflowActivator.showMessage.activeChangedWorkflowIdUndefined.message').toString(),
 							type: 'error',
 						});
 						return;
@@ -84,8 +84,8 @@ export default mixins(
 
 					if (this.nodesIssuesExist === true) {
 						this.$showMessage({
-							title: 'Problem activating workflow',
-							message: 'It is only possible to activate a workflow when all issues on all nodes got resolved!',
+							title: this.$t('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title').toString(),
+							message: this.$t('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message').toString(),
 							type: 'error',
 						});
 						return;
@@ -154,16 +154,16 @@ export default mixins(
 						const errorData = await this.restApi().getActivationError(this.workflowId);
 
 						if (errorData === undefined) {
-							errorMessage = 'Sorry there was a problem. No error got found to display.';
+							errorMessage = this.$t('workflowActivator.showMessage.displayActivationError.message.errorDataUndefined').toString();
 						} else {
-							errorMessage = `The following error occurred on workflow activation:<br /><i>${errorData.error.message}</i>`;
+							errorMessage = this.$t('workflowActivator.showMessage.displayActivationError.message.errorDataNotUndefined').toString();
 						}
 					} catch (error) {
-						errorMessage = 'Sorry there was a problem requesting the error';
+						errorMessage = this.$t('workflowActivator.showMessage.displayActivationError.message.catchBlock').toString();
 					}
 
 					this.$showMessage({
-						title: 'Problem activating workflow',
+						title: this.$t('workflowActivator.showMessage.displayActivationError.title').toString(),
 						message: errorMessage,
 						type: 'warning',
 						duration: 0,

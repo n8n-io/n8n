@@ -169,8 +169,8 @@ export default mixins(
 			this.updateNodesCredentialsIssues();
 
 			this.$showMessage({
-				title: 'Credentials deleted',
-				message: `The credential "${credential.name}" got deleted!`,
+				title: this.$t('credentialsList.showMessage.title').toString(),
+				message: this.$t('credentialsList.showMessage.message').toString(),
 				type: 'success',
 			});
 

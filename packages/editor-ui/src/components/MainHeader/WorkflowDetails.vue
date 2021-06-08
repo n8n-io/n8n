@@ -184,8 +184,8 @@ export default mixins(workflowHelpers).extend({
 			const newName = name.trim();
 			if (!newName) {
 				this.$showMessage({
-					title: "Name missing",
-					message: `Please enter a name, or press 'esc' to go back to the old one.`,
+					title: this.$t('workflowSettings.showMessage.title').toString(),
+					message: this.$t('workflowSettings.showMessage.message').toString(),
 					type: "error",
 				});
 
