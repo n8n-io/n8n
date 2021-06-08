@@ -1,8 +1,4 @@
 import {
-	OptionsWithUri,
-} from 'request';
-
-import {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';

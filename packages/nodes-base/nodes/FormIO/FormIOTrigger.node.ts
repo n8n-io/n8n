@@ -12,12 +12,6 @@ import {
 
 import { formIOApiRequest, getFormFieldDetails } from './GenericFunctions';
 
-// import {
-//     snakeCase,
-// } from 'change-case';
-
-
-
 
 export class FormIOTrigger implements INodeType {
     description: INodeTypeDescription = {
@@ -122,7 +116,6 @@ export class FormIOTrigger implements INodeType {
             formData,
             formInputFields
         }
-        
         return {
             workflowData: [
                 this.helpers.returnJsonArray(result)

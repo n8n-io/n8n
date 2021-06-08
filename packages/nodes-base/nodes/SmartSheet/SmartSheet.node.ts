@@ -3,15 +3,12 @@ import {
 } from 'n8n-core';
 
 import {
-    IDataObject,
     INodeExecutionData,
     INodeType,
     INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-    OptionsWithUri,
-} from 'request';
+
 import { createRowinSheet } from './GenericFunction';
 
 const client = require('smartsheet');
@@ -41,6 +38,13 @@ export class SmartSheet implements INodeType {
             {
                 displayName: 'Sheet ID',
                 name: 'sheetId',
+                type: 'string',
+                required: true,
+                default: '',
+            },
+            {
+                displayName: 'API KEY',
+                name: 'apiKey',
                 type: 'string',
                 required: true,
                 default: '',

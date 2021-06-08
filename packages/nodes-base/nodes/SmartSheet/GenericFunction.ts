@@ -1,7 +1,7 @@
 export async function createRowinSheet(this: any) {
     const client = require('smartsheet');
-    const sheetId = '1769592981874564';
-    const API_KEY = 'mfFGtMFif8G0UBjazEQObEq2Bwn6Qc5xJWiv4';
+    const sheetId = this.getNodeParameter('sheetId') as string;
+    const API_KEY = this.getNodeParameter('apiKey') as string;
     const smartsheet = client.createClient({
         accessToken: API_KEY,
         logLevel: 'info'
@@ -24,8 +24,6 @@ export async function createRowinSheet(this: any) {
     } catch (e) {
         throw new Error(e);
     }
-
-
     return [];
 
 }
@@ -48,7 +46,8 @@ function getSheet(smartsheet: any, options: any) {
  */
 function createRowData(sheetInfo: any, formIOData: any) {
     const row: any = [];
-    if (sheetInfo?.columns?.length > 0 && formIOData[0] && formIOData[0].json && formIOData[0].json) {
+    if(!sheetInfo) return row;
+    if (sheetInfo.columns && sheetInfo.columns.length > 0 && formIOData[0] && formIOData[0].json) {
         const columns = sheetInfo.columns;
         const formData: any = formIOData[0].json.formData; // data from form.io
         const formFieldDetails: any = formIOData[0].json.formInputFields; // has form.io field types
@@ -61,6 +60,7 @@ function createRowData(sheetInfo: any, formIOData: any) {
 
 /**
  * Method will process data from form.io according to smarsheet format
+ * Form.io field label will be considered for mapping
  * @param formData has the details of data entered in the form
  * @param formFieldDetails has the form input details
  */
@@ -68,19 +68,22 @@ function processFormIoData(formData: any, formFieldDetails: any) {
     let procesedFormData: any = {};
     for (let formField of formFieldDetails) {
         if (formData[formField.key]) {
-            let values = formData[formField.key]
 
-            // if type selectbox, then checkbox label is mapped into smartsheet coloumn
+
+            // if type is selectboxes then checkbox value label is mapped into smartsheet coloumn
             // smartsheet should have a column with checkbox label name
             // smartsheet does not support multiple checkboxes
-            if (formField.type == 'selectboxes' || formField.type == 'selectbox') {
-                for (let value in values) {
-                    procesedFormData[value] = {
-                        value: values[value]
+            if (formField.type == 'selectboxes') {
+                let selectedCheckboxes = formData[formField.key];
+                for (let checkbox of formField.values) {
+                    if(selectedCheckboxes[checkbox.value])
+                    procesedFormData[checkbox.label] = {
+                        value: selectedCheckboxes[checkbox.value]
                     }
                 }
-            } else {
-                procesedFormData[formField.key] = {
+            }
+            else {
+                procesedFormData[formField.label] = {
                     value: formData[formField.key]
                 }
             }
@@ -91,8 +94,7 @@ function processFormIoData(formData: any, formFieldDetails: any) {
 
 /**
  * Method will create data for smartsheet
- * Form.io data key field is mapped to smartsheet column title
- * Checks coloumn exist on the sheet based on key field in the form.io data
+ * Checks coloumn exist on the sheet based on label field in the form.io data
  * @param columns in smartsheet
  * @param processedFormData processed form.io data
  */
