@@ -3,6 +3,11 @@ import {
 } from 'n8n-workflow';
 
 import * as placeholders from './placeholders';
+import {
+	makeIndexInputField,
+	makeIndexListField,
+	makeSpecifyIndexByField,
+} from './SharedFields';
 
 export const indexOperations = [
 	{
@@ -40,6 +45,11 @@ export const indexOperations = [
 ] as INodeProperties[];
 
 export const indexFields = [
+	// ----------------------------------------
+	//            shared fields
+	// ----------------------------------------
+	makeSpecifyIndexByField('index'),
+
 	// ----------------------------------------
 	//              index: create
 	// ----------------------------------------
@@ -145,46 +155,14 @@ export const indexFields = [
 	// ----------------------------------------
 	//              index: delete
 	// ----------------------------------------
-	{
-		displayName: 'Index ID',
-		name: 'indexId',
-		description: 'ID of the index to delete.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'index',
-				],
-				operation: [
-					'delete',
-				],
-			},
-		},
-	},
+	makeIndexListField('index', 'delete'),
+	makeIndexInputField('index', 'delete'),
 
 	// ----------------------------------------
 	//                index: get
 	// ----------------------------------------
-	{
-		displayName: 'Index ID',
-		name: 'indexId',
-		description: 'ID of the index to retrieve.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'index',
-				],
-				operation: [
-					'get',
-				],
-			},
-		},
-	},
+	makeIndexListField('index', 'get'),
+	makeIndexInputField('index', 'get'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

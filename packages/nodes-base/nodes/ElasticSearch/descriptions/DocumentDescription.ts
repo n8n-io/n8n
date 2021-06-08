@@ -3,6 +3,13 @@ import {
 } from 'n8n-workflow';
 
 import * as placeholders from './placeholders';
+import {
+	makeDocumentInputField,
+	makeDocumentListField,
+	makeIndexInputField,
+	makeIndexListField,
+	makeSpecifyIndexByField,
+} from './SharedFields';
 
 export const documentOperations = [
 	{
@@ -45,84 +52,25 @@ export const documentOperations = [
 
 export const documentFields = [
 	// ----------------------------------------
+	//            shared fields
+	// ----------------------------------------
+	makeSpecifyIndexByField('document'),
+
+	// ----------------------------------------
 	//             document: delete
 	// ----------------------------------------
-	{
-		displayName: 'Index ID',
-		name: 'indexId',
-		description: 'ID of the index containing the document to delete.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'delete',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Document ID',
-		name: 'documentId',
-		description: 'ID of the document to delete.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'delete',
-				],
-			},
-		},
-	},
+	makeIndexListField('document', 'delete'),
+	makeDocumentListField('document', 'delete'),
+	makeIndexInputField('document', 'delete'),
+	makeDocumentInputField('document', 'delete'),
 
 	// ----------------------------------------
 	//              document: get
 	// ----------------------------------------
-	{
-		displayName: 'Index ID',
-		name: 'indexId',
-		description: 'ID of the index containing the document to retrieve.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'get',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Document ID',
-		name: 'documentId',
-		description: 'ID of the document to retrieve.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'get',
-				],
-			},
-		},
-	},
+	makeIndexListField('document', 'get'),
+	makeDocumentListField('document', 'get'),
+	makeIndexInputField('document', 'get'),
+	makeDocumentInputField('document', 'get'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -174,24 +122,8 @@ export const documentFields = [
 	// ----------------------------------------
 	//             document: getAll
 	// ----------------------------------------
-	{
-		displayName: 'Index ID',
-		name: 'indexId',
-		description: 'ID of the index containing the documents to retrieve.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
+	makeIndexListField('document', 'getAll'),
+	makeIndexInputField('document', 'getAll'),
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -486,24 +418,8 @@ export const documentFields = [
 	// ----------------------------------------
 	//             document: index
 	// ----------------------------------------
-	{
-		displayName: 'Index ID',
-		name: 'indexId',
-		description: 'ID of the index to add the document to.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'index',
-				],
-			},
-		},
-	},
+	makeIndexListField('document', 'index'),
+	makeIndexInputField('document', 'index'),
 	{
 		displayName: 'Document ID',
 		name: 'documentId',
@@ -581,42 +497,10 @@ export const documentFields = [
 	// ----------------------------------------
 	//             document: update
 	// ----------------------------------------
-	{
-		displayName: 'Index ID',
-		name: 'indexId',
-		description: 'ID of the document to update.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Document ID',
-		name: 'documentId',
-		description: 'ID of the document to update.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
+	makeIndexListField('document', 'update'),
+	makeDocumentListField('document', 'update'),
+	makeIndexInputField('document', 'update'),
+	makeDocumentInputField('document', 'update'),
 	{
 		displayName: 'Script',
 		name: 'script',
