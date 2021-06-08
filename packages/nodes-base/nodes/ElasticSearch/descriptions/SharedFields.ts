@@ -35,7 +35,7 @@ export const makeIndexListField = (resource: 'document' | 'index', operation: st
 	const operationVerb = operation === 'get' ? 'retrieve' : operation;
 	const description = resource === 'document'
 		? `Index containing the document to ${operationVerb}.`
-		: `Index to ${operationVerb}.`
+		: `Index to ${operationVerb}.`;
 
 	return {
 		displayName: 'Index',
@@ -60,8 +60,8 @@ export const makeIndexListField = (resource: 'document' | 'index', operation: st
 				],
 			},
 		},
-	}
-}
+	};
+};
 
 export const makeDocumentListField = (resource: 'document' | 'index', operation: string) => ({
 	displayName: 'Document',
@@ -95,7 +95,7 @@ export const makeIndexInputField = (resource: 'document' | 'index', operation: s
 	const operationVerb = operation === 'get' ? 'retrieve' : operation;
 	const description = resource === 'document'
 		? `Index containing the document to ${operationVerb}.`
-		: `Index to ${operationVerb}.`
+		: `Index to ${operationVerb}.`;
 
 	return {
 		displayName: 'Index ID',
@@ -118,7 +118,7 @@ export const makeIndexInputField = (resource: 'document' | 'index', operation: s
 			},
 		},
 	};
-}
+};
 
 export const makeDocumentInputField = (resource: 'document' | 'index', operation: string) => {
 	const operationInDescription = operation === 'get' ? 'retrieve' : operation;
@@ -144,7 +144,5 @@ export const makeDocumentInputField = (resource: 'document' | 'index', operation
 			},
 		},
 	};
-}
-
-
+};
 
