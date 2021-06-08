@@ -1,4 +1,4 @@
-import { INode, IRawErrorObject, IStatusCodeMessages} from '.';
+import { INode, IStatusCodeMessages, JsonObject} from '.';
 import { parseString } from 'xml2js';
 
 /**
@@ -46,13 +46,13 @@ const ERROR_NESTING_PROPERTIES = ['error', 'err', 'response', 'body', 'data'];
  */
 abstract class NodeError extends Error {
 	description: string | null | undefined;
-	cause: Error | IRawErrorObject;
+	cause: Error | JsonObject;
 	node: INode;
 	timestamp: number;
 
-	constructor(node: INode, error: Error | IRawErrorObject) {
+	constructor(node: INode, error: Error | JsonObject) {
 		super();
-		this.removeCircularRefs(error);
+		this.removeCircularRefs(error as JsonObject);
 		this.name = this.constructor.name;
 		this.cause = error;
 		this.node = node;
@@ -84,13 +84,13 @@ abstract class NodeError extends Error {
 	 * Otherwise, if all the paths have been exhausted and no value is eligible, `null` is
 	 * returned.
 	 *
-	 * @param {IRawErrorObject} error
+	 * @param {JsonObject} error
 	 * @param {string[]} potentialKeys
 	 * @param {string[]} traversalKeys
 	 * @returns {string | null}
 	 */
 	protected findProperty(
-		error: IRawErrorObject,
+		error: JsonObject,
 		potentialKeys: string[],
 		traversalKeys: string[],
 	): string | null {
@@ -120,7 +120,7 @@ abstract class NodeError extends Error {
 
 		for (const key of traversalKeys) {
 			if (this.isTraversableObject(error[key])) {
-				const property = this.findProperty(error[key] as IRawErrorObject, potentialKeys, traversalKeys);
+				const property = this.findProperty(error[key] as JsonObject, potentialKeys, traversalKeys);
 				if (property) {
 					return property;
 				}
@@ -133,14 +133,14 @@ abstract class NodeError extends Error {
 	/**
 	 * Check if a value is an object with at least one key, i.e. it can be traversed.
 	 */
-	protected isTraversableObject(value: any): value is IRawErrorObject { // tslint:disable-line:no-any
+	protected isTraversableObject(value: any): value is JsonObject { // tslint:disable-line:no-any
 		return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
 	}
 
 	/**
 	 * Remove circular references from objects.
 	 */
-	 protected removeCircularRefs(obj: { [key: string]: any }, seen = new Set()) { // tslint:disable-line:no-any
+	 protected removeCircularRefs(obj: JsonObject, seen = new Set()) {
 		seen.add(obj);
 		Object.entries(obj).forEach(([key, value]) => {
 			if (this.isTraversableObject(value)) {
@@ -151,6 +151,7 @@ abstract class NodeError extends Error {
 				value.forEach((val, index) => {
 					seen.has(val)
 						? value[index] = '[circular]'
+						// tslint:disable-next-line: no-unused-expression
 						: (this.isTraversableObject(val) && this.removeCircularRefs(val, seen));
 				});
 			}
@@ -199,7 +200,7 @@ export class NodeApiError extends NodeError {
 
 	constructor(
 		node: INode,
-		error: IRawErrorObject,
+		error: JsonObject,
 		{ message, description, httpCode, parseXml }: { message?: string, description?: string, httpCode?: string, parseXml?: boolean } = {},
 	) {
 		super(node, error);
