@@ -13,7 +13,6 @@ export class ElasticsearchApi implements ICredentialType {
 			name: 'username',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			placeholder: 'hello@n8n.io',
 		},
 		{
 			displayName: 'Password',
