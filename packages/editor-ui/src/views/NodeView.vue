@@ -1661,13 +1661,17 @@ export default mixins(
 			},
 			async renameNodePrompt (currentName: string) {
 				try {
-					const promptResponsePromise = this.$prompt('New Name:', `Rename Node: "${currentName}"`, {
-						customClass: 'rename-prompt',
-						confirmButtonText: 'Rename',
-						cancelButtonText: 'Cancel',
-						inputErrorMessage: 'Invalid Name',
-						inputValue: currentName,
-					});
+					const promptResponsePromise = this.$prompt(
+						this.$t('nodeView.prompt.newName').toString() + ":",
+						`${this.$t('nodeView.prompt.renameNode').toString()}: ${currentName}`,
+						{
+							customClass: 'rename-prompt',
+							confirmButtonText: this.$t('nodeView.prompt.rename').toString(),
+							cancelButtonText: this.$t('nodeView.prompt.cancel').toString(),
+							inputErrorMessage: this.$t('nodeView.prompt.invalidName').toString(),
+							inputValue: currentName,
+						},
+					);
 
 					// Wait till it had time to display
 					await Vue.nextTick();

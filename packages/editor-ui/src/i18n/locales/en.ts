@@ -180,6 +180,13 @@ export default {
 			executions: 'Executions',
 			help: 'Help',
 			aboutN8n: 'About n8n',
+			prompt: {
+				workflowUrl: 'Workflow URL:',
+				importWorkflowFromUrl: 'Import Workflow from URL:',
+				import: 'Import',
+				cancel: 'Cancel',
+				invalidUrl: 'Invalid URL',
+			},
 			confirmMessage: {
 				message: `Are you sure that you want to delete the workflow "$\{this.workflowName}"?`, // interpolation problem
 				headline: 'Delete Workflow?',
@@ -404,6 +411,13 @@ export default {
 				executeWorkflow: 'Execute Workflow',
 				waitingForWebhookCall: 'Waiting for Webhook-Call',
 				executingWorkflow: 'Executing Workflow',
+			},
+			prompt: {
+				newName: 'New Name',
+				renameNode: 'Rename Node',
+				rename: 'Rename',
+				cancel: 'Cancel',
+				invalidName: 'Invalid Name',
 			},
 			confirmMessage: {
 				beforeRouteLeave: {

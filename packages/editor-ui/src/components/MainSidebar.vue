@@ -370,12 +370,16 @@ export default mixins(
 					(this.$refs.importFile as HTMLInputElement).click();
 				} else if (key === 'workflow-import-url') {
 					try {
-						const promptResponse = await this.$prompt(`Workflow URL:`, 'Import Workflow from URL:', {
-							confirmButtonText: 'Import',
-							cancelButtonText: 'Cancel',
-							inputErrorMessage: 'Invalid URL',
-							inputPattern: /^http[s]?:\/\/.*\.json$/i,
-						}) as MessageBoxInputData;
+						const promptResponse = await this.$prompt(
+							this.$t('mainSideBar.prompt.workflowUrl').toString(),
+							this.$t('mainSideBar.prompt.importWorkflowFromUrl').toString(),
+							{
+								confirmButtonText: this.$t('mainSideBar.prompt.import').toString(),
+								cancelButtonText: this.$t('mainSideBar.prompt.cancel').toString(),
+								inputErrorMessage: this.$t('mainSideBar.prompt.invalidUrl').toString(),
+								inputPattern: /^http[s]?:\/\/.*\.json$/i,
+							},
+						) as MessageBoxInputData;
 
 						this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
 					} catch (e) {}

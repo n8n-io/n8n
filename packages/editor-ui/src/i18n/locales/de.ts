@@ -180,6 +180,13 @@ export default {
 			executions: 'Deutsch',
 			help: 'Deutsch',
 			aboutN8n: 'Deutsch',
+			prompt: {
+				workflowUrl: 'Deutsch',
+				importWorkflowFromUrl: 'Deutsch',
+				import: 'Deutsch',
+				cancel: 'Deutsch',
+				invalidUrl: 'Deutsch',
+			},
 			confirmMessage: {
 				message: 'Deutsch',
 				headline: 'Deutsch',
@@ -409,6 +416,13 @@ export default {
 				executeWorkflow: 'Deutsch',
 				waitingForWebhookCall: 'Deutsch',
 				executingWorkflow: 'Deutsch',
+			},
+			prompt: {
+				newName: 'Deutsch',
+				renameNode: 'Deutsch',
+				rename: 'Deutsch',
+				cancel: 'Deutsch',
+				invalidName: 'Deutsch',
 			},
 			confirmMessage: {
 				beforeRouteLeave: {
