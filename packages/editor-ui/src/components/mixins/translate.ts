@@ -1,3 +1,4 @@
+import { TranslationPath } from '@/i18n/locales/en';
 import Vue from 'vue';
 
 export const translate = Vue.extend({
