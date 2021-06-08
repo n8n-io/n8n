@@ -84,6 +84,7 @@
       "dist/credentials/FileMaker.credentials.js",
       "dist/credentials/FlowApi.credentials.js",
       "dist/credentials/Ftp.credentials.js",
+      "dist/credentials/FormIOApi.credentials.js",
       "dist/credentials/GetResponseApi.credentials.js",
       "dist/credentials/GetResponseOAuth2Api.credentials.js",
       "dist/credentials/GhostAdminApi.credentials.js",
@@ -219,6 +220,7 @@
       "dist/credentials/Signl4Api.credentials.js",
       "dist/credentials/SlackApi.credentials.js",
       "dist/credentials/SlackOAuth2Api.credentials.js",
+      "dist/credentials/SmartSheetApi.credentials.js",
       "dist/credentials/Sms77Api.credentials.js",
       "dist/credentials/Snowflake.credentials.js",
       "dist/credentials/Smtp.credentials.js",
@@ -362,6 +364,7 @@
       "dist/nodes/FileMaker/FileMaker.node.js",
       "dist/nodes/Ftp.node.js",
       "dist/nodes/Freshdesk/Freshdesk.node.js",
+      "dist/nodes/FormIO/FormIOTrigger.node.js",
       "dist/nodes/Flow/Flow.node.js",
       "dist/nodes/Flow/FlowTrigger.node.js",
       "dist/nodes/Function.node.js",
@@ -508,6 +511,7 @@
       "dist/nodes/Shopify/ShopifyTrigger.node.js",
       "dist/nodes/Signl4/Signl4.node.js",
       "dist/nodes/Slack/Slack.node.js",
+      "dist/nodes/SmartSheet/SmartSheet.node.js",
       "dist/nodes/Sms77/Sms77.node.js",
       "dist/nodes/Snowflake/Snowflake.node.js",
       "dist/nodes/SplitInBatches.node.js",
@@ -656,7 +660,9 @@
     "uuid": "^3.4.0",
     "vm2": "^3.6.10",
     "xlsx": "^0.16.7",
-    "xml2js": "^0.4.23"
+    "xml2js": "^0.4.23",
+    "formio-service": "^1.4.0",
+    "smartsheet": "2.126.0"
   },
   "jest": {
     "transform": {
