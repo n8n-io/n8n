@@ -50,6 +50,7 @@ import {
 } from 'n8n-workflow';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
+import { translate } from '@/components/mixins/translate';
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
@@ -59,6 +60,7 @@ export default mixins(
 	copyPaste,
 	showMessage,
 	workflowHelpers,
+	translate,
 )
 	.extend({
 		name: 'NodeWebhooks',

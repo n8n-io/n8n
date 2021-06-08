@@ -1,3 +1,4 @@
+import { TranslationPath } from '@/i18n/locales/en';
 import Vue from 'vue';
 
 export const translate = Vue.extend({
@@ -35,6 +36,10 @@ export const translate = Vue.extend({
 		 */
 		translate({ key, fallback }: { key: string, fallback: string }): string {
 			return this.$te(key) ? this.$t(key).toString() : fallback;
+		},
+
+		$translateBase(key: TranslationPath): string {
+			return this.$t(key).toString();
 		},
 
 		// ----------------------------------

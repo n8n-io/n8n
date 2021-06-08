@@ -1,4 +1,6 @@
-export default {
+// @ts-nocheck
+
+const baseTranslations = {
 	en: {
 
 		nodeViewError: {
@@ -539,7 +541,7 @@ export default {
 			noWorkflow: '- No Workflow -',
 			errorWorkflow: 'Error Workflow',
 			timezone: 'Timezone',
-			saveDataErrorExecution: 'Save Data Error Execution', // colon
+			saveDataErrorExecution: 'Save Data Error Execution',
 			saveDataSuccessExecution: 'Save Data Success Execution',
 			saveManualExecutions: 'Save Manual Executions',
 			saveExecutionProgress: 'Save Execution Progress',
@@ -663,3 +665,46 @@ export default {
 		},
 	},
 };
+
+/**
+ * Shape of the top-level `en` key in `baseTranslations` object.
+ */
+type BaseTranslations = typeof baseTranslations['en'];
+
+/**
+ * Union of string keys representing paths of the translation object.
+ */
+type TranslationKeys<TranslationObject> = keyof TranslationObject extends string
+	? keyof TranslationObject
+	: never;
+
+/**
+ * Union of arrays of string keys representing paths of the translation object.
+ */
+type PathCollection<TranslationObject> = TranslationObject extends string
+	? []
+	: { [Key in TranslationKeys<TranslationObject> ]: [Key, ...PathCollection<TranslationObject[Key]>] }[TranslationKeys<TranslationObject>];
+
+/**
+ * Union of strings made up of arrays of string keys representing paths of the
+ * translation object joined by a delimiter.
+ */
+type Join<StringLiteralArray extends string[], Delimiter extends string> =
+	StringLiteralArray extends []
+		? never
+		: StringLiteralArray extends [infer First]
+			? First
+			: StringLiteralArray extends [infer First, ...infer Rest]
+				? First extends string
+					? `${First}${Delimiter}${Join<Extract<Rest, string[]>, Delimiter>}`
+					: never
+				: string;
+
+/**
+ * Union of strings that represent valid dot-delimited paths of the translation object.
+ */
+type TranslationPath = Join<PathCollection<BaseTranslations>, ".">;
+
+export type { TranslationPath };
+
+export default baseTranslations;
