@@ -178,12 +178,33 @@ export class GoogleDocs implements INodeType {
 					// https://developers.google.com/docs/api/reference/rest/v1/documents/get
 
 					const documentURL = this.getNodeParameter('documentURL', i) as string;
+					const simple = this.getNodeParameter('simple', i) as boolean;
 					const documentId = extractID(documentURL);
 
 					if (!documentId) {
 						throw new NodeOperationError(this.getNode(), 'Incorrect document URL');
 					}
 					responseData = await googleApiRequest.call(this, 'GET', `/documents/${documentId}`);
+					if (simple) {
+
+						const content = (responseData.body.content as IDataObject[])
+						.reduce((arr: string[],contentItem) => {
+							if (contentItem &&  contentItem.paragraph) {
+								const texts = ((contentItem.paragraph as IDataObject).elements as IDataObject[])
+								.map( element => {
+									if (element &&  element.textRun) {
+										return (element.textRun as IDataObject).content as string;
+									}
+								}) as string[];
+								arr = [...arr, ...texts];
+							}
+							return arr;
+						},[])
+						.join('');
+
+						responseData = {content};
+
+					}
 
 				} else if (operation === 'update') {
 
@@ -191,7 +212,7 @@ export class GoogleDocs implements INodeType {
 
 					const documentURL = this.getNodeParameter('documentURL', i) as string;
 					const documentId = extractID(documentURL);
-					const simple = this.getNodeParameter('simple', 0) as boolean;
+					const simple = this.getNodeParameter('simple', i) as boolean;
 					const actionsUi = this.getNodeParameter('actionsUi', i) as {
 						actionFields: IDataObject[]
 					};

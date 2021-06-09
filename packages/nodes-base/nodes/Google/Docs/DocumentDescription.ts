@@ -157,6 +157,23 @@ export const documentFields = [
 		default: '',
 		description: 'The document URL.',
 	},
+	{
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'document',
+				],
+			},
+		},
+		default: true,
+		description: 'When set to true the document text content will be used else the raw data.',
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 document: update                            */
 	/* -------------------------------------------------------------------------- */
@@ -204,7 +221,17 @@ export const documentFields = [
 		typeOptions: {
 			multipleValues: true,
 		},
-		default: '',
+		default: {
+			actionFields: [
+				{
+					object: 'text',
+					action: 'insert',
+					locationChoice: 'endOfSegmentLocation',
+					index: 0,
+					text: '',
+				},
+			],
+		},
 		displayOptions: {
 			show: {
 				operation: [
