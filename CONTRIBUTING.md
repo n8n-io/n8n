@@ -139,7 +139,7 @@ automatically build your code, restart the backend and refresh the frontend
 	```
 	npm run dev
 	```
-1. hack, hack, hack
+1. Hack, hack, hack
 1. Check if everything still runs in production mode
 	```
 	npm run build
@@ -168,61 +168,28 @@ tests of all packages.
 
 ## Create Custom Nodes
 
-It is very straightforward to create your own nodes for n8n. More information about that can
-be found in the documentation of "n8n-node-dev" which is a small CLI which
-helps with n8n-node-development.
+Learn about [using the node dev CLI](https://docs.n8n.io/nodes/creating-nodes/node-dev-cli.html) to create custom nodes for n8n.
 
-[To n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev)
+More information can
+be found in the documentation of [n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev), which is a small CLI which
+helps with n8n-node-development.
 
 
 
 ## Create a new node to contribute to n8n
 
-If you want to create a node which should be added to n8n follow these steps:
+Follow this tutorial on [creating your first node](https://docs.n8n.io/nodes/creating-nodes/create-node.html) for n8n.
 
-  1. Read the information in the [n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev) package as it contains a lot of generic information about node development.
-
-  1. Create the n8n development setup like described above and start n8n in develoment mode `npm run dev`
-
-  1. Create a new folder for the new node. For a service named "Example" the folder would be called: `/packages/nodes-base/nodes/Example`
-
-  1. If there is already a similar node, copy the existing one in the new folder and rename it. If none exists yet, create a boilerplate node with [n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev) and copy that one in the folder.
-
-  1. If the node needs credentials because it has to authenticate with an API or similar create new ones. Existing ones can be found in folder `/packages/nodes-base/credentials`. Also there it is the easiest to copy existing similar ones.
-
-  1. Add the path to the new node (and optionally credentials) to package.json of `nodes-base`. It already contains a property `n8n` with its own keys `credentials` and `nodes`.
-
-  1. Add icon for the node (60x60 PNG)
-
-  1. Start n8n. The new node will then be available via the editor UI and can be tested.
-
-
-When developing n8n must get restarted and the browser reloaded every time parameters of a node change (like new ones added, removed or changed). Only then will the new data be loaded and the node displayed correctly.
-
-If only the code of the node changes (the execute method) than it is not needed as each workflow automatically starts a new process and so will always load the latest code.
 
 
 ## Checklist before submitting a new node
 
-If you'd like to submit a new node, please go through the following checklist. This will help us be quicker to review and merge your PR.
-
-- [ ]  Make failing requests to the API to ensure that the errors get displayed correctly (like malformed requests or requests with invalid credentials)
-- [ ]  Ensure that the default values do not change and that the parameters do not get renamed, as it would break the existing workflows of the users
-- [ ]  Ensure that all the top-level parameters use camelCase
-- [ ]  Ensure that all the options are ordered alphabetically, unless a different order is needed for a specific reason
-- [ ]  Ensure that the parameters have the correct type
-- [ ]  Make sure that the file-name and the Class name are identical (case sensitive). The name under "description" in the node-code should also be identical (except that it starts with a lower-case letter and that it will never have a space)
-- [ ]  Names of Trigger-Nodes always have to end with "Trigger"
-- [ ]  Add credentials and nodes to the `package.json` file in alphanumerical order
-- [ ]  Use tabs in all the files except in the `package.json` file, where 4-spaces have to get used
-- [ ]  To make it as simple as possible for the users, check other similar nodes to ensure that they all behave similarly
-- [ ]  Try to add as few parameters as possible on the main level to ensure that the node doesn't appear overwhelming. It should only contain the required parameters. All the other ones should be hidden on lower levels as "Additional Parameters" or "Options"
-- [ ]  Create only one node per service which can do everything via "Resource" and "Options" and not a separate one for each possible operation.
+There are several things to keep in mind when creating a node. To help you, we prepared a [checklist](https://docs.n8n.io/nodes/creating-nodes/node-review-checklist.html) that covers the requirements for creating nodes, from preparation to submission. This will help us be quicker to review and merge your PR.
 
 
 ## Extend Documentation
 
-The repository for the n8n documentation on https://docs.n8n.io can be found [here](https://github.com/n8n-io/n8n-docs).
+The repository for the n8n documentation on [docs.n8n.io](https://docs.n8n.io) can be found [here](https://github.com/n8n-io/n8n-docs).
 
 
 ## Contributor License Agreement

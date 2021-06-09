@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - n8n@*
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'n8n version to build docker image for.'
+        required: true
+        default: '0.112.0'
 
 jobs:
   armv7_job:
@@ -28,7 +34,7 @@ jobs:
         run: |
           docker buildx build \
           --platform linux/arm/v7 \
-          --build-arg N8N_VERSION=${{steps.vars.outputs.tag}} \
-          -t ${{ secrets.DOCKER_USERNAME }}/n8n:${{steps.vars.outputs.tag}}-rpi \
+          --build-arg N8N_VERSION=${{github.event.inputs.version || steps.vars.outputs.tag}} \
+          -t ${{ secrets.DOCKER_USERNAME }}/n8n:${{github.event.inputs.version || steps.vars.outputs.tag}}-rpi \
           -t ${{ secrets.DOCKER_USERNAME }}/n8n:latest-rpi \
           --output type=image,push=true docker/images/n8n-rpi

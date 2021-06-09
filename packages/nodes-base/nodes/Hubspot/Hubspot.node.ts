@@ -1924,6 +1924,12 @@ export class Hubspot implements INodeType {
 								value: additionalFields.pipeline as string,
 							});
 						}
+						if (additionalFields.description) {
+							body.properties.push({
+								name: 'description',
+								value: additionalFields.description as string,
+							});
+						}
 						if (additionalFields.customPropertiesUi) {
 							const customProperties = (additionalFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
 							if (customProperties) {
@@ -1978,6 +1984,12 @@ export class Hubspot implements INodeType {
 							body.properties.push({
 								name: 'pipeline',
 								value: updateFields.pipeline as string,
+							});
+						}
+						if (updateFields.description) {
+							body.properties.push({
+								name: 'description',
+								value: updateFields.description as string,
 							});
 						}
 						if (updateFields.customPropertiesUi) {
@@ -2094,7 +2106,7 @@ export class Hubspot implements INodeType {
 							responseData = await hubspotApiRequestAllItems.call(this, 'results', 'POST', endpoint, body, qs);
 
 						} else {
-							qs.count = this.getNodeParameter('limit', 0) as number;
+							body.limit = this.getNodeParameter('limit', 0) as number;
 							responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body, qs);
 							responseData = responseData.results;
 						}

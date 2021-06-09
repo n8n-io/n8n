@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -130,27 +131,27 @@ export class Github implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Create a new issue',
+						description: 'Create a new issue.',
 					},
 					{
 						name: 'Create Comment',
 						value: 'createComment',
-						description: 'Create a new comment on an issue',
+						description: 'Create a new comment on an issue.',
 					},
 					{
 						name: 'Edit',
 						value: 'edit',
-						description: 'Edit an issue',
+						description: 'Edit an issue.',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get the data of a single issues',
+						description: 'Get the data of a single issue.',
 					},
 					{
 						name: 'Lock',
 						value: 'lock',
-						description: 'Lock an issue',
+						description: 'Lock an issue.',
 					},
 				],
 				default: 'create',
@@ -172,22 +173,22 @@ export class Github implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Create a new file in repository',
+						description: 'Create a new file in repository.',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete a file in repository',
+						description: 'Delete a file in repository.',
 					},
 					{
 						name: 'Edit',
 						value: 'edit',
-						description: 'Edit a file in repository',
+						description: 'Edit a file in repository.',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get the data of a single issue',
+						description: 'Get the data of a single issue.',
 					},
 				],
 				default: 'create',
@@ -209,22 +210,22 @@ export class Github implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get the data of a single repository',
+						description: 'Get the data of a single repository.',
 					},
 					{
 						name: 'Get License',
 						value: 'getLicense',
-						description: 'Returns the contents of the repository\'s license file, if one is detected',
+						description: 'Returns the contents of the repository\'s license file, if one is detected.',
 					},
 					{
 						name: 'Get Issues',
 						value: 'getIssues',
-						description: 'Returns issues of a repository',
+						description: 'Returns issues of a repository.',
 					},
 					{
 						name: 'Get Profile',
 						value: 'getProfile',
-						description: 'Get the community profile of a repository with metrics, health score, description, license, ...',
+						description: 'Get the community profile of a repository with metrics, health score, description, license, etc.',
 					},
 					{
 						name: 'List Popular Paths',
@@ -234,7 +235,7 @@ export class Github implements INodeType {
 					{
 						name: 'List Referrers',
 						value: 'listReferrers',
-						description: 'Get the top 10 referrering domains over the last 14 days',
+						description: 'Get the top 10 referrering domains over the last 14 days.',
 					},
 				],
 				default: 'getIssues',
@@ -256,7 +257,7 @@ export class Github implements INodeType {
 					{
 						name: 'Get Repositories',
 						value: 'getRepositories',
-						description: 'Returns the repositories of a user',
+						description: 'Returns the repositories of a user.',
 					},
 					{
 						name: 'Invite',
@@ -283,7 +284,27 @@ export class Github implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Creates a new release',
+						description: 'Creates a new release.',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get a release.',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all repository releases.',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a release.',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a release.',
 					},
 				],
 				default: 'create',
@@ -305,22 +326,22 @@ export class Github implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Creates a new review',
+						description: 'Creates a new review.',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get a review for a pull request',
+						description: 'Get a review for a pull request.',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
-						description: 'Get all reviews for a pull request',
+						description: 'Get all reviews for a pull request.',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Update a review',
+						description: 'Update a review.',
 					},
 				],
 				default: 'create',
@@ -815,12 +836,12 @@ export class Github implements INodeType {
 							{
 								name: 'Closed',
 								value: 'closed',
-								description: 'Set the state to "closed"',
+								description: 'Set the state to "closed".',
 							},
 							{
 								name: 'Open',
 								value: 'open',
-								description: 'Set the state to "open"',
+								description: 'Set the state to "open".',
 							},
 						],
 						default: 'open',
@@ -860,7 +881,7 @@ export class Github implements INodeType {
 								name: 'assignee',
 								type: 'string',
 								default: '',
-								description: 'User to assign issue too.',
+								description: 'User to assign issue to.',
 							},
 						],
 					},
@@ -1037,6 +1058,143 @@ export class Github implements INodeType {
 				],
 			},
 
+			// ----------------------------------
+			//         release:get/delete/update
+			// ----------------------------------
+			{
+				displayName: 'Release ID',
+				name: 'release_id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'release',
+						],
+						operation: [
+							'get',
+							'delete',
+							'update',
+						],
+					},
+				},
+				description: 'The release ID.',
+			},
+
+			// ----------------------------------
+			//         release:update
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				typeOptions: {
+					multipleValueButtonText: 'Add Field',
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'release',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Body',
+						name: 'body',
+						type: 'string',
+						typeOptions: {
+							rows: 5,
+						},
+						default: '',
+						description: 'The body of the release.',
+					},
+					{
+						displayName: 'Draft',
+						name: 'draft',
+						type: 'boolean',
+						default: false,
+						description: 'Set "true" to create a draft (unpublished) release, "false" to create a published one.',
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'The name of the release.',
+					},
+					{
+						displayName: 'Prerelease',
+						name: 'prerelease',
+						type: 'boolean',
+						default: false,
+						description: 'If set to "true" it will point out that the release is non-production ready.',
+					},
+					{
+						displayName: 'Tag Name',
+						name: 'tag_name',
+						type: 'string',
+						default: '',
+						description: 'The name of the tag.',
+					},
+					{
+						displayName: 'Target Commitish',
+						name: 'target_commitish',
+						type: 'string',
+						default: '',
+						description: 'Specifies the commitish value that determines where the Git tag is created from. Can be any branch or commit SHA. Unused if the Git tag already exists. Default: the repository\'s default branch(usually master).',
+					},
+				],
+			},
+			// ----------------------------------
+			//         release:getAll
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'release',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'release',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'How many results to return.',
+			},
 
 
 			// ----------------------------------
@@ -1046,6 +1204,47 @@ export class Github implements INodeType {
 			// ----------------------------------
 			//         repository:getIssues
 			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'repository',
+						],
+						operation: [
+							'getIssues',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'repository',
+						],
+						operation: [
+							'getIssues',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'How many results to return.',
+			},
 			{
 				displayName: 'Filters',
 				name: 'getRepositoryIssuesFilters',
@@ -1108,17 +1307,17 @@ export class Github implements INodeType {
 							{
 								name: 'All',
 								value: 'all',
-								description: 'Returns issues with any state',
+								description: 'Returns issues with any state.',
 							},
 							{
 								name: 'Closed',
 								value: 'closed',
-								description: 'Return issues with "closed" state',
+								description: 'Return issues with "closed" state.',
 							},
 							{
 								name: 'Open',
 								value: 'open',
-								description: 'Return issues with "open" state',
+								description: 'Return issues with "open" state.',
 							},
 						],
 						default: 'open',
@@ -1132,17 +1331,17 @@ export class Github implements INodeType {
 							{
 								name: 'Created',
 								value: 'created',
-								description: 'Sort by created date',
+								description: 'Sort by created date.',
 							},
 							{
 								name: 'Updated',
 								value: 'updated',
-								description: 'Sort by updated date',
+								description: 'Sort by updated date.',
 							},
 							{
 								name: 'Comments',
 								value: 'comments',
-								description: 'Sort by comments',
+								description: 'Sort by comments.',
 							},
 						],
 						default: 'created',
@@ -1156,12 +1355,12 @@ export class Github implements INodeType {
 							{
 								name: 'Ascending',
 								value: 'asc',
-								description: 'Sort in ascending order',
+								description: 'Sort in ascending order.',
 							},
 							{
 								name: 'Descending',
 								value: 'desc',
-								description: 'Sort in descending order',
+								description: 'Sort in descending order.',
 							},
 						],
 						default: 'desc',
@@ -1214,7 +1413,7 @@ export class Github implements INodeType {
 						],
 					},
 				},
-				description: 'ID of the review',
+				description: 'ID of the review.',
 			},
 
 			// ----------------------------------
@@ -1318,17 +1517,17 @@ export class Github implements INodeType {
 					{
 						name: 'Approve',
 						value: 'approve',
-						description: 'Approve the pull request',
+						description: 'Approve the pull request.',
 					},
 					{
 						name: 'Request Change',
 						value: 'requestChanges',
-						description: 'Request code changes',
+						description: 'Request code changes.',
 					},
 					{
 						name: 'Comment',
 						value: 'comment',
-						description: 'Add a comment without approval or change requests',
+						description: 'Add a comment without approval or change requests.',
 					},
 					{
 						name: 'Pending',
@@ -1386,7 +1585,7 @@ export class Github implements INodeType {
 						name: 'commitId',
 						type: 'string',
 						default: '',
-						description: 'The SHA of the commit that needs a review, if different from the latest',
+						description: 'The SHA of the commit that needs a review, if different from the latest.',
 					},
 				],
 			},
@@ -1412,6 +1611,50 @@ export class Github implements INodeType {
 				},
 				default: '',
 				description: 'The body of the review',
+			},
+			// ----------------------------------
+			//       user:getRepositories
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getRepositories',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getRepositories',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'How many results to return.',
 			},
 			// ----------------------------------
 			//         user:invite
@@ -1475,6 +1718,9 @@ export class Github implements INodeType {
 			'issue:edit',
 			'issue:get',
 			'release:create',
+			'release:delete',
+			'release:get',
+			'release:update',
 			'repository:get',
 			'repository:getLicense',
 			'repository:getProfile',
@@ -1490,6 +1736,7 @@ export class Github implements INodeType {
 			'repository:listPopularPaths',
 			'repository:listReferrers',
 			'user:getRepositories',
+			'release:getAll',
 			'review:getAll',
 		];
 
@@ -1558,13 +1805,13 @@ export class Github implements INodeType {
 						const item = items[i];
 
 						if (item.binary === undefined) {
-							throw new Error('No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
 
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
 						if (item.binary[binaryPropertyName] === undefined) {
-							throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 						}
 
 						// Currently internally n8n uses base64 and also Github expects it base64 encoded.
@@ -1693,6 +1940,56 @@ export class Github implements INodeType {
 
 					endpoint = `/repos/${owner}/${repository}/releases`;
 				}
+				if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const releaseId = this.getNodeParameter('release_id', i) as string;
+
+					endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
+				}
+				if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const releaseId = this.getNodeParameter('release_id', i) as string;
+
+					endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
+				}
+				if (operation === 'getAll') {
+					// ----------------------------------
+					//         getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					endpoint = `/repos/${owner}/${repository}/releases`;
+
+					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					if (returnAll === false) {
+						qs.per_page = this.getNodeParameter('limit', 0) as number;
+					}
+				}
+				if (operation === 'update') {
+					// ----------------------------------
+					//         update
+					// ----------------------------------
+
+					requestMethod = 'PATCH';
+
+					const releaseId = this.getNodeParameter('release_id', i) as string;
+
+					body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+					endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
+				}
 			} else if (resource === 'repository') {
 				if (operation === 'listPopularPaths') {
 					// ----------------------------------
@@ -1736,6 +2033,12 @@ export class Github implements INodeType {
 					qs = this.getNodeParameter('getRepositoryIssuesFilters', i) as IDataObject;
 
 					endpoint = `/repos/${owner}/${repository}/issues`;
+
+					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					if (returnAll === false) {
+						qs.per_page = this.getNodeParameter('limit', 0) as number;
+					}
 				}
 			} else if (resource === 'review') {
 				if (operation === 'get') {
@@ -1791,7 +2094,7 @@ export class Github implements INodeType {
 					const reviewId = this.getNodeParameter('reviewId', i) as string;
 
 					body.body = this.getNodeParameter('body', i) as string;
-				
+
 					endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews/${reviewId}`;
 				}
 			} else if (resource === 'user') {
@@ -1804,20 +2107,26 @@ export class Github implements INodeType {
 
 					endpoint = `/users/${owner}/repos`;
 
-				}	else if (operation === 'invite') {
+					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					if (returnAll === false) {
+						qs.per_page = this.getNodeParameter('limit', 0) as number;
+					}
+
+				} else if (operation === 'invite') {
 					// ----------------------------------
 					//            invite
 					// ----------------------------------
 
 					requestMethod = 'POST';
-					const org  = this.getNodeParameter('organization', i) as string;
+					const org = this.getNodeParameter('organization', i) as string;
 					endpoint = `/orgs/${org}/invitations`;
 					body.email = this.getNodeParameter('email', i) as string;
 
 				}
 
 			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 			}
 
 			if (returnAll === true) {
@@ -1851,6 +2160,9 @@ export class Github implements INodeType {
 
 					return this.prepareOutputData(items);
 				}
+			}
+			if (fullOperation === 'release:delete') {
+				responseData = { success: true };
 			}
 
 			if (overwriteDataOperations.includes(fullOperation)) {

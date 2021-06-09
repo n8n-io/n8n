@@ -10,6 +10,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 import {
 	mailchimpApiRequest,
@@ -19,7 +21,7 @@ export class MailchimpTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailchimp Trigger',
 		name: 'mailchimpTrigger',
-		icon: 'file:mailchimp.png',
+		icon: 'file:mailchimp.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Mailchimp events via webhooks',
@@ -175,8 +177,8 @@ export class MailchimpTrigger implements INodeType {
 				try {
 					response = await mailchimpApiRequest.call(this, '/lists', 'GET');
 					lists = response.lists;
-				} catch (err) {
-					throw new Error(`Mailchimp Error: ${err}`);
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
 				}
 				for (const list of lists) {
 					const listName = list.name;
@@ -205,11 +207,11 @@ export class MailchimpTrigger implements INodeType {
 				const endpoint = `/lists/${listId}/webhooks/${webhookData.webhookId}`;
 				try {
 					await mailchimpApiRequest.call(this, endpoint, 'GET');
-				} catch (err) {
-					if (err.statusCode === 404) {
+				} catch (error) {
+					if (error.statusCode === 404) {
 						return false;
 					}
-					throw new Error(`Mailchimp Error: ${err}`);
+					throw new NodeApiError(this.getNode(), error);
 				}
 				return true;
 			},
@@ -236,8 +238,8 @@ export class MailchimpTrigger implements INodeType {
 				const endpoint = `/lists/${listId}/webhooks`;
 				try {
 					webhook = await mailchimpApiRequest.call(this, endpoint, 'POST', body);
-				} catch (e) {
-					throw e;
+				} catch (error) {
+					throw error;
 				}
 				if (webhook.id === undefined) {
 					return false;
@@ -256,7 +258,7 @@ export class MailchimpTrigger implements INodeType {
 					const endpoint = `/lists/${listId}/webhooks/${webhookData.webhookId}`;
 					try {
 						await mailchimpApiRequest.call(this, endpoint, 'DELETE', {});
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 					delete webhookData.webhookId;

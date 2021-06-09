@@ -53,7 +53,7 @@ export class ZohoOAuth2Api implements ICredentialType {
 				},
 				{
 					name: 'CN - https://accounts.zoho.com.cn/oauth/v2/token',
-					value: ' https://accounts.zoho.com.cn/oauth/v2/token',
+					value: 'https://accounts.zoho.com.cn/oauth/v2/token',
 				},
 			],
 			default: 'https://accounts.zoho.com/oauth/v2/token',

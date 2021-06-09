@@ -11,7 +11,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function facebookApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -41,13 +41,6 @@ export async function facebookApiRequest(this: IHookFunctions | IExecuteFunction
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
-		if (error.response.body && error.response.body.error) {
-			const message = error.response.body.error.message;
-			throw new Error(
-				`Facebook Trigger error response [${error.statusCode}]: ${message}`,
-			);
-		}
-		throw new Error(error);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }

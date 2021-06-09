@@ -427,7 +427,7 @@ export class JiraTrigger implements INodeType {
 
 					try {
 						await jiraSoftwareCloudApiRequest.call(this, endpoint, 'DELETE', body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 					// Remove from the static workflow data so that it is clear

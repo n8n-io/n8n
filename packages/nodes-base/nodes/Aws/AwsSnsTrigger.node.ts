@@ -9,6 +9,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -68,12 +70,7 @@ export class AwsSnsTrigger implements INodeType {
 			// select them easily
 			async getTopics(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let data;
-				try {
-					data = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ListTopics');
-				} catch (err) {
-					throw new Error(`AWS Error: ${err}`);
-				}
+				const data = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ListTopics');
 
 				let topics = data.ListTopicsResponse.ListTopicsResult.Topics.member;
 
@@ -134,7 +131,7 @@ export class AwsSnsTrigger implements INodeType {
 				const topic = this.getNodeParameter('topic') as string;
 
 				if (webhookUrl.includes('%20')) {
-					throw new Error('The name of the SNS Trigger Node is not allowed to contain any spaces!');
+					throw new NodeOperationError(this.getNode(), 'The name of the SNS Trigger Node is not allowed to contain any spaces!');
 				}
 
 				const params = [

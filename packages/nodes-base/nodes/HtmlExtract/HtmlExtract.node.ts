@@ -5,6 +5,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 type Cheerio = ReturnType<typeof cheerio>;
@@ -228,15 +229,15 @@ export class HtmlExtract implements INodeType {
 			let htmlArray: string[] | string = [];
 			if (sourceData === 'json') {
 				if (item.json[dataPropertyName] === undefined) {
-					throw new Error(`No property named "${dataPropertyName}" exists!`);
+					throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`);
 				}
 				htmlArray = item.json[dataPropertyName] as string;
 			} else {
 				if (item.binary === undefined) {
-					throw new Error(`No item does not contain binary data!`);
+					throw new NodeOperationError(this.getNode(), `No item does not contain binary data!`);
 				}
 				if (item.binary[dataPropertyName] === undefined) {
-					throw new Error(`No property named "${dataPropertyName}" exists!`);
+					throw new NodeOperationError(this.getNode(), `No property named "${dataPropertyName}" exists!`);
 				}
 				htmlArray = Buffer.from(item.binary[dataPropertyName].data, 'base64').toString('utf8');
 			}

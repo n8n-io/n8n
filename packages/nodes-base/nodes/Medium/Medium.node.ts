@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -476,13 +477,13 @@ export class Medium implements INodeType {
 						bodyRequest.tags = tags.split(',').map(name => {
 							const returnValue = name.trim();
 							if (returnValue.length > 25) {
-								throw new Error(`The tag "${returnValue}" is to long. Maximum lenght of a tag is 25 characters.`);
+								throw new NodeOperationError(this.getNode(), `The tag "${returnValue}" is to long. Maximum lenght of a tag is 25 characters.`);
 							}
 							return returnValue;
 						});
 
 						if ((bodyRequest.tags as string[]).length > 5) {
-							throw new Error('To many tags got used. Maximum 5 can be set.');
+							throw new NodeOperationError(this.getNode(), 'To many tags got used. Maximum 5 can be set.');
 						}
 					}
 

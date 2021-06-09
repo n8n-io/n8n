@@ -17,6 +17,8 @@ import {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -41,6 +43,9 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		body,
 		qs,
 		uri: uri || `https://www.googleapis.com${endpoint}`,
+		qsStringifyOptions:{
+			arrayFormat: 'repeat',
+		},
 		json: true,
 	};
 
@@ -55,7 +60,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			const credentials = this.getCredentials('googleApi');
 
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
@@ -69,27 +74,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		}
 
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error) {
-
-			let errorMessages;
-
-			if (error.response.body.error.errors) {
-				// Try to return the error prettier
-				errorMessages = error.response.body.error.errors;
-
-				errorMessages = errorMessages.map((errorItem: IDataObject) => errorItem.message);
-
-				errorMessages = errorMessages.join('|');
-
-			} else if (error.response.body.error.message) {
-				errorMessages = error.response.body.error.message;
-			} else if (error.response.body.error_description) {
-				errorMessages = error.response.body.error_description;
-			}
-
-			throw new Error(`Gmail error response [${error.statusCode}]: ${errorMessages}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -216,7 +201,12 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [
-		'https://www.googleapis.com/auth/books',
+		'https://www.googleapis.com/auth/gmail.labels',
+		'https://www.googleapis.com/auth/gmail.addons.current.action.compose',
+		'https://www.googleapis.com/auth/gmail.addons.current.message.action',
+		'https://mail.google.com/',
+		'https://www.googleapis.com/auth/gmail.modify',
+		'https://www.googleapis.com/auth/gmail.compose',
 	];
 
 	const now = moment().unix();

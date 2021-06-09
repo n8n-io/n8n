@@ -22,4 +22,5 @@ export interface ILead {
 	AnnualRevenue?: number;
 	IsUnreadByOwner?: boolean;
 	NumberOfEmployees?: number;
+	MobilePhone?: string;
 }

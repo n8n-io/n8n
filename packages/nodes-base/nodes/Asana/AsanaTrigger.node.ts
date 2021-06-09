@@ -10,6 +10,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -25,10 +26,10 @@ export class AsanaTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Asana Trigger',
 		name: 'asanaTrigger',
-		icon: 'file:asana.png',
+		icon: 'file:asana.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Asana events occure.',
+		description: 'Starts the workflow when Asana events occur.',
 		defaults: {
 			name: 'Asana-Trigger',
 			color: '#FC636B',
@@ -155,7 +156,7 @@ export class AsanaTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				if (webhookUrl.includes('%20')) {
-					throw new Error('The name of the Asana Trigger Node is not allowed to contain any spaces!');
+					throw new NodeOperationError(this.getNode(), 'The name of the Asana Trigger Node is not allowed to contain any spaces!');
 				}
 
 				const resource = this.getNodeParameter('resource') as string;
@@ -189,7 +190,7 @@ export class AsanaTrigger implements INodeType {
 
 					try {
 						await asanaApiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

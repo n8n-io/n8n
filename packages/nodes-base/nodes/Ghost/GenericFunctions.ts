@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 import * as jwt from 'jsonwebtoken';
@@ -60,21 +60,7 @@ export async function ghostApiRequest(this: IHookFunctions | IExecuteFunctions |
 		return await this.helpers.request!(options);
 
 	} catch (error) {
-		let errorMessages;
-
-		if (error.response && error.response.body && error.response.body.errors) {
-
-			if (Array.isArray(error.response.body.errors)) {
-
-				const errors = error.response.body.errors;
-
-				errorMessages = errors.map((e: IDataObject) => e.message);
-			}
-
-			throw new Error(`Ghost error response [${error.statusCode}]: ${errorMessages?.join('|')}`);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
