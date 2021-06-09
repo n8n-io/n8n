@@ -67,7 +67,7 @@ export const accountFields = [
 	/*                                account:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'External ID',
+		displayName: 'Match Against',
 		name: 'externalId',
 		type: 'options',
 		typeOptions: {
@@ -88,12 +88,10 @@ export const accountFields = [
 				],
 			},
 		},
-		description: `If the external ID is not matched, then a new record is created.</br>
-						If the external ID is matched once, then the record is updated.</br>
-						If the external ID is matched multiple times, then a 300 error is reported, and the record is neither created nor updated.`,
+		description: `The field to check to see if the account already exists`,
 	},
 	{
-		displayName: 'External ID Value',
+		displayName: 'Value to Match',
 		name: 'externalIdValue',
 		type: 'string',
 		required: true,
@@ -108,6 +106,7 @@ export const accountFields = [
 				],
 			},
 		},
+		description: `If this value exists in the 'match against' field, update the account. Otherwise create a new one`,
 	},
 	{
 		displayName: 'Name',
