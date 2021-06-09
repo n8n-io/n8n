@@ -56,7 +56,7 @@ export class S3 implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to any S3-compatible service',
+		description: 'Send data to any S3-compatible service',
 		defaults: {
 			name: 'S3',
 			color: '#d05b4b',

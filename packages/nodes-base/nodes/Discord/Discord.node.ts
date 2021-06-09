@@ -16,7 +16,7 @@ export class Discord implements INodeType {
 		icon: 'file:discord.png',
 		group: ['output'],
 		version: 1,
-		description: 'Sends data to Discord',
+		description: 'Send data to Discord',
 		defaults: {
 			name: 'Discord',
 			color: '#7289da',

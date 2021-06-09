@@ -23,7 +23,7 @@ export class MqttTrigger implements INodeType {
 		icon: 'file:mqtt.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Listens to MQTT events',
+		description: 'Listen to MQTT events',
 		defaults: {
 			name: 'MQTT Trigger',
 			color: '#9b27af',

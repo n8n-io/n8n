@@ -20,7 +20,7 @@ export class EmailSend implements INodeType {
 		icon: 'fa:envelope',
 		group: ['output'],
 		version: 1,
-		description: 'Sends an Email',
+		description: 'Send an email',
 		defaults: {
 			name: 'Send Email',
 			color: '#00bb88',

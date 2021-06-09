@@ -31,7 +31,7 @@ export class CustomerIoTrigger implements INodeType {
 		group: ['trigger'],
 		icon: 'file:customerio.png',
 		version: 1,
-		description: 'Starts the workflow on a Customer.io update. (Beta)',
+		description: 'Start the workflow on a Customer.io update (Beta)',
 		defaults: {
 			name: 'Customer.io Trigger',
 			color: '#ffcd00',

@@ -31,7 +31,7 @@ export class AwsSes implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to AWS SES',
+		description: 'Send data to AWS SES',
 		defaults: {
 			name: 'AWS SES',
 			color: '#FF9900',

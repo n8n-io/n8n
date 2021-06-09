@@ -55,7 +55,7 @@ export class AwsS3 implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to AWS S3',
+		description: 'Send data to AWS S3',
 		defaults: {
 			name: 'AWS S3',
 			color: '#d05b4b',

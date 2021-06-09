@@ -23,7 +23,7 @@ export class WriteBinaryFile implements INodeType {
 		icon: 'fa:file-export',
 		group: ['output'],
 		version: 1,
-		description: 'Writes a binary file to disk',
+		description: 'Write a binary file to disk',
 		defaults: {
 			name: 'Write Binary File',
 			color: '#CC2233',

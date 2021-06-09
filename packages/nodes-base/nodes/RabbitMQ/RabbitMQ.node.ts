@@ -23,7 +23,7 @@ export class RabbitMQ implements INodeType {
 		icon: 'file:rabbitmq.png',
 		group: ['transform'],
 		version: 1,
-		description: 'Sends messages to a RabbitMQ topic',
+		description: 'Send messages to a RabbitMQ topic',
 		defaults: {
 			name: 'RabbitMQ',
 			color: '#ff6600',

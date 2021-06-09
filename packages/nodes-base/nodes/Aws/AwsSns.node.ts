@@ -20,7 +20,7 @@ export class AwsSns implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["topic"]}}',
-		description: 'Sends data to AWS SNS',
+		description: 'Send data to AWS SNS',
 		defaults: {
 			name: 'AWS SNS',
 			color: '#FF9900',

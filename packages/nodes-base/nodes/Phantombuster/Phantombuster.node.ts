@@ -33,7 +33,7 @@ export class Phantombuster implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Phantombuster API.',
+		description: 'Consume Phantombuster API',
 		defaults: {
 			name: 'Phantombuster',
 			color: '#62bfd7',

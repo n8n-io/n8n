@@ -30,7 +30,7 @@ export class Mattermost implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to Mattermost',
+		description: 'Send data to Mattermost',
 		defaults: {
 			name: 'Mattermost',
 			color: '#000000',

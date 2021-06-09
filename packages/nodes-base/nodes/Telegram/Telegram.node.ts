@@ -24,7 +24,7 @@ export class Telegram implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to Telegram.',
+		description: 'Send data to Telegram',
 		defaults: {
 			name: 'Telegram',
 			color: '#0088cc',
@@ -1539,7 +1539,7 @@ export class Telegram implements INodeType {
 								],
 							},
 						},
-						description: 'Sends the message silently. Users will receive a notification with no sound.',
+						description: 'Send the message silently. Users will receive a notification with no sound.',
 					},
 					{
 						displayName: 'Disable WebPage Preview',

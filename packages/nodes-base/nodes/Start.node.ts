@@ -13,7 +13,7 @@ export class Start implements INodeType {
 		icon: 'fa:play',
 		group: ['input'],
 		version: 1,
-		description: 'Starts the workflow execution from this node',
+		description: 'Start the workflow execution from this node',
 		maxNodes: 1,
 		defaults: {
 			name: 'Start',

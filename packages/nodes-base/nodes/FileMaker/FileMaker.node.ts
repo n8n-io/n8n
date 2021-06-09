@@ -30,7 +30,7 @@ export class FileMaker implements INodeType {
 		icon: 'file:filemaker.png',
 		group: ['input'],
 		version: 1,
-		description: 'Retrieve data from FileMaker data API.',
+		description: 'Retrieve data from the FileMaker data API',
 		defaults: {
 			name: 'FileMaker',
 			color: '#665533',

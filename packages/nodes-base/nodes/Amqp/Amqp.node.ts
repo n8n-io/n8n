@@ -21,7 +21,7 @@ export class Amqp implements INodeType {
 		icon: 'file:amqp.png',
 		group: ['transform'],
 		version: 1,
-		description: 'Sends a raw-message via AMQP 1.0, executed once per item',
+		description: 'Send a raw-message via AMQP 1.0, executed once per item',
 		defaults: {
 			name: 'AMQP Sender',
 			color: '#00FF00',

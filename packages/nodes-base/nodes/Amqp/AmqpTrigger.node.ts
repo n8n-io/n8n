@@ -23,7 +23,7 @@ export class AmqpTrigger implements INodeType {
 		icon: 'file:amqp.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Listens to AMQP 1.0 Messages',
+		description: 'Listen to AMQP 1.0 Messages',
 		defaults: {
 			name: 'AMQP Trigger',
 			color: '#00FF00',

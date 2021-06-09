@@ -23,7 +23,7 @@ export class RabbitMQTrigger implements INodeType {
 		icon: 'file:rabbitmq.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Listens to RabbitMQ messages',
+		description: 'Listen to RabbitMQ messages',
 		defaults: {
 			name: 'RabbitMQ',
 			color: '#ff6600',

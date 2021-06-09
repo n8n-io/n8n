@@ -34,7 +34,7 @@ export class AwsSqs implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: `={{$parameter["operation"]}}`,
-		description: 'Sends messages to AWS SQS',
+		description: 'Send messages to AWS SQS',
 		defaults: {
 			name: 'AWS SQS',
 			color: '#FF9900',

@@ -13,7 +13,7 @@ export class ErrorTrigger implements INodeType {
 		icon: 'fa:bug',
 		group: ['trigger'],
 		version: 1,
-		description: 'Triggers the workflow when another workflow has an error',
+		description: 'Trigger the workflow when another workflow has an error',
 		maxNodes: 1,
 		defaults: {
 			name: 'Error Trigger',

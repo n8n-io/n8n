@@ -105,7 +105,7 @@ export class Mandrill implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume mandrill API',
+		description: 'Consume Mandrill API',
 		defaults: {
 			name: 'Mandrill',
 			color: '#c02428',

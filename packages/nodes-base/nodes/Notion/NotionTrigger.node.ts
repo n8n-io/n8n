@@ -25,7 +25,7 @@ export class NotionTrigger implements INodeType {
 		icon: 'file:notion.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Notion events occur',
+		description: 'Start the workflow when Notion events occur',
 		subtitle: '={{$parameter["event"]}}',
 		defaults: {
 			name: 'Notion Trigger',

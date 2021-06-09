@@ -25,7 +25,7 @@ export class AwsRekognition implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to AWS Rekognition',
+		description: 'Send data to AWS Rekognition',
 		defaults: {
 			name: 'AWS Rekognition',
 			color: '#305b94',

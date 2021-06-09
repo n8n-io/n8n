@@ -21,7 +21,7 @@ export class AwsComprehend implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to Amazon Comprehend',
+		description: 'Send data to Amazon Comprehend',
 		defaults: {
 			name: 'AWS Comprehend',
 			color: '#5aa08d',

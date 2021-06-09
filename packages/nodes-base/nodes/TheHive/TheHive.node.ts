@@ -72,7 +72,7 @@ export class TheHive implements INodeType {
 		group: ['transform'],
 		subtitle: '={{$parameter["operation"]}} : {{$parameter["resource"]}}',
 		version: 1,
-		description: 'Consume TheHive APIs',
+		description: 'Consume TheHive API',
 		defaults: {
 			name: 'TheHive',
 			color: '#f3d02f',

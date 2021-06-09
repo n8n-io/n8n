@@ -16,7 +16,7 @@ export class RssFeedRead implements INodeType {
 		icon: 'fa:rss',
 		group: ['input'],
 		version: 1,
-		description: 'Reads data from an RSS Feed',
+		description: 'Read data from an RSS Feed',
 		defaults: {
 			name: 'RSS Feed Read',
 			color: '#b02020',

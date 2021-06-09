@@ -18,7 +18,7 @@ export class ReadPdf implements INodeType {
 		icon: 'fa:file-pdf',
 		group: ['input'],
 		version: 1,
-		description: 'Reads a PDF and extracts its content',
+		description: 'Read a PDF and extract its content',
 		defaults: {
 			name: 'Read PDF',
 			color: '#003355',

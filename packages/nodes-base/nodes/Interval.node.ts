@@ -14,7 +14,7 @@ export class Interval implements INodeType {
 		icon: 'fa:hourglass',
 		group: ['trigger'],
 		version: 1,
-		description: 'Triggers the workflow in a given interval',
+		description: 'Trigger the workflow in a given interval',
 		defaults: {
 			name: 'Interval',
 			color: '#00FF00',

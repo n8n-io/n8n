@@ -22,7 +22,7 @@ export class AwsTranscribe implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to AWS Transcribe',
+		description: 'Send data to AWS Transcribe',
 		defaults: {
 			name: 'AWS Transcribe',
 			color: '#5aa08d',
