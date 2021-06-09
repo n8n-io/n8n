@@ -9,10 +9,8 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
 	INode, 
 	INodeExecutionData, 
-	IRun, 
 	ITaskData, 
 } from 'n8n-workflow';
 
@@ -29,18 +27,15 @@ import {
 	NodeTypes,
 	WorkflowCredentials,
 	WorkflowRunner,
-} from "../src";
+} from '../src';
 
 import { 
-	sep 
+	sep,
 }  from 'path';
 
 import { 
 	diff,
 } from 'json-diff';
-import { 
-	ObjectID,
-} from 'typeorm';
 
 import { 
 	getLogger,
@@ -62,9 +57,9 @@ export class ExecuteBatch extends Command {
 
 	static shallow = false;
 
-	static compare: undefined | string = undefined;
+	static compare: string;
 
-	static snapshot: undefined | string = undefined;
+	static snapshot: string;
 
 	static concurrency = 1;
 
@@ -111,13 +106,13 @@ export class ExecuteBatch extends Command {
 			default: 1,
 		}),
 		shortOutput: flags.boolean({
-			description: 'Ommits the full execution information from output, displaying only summary.',
+			description: 'Omits the full execution information from output, displaying only summary.',
 		}),
 	};
 
 	/**
 	 * Gracefully handles exit.
-	 * @param skipExit boolean to skip exit or number according to received signal
+	 * @param {boolean} skipExit Whether to skip exit or number according to received signal
 	 */
 	static async stopProcess(skipExit: boolean | number = false) {
 
@@ -157,6 +152,10 @@ export class ExecuteBatch extends Command {
 		if (skipExit !== true) {
 			process.exit(0);
 		}
+	}
+
+	formatJsonOutput(data: object) {
+		return JSON.stringify(data, null, 2);
 	}
 
 	shouldBeConsideredAsWarning(errorMessage: string) {
@@ -237,14 +236,14 @@ export class ExecuteBatch extends Command {
 		if (flags.ids !== undefined) {
 			const paramIds = flags.ids.split(',');
 			const re = /\d+/;
-			const matchedIDs = paramIds.filter(id => id.match(re) ).map(id => parseInt(id, 10));
+			const matchedIds = paramIds.filter(id => id.match(re) ).map(id => parseInt(id.trim(), 10));
 
-			if (matchedIDs.length === 0) {
+			if (matchedIds.length === 0) {
 				console.log(`The parameter --ids must be a list of numeric IDs separated by a comma.`);
 				return;
 			}
 
-			ids.push(...matchedIDs);
+			ids.push(...matchedIds);
 		}
 
 		if (flags.skipList !== undefined) {
@@ -293,15 +292,11 @@ export class ExecuteBatch extends Command {
 			process.stdout.write(`Found ${allWorkflows.length} workflows to execute.\n`);
 		}
 		
-		// Make sure the settings exist
-		await UserSettings.prepareUserSettings();
-		
 		// Wait till the n8n-packages have been read
 		await loadNodesAndCredentialsPromise;
 		
 		// Load the credentials overwrites if any exist
-		const credentialsOverwrites = CredentialsOverwrites();
-		await credentialsOverwrites.init();
+		await CredentialsOverwrites().init();
 		
 		// Load all external hooks
 		const externalHooks = ExternalHooks();
@@ -316,7 +311,7 @@ export class ExecuteBatch extends Command {
 		// Send a shallow copy of allWorkflows so we still have all workflow data.
 		const results = await this.runTests([...allWorkflows]);
 
-		let retries = flags.retries;
+		let { retries } = flags;
 
 		while(retries > 0 && (results.summary.warningExecutions + results.summary.failedExecutions > 0) && ExecuteBatch.cancelled === false) {
 			const failedWorkflowIds = results.summary.errors.map(execution => execution.workflowId);
@@ -332,22 +327,22 @@ export class ExecuteBatch extends Command {
 		}
 
 		if(flags.output !== undefined){
-			fs.writeFileSync(flags.output,JSON.stringify(results, null, 2));
+			fs.writeFileSync(flags.output,this.formatJsonOutput(results));
 			console.log('\nExecution finished.');
 			console.log('Summary:');
-			console.log(`\tSuccess: ${results.summary.succeededExecution}`);
+			console.log(`\tSuccess: ${results.summary.successfulExecutions}`);
 			console.log(`\tFailures: ${results.summary.failedExecutions}`);
 			console.log(`\tWarnings: ${results.summary.warningExecutions}`);
 			console.log('\nNodes successfully tested:');
-			Object.entries(results.coveredNodes).map(entry => {
-				console.log(`\t${entry[0]}: ${entry[1]}`);
+			Object.entries(results.coveredNodes).forEach(([nodeName, nodeCount]) => {
+				console.log(`\t${nodeName}: ${nodeCount}`);
 			});
 			console.log('\nCheck the JSON file for more details.');
 		}else{
 			if (flags.shortOutput === true) {
-				console.log(JSON.stringify({...results, executions: results.executions.filter(execution => execution.executionStatus !== 'success')}, null, 2));
+				console.log(this.formatJsonOutput({...results, executions: results.executions.filter(execution => execution.executionStatus !== 'success')}));
 			} else {
-				console.log(JSON.stringify(results, null, 2));
+				console.log(this.formatJsonOutput(results));
 			}
 		}
 
@@ -362,7 +357,7 @@ export class ExecuteBatch extends Command {
 
 	mergeResults(results: IResult, retryResults: IResult) {
 
-		if (retryResults.summary.succeededExecution === 0) {
+		if (retryResults.summary.successfulExecutions === 0) {
 			// Nothing to replace.
 			return;
 		}
@@ -389,7 +384,7 @@ export class ExecuteBatch extends Command {
 					results.summary.warnings.splice(warningIndex, 1);
 				}
 				// Increment successful executions count and push it to all executions array.
-				results.summary.succeededExecution++;
+				results.summary.successfulExecutions++;
 				results.executions.push(newExecution);
 			}
 		});
@@ -397,11 +392,11 @@ export class ExecuteBatch extends Command {
 	
 	async runTests(allWorkflows: IWorkflowDb[]): Promise<IResult> {
 		const result:IResult = {
-			workflowsNumber:allWorkflows.length,
+			totalWorkflows:allWorkflows.length,
 			summary:{
 				failedExecutions:0,
 				warningExecutions: 0,
-				succeededExecution:0,
+				successfulExecutions:0,
 				errors: [],
 				warnings: [],
 			},
@@ -453,7 +448,7 @@ export class ExecuteBatch extends Command {
 									});
 									this.updateStatus();
 								}
-								result.summary.succeededExecution++;
+								result.summary.successfulExecutions++;
 								const nodeNames = Object.keys(executionResult.coveredNodes);
 
 								nodeNames.map(nodeName => {
@@ -489,7 +484,7 @@ export class ExecuteBatch extends Command {
 									this.updateStatus();
 								}
 							} else {
-								throw new Error('Wrong execution status - cant proceed');
+								throw new Error('Wrong execution status - cannot proceed');
 							}
 						});
 					}
@@ -526,7 +521,7 @@ export class ExecuteBatch extends Command {
 				if (colorOutput) {
 					switch (executionItem.status) {
 						case 'success':
-							openColor =	"\x1b[32m";
+							openColor = "\x1b[32m";
 							break;
 						case 'error':
 							openColor = "\x1b[31m";
@@ -594,14 +589,15 @@ export class ExecuteBatch extends Command {
 		// the `Notes` field to add special cases for comparison and snapshots.
 		// You need to set one configuration per line with the following possible keys:
 		// CAP_RESULTS_LENGTH=x where x is a number. Cap the number of rows from this node to x.
-		// IGNORED_PROPERTIES=x,y,z where x, y and z are json property names. Removes these
+		// This means if you set CAP_RESULTS_LENGTH=1 we will have only 1 row in the output
+		// IGNORED_PROPERTIES=x,y,z where x, y and z are JSON property names. Removes these
 		//    properties from the JSON object (useful for optional properties that can
 		//    cause the comparison to detect changes when not true).
 		const nodeEdgeCases = {} as INodeSpecialCases;
 		workflowData.nodes.forEach(node => {
 			executionResult.coveredNodes[node.type] = (executionResult.coveredNodes[node.type] || 0) +1;
 			if (node.notes !== undefined && node.notes !== '') {
-				const settings = node.notes.split('\n').map(note => {
+				node.notes.split('\n').forEach(note => {
 					const parts = note.split('=');
 					if (parts.length === 2) {
 						if (nodeEdgeCases[node.name] === undefined) {
@@ -763,7 +759,7 @@ export class ExecuteBatch extends Command {
 							});
 						}
 						
-						const serializedData = JSON.stringify(data, null, 2);
+						const serializedData = this.formatJsonOutput(data);
 						if (ExecuteBatch.compare === undefined){
 							executionResult.executionStatus = 'success';
 						} else {
@@ -772,8 +768,7 @@ export class ExecuteBatch extends Command {
 
 								const contents = fs.readFileSync(fileName, {encoding: 'utf-8'});
 
-								//@ts-ignore
-								const changes = diff(JSON.parse(contents), data, {keysOnly: true}); // types are outdated here
+								const changes = diff(JSON.parse(contents), data, {keysOnly: true});
 
 								if (changes !== undefined) {
 									// we have structural changes. Report them.
@@ -808,24 +803,24 @@ export class ExecuteBatch extends Command {
 }
 
 interface IResult {
-	workflowsNumber:number;
+	totalWorkflows:number;
 	summary:{
 		failedExecutions:number,
-		succeededExecution:number,
+		successfulExecutions:number,
 		warningExecutions:number,
 		errors:IExecutionError[],
 		warnings:IExecutionError[],
 	};
 	coveredNodes:{
-		[key:string]:number
+		[nodeType:string]:number
 	};
 	executions:IExecutionResult[];
 }
 interface IExecutionResult{
-	workflowId: string | number | ObjectID;
-	executionTime: number;
+	workflowId: string | number;
+	executionTime: number; // Given in seconds with decimals for milisseconds
 	finished: boolean;
-	executionStatus: executionStatus;
+	executionStatus: ExecutionStatus;
 	nodes: Array<{
 		name: string,
 		typeVersion: number,
@@ -834,22 +829,22 @@ interface IExecutionResult{
 	error?: string;
 	changes?: string;
 	coveredNodes:{
-		[key:string]:number
+		[nodeType:string]:number
 	};
 }
 
 interface IExecutionError {
-	workflowId: string | number | ObjectID;
+	workflowId: string | number;
 	error: string;
 }
 
 interface IWorkflowExecutionProgress {
-	workflowId: string | number | ObjectID;
-	status: executionStatus;
+	workflowId: string | number;
+	status: ExecutionStatus;
 }
 
 interface INodeSpecialCases {
-	[key: string]: INodeSpecialCase;
+	[nodeName: string]: INodeSpecialCase;
 }
 
 interface INodeSpecialCase {
@@ -857,4 +852,11 @@ interface INodeSpecialCase {
 	capResults?: number;
 }
 
-type executionStatus = 'success' | 'error' | 'warning' | 'running';
+type ExecutionStatus = 'success' | 'error' | 'warning' | 'running';
+
+declare module 'json-diff' {
+	interface IDiffOptions {
+		keysOnly?: boolean;
+	}
+	export function diff(obj1: unknown, obj2: unknown, diffOptions: IDiffOptions): string;
+}

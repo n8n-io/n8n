@@ -187,7 +187,7 @@ export class Execute extends Command {
 				};
 			}
 			if (flags.rawOutput === undefined) {
-				this.log('Execution was successfull:');
+				this.log('Execution was successful:');
 				this.log('====================================');
 			}
 			this.log(JSON.stringify(data, null, 2));

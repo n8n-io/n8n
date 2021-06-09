@@ -1,5 +1,6 @@
 import {
-	Command, flags,
+	Command, 
+	flags,
 } from '@oclif/command';
 
 import {
@@ -15,9 +16,9 @@ export class ListWorkflowCommand extends Command {
 	static description = '\nList workflows';
 
 	static examples = [
-		`$ n8n list:workflow`,
-		`$ n8n list:workflow --active=true --onlyId`,
-		`$ n8n list:workflow --active=false`,
+		'$ n8n list:workflow',
+		'$ n8n list:workflow --active=true --onlyId',
+		'$ n8n list:workflow --active=false',
 	];
 
 	static flags = {
@@ -47,9 +48,9 @@ export class ListWorkflowCommand extends Command {
 
 			const workflows = await Db.collections.Workflow!.find(findQuery);
 			if (flags.onlyId) {
-				workflows.map(workflow => console.log(workflow.id));
+				workflows.forEach(workflow => console.log(workflow.id));
 			} else {
-				workflows.map(workflow => console.log(workflow.id + "|" + workflow.name));
+				workflows.forEach(workflow => console.log(workflow.id + "|" + workflow.name));
 			}
 			
 
