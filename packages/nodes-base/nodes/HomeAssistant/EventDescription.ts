@@ -102,6 +102,9 @@ export const eventFields = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
 		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
@@ -116,40 +119,22 @@ export const eventFields = [
 		},
 		options: [
 			{
-				displayName: 'Attributes',
-				name: 'attributes',
+				displayName: 'Attribute',
+				name: 'attribute',
 				values: [
 					{
-						displayName: 'State Attributes',
-						name: 'eventAttributesUi',
-						placeholder: 'Add Attribute',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
-						options: [
-							{
-								displayName: 'Attribute',
-								name: 'attribute',
-								values: [
-									{
-										displayName: 'Name',
-										name: 'name',
-										type: 'string',
-										default: '',
-										description: 'Name of the attribute.',
-									},
-									{
-										displayName: 'Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the attribute.',
-									},
-								],
-							},
-						],
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'Name of the attribute.',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'Value of the attribute.',
 					},
 				],
 			},

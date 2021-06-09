@@ -16,9 +16,9 @@ export const stateOperations = [
 		},
 		options: [
 			{
-				name: 'Create/Update',
+				name: 'Create or update',
 				value: 'upsert',
-				description: 'Create or update a state',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Get All',
@@ -144,6 +144,9 @@ export const stateFields = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
 		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
@@ -158,40 +161,22 @@ export const stateFields = [
 		},
 		options: [
 			{
-				displayName: 'Attributes',
-				name: 'attributes',
+				displayName: 'Attribute',
+				name: 'attribute',
 				values: [
 					{
-						displayName: 'State Attributes',
-						name: 'stateAttributesUi',
-						placeholder: 'Add Attribute',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
-						options: [
-							{
-								displayName: 'Attribute',
-								name: 'attribute',
-								values: [
-									{
-										displayName: 'Name',
-										name: 'name',
-										type: 'string',
-										default: '',
-										description: 'Name of the attribute.',
-									},
-									{
-										displayName: 'Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the attribute.',
-									},
-								],
-							},
-						],
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'Name of the attribute.',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'Value of the attribute.',
 					},
 				],
 			},

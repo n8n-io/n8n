@@ -117,6 +117,9 @@ export const serviceFields = [
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
 		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
@@ -135,36 +138,18 @@ export const serviceFields = [
 				displayName: 'Field',
 				values: [
 					{
-						displayName: 'Service Data',
-						name: 'serviceDataUi',
-						placeholder: 'Add Field',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
-						options: [
-							{
-								name: 'field',
-								displayName: 'Field',
-								values: [
-									{
-										displayName: 'Name',
-										name: 'name',
-										type: 'string',
-										default: '',
-										description: 'Name of the field.',
-									},
-									{
-										displayName: 'Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the field.',
-									},
-								],
-							},
-						],
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'Name of the field.',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'Value of the field.',
 					},
 				],
 			},
