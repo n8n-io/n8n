@@ -157,10 +157,13 @@ abstract class NodeError extends Error {
 			}
 			if (Array.isArray(value)) {
 				value.forEach((val, index) => {
-					seen.has(val)
-						? value[index] = '[circular]'
-						// tslint:disable-next-line: no-unused-expression
-						: (this.isTraversableObject(val) && this.removeCircularRefs(val, seen));
+					if (seen.has(val)) {
+						value[index] = '[circular]';
+						return;
+					}
+					if (this.isTraversableObject(val)) {
+						this.removeCircularRefs(val, seen);
+					}
 				});
 			}
 		});
