@@ -373,7 +373,7 @@ export class Jira implements INodeType {
 				const res = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/createmeta?projectIds=${projectId}&issueTypeIds=${issueTypeId}&expand=projects.issuetypes.fields`, 'GET');
 				
 				// tslint:disable-next-line: no-any
-				const fields = res.projects.find((o: any) => o.id === projectId).issuetypes.find((o: any) => o.id === issueTypeId).fields
+				const fields = res.projects.find((o: any) => o.id === projectId).issuetypes.find((o: any) => o.id === issueTypeId).fields;
 				for (const key of Object.keys(fields)) {
 					const field = fields[key];
 					if (field.schema && Object.keys(field.schema).includes('customId')) {
