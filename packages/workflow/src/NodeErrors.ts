@@ -118,7 +118,7 @@ abstract class NodeError extends Error {
 					return resolvedErrors.join(' | ');
 				}
 				if (this.isTraversableObject(error[key])) {
-					const property = this.findProperty(error[key] as IRawErrorObject, potentialKeys);
+					const property = this.findProperty(error[key] as JsonObject, potentialKeys);
 					if (property) {
 						return property;
 					}
