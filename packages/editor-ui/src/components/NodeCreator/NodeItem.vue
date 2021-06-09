@@ -72,8 +72,9 @@ export default {
 .description {
 	margin-top: 2px;
 	font-size: 11px;
-	line-height: 15px;
+	line-height: 16px;
 	font-weight: 400;
+	color: $--node-creator-description-color;
 }
 
 .trigger-icon {

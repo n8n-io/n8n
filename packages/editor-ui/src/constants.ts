@@ -28,10 +28,10 @@ export const SUBCATEGORY_DESCRIPTIONS: {
 	[category: string]: { [subcategory: string]: string };
 } = {
 	'Core Nodes': {
-		Flow: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what dkd kj j jksksk dsjfsdkj flsdkjf ldskjf lsj flkdsj',
-		Files:  'Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what dkd kj j jksksk dsjfsdkj flsdkjf ldskjf lsj flkdsj',
-		'Data Transformation': 'Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what dkd kj j jksksk dsjfsdkj flsdkjf ldskjf lsj flkdsj',
-		Helpers: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit nulla fun sup yo what dkd kj j jksksk dsjfsdkj flsdkjf ldskjf lsj flkdsj',
+		Flow: 'Branches, core triggers, merge data',
+		Files:  'Work with CSV, XML, text, images etc.',
+		'Data Transformation': 'Manipulate data fields, run code',
+		Helpers: 'HTTP Requests (API calls), date and time, scrape HTML',
 	},
 };
 

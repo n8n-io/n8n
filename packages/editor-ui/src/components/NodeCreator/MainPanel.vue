@@ -26,7 +26,7 @@
 				/>
 			</div>
 			<div
-				class="node-create-list-wrapper scrollable"
+				class="scrollable"
 				v-else-if="filteredNodeTypes.length > 0"
 			>
 				<ItemIterator
@@ -260,6 +260,7 @@ export default mixins(externalHooks).extend({
 
 .main-panel .scrollable {
 	height: calc(100% - 160px);
+	padding-top: 1px;
 }
 
 .scrollable {

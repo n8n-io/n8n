@@ -27,6 +27,7 @@ export default {
 
 .details {
 	flex-grow: 1;
+	margin-right: 4px;
 }
 
 .title {
@@ -38,8 +39,9 @@ export default {
 
 .description {
 	font-size: 11px;
-	line-height: 15px;
+	line-height: 16px;
 	font-weight: 400;
+	color: $--node-creator-description-color;
 }
 
 .action {

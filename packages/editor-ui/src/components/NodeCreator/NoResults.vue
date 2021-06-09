@@ -1,7 +1,7 @@
 <template>
 	<div class="no-results">
 		<div class="icon">
-			<img :src="`${basePath}no-nodes-icon.png`" alt="" />
+			<NoResultsIcon />
 		</div>
 		<div class="title">
 			<div>We didn't make that... yet</div>
@@ -37,8 +37,13 @@
 import { HTTP_REQUEST_NODE_NAME, WEBHOOK_NODE_NAME, REQUEST_NODE_FORM_URL } from '@/constants';
 import Vue from 'vue';
 
+import NoResultsIcon from './NoResultsIcon.vue';
+
 export default Vue.extend({
 	name: 'NoResults',
+	components: {
+		NoResultsIcon,
+	},
 	data() {
 		return {
 			REQUEST_NODE_FORM_URL,
@@ -97,6 +102,10 @@ export default Vue.extend({
 
 	@media (min-height: 550px) {
 		display: block;
+	}
+
+	a {
+		font-size: 12px;
 	}
 }
 

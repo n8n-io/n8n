@@ -46,7 +46,6 @@ export default {
 	border-left: 1px solid transparent;
 
 	&:hover {
-		background-color: $--node-creator-item-hover-background-color;
 		border-color: $--node-creator-item-hover-border-color;
 	}
 
