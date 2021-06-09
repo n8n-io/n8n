@@ -357,8 +357,6 @@ export class Jira implements INodeType {
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				//const fields: IDataObject[] = [];
-				//const length = items.length as unknown as number;
 				const operation = this.getCurrentNodeParameter('operation') as string;
 				let projectId: string;
 				let issueTypeId: string;
@@ -373,14 +371,16 @@ export class Jira implements INodeType {
 				}
 
 				const res = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/createmeta?projectIds=${projectId}&issueTypeIds=${issueTypeId}&expand=projects.issuetypes.fields`, 'GET');
-				const fields = res.projects.find( (o:any) => o.id == projectId ).issuetypes.find( (o:any) => o.id == issueTypeId ).fields
+				
+				// tslint:disable-next-line: no-any
+				const fields = res.projects.find((o: any) => o.id === projectId).issuetypes.find((o: any) => o.id === issueTypeId).fields
 				for (const key of Object.keys(fields)) {
-					const field = fields[key]
-					if ( field.schema && Object.keys(field.schema).includes("customId")) {
-						returnData.push({
-							name: field.name,
-							value: field.fieldId,
-						});
+					const field = fields[key];
+					if (field.schema && Object.keys(field.schema).includes('customId')) {
+							returnData.push({
+								name: field.name,
+								value: field.key,
+							});
 					}
 				}
 				return returnData;
