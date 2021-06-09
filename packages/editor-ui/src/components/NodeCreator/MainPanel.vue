@@ -16,7 +16,7 @@
 					<el-tab-pane label="Trigger" name="Trigger"></el-tab-pane>
 				</el-tabs>
 			</div>
-			<div v-if="nodeFilter.length === 0" class="scrollable">
+			<div v-if="searchFilter.length === 0" class="scrollable">
 				<ItemIterator
 					:elements="categorized"
 					:disabled="!!activeSubcategory"
@@ -54,7 +54,7 @@ import SubcategoryPanel from './SubcategoryPanel.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Interface';
 import { CORE_NODES_CATEGORY  } from '@/constants';
 import SlideTransition from '../transitions/SlideTransition.vue';
-import { matchesSelectType } from './helpers';
+import { matchesNodeType, matchesSelectType } from './helpers';
 
 
 export default mixins(externalHooks).extend({
@@ -78,13 +78,16 @@ export default mixins(externalHooks).extend({
 		};
 	},
 	computed: {
+		searchFilter(): string {
+			return this.nodeFilter.toLowerCase().trim();
+		},
 		filteredNodeTypes(): INodeCreateElement[] {
 			const nodeTypes: INodeCreateElement[] = this.searchItems;
-			const filter = this.nodeFilter.toLowerCase();
+			const filter = this.searchFilter;
 
 			const returnData = nodeTypes.filter((el: INodeCreateElement) => {
 				const nodeType = (el.properties as INodeItemProps).nodeType;
-				return filter && matchesSelectType(el, this.selectedType) && nodeType.displayName.toLowerCase().indexOf(filter) !== -1;
+				return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
 			});
 
 			setTimeout(() => {
@@ -153,7 +156,7 @@ export default mixins(externalHooks).extend({
 	methods: {
 		nodeFilterKeyDown(e: KeyboardEvent) {
 			let activeList;
-			if (this.nodeFilter.length > 0) {
+			if (this.searchFilter.length > 0) {
 				activeList = this.filteredNodeTypes;
 			} else if (this.activeSubcategory) {
 				activeList = this.subcategorizedNodes;
