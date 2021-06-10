@@ -516,7 +516,8 @@ export class ExecuteBatch extends Command {
 		ExecuteBatch.workflowExecutionsProgress.map((concurrentThread, index) => {
 			let message = `${index + 1}: `;
 			concurrentThread.map((executionItem, workflowIndex) => {
-				let openColor = '\x1b[0m', closeColor = '\x1b[0m';
+				let openColor = '\x1b[0m';
+				const closeColor = '\x1b[0m';
 				switch (executionItem.status) {
 					case 'success':
 						openColor = '\x1b[32m';
@@ -526,6 +527,8 @@ export class ExecuteBatch extends Command {
 						break;
 					case 'warning':
 						openColor = '\x1b[33m';
+						break;
+					default:
 						break;
 				}
 				message += (workflowIndex > 0 ? ', ' : '') + `${openColor}${executionItem.workflowId}${closeColor}`;
@@ -790,59 +793,4 @@ export class ExecuteBatch extends Command {
 		});
 	}
 
-}
-
-interface IResult {
-	totalWorkflows:number;
-	summary:{
-		failedExecutions:number,
-		successfulExecutions:number,
-		warningExecutions:number,
-		errors:IExecutionError[],
-		warnings:IExecutionError[],
-	};
-	coveredNodes:{
-		[nodeType:string]:number
-	};
-	executions:IExecutionResult[];
-}
-interface IExecutionResult{
-	workflowId: string | number;
-	workflowName: string;
-	executionTime: number; // Given in seconds with decimals for milisseconds
-	finished: boolean;
-	executionStatus: ExecutionStatus;
-	error?: string;
-	changes?: string;
-	coveredNodes:{
-		[nodeType:string]:number
-	};
-}
-
-interface IExecutionError {
-	workflowId: string | number;
-	error: string;
-}
-
-interface IWorkflowExecutionProgress {
-	workflowId: string | number;
-	status: ExecutionStatus;
-}
-
-interface INodeSpecialCases {
-	[nodeName: string]: INodeSpecialCase;
-}
-
-interface INodeSpecialCase {
-	ignoredProperties?: string[];
-	capResults?: number;
-}
-
-type ExecutionStatus = 'success' | 'error' | 'warning' | 'running';
-
-declare module 'json-diff' {
-	interface IDiffOptions {
-		keysOnly?: boolean;
-	}
-	export function diff(obj1: unknown, obj2: unknown, diffOptions: IDiffOptions): string;
 }
