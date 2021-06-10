@@ -22,6 +22,7 @@
 					<span>Request the node</span>&nbsp;
 					<span>
 						<font-awesome-icon
+							class="external"
 							icon="external-link-alt"
 							title="Request the node"
 						/>
@@ -103,10 +104,6 @@ export default Vue.extend({
 	@media (min-height: 550px) {
 		display: block;
 	}
-
-	a {
-		font-size: 12px;
-	}
 }
 
 a {
@@ -121,4 +118,9 @@ a {
 	min-height: 67px;
 	opacity: .6;
 }
+
+.external {
+	font-size: 12px;
+}
+
 </style>
