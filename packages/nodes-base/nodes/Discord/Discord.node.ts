@@ -82,7 +82,7 @@ export class Discord implements INodeType {
 				} catch (error) {
 					if (error.statusCode === 429) {
 						// Waiting rating limit
-						await new Promise((resolve) => {
+						await new Promise<void>((resolve) => {
 							setTimeout(async () => {
 								resolve();
 							}, get(error, 'response.body.retry_after', 150));

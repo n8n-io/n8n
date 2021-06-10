@@ -172,8 +172,13 @@ export class ActiveWorkflowRunner {
 				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 			}
 
+			// TODO:
+			// TS 4.3.2 is flaging `.webhookPath` twice because `webhook` is undefined.
+			// Ask about the logic for the property access.
+			// @ts-ignore
 			path = webhook!.webhookPath;
 			// extracting params from path
+			// @ts-ignore
 			webhook!.webhookPath.split('/').forEach((ele, index) => {
 				if (ele.startsWith(':')) {
 					// write params to req.params

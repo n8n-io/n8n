@@ -163,7 +163,7 @@ export async function uploadAttachments(this: IExecuteFunctions, binaryPropertie
 			// data has not been uploaded yet, so wait for it to be ready
 			if (response.processing_info) {
 				const { check_after_secs } = (response.processing_info as IDataObject);
-				await new Promise((resolve, reject) => {
+				await new Promise<void>((resolve, reject) => {
 					setTimeout(() => {
 						resolve();
 					}, (check_after_secs as number) * 1000);
