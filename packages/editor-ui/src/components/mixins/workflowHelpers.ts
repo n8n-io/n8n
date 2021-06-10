@@ -520,7 +520,7 @@ export const workflowHelpers = mixins(
 				const currentData = await this.getWorkflowDataToSave();
 
 				let data: IWorkflowDb;
-				data = await this.restApi().getWorkflow(id);
+				data = await this.restApi().getWorkflow(id); // eslint-disable-line
 
 				if(data !== undefined) {
 					const x = {

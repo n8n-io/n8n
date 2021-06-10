@@ -7,10 +7,10 @@ function broadcast(componentName: string, eventName: string, params: any) { // t
 
 		if (name === componentName) {
 			// @ts-ignore
-			child.$emit.apply(child, [eventName].concat(params));
+			child.$emit.apply(child, [eventName].concat(params)); // eslint-disable-line
 		} else {
 			// @ts-ignore
-			broadcast.apply(child, [componentName, eventName].concat([params]));
+			broadcast.apply(child, [componentName, eventName].concat([params])); // eslint-disable-line
 		}
 	});
 }
@@ -30,7 +30,7 @@ export default Vue.extend({
 			}
 			if (parent) {
 				// @ts-ignore
-				parent.$emit.apply(parent, [eventName].concat(params));
+				parent.$emit.apply(parent, [eventName].concat(params)); // eslint-disable-line
 			}
 		},
 		$broadcast(componentName: string, eventName: string, params: any) { // tslint:disable-line:no-any
