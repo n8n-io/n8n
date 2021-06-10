@@ -352,7 +352,11 @@ export default mixins(
 			try {
 				result = await this.restApi().createNewCredentials(newCredentials);
 			} catch (error) {
-				this.$showError(error, 'Problem Creating Credentials', 'There was a problem creating the credentials:');
+				this.$showError(
+					error,
+					this.$t('credentialsEdit.showError.createCredentials.title').toString(),
+					`${this.$t('credentialsEdit.showError.createCredentials.message').toString()}:`
+				);
 				return null;
 			}
 
@@ -401,7 +405,11 @@ export default mixins(
 					url = await this.restApi().oAuth1CredentialAuthorize(credentialData as ICredentialsResponse) as string;
 				}
 			} catch (error) {
-				this.$showError(error, 'OAuth Authorization Error', 'Error generating authorization URL:');
+				this.$showError(
+					error,
+					this.$t('credentialsInput.showError.oAuthCredentialAuthorize.title').toString(),
+					`${this.$t('credentialsInput.showError.oAuthCredentialAuthorize.message').toString()}:`
+				);
 				return;
 			}
 
@@ -487,7 +495,11 @@ export default mixins(
 			try {
 				result = await this.restApi().updateCredentials((this.credentialDataDynamic as ICredentialsDecryptedResponse).id as string, newCredentials);
 			} catch (error) {
-				this.$showError(error, 'Problem Updating Credentials', 'There was a problem updating the credentials:');
+				this.$showError(
+					error,
+					this.$t('credentialsInput.showError.updateCredentials.title').toString(),
+					`${this.$t('credentialsInput.showError.updateCredentials.message').toString()}:`
+				);
 				return null;
 			}
 

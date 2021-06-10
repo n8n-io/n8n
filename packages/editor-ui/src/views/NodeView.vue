@@ -342,7 +342,11 @@ export default mixins(
 				try {
 					data = await this.restApi().getExecution(executionId);
 				} catch (error) {
-					this.$showError(error, 'Problem loading execution', 'There was a problem opening the execution:');
+					this.$showError(
+						error,
+						this.$t('nodeView.showError.openExecution.title').toString(),
+					`${this.$t('nodeView.showError.openExecution.message').toString()}:`,
+					);
 					return;
 				}
 
@@ -366,7 +370,11 @@ export default mixins(
 				try {
 					data = await this.restApi().getWorkflow(workflowId);
 				} catch (error) {
-					this.$showError(error, 'Problem opening workflow', 'There was a problem opening the workflow:');
+					this.$showError(
+						error,
+						this.$t('nodeView.showError.openWorkflow.title').toString(),
+					`${this.$t('nodeView.showError.openWorkflow.message').toString()}:`,
+					);
 					return;
 				}
 
@@ -772,7 +780,11 @@ export default mixins(
 							type: 'success',
 						});
 					} else {
-						this.$showError(error, 'Problem stopping execution', 'There was a problem stopping the execuction:');
+						this.$showError(
+							error,
+							this.$t('nodeView.showError.stopExecution.title').toString(),
+							`${this.$t('nodeView.showError.stopExecution.message').toString()}:`,
+						);
 					}
 				}
 				this.stopExecutionInProgress = false;
@@ -783,7 +795,11 @@ export default mixins(
 				try {
 					result = await this.restApi().removeTestWebhook(this.$store.getters.workflowId);
 				} catch (error) {
-					this.$showError(error, 'Problem deleting the test-webhook', 'There was a problem deleting webhook:');
+					this.$showError(
+						error,
+						this.$t('nodeView.showError.stopWaitingForWebhook.title').toString(),
+					`${this.$t('nodeView.showError.stopWaitingForWebhook.message').toString()}:`
+					);
 					return;
 				}
 
@@ -852,7 +868,11 @@ export default mixins(
 					workflowData = await this.restApi().getWorkflowFromUrl(url);
 				} catch (error) {
 					this.stopLoading();
-					this.$showError(error, 'Problem loading workflow', 'There was a problem loading the workflow data from URL:');
+					this.$showError(
+						error,
+						this.$t('nodeView.showError.getWorkflowDataFromUrl.title').toString(),
+					`${this.$t('nodeView.showError.getWorkflowDataFromUrl.message').toString()}:`
+					);
 					return;
 				}
 				this.stopLoading();
@@ -888,7 +908,11 @@ export default mixins(
 						});
 					});
 				} catch (error) {
-					this.$showError(error, 'Problem importing workflow', 'There was a problem importing workflow data:');
+					this.$showError(
+						error,
+						this.$t('nodeView.showError.importWorkflowData.title').toString(),
+					`${this.$t('nodeView.showError.importWorkflowData.message').toString()}:`
+					);
 				}
 			},
 
@@ -2111,7 +2135,11 @@ export default mixins(
 			try {
 				await Promise.all(loadPromises);
 			} catch (error) {
-				this.$showError(error, 'Init Problem', 'There was a problem loading init data:');
+				this.$showError(
+					error,
+					this.$t('nodeView.showError.mounted1.title').toString(),
+					`${this.$t('nodeView.showError.mounted1.message').toString()}:`
+				);
 				return;
 			}
 
@@ -2120,7 +2148,11 @@ export default mixins(
 					this.initNodeView();
 					await this.initView();
 				} catch (error) {
-					this.$showError(error, 'Init Problem', 'There was a problem initializing the workflow:');
+					this.$showError(
+						error,
+						this.$t('nodeView.showError.mounted2.title').toString(),
+					`${this.$t('nodeView.showError.mounted2.message').toString()}:`
+					);
 				}
 				this.stopLoading();
 			});

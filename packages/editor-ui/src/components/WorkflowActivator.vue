@@ -123,7 +123,11 @@ export default mixins(
 						await this.restApi().updateWorkflow(this.workflowId, data);
 					} catch (error) {
 						const newStateName = newActiveState === true ? 'activated' : 'deactivated';
-						this.$showError(error, 'Problem', `There was a problem and the workflow could not be ${newStateName}:`);
+						this.$showError(
+							error,
+							this.$t('workflowActivator.showError.title').toString(),
+							`${this.$t('workflowActivator.showError.message').toString()}:`
+						);
 						this.loading = false;
 						return;
 					}

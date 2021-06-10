@@ -82,6 +82,10 @@ export default {
 			openCredentialDocs: 'Deutsch',
 			credentialType: 'Deutsch',
 			createNewCredentials: 'Deutsch',
+			showError: {
+				title: 'Deutsch',
+				message: 'Deutsch',
+			},
 			showMessage: {
 				credentialTypeNull1: {
 					title: 'Deutsch',
@@ -115,6 +119,20 @@ export default {
 		},
 
 		credentialsInput: {
+			showError: {
+				createCredentials: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				oAuthCredentialAuthorize: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				updateCredentials: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+			},
 			credentialsName: 'Deutsch',
 			credentialData: 'Deutsch',
 			enterAllRequiredProperties: 'Deutsch',
@@ -154,6 +172,16 @@ export default {
 				title: 'Deutsch',
 				message: 'Deutsch',
 			},
+			showError: {
+				loadCredentials: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				deleteCredential: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+			},
 		},
 
 		dataDisplay: {
@@ -175,6 +203,32 @@ export default {
 		},
 
 		executionsList: {
+			showError: {
+				handleDeleteSelected: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				loadMore: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				loadWorkflows: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				retryExecution: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				refreshData: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				stopExecution: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+			},
 			filters: 'Deutsch',
 			autoRefresh: 'Deutsch',
 			selected: 'Deutsch',
@@ -246,6 +300,16 @@ export default {
 		},
 
 		mainSideBar: {
+			showError: {
+				stopExecution: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				handleSelect: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+			},
 			workflows: 'Deutsch',
 			workflow: 'Deutsch',
 			new: 'Deutsch',
@@ -441,9 +505,27 @@ export default {
 			noMatchingTagsExist: 'Deutsch',
 			noTagsExist: 'Deutsch',
 			manageTags: 'Deutsch',
+			showError: {
+				title: 'Deutsch',
+				message: 'Deutsch',
+			},
 		},
 
 		tagsManager: {
+			showError: {
+				onCreate: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				onUpdate: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				onDelete: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+			},
 			manageTags: 'Deutsch',
 			done: 'Deutsch',
 			couldNotDeleteTag: 'Deutsch',
@@ -465,6 +547,10 @@ export default {
 		},
 
 		workflowActivator: {
+			showError: {
+				title: '',
+				message: '',
+			},
 			theWorkflowIsSetToBeActiveBut: 'Deutsch',
 			deactivateWorkflow: 'Deutsch',
 			activateWorkflow: 'Deutsch',
@@ -495,6 +581,10 @@ export default {
 		},
 
 		workflowOpen: {
+			showError: {
+				title: 'Deutsch',
+				message: 'Deutsch',
+			},
 			openWorkflow: 'Deutsch',
 			filterByTags: 'Deutsch',
 			searchWorkflows: 'Deutsch',
@@ -532,9 +622,33 @@ export default {
 				title: 'Deutsch',
 				message: 'Deutsch',
 			},
+			showError: {
+				title: 'Deutsch',
+				message: 'Deutsch',
+			},
 		},
 
 		workflowSettings: {
+			showError: {
+				openDialog: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				saveSettings1: {
+					errorMessage: 'Deutsch',
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				saveSettings2: {
+					errorMessage: 'Deutsch',
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				saveSettings3: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+			},
 			workflowSettings: 'Deutsch',
 			noWorkflow: 'Deutsch',
 			errorWorkflow: 'Deutsch',
@@ -598,8 +712,42 @@ export default {
 		},
 
 		nodeView: {
+			showError: {
+				openExecution: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				openWorkflow: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				stopExecution: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				stopWaitingForWebhook: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				getWorkflowDataFromUrl: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				importWorkflowData: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				mounted1: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+				mounted2: {
+					title: 'Deutsch',
+					message: 'Deutsch',
+				},
+			},
 			stoppingCurrentExecution: 'Deutsch',
-			stopCurrentExecution:'Deutsch',
+			stopCurrentExecution: 'Deutsch',
 			executesTheWorkflowFromTheStartOrWebhookNode: 'Deutsch',
 			runButtonText: {
 				executeWorkflow: 'Deutsch',

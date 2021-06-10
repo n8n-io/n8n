@@ -94,8 +94,8 @@ export default mixins(showMessage).extend({
 				const escapedName = escape(name);
 				this.$showError(
 					error,
-					"New tag was not created",
-					`A problem occurred when trying to create the "${escapedName}" tag`,
+					this.$t('tagsManager.showError.onCreate.title').toString(),
+					`${this.$t('tagsManager.showError.onCreate.message').toString()}:`
 				);
 				cb(null, error);
 			}
@@ -130,8 +130,8 @@ export default mixins(showMessage).extend({
 				const escapedName = escape(oldName);
 				this.$showError(
 					error,
-					"Tag was not updated",
-					`A problem occurred when trying to update the "${escapedName}" tag`,
+					this.$t('tagsManager.showError.onUpdate.title').toString(),
+					`${this.$t('tagsManager.showError.onUpdate.message').toString()}:`
 				);
 				cb(false, error);
 			}
@@ -161,8 +161,8 @@ export default mixins(showMessage).extend({
 				const escapedName = escape(name);
 				this.$showError(
 					error,
-					"Tag was not deleted",
-					`A problem occurred when trying to delete the "${escapedName}" tag`,
+					this.$t('tagsManager.showError.onDelete.title').toString(),
+					`${this.$t('tagsManager.showError.onCDelete.message').toString()}:`
 				);
 				cb(false, error);
 			}

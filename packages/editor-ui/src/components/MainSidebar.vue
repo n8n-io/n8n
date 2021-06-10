@@ -324,7 +324,11 @@ export default mixins(
 						type: 'success',
 					});
 				} catch (error) {
-					this.$showError(error, 'Problem stopping execution', 'There was a problem stopping the execuction:');
+					this.$showError(
+						error,
+						this.$t('mainSideBar.showError.stopExecution.title').toString(),
+						`${this.$t('mainSideBar.showError.stopExecution.message').toString()}:`,
+					);
 				}
 				this.stopExecutionInProgress = false;
 			},
@@ -400,14 +404,18 @@ export default mixins(
 					try {
 						result = await this.restApi().deleteWorkflow(this.currentWorkflow);
 					} catch (error) {
-						this.$showError(error, 'Problem deleting the workflow', 'There was a problem deleting the workflow:');
+						this.$showError(
+							error,
+							this.$t('mainSideBar.showError.stopExecution.title').toString(),
+							`${this.$t('mainSideBar.showError.stopExecution.message').toString()}:`,
+						);
 						return;
 					}
 					// Reset tab title since workflow is deleted.
 					this.$titleReset();
 					this.$showMessage({
-						title: this.$t('mainSideBar.showMessage.workflowDelete.title').toString(),
-						message: this.$t('mainSideBar.showMessage.workflowDelete.message').toString(),
+						title: this.$t('mainSideBar.showMessage.handleSelect.title').toString(),
+						message: this.$t('mainSideBar.showMessage.handleSelect.message').toString(),
 						type: 'success',
 					});
 

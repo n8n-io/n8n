@@ -1,7 +1,10 @@
-// @ts-nocheck
-
 const baseTranslations = {
 	en: {
+
+		oauth2: {
+			clientId: '', // received from API, but overwritten here
+			clientSecret: '',
+		},
 
 		nodeViewError: {
 			error: 'ERROR',
@@ -84,6 +87,10 @@ const baseTranslations = {
 			openCredentialDocs: 'Open credential docs',
 			credentialType: 'Credential type',
 			createNewCredentials: 'Create New Credentials',
+			showError: {
+				title: 'Problem loading credentials',
+				message: 'There was a problem loading the credentials',
+			},
 			showMessage: {
 				credentialTypeNull1: {
 					title: 'Credential type not known',
@@ -117,6 +124,20 @@ const baseTranslations = {
 		},
 
 		credentialsInput: {
+			showError: {
+				createCredentials: {
+					title: 'Problem Creating Credentials',
+					message: 'There was a problem creating the credentials',
+				},
+				oAuthCredentialAuthorize: {
+					title: 'OAuth Authorization Error',
+					message: 'Error generating authorization URL',
+				},
+				updateCredentials: {
+					title: 'Problem Updating Credentials',
+					message: 'There was a problem updating the credentials',
+				},
+			},
 			credentialsName: 'Credentials Name',
 			credentialData: 'Credential Data',
 			enterAllRequiredProperties: 'Enter all required properties',
@@ -156,6 +177,16 @@ const baseTranslations = {
 				title: 'Credentials deleted',
 				message: `The credential "\${credential.name}" got deleted!`, // interpolation problem
 			},
+			showError: {
+				loadCredentials: {
+					title: 'Problem loading credentials',
+					message: 'There was a problem loading the credentials',
+				},
+				deleteCredential: {
+					title: 'Problem deleting credentials',
+					message: 'There was a problem deleting the credentials',
+				},
+			},
 		},
 
 		dataDisplay: {
@@ -177,7 +208,33 @@ const baseTranslations = {
 		},
 
 		executionsList: {
-			filters: 'Filters:',
+			showError: {
+				handleDeleteSelected: {
+					title: 'Problem deleting executions',
+					message: 'There was a problem deleting the executions',
+				},
+				loadMore: {
+					title: 'Problem loading workflows',
+					message: 'There was a problem loading the workflows',
+				},
+				loadWorkflows: {
+					title: 'Problem loading workflows',
+					message: 'There was a problem loading the workflows',
+				},
+				retryExecution: {
+					title: 'Problem with retry',
+					message: 'There was a problem with the retry',
+				},
+				refreshData: {
+					title: 'Problem loading',
+					message: 'There was a problem loading the data',
+				},
+				stopExecution: {
+					title: 'Problem stopping execution',
+					message: 'There was a problem stopping the execuction',
+				},
+			},
+			filters: 'Filters:', // TODO: double check this
 			autoRefresh: 'Auto refresh',
 			selected: 'Selected',
 			checkAll: 'Check all',
@@ -248,6 +305,16 @@ const baseTranslations = {
 		},
 
 		mainSideBar: {
+			showError: {
+				stopExecution: {
+					title: 'Problem stopping execution',
+					message: 'There was a problem stopping the execuction',
+				},
+				handleSelect: {
+					title: 'Problem deleting the workflow',
+					message: 'There was a problem deleting the workflow',
+				},
+			},
 			workflows: 'Workflows',
 			workflow: 'Workflow',
 			new: 'New',
@@ -443,9 +510,27 @@ const baseTranslations = {
 			noMatchingTagsExist: 'No matching tags exist',
 			noTagsExist: 'No tags exist',
 			manageTags: 'Manage tags',
+			showError: {
+				title: 'New tag was not created',
+				message: 'A problem occurred when trying to create the "${name}" tag', // interpolation problem
+			},
 		},
 
 		tagsManager: {
+			showError: {
+				onCreate: {
+					title: 'New tag was not created',
+					message: `A problem occurred when trying to create the "\${escapedName}" tag`, // interpolation problem
+				},
+				onUpdate: {
+					title: 'Tag was not updated',
+					message: `A problem occurred when trying to update the "$\{escapedName}" tag`, // interpolation problem
+				},
+				onDelete: {
+					title: 'Tag was not deleted',
+					message: `A problem occurred when trying to delete the "\${escapedName}" tag`, // interpolation problem
+				},
+			},
 			manageTags: 'Manage tags',
 			done: 'Done',
 			couldNotDeleteTag: 'Could not delete tag',
@@ -467,6 +552,10 @@ const baseTranslations = {
 		},
 
 		workflowActivator: {
+			showError: {
+				title: 'Problem',
+				message: 'There was a problem and the workflow could not be $\{newStateName}',
+			},
 			theWorkflowIsSetToBeActiveBut: 'The workflow is set to be active but could not be started.<br />Click to display error message.',
 			deactivateWorkflow: 'Deactivate workflow',
 			activateWorkflow: 'Activate workflow',
@@ -497,6 +586,10 @@ const baseTranslations = {
 		},
 
 		workflowOpen: {
+			showError: {
+				title: 'Problem loading workflows',
+				message: 'There was a problem loading the workflows',
+			},
 			openWorkflow: 'Open Workflow',
 			filterByTags: 'Filter by tags...',
 			searchWorkflows: 'Deutsch',
@@ -530,6 +623,10 @@ const baseTranslations = {
 		},
 
 		workflowRun: {
+			showError: {
+				title: 'Problem running workflow',
+				message: 'There was a problem running the workflow',
+			},
 			showMessage: {
 				title: 'Workflow can not be executed',
 				message: 'The workflow has issues. Please fix them first',
@@ -537,6 +634,26 @@ const baseTranslations = {
 		},
 
 		workflowSettings: {
+			showError: {
+				openDialog: {
+					title: 'Problem loading settings',
+					message: 'The following error occurred loading the data',
+				},
+				saveSettings1: {
+					errorMessage: 'timeout is activated but set to 0',
+					title: 'Problem saving settings',
+					message: 'There was a problem saving the settings',
+				},
+				saveSettings2: {
+					errorMessage: `Maximum Timeout is: $\{hours} hours, $\{minutes} minutes, $\{seconds} seconds`, // interpolation problem
+					title: 'Problem saving settings',
+					message: 'Set timeout is exceeding the maximum timeout!',
+				},
+				saveSettings3: {
+					title: 'Problem saving settings',
+					message: 'There was a problem saving the settings',
+				},
+			},
 			workflowSettings: 'Workflow Settings',
 			noWorkflow: '- No Workflow -',
 			errorWorkflow: 'Error Workflow',
@@ -595,6 +712,40 @@ const baseTranslations = {
 		},
 
 		nodeView: {
+			showError: {
+				openExecution: {
+					title: 'Problem loading execution',
+					message: 'There was a problem opening the execution',
+				},
+				openWorkflow: {
+					title: 'Problem opening workflow',
+					message: 'There was a problem opening the workflow',
+				},
+				stopExecution: {
+					title: 'Problem stopping execution',
+					message: 'There was a problem stopping the execuction',
+				},
+				stopWaitingForWebhook: {
+					title: 'Problem deleting the test-webhook',
+					message: 'There was a problem deleting webhook',
+				},
+				getWorkflowDataFromUrl: {
+					title: 'Problem loading workflow',
+					message: 'There was a problem loading the workflow data from URL',
+				},
+				importWorkflowData: {
+					title: 'Problem importing workflow',
+					message: 'There was a problem importing workflow data',
+				},
+				mounted1: {
+					title: 'Init Problem',
+					message: 'There was a problem loading init data',
+				},
+				mounted2: {
+					title: 'Init Problem',
+					message: 'There was a problem initializing the workflow',
+				},
+			},
 			stoppingCurrentExecution: 'Stopping current execution',
 			stopCurrentExecution:'Stop current execution',
 			executesTheWorkflowFromTheStartOrWebhookNode: 'Executes the Workflow from the Start or Webhook Node.',

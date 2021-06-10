@@ -384,7 +384,11 @@ export default mixins(
 			try {
 				await Promise.all(promises);
 			} catch (error) {
-				this.$showError(error, 'Problem loading settings', 'The following error occurred loading the data:');
+				this.$showError(
+					error,
+					this.$t('workflowSettings.showError.openDialog.title').toString(),
+					`${this.$t('workflowSettings.showError.openDialog.message').toString()}:`
+				);
 			}
 
 			const workflowSettings = JSON.parse(JSON.stringify(this.$store.getters.workflowSettings));
@@ -429,14 +433,22 @@ export default mixins(
 					: -1;
 
 			if (data.settings!.executionTimeout === 0) {
-				this.$showError(new Error('timeout is activated but set to 0'), 'Problem saving settings', 'There was a problem saving the settings:');
+				this.$showError(
+					new Error(this.$t('workflowSettings.showError.saveSettings1.errorMessage').toString()),
+					this.$t('workflowSettings.showError.saveSettings1.title').toString(),
+					`${this.$t('workflowSettings.showError.saveSettings1.message').toString()}:`
+				);
 				return;
 			}
 
 			// @ts-ignore
 			if (data.settings!.executionTimeout > this.workflowSettings.maxExecutionTimeout) {
 				const { hours, minutes, seconds } = this.convertToHMS(this.workflowSettings.maxExecutionTimeout as number);
-				this.$showError(new Error(`Maximum Timeout is: ${hours} hours, ${minutes} minutes, ${seconds} seconds`), 'Problem saving settings', 'Set timeout is exceeding the maximum timeout!');
+				this.$showError(
+					new Error(this.$t('workflowSettings.showError.saveSettings2.errorMessage').toString()),
+					this.$t('workflowSettings.showError.saveSettings2.title').toString(),
+					`${this.$t('workflowSettings.showError.saveSettings2.message').toString()}:`
+				);
 				return;
 			}
 			delete data.settings!.maxExecutionTimeout;
@@ -446,7 +458,11 @@ export default mixins(
 			try {
 				await this.restApi().updateWorkflow(this.$route.params.name, data);
 			} catch (error) {
-				this.$showError(error, 'Problem saving settings', 'There was a problem saving the settings:');
+				this.$showError(
+					error,
+					this.$t('workflowSettings.showError.saveSettings3.title').toString(),
+					`${this.$t('workflowSettings.showError.saveSettings3.message').toString()}:`
+				);
 				this.isLoading = false;
 				return;
 			}

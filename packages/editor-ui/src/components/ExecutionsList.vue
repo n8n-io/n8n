@@ -372,7 +372,11 @@ export default mixins(
 				await this.restApi().deleteExecutions(sendData);
 			} catch (error) {
 				this.isDataLoading = false;
-				this.$showError(error, 'Problem deleting executions', 'There was a problem deleting the executions:');
+				this.$showError(
+					error,
+					this.$t('executionsList.showError.handleDeleteSelected.title').toString(),
+					`${this.$t('executionsList.showError.handleDeleteSelected.message').toString()}:`,
+				);
 
 				return;
 			}
@@ -528,7 +532,11 @@ export default mixins(
 				data = await this.restApi().getPastExecutions(filter, this.requestItemsPerRequest, lastId);
 			} catch (error) {
 				this.isDataLoading = false;
-				this.$showError(error, 'Problem loading workflows', 'There was a problem loading the workflows:');
+				this.$showError(
+					error,
+					this.$t('executionsList.showError.loadMore.title').toString(),
+					`${this.$t('executionsList.showError.loadMore.message').toString()}:`,
+				);
 				return;
 			}
 
@@ -558,7 +566,11 @@ export default mixins(
 
 				Vue.set(this, 'workflows', workflows);
 			} catch (error) {
-				this.$showError(error, 'Problem loading workflows', 'There was a problem loading the workflows:');
+				this.$showError(
+					error,
+					this.$t('executionsList.showError.loadWorkflows.title').toString(),
+					`${this.$t('executionsList.showError.loadWorkflows.message').toString()}:`,
+				);
 			}
 		},
 		async openDialog () {
@@ -594,7 +606,11 @@ export default mixins(
 
 				this.isDataLoading = false;
 			} catch (error) {
-				this.$showError(error, 'Problem with retry', 'There was a problem with the retry:');
+				this.$showError(
+					error,
+					this.$t('executionsList.showError.retryExecution.title').toString(),
+					`${this.$t('executionsList.showError.retryExecution.message').toString()}:`,
+				);
 
 				this.isDataLoading = false;
 			}
@@ -607,7 +623,11 @@ export default mixins(
 				const finishedExecutionsPromise = this.loadFinishedExecutions();
 				await Promise.all([activeExecutionsPromise, finishedExecutionsPromise]);
 			} catch (error) {
-				this.$showError(error, 'Problem loading', 'There was a problem loading the data:');
+				this.$showError(
+					error,
+					this.$t('executionsList.showError.refreshData.title').toString(),
+					`${this.$t('executionsList.showError.refreshData.message').toString()}:`,
+				);
 			}
 
 			this.isDataLoading = false;
@@ -649,7 +669,11 @@ export default mixins(
 
 				this.refreshData();
 			} catch (error) {
-				this.$showError(error, 'Problem stopping execution', 'There was a problem stopping the execuction:');
+				this.$showError(
+					error,
+					this.$t('executionsList.showError.stopExecution.title').toString(),
+					`${this.$t('executionsList.showError.stopExecution.message').toString()}:`,
+				);
 			}
 		},
 	},

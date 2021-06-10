@@ -129,7 +129,11 @@ export default mixins(
 			try {
 				this.credentials = JSON.parse(JSON.stringify(this.$store.getters.allCredentials));
 			} catch (error) {
-				this.$showError(error, 'Problem loading credentials', 'There was a problem loading the credentials:');
+				this.$showError(
+					error,
+					this.$t('credentialsList.showError.loadCredentials.title').toString(),
+					`${this.$t('credentialsList.showError.loadCredentials.message').toString()}:`
+				);
 				this.isDataLoading = false;
 				return;
 			}
@@ -158,7 +162,11 @@ export default mixins(
 			try {
 				await this.restApi().deleteCredentials(credential.id!);
 			} catch (error) {
-				this.$showError(error, 'Problem deleting credentials', 'There was a problem deleting the credentials:');
+				this.$showError(
+					error,
+					this.$t('credentialsList.showError.deleteCredential.title').toString(),
+					`${this.$t('credentialsList.showError.deleteCredential.message').toString()}:`,
+				);
 				return;
 			}
 

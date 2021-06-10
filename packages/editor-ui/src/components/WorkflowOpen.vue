@@ -187,7 +187,11 @@ export default mixins(
 				)
 				.catch(
 					(error: Error) => {
-						this.$showError(error, 'Problem loading workflows', 'There was a problem loading the workflows:');
+						this.$showError(
+							error,
+							this.$t('workflowOpen.showError.title').toString(),
+							`${this.$t('workflowOpen.showError.message').toString()}:`
+						);
 						this.isDataLoading = false;
 					},
 				);

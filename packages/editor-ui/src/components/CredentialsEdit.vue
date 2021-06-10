@@ -175,7 +175,11 @@ export default mixins(
 					try {
 						currentCredentials = await this.restApi().getCredentials(this.editCredentials.id as string, true) as ICredentialsDecryptedResponse | undefined;
 					} catch (error) {
-						this.$showError(error, 'Problem loading credentials', 'There was a problem loading the credentials:');
+						this.$showError(
+							error,
+							this.$t('credentialsEdit.showError.title').toString(),
+							`${this.$t('credentialsEdit.showError.message').toString()}:`,
+						);
 						this.closeDialog();
 						return;
 					}

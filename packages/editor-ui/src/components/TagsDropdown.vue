@@ -138,8 +138,8 @@ export default mixins(showMessage).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					"New tag was not created",
-					`A problem occurred when trying to create the "${name}" tag`,
+					this.$t('tagsDropdown.showError.title').toString(),
+					this.$t('tagsDropdown.showError.message').toString(),
 				);
 			}
 		},
