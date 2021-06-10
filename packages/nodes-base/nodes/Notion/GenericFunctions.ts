@@ -288,7 +288,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 
 function getDateFormat(includeTime: boolean) {
 	if (includeTime === false) {
-		return 'yyy-MM-DD';
+		return 'yyyy-MM-DD';
 	}
 	return '';
 }
