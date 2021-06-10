@@ -81,7 +81,7 @@
 
 		<el-row class="nodes-access-wrapper">
 			<el-col :span="6" class="headline">
-				{{ $translateBase('credentialsInput.nodesWithAccess') }}:
+				{{ $translateBase('credentialsInput.nodesWithAccess', { colon: true }) }}
 				<el-tooltip class="credentials-info" placement="top" effect="light">
 					<div slot="content" v-html="helpTexts.nodesWithAccess"></div>
 					<font-awesome-icon icon="question-circle" />

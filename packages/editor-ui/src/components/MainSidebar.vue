@@ -375,7 +375,7 @@ export default mixins(
 				} else if (key === 'workflow-import-url') {
 					try {
 						const promptResponse = await this.$prompt(
-							this.$translateBase('mainSideBar.prompt.workflowUrl'),
+							this.$translateBase('mainSideBar.prompt.workflowUrl', { colon: true }),
 							this.$translateBase('mainSideBar.prompt.importWorkflowFromUrl'),
 							{
 								confirmButtonText: this.$translateBase('mainSideBar.prompt.import'),

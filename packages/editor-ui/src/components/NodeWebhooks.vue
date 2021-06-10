@@ -9,7 +9,7 @@
 				<div class="url-selection">
 					<el-row>
 						<el-col :span="10" class="mode-selection-headline">
-							{{ $translateBase('nodeWebhooks.displayUrlFor') }}:
+							{{ $translateBase('nodeWebhooks.displayUrlFor', { colon: true }) }}
 						</el-col>
 						<el-col :span="14">
 							<el-radio-group v-model="showUrlFor" size="mini">

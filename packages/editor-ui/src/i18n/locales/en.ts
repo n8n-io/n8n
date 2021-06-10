@@ -66,7 +66,7 @@ export default {
 			enterAllRequiredProperties: 'Enter all required properties',
 			important: 'Important',
 			noAccess: 'No Access',
-			nodesWithAccess: 'Nodes with access:',
+			nodesWithAccess: 'Nodes with access',
 			notConnected: 'Not connected',
 			oAuth2CallbackUrl: 'OAuth Callback URL',
 			save: 'Save',
@@ -119,7 +119,7 @@ export default {
 				message: 'The credential \'${credential.name}\' got deleted!',
 				title: 'Credentials deleted',
 			},
-			yourSavedCredentials: 'Your saved credentials:',
+			yourSavedCredentials: 'Your saved credentials',
 		},
 		dataDisplay: {
 			needHelp: 'Need help?',
@@ -263,9 +263,9 @@ export default {
 			prompt: {
 				cancel: 'Cancel',
 				import: 'Import',
-				importWorkflowFromUrl: 'Import Workflow from URL:',
+				importWorkflowFromUrl: 'Import Workflow from URL',
 				invalidUrl: 'Invalid URL',
-				workflowUrl: 'Workflow URL:',
+				workflowUrl: 'Workflow URL',
 			},
 			save: 'Save',
 			settings: 'Settings',
@@ -477,7 +477,7 @@ export default {
 			stoppingCurrentExecution: 'Stopping current execution',
 		},
 		nodeWebhooks: {
-			displayUrlFor: 'Display URL for:',
+			displayUrlFor: 'Display URL for',
 			showMessage: {
 				message: 'The webhook URL was successfully copied!',
 				title: 'Copied',
