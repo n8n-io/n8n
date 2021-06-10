@@ -510,7 +510,11 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.$router.push({ name: 'NodeViewNew' });
+					if (this.$router.currentRoute.name === 'NodeViewNew') {
+						this.$root.$emit('newWorkflow');
+					} else {
+						this.$router.push({ name: 'NodeViewNew' });
+					}
 
 					this.$showMessage({
 						title: this.$translateBase('nodeView.showMessage.keyDown.title'),
@@ -2114,6 +2118,8 @@ export default mixins(
 			this.$root.$on('importWorkflowData', async (data: IDataObject) => {
 				const resData = await this.importWorkflowData(data.data as IWorkflowDataUpdate);
 			});
+
+			this.$root.$on('newWorkflow', this.newWorkflow);
 
 			this.$root.$on('importWorkflowUrl', async (data: IDataObject) => {
 				const workflowData = await this.getWorkflowDataFromUrl(data.url as string);

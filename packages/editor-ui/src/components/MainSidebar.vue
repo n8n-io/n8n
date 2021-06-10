@@ -447,7 +447,11 @@ export default mixins(
 						const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
 						if (importConfirm === true) {
 							this.$store.commit('setStateDirty', false);
-							this.$router.push({ name: 'NodeViewNew' });
+							if (this.$router.currentRoute.name === 'NodeViewNew') {
+								this.$root.$emit('newWorkflow');
+							} else {
+								this.$router.push({ name: 'NodeViewNew' });
+							}
 
 							this.$showMessage({
 								title: this.$translateBase('mainSideBar.showMessage.handleSelect2.title'),
@@ -456,7 +460,9 @@ export default mixins(
 							});
 						}
 					} else {
-						this.$router.push({ name: 'NodeViewNew' });
+						if (this.$router.currentRoute.name !== 'NodeViewNew') {
+							this.$router.push({ name: 'NodeViewNew' });
+						}
 
 						this.$showMessage({
 							title: this.$translateBase('mainSideBar.showMessage.handleSelect3.title'),
