@@ -66,7 +66,7 @@ export default mixins(
 		name: 'NodeWebhooks',
 		props: [
 			'node', // NodeUi
-			'nodeType', // NodeTypeDescription
+			'nodeTypeDescription', // NodeTypeDescription
 		],
 		data () {
 			return {
@@ -76,11 +76,11 @@ export default mixins(
 		},
 		computed: {
 			webhooksNode (): IWebhookDescription[] {
-				if (this.nodeType === null || this.nodeType.webhooks === undefined) {
+				if (this.nodeTypeDescription === null || this.nodeTypeDescription.webhooks === undefined) {
 					return [];
 				}
 
-				return this.nodeType.webhooks;
+				return this.nodeTypeDescription.webhooks;
 			},
 		},
 		methods: {

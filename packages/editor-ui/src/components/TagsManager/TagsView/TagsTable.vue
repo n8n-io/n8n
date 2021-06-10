@@ -55,7 +55,7 @@
 					</div>
 					<div class="ops" v-else-if="scope.row.delete">
 						<el-button title="Cancel" @click.stop="cancel" size="small" plain :disabled="isSaving">{{ $translateBase('tagsTable.cancel') }}</el-button>
-						<el-button title="$translateBase('tagsTable.deleteTag')" @click.stop="apply" size="small" :loading="isSaving">{{ $translateBase('tagsTable.deleteTag') }}</el-button>
+						<el-button :title="$translateBase('tagsTable.deleteTag')" @click.stop="apply" size="small" :loading="isSaving">{{ $translateBase('tagsTable.deleteTag') }}</el-button>
 					</div>
 					<div class="ops main" v-else-if="!scope.row.disable">
 						<el-button :title="$translateBase('tagsTable.editTag')" @click.stop="enableUpdate(scope.row)" icon="el-icon-edit" circle></el-button>
@@ -72,10 +72,13 @@ import { MAX_TAG_NAME_LENGTH } from "@/constants";
 import { ITagRow } from "@/Interface";
 import Vue from "vue";
 
+import mixins from 'vue-typed-mixins';
+import { translate } from '@/components/mixins/translate';
+
 const INPUT_TRANSITION_TIMEOUT = 350;
 const DELETE_TRANSITION_TIMEOUT = 100;
 
-export default Vue.extend({
+export default mixins(translate).extend({
 	name: "TagsTable",
 	props: ["rows", "isLoading", "newName", "isSaving"],
 	data() {

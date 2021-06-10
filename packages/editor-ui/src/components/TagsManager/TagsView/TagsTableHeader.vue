@@ -24,7 +24,10 @@
 <script lang="ts">
 import { MAX_TAG_NAME_LENGTH } from "@/constants";
 import Vue from "vue";
-export default Vue.extend({
+import mixins from 'vue-typed-mixins';
+import { translate } from '@/components/mixins/translate';
+
+export default mixins(translate).extend({
 	props: {
 		disabled: {
 			default: false,

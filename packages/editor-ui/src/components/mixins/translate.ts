@@ -4,16 +4,16 @@ import Vue from 'vue';
 export const translate = Vue.extend({
 	data() {
 		return {
-			_isCredential: false,
-			_nodeType: '',
-			_credentialName: '',
+			mixinIsCredential: false,
+			mixinNodeType: '',
+			mixinCredentialName: '',
 		};
 	},
 
 	computed: {
 		nodeType (): string {
-			return this._isCredential
-				? this._nodeType
+			return this.mixinIsCredential
+				? this.mixinNodeType
 				: this.$store.getters.activeNode.type;
 		},
 	},
@@ -26,9 +26,9 @@ export const translate = Vue.extend({
 			{ credentialName, isCredential, nodeType }:
 			{ credentialName: string, isCredential: boolean, nodeType: string },
 		) {
-			this._credentialName = credentialName;
-			this._isCredential = isCredential;
-			this._nodeType = nodeType;
+			this.mixinCredentialName = credentialName;
+			this.mixinIsCredential = isCredential;
+			this.mixinNodeType = nodeType;
 		},
 
 		/**
@@ -79,7 +79,7 @@ export const translate = Vue.extend({
 			{ name: parameterName, displayName }: { name: string; displayName: string; },
 		) {
 			return this.translate({
-				key: `${this.nodeType}.credentials.${this._credentialName}.${parameterName}.displayName`,
+				key: `${this.nodeType}.credentials.${this.mixinCredentialName}.${parameterName}.displayName`,
 				fallback: displayName,
 			});
 		},
@@ -91,7 +91,7 @@ export const translate = Vue.extend({
 			{ name: parameterName, description }: { name: string; description: string; },
 		) {
 			return this.translate({
-				key: `${this.nodeType}.credentials.${this._credentialName}.${parameterName}.description`,
+				key: `${this.nodeType}.credentials.${this.mixinCredentialName}.${parameterName}.description`,
 				fallback: description,
 			});
 		},
@@ -108,8 +108,8 @@ export const translate = Vue.extend({
 		 $translateDescription(
 			{ name: parameterName, description }: { name: string; description: string; },
 		) {
-			const key = this._isCredential
-				? `${this.nodeType}.credentials.${this._credentialName}.description`
+			const key = this.mixinIsCredential
+				? `${this.nodeType}.credentials.${this.mixinCredentialName}.description`
 				: `${this.nodeType}.parameters.${parameterName}.description`;
 
 			return this.translate({
@@ -124,8 +124,8 @@ export const translate = Vue.extend({
 		$translatePlaceholder(
 			{ name: parameterName, placeholder }: { name: string; placeholder: string; },
 		) {
-			const key = this._isCredential
-				? `${this.nodeType}.credentials.${this._credentialName}.placeholder`
+			const key = this.mixinIsCredential
+				? `${this.nodeType}.credentials.${this.mixinCredentialName}.placeholder`
 				: `${this.nodeType}.parameters.${parameterName}.placeholder`;
 
 			return this.translate({
@@ -141,8 +141,8 @@ export const translate = Vue.extend({
 			{ name: parameterName }: { name: string },
 			{ value: optionName, name: displayName }: { value: string; name: string; },
 		) {
-			const key = this._isCredential
-				? `${this.nodeType}.credentials.${this._credentialName}.options.${optionName}.displayName`
+			const key = this.mixinIsCredential
+				? `${this.nodeType}.credentials.${this.mixinCredentialName}.options.${optionName}.displayName`
 				: `${this.nodeType}.parameters.${parameterName}.options.${optionName}.displayName`;
 
 			return this.translate({
@@ -158,8 +158,8 @@ export const translate = Vue.extend({
 			{ name: parameterName }: { name: string },
 			{ value: optionName, description }: { value: string; description: string; },
 		) {
-			const key = this._isCredential
-				? `${this.nodeType}.credentials.${this._credentialName}.options.${optionName}.description`
+			const key = this.mixinIsCredential
+				? `${this.nodeType}.credentials.${this.mixinCredentialName}.options.${optionName}.description`
 				: `${this.nodeType}.parameters.${parameterName}.options.${optionName}.description`;
 
 			return this.translate({

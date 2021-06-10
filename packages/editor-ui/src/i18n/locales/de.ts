@@ -104,6 +104,7 @@ export default {
 				message: 'Deutsch',
 			},
 			createNewCredentials: 'Deutsch',
+			credentials: 'Deutsch',
 			showError: {
 				deleteCredential: {
 					message: 'Deutsch',

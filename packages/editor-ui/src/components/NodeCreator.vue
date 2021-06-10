@@ -20,8 +20,10 @@
 import Vue from 'vue';
 
 import NodeCreateList from '@/components/NodeCreateList.vue';
+import mixins from 'vue-typed-mixins';
+import { translate } from '@/components/mixins/translate';
 
-export default Vue.extend({
+export default mixins(translate).extend({
 	name: 'NodeCreator',
 	components: {
 		NodeCreateList,

@@ -19,7 +19,7 @@
 			<el-tabs stretch>
 				<el-tab-pane label="Parameters">
 					<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
-					<node-webhooks :node="node" :nodeType="nodeType" />
+					<node-webhooks :node="node" :nodeTypeDescription="nodeType" />
 					<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
 					<div v-if="parametersNoneSetting.length === 0">
 						{{ $translateBase('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}

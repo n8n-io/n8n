@@ -2,7 +2,7 @@
 	<div v-if="dialogVisible">
 		<credentials-edit :dialogVisible="credentialEditDialogVisible" @closeDialog="closeCredentialEditDialog" @credentialsUpdated="reloadCredentialList" @credentialsCreated="reloadCredentialList" :setCredentialType="editCredentials && editCredentials.type" :editCredentials="editCredentials"></credentials-edit>
 
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" title="Credentials" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="$translateBase('credentialsList.yourSavedCredentials')" :before-close="closeDialog">
 			<div class="text-very-light">
 				{{ $translateBase('credentialsList.yourSavedCredentials') }}:
 			</div>

@@ -104,6 +104,7 @@ const baseTranslations = {
 				message: 'Are you sure you want to delete \'${credential.name}\' credentials?',
 			},
 			createNewCredentials: 'Create New Credentials',
+			credentials: 'Credentials',
 			showError: {
 				deleteCredential: {
 					message: 'There was a problem deleting the credentials',

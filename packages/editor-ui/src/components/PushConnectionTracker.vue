@@ -17,8 +17,10 @@
 <script lang="ts">
 import Vue from "vue";
 import { mapGetters } from "vuex";
+import mixins from 'vue-typed-mixins';
+import { translate } from '@/components/mixins/translate';
 
-export default Vue.extend({
+export default mixins(translate).extend({
 	name: "PushConnectionTracker",
 	computed: {
 		...mapGetters(["pushConnectionActive"]),

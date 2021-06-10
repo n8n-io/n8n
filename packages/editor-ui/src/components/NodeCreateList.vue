@@ -29,8 +29,9 @@ import { INodeTypeDescription } from 'n8n-workflow';
 import NodeCreateItem from '@/components/NodeCreateItem.vue';
 
 import mixins from "vue-typed-mixins";
+import { translate } from '@/components/mixins/translate';
 
-export default mixins(externalHooks).extend({
+export default mixins(externalHooks, translate).extend({
 	name: 'NodeCreateList',
 	components: {
 		NodeCreateItem,

@@ -460,7 +460,7 @@ export default mixins(
 
 						this.$showMessage({
 							title: this.$translateBase('mainSideBar.showMessage.handleSelect3.title'),
-								message: this.$translateBase('mainSideBar.showMessage.handleSelect3.message'),
+							message: this.$translateBase('mainSideBar.showMessage.handleSelect3.message'),
 							type: 'success',
 						});
 					}

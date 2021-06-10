@@ -53,13 +53,13 @@
 						<el-checkbox v-if="scope.row.stoppedAt !== undefined && scope.row.id" :value="selectedItems[scope.row.id.toString()] || checkAll" @change="handleCheckboxChanged(scope.row.id)" >Check all</el-checkbox>
 					</template>
 				</el-table-column>
-				<el-table-column property="startedAt" :label="this.$translateBase('executionsList.startedAtId')" width="205">
+				<el-table-column property="startedAt" :label="$translateBase('executionsList.startedAtId')" width="205">
 					<template slot-scope="scope">
 						{{convertToDisplayDate(scope.row.startedAt)}}<br />
 						<small v-if="scope.row.id">ID: {{scope.row.id}}</small>
 					</template>
 				</el-table-column>
-				<el-table-column property="workflowName" :label="this.$translateBase('executionsList.name')">
+				<el-table-column property="workflowName" :label="$translateBase('executionsList.name')">
 					<template slot-scope="scope">
 						<span class="workflow-name">
 							{{scope.row.workflowName || '[UNSAVED WORKFLOW]'}}
@@ -76,7 +76,7 @@
 						</span>
 					</template>
 				</el-table-column>
-				<el-table-column :label="this.$translateBase('executionsList.status')" width="120" align="center">
+				<el-table-column :label="$translateBase('executionsList.status')" width="120" align="center">
 					<template slot-scope="scope" align="center">
 
 						<el-tooltip placement="top" effect="light">
@@ -110,8 +110,8 @@
 
 					</template>
 				</el-table-column>
-				<el-table-column property="mode" :label="this.$translateBase('executionsList.mode')" width="100" align="center"></el-table-column>
-				<el-table-column :label="this.$translateBase('executionsList.runningTime')" width="150" align="center">
+				<el-table-column property="mode" :label="$translateBase('executionsList.mode')" width="100" align="center"></el-table-column>
+				<el-table-column :label="$translateBase('executionsList.runningTime')" width="150" align="center">
 					<template slot-scope="scope">
 						<span v-if="scope.row.stoppedAt === undefined">
 							<font-awesome-icon icon="spinner" spin />
