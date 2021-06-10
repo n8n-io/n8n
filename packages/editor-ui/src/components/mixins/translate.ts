@@ -47,7 +47,7 @@ export const translate = Vue.extend({
 		 * the node view or in the credentials modal.
 		 */
 		$translateBase(key: TranslationPath, { colon } = { colon: false } ): string {
-			return this.$t(key).toString() + colon ? ':' : '';
+			return this.$t(key).toString() + (colon ? ':' : '');
 		},
 
 		// ----------------------------------
