@@ -48,7 +48,7 @@ export class ConvertKit implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume ConvertKit API.',
+		description: 'Consume ConvertKit API',
 		defaults: {
 			name: 'ConvertKit',
 			color: '#fb6970',

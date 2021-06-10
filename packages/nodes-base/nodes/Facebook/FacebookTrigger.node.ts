@@ -33,7 +33,7 @@ export class FacebookTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["appId"] +"/"+ $parameter["object"]}}',
-		description: 'Starts the workflow when a Facebook events occurs.',
+		description: 'Starts the workflow when Facebook events occur',
 		defaults: {
 			name: 'Facebook Trigger',
 			color: '#3B5998',
