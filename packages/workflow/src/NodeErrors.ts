@@ -152,13 +152,13 @@ abstract class NodeError extends Error {
 		seen.add(obj);
 		Object.entries(obj).forEach(([key, value]) => {
 			if (this.isTraversableObject(value)) {
-				seen.has(value) ? obj[key] = '[circular reference]' : this.removeCircularRefs(value, seen);
+				seen.has(value) ? obj[key] = { circularReference: true } : this.removeCircularRefs(value, seen);
 				return;
 			}
 			if (Array.isArray(value)) {
 				value.forEach((val, index) => {
 					if (seen.has(val)) {
-						value[index] = '[circular reference]';
+						value[index] = { circularReference: true };
 						return;
 					}
 					if (this.isTraversableObject(val)) {
