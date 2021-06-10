@@ -77,10 +77,6 @@ export class Spotify implements INodeType {
 						name: 'Track',
 						value: 'track',
 					},
-					{
-						name: 'Search',
-						value: 'search',
-					},
 				],
 				default: 'player',
 				description: 'The resource to operate on.',
@@ -222,6 +218,11 @@ export class Spotify implements INodeType {
 						value: 'getTracks',
 						description: `Get an album's tracks by URI or ID.`,
 					},
+					{
+						name: `Search`,
+						value: 'search',
+						description: `Search albums by keyword.`,
+					},
 				],
 				default: 'get',
 				description: 'The operation to perform.',
@@ -242,9 +243,32 @@ export class Spotify implements INodeType {
 							'getTracks',
 						],
 					},
+					hide: {
+						operation: [
+							'search',
+						],
+					},
 				},
 				placeholder: 'spotify:album:1YZ3k65Mqw3G8FzYlW1mmp',
 				description: `The album's Spotify URI or ID.`,
+			},
+			{
+				displayName: 'Search Keyword',
+				name: 'q',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'The keyword term to search for.',
+				displayOptions: {
+					show: {
+						resource: [
+							'album',
+						],
+						operation: [
+							'search',
+						],
+					},
+				},
 			},
 
 			// -------------------------------------------------------------------------------------------------------------
@@ -283,6 +307,11 @@ export class Spotify implements INodeType {
 						value: 'getTopTracks',
 						description: `Get an artist's top tracks by URI or ID.`,
 					},
+					{
+						name: `Search`,
+						value: 'search',
+						description: `Search artists by keyword.`,
+					},
 				],
 				default: 'get',
 				description: 'The operation to perform.',
@@ -297,6 +326,11 @@ export class Spotify implements INodeType {
 					show: {
 						resource: [
 							'artist',
+						],
+					},
+					hide: {
+						operation: [
+							'search',
 						],
 					},
 				},
@@ -321,6 +355,25 @@ export class Spotify implements INodeType {
 				},
 				placeholder: 'US',
 				description: `Top tracks in which country? Enter the postal abbriviation.`,
+			},
+
+			{
+				displayName: 'Search Keyword',
+				name: 'q',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'The keyword term to search for.',
+				displayOptions: {
+					show: {
+						resource: [
+							'artist',
+						],
+						operation: [
+							'search',
+						],
+					},
+				},
 			},
 
 			// -------------------------------------------------------------------------------------------------------------
@@ -368,6 +421,16 @@ export class Spotify implements INodeType {
 						name: 'Remove an Item',
 						value: 'delete',
 						description: 'Remove tracks from a playlist by track and playlist URI or ID.',
+					},
+					{
+						name: 'Remove an Item',
+						value: 'delete',
+						description: 'Remove tracks from a playlist by track and playlist URI or ID.',
+					},
+					{
+						name: `Search`,
+						value: 'search',
+						description: `Search playlists by keyword.`,
 					},
 				],
 				default: 'add',
@@ -498,6 +561,24 @@ export class Spotify implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Search Keyword',
+				name: 'q',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'The keyword term to search for.',
+				displayOptions: {
+					show: {
+						resource: [
+							'playlist',
+						],
+						operation: [
+							'search',
+						],
+					},
+				},
+			},
 
 			// -----------------------------------------------------
 			//         Track Operations
@@ -525,6 +606,11 @@ export class Spotify implements INodeType {
 						value: 'getAudioFeatures',
 						description: 'Get audio features for a track by URI or ID.',
 					},
+					{
+						name: 'Search',
+						value: 'search',
+						description: `Search tracks by keyword.`,
+					},
 				],
 				default: 'track',
 				description: 'The operation to perform.',
@@ -541,9 +627,32 @@ export class Spotify implements INodeType {
 							'track',
 						],
 					},
+					hide: {
+						operation: [
+							'search',
+						],
+					},
 				},
 				placeholder: 'spotify:track:0xE4LEFzSNGsz1F6kvXsHU',
 				description: `The track's Spotify URI or ID.`,
+			},
+			{
+				displayName: 'Search Keyword',
+				name: 'q',
+				type: 'string',
+				required: true,
+				default: '',
+				description: 'The keyword term to search for.',
+				displayOptions: {
+					show: {
+						resource: [
+							'track',
+						],
+						operation: [
+							'search',
+						],
+					},
+				},
 			},
 
 			// -----------------------------------------------------
@@ -610,6 +719,7 @@ export class Spotify implements INodeType {
 							'library',
 							'myData',
 							'playlist',
+							'track',
 						],
 						operation: [
 							'getTracks',
@@ -618,6 +728,7 @@ export class Spotify implements INodeType {
 							'getNewReleases',
 							'getLikedTracks',
 							'getFollowingArtists',
+							'search',
 						],
 					},
 				},
@@ -636,6 +747,7 @@ export class Spotify implements INodeType {
 							'artist',
 							'library',
 							'playlist',
+							'track',
 						],
 						operation: [
 							'getTracks',
@@ -643,6 +755,7 @@ export class Spotify implements INodeType {
 							'getUserPlaylists',
 							'getNewReleases',
 							'getLikedTracks',
+							'search',
 						],
 						returnAll: [
 							false,
@@ -681,7 +794,7 @@ export class Spotify implements INodeType {
 			},
 			{
 				displayName: 'Volume',
-				name: 'volume_percent',
+				name: 'volumePercent',
 				type: 'number',
 				default: 50,
 				required: true,
@@ -728,112 +841,38 @@ export class Spotify implements INodeType {
 					},
 				],
 			},
-			// --------------------------------------------------------------------------------------------------------
-			//         Search Operations
-			//		   Find an item
-			// --------------------------------------------------------------------------------------------------------
 			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
+				displayName: 'Filters',
+				name: 'filters',
+				type: 'collection',
+				placeholder: 'Add Filter',
+				default: {},
 				displayOptions: {
 					show: {
 						resource: [
+							'playlist',
+							'artist',
+							'track',
+							'album',
+						],
+						operation: [
 							'search',
 						],
 					},
 				},
 				options: [
 					{
-						name: 'Search for an Item',
-						value: 'searchItem',
-						description: 'Search for an item on Spotify.',
+						displayName: 'Country',
+						name: 'market',
+						type: 'options',
+						options: isoCountryCodes.map(({ name, alpha2 }) => ({ name, value: alpha2 })),
+						default: '',
+						description: `If a country code is specified, only content that is playable in that market is returned.`,
 					},
 				],
-				default: 'searchItem',
-				description: 'The operation to perform.',
-			},
-			{
-				displayName: 'Search Keyword',
-				name: 'q',
-				type: 'string',
-				required: true,
-				placeholder: 'Linkin Park',
-				default: '',
-				description: 'The keyword term to search for.',
-				displayOptions: {
-					show: {
-						operation: [
-							'searchItem'
-						]
-					}
-				}
-			},
-			{
-				displayName: 'Type',
-				name: 'type',
-				type: 'multiOptions',
-				displayOptions: {
-					show: {
-						operation: [
-							'searchItem'
-						]
-					}
-				},
-				options: [
-					{
-						name: 'Album',
-						value: 'album',
-					},
-					{
-						name: 'Artist',
-						value: 'artist',
-					},
-					{
-						name: 'Playlist',
-						value: 'playlist',
-					},
-					{
-						name: 'Track',
-						value: 'track',
-					},
-					{
-						name: 'Show',
-						value: 'show',
-					},
-					{
-						name: 'Episode',
-						value: 'episode',
-					},
-				],
-				default: ['album', 'artist', 'track'],
-				description: 'The types of content to search for.',
-			},
-			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				default: 20,
-				required: true,
-				displayOptions: {
-					show: {
-						resource: [
-							'search',
-						],
-						operation: [
-							'searchItem',
-						],
-					},
-				},
-				typeOptions: {
-					minValue: 1,
-					maxValue: 50,
-				},
-				description: `The number of items to return for each selected type.`,
 			},
 		],
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		// Get all of the incoming input data to loop through
@@ -957,10 +996,10 @@ export class Spotify implements INodeType {
 
 					endpoint = `/me/player/volume`;
 
-					const volume_percent = this.getNodeParameter('volume_percent', i) as number;
+					const volumePercent = this.getNodeParameter('volumePercent', i) as number;
 
 					qs = {
-						volume_percent,
+						volume_percent: volumePercent,
 					};
 
 					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
@@ -1030,6 +1069,29 @@ export class Spotify implements INodeType {
 
 						responseData = responseData.items;
 					}
+				} else if (operation === 'search') {
+					requestMethod = 'GET';
+
+					endpoint = '/search';
+
+					propertyName = 'albums.items';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const q = this.getNodeParameter('q', i) as string;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					qs = {
+						q,
+						type: 'album',
+						...filters,
+					};
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = limit;
+						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+						responseData = responseData.albums.items;
+					}
 				}
 
 			} else if (resource === 'artist') {
@@ -1038,7 +1100,7 @@ export class Spotify implements INodeType {
 				//      Artist Operations
 				// -----------------------------
 
-				const uri = this.getNodeParameter('id', i) as string;
+				const uri = this.getNodeParameter('id', i, '') as string;
 
 				const id = uri.replace('spotify:artist:', '');
 
@@ -1090,6 +1152,29 @@ export class Spotify implements INodeType {
 					endpoint = `/artists/${id}`;
 
 					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+				} else if (operation === 'search') {
+					requestMethod = 'GET';
+
+					endpoint = '/search';
+
+					propertyName = 'artists.items';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const q = this.getNodeParameter('q', i) as string;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					qs = {
+						q,
+						type: 'artist',
+						...filters,
+					};
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = limit;
+						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+						responseData = responseData.artists.items;
+					}
 				}
 
 			} else if (resource === 'playlist') {
@@ -1198,6 +1283,29 @@ export class Spotify implements INodeType {
 					}
 
 					responseData = await spotifyApiRequest.call(this, 'POST', '/me/playlists', body, qs);
+				} else if (operation === 'search') {
+					requestMethod = 'GET';
+
+					endpoint = '/search';
+
+					propertyName = 'playlists.items';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const q = this.getNodeParameter('q', i) as string;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					qs = {
+						q,
+						type: 'playlist',
+						...filters,
+					};
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = limit;
+						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+						responseData = responseData.playlists.items;
+					}
 				}
 
 			} else if (resource === 'track') {
@@ -1206,7 +1314,7 @@ export class Spotify implements INodeType {
 				//      Track Operations
 				// -----------------------------
 
-				const uri = this.getNodeParameter('id', i) as string;
+				const uri = this.getNodeParameter('id', i, '') as string;
 
 				const id = uri.replace('spotify:track:', '');
 
@@ -1214,11 +1322,34 @@ export class Spotify implements INodeType {
 
 				if (operation === 'getAudioFeatures') {
 					endpoint = `/audio-features/${id}`;
+					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 				} else if (operation === 'get') {
 					endpoint = `/tracks/${id}`;
-				}
+					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+				} else if (operation === 'search') {
+					requestMethod = 'GET';
 
-				responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+					endpoint = '/search';
+
+					propertyName = 'tracks.items';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const q = this.getNodeParameter('q', i) as string;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					qs = {
+						q,
+						type: 'track',
+						...filters,
+					};
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = limit;
+						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
+						responseData = responseData.tracks.items;
+					}
+				}
 
 			} else if (resource === 'library') {
 
@@ -1265,32 +1396,6 @@ export class Spotify implements INodeType {
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 						responseData = responseData.artists.items;
 					}
-				}
-			} else if (resource === 'search') {
-				// -----------------------------
-				//      Search Operations
-				// -----------------------------
-				if (operation === 'searchItem') {
-					requestMethod = 'GET';
-
-					endpoint = '/search';
-		
-					var limit = this.getNodeParameter('limit', i) as number;
-					const q = this.getNodeParameter('q', i) as string;
-					const type = this.getNodeParameter('type', i)?.toString();
-
-					qs = {
-						q, type, limit
-					};
-
-					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
-
-					var resp = {};
-					for (var key of Object.keys(responseData)) {
-						resp[key] = responseData[key].items; 
-					}
-
-					responseData = resp;
 				}
 			}
 
