@@ -4,7 +4,7 @@
 			<div class="filters">
 				<el-row>
 					<el-col :span="4" class="filter-headline">
-						{{ $translateBase('executionsList.filters') }}:
+						{{ $translateBase('executionsList.filters', { colon: true }) }}
 					</el-col>
 					<el-col :span="6">
 						<el-select v-model="filter.workflowId" placeholder="Select Workflow" size="small" filterable @change="handleFilterChanged">
