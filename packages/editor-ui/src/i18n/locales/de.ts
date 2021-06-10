@@ -494,7 +494,6 @@ export default {
 		},
 		oauth2: {
 			clientId: 'Deutsch',
-			// received from API, but overwritten here
 			clientSecret: 'Deutsch',
 		},
 		parameterInput: {

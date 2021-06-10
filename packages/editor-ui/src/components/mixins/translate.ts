@@ -78,6 +78,10 @@ export const translate = Vue.extend({
 		 $translateCredentialsPropertyName(
 			{ name: parameterName, displayName }: { name: string; displayName: string; },
 		) {
+			if (['clientId', 'clientSecret'].includes(parameterName)) {
+				return this.$t(`oauth2.${parameterName}`);
+			}
+
 			return this.translate({
 				key: `${this.nodeType}.credentials.${this.mixinCredentialName}.${parameterName}.displayName`,
 				fallback: displayName,
