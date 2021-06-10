@@ -47,11 +47,45 @@ export class GoogleDocs implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
+				name: 'googleApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'serviceAccount',
+						],
+					},
+				},
+			},
+			{
 				name: 'googleDocsOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'serviceAccount',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -79,25 +113,33 @@ export class GoogleDocs implements INodeType {
 						name: 'My Drive',
 						value: 'myDrive',
 					},
+					{
+						name: 'Shared with me',
+						value: 'sharedWithMe',
+					},
 				];
-				const drives = await googleApiRequestAllItems.call(this, 'drives', 'GET', '', {}, {
-					useDomainAdminAccess:true,
-				}, 'https://www.googleapis.com/drive/v3/drives');
+				const drives = await googleApiRequestAllItems.call(this, 'drives', 'GET', '', {}, {}, 'https://www.googleapis.com/drive/v3/drives');
 
 				for (const drive of drives) {
 					returnData.push({
-						name: drive.title as string,
+						name: drive.name as string,
 						value: drive.id as string,
 					});
 				}
 				return returnData;
 			},
 			async getFolders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				//const driveId = this.getNodeParameter('driveId');
+				const returnData: INodePropertyOptions[] = [
+					{
+						name: '/',
+						value: 'default',
+					},
+				];
+				const driveId = this.getNodeParameter('driveId');
+
 				const qs = {
-					q: 'mimeType = \'application/vnd.google-apps.folder\'',
-					// ...(driveId && driveId!=='myDrive') ? {driveId} : {}
+					q: `mimeType = \'application/vnd.google-apps.folder\' ${driveId==='sharedWithMe' ? 'and sharedWithMe = true':' and \'root\' in parents'}`,
+					...(driveId && driveId!=='myDrive' && driveId!=='sharedWithMe') ? {driveId} : {},
 				};
 
 				const folders = await googleApiRequestAllItems.call(this, 'files', 'GET', '', {}, qs, 'https://www.googleapis.com/drive/v3/files');
@@ -139,7 +181,7 @@ export class GoogleDocs implements INodeType {
 					const body: IDataObject = {
 						name: this.getNodeParameter('title', i) as string,
 						mimeType: 'application/vnd.google-apps.document',
-						parents: [folderId],
+						...(folderId && folderId!=='default') ? {parents: [folderId]}: {},
 					};
 
 					responseData = await googleApiRequest.call(this, 'POST', '', body, {}, 'https://www.googleapis.com/drive/v3/files');

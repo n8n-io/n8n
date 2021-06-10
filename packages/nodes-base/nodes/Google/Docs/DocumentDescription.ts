@@ -37,34 +37,38 @@ export const documentFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 document: create                             */
 	/* -------------------------------------------------------------------------- */
-	// {
-	// 	displayName: 'Drive',
-	// 	name: 'driveId',
-	// 	type: 'options',
-	// 	typeOptions: {
-	// 		loadOptionsMethod: 'getDrives',
-	// 	},
-	// 	default: '',
-	// 	displayOptions: {
-	// 		show: {
-	// 			operation: [
-	// 				'create',
-	// 			],
-	// 			resource: [
-	// 				'document',
-	// 			],
-	// 		},
-	// 	},
-	// },
+	{
+		displayName: 'Drive',
+		name: 'driveId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getDrives',
+		},
+		default: 'myDrive',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'document',
+				],
+			},
+		},
+	},
 	{
 		displayName: 'Folder',
 		name: 'folderId',
 		type: 'options',
 		typeOptions: {
-			loadOptionsDependsOn: 'driveId',
+			loadOptionsDependsOn: [
+				'driveId',
+			],
 			loadOptionsMethod: 'getFolders',
 		},
 		default: '',
+		required: true,
 		displayOptions: {
 			show: {
 				operation: [
