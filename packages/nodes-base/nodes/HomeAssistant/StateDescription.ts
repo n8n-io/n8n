@@ -141,13 +141,13 @@ export const stateFields = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'State Attributes',
+		name: 'stateAttributes',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Field',
+		placeholder: 'Add Attribute',
 		default: {},
 		displayOptions: {
 			show: {
@@ -161,8 +161,8 @@ export const stateFields = [
 		},
 		options: [
 			{
-				displayName: 'Attribute',
-				name: 'attribute',
+				displayName: 'Attributes',
+				name: 'attributes',
 				values: [
 					{
 						displayName: 'Name',

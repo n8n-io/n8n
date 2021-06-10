@@ -160,18 +160,18 @@ export class HomeAssistant implements INodeType {
 					} else if (operation === 'call') {
 						const domain = this.getNodeParameter('domain', i) as string;
 						const service = this.getNodeParameter('service', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as {
-							field: IDataObject[],
+						const serviceAttributes = this.getNodeParameter('serviceAttributes', i) as {
+							attributes: IDataObject[],
 						};
 
 						const body: IDataObject = {};
 
-						if (Object.entries(additionalFields).length) {
-							if (additionalFields.field !== undefined) {
-								additionalFields.field.map(
-									param => {
+						if (Object.entries(serviceAttributes).length) {
+							if (serviceAttributes.attributes !== undefined) {
+								serviceAttributes.attributes.map(
+									attribute => {
 										// @ts-ignore
-										body[param.name as string] = param.value;
+										body[attribute.name as string] = attribute.value;
 									},
 								);
 							}
@@ -196,8 +196,8 @@ export class HomeAssistant implements INodeType {
 					} else if (operation === 'upsert') {
 						const entityId = this.getNodeParameter('entityId', i) as string;
 						const state = this.getNodeParameter('state', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as {
-							attribute: IDataObject[]
+						const stateAttributes = this.getNodeParameter('stateAttributes', i) as {
+							attributes: IDataObject[],
 						};
 
 						const body = {
@@ -205,9 +205,9 @@ export class HomeAssistant implements INodeType {
 							attributes: {},
 						};
 
-						if (Object.entries(additionalFields).length) {
-							if (additionalFields.attribute !== undefined) {
-								additionalFields.attribute.map(
+						if (Object.entries(stateAttributes).length) {
+							if (stateAttributes.attributes !== undefined) {
+								stateAttributes.attributes.map(
 									attribute => {
 										// @ts-ignore
 										body.attributes[attribute.name as string] = attribute.value;
@@ -228,15 +228,15 @@ export class HomeAssistant implements INodeType {
 						}
 					} else if (operation === 'post') {
 						const eventType = this.getNodeParameter('eventType', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as {
-							attribute: IDataObject[],
+						const eventAttributes = this.getNodeParameter('eventAttributes', i) as {
+							attributes: IDataObject[],
 						};
 
 						const body = {};
 
-						if (Object.entries(additionalFields).length) {
-							if (additionalFields.attribute !== undefined) {
-								additionalFields.attribute.map(
+						if (Object.entries(eventAttributes).length) {
+							if (eventAttributes.attributes !== undefined) {
+								eventAttributes.attributes.map(
 									attribute => {
 										// @ts-ignore
 										body[attribute.name as string] = attribute.value;

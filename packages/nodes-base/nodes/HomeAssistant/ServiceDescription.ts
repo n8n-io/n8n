@@ -114,13 +114,13 @@ export const serviceFields = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Service Attributes',
+		name: 'serviceAttributes',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Field',
+		placeholder: 'Add Attribute',
 		default: {},
 		displayOptions: {
 			show: {
@@ -134,8 +134,8 @@ export const serviceFields = [
 		},
 		options: [
 			{
-				name: 'field',
-				displayName: 'Field',
+				name: 'attributes',
+				displayName: 'Attributes',
 				values: [
 					{
 						displayName: 'Name',

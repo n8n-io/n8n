@@ -99,13 +99,13 @@ export const eventFields = [
 		description: 'The Entity ID for which an event will be created.',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Event Attributes',
+		name: 'eventAttributes',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
 		},
-		placeholder: 'Add Field',
+		placeholder: 'Add Attribute',
 		default: {},
 		displayOptions: {
 			show: {
@@ -119,8 +119,8 @@ export const eventFields = [
 		},
 		options: [
 			{
-				displayName: 'Attribute',
-				name: 'attribute',
+				displayName: 'Attributes',
+				name: 'attributes',
 				values: [
 					{
 						displayName: 'Name',
