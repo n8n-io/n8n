@@ -225,7 +225,7 @@ import {
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
-import NodeErrorView from '@/components/Error/NodeViewError.vue';
+import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from "@/components/mixins/externalHooks";

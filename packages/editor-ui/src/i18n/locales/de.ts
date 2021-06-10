@@ -1,7 +1,7 @@
 export default {
 	de: {
 
-		nodeViewError: {
+		nodeErrorView: {
 			error: 'Deutsch',
 			details: 'Deutsch',
 			time: 'Deutsch',

@@ -6,7 +6,7 @@ const baseTranslations = {
 			clientSecret: '',
 		},
 
-		nodeViewError: {
+		nodeErrorView: {
 			error: 'ERROR',
 			details: 'Details',
 			time: 'Time',
