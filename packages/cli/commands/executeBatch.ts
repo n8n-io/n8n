@@ -45,9 +45,6 @@ import {
 	LoggerProxy,
 } from 'n8n-workflow';
 
-const colorOutput = true;
-const executionTimeout = 3 * 60 * 1000;
-
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
 
@@ -64,6 +61,8 @@ export class ExecuteBatch extends Command {
 	static concurrency = 1;
 
 	static debug = false;
+
+	static executionTimeout = 3 * 60 * 1000;
 	
 	static examples = [
 		`$ n8n executeAll`,
@@ -517,22 +516,17 @@ export class ExecuteBatch extends Command {
 		ExecuteBatch.workflowExecutionsProgress.map((concurrentThread, index) => {
 			let message = `${index + 1}: `;
 			concurrentThread.map((executionItem, workflowIndex) => {
-				let openColor = '', closeColor = '';
-				if (colorOutput) {
-					switch (executionItem.status) {
-						case 'success':
-							openColor = "\x1b[32m";
-							break;
-						case 'error':
-							openColor = "\x1b[31m";
-							break;
-						case 'warning':
-							openColor = "\x1b[33m";
-							break;
-						default:
-							openColor = "\x1b[0m";
-					}
-					closeColor = "\x1b[0m";
+				let openColor = '\x1b[0m', closeColor = '\x1b[0m';
+				switch (executionItem.status) {
+					case 'success':
+						openColor = '\x1b[32m';
+						break;
+					case 'error':
+						openColor = '\x1b[31m';
+						break;
+					case 'warning':
+						openColor = '\x1b[33m';
+						break;
 				}
 				message += (workflowIndex > 0 ? ', ' : '') + `${openColor}${executionItem.workflowId}${closeColor}`;
 			});
@@ -562,13 +556,9 @@ export class ExecuteBatch extends Command {
 		// It will be updated according to execution progress below.
 		const executionResult:IExecutionResult = {
 			workflowId: workflowData.id,
+			workflowName: workflowData.name,
 			executionTime: 0,
 			finished: false,
-			nodes: workflowData.nodes.map(node => ({
-				name: node.name,
-				typeVersion: node.typeVersion,
-				type: node.type,
-			})),
 			executionStatus: 'running',
 			coveredNodes: {},
 		};
@@ -630,7 +620,7 @@ export class ExecuteBatch extends Command {
 				executionResult.error = 'Workflow execution timed out.';
 				executionResult.executionStatus = 'warning';
 				resolve(executionResult);
-			}, executionTimeout);
+			}, ExecuteBatch.executionTimeout);
 
 
 			try {
@@ -818,14 +808,10 @@ interface IResult {
 }
 interface IExecutionResult{
 	workflowId: string | number;
+	workflowName: string;
 	executionTime: number; // Given in seconds with decimals for milisseconds
 	finished: boolean;
 	executionStatus: ExecutionStatus;
-	nodes: Array<{
-		name: string,
-		typeVersion: number,
-		type: string,
-	}>;
 	error?: string;
 	changes?: string;
 	coveredNodes:{
