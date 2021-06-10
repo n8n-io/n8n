@@ -14,15 +14,15 @@
 				<font-awesome-icon v-else icon="spinner" spin />
 			</div>
 
-			{{ $t('runData.executeNode') }}
+			{{ $translateBase('runData.executeNode') }}
 		</el-button>
 
 		<div class="header">
 			<div class="title-text">
 				<strong v-if="dataCount < maxDisplayItems">
-					{{ $t('runData.items') }}: {{ dataCount }}
+					{{ $translateBase('runData.items') }}: {{ dataCount }}
 				</strong>
-				<strong v-else>{{ $t('runData.items') }}:
+				<strong v-else>{{ $translateBase('runData.items') }}:
 					<el-select v-model="maxDisplayItems" @click.stop>
 						<el-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
 					</el-select>&nbsp;/
@@ -35,19 +35,19 @@
 					width="400"
 					trigger="hover"
 				>
-					<strong>{{ $t('runData.startTime') }}:</strong> {{runMetadata.startTime}}<br/>
-					<strong>{{ $t('runData.executionTime') }}:</strong> {{runMetadata.executionTime}} {{ $t('runData.ms') }}
+					<strong>{{ $translateBase('runData.startTime') }}:</strong> {{runMetadata.startTime}}<br/>
+					<strong>{{ $translateBase('runData.executionTime') }}:</strong> {{runMetadata.executionTime}} {{ $translateBase('runData.ms') }}
 					<font-awesome-icon icon="info-circle" class="primary-color" slot="reference" />
 				</el-popover>
 				<span v-if="maxOutputIndex > 0">
-					| {{ $t('runData.output') }}:
+					| {{ $translateBase('runData.output') }}:
 					<el-select v-model="outputIndex" @click.stop>
 						<el-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
 						</el-option>
 					</el-select>
 				</span>
 				<span v-if="maxRunIndex > 0">
-					| {{ $t('runData.dataOfExecution') }}:
+					| {{ $translateBase('runData.dataOfExecution') }}:
 					<el-select v-model="runIndex" @click.stop>
 						<el-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
 						</el-option>
@@ -70,9 +70,9 @@
 						</el-button>
 					</span>
 					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item :command="{command: 'itemPath'}">{{ $t('runData.copyItemPath') }}</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'parameterPath'}">{{ $t('runData.copyParameterPath') }}</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'value'}">{{ $t('runData.copyValue') }}</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'itemPath'}">{{ $translateBase('runData.copyItemPath') }}</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'parameterPath'}">{{ $translateBase('runData.copyParameterPath') }}</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'value'}">{{ $translateBase('runData.copyValue') }}</el-dropdown-item>
 					</el-dropdown-menu>
 				</el-dropdown>
 
@@ -86,7 +86,7 @@
 				<span v-else>
 					<div v-if="showData === false" class="to-much-data">
 						<h3>
-							{{ $t('runData.nodeReturnedALargeAmountOfData') }}
+							{{ $translateBase('runData.nodeReturnedALargeAmountOfData') }}
 						</h3>
 
 						<div class="text">
@@ -98,16 +98,16 @@
 
 						<el-button size="small" @click="displayMode = 'Table';showData = true;">
 							<font-awesome-icon icon="eye"/>
-							{{ $t('runData.displayDataAnyway') }}
+							{{ $translateBase('runData.displayDataAnyway') }}
 						</el-button>
 					</div>
 					<div v-else-if="['JSON', 'Table'].includes(displayMode)">
 						<div v-if="jsonData.length === 0" class="no-data">
-							{{ $t('runData.noTextDataFound') }}
+							{{ $translateBase('runData.noTextDataFound') }}
 						</div>
 						<div v-else-if="displayMode === 'Table'">
 							<div v-if="tableData !== null && tableData.columns.length === 0" class="no-data">
-								{{ $t('runData.entriesExistButThey') }}
+								{{ $translateBase('runData.entriesExistButThey') }}
 							</div>
 							<table v-else-if="tableData !== null">
 								<tr>
@@ -135,7 +135,7 @@
 					</div>
 					<div v-else-if="displayMode === 'Binary'">
 						<div v-if="binaryData.length === 0" class="no-data">
-							{{ $t('runData.noBinaryDataFound') }}
+							{{ $translateBase('runData.noBinaryDataFound') }}
 						</div>
 
 						<div v-else>
@@ -153,11 +153,11 @@
 												{{key}}
 											</div>
 											<div v-if="binaryData.fileName">
-												<div class="label">{{ $t('runData.fileName') }}: </div>
+												<div class="label">{{ $translateBase('runData.fileName') }}: </div>
 												<div class="value">{{binaryData.fileName}}</div>
 											</div>
 											<div v-if="binaryData.directory">
-												<div class="label">{{ $t('runData.fileExtension') }}: </div>
+												<div class="label">{{ $translateBase('runData.fileExtension') }}: </div>
 												<div class="value">{{binaryData.directory}}</div>
 											</div>
 											<div v-if="binaryData.fileExtension">
@@ -165,14 +165,14 @@
 												<div class="value">{{binaryData.fileExtension}}</div>
 											</div>
 											<div v-if="binaryData.mimeType">
-												<div class="label">{{ $t('runData.mimeType') }}: </div>
+												<div class="label">{{ $translateBase('runData.mimeType') }}: </div>
 												<div class="value">{{binaryData.mimeType}}</div>
 											</div>
 
 											<!-- <el-button @click="displayBinaryData(binaryData)"> -->
 											<div class="binary-data-show-data-button-wrapper">
 												<el-button size="mini" class="binary-data-show-data-button" @click="displayBinaryData(index, key)">
-													{{ $t('runData.showBinaryData') }}
+													{{ $translateBase('runData.showBinaryData') }}
 												</el-button>
 											</div>
 
@@ -186,9 +186,9 @@
 			</span>
 			<div v-else class="message">
 				<div>
-					<strong>{{ $t('runData.noData') }}</strong><br />
+					<strong>{{ $translateBase('runData.noData') }}</strong><br />
 					<br />
-					{{ $t('runData.dataReturnedByTheNodeWillDisplayHere') }}<br />
+					{{ $translateBase('runData.dataReturnedByTheNodeWillDisplayHere') }}<br />
 				</div>
 			</div>
 		</div>

@@ -61,7 +61,7 @@
 				class="workflow-run-button"
 				:class="{'running': workflowRunning}"
 				:disabled="workflowRunning"
-				:title="$t('nodeView.executesTheWorkflowFromTheStartOrWebhookNode')"
+				:title="$translateBase('nodeView.executesTheWorkflowFromTheStartOrWebhookNode')"
 			>
 				<div class="run-icon">
 					<font-awesome-icon icon="spinner" spin v-if="workflowRunning"/>
@@ -77,7 +77,7 @@
 				type="text"
 				@click.stop="stopExecution()"
 				class="stop-execution"
-				:title="stopExecutionInProgress ? $t('nodeView.stoppingCurrentExecution') :$t('nodeView.stopCurrentExecution')"
+				:title="stopExecutionInProgress ? $translateBase('nodeView.stoppingCurrentExecution') :$translateBase('nodeView.stopCurrentExecution')"
 			>
 				<font-awesome-icon icon="stop" :class="{'fa-spin': stopExecutionInProgress}"/>
 			</el-button>
@@ -227,11 +227,11 @@ export default mixins(
 			const result = this.$store.getters.getStateIsDirty;
 			if(result) {
 				const importConfirm = await this.confirmMessage(
-					this.$t('nodeView.confirmMessage.beforeRouteLeave.message').toString(),
-					this.$t('nodeView.confirmMessage.beforeRouteLeave.headline').toString(),
+					this.$translateBase('nodeView.confirmMessage.beforeRouteLeave.message'),
+					this.$translateBase('nodeView.confirmMessage.beforeRouteLeave.headline'),
 					'warning',
-					this.$t('nodeView.confirmMessage.beforeRouteLeave.confirmButtonText').toString(),
-					this.$t('nodeView.confirmMessage.beforeRouteLeave.cancelButtonText').toString(),
+					this.$translateBase('nodeView.confirmMessage.beforeRouteLeave.confirmButtonText'),
+					this.$translateBase('nodeView.confirmMessage.beforeRouteLeave.cancelButtonText'),
 				);
 				if (importConfirm === false) {
 					next(false);
@@ -265,14 +265,14 @@ export default mixins(
 			},
 			runButtonText (): string {
 				if (this.workflowRunning === false) {
-					return this.$t('nodeView.runButtonText.executeWorkflow').toString();
+					return this.$translateBase('nodeView.runButtonText.executeWorkflow');
 				}
 
 				if (this.executionWaitingForWebhook === true) {
-					return this.$t('nodeView.runButtonText.waitingForWebhookCall').toString();
+					return this.$translateBase('nodeView.runButtonText.waitingForWebhookCall');
 				}
 
-				return this.$t('nodeView.runButtonText.executingWorkflow').toString();
+				return this.$translateBase('nodeView.runButtonText.executingWorkflow');
 			},
 			workflowStyle (): object {
 				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
@@ -344,8 +344,8 @@ export default mixins(
 				} catch (error) {
 					this.$showError(
 						error,
-						this.$t('nodeView.showError.openExecution.title').toString(),
-					`${this.$t('nodeView.showError.openExecution.message').toString()}:`,
+						this.$translateBase('nodeView.showError.openExecution.title'),
+						this.$translateBase('nodeView.showError.openExecution.message', { colon: true }),
 					);
 					return;
 				}
@@ -372,8 +372,8 @@ export default mixins(
 				} catch (error) {
 					this.$showError(
 						error,
-						this.$t('nodeView.showError.openWorkflow.title').toString(),
-					`${this.$t('nodeView.showError.openWorkflow.message').toString()}:`,
+						this.$translateBase('nodeView.showError.openWorkflow.title'),
+						this.$translateBase('nodeView.showError.openWorkflow.message', { colon: true }),
 					);
 					return;
 				}
@@ -513,8 +513,8 @@ export default mixins(
 					this.$router.push({ name: 'NodeViewNew' });
 
 					this.$showMessage({
-						title: this.$t('nodeView.showMessage.keyDown.title').toString(),
-						message: this.$t('nodeView.showMessage.keyDown.message').toString(),
+						title: this.$translateBase('nodeView.showMessage.keyDown.title'),
+						message: this.$translateBase('nodeView.showMessage.keyDown.message'),
 						type: 'success',
 					});
 				} else if ((e.key === 's') && (this.isCtrlKeyPressed(e) === true)) {
@@ -749,8 +749,8 @@ export default mixins(
 					this.stopExecutionInProgress = true;
 					const stopData: IExecutionsStopData = await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
-						title: this.$t('nodeView.showMessage.stopExecutionTry.title').toString(),
-						message: this.$t('nodeView.showMessage.stopExecutionTry.message').toString(),
+						title: this.$translateBase('nodeView.showMessage.stopExecutionTry.title'),
+						message: this.$translateBase('nodeView.showMessage.stopExecutionTry.message'),
 						type: 'success',
 					});
 				} catch (error) {
@@ -775,15 +775,15 @@ export default mixins(
 						this.$store.commit('setWorkflowExecutionData', executedData);
 						this.$store.commit('removeActiveAction', 'workflowRunning');
 						this.$showMessage({
-							title: this.$t('nodeView.showMessage.stopExecutionCatch.title').toString(),
-							message: this.$t('nodeView.showMessage.stopExecutionCatch.message').toString(),
+							title: this.$translateBase('nodeView.showMessage.stopExecutionCatch.title'),
+							message: this.$translateBase('nodeView.showMessage.stopExecutionCatch.message'),
 							type: 'success',
 						});
 					} else {
 						this.$showError(
 							error,
-							this.$t('nodeView.showError.stopExecution.title').toString(),
-							`${this.$t('nodeView.showError.stopExecution.message').toString()}:`,
+							this.$translateBase('nodeView.showError.stopExecution.title'),
+							this.$translateBase('nodeView.showError.stopExecution.message', { colon: true }),
 						);
 					}
 				}
@@ -797,15 +797,15 @@ export default mixins(
 				} catch (error) {
 					this.$showError(
 						error,
-						this.$t('nodeView.showError.stopWaitingForWebhook.title').toString(),
-					`${this.$t('nodeView.showError.stopWaitingForWebhook.message').toString()}:`
+						this.$translateBase('nodeView.showError.stopWaitingForWebhook.title'),
+						this.$translateBase('nodeView.showError.stopWaitingForWebhook.message', { colon: true }),
 					);
 					return;
 				}
 
 				this.$showMessage({
-					title: this.$t('nodeView.showMessage.stopWaitingForWebhook.title').toString(),
-					message: this.$t('nodeView.showMessage.stopWaitingForWebhook.message').toString(),
+					title: this.$translateBase('nodeView.showMessage.stopWaitingForWebhook.title'),
+					message: this.$translateBase('nodeView.showMessage.stopWaitingForWebhook.message'),
 					type: 'success',
 				});
 			},
@@ -825,11 +825,11 @@ export default mixins(
 					}
 
 					const importConfirm = await this.confirmMessage(
-						this.$t('nodeView.confirmMessage.receivedCopyPasteData.message').toString(),
-						this.$t('nodeView.confirmMessage.receivedCopyPasteData.headline').toString(),
+						this.$translateBase('nodeView.confirmMessage.receivedCopyPasteData.message'),
+						this.$translateBase('nodeView.confirmMessage.receivedCopyPasteData.headline'),
 						'warning',
-						this.$t('nodeView.confirmMessage.receivedCopyPasteData.confirmButtonText').toString(),
-						this.$t('nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText').toString(),
+						this.$translateBase('nodeView.confirmMessage.receivedCopyPasteData.confirmButtonText'),
+						this.$translateBase('nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText'),
 					);
 
 					if (importConfirm === false) {
@@ -870,8 +870,8 @@ export default mixins(
 					this.stopLoading();
 					this.$showError(
 						error,
-						this.$t('nodeView.showError.getWorkflowDataFromUrl.title').toString(),
-					`${this.$t('nodeView.showError.getWorkflowDataFromUrl.message').toString()}:`
+						this.$translateBase('nodeView.showError.getWorkflowDataFromUrl.title'),
+						this.$translateBase('nodeView.showError.getWorkflowDataFromUrl.message', { colon: true }),
 					);
 					return;
 				}
@@ -910,8 +910,8 @@ export default mixins(
 				} catch (error) {
 					this.$showError(
 						error,
-						this.$t('nodeView.showError.importWorkflowData.title').toString(),
-					`${this.$t('nodeView.showError.importWorkflowData.message').toString()}:`
+						this.$translateBase('nodeView.showError.importWorkflowData.title'),
+						this.$translateBase('nodeView.showError.importWorkflowData.message', { colon: true }),
 					);
 				}
 			},
@@ -1037,8 +1037,8 @@ export default mixins(
 			showMaxNodeTypeError (nodeTypeData: INodeTypeDescription) {
 				const maxNodes = nodeTypeData.maxNodes;
 				this.$showMessage({
-					title: this.$t('nodeView.showMessage.showMaxNodeTypeError.title').toString(),
-					message: this.$t('nodeView.showMessage.showMaxNodeTypeError.message').toString(),
+					title: this.$translateBase('nodeView.showMessage.showMaxNodeTypeError.title'),
+					message: this.$translateBase('nodeView.showMessage.showMaxNodeTypeError.message'),
 					type: 'error',
 					duration: 0,
 				});
@@ -1052,8 +1052,8 @@ export default mixins(
 
 				if (nodeTypeData === null) {
 					this.$showMessage({
-						title: this.$t('nodeView.showMessage.addNodeButton.title').toString(),
-						message: this.$t('nodeView.showMessage.addNodeButton.message').toString(),
+						title: this.$translateBase('nodeView.showMessage.addNodeButton.title'),
+						message: this.$translateBase('nodeView.showMessage.addNodeButton.message'),
 						type: 'error',
 					});
 					return;
@@ -1473,11 +1473,11 @@ export default mixins(
 					const result = this.$store.getters.getStateIsDirty;
 					if(result) {
 						const importConfirm = await this.confirmMessage(
-							this.$t('nodeView.confirmMessage.initView.message').toString(),
-							this.$t('nodeView.confirmMessage.initView.headline').toString(),
+							this.$translateBase('nodeView.confirmMessage.initView.message'),
+							this.$translateBase('nodeView.confirmMessage.initView.headline'),
 							'warning',
-							this.$t('nodeView.confirmMessage.initView.confirmButtonText').toString(),
-							this.$t('nodeView.confirmMessage.initView.cancelButtonText').toString(),
+							this.$translateBase('nodeView.confirmMessage.initView.confirmButtonText'),
+							this.$translateBase('nodeView.confirmMessage.initView.cancelButtonText'),
 						);
 						if (importConfirm === false) {
 							return Promise.resolve();
@@ -1686,13 +1686,13 @@ export default mixins(
 			async renameNodePrompt (currentName: string) {
 				try {
 					const promptResponsePromise = this.$prompt(
-						this.$t('nodeView.prompt.newName').toString() + ":",
-						`${this.$t('nodeView.prompt.renameNode').toString()}: ${currentName}`,
+						this.$translateBase('nodeView.prompt.newName') + ":",
+						this.$translateBase('nodeView.prompt.renameNode', { colon: true }) + ` ${currentName}`,
 						{
 							customClass: 'rename-prompt',
-							confirmButtonText: this.$t('nodeView.prompt.rename').toString(),
-							cancelButtonText: this.$t('nodeView.prompt.cancel').toString(),
-							inputErrorMessage: this.$t('nodeView.prompt.invalidName').toString(),
+							confirmButtonText: this.$translateBase('nodeView.prompt.rename'),
+							cancelButtonText: this.$translateBase('nodeView.prompt.cancel'),
+							inputErrorMessage: this.$translateBase('nodeView.prompt.invalidName'),
 							inputValue: currentName,
 						},
 					);
@@ -2137,8 +2137,8 @@ export default mixins(
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$t('nodeView.showError.mounted1.title').toString(),
-					`${this.$t('nodeView.showError.mounted1.message').toString()}:`
+					this.$translateBase('nodeView.showError.mounted1.title'),
+					this.$translateBase('nodeView.showError.mounted1.message', { colon: true }),
 				);
 				return;
 			}
@@ -2150,8 +2150,8 @@ export default mixins(
 				} catch (error) {
 					this.$showError(
 						error,
-						this.$t('nodeView.showError.mounted2.title').toString(),
-					`${this.$t('nodeView.showError.mounted2.message').toString()}:`
+						this.$translateBase('nodeView.showError.mounted2.title'),
+						this.$translateBase('nodeView.showError.mounted2.message', { colon: true }),
 					);
 				}
 				this.stopLoading();

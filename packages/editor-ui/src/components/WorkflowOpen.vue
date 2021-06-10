@@ -6,11 +6,11 @@
 			<template v-slot:header>
 				<div class="workflows-header">
 					<div class="title">
-						<h1>{{ $t('workflowOpen.openWorkflow') }}</h1>
+						<h1>{{ $translateBase('workflowOpen.openWorkflow') }}</h1>
 					</div>
 					<div class="tags-filter">
 						<TagsDropdown
-							:placeholder="$t('workflowOpen.openWorkflow')"
+							:placeholder="$translateBase('workflowOpen.openWorkflow')"
 							:currentTagIds="filterTagIds"
 							:createEnabled="false"
 							@update="updateTagsFilter"
@@ -19,7 +19,7 @@
 						/>
 					</div>
 					<div class="search-filter">
-						<el-input :placeholder="$t('workflowOpen.searchWorkflows')" ref="inputFieldFilter" v-model="filterText">
+						<el-input :placeholder="$translateBase('workflowOpen.searchWorkflows')" ref="inputFieldFilter" v-model="filterText">
 							<i slot="prefix" class="el-input__icon el-icon-search"></i>
 						</el-input>
 					</div>
@@ -36,9 +36,9 @@
 							</div>
 						</template>
 					</el-table-column>
-					<el-table-column property="createdAt" :label="$t('workflowOpen.created')" class-name="clickable" width="155" sortable></el-table-column>
-					<el-table-column property="updatedAt" :label="$t('workflowOpen.updated')" class-name="clickable" width="155" sortable></el-table-column>
-					<el-table-column :label="$t('workflowOpen.active')" width="75">
+					<el-table-column property="createdAt" :label="$translateBase('workflowOpen.created')" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column property="updatedAt" :label="$translateBase('workflowOpen.updated')" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column :label="$translateBase('workflowOpen.active')" width="75">
 						<template slot-scope="scope">
 							<workflow-activator :workflow-active="scope.row.active" :workflow-id="scope.row.id" @workflowActiveChanged="workflowActiveChanged" />
 						</template>
@@ -133,8 +133,8 @@ export default mixins(
 
 				if (data.id === currentWorkflowId) {
 					this.$showMessage({
-						title: this.$t('workflowOpen.showMessage.title').toString(),
-						message: this.$t('workflowOpen.showMessage.message').toString(),
+						title: this.$translateBase('workflowOpen.showMessage.title'),
+						message: this.$translateBase('workflowOpen.showMessage.message'),
 						type: 'error',
 						duration: 1500,
 					});
@@ -145,11 +145,11 @@ export default mixins(
 				const result = this.$store.getters.getStateIsDirty;
 				if(result) {
 					const importConfirm = await this.confirmMessage(
-						this.$t('workflowOpen.confirmMessage.message').toString(),
-						this.$t('workflowOpen.confirmMessage.headline').toString(),
+						this.$translateBase('workflowOpen.confirmMessage.message'),
+						this.$translateBase('workflowOpen.confirmMessage.headline'),
 						'warning',
-						this.$t('workflowOpen.confirmMessage.confirmButtonText').toString(),
-						this.$t('workflowOpen.confirmMessage.cancelButtonText').toString(),
+						this.$translateBase('workflowOpen.confirmMessage.confirmButtonText'),
+						this.$translateBase('workflowOpen.confirmMessage.cancelButtonText'),
 					);
 					if (importConfirm === false) {
 						return;
@@ -189,8 +189,8 @@ export default mixins(
 					(error: Error) => {
 						this.$showError(
 							error,
-							this.$t('workflowOpen.showError.title').toString(),
-							`${this.$t('workflowOpen.showError.message').toString()}:`
+							this.$translateBase('workflowOpen.showError.title'),
+							this.$translateBase('workflowOpen.showError.message', { colon: true }),
 						);
 						this.isDataLoading = false;
 					},

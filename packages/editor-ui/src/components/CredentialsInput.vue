@@ -2,7 +2,7 @@
 	<div @keydown.stop class="credentials-input-wrapper">
 		<el-row>
 			<el-col :span="6" class="headline-regular">
-				{{ $t('credentialsInput.credentialsName') }}:
+				{{ $translateBase('credentialsInput.credentialsName') }}:
 				<el-tooltip class="credentials-info" placement="top" effect="light">
 					<div slot="content" v-html="helpTexts.credentialsName"></div>
 					<font-awesome-icon icon="question-circle" />
@@ -14,7 +14,7 @@
 		</el-row>
 		<br />
 		<div class="headline" v-if="credentialProperties.length">
-			{{ $t('credentialsInput.credentialData') }}:
+			{{ $translateBase('credentialsInput.credentialData') }}:
 			<el-tooltip class="credentials-info" placement="top" effect="light">
 				<div slot="content" v-html="helpTexts.credentialsData"></div>
 				<font-awesome-icon icon="question-circle" />
@@ -44,13 +44,13 @@
 					<el-button title="Connect OAuth Credentials" circle :disabled="true">
 						<font-awesome-icon icon="redo" />
 					</el-button>
-					{{ $t('credentialsInput.enterAllRequiredProperties') }}
+					{{ $translateBase('credentialsInput.enterAllRequiredProperties') }}
 				</span>
 				<span v-else-if="isOAuthConnected === true">
 					<el-button title="Reconnect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" circle>
 						<font-awesome-icon icon="redo" />
 					</el-button>
-					{{ $t('credentialsInput.connected') }}
+					{{ $translateBase('credentialsInput.connected') }}
 				</span>
 				<span v-else>
 					<span v-if="isGoogleOAuthType">
@@ -60,14 +60,14 @@
 						<el-button title="Connect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" circle>
 							<font-awesome-icon icon="sign-in-alt" />
 						</el-button>
-						{{ $t('credentialsInput.notConnected') }}
+						{{ $translateBase('credentialsInput.notConnected') }}
 					</span>
 				</span>
 
 				<div v-if="credentialProperties.length">
 					<div class="clickable oauth-callback-headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? 'Click to display Webhook URLs' : 'Click to hide Webhook URLs'">
 						<font-awesome-icon icon="angle-up" class="minimize-button minimize-icon" />
-						{{ $t('credentialsInput.oAuth2CallbackUrl') }}
+						{{ $translateBase('credentialsInput.oAuth2CallbackUrl') }}
 					</div>
 					<el-tooltip v-if="!isMinimized" class="item" effect="light" content="Click to copy Callback URL" placement="right">
 						<div class="callback-url left-ellipsis clickable" @click="copyCallbackUrl">
@@ -81,7 +81,7 @@
 
 		<el-row class="nodes-access-wrapper">
 			<el-col :span="6" class="headline">
-				{{ $t('credentialsInput.nodesWithAccess') }}:
+				{{ $translateBase('credentialsInput.nodesWithAccess') }}:
 				<el-tooltip class="credentials-info" placement="top" effect="light">
 					<div slot="content" v-html="helpTexts.nodesWithAccess"></div>
 					<font-awesome-icon icon="question-circle" />
@@ -89,26 +89,26 @@
 			</el-col>
 			<el-col :span="18">
 				<el-transfer
-					:titles="[this.$t('credentialsInput.noAccess'), this.$t('credentialsInput.access')]"
+					:titles="[this.$translateBase('credentialsInput.noAccess'), this.$translateBase('credentialsInput.access')]"
 					v-model="nodesAccess"
 					:data="allNodesRequestingAccess">
 				</el-transfer>
 
 				<div v-if="nodesAccess.length === 0" class="no-nodes-access">
 					<strong>
-						{{ $t('credentialsInput.important') }}
+						{{ $translateBase('credentialsInput.important') }}
 					</strong><br />
-					{{ $t('credentialsInput.addAtLeastOneNodeWhichHasAccessToTheCredentials') }}
+					{{ $translateBase('credentialsInput.addAtLeastOneNodeWhichHasAccessToTheCredentials') }}
 				</div>
 			</el-col>
 		</el-row>
 
 		<div class="action-buttons">
 			<el-button type="success" @click="updateCredentials(true)" v-if="credentialDataDynamic">
-				{{ $t('credentialsInput.save') }}
+				{{ $translateBase('credentialsInput.save') }}
 			</el-button>
 			<el-button type="success" @click="createCredentials(true)" v-else>
-				{{ $t('credentialsInput.create') }}
+				{{ $translateBase('credentialsInput.create') }}
 			</el-button>
 		</div>
 
@@ -293,8 +293,8 @@ export default mixins(
 			this.copyToClipboard(this.oAuthCallbackUrl);
 
 			this.$showMessage({
-				title: this.$t('credentialsEdit.showMessage.copyCallbackUrl.title').toString(),
-				message: this.$t('credentialsEdit.showMessage.copyCallbackUrl.message').toString(),
+				title: this.$translateBase('credentialsInput.showMessage.copyCallbackUrl.title'),
+				message: this.$translateBase('credentialsInput.showMessage.copyCallbackUrl.message'),
 				type: 'success',
 			});
 		},
@@ -354,8 +354,8 @@ export default mixins(
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$t('credentialsEdit.showError.createCredentials.title').toString(),
-					`${this.$t('credentialsEdit.showError.createCredentials.message').toString()}:`
+					this.$translateBase('credentialsInput.showError.createCredentials.title'),
+					this.$translateBase('credentialsInput.showError.createCredentials.message', { colon: true }),
 				);
 				return null;
 			}
@@ -407,8 +407,8 @@ export default mixins(
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$t('credentialsInput.showError.oAuthCredentialAuthorize.title').toString(),
-					`${this.$t('credentialsInput.showError.oAuthCredentialAuthorize.message').toString()}:`
+					this.$translateBase('credentialsInput.showError.oAuthCredentialAuthorize.title'),
+					this.$translateBase('credentialsInput.showError.oAuthCredentialAuthorize.message', { colon: true }),
 				);
 				return;
 			}
@@ -448,8 +448,8 @@ export default mixins(
 					}
 
 					this.$showMessage({
-						title: this.$t('credentialsEdit.showMessage.receiveMessage.title').toString(),
-						message: this.$t('credentialsEdit.showMessage.receiveMessage.message').toString(),
+						title: this.$translateBase('credentialsInput.showMessage.receiveMessage.title'),
+						message: this.$translateBase('credentialsInput.showMessage.receiveMessage.message'),
 						type: 'success',
 					});
 
@@ -497,8 +497,8 @@ export default mixins(
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$t('credentialsInput.showError.updateCredentials.title').toString(),
-					`${this.$t('credentialsInput.showError.updateCredentials.message').toString()}:`
+					this.$translateBase('credentialsInput.showError.updateCredentials.title'),
+					this.$translateBase('credentialsInput.showError.updateCredentials.message', { colon: true }),
 				);
 				return null;
 			}

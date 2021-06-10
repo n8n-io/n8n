@@ -354,20 +354,20 @@ const baseTranslations = {
 					message: `The execution with the id "$\{executionId}" got stopped!`, // interpolation problem
 				},
 				handleFileImport: {
-					title: '',
-					message: '',
+					title: 'Could not import file',
+					message: 'The file does not contain valid JSON data.',
 				},
-				workflowDelete: {
-					title: '',
-					message: '',
+				handleSelect1: {
+					title: 'Workflow got deleted',
+					message: 'The workflow "${this.workflowName}" got deleted.', // interpolation problem
 				},
-				worklowNewImportConfirmTrue: {
-					title: '',
-					message: '',
+				handleSelect2: {
+					title: 'Workflow created',
+					message: 'A new workflow got created',
 				},
-				worklowNewImportConfirmFalse: {
-					title: '',
-					message: '',
+				handleSelect3: {
+					title: 'Workflow created',
+					message: 'A new workflow got created',
 				},
 			},
 		},

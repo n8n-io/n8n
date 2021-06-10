@@ -1,19 +1,19 @@
 <template>
 	<div>
 		<div class="input-wrapper">
-			<el-input :placeholder="$t('nodeCreateList.typeToFilter')" v-model="nodeFilter" ref="inputField" size="small" type="text" prefix-icon="el-icon-search" @keydown.native="nodeFilterKeyDown" clearable ></el-input>
+			<el-input :placeholder="$translateBase('nodeCreateList.typeToFilter')" v-model="nodeFilter" ref="inputField" size="small" type="text" prefix-icon="el-icon-search" @keydown.native="nodeFilterKeyDown" clearable ></el-input>
 		</div>
 		<div class="type-selector">
 			<el-tabs v-model="selectedType" stretch>
-				<el-tab-pane :label="$t('nodeCreateList.regular')" name="Regular"></el-tab-pane>
-				<el-tab-pane :label="$t('nodeCreateList.trigger')" name="Trigger"></el-tab-pane>
-				<el-tab-pane :label="$t('nodeCreateList.all')" name="All"></el-tab-pane>
+				<el-tab-pane :label="$translateBase('nodeCreateList.regular')" name="Regular"></el-tab-pane>
+				<el-tab-pane :label="$translateBase('nodeCreateList.trigger')" name="Trigger"></el-tab-pane>
+				<el-tab-pane :label="$translateBase('nodeCreateList.all')" name="All"></el-tab-pane>
 			</el-tabs>
 		</div>
 		<div class="node-create-list-wrapper">
 			<div class="node-create-list">
 				<div v-if="filteredNodeTypes.length === 0" class="no-results">
-					{{ $t('nodeCreateList.noNodesMatchYourSearchCriteria') }}
+					{{ $translateBase('nodeCreateList.noNodesMatchYourSearchCriteria') }}
 				</div>
 				<node-create-item :active="index === activeNodeTypeIndex" :nodeType="nodeType" v-for="(nodeType, index) in filteredNodeTypes" v-bind:key="nodeType.name" @nodeTypeSelected="nodeTypeSelected"></node-create-item>
 			</div>

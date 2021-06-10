@@ -3,10 +3,10 @@
 		<div class="push-connection-lost primary-color" v-if="!pushConnectionActive">
 			<el-tooltip placement="bottom-end" effect="light">
 				<div slot="content">
-					{{ $t('pushConnectionTracker.cannotConnectToServer') }}
+					{{ $translateBase('pushConnectionTracker.cannotConnectToServer') }}
 				</div>
 				<span>
-					<font-awesome-icon icon="exclamation-triangle" />&nbsp; {{ $t('pushConnectionTracker.connectionLost') }}
+					<font-awesome-icon icon="exclamation-triangle" />&nbsp; {{ $translateBase('pushConnectionTracker.connectionLost') }}
 				</span>
 			</el-tooltip>
 		</div>

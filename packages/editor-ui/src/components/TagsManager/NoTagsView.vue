@@ -3,12 +3,12 @@
 		<el-col class="notags" :span="16">
 			<div class="icon">🗄️</div>
 			<div>
-				<div class="headline">{{ $t('noTagsView.readyToOrganizeYourWorkflows') }}</div>
+				<div class="headline">{{ $translateBase('noTagsView.readyToOrganizeYourWorkflows') }}</div>
 				<div class="description">
-					{{ $t('noTagsView.withWorkflowTagsYouReFree') }}
+					{{ $translateBase('noTagsView.withWorkflowTagsYouReFree') }}
 				</div>
 			</div>
-			<el-button ref="create" @click="$emit('enableCreate')"> {{ $t('noTagsView.createATag') }} </el-button>
+			<el-button ref="create" @click="$emit('enableCreate')"> {{ $translateBase('noTagsView.createATag') }} </el-button>
 		</el-col>
 	</div>
 </template>

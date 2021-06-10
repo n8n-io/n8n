@@ -97,9 +97,9 @@
 					<font-awesome-icon icon="cogs" class="reset-icon clickable" title="Parameter Options"/>
 				</span>
 				<el-dropdown-menu slot="dropdown">
-					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">{{ $t('parameterInput.addExpression') }}</el-dropdown-item>
-					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">{{ $t('parameterInput.removeExpression') }}</el-dropdown-item>
-					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>{{ $t('parameterInput.resetValue') }}</el-dropdown-item>
+					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">{{ $translateBase('parameterInput.addExpression') }}</el-dropdown-item>
+					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">{{ $translateBase('parameterInput.removeExpression') }}</el-dropdown-item>
+					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>{{ $translateBase('parameterInput.resetValue') }}</el-dropdown-item>
 				</el-dropdown-menu>
 			</el-dropdown>
 

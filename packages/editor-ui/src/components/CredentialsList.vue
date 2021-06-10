@@ -4,13 +4,13 @@
 
 		<el-dialog :visible="dialogVisible" append-to-body width="80%" title="Credentials" :before-close="closeDialog">
 			<div class="text-very-light">
-				{{ $t('credentialsList.yourSavedCredentials') }}:
+				{{ $translateBase('credentialsList.yourSavedCredentials') }}:
 			</div>
 
-			<el-button :title="$t('credentialsList.createNewCredentials')" class="new-credentials-button" @click="createCredential()">
+			<el-button :title="$translateBase('credentialsList.createNewCredentials')" class="new-credentials-button" @click="createCredential()">
 				<font-awesome-icon icon="plus" />
 				<div class="next-icon-text">
-					{{ $t('credentialsList.addNew') }}
+					{{ $translateBase('credentialsList.addNew') }}
 				</div>
 			</el-button>
 
@@ -131,8 +131,8 @@ export default mixins(
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$t('credentialsList.showError.loadCredentials.title').toString(),
-					`${this.$t('credentialsList.showError.loadCredentials.message').toString()}:`
+					this.$translateBase('credentialsList.showError.loadCredentials.title'),
+					this.$translateBase('credentialsList.showError.loadCredentials.message', { colon: true }),
 				);
 				this.isDataLoading = false;
 				return;
@@ -148,11 +148,11 @@ export default mixins(
 
 		async deleteCredential (credential: ICredentialsResponse) {
 			const deleteConfirmed = await this.confirmMessage(
-				this.$t('credentialsList.confirmMessage.message').toString(),
-				this.$t('credentialsList.confirmMessage.headline').toString(),
+				this.$translateBase('credentialsList.confirmMessage.message'),
+				this.$translateBase('credentialsList.confirmMessage.headline'),
 				'warning',
-				this.$t('credentialsList.confirmMessage.confirmButtonText').toString(),
-				this.$t('credentialsList.confirmMessage.cancelButtonText').toString(),
+				this.$translateBase('credentialsList.confirmMessage.confirmButtonText'),
+				this.$translateBase('credentialsList.confirmMessage.cancelButtonText'),
 			);
 
 			if (deleteConfirmed === false) {
@@ -164,8 +164,8 @@ export default mixins(
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$t('credentialsList.showError.deleteCredential.title').toString(),
-					`${this.$t('credentialsList.showError.deleteCredential.message').toString()}:`,
+					this.$translateBase('credentialsList.showError.deleteCredential.title'),
+					this.$translateBase('credentialsList.showError.deleteCredential.message', { colon: true }),
 				);
 				return;
 			}
@@ -177,8 +177,8 @@ export default mixins(
 			this.updateNodesCredentialsIssues();
 
 			this.$showMessage({
-				title: this.$t('credentialsList.showMessage.title').toString(),
-				message: this.$t('credentialsList.showMessage.message').toString(),
+				title: this.$translateBase('credentialsList.showMessage.title'),
+				message: this.$translateBase('credentialsList.showMessage.message'),
 				type: 'success',
 			});
 

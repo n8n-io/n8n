@@ -4,14 +4,14 @@
 		:eventBus="modalBus"
 		@enter="save"
 		size="sm"
-		:title="$t('duplicateWorkflowDialog.duplicateWorkflow')"
+		:title="$translateBase('duplicateWorkflowDialog.duplicateWorkflow')"
 	>
 		<template v-slot:content>
 			<el-row>
 				<el-input
 					v-model="name"
 					ref="nameInput"
-					:placeholder="$t('duplicateWorkflowDialog.enterWorkflowName')"
+					:placeholder="$translateBase('duplicateWorkflowDialog.enterWorkflowName')"
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
 			</el-row>
@@ -23,14 +23,14 @@
 					@blur="onTagsBlur"
 					@esc="onTagsEsc"
 					@update="onTagsUpdate"
-					:placeholder="$t('duplicateWorkflowDialog.chooseOrCreateATag')"
+					:placeholder="$translateBase('duplicateWorkflowDialog.chooseOrCreateATag')"
 					ref="dropdown"
 				/>
 			</el-row>
 		</template>
 		<template v-slot:footer="{ close }">
-			<el-button size="small" @click="save" :loading="isSaving">{{ $t('duplicateWorkflowDialog.save') }}</el-button>
-			<el-button size="small" @click="close" :disabled="isSaving">{{ $t('duplicateWorkflowDialog.cancel') }}</el-button>
+			<el-button size="small" @click="save" :loading="isSaving">{{ $translateBase('duplicateWorkflowDialog.save') }}</el-button>
+			<el-button size="small" @click="close" :disabled="isSaving">{{ $translateBase('duplicateWorkflowDialog.cancel') }}</el-button>
 		</template>
 	</Modal>
 </template>
@@ -99,8 +99,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 			const name = this.name.trim();
 			if (!name) {
 				this.$showMessage({
-					title: this.$t('duplicateWorkflowDialog.showMessage.title').toString(),
-					message: this.$t('duplicateWorkflowDialog.showMessage.message').toString(),
+					title: this.$translateBase('duplicateWorkflowDialog.showMessage.title'),
+					message: this.$translateBase('duplicateWorkflowDialog.showMessage.message'),
 					type: "error",
 				});
 

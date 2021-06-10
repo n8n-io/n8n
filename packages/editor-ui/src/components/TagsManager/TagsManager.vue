@@ -1,6 +1,6 @@
 <template>
 	<Modal
-		:title="$t('tagsManager.manageTags')"
+		:title="$translateBase('tagsManager.manageTags')"
 		:name="modalName"
 		:eventBus="modalBus"
 		@enter="onEnter"
@@ -24,7 +24,7 @@
 			</el-row>
 		</template>
 		<template v-slot:footer="{ close }">
-				<el-button size="small" @click="close">{{ $t('tagsManager.done') }}</el-button>
+				<el-button size="small" @click="close">{{ $translateBase('tagsManager.done') }}</el-button>
 		</template>
 	</Modal>
 </template>
@@ -37,11 +37,12 @@ import { mapGetters } from "vuex";
 import { ITag } from "@/Interface";
 
 import { showMessage } from "@/components/mixins/showMessage";
+import { translate } from "@/components/mixins/translate";
 import TagsView from "@/components/TagsManager/TagsView/TagsView.vue";
 import NoTagsView from "@/components/TagsManager/NoTagsView.vue";
 import Modal from "@/components/Modal.vue";
 
-export default mixins(showMessage).extend({
+export default mixins(showMessage, translate).extend({
 	name: "TagsManager",
 	created() {
 		this.$store.dispatch("tags/fetchAll", {force: true, withUsageCount: true});
@@ -94,8 +95,8 @@ export default mixins(showMessage).extend({
 				const escapedName = escape(name);
 				this.$showError(
 					error,
-					this.$t('tagsManager.showError.onCreate.title').toString(),
-					`${this.$t('tagsManager.showError.onCreate.message').toString()}:`
+					this.$translateBase('tagsManager.showError.onCreate.title'),
+					this.$translateBase('tagsManager.showError.onCreate.message', { colon: true }),
 				);
 				cb(null, error);
 			}
@@ -122,16 +123,16 @@ export default mixins(showMessage).extend({
 				const escapedOldName = escape(oldName);
 
 				this.$showMessage({
-					title: this.$t('tagsManager.showMessage.onUpdate.title').toString(),
-					message: this.$t('tagsManager.showMessage.onUpdate.message').toString(),
+					title: this.$translateBase('tagsManager.showMessage.onUpdate.title'),
+					message: this.$translateBase('tagsManager.showMessage.onUpdate.message'),
 					type: "success",
 				});
 			} catch (error) {
 				const escapedName = escape(oldName);
 				this.$showError(
 					error,
-					this.$t('tagsManager.showError.onUpdate.title').toString(),
-					`${this.$t('tagsManager.showError.onUpdate.message').toString()}:`
+					this.$translateBase('tagsManager.showError.onUpdate.title'),
+					this.$translateBase('tagsManager.showError.onUpdate.message', { colon: true }),
 				);
 				cb(false, error);
 			}
@@ -144,7 +145,7 @@ export default mixins(showMessage).extend({
 			try {
 				const deleted = await this.$store.dispatch("tags/delete", id);
 				if (!deleted) {
-					throw new Error(this.$t('tagsManager.couldNotDeleteTag').toString());
+					throw new Error(this.$translateBase('tagsManager.couldNotDeleteTag'));
 				}
 
 				this.$data.tagIds = this.$data.tagIds.filter((tagId: string) => tagId !== id);
@@ -153,16 +154,16 @@ export default mixins(showMessage).extend({
 
 				const escapedName = escape(name);
 				this.$showMessage({
-					title: this.$t('tagsManager.showMessage.onDelete.title').toString(),
-					message: this.$t('tagsManager.showMessage.onDelete.message').toString(),
+					title: this.$translateBase('tagsManager.showMessage.onDelete.title'),
+					message: this.$translateBase('tagsManager.showMessage.onDelete.message'),
 					type: "success",
 				});
 			} catch (error) {
 				const escapedName = escape(name);
 				this.$showError(
 					error,
-					this.$t('tagsManager.showError.onDelete.title').toString(),
-					`${this.$t('tagsManager.showError.onCDelete.message').toString()}:`
+					this.$translateBase('tagsManager.showError.onDelete.title'),
+					this.$translateBase('tagsManager.showError.onDelete.message', { colon: true }),
 				);
 				cb(false, error);
 			}

@@ -1,10 +1,10 @@
 <template>
 	<span>
-		<el-dialog class="workflow-settings" :visible="dialogVisible" append-to-body width="65%" :title="$t('workflowSettings.workflowSettings')" :before-close="closeDialog">
+		<el-dialog class="workflow-settings" :visible="dialogVisible" append-to-body width="65%" :title="$translateBase('workflowSettings.workflowSettings')" :before-close="closeDialog">
 			<div v-loading="isLoading">
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $t('workflowSettings.errorWorkflow') }}:
+						{{ $translateBase('workflowSettings.errorWorkflow') }}:
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.errorWorkflow"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -23,7 +23,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $t('workflowSettings.timezone') }}:
+						{{ $translateBase('workflowSettings.timezone') }}:
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.timezone"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -42,7 +42,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $t('workflowSettings.saveDataErrorExecution') }}:
+						{{ $translateBase('workflowSettings.saveDataErrorExecution') }}:
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.saveDataErrorExecution"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -61,7 +61,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $t('workflowSettings.saveDataSuccessExecution') }}::
+						{{ $translateBase('workflowSettings.saveDataSuccessExecution') }}::
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.saveDataSuccessExecution"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -80,7 +80,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $t('workflowSettings.saveManualExecutions') }}::
+						{{ $translateBase('workflowSettings.saveManualExecutions') }}::
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.saveManualExecutions"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -99,7 +99,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $t('workflowSettings.saveExecutionProgress') }}:
+						{{ $translateBase('workflowSettings.saveExecutionProgress') }}:
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.saveExecutionProgress"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -118,7 +118,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $t('workflowSettings.timeoutWorkflow') }}:
+						{{ $translateBase('workflowSettings.timeoutWorkflow') }}:
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.executionTimeoutToggle"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -127,36 +127,36 @@
 					<el-col :span="14">
 						<div>
 							<el-switch ref="inputField" :value="workflowSettings.executionTimeout > -1" @change="toggleTimeout" active-color="#13ce66"></el-switch>
-							<div class="expression-info clickable" @click="expressionEditDialogVisible = true">{{ $t('workflowSettings.editExpression') }}</div>
+							<div class="expression-info clickable" @click="expressionEditDialogVisible = true">{{ $translateBase('workflowSettings.editExpression') }}</div>
 						</div>
 					</el-col>
 				</el-row>
 				<div v-if="workflowSettings.executionTimeout > -1">
 					<el-row>
 						<el-col :span="10" class="setting-name">
-							{{ $t('workflowSettings.timeoutAfter') }}:
+							{{ $translateBase('workflowSettings.timeoutAfter') }}:
 							<el-tooltip class="setting-info" placement="top" effect="light">
 								<div slot="content" v-html="helpTexts.executionTimeout"></div>
 								<font-awesome-icon icon="question-circle" />
 							</el-tooltip>
 						</el-col>
 						<el-col :span="4">
-							<el-input-number size="small" v-model="timeoutHMS.hours" :min="0" :placeholder="$t('workflowSettings.hours')" type="number" class="el-input_inner"></el-input-number><br />
-							<div class="timeout-setting-name">{{ $t('workflowSettings.hours') }}</div>
+							<el-input-number size="small" v-model="timeoutHMS.hours" :min="0" :placeholder="$translateBase('workflowSettings.hours')" type="number" class="el-input_inner"></el-input-number><br />
+							<div class="timeout-setting-name">{{ $translateBase('workflowSettings.hours') }}</div>
 						</el-col>
 						<el-col :span="4">
-							<el-input-number size="small" v-model="timeoutHMS.minutes" :min="0" :placeholder="$t('workflowSettings.minutes')" type="number" class="el-input_inner"></el-input-number><br />
-							<div class="timeout-setting-name">{{ $t('workflowSettings.minutes') }}</div>
+							<el-input-number size="small" v-model="timeoutHMS.minutes" :min="0" :placeholder="$translateBase('workflowSettings.minutes')" type="number" class="el-input_inner"></el-input-number><br />
+							<div class="timeout-setting-name">{{ $translateBase('workflowSettings.minutes') }}</div>
 						</el-col>
 						<el-col :span="4">
-							<el-input-number size="small" v-model="timeoutHMS.seconds" :min="0" :placeholder="$t('workflowSettings.seconds')" type="number" class="el-input_inner"></el-input-number><br />
-							<div class="timeout-setting-name">{{ $t('workflowSettings.seconds') }}</div>
+							<el-input-number size="small" v-model="timeoutHMS.seconds" :min="0" :placeholder="$translateBase('workflowSettings.seconds')" type="number" class="el-input_inner"></el-input-number><br />
+							<div class="timeout-setting-name">{{ $translateBase('workflowSettings.seconds') }}</div>
 						</el-col>
 					</el-row>
 				</div>
 				<div class="action-buttons">
 					<el-button type="success" @click="saveSettings">
-						{{ $t('workflowSettings.save') }}
+						{{ $translateBase('workflowSettings.save') }}
 					</el-button>
 				</div>
 			</div>
@@ -194,14 +194,14 @@ export default mixins(
 		return {
 			isLoading: true,
 			helpTexts: {
-				errorWorkflow: this.$t('workflowSettings.helpTexts.errorWorkflow'),
-				timezone: this.$t('workflowSettings.helpTexts.timezone'),
-				saveDataErrorExecution: this.$t('workflowSettings.helpTexts.saveDataErrorExecution'),
-				saveDataSuccessExecution: this.$t('workflowSettings.helpTexts.saveDataSuccessExecution'),
-				saveExecutionProgress: this.$t('workflowSettings.helpTexts.saveExecutionProgress'),
-				saveManualExecutions: this.$t('workflowSettings.helpTexts.saveManualExecutions'),
-				executionTimeoutToggle: this.$t('workflowSettings.helpTexts.executionTimeoutToggle'),
-				executionTimeout: this.$t('workflowSettings.helpTexts.executionTimeout'),
+				errorWorkflow: this.$translateBase('workflowSettings.helpTexts.errorWorkflow'),
+				timezone: this.$translateBase('workflowSettings.helpTexts.timezone'),
+				saveDataErrorExecution: this.$translateBase('workflowSettings.helpTexts.saveDataErrorExecution'),
+				saveDataSuccessExecution: this.$translateBase('workflowSettings.helpTexts.saveDataSuccessExecution'),
+				saveExecutionProgress: this.$translateBase('workflowSettings.helpTexts.saveExecutionProgress'),
+				saveManualExecutions: this.$translateBase('workflowSettings.helpTexts.saveManualExecutions'),
+				executionTimeoutToggle: this.$translateBase('workflowSettings.helpTexts.executionTimeoutToggle'),
+				executionTimeout: this.$translateBase('workflowSettings.helpTexts.executionTimeout'),
 			},
 			defaultValues: {
 				timezone: 'America/New_York',
@@ -243,15 +243,15 @@ export default mixins(
 				this.saveDataErrorExecutionOptions, [
 					{
 						key: 'DEFAULT',
-						value: this.$t('workflowSettings.saveDataErrorExecutionOptions.defaultSave').toString(),
+						value: this.$translateBase('workflowSettings.saveDataErrorExecutionOptions.defaultSave'),
 					},
 					{
 						key: 'all',
-						value: this.$t('workflowSettings.saveDataErrorExecutionOptions.save').toString(),
+						value: this.$translateBase('workflowSettings.saveDataErrorExecutionOptions.save'),
 					},
 					{
 						key: 'none',
-						value: this.$t('workflowSettings.saveDataErrorExecutionOptions.doNotSave').toString(),
+						value: this.$translateBase('workflowSettings.saveDataErrorExecutionOptions.doNotSave'),
 					},
 				],
 			);
@@ -262,15 +262,15 @@ export default mixins(
 				this.saveDataSuccessExecutionOptions, [
 					{
 						key: 'DEFAULT',
-						value: this.$t('workflowSettings.saveDataSuccessExecutionOptions.defaultSave').toString(),
+						value: this.$translateBase('workflowSettings.saveDataSuccessExecutionOptions.defaultSave'),
 					},
 					{
 						key: 'all',
-						value: this.$t('workflowSettings.saveDataSuccessExecutionOptions.save').toString(),
+						value: this.$translateBase('workflowSettings.saveDataSuccessExecutionOptions.save'),
 					},
 					{
 						key: 'none',
-						value: this.$t('workflowSettings.saveDataSuccessExecutionOptions.doNotSave').toString(),
+						value: this.$translateBase('workflowSettings.saveDataSuccessExecutionOptions.doNotSave'),
 					},
 				],
 			);
@@ -281,15 +281,15 @@ export default mixins(
 				this.saveExecutionProgressOptions, [
 					{
 						key: 'DEFAULT',
-						value: this.$t('workflowSettings.saveExecutionProgressOptions.defaultSave').toString(),
+						value: this.$translateBase('workflowSettings.saveExecutionProgressOptions.defaultSave'),
 					},
 					{
 						key: true,
-						value: this.$t('workflowSettings.saveExecutionProgressOptions.yes').toString(),
+						value: this.$translateBase('workflowSettings.saveExecutionProgressOptions.yes'),
 					},
 					{
 						key: false,
-						value: this.$t('workflowSettings.saveExecutionProgressOptions.no').toString(),
+						value: this.$translateBase('workflowSettings.saveExecutionProgressOptions.no'),
 					},
 				],
 			);
@@ -298,15 +298,15 @@ export default mixins(
 			this.saveManualOptions.length = 0;
 			this.saveManualOptions.push({
 				key: 'DEFAULT',
-				value: this.$t('workflowSettings.saveManualOptions.defaultSave').toString(),
+				value: this.$translateBase('workflowSettings.saveManualOptions.defaultSave'),
 			});
 			this.saveManualOptions.push({
 				key: true,
-				value: this.$t('workflowSettings.saveManualOptions.yes').toString(),
+				value: this.$translateBase('workflowSettings.saveManualOptions.yes'),
 			});
 			this.saveManualOptions.push({
 				key: false,
-				value: this.$t('workflowSettings.saveManualOptions.no').toString(),
+				value: this.$translateBase('workflowSettings.saveManualOptions.no'),
 			});
 		},
 
@@ -349,7 +349,7 @@ export default mixins(
 			// @ts-ignore
 			workflows.unshift({
 				id: undefined as unknown as string,
-				name: this.$t('workflowSettings.noWorkflow').toString(),
+				name: this.$translateBase('workflowSettings.noWorkflow'),
 			});
 
 			Vue.set(this, 'workflows', workflows);
@@ -358,8 +358,8 @@ export default mixins(
 			const workflowId = this.$route.params.name;
 			if (this.$route.params.name === undefined) {
 				this.$showMessage({
-					title: this.$t('workflowSettings.showMessage.openDialog.title').toString(),
-					message: this.$t('workflowSettings.showMessage.openDialog.message').toString(),
+					title: this.$translateBase('workflowSettings.showMessage.openDialog.title'),
+					message: this.$translateBase('workflowSettings.showMessage.openDialog.message'),
 					type: 'error',
 					duration: 0,
 				});
@@ -386,8 +386,8 @@ export default mixins(
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$t('workflowSettings.showError.openDialog.title').toString(),
-					`${this.$t('workflowSettings.showError.openDialog.message').toString()}:`
+					this.$translateBase('workflowSettings.showError.openDialog.title'),
+					this.$translateBase('workflowSettings.showError.openDialog.message', { colon: true }),
 				);
 			}
 
@@ -434,9 +434,9 @@ export default mixins(
 
 			if (data.settings!.executionTimeout === 0) {
 				this.$showError(
-					new Error(this.$t('workflowSettings.showError.saveSettings1.errorMessage').toString()),
-					this.$t('workflowSettings.showError.saveSettings1.title').toString(),
-					`${this.$t('workflowSettings.showError.saveSettings1.message').toString()}:`
+					new Error(this.$translateBase('workflowSettings.showError.saveSettings1.errorMessage')),
+					this.$translateBase('workflowSettings.showError.saveSettings1.title'),
+					this.$translateBase('workflowSettings.showError.saveSettings1.message', { colon: true }),
 				);
 				return;
 			}
@@ -445,9 +445,9 @@ export default mixins(
 			if (data.settings!.executionTimeout > this.workflowSettings.maxExecutionTimeout) {
 				const { hours, minutes, seconds } = this.convertToHMS(this.workflowSettings.maxExecutionTimeout as number);
 				this.$showError(
-					new Error(this.$t('workflowSettings.showError.saveSettings2.errorMessage').toString()),
-					this.$t('workflowSettings.showError.saveSettings2.title').toString(),
-					`${this.$t('workflowSettings.showError.saveSettings2.message').toString()}:`
+					new Error(this.$translateBase('workflowSettings.showError.saveSettings2.errorMessage')),
+					this.$translateBase('workflowSettings.showError.saveSettings2.title'),
+					this.$translateBase('workflowSettings.showError.saveSettings2.message', { colon: true }),
 				);
 				return;
 			}
@@ -460,8 +460,8 @@ export default mixins(
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$t('workflowSettings.showError.saveSettings3.title').toString(),
-					`${this.$t('workflowSettings.showError.saveSettings3.message').toString()}:`
+					this.$translateBase('workflowSettings.showError.saveSettings3.title'),
+					this.$translateBase('workflowSettings.showError.saveSettings3.message', { colon: true }),
 				);
 				this.isLoading = false;
 				return;
@@ -482,8 +482,8 @@ export default mixins(
 			this.isLoading = false;
 
 			this.$showMessage({
-				title: this.$t('workflowSettings.showMessage.saveSettings.title').toString(),
-				message: this.$t('workflowSettings.showMessage.saveSettings.message').toString(),
+				title: this.$translateBase('workflowSettings.showMessage.saveSettings.title'),
+				message: this.$translateBase('workflowSettings.showMessage.saveSettings.message'),
 				type: 'success',
 			});
 

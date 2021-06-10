@@ -3,7 +3,7 @@
 		<credentials-edit :dialogVisible="credentialNewDialogVisible" :editCredentials="editCredentials" :setCredentialType="addType" :nodesInit="nodesInit" :node="node" @closeDialog="closeCredentialNewDialog" @credentialsCreated="credentialsCreated" @credentialsUpdated="credentialsUpdated"></credentials-edit>
 
 		<div class="headline">
-			{{ $t('nodeCredentials.credentials') }}
+			{{ $translateBase('nodeCredentials.credentials') }}
 		</div>
 
 		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name" class="credential-data">
@@ -218,8 +218,8 @@ export default mixins(
 			const credentialData = this.credentialOptions[credentialType].find((optionData: ICredentialsResponse) => optionData.name === name);
 			if (credentialData === undefined) {
 				this.$showMessage({
-					title: this.$t('nodeCredentials.showMessage.title').toString(),
-					message: this.$t('nodeCredentials.showMessage.message').toString(),
+					title: this.$translateBase('nodeCredentials.showMessage.title'),
+					message: this.$translateBase('nodeCredentials.showMessage.message'),
 					type: 'error',
 				});
 				return;

@@ -1,18 +1,18 @@
 <template>
 	<div>
 		<div class="error-header">
-			<div class="error-message">{{ $t('nodeViewError.error') }}: {{error.message}}</div>
+			<div class="error-message">{{ $translateBase('nodeViewError.error') }}: {{error.message}}</div>
 			<div class="error-description" v-if="error.description">{{error.description}}</div>
 		</div>
 		<details>
 			<summary class="error-details__summary">
-				<font-awesome-icon class="error-details__icon" icon="angle-right" /> {{ $t('nodeViewError.details') }}
+				<font-awesome-icon class="error-details__icon" icon="angle-right" /> {{ $translateBase('nodeViewError.details') }}
 			</summary>
 			<div class="error-details__content">
 				<div v-if="error.timestamp">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
-							<span>{{ $t('nodeViewError.time') }}</span>
+							<span>{{ $translateBase('nodeViewError.time') }}</span>
 						</div>
 						<div>
 							{{new Date(error.timestamp).toLocaleString()}}
@@ -22,7 +22,7 @@
 				<div v-if="error.httpCode">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
-							<span>{{ $t('nodeViewError.httpCode') }}</span>
+							<span>{{ $translateBase('nodeViewError.httpCode') }}</span>
 						</div>
 						<div>
 							{{error.httpCode}}
@@ -32,9 +32,9 @@
 				<div v-if="error.cause">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
-							<span>{{ $t('nodeViewError.cause') }}</span>
+							<span>{{ $translateBase('nodeViewError.cause') }}</span>
 							<br>
-							<span class="box-card__subtitle">{{ $t('nodeViewError.dataBelowMayContain') }}</span>
+							<span class="box-card__subtitle">{{ $translateBase('nodeViewError.dataBelowMayContain') }}</span>
 						</div>
 						<div>
 							<el-button class="copy-button" @click="copyCause" circle type="text" title="Copy to clipboard">
@@ -54,7 +54,7 @@
 				<div v-if="error.stack">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
-							<span>{{ $t('nodeViewError.stack') }}</span>
+							<span>{{ $translateBase('nodeViewError.stack') }}</span>
 						</div>
 						<div>
 							<pre><code>{{error.stack}}</code></pre>
@@ -72,12 +72,14 @@ import Vue from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { showMessage } from '@/components/mixins/showMessage';
+import { translate } from '@/components/mixins/translate';
 import mixins from 'vue-typed-mixins';
 
 
 export default mixins(
 	copyPaste,
 	showMessage,
+	translate,
 ).extend({
 	name: 'NodeErrorView',
 	props: [
@@ -93,8 +95,8 @@ export default mixins(
 		},
 		copySuccess() {
 			this.$showMessage({
-				title: this.$t('workflowSettings.showMessage.title').toString(),
-				message: this.$t('workflowSettings.showMessage.message').toString(),
+				title: this.$translateBase('nodeViewError.showMessage.title'),
+				message: this.$translateBase('nodeViewError.showMessage.message'),
 				type: 'info',
 			});
 		},

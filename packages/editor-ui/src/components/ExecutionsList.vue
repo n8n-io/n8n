@@ -1,10 +1,10 @@
 <template>
 	<span>
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${this.$t('executionsList.workflowExecutions')} (${combinedExecutions.length}/${combinedExecutionsCount})`" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${this.$translateBase('executionsList.workflowExecutions')} (${combinedExecutions.length}/${combinedExecutionsCount})`" :before-close="closeDialog">
 			<div class="filters">
 				<el-row>
 					<el-col :span="4" class="filter-headline">
-						{{ $t('executionsList.filters') }}:
+						{{ $translateBase('executionsList.filters') }}:
 					</el-col>
 					<el-col :span="6">
 						<el-select v-model="filter.workflowId" placeholder="Select Workflow" size="small" filterable @change="handleFilterChanged">
@@ -31,14 +31,14 @@
 					<el-col :span="4">&nbsp;
 					</el-col>
 					<el-col :span="4" class="autorefresh">
-						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">{{ $t('executionsList.autoRefresh') }}</el-checkbox>
+						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">{{ $translateBase('executionsList.autoRefresh') }}</el-checkbox>
 					</el-col>
 				</el-row>
 			</div>
 
 			<div class="selection-options">
 				<span v-if="checkAll === true || isIndeterminate === true">
-					{{ $t('executionsList.selected') }}: {{numSelected}}/{{finishedExecutionsCount}}
+					{{ $translateBase('executionsList.selected') }}: {{numSelected}}/{{finishedExecutionsCount}}
 					<el-button type="danger" title="Delete Selected" icon="el-icon-delete" size="mini" @click="handleDeleteSelected" circle></el-button>
 				</span>
 			</div>
@@ -47,71 +47,71 @@
 				<el-table-column label="" width="30">
 					<!-- eslint-disable-next-line vue/no-unused-vars -->
 					<template slot="header" slot-scope="scope">
-						<el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange">{{ $t('executionsList.checkAll') }}</el-checkbox>
+						<el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange">{{ $translateBase('executionsList.checkAll') }}</el-checkbox>
 					</template>
 					<template slot-scope="scope">
 						<el-checkbox v-if="scope.row.stoppedAt !== undefined && scope.row.id" :value="selectedItems[scope.row.id.toString()] || checkAll" @change="handleCheckboxChanged(scope.row.id)" >Check all</el-checkbox>
 					</template>
 				</el-table-column>
-				<el-table-column property="startedAt" :label="this.$t('executionsList.startedAtId')" width="205">
+				<el-table-column property="startedAt" :label="this.$translateBase('executionsList.startedAtId')" width="205">
 					<template slot-scope="scope">
 						{{convertToDisplayDate(scope.row.startedAt)}}<br />
 						<small v-if="scope.row.id">ID: {{scope.row.id}}</small>
 					</template>
 				</el-table-column>
-				<el-table-column property="workflowName" :label="this.$t('executionsList.name')">
+				<el-table-column property="workflowName" :label="this.$translateBase('executionsList.name')">
 					<template slot-scope="scope">
 						<span class="workflow-name">
 							{{scope.row.workflowName || '[UNSAVED WORKFLOW]'}}
 						</span>
 
 						<span v-if="scope.row.stoppedAt === undefined">
-							({{ $t('executionsList.runningParens') }})
+							({{ $translateBase('executionsList.runningParens') }})
 						</span>
 						<span v-if="scope.row.retryOf !== undefined">
-							<br /><small>{{ $t('executionsList.retryOf') }} "{{scope.row.retryOf}}"</small>
+							<br /><small>{{ $translateBase('executionsList.retryOf') }} "{{scope.row.retryOf}}"</small>
 						</span>
 						<span v-else-if="scope.row.retrySuccessId !== undefined">
-							<br /><small>{{ $t('executionsList.successRetry') }} "{{scope.row.retrySuccessId}}"</small>
+							<br /><small>{{ $translateBase('executionsList.successRetry') }} "{{scope.row.retrySuccessId}}"</small>
 						</span>
 					</template>
 				</el-table-column>
-				<el-table-column :label="this.$t('executionsList.status')" width="120" align="center">
+				<el-table-column :label="this.$translateBase('executionsList.status')" width="120" align="center">
 					<template slot-scope="scope" align="center">
 
 						<el-tooltip placement="top" effect="light">
 							<div slot="content" v-html="statusTooltipText(scope.row)"></div>
 
 							<span class="status-badge running" v-if="scope.row.stoppedAt === undefined">
-								{{ $t('executionsList.running') }}
+								{{ $translateBase('executionsList.running') }}
 							</span>
 							<span class="status-badge success" v-else-if="scope.row.finished">
-								{{ $t('executionsList.success') }}
+								{{ $translateBase('executionsList.success') }}
 							</span>
 							<span class="status-badge error" v-else-if="scope.row.stoppedAt !== null">
-								{{ $t('executionsList.error') }}
+								{{ $translateBase('executionsList.error') }}
 							</span>
 							<span class="status-badge warning" v-else>
-								{{ $t('executionsList.unknown') }}
+								{{ $translateBase('executionsList.unknown') }}
 							</span>
 						</el-tooltip>
 
 						<el-dropdown trigger="click" @command="handleRetryClick">
 							<span class="el-dropdown-link">
-								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" type="text" size="small" :title="$t('executionsList.retryExecution')">
+								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" type="text" size="small" :title="$translateBase('executionsList.retryExecution')">
 									<font-awesome-icon icon="redo" />
 								</el-button>
 							</span>
 							<el-dropdown-menu slot="dropdown">
-								<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">{{ $t('executionsList.retryWithCurrentlySavedWorkflow') }}</el-dropdown-item>
-								<el-dropdown-item :command="{command: 'original', row: scope.row}">{{ $t('executionsList.retryWithOriginalworkflow') }}</el-dropdown-item>
+								<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">{{ $translateBase('executionsList.retryWithCurrentlySavedWorkflow') }}</el-dropdown-item>
+								<el-dropdown-item :command="{command: 'original', row: scope.row}">{{ $translateBase('executionsList.retryWithOriginalworkflow') }}</el-dropdown-item>
 							</el-dropdown-menu>
 						</el-dropdown>
 
 					</template>
 				</el-table-column>
-				<el-table-column property="mode" :label="this.$t('executionsList.mode')" width="100" align="center"></el-table-column>
-				<el-table-column :label="this.$t('executionsList.runningTime')" width="150" align="center">
+				<el-table-column property="mode" :label="this.$translateBase('executionsList.mode')" width="100" align="center"></el-table-column>
+				<el-table-column :label="this.$translateBase('executionsList.runningTime')" width="150" align="center">
 					<template slot-scope="scope">
 						<span v-if="scope.row.stoppedAt === undefined">
 							<font-awesome-icon icon="spinner" spin />
@@ -134,7 +134,7 @@
 							</el-button>
 						</span>
 						<span v-else-if="scope.row.id">
-							<el-button circle :title="$t('executionsList.openPastExecution')" @click.stop="displayExecution(scope.row)" size="mini">
+							<el-button circle :title="$translateBase('executionsList.openPastExecution')" @click.stop="displayExecution(scope.row)" size="mini">
 								<font-awesome-icon icon="folder-open" />
 							</el-button>
 						</span>
@@ -223,19 +223,19 @@ export default mixins(
 			statuses: [
 				{
 					id: 'ALL',
-					name: this.$t('executionsList.anyStatus'),
+					name: this.$translateBase('executionsList.anyStatus'),
 				},
 				{
 					id: 'error',
-					name: this.$t('executionsList.error'),
+					name: this.$translateBase('executionsList.error'),
 				},
 				{
 					id: 'running',
-					name: this.$t('executionsList.running'),
+					name: this.$translateBase('executionsList.running'),
 				},
 				{
 					id: 'success',
-					name: this.$t('executionsList.success'),
+					name: this.$translateBase('executionsList.success'),
 				},
 			],
 
@@ -346,11 +346,11 @@ export default mixins(
 		},
 		async handleDeleteSelected () {
 			const deleteExecutions = await this.confirmMessage(
-				this.$t('executionsList.confirmMessage.message').toString(),
-				this.$t('executionsList.confirmMessage.headline').toString(),
+				this.$translateBase('executionsList.confirmMessage.message'),
+				this.$translateBase('executionsList.confirmMessage.headline'),
 				'warning',
-				this.$t('executionsList.confirmMessage.confirmButtonText').toString(),
-				this.$t('executionsList.confirmMessage.cancelButtonText').toString(),
+				this.$translateBase('executionsList.confirmMessage.confirmButtonText'),
+				this.$translateBase('executionsList.confirmMessage.cancelButtonText'),
 			);
 
 			if (deleteExecutions === false) {
@@ -374,8 +374,8 @@ export default mixins(
 				this.isDataLoading = false;
 				this.$showError(
 					error,
-					this.$t('executionsList.showError.handleDeleteSelected.title').toString(),
-					`${this.$t('executionsList.showError.handleDeleteSelected.message').toString()}:`,
+					this.$translateBase('executionsList.showError.handleDeleteSelected.title'),
+					this.$translateBase('executionsList.showError.handleDeleteSelected.message', { colon: true }),
 				);
 
 				return;
@@ -383,8 +383,8 @@ export default mixins(
 			this.isDataLoading = false;
 
 			this.$showMessage({
-				title: this.$t('executionsList.showMessage.handleDeleteSelected.title').toString(),
-				message: this.$t('executionsList.showMessage.handleDeleteSelected.message').toString(),
+				title: this.$translateBase('executionsList.showMessage.handleDeleteSelected.title'),
+				message: this.$translateBase('executionsList.showMessage.handleDeleteSelected.message'),
 				type: 'success',
 			});
 
@@ -534,8 +534,8 @@ export default mixins(
 				this.isDataLoading = false;
 				this.$showError(
 					error,
-					this.$t('executionsList.showError.loadMore.title').toString(),
-					`${this.$t('executionsList.showError.loadMore.message').toString()}:`,
+					this.$translateBase('executionsList.showError.loadMore.title'),
+					this.$translateBase('executionsList.showError.loadMore.message', { colon: true }),
 				);
 				return;
 			}
@@ -561,15 +561,15 @@ export default mixins(
 				// @ts-ignore
 				workflows.unshift({
 					id: 'ALL',
-					name: this.$t('executionsList.allWorkflows').toString(),
+					name: this.$translateBase('executionsList.allWorkflows'),
 				});
 
 				Vue.set(this, 'workflows', workflows);
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$t('executionsList.showError.loadWorkflows.title').toString(),
-					`${this.$t('executionsList.showError.loadWorkflows.message').toString()}:`,
+					this.$translateBase('executionsList.showError.loadWorkflows.title'),
+					this.$translateBase('executionsList.showError.loadWorkflows.message', { colon: true }),
 				);
 			}
 		},
@@ -592,14 +592,14 @@ export default mixins(
 
 				if (retrySuccessful === true) {
 					this.$showMessage({
-						title: this.$t('executionsList.showMessage.retrySuccessfulTrue.title').toString(),
-						message: this.$t('executionsList.showMessage.retrySuccessfulTrue.message').toString(),
+						title: this.$translateBase('executionsList.showMessage.retrySuccessfulTrue.title'),
+						message: this.$translateBase('executionsList.showMessage.retrySuccessfulTrue.message'),
 						type: 'success',
 					});
 				} else {
 					this.$showMessage({
-						title: this.$t('executionsList.showMessage.retrySuccessfulFalse.title').toString(),
-						message: this.$t('executionsList.showMessage.retrySuccessfulFalse.message').toString(),
+						title: this.$translateBase('executionsList.showMessage.retrySuccessfulFalse.title'),
+						message: this.$translateBase('executionsList.showMessage.retrySuccessfulFalse.message'),
 						type: 'error',
 					});
 				}
@@ -608,8 +608,8 @@ export default mixins(
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$t('executionsList.showError.retryExecution.title').toString(),
-					`${this.$t('executionsList.showError.retryExecution.message').toString()}:`,
+					this.$translateBase('executionsList.showError.retryExecution.title'),
+					this.$translateBase('executionsList.showError.retryExecution.message', { colon: true }),
 				);
 
 				this.isDataLoading = false;
@@ -625,8 +625,8 @@ export default mixins(
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$t('executionsList.showError.refreshData.title').toString(),
-					`${this.$t('executionsList.showError.refreshData.message').toString()}:`,
+					this.$translateBase('executionsList.showError.refreshData.title'),
+					this.$translateBase('executionsList.showError.refreshData.message', { colon: true }),
 				);
 			}
 
@@ -634,19 +634,19 @@ export default mixins(
 		},
 		statusTooltipText (entry: IExecutionsSummary): string {
 			if (entry.stoppedAt === undefined) {
-				return this.$t('executionsList.statusTooltipText.theWorkflowIsCurrentlyExecuting').toString();
+				return this.$translateBase('executionsList.statusTooltipText.theWorkflowIsCurrentlyExecuting');
 			} else if (entry.finished === true && entry.retryOf !== undefined) {
-				return this.$t('executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndItWasSuccessful').toString();
+				return this.$translateBase('executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndItWasSuccessful');
 			} else if (entry.finished === true) {
-				return this.$t('executionsList.statusTooltipText.theWorkflowExecutionWasSuccessful').toString();
+				return this.$translateBase('executionsList.statusTooltipText.theWorkflowExecutionWasSuccessful');
 			} else if (entry.retryOf !== undefined) {
-				return this.$t('executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndFailed').toString();
+				return this.$translateBase('executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndFailed');
 			} else if (entry.retrySuccessId !== undefined) {
-				return this.$t('executionsList.statusTooltipText.theWorkflowExecutionFailedButTheRetryWasSuccessful').toString();
+				return this.$translateBase('executionsList.statusTooltipText.theWorkflowExecutionFailedButTheRetryWasSuccessful');
 			} else if (entry.stoppedAt === null) {
-				return this.$t('executionsList.statusTooltipText.theWorkflowExecutionIsProbablyStillRunning').toString();
+				return this.$translateBase('executionsList.statusTooltipText.theWorkflowExecutionIsProbablyStillRunning');
 			} else {
-				return this.$t('executionsList.statusTooltipText.theWorkflowExecutionFailed').toString();
+				return this.$translateBase('executionsList.statusTooltipText.theWorkflowExecutionFailed');
 			}
 		},
 		async stopExecution (activeExecutionId: string) {
@@ -662,8 +662,8 @@ export default mixins(
 				this.stoppingExecutions.splice(index, 1);
 
 				this.$showMessage({
-					title: this.$t('executionsList.showMessage.stopExecution.title').toString(),
-					message: this.$t('executionsList.showMessage.stopExecution.message').toString(),
+					title: this.$translateBase('executionsList.showMessage.stopExecution.title'),
+					message: this.$translateBase('executionsList.showMessage.stopExecution.message'),
 					type: 'success',
 				});
 
@@ -671,8 +671,8 @@ export default mixins(
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$t('executionsList.showError.stopExecution.title').toString(),
-					`${this.$t('executionsList.showError.stopExecution.message').toString()}:`,
+					this.$translateBase('executionsList.showError.stopExecution.title'),
+					this.$translateBase('executionsList.showError.stopExecution.message', { colon: true }),
 				);
 			}
 		},

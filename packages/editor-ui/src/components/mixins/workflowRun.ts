@@ -80,8 +80,8 @@ export const workflowRun = mixins(
 						}
 
 						this.$showMessage({
-							title: this.$t('workflowRun.showMessage.title').toString(),
-							message: this.$t('workflowRun.showMessage.message').toString() + ':<br />&nbsp;&nbsp;- ' + errorMessages.join('<br />&nbsp;&nbsp;- '),
+							title: this.$translateBase('workflowRun.showMessage.title'),
+							message: this.$translateBase('workflowRun.showMessage.message') + ':<br />&nbsp;&nbsp;- ' + errorMessages.join('<br />&nbsp;&nbsp;- '),
 							type: 'error',
 							duration: 0,
 						});
@@ -183,8 +183,8 @@ export const workflowRun = mixins(
 				this.$titleSet(workflow.name as string, 'ERROR');
 				this.$showError(
 					error,
-					this.$t('workflowRun.showError.title').toString(),
-					`${this.$t('workflowRun.showError.message').toString()}:`,
+					this.$translateBase('workflowRun.showError.title'),
+					this.$translateBase('workflowRun.showError.message', { colon: true }),
 				);
 				return undefined;
 			}

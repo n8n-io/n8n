@@ -13,7 +13,7 @@
 			<span v-else>No node active</span>
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
-			{{ $t('nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown') }}
+			{{ $translateBase('nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown') }}
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<el-tabs stretch>
@@ -22,7 +22,7 @@
 					<node-webhooks :node="node" :nodeType="nodeType" />
 					<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
 					<div v-if="parametersNoneSetting.length === 0">
-						{{ $t('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
+						{{ $translateBase('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</div>
 				</el-tab-pane>
 				<el-tab-pane label="Settings">
@@ -153,7 +153,7 @@ export default mixins(
 
 				nodeSettings: [
 					{
-						displayName: this.$t('nodeSettings.settings.notes.displayName'),
+						displayName: this.$translateBase('nodeSettings.settings.notes.displayName'),
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
@@ -161,50 +161,50 @@ export default mixins(
 						},
 						default: '',
 						noDataExpression: true,
-						description: this.$t('nodeSettings.settings.notes.description'),
+						description: this.$translateBase('nodeSettings.settings.notes.description'),
 					},
 					{
-						displayName: this.$t('nodeSettings.settings.notesInFlow.displayName'),
+						displayName: this.$translateBase('nodeSettings.settings.notesInFlow.displayName'),
 						name: 'notesInFlow',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: this.$t('nodeSettings.settings.notesInFlow.description'),
+						description: this.$translateBase('nodeSettings.settings.notesInFlow.description'),
 					},
 					{
-						displayName: this.$t('nodeSettings.settings.color.displayName'),
+						displayName: this.$translateBase('nodeSettings.settings.color.displayName'),
 						name: 'color',
 						type: 'color',
 						default: '#ff0000',
 						noDataExpression: true,
-						description: this.$t('nodeSettings.settings.color.description'),
+						description: this.$translateBase('nodeSettings.settings.color.description'),
 					},
 					{
-						displayName: this.$t('nodeSettings.settings.alwaysOutputData.displayName'),
+						displayName: this.$translateBase('nodeSettings.settings.alwaysOutputData.displayName'),
 						name: 'alwaysOutputData',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: this.$t('nodeSettings.settings.alwaysOutputData.description'),
+						description: this.$translateBase('nodeSettings.settings.alwaysOutputData.description'),
 					},
 					{
-						displayName: this.$t('nodeSettings.settings.executeOnce.displayName'),
+						displayName: this.$translateBase('nodeSettings.settings.executeOnce.displayName'),
 						name: 'executeOnce',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: this.$t('nodeSettings.settings.executeOnce.description'),
+						description: this.$translateBase('nodeSettings.settings.executeOnce.description'),
 					},
 					{
-						displayName: this.$t('nodeSettings.settings.retryOnFail.displayName'),
+						displayName: this.$translateBase('nodeSettings.settings.retryOnFail.displayName'),
 						name: 'retryOnFail',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: this.$t('nodeSettings.settings.retryOnFail.description'),
+						description: this.$translateBase('nodeSettings.settings.retryOnFail.description'),
 					},
 					{
-						displayName: this.$t('nodeSettings.settings.maxTries.displayName'),
+						displayName: this.$translateBase('nodeSettings.settings.maxTries.displayName'),
 						name: 'maxTries',
 						type: 'number',
 						typeOptions: {
@@ -220,10 +220,10 @@ export default mixins(
 							},
 						},
 						noDataExpression: true,
-						description: this.$t('nodeSettings.settings.maxTries.description'),
+						description: this.$translateBase('nodeSettings.settings.maxTries.description'),
 					},
 					{
-						displayName: this.$t('nodeSettings.settings.waitBetweenTries.displayName'),
+						displayName: this.$translateBase('nodeSettings.settings.waitBetweenTries.displayName'),
 						name: 'waitBetweenTries',
 						type: 'number',
 						typeOptions: {
@@ -239,15 +239,15 @@ export default mixins(
 							},
 						},
 						noDataExpression: true,
-						description: this.$t('nodeSettings.settings.waitBetweenTries.description'),
+						description: this.$translateBase('nodeSettings.settings.waitBetweenTries.description'),
 					},
 					{
-						displayName: this.$t('nodeSettings.settings.continueOnFail.displayName'),
+						displayName: this.$translateBase('nodeSettings.settings.continueOnFail.displayName'),
 						name: 'continueOnFail',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: this.$t('nodeSettings.settings.continueOnFail.description'),
+						description: this.$translateBase('nodeSettings.settings.continueOnFail.description'),
 					},
 				] as INodeProperties[],
 

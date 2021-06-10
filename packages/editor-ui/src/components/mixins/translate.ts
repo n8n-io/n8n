@@ -38,12 +38,20 @@ export const translate = Vue.extend({
 			return this.$te(key) ? this.$t(key).toString() : fallback;
 		},
 
-		$translateBase(key: TranslationPath): string {
-			return this.$t(key).toString();
+		// ----------------------------------
+		//           base strings
+		// ----------------------------------
+
+		/**
+		 * Translate a base UI string, i.e. any UI string that is not in
+		 * the node view or in the credentials modal.
+		 */
+		$translateBase(key: TranslationPath, { colon } = { colon: false } ): string {
+			return this.$t(key).toString() + colon ? ':' : '';
 		},
 
 		// ----------------------------------
-		//            node-only
+		//          node strings
 		// ----------------------------------
 
 		/**
@@ -61,7 +69,7 @@ export const translate = Vue.extend({
 
 
 		// ----------------------------------
-		//         credentials-only
+		//        credentials strings
 		// ----------------------------------
 
 		/**

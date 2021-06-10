@@ -26,9 +26,9 @@
 				<span>Create tag "{{ filter }}"</span>
 			</el-option>
 			<el-option v-else-if="options.length === 0" value="message" disabled>
-				<span v-if="createEnabled">{{ $t('tagsDropdown.typeToCreateATag') }}</span>
-				<span v-else-if="allTags.length > 0">{{ $t('tagsDropdown.noMatchingTagsExist') }}</span>
-				<span v-else>{{ $t('tagsDropdown.noTagsExist') }}</span>
+				<span v-if="createEnabled">{{ $translateBase('tagsDropdown.typeToCreateATag') }}</span>
+				<span v-else-if="allTags.length > 0">{{ $translateBase('tagsDropdown.noMatchingTagsExist') }}</span>
+				<span v-else>{{ $translateBase('tagsDropdown.noTagsExist') }}</span>
 			</el-option>
 
 			<!-- key is id+index for keyboard navigation to work well with filter -->
@@ -43,7 +43,7 @@
 
 			<el-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
 				<font-awesome-icon icon="cog" />
-				<span>{{ $t('tagsDropdown.manageTags') }}</span>
+				<span>{{ $translateBase('tagsDropdown.manageTags') }}</span>
 			</el-option>
 		</el-select>
 	</div>
@@ -57,11 +57,12 @@ import { ITag } from "@/Interface";
 import { MAX_TAG_NAME_LENGTH } from "@/constants";
 
 import { showMessage } from "@/components/mixins/showMessage";
+import { translate } from "@/components/mixins/translate";
 
 const MANAGE_KEY = "__manage";
 const CREATE_KEY = "__create";
 
-export default mixins(showMessage).extend({
+export default mixins(showMessage, translate).extend({
 	name: "TagsDropdown",
 	props: ["placeholder", "currentTagIds", "createEnabled", "eventBus"],
 	data() {
@@ -138,8 +139,8 @@ export default mixins(showMessage).extend({
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$t('tagsDropdown.showError.title').toString(),
-					this.$t('tagsDropdown.showError.message').toString(),
+					this.$translateBase('tagsDropdown.showError.title'),
+					this.$translateBase('tagsDropdown.showError.message'),
 				);
 			}
 		},

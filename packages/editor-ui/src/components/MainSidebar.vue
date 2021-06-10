@@ -22,97 +22,97 @@
 
 				<MenuItemsIterator :items="sidebarMenuTopItems" :root="true"/>
 
-				<el-submenu index="workflow" :title="$t('mainSideBar.workflow')">
+				<el-submenu index="workflow" :title="$translateBase('mainSideBar.workflow')">
 					<template slot="title">
 						<font-awesome-icon icon="network-wired"/>&nbsp;
-						<span slot="title" class="item-title-root">{{ $t('mainSideBar.workflows') }}</span>
+						<span slot="title" class="item-title-root">{{ $translateBase('mainSideBar.workflows') }}</span>
 					</template>
 
 					<el-menu-item index="workflow-new">
 						<template slot="title">
 							<font-awesome-icon icon="file"/>&nbsp;
-							<span slot="title" class="item-title">{{ $t('mainSideBar.new') }}</span>
+							<span slot="title" class="item-title">{{ $translateBase('mainSideBar.new') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-open">
 						<template slot="title">
 							<font-awesome-icon icon="folder-open"/>&nbsp;
-							<span slot="title" class="item-title">{{ $t('mainSideBar.open') }}</span>
+							<span slot="title" class="item-title">{{ $translateBase('mainSideBar.open') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-save">
 						<template slot="title">
 							<font-awesome-icon icon="save"/>
-							<span slot="title" class="item-title">{{ $t('mainSideBar.save') }}</span>
+							<span slot="title" class="item-title">{{ $translateBase('mainSideBar.save') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-duplicate" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="copy"/>
-							<span slot="title" class="item-title">{{ $t('mainSideBar.duplicate') }}</span>
+							<span slot="title" class="item-title">{{ $translateBase('mainSideBar.duplicate') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-delete" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="trash"/>
-							<span slot="title" class="item-title">{{ $t('mainSideBar.delete') }}</span>
+							<span slot="title" class="item-title">{{ $translateBase('mainSideBar.delete') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-download">
 						<template slot="title">
 							<font-awesome-icon icon="file-download"/>
-							<span slot="title" class="item-title">{{ $t('mainSideBar.download') }}</span>
+							<span slot="title" class="item-title">{{ $translateBase('mainSideBar.download') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-import-url">
 						<template slot="title">
 							<font-awesome-icon icon="cloud"/>
-							<span slot="title" class="item-title">{{ $t('mainSideBar.importFromUrl') }}</span>
+							<span slot="title" class="item-title">{{ $translateBase('mainSideBar.importFromUrl') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-import-file">
 						<template slot="title">
 							<font-awesome-icon icon="hdd"/>
-							<span slot="title" class="item-title">{{ $t('mainSideBar.importFromFile') }}</span>
+							<span slot="title" class="item-title">{{ $translateBase('mainSideBar.importFromFile') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="workflow-settings" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="cog"/>
-							<span slot="title" class="item-title">{{ $t('mainSideBar.settings') }}</span>
+							<span slot="title" class="item-title">{{ $translateBase('mainSideBar.settings') }}</span>
 						</template>
 					</el-menu-item>
 				</el-submenu>
 
-				<el-submenu index="credentials" :title="$t('mainSideBar.credentials')">
+				<el-submenu index="credentials" :title="$translateBase('mainSideBar.credentials')">
 					<template slot="title">
 						<font-awesome-icon icon="key"/>&nbsp;
-						<span slot="title" class="item-title-root">{{ $t('mainSideBar.credentials') }}</span>
+						<span slot="title" class="item-title-root">{{ $translateBase('mainSideBar.credentials') }}</span>
 					</template>
 
 					<el-menu-item index="credentials-new">
 						<template slot="title">
 							<font-awesome-icon icon="file"/>
-							<span slot="title" class="item-title">{{ $t('mainSideBar.new') }}</span>
+							<span slot="title" class="item-title">{{ $translateBase('mainSideBar.new') }}</span>
 						</template>
 					</el-menu-item>
 					<el-menu-item index="credentials-open">
 						<template slot="title">
 							<font-awesome-icon icon="folder-open"/>
-							<span slot="title" class="item-title">{{ $t('mainSideBar.open') }}</span>
+							<span slot="title" class="item-title">{{ $translateBase('mainSideBar.open') }}</span>
 						</template>
 					</el-menu-item>
 				</el-submenu>
 
 				<el-menu-item index="executions">
 					<font-awesome-icon icon="tasks"/>&nbsp;
-					<span slot="title" class="item-title-root">{{ $t('mainSideBar.executions') }}</span>
+					<span slot="title" class="item-title-root">{{ $translateBase('mainSideBar.executions') }}</span>
 				</el-menu-item>
 
-				<el-submenu index="help" class="help-menu" :title="$t('mainSideBar.help')">
+				<el-submenu index="help" class="help-menu" :title="$translateBase('mainSideBar.help')">
 					<template slot="title">
 						<font-awesome-icon icon="question"/>&nbsp;
-						<span slot="title" class="item-title-root">{{ $t('mainSideBar.executions') }}</span>
+						<span slot="title" class="item-title-root">{{ $translateBase('mainSideBar.executions') }}</span>
 					</template>
 
 					<MenuItemsIterator :items="helpMenuItems" />
@@ -120,7 +120,7 @@
 					<el-menu-item index="help-about">
 						<template slot="title">
 							<font-awesome-icon class="about-icon" icon="info"/>
-							<span slot="title" class="item-title">{{ $t('mainSideBar.aboutN8n') }}</span>
+							<span slot="title" class="item-title">{{ $translateBase('mainSideBar.aboutN8n') }}</span>
 						</template>
 					</el-menu-item>
 				</el-submenu>
@@ -198,7 +198,7 @@ export default mixins(
 						type: 'link',
 						properties: {
 							href: 'https://docs.n8n.io',
-							title: this.$t('mainSideBar.helpMenuItems.documentation'),
+							title: this.$translateBase('mainSideBar.helpMenuItems.documentation'),
 							icon: 'book',
 							newWindow: true,
 						},
@@ -208,7 +208,7 @@ export default mixins(
 						type: 'link',
 						properties: {
 							href: 'https://community.n8n.io',
-							title: this.$t('mainSideBar.helpMenuItems.forum'),
+							title: this.$translateBase('mainSideBar.helpMenuItems.forum'),
 							icon: 'users',
 							newWindow: true,
 						},
@@ -218,7 +218,7 @@ export default mixins(
 						type: 'link',
 						properties: {
 							href: 'https://n8n.io/workflows',
-							title: this.$t('mainSideBar.helpMenuItems.workflows'),
+							title: this.$translateBase('mainSideBar.helpMenuItems.workflows'),
 							icon: 'network-wired',
 							newWindow: true,
 						},
@@ -319,15 +319,15 @@ export default mixins(
 					this.stopExecutionInProgress = true;
 					const stopData: IExecutionsStopData = await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
-						title: this.$t('mainSideBar.showMessage.stopExecution.title').toString(),
-						message: this.$t('mainSideBar.showMessage.stopExecution.message').toString(),
+						title: this.$translateBase('mainSideBar.showMessage.stopExecution.title'),
+						message: this.$translateBase('mainSideBar.showMessage.stopExecution.message'),
 						type: 'success',
 					});
 				} catch (error) {
 					this.$showError(
 						error,
-						this.$t('mainSideBar.showError.stopExecution.title').toString(),
-						`${this.$t('mainSideBar.showError.stopExecution.message').toString()}:`,
+						this.$translateBase('mainSideBar.showError.stopExecution.title'),
+						this.$translateBase('mainSideBar.showError.stopExecution.message', { colon: true }),
 					);
 				}
 				this.stopExecutionInProgress = false;
@@ -352,8 +352,8 @@ export default mixins(
 						worflowData = JSON.parse(data as string);
 					} catch (error) {
 						this.$showMessage({
-							title: this.$t('mainSideBar.showMessage.handleFileImport.title').toString(),
-							message: this.$t('mainSideBar.showMessage.handleFileImport.message').toString(),
+							title: this.$translateBase('mainSideBar.showMessage.handleFileImport.title'),
+							message: this.$translateBase('mainSideBar.showMessage.handleFileImport.message'),
 							type: 'error',
 						});
 						return;
@@ -375,12 +375,12 @@ export default mixins(
 				} else if (key === 'workflow-import-url') {
 					try {
 						const promptResponse = await this.$prompt(
-							this.$t('mainSideBar.prompt.workflowUrl').toString(),
-							this.$t('mainSideBar.prompt.importWorkflowFromUrl').toString(),
+							this.$translateBase('mainSideBar.prompt.workflowUrl'),
+							this.$translateBase('mainSideBar.prompt.importWorkflowFromUrl'),
 							{
-								confirmButtonText: this.$t('mainSideBar.prompt.import').toString(),
-								cancelButtonText: this.$t('mainSideBar.prompt.cancel').toString(),
-								inputErrorMessage: this.$t('mainSideBar.prompt.invalidUrl').toString(),
+								confirmButtonText: this.$translateBase('mainSideBar.prompt.import'),
+								cancelButtonText: this.$translateBase('mainSideBar.prompt.cancel'),
+								inputErrorMessage: this.$translateBase('mainSideBar.prompt.invalidUrl'),
 								inputPattern: /^http[s]?:\/\/.*\.json$/i,
 							},
 						) as MessageBoxInputData;
@@ -389,11 +389,11 @@ export default mixins(
 					} catch (e) {}
 				} else if (key === 'workflow-delete') {
 					const deleteConfirmed = await this.confirmMessage(
-						this.$t('mainSideBar.confirmMessage.message').toString(),
-						this.$t('mainSideBar.confirmMessage.headline').toString(),
+						this.$translateBase('mainSideBar.confirmMessage.message'),
+						this.$translateBase('mainSideBar.confirmMessage.headline'),
 						'warning',
-						this.$t('mainSideBar.confirmMessage.confirmButtonText').toString(),
-						this.$t('mainSideBar.confirmMessage.cancelButtonText').toString(),
+						this.$translateBase('mainSideBar.confirmMessage.confirmButtonText'),
+						this.$translateBase('mainSideBar.confirmMessage.cancelButtonText'),
 					);
 
 					if (deleteConfirmed === false) {
@@ -406,16 +406,16 @@ export default mixins(
 					} catch (error) {
 						this.$showError(
 							error,
-							this.$t('mainSideBar.showError.stopExecution.title').toString(),
-							`${this.$t('mainSideBar.showError.stopExecution.message').toString()}:`,
+							this.$translateBase('mainSideBar.showError.stopExecution.title'),
+							this.$translateBase('mainSideBar.showError.stopExecution.message', { colon: true }),
 						);
 						return;
 					}
 					// Reset tab title since workflow is deleted.
 					this.$titleReset();
 					this.$showMessage({
-						title: this.$t('mainSideBar.showMessage.handleSelect.title').toString(),
-						message: this.$t('mainSideBar.showMessage.handleSelect.message').toString(),
+						title: this.$translateBase('mainSideBar.showMessage.handleSelect1.title'),
+						message: this.$translateBase('mainSideBar.showMessage.handleSelect1.message'),
 						type: 'success',
 					});
 
@@ -450,8 +450,8 @@ export default mixins(
 							this.$router.push({ name: 'NodeViewNew' });
 
 							this.$showMessage({
-								title: this.$t('mainSideBar.showMessage.worklowNewImportConfirmTrue.title').toString(),
-								message: this.$t('mainSideBar.showMessage.worklowNewImportConfirmTrue.message').toString(),
+								title: this.$translateBase('mainSideBar.showMessage.handleSelect2.title'),
+								message: this.$translateBase('mainSideBar.showMessage.handleSelect2.message'),
 								type: 'success',
 							});
 						}
@@ -459,8 +459,8 @@ export default mixins(
 						this.$router.push({ name: 'NodeViewNew' });
 
 						this.$showMessage({
-							title: this.$t('mainSideBar.showMessage.worklowNewImportConfirmFalse.title').toString(),
-								message: this.$t('mainSideBar.showMessage.worklowNewImportConfirmFalse.message').toString(),
+							title: this.$translateBase('mainSideBar.showMessage.handleSelect3.title'),
+								message: this.$translateBase('mainSideBar.showMessage.handleSelect3.message'),
 							type: 'success',
 						});
 					}

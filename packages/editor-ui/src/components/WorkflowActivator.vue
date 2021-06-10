@@ -5,7 +5,7 @@
 			element-loading-spinner="el-icon-loading"
 			:value="workflowActive"
 			@change="activeChanged"
-			:title="workflowActive?$t('workflowActivator.deactivateWorkflow'):$t('workflowActivator.activateWorkflow')"
+			:title="workflowActive?$translateBase('workflowActivator.deactivateWorkflow'):$translateBase('workflowActivator.activateWorkflow')"
 			:disabled="disabled || loading"
 			:active-color="getActiveColor"
 			inactive-color="#8899AA">
@@ -13,7 +13,7 @@
 
 		<div class="could-not-be-started" v-if="couldNotBeStarted">
 			<el-tooltip placement="top">
-				<div @click="displayActivationError" slot="content">{{ $t('workflowActivator.theWorkflowIsSetToBeActiveBut') }}</div>
+				<div @click="displayActivationError" slot="content">{{ $translateBase('workflowActivator.theWorkflowIsSetToBeActiveBut') }}</div>
 				<font-awesome-icon @click="displayActivationError" icon="exclamation-triangle" />
 			</el-tooltip>
 		</div>
@@ -75,8 +75,8 @@ export default mixins(
 				async activeChanged (newActiveState: boolean) {
 					if (this.workflowId === undefined) {
 						this.$showMessage({
-							title: this.$t('workflowActivator.showMessage.activeChangedWorkflowIdUndefined.title').toString(),
-							message: this.$t('workflowActivator.showMessage.activeChangedWorkflowIdUndefined.message').toString(),
+							title: this.$translateBase('workflowActivator.showMessage.activeChangedWorkflowIdUndefined.title'),
+							message: this.$translateBase('workflowActivator.showMessage.activeChangedWorkflowIdUndefined.message'),
 							type: 'error',
 						});
 						return;
@@ -84,8 +84,8 @@ export default mixins(
 
 					if (this.nodesIssuesExist === true) {
 						this.$showMessage({
-							title: this.$t('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title').toString(),
-							message: this.$t('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message').toString(),
+							title: this.$translateBase('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title'),
+							message: this.$translateBase('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message'),
 							type: 'error',
 						});
 						return;
@@ -101,11 +101,11 @@ export default mixins(
 						// for people because it would activate a different version of the workflow
 						// than the one they can currently see.
 						const importConfirm = await this.confirmMessage(
-							this.$t('workflowActivator.confirmMessage.message').toString(),
-							this.$t('workflowActivator.confirmMessage.headline').toString(),
+							this.$translateBase('workflowActivator.confirmMessage.message'),
+							this.$translateBase('workflowActivator.confirmMessage.headline'),
 							'warning',
-							this.$t('workflowActivator.confirmMessage.confirmButtonText').toString(),
-							this.$t('workflowActivator.confirmMessage.cancelButtonText').toString(),
+							this.$translateBase('workflowActivator.confirmMessage.confirmButtonText'),
+							this.$translateBase('workflowActivator.confirmMessage.cancelButtonText'),
 						);
 						if (importConfirm === false) {
 							return;
@@ -125,8 +125,8 @@ export default mixins(
 						const newStateName = newActiveState === true ? 'activated' : 'deactivated';
 						this.$showError(
 							error,
-							this.$t('workflowActivator.showError.title').toString(),
-							`${this.$t('workflowActivator.showError.message').toString()}:`
+							this.$translateBase('workflowActivator.showError.title'),
+							this.$translateBase('workflowActivator.showError.message', { colon: true }),
 						);
 						this.loading = false;
 						return;
@@ -158,16 +158,16 @@ export default mixins(
 						const errorData = await this.restApi().getActivationError(this.workflowId);
 
 						if (errorData === undefined) {
-							errorMessage = this.$t('workflowActivator.showMessage.displayActivationError.message.errorDataUndefined').toString();
+							errorMessage = this.$translateBase('workflowActivator.showMessage.displayActivationError.message.errorDataUndefined');
 						} else {
-							errorMessage = this.$t('workflowActivator.showMessage.displayActivationError.message.errorDataNotUndefined').toString();
+							errorMessage = this.$translateBase('workflowActivator.showMessage.displayActivationError.message.errorDataNotUndefined');
 						}
 					} catch (error) {
-						errorMessage = this.$t('workflowActivator.showMessage.displayActivationError.message.catchBlock').toString();
+						errorMessage = this.$translateBase('workflowActivator.showMessage.displayActivationError.message.catchBlock');
 					}
 
 					this.$showMessage({
-						title: this.$t('workflowActivator.showMessage.displayActivationError.title').toString(),
+						title: this.$translateBase('workflowActivator.showMessage.displayActivationError.title'),
 						message: errorMessage,
 						type: 'warning',
 						duration: 0,

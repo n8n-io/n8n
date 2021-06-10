@@ -35,6 +35,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
+import { translate } from '@/components/mixins/translate';
 
 import { isEqual } from 'lodash';
 
@@ -45,6 +46,7 @@ export const workflowHelpers = mixins(
 	nodeHelpers,
 	restApi,
 	showMessage,
+	translate,
 )
 	.extend({
 		methods: {
@@ -426,8 +428,8 @@ export const workflowHelpers = mixins(
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
 					this.$showMessage({
-						title: this.$t('workflowSettings.showMessage.saveCurrentWorkflow.title').toString(),
-						message: `${this.$t('workflowSettings.showMessage.saveCurrentWorkflow.message').toString()}: "${e.message}"`,
+						title: this.$translateBase('workflowHelpers.showMessage.saveCurrentWorkflow.title'),
+						message: this.$translateBase('workflowHelpers.showMessage.saveCurrentWorkflow.message', { colon: true }) + ` "${e.message}"`,
 						type: 'error',
 					});
 
@@ -476,8 +478,8 @@ export const workflowHelpers = mixins(
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
 					this.$showMessage({
-						title: this.$t('workflowHelpers.showMessage.saveAsNewWorkflow.title').toString(),
-						message: `${this.$t('workflowHelpers.showMessage.saveAsNewWorkflow.message').toString()}: "${e.message}"`,
+						title: this.$translateBase('workflowHelpers.showMessage.saveAsNewWorkflow.title'),
+						message: this.$translateBase('workflowHelpers.showMessage.saveAsNewWorkflow.message', { colon: true }) + ` "${e.message}"`,
 						type: 'error',
 					});
 

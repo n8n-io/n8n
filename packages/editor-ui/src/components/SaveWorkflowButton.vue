@@ -2,9 +2,9 @@
 	<el-button :disabled="isWorkflowSaving" :class="{saved: isSaved}" size="small" @click="save">
 		<font-awesome-icon v-if="isWorkflowSaving" icon="spinner" spin />
 		<span v-else-if="isDirty || isNewWorkflow">
-			{{ $t('saveWorkflowButton.save') }}
+			{{ $translateBase('saveWorkflowButton.save') }}
 		</span>
-		<span v-else>{{ $t('saveWorkflowButton.saved') }}</span>
+		<span v-else>{{ $translateBase('saveWorkflowButton.saved') }}</span>
 	</el-button>
 </template>
 

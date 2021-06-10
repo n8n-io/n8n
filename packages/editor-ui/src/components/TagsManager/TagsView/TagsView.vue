@@ -34,8 +34,10 @@ import TagsTable from "@/components/TagsManager/TagsView/TagsTable.vue";
 
 const matches = (name: string, filter: string) => name.toLowerCase().trim().includes(filter.toLowerCase().trim());
 
+import mixins from 'vue-typed-mixins';
+import { translate } from '@/components/mixins/translate';
 
-export default Vue.extend({
+export default mixins(translate).extend({
 	components: { TagsTableHeader, TagsTable },
 	name: "TagsView",
 	props: ["tags", "isLoading"],
@@ -55,7 +57,7 @@ export default Vue.extend({
 			return (this.$props.tags || []).length === 0 || this.$data.createEnabled;
 		},
 		rows(): ITagRow[] {
-			const getUsage = (count: number | undefined) => count && count > 0 ? this.$t('tagsView.inUse') : this.$t('tagsView.notBeingUsed');
+			const getUsage = (count: number | undefined) => count && count > 0 ? this.$translateBase('tagsView.inUse') : this.$translateBase('tagsView.notBeingUsed');
 
 			const disabled = this.isCreateEnabled || this.$data.updateId || this.$data.deleteId;
 			const tagRows = (this.$props.tags || [])

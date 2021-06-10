@@ -46,7 +46,7 @@
 				class="add-tag clickable"
 				@click="onTagsEditEnable"
 			>
-				+ {{ $t('workflowDetails.addTag') }}
+				+ {{ $translateBase('workflowDetails.addTag') }}
 			</span>
 		</div>
 		<TagsContainer
@@ -62,7 +62,7 @@
 		<PushConnectionTracker class="actions">
 			<template>
 				<span class="activator">
-					<span>{{ $t('workflowDetails.active') }}:</span>
+					<span>{{ $translateBase('workflowDetails.active') }}:</span>
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" :disabled="!currentWorkflowId"/>
 				</span>
 				<SaveWorkflowButton />
@@ -184,8 +184,8 @@ export default mixins(workflowHelpers).extend({
 			const newName = name.trim();
 			if (!newName) {
 				this.$showMessage({
-					title: this.$t('workflowSettings.showMessage.title').toString(),
-					message: this.$t('workflowSettings.showMessage.message').toString(),
+					title: this.$translateBase('workflowDetails.showMessage.title'),
+					message: this.$translateBase('workflowDetails.showMessage.message'),
 					type: "error",
 				});
 

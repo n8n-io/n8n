@@ -1,12 +1,13 @@
 import dateformat from 'dateformat';
 
 import { showMessage } from '@/components/mixins/showMessage';
+import { translate } from '@/components/mixins/translate';
 import { MessageType } from '@/Interface';
 import { debounce } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 
-export const genericHelpers = mixins(showMessage).extend({
+export const genericHelpers = mixins(showMessage, translate).extend({
 	data () {
 		return {
 			loadingService: null as any | null, // tslint:disable-line:no-any
@@ -43,8 +44,8 @@ export const genericHelpers = mixins(showMessage).extend({
 		editAllowedCheck (): boolean {
 			if (this.isReadOnly) {
 				this.$showMessage({
-					title: this.$t('genericHelpers.showMessage.title').toString(),
-					message: this.$t('genericHelpers.showMessage.message').toString(),
+					title: this.$translateBase('genericHelpers.showMessage.title'),
+					message: this.$translateBase('genericHelpers.showMessage.message'),
 					type: 'error',
 					duration: 0,
 				});
