@@ -354,6 +354,7 @@ export default mixins(
 				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
 			},
 			async openWorkflowTemplate (templateId: string) {
+				this.setLoadingText('Loading template');
 				this.resetWorkspace();
 
 				let data: IWorkflowTemplate | undefined;
@@ -364,7 +365,12 @@ export default mixins(
 					if (!data) {
 						throw new Error(`Workflow template with id "${templateId}" could not be found!`);
 					}
-
+					
+					data.workflow.nodes.forEach((node) => {
+						if (!this.$store.getters.nodeType(node.type)) {
+							throw new Error(`Node "${node.type}" is not supported`);
+						}
+					});
 				} catch (error) {
 					this.$showError(error, 'Problem opening template', 'There was a problem opening the template:');
 					this.$router.push({ name: 'NodeViewNew' });
