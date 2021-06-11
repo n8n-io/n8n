@@ -46,8 +46,15 @@ export const translate = Vue.extend({
 		 * Translate a base UI string, i.e. any UI string that is not in
 		 * the node view or in the credentials modal.
 		 */
-		$translateBase(key: TranslationPath, { colon } = { colon: false } ): string {
-			return this.$t(key).toString() + (colon ? ':' : '');
+		$translateBase(
+			key: TranslationPath,
+			options?: { colon?: true, interpolate?: { [key: string]: string } },
+		): string {
+			const translatedBaseString = options && options.interpolate
+				? this.$t(key, { ...options.interpolate })
+				: this.$t(key);
+
+			return translatedBaseString.toString() + (options && options.colon ? ':' : '');
 		},
 
 		// ----------------------------------

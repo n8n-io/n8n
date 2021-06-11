@@ -243,7 +243,16 @@ export default mixins(
 				this.saveDataErrorExecutionOptions, [
 					{
 						key: 'DEFAULT',
-						value: this.$translateBase('workflowSettings.saveDataErrorExecutionOptions.defaultSave'),
+						value: this.$translateBase(
+							'workflowSettings.saveDataErrorExecutionOptions.defaultSave',
+							{
+								interpolate: {
+									defaultValue: this.defaultValues.saveDataErrorExecution === 'all'
+										? 'Save'
+										: 'Do not save',
+								},
+							},
+						),
 					},
 					{
 						key: 'all',
@@ -262,7 +271,16 @@ export default mixins(
 				this.saveDataSuccessExecutionOptions, [
 					{
 						key: 'DEFAULT',
-						value: this.$translateBase('workflowSettings.saveDataSuccessExecutionOptions.defaultSave'),
+						value: this.$translateBase(
+							'workflowSettings.saveDataSuccessExecutionOptions.defaultSave',
+							{
+								interpolate: {
+									defaultValue: this.defaultValues.saveDataSuccessExecution === 'all'
+										? 'Save'
+										: 'Do not save',
+								},
+							},
+						),
 					},
 					{
 						key: 'all',
@@ -281,7 +299,14 @@ export default mixins(
 				this.saveExecutionProgressOptions, [
 					{
 						key: 'DEFAULT',
-						value: this.$translateBase('workflowSettings.saveExecutionProgressOptions.defaultSave'),
+						value: this.$translateBase(
+							'workflowSettings.saveExecutionProgressOptions.defaultSave',
+							{
+								interpolate: {
+									defaultValue: this.defaultValues.saveExecutionProgress ? 'Yes' : 'No',
+								},
+							},
+						),
 					},
 					{
 						key: true,
@@ -298,7 +323,14 @@ export default mixins(
 			this.saveManualOptions.length = 0;
 			this.saveManualOptions.push({
 				key: 'DEFAULT',
-				value: this.$translateBase('workflowSettings.saveManualOptions.defaultSave'),
+				value: this.$translateBase(
+					'workflowSettings.saveManualOptions.defaultSave',
+					{
+						interpolate: {
+							defaultValue: this.defaultValues.saveManualExecutions ? 'Yes' : 'No',
+						},
+					},
+				),
 			});
 			this.saveManualOptions.push({
 				key: true,
@@ -445,7 +477,18 @@ export default mixins(
 			if (data.settings!.executionTimeout > this.workflowSettings.maxExecutionTimeout) {
 				const { hours, minutes, seconds } = this.convertToHMS(this.workflowSettings.maxExecutionTimeout as number);
 				this.$showError(
-					new Error(this.$translateBase('workflowSettings.showError.saveSettings2.errorMessage')),
+					new Error(
+						this.$translateBase(
+							'workflowSettings.showError.saveSettings2.errorMessage',
+							{
+								interpolate: {
+									hours: hours.toString(),
+									minutes: minutes.toString(),
+									seconds: seconds.toString(),
+								},
+							},
+						),
+					),
 					this.$translateBase('workflowSettings.showError.saveSettings2.title'),
 					this.$translateBase('workflowSettings.showError.saveSettings2.message', { colon: true }),
 				);

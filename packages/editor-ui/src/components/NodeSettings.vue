@@ -13,7 +13,11 @@
 			<span v-else>No node active</span>
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
-			{{ $translateBase('nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown') }}
+			{{ $translateBase(
+				'nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown',
+				{ interpolate: { nodeType: node.type } },
+				)
+			}}
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<el-tabs stretch>

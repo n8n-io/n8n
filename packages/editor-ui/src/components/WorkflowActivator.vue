@@ -126,7 +126,10 @@ export default mixins(
 						this.$showError(
 							error,
 							this.$translateBase('workflowActivator.showError.title'),
-							this.$translateBase('workflowActivator.showError.message', { colon: true }),
+							this.$translateBase(
+								'workflowActivator.showError.message',
+								{ colon: true, interpolate: { newStateName } },
+							),
 						);
 						this.loading = false;
 						return;
@@ -160,7 +163,10 @@ export default mixins(
 						if (errorData === undefined) {
 							errorMessage = this.$translateBase('workflowActivator.showMessage.displayActivationError.message.errorDataUndefined');
 						} else {
-							errorMessage = this.$translateBase('workflowActivator.showMessage.displayActivationError.message.errorDataNotUndefined');
+							errorMessage = this.$translateBase(
+								'workflowActivator.showMessage.displayActivationError.message.errorDataNotUndefined',
+								{ interpolate: { message: errorData.error.message } },
+							);
 						}
 					} catch (error) {
 						errorMessage = this.$translateBase('workflowActivator.showMessage.displayActivationError.message.catchBlock');

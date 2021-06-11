@@ -35,11 +35,11 @@ export default {
 					title: 'Credentials updated',
 				},
 				credentialTypeNull1: {
-					message: 'Credentials of type \'${this.editCredentials.type}\' are not known.',
+					message: 'Credentials of type {credentialsType} are not known.',
 					title: 'Credential type not known',
 				},
 				credentialTypeNull2: {
-					message: 'Credentials of type \'${this.credentialType || this.setCredentialType}\' are not known.',
+					message: 'Credentials of type {credentialsType} are not known.',
 					title: 'Credential type not known',
 				},
 				currentCredentialsUndefined1: {
@@ -101,7 +101,7 @@ export default {
 				cancelButtonText: '',
 				confirmButtonText: 'Yes, delete!',
 				headline: 'Delete Credentials?',
-				message: 'Are you sure you want to delete \'${credential.name}\' credentials?',
+				message: 'Are you sure you want to delete {credentialName} credentials?',
 			},
 			createNewCredentials: 'Create New Credentials',
 			credentials: 'Credentials',
@@ -116,7 +116,7 @@ export default {
 				},
 			},
 			showMessage: {
-				message: 'The credential \'${credential.name}\' got deleted!',
+				message: 'The credential {credentialsName} got deleted!',
 				title: 'Credentials deleted',
 			},
 			yourSavedCredentials: 'Your saved credentials',
@@ -124,7 +124,7 @@ export default {
 		dataDisplay: {
 			needHelp: 'Need help?',
 			nodeDocumentation: 'Node Documentation',
-			openDocumentationFor: 'Open {{nodeType.displayName}} documentation',
+			openDocumentationFor: 'Open {nodeTypeDisplayName} documentation',
 		},
 		duplicateWorkflowDialog: {
 			cancel: 'Cancel',
@@ -146,7 +146,7 @@ export default {
 				cancelButtonText: '',
 				confirmButtonText: 'Yes, delete!',
 				headline: 'Delete Executions?',
-				message: 'Are you sure that you want to delete the ${this.numSelected} selected executions?',
+				message: 'Are you sure that you want to delete the {numSelected} selected executions?',
 			},
 			error: 'Error',
 			filters: 'Filters',
@@ -202,7 +202,7 @@ export default {
 					title: 'Retry successful',
 				},
 				stopExecution: {
-					message: 'The execution with the id \'${activeExecutionId}\' got stopped!',
+					message: 'The execution with the id {activeExecutionId} got stopped!',
 					title: 'Execution stopped',
 				},
 			},
@@ -210,10 +210,10 @@ export default {
 			status: 'Status',
 			statusTooltipText: {
 				theWorkflowExecutionFailed: 'The workflow execution failed.',
-				theWorkflowExecutionFailedButTheRetryWasSuccessful: 'The workflow execution failed but the retry \'${entry.retrySuccessId}\' was successful.',
+				theWorkflowExecutionFailedButTheRetryWasSuccessful: 'The workflow execution failed but the retry {entryRetrySuccessId} was successful.',
 				theWorkflowExecutionIsProbablyStillRunning: 'The workflow execution is probably still running but it may have crashed and n8n cannot safely tell. ',
-				theWorkflowExecutionWasARetryOfAndFailed: 'The workflow execution was a retry of \'${entry.retryOf}\' and failed.<br />New retries have to be,started from the original execution.',
-				theWorkflowExecutionWasARetryOfAndItWasSuccessful: 'The workflow execution was a retry of \'${entry.retryOf}\' and it was successful.',
+				theWorkflowExecutionWasARetryOfAndFailed: 'The workflow execution was a retry of {entryRetryOf} and failed.<br />New retries have to be,started from the original execution.',
+				theWorkflowExecutionWasARetryOfAndItWasSuccessful: 'The workflow execution was a retry of {entryRetryOf} and it was successful.',
 				theWorkflowExecutionWasSuccessful: 'The worklow execution was successful.',
 				theWorkflowIsCurrentlyExecuting: 'The worklow is currently executing.',
 			},
@@ -243,7 +243,7 @@ export default {
 				cancelButtonText: '',
 				confirmButtonText: 'Yes, delete!',
 				headline: 'Delete Workflow?',
-				message: 'Are you sure that you want to delete the workflow \'${this.workflowName}\'?',
+				message: 'Are you sure that you want to delete the workflow {workflowName}?',
 			},
 			credentials: 'Credentials',
 			delete: 'Delete',
@@ -285,7 +285,7 @@ export default {
 					title: 'Could not import file',
 				},
 				handleSelect1: {
-					message: 'The workflow \'${this.workflowName}\' got deleted.',
+					message: 'The workflow {workflowName} got deleted.',
 					title: 'Workflow got deleted',
 				},
 				handleSelect2: {
@@ -297,7 +297,7 @@ export default {
 					title: 'Workflow created',
 				},
 				stopExecution: {
-					message: 'The execution with the id \'${executionId}\' got stopped!',
+					message: 'The execution with the id {executionId} got stopped!',
 					title: 'Execution stopped',
 				},
 			},
@@ -320,7 +320,7 @@ export default {
 		nodeCredentials: {
 			credentials: 'Credentials',
 			showMessage: {
-				message: 'The credentials named \'${name}\' of type \'${credentialType}\' could not be found!',
+				message: 'The credentials named {name} of type {credentialType} could not be found!',
 				title: 'Credentials not found',
 			},
 		},
@@ -376,7 +376,7 @@ export default {
 					displayName: 'Wait Between Tries',
 				},
 			},
-			theNodeIsNotValidAsItsTypeIsUnknown: 'The node is not valid as its type {{ node.type }} is unknown.',
+			theNodeIsNotValidAsItsTypeIsUnknown: 'The node is not valid as its type {nodeType} is unknown.',
 			thisNodeDoesNotHaveAnyParameters: 'This node does not have any parameters.',
 		},
 		nodeView: {
@@ -397,7 +397,7 @@ export default {
 					cancelButtonText: '',
 					confirmButtonText: 'Yes, import!',
 					headline: 'Import Workflow from URL?',
-					message: 'Import workflow from this URL:<br /><i>${plainTextData}<i>',
+					message: 'Import workflow from this URL:<br /><i>{plainTextData}<i>',
 				},
 			},
 			executesTheWorkflowFromTheStartOrWebhookNode: 'Executes the Workflow from the Start or Webhook Node.',
@@ -449,7 +449,7 @@ export default {
 			},
 			showMessage: {
 				addNodeButton: {
-					message: 'Node of type \'${nodeTypeName}\' could not be created as it is not known.',
+					message: 'Node of type {nodeTypeName} could not be created as it is not known.',
 					title: 'Could not create node!',
 				},
 				keyDown: {
@@ -457,7 +457,7 @@ export default {
 					title: 'Created',
 				},
 				showMaxNodeTypeError: {
-					message: 'Node can not be created because in a workflow max. ${maxNodes} ${maxNodes === 1 ? \'node\' : \'nodes\'} of type \'${nodeTypeData.displayName}\' ${maxNodes === 1 ? \'is\' : \'are\'} allowed!',
+					message: 'Node can not be created because in a workflow max. ${maxNodes} ${sentenceFragment} allowed!',
 					title: 'Could not create node!',
 				},
 				stopExecutionCatch: {
@@ -465,7 +465,7 @@ export default {
 					title: 'Workflow finished executing',
 				},
 				stopExecutionTry: {
-					message: 'The execution with the id \'${executionId}\' got stopped!',
+					message: 'The execution with the id {executionId} got stopped!',
 					title: 'Execution stopped',
 				},
 				stopWaitingForWebhook: {
@@ -503,7 +503,7 @@ export default {
 				runDataExecutedFinishedFalse: {
 					message: {
 						errorMessage1: 'There was a problem executing the workflow!',
-						errorMessage2: 'There was a problem executing the workflow:<br /><strong>\'${receivedError}\'</strong>',
+						errorMessage2: 'There was a problem executing the workflow:<br /><strong>{receivedError}</strong>',
 					},
 					title: 'Problem executing workflow',
 				},
@@ -539,7 +539,7 @@ export default {
 			output: 'Output',
 			showBinaryData: 'Show Binary Data',
 			startTime: 'Start Time',
-			theNodeContains: 'The node contains {{parseInt(dataSize/1024).toLocaleString()}} KB of data.<br />Displaying it could cause problems!<br /><br />If you do decide to display it, avoid the JSON view!',
+			theNodeContains: 'The node contains {numberOfKb} KB of data.<br />Displaying it could cause problems!<br /><br />If you do decide to display it, avoid the JSON view!',
 		},
 		saveWorkflowButton: {
 			save: 'Save',
@@ -550,7 +550,7 @@ export default {
 			noMatchingTagsExist: 'No matching tags exist',
 			noTagsExist: 'No tags exist',
 			showError: {
-				message: 'A problem occurred when trying to create the \'${name}\' tag',
+				message: 'A problem occurred when trying to create the {name} tag',
 				title: 'New tag was not created',
 			},
 			typeToCreateATag: 'Type to create a tag',
@@ -561,25 +561,25 @@ export default {
 			manageTags: 'Manage tags',
 			showError: {
 				onCreate: {
-					message: 'A problem occurred when trying to create the \'${escapedName}\' tag',
+					message: 'A problem occurred when trying to create the {escapedName} tag',
 					title: 'New tag was not created',
 				},
 				onDelete: {
-					message: 'A problem occurred when trying to delete the \'${escapedName}\' tag',
+					message: 'A problem occurred when trying to delete the {escapedName} tag',
 					title: 'Tag was not deleted',
 				},
 				onUpdate: {
-					message: 'A problem occurred when trying to update the \'${escapedName}\' tag',
+					message: 'A problem occurred when trying to update the {escapedName} tag',
 					title: 'Tag was not updated',
 				},
 			},
 			showMessage: {
 				onDelete: {
-					message: 'A problem occurred when trying to delete the \'${escapedName}\' tag',
+					message: 'A problem occurred when trying to delete the {escapedName} tag',
 					title: 'Tag was deleted',
 				},
 				onUpdate: {
-					message: 'The \'${escapedOldName}\' tag was successfully updated to \'${escapedName}\'',
+					message: 'The {escapedOldName} tag was successfully updated to {escapedName}',
 					title: 'Tag was updated',
 				},
 			},
@@ -599,7 +599,7 @@ export default {
 			searchTags: 'Search Tags',
 		},
 		tagsView: {
-			inUse: '${count} workflow${count > 1 ? \'s\' : \'\'}',
+			inUse: '{sentenceFragment}',
 			notBeingUsed: 'Not being used',
 		},
 		variableSelectorItem: {
@@ -616,7 +616,7 @@ export default {
 			},
 			deactivateWorkflow: 'Deactivate workflow',
 			showError: {
-				message: 'There was a problem and the workflow could not be ${newStateName}',
+				message: 'There was a problem and the workflow could not be {newStateName}',
 				title: 'Problem',
 			},
 			showMessage: {
@@ -631,7 +631,7 @@ export default {
 				displayActivationError: {
 					message: {
 						catchBlock: 'Sorry there was a problem requesting the error',
-						errorDataNotUndefined: 'The following error occurred on workflow activation:<br /><i>${errorData.error.message}</i>',
+						errorDataNotUndefined: 'The following error occurred on workflow activation:<br /><i>{message}</i>',
 						errorDataUndefined: 'Sorry there was a problem. No error got found to display.',
 					},
 					title: 'Problem activating workflow',
@@ -711,25 +711,25 @@ export default {
 			save: 'Save',
 			saveDataErrorExecution: 'Save Data Error Execution',
 			saveDataErrorExecutionOptions: {
-				defaultSave: 'Default - \' + (this.defaultValues.saveDataErrorExecution === \'all\' ? \'Save\' : \'Do not save\')',
+				defaultSave: 'Default - ({defaultValue})',
 				doNotSave: 'Do not save',
 				save: 'Save',
 			},
 			saveDataSuccessExecution: 'Save Data Success Execution',
 			saveDataSuccessExecutionOptions: {
-				defaultSave: 'Default - \' + (this.defaultValues.saveDataSuccessExecution === \'all\' ? \'Save\' : \'Do not save\')',
+				defaultSave: 'Default - ({defaultValue})',
 				doNotSave: 'Do not save',
 				save: 'Save',
 			},
 			saveExecutionProgress: 'Save Execution Progress',
 			saveExecutionProgressOptions: {
-				defaultSave: 'Default - \' + (this.defaultValues.saveExecutionProgress === true ? \'Yes\' : \'No\')',
+				defaultSave: 'Default - ({defaultValue})',
 				no: 'No',
 				yes: 'Yes',
 			},
 			saveManualExecutions: 'Save Manual Executions',
 			saveManualOptions: {
-				defaultSave: 'Default - \' + (this.defaultValues.saveManualExecutions === true ? \'Yes\' : \'No\')',
+				defaultSave: 'Default - ({defaultValue})',
 				no: 'No',
 				yes: 'Yes',
 			},
@@ -745,7 +745,7 @@ export default {
 					title: 'Problem saving settings',
 				},
 				saveSettings2: {
-					errorMessage: 'Maximum Timeout is: ${hours} hours, ${minutes} minutes, ${seconds} seconds',
+					errorMessage: 'Maximum Timeout is: {hours} hours, {minutes} minutes, {seconds} seconds',
 					message: 'Set timeout is exceeding the maximum timeout!',
 					title: 'Problem saving settings',
 				},

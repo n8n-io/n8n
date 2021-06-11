@@ -148,7 +148,10 @@ export default mixins(
 
 		async deleteCredential (credential: ICredentialsResponse) {
 			const deleteConfirmed = await this.confirmMessage(
-				this.$translateBase('credentialsList.confirmMessage.message'),
+				this.$translateBase(
+					'credentialsList.confirmMessage.message',
+					{ interpolate: { credentialName: credential.name }},
+				),
 				this.$translateBase('credentialsList.confirmMessage.headline'),
 				'warning',
 				this.$translateBase('credentialsList.confirmMessage.confirmButtonText'),
@@ -178,7 +181,10 @@ export default mixins(
 
 			this.$showMessage({
 				title: this.$translateBase('credentialsList.showMessage.title'),
-				message: this.$translateBase('credentialsList.showMessage.message'),
+				message: this.$translateBase(
+					'credentialsList.showMessage.message',
+					{ interpolate: { credentialsName: credential.name }},
+				),
 				type: 'success',
 			});
 

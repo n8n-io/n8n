@@ -26,7 +26,7 @@
 								</svg>
 
 							<div v-if="showDocumentHelp && nodeType" class="text">
-								{{ $translateBase('dataDisplay.needHelp') }} <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick"> {{ $translateBase('dataDisplay.openDocumentationFor') }}</a>
+								{{ $translateBase('dataDisplay.needHelp') }} <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick"> {{ $translateBase('dataDisplay.openDocumentationFor', { interpolate: { nodeTypeDisplayName: nodeType.displayName } }) }}</a>
 							</div>
 					</div>
 				</transition>

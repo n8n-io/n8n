@@ -233,7 +233,10 @@ export const pushConnection = mixins(
 							const receivedError = nodeName
 								? `${nodeName}: ${runDataExecuted.data.resultData.error.message}`
 								: runDataExecuted.data.resultData.error.message;
-							errorMessage = this.$translateBase('pushConnection.showMessage.runDataExecutedFinishedFalse.message.errorMessage2');
+							errorMessage = this.$translateBase(
+								'pushConnection.showMessage.runDataExecutedFinishedFalse.message.errorMessage2',
+								{ interpolate: { receivedError } },
+							);
 						}
 
 						runDataExecutedErrorMessage = errorMessage;

@@ -754,7 +754,10 @@ export default mixins(
 					const stopData: IExecutionsStopData = await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
 						title: this.$translateBase('nodeView.showMessage.stopExecutionTry.title'),
-						message: this.$translateBase('nodeView.showMessage.stopExecutionTry.message'),
+						message: this.$translateBase(
+							'nodeView.showMessage.stopExecutionTry.message',
+							{ interpolate: { executionId } },
+						),
 						type: 'success',
 					});
 				} catch (error) {
@@ -829,7 +832,10 @@ export default mixins(
 					}
 
 					const importConfirm = await this.confirmMessage(
-						this.$translateBase('nodeView.confirmMessage.receivedCopyPasteData.message'),
+						this.$translateBase(
+							'nodeView.confirmMessage.receivedCopyPasteData.message',
+							{ interpolate: { plainTextData } },
+						),
 						this.$translateBase('nodeView.confirmMessage.receivedCopyPasteData.headline'),
 						'warning',
 						this.$translateBase('nodeView.confirmMessage.receivedCopyPasteData.confirmButtonText'),
@@ -1042,7 +1048,15 @@ export default mixins(
 				const maxNodes = nodeTypeData.maxNodes;
 				this.$showMessage({
 					title: this.$translateBase('nodeView.showMessage.showMaxNodeTypeError.title'),
-					message: this.$translateBase('nodeView.showMessage.showMaxNodeTypeError.message'),
+					message: this.$translateBase(
+						'nodeView.showMessage.showMaxNodeTypeError.message',
+						{
+							interpolate: {
+								maxNodes: maxNodes!.toString(),
+								sentenceFragment: `${maxNodes === 1 ? 'node' : 'nodes'} of type ${nodeTypeData.displayName} ${maxNodes === 1 ? 'is' : 'are'}`,
+							},
+						},
+					),
 					type: 'error',
 					duration: 0,
 				});
@@ -1057,7 +1071,10 @@ export default mixins(
 				if (nodeTypeData === null) {
 					this.$showMessage({
 						title: this.$translateBase('nodeView.showMessage.addNodeButton.title'),
-						message: this.$translateBase('nodeView.showMessage.addNodeButton.message'),
+						message: this.$translateBase(
+							'nodeView.showMessage.addNodeButton.message',
+							{ interpolate: { nodeTypeName } },
+						),
 						type: 'error',
 					});
 					return;

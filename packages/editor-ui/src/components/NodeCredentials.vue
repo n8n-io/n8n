@@ -214,12 +214,15 @@ export default mixins(
 		updateCredentials (credentialType: string): void {
 			const credentials = this.credentials[credentialType];
 
-			const name = this.credentials[credentialType];
+			const name = this.credentials[credentialType] as string;
 			const credentialData = this.credentialOptions[credentialType].find((optionData: ICredentialsResponse) => optionData.name === name);
 			if (credentialData === undefined) {
 				this.$showMessage({
 					title: this.$translateBase('nodeCredentials.showMessage.title'),
-					message: this.$translateBase('nodeCredentials.showMessage.message'),
+					message: this.$translateBase(
+						'nodeCredentials.showMessage.message',
+						{ interpolate: { name, credentialType } },
+					),
 					type: 'error',
 				});
 				return;

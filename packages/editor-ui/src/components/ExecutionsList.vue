@@ -346,7 +346,10 @@ export default mixins(
 		},
 		async handleDeleteSelected () {
 			const deleteExecutions = await this.confirmMessage(
-				this.$translateBase('executionsList.confirmMessage.message'),
+				this.$translateBase(
+					'executionsList.confirmMessage.message',
+					{ interpolate: { numSelected: this.numSelected.toString() }},
+				),
 				this.$translateBase('executionsList.confirmMessage.headline'),
 				'warning',
 				this.$translateBase('executionsList.confirmMessage.confirmButtonText'),
@@ -636,13 +639,22 @@ export default mixins(
 			if (entry.stoppedAt === undefined) {
 				return this.$translateBase('executionsList.statusTooltipText.theWorkflowIsCurrentlyExecuting');
 			} else if (entry.finished === true && entry.retryOf !== undefined) {
-				return this.$translateBase('executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndItWasSuccessful');
+				return this.$translateBase(
+					'executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndItWasSuccessful',
+					{ interpolate: { entryRetryOf: entry.retryOf }},
+				);
 			} else if (entry.finished === true) {
 				return this.$translateBase('executionsList.statusTooltipText.theWorkflowExecutionWasSuccessful');
 			} else if (entry.retryOf !== undefined) {
-				return this.$translateBase('executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndFailed');
+				return this.$translateBase(
+					'executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndFailed',
+					{ interpolate: { entryRetryOf: entry.retryOf }},
+				);
 			} else if (entry.retrySuccessId !== undefined) {
-				return this.$translateBase('executionsList.statusTooltipText.theWorkflowExecutionFailedButTheRetryWasSuccessful');
+				return this.$translateBase(
+					'executionsList.statusTooltipText.theWorkflowExecutionFailedButTheRetryWasSuccessful',
+					{ interpolate: { entryRetrySuccessId: entry.retrySuccessId }},
+				);
 			} else if (entry.stoppedAt === null) {
 				return this.$translateBase('executionsList.statusTooltipText.theWorkflowExecutionIsProbablyStillRunning');
 			} else {
@@ -672,7 +684,10 @@ export default mixins(
 				this.$showError(
 					error,
 					this.$translateBase('executionsList.showError.stopExecution.title'),
-					this.$translateBase('executionsList.showError.stopExecution.message', { colon: true }),
+					this.$translateBase(
+						'executionsList.showError.stopExecution.message',
+						{ colon: true, interpolate: { activeExecutionId } },
+					),
 				);
 			}
 		},

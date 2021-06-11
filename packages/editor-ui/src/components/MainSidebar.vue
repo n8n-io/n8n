@@ -320,7 +320,10 @@ export default mixins(
 					const stopData: IExecutionsStopData = await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
 						title: this.$translateBase('mainSideBar.showMessage.stopExecution.title'),
-						message: this.$translateBase('mainSideBar.showMessage.stopExecution.message'),
+						message: this.$translateBase(
+							'mainSideBar.showMessage.stopExecution.message',
+							{ interpolate: { executionId }},
+						),
 						type: 'success',
 					});
 				} catch (error) {
@@ -389,7 +392,10 @@ export default mixins(
 					} catch (e) {}
 				} else if (key === 'workflow-delete') {
 					const deleteConfirmed = await this.confirmMessage(
-						this.$translateBase('mainSideBar.confirmMessage.message'),
+						this.$translateBase(
+							'mainSideBar.confirmMessage.message',
+							{ interpolate: { workflowName: this.workflowName } },
+						),
 						this.$translateBase('mainSideBar.confirmMessage.headline'),
 						'warning',
 						this.$translateBase('mainSideBar.confirmMessage.confirmButtonText'),
@@ -415,7 +421,10 @@ export default mixins(
 					this.$titleReset();
 					this.$showMessage({
 						title: this.$translateBase('mainSideBar.showMessage.handleSelect1.title'),
-						message: this.$translateBase('mainSideBar.showMessage.handleSelect1.message'),
+						message: this.$translateBase(
+							'mainSideBar.showMessage.handleSelect1.message',
+							{ interpolate: { workflowName: this.workflowName }},
+						),
 						type: 'success',
 					});
 

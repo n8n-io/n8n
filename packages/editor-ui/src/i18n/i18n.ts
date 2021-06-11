@@ -1,6 +1,7 @@
 import Vue from 'vue';
 import VueI18n from 'vue-i18n';
-import messages from './locales/de'; // TODO: Decide how to switch language
+import messagesEn from './locales/en';
+import messagesDe from './locales/de'; // TODO: Decide how to switch language
 import axios from 'axios';
 
 Vue.use(VueI18n);
@@ -8,7 +9,8 @@ Vue.use(VueI18n);
 export const i18n = new VueI18n({
 	locale: 'en', // set locale
 	fallbackLocale: 'en',
-	messages, // set locale messages
+	messages: { ...messagesEn, ...messagesDe } , // set locale messages
+	silentTranslationWarn: true,
 });
 
 const loadedLanguages = ['en']; // our default language that is preloaded
@@ -22,7 +24,7 @@ function setI18nLanguage (lang: string): string {
 
 setI18nLanguage('de'); // TODO: Decide how to switch language
 
-export function addNodeTranslations(translations: { [key: string]: string | object} ) {
+export function addNodeTranslations(translations: { [key: string]: string | object }) {
 	const lang = Object.keys(translations)[0];
 	const messages = translations[lang];
 	const newNodesBase = {

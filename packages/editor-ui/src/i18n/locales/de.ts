@@ -35,11 +35,11 @@ export default {
 					title: 'Deutsch',
 				},
 				credentialTypeNull1: {
-					message: 'Deutsch',
+					message: 'Deutsch {credentialName} Deutsch?',
 					title: 'Deutsch',
 				},
 				credentialTypeNull2: {
-					message: 'Deutsch',
+					message: 'Deutsch {credentialName} Deutsch?',
 					title: 'Deutsch',
 				},
 				currentCredentialsUndefined1: {
@@ -101,7 +101,7 @@ export default {
 				cancelButtonText: 'Deutsch',
 				confirmButtonText: 'Deutsch',
 				headline: 'Deutsch',
-				message: 'Deutsch',
+				message: 'Deutsch {credentialName} Deutsch?',
 			},
 			createNewCredentials: 'Deutsch',
 			credentials: 'Deutsch',
@@ -116,7 +116,7 @@ export default {
 				},
 			},
 			showMessage: {
-				message: 'Deutsch',
+				message: 'Deutsch {credentialName} Deutsch?',
 				title: 'Deutsch',
 			},
 			yourSavedCredentials: 'Deutsch',

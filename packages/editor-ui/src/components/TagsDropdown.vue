@@ -140,7 +140,10 @@ export default mixins(showMessage, translate).extend({
 				this.$showError(
 					error,
 					this.$translateBase('tagsDropdown.showError.title'),
-					this.$translateBase('tagsDropdown.showError.message'),
+					this.$translateBase(
+						'tagsDropdown.showError.message',
+						{ interpolate: { name } },
+					),
 				);
 			}
 		},

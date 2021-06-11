@@ -57,7 +57,12 @@ export default mixins(translate).extend({
 			return (this.$props.tags || []).length === 0 || this.$data.createEnabled;
 		},
 		rows(): ITagRow[] {
-			const getUsage = (count: number | undefined) => count && count > 0 ? this.$translateBase('tagsView.inUse') : this.$translateBase('tagsView.notBeingUsed');
+			const getUsage = (count: number | undefined) => count && count > 0
+				? this.$translateBase(
+					'tagsView.inUse',
+					{ interpolate: { sentenceFragment: `${count} workflow${count > 1 ? 's' : ''}` } },
+				)
+				: this.$translateBase('tagsView.notBeingUsed');
 
 			const disabled = this.isCreateEnabled || this.$data.updateId || this.$data.deleteId;
 			const tagRows = (this.$props.tags || [])

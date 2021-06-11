@@ -96,7 +96,10 @@ export default mixins(showMessage, translate).extend({
 				this.$showError(
 					error,
 					this.$translateBase('tagsManager.showError.onCreate.title'),
-					this.$translateBase('tagsManager.showError.onCreate.message', { colon: true }),
+					this.$translateBase(
+						'tagsManager.showError.onCreate.message',
+						{ colon: true, interpolate: { escapedName } },
+					),
 				);
 				cb(null, error);
 			}
@@ -124,7 +127,10 @@ export default mixins(showMessage, translate).extend({
 
 				this.$showMessage({
 					title: this.$translateBase('tagsManager.showMessage.onUpdate.title'),
-					message: this.$translateBase('tagsManager.showMessage.onUpdate.message'),
+					message: this.$translateBase(
+						'tagsManager.showMessage.onUpdate.message',
+						{ interpolate: { escapedName, escapedOldName } },
+					),
 					type: "success",
 				});
 			} catch (error) {
@@ -132,7 +138,10 @@ export default mixins(showMessage, translate).extend({
 				this.$showError(
 					error,
 					this.$translateBase('tagsManager.showError.onUpdate.title'),
-					this.$translateBase('tagsManager.showError.onUpdate.message', { colon: true }),
+					this.$translateBase(
+						'tagsManager.showError.onUpdate.message',
+						{ colon: true, interpolate: { escapedName } },
+					),
 				);
 				cb(false, error);
 			}
@@ -155,7 +164,10 @@ export default mixins(showMessage, translate).extend({
 				const escapedName = escape(name);
 				this.$showMessage({
 					title: this.$translateBase('tagsManager.showMessage.onDelete.title'),
-					message: this.$translateBase('tagsManager.showMessage.onDelete.message'),
+					message: this.$translateBase(
+						'tagsManager.showMessage.onDelete.message',
+						{ interpolate: { escapedName } },
+					),
 					type: "success",
 				});
 			} catch (error) {
@@ -163,7 +175,10 @@ export default mixins(showMessage, translate).extend({
 				this.$showError(
 					error,
 					this.$translateBase('tagsManager.showError.onDelete.title'),
-					this.$translateBase('tagsManager.showError.onDelete.message', { colon: true }),
+					this.$translateBase(
+						'tagsManager.showError.onDelete.message',
+						{ colon: true, interpolate: { escapedName } },
+					),
 				);
 				cb(false, error);
 			}

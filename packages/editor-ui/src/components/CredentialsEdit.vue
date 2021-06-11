@@ -153,7 +153,10 @@ export default mixins(
 					if (credentialType === null) {
 						this.$showMessage({
 							title: this.$translateBase('credentialsEdit.showMessage.credentialTypeNull1.title'),
-							message: this.$translateBase('credentialsEdit.showMessage.credentialTypeNull1.message'),
+							message: this.$translateBase(
+								'credentialsEdit.showMessage.credentialTypeNull1.message',
+								{ interpolate: { credentialsType: this.editCredentials.type }},
+							),
 							type: 'error',
 							duration: 0,
 						});
@@ -213,7 +216,10 @@ export default mixins(
 						if (credentialType === null) {
 							this.$showMessage({
 								title: this.$translateBase('credentialsEdit.showMessage.credentialTypeNull2.title'),
-								message: this.$translateBase('credentialsEdit.showMessage.credentialTypeNull2.message'),
+								message: this.$translateBase(
+									'credentialsEdit.showMessage.credentialTypeNull2.message',
+									{ interpolate: { credentialsType: this.credentialType || this.setCredentialType }},
+								),
 								type: 'error',
 								duration: 0,
 							});
