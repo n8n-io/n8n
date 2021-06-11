@@ -113,7 +113,7 @@ import {
 } from 'jsplumb';
 import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
-import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID, START_NODE_TYPE } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -165,6 +165,7 @@ import {
 	XYPositon,
 	IPushDataExecutionFinished,
 	ITag,
+	IWorkflowTemplate,
 } from '../Interface';
 import { mapGetters } from 'vuex';
 
@@ -311,6 +312,7 @@ export default mixins(
 				nodeViewScale: 1,
 				ctrlKeyPressed: false,
 				stopExecutionInProgress: false,
+				blankReset: false,
 			};
 		},
 		beforeDestroy () {
@@ -329,7 +331,6 @@ export default mixins(
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'add_node_button' });
 			},
 			async openExecution (executionId: string) {
-				this.resetWorkspace();
 
 				let data: IExecutionResponse | undefined;
 				try {
@@ -351,6 +352,35 @@ export default mixins(
 				await this.addNodes(JSON.parse(JSON.stringify(data.workflowData.nodes)), JSON.parse(JSON.stringify(data.workflowData.connections)));
 
 				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
+			},
+			async openWorkflowTemplate (templateId: string) {
+				this.resetWorkspace();
+
+				let data: IWorkflowTemplate | undefined;
+				try {
+					this.$externalHooks().run('template.requested', { templateId });
+					data = await this.$store.dispatch('workflows/getWorkflowTemplate', templateId);
+
+					if (!data) {
+						throw new Error(`Workflow template with id "${templateId}" could not be found!`);
+					}
+
+				} catch (error) {
+					this.$showError(error, 'Problem opening template', 'There was a problem opening the template:');
+					this.$router.push({ name: 'NodeViewNew' });
+					return;
+				}
+
+				const nodes = data.workflow.nodes;
+				const hasStartNode = nodes.reduce((accu, node) => accu || node.type === START_NODE_TYPE , false);
+
+				this.blankReset = hasStartNode;
+				this.$router.push({ name: 'NodeViewNew' });
+
+				this.$store.dispatch('workflows/setUniqueWorkflowName', data.name);
+				await this.addNodes(data.workflow.nodes, data.workflow.connections);
+
+				this.$externalHooks().run('template.open', { templateId, templateName: data.name });
 			},
 			async openWorkflow (workflowId: string) {
 				this.resetWorkspace();
@@ -1404,6 +1434,10 @@ export default mixins(
 				await this.resetWorkspace();
 				await this.$store.dispatch('workflows/setNewWorkflowName');
 				this.$store.commit('setStateDirty', false);
+				if (this.blankReset) {
+					this.blankReset = false;
+					return;
+				}
 
 				// Create start node
 				const defaultNodes = [
@@ -1431,7 +1465,11 @@ export default mixins(
 					return Promise.resolve();
 				}
 
-				if (this.$route.name === 'ExecutionById') {
+				if (this.$route.name === 'WorkflowTemplate') {
+					const templateId = this.$route.params.id;
+					await this.openWorkflowTemplate(templateId);
+				}
+				else if (this.$route.name === 'ExecutionById') {
 					// Load an execution
 					const executionId = this.$route.params.id;
 					await this.openExecution(executionId);
@@ -1588,6 +1626,7 @@ export default mixins(
 				// "requiredNodeTypes" are also defined in cli/commands/run.ts
 				const requiredNodeTypes = [ 'n8n-nodes-base.start' ];
 
+				console.log('yo', node);
 				if (requiredNodeTypes.includes(node.type)) {
 					// The node is of the required type so check first
 					// if any node of that type would be left when the
@@ -1602,6 +1641,7 @@ export default mixins(
 							break;
 						}
 					}
+					console.log('maybe remove', deleteAllowed);
 
 					if (deleteAllowed === false) {
 						return;

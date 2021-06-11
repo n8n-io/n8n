@@ -74,3 +74,31 @@ export async function makeRestApiRequest(context: IRestApiContext, method: Metho
 		throw error;
 	}
 }
+
+export async function get(baseURL: string, endpoint: string, params?: IDataObject) {
+	const options: AxiosRequestConfig = {
+		method: 'GET',
+		url: endpoint,
+		baseURL,
+	};
+
+	if (params) {
+		options.params = params;
+	}
+
+	try {
+		const response = await axios.request(options);
+		return response.data;
+	} catch (error) {
+		if (error.message === 'Network Error') {
+			throw new ResponseError('API-Server can not be reached. It is probably down.');
+		}
+
+		const errorResponseData = error.response.data;
+		if (errorResponseData !== undefined && errorResponseData.message !== undefined) {
+			throw new ResponseError(errorResponseData.message, {errorCode: errorResponseData.code, httpStatusCode: error.response.status, stack: errorResponseData.stack});
+		}
+
+		throw error;
+	}
+}
