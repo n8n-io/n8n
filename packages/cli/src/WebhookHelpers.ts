@@ -3,7 +3,6 @@ import { get } from 'lodash';
 
 import {
 	ActiveExecutions,
-	ExternalHooks,
 	GenericHelpers,
 	IExecutionDb,
 	IResponseCallbackData,
@@ -29,6 +28,7 @@ import {
 	IRunExecutionData,
 	IWebhookData,
 	IWebhookResponseData,
+	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	LoggerProxy as Logger,
 	NodeHelpers,
@@ -115,9 +115,13 @@ export async function executeWebhook(workflow: Workflow, webhookData: IWebhookDa
 		throw new ResponseHelper.ResponseError(errorMessage, 500, 500);
 	}
 
+	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+		$executionId: executionId,
+	};
+
 	// Get the responseMode
-	 const responseMode = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseMode'], executionMode, 'onReceived');
-	 const responseCode = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseCode'], executionMode, 200) as number;
+	const responseMode = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseMode'], executionMode, additionalKeys, 'onReceived');
+	const responseCode = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseCode'], executionMode, additionalKeys, 200) as number;
 
 	if (!['onReceived', 'lastNode'].includes(responseMode as string)) {
 		// If the mode is not known we error. Is probably best like that instead of using
@@ -175,8 +179,12 @@ export async function executeWebhook(workflow: Workflow, webhookData: IWebhookDa
 		// Save static data if it changed
 		await WorkflowHelpers.saveStaticData(workflow);
 
+		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+			$executionId: executionId,
+		};
+
 		if (webhookData.webhookDescription['responseHeaders'] !== undefined) {
-			const responseHeaders = workflow.expression.getComplexParameterValue(workflowStartNode, webhookData.webhookDescription['responseHeaders'], executionMode, undefined) as {
+			const responseHeaders = workflow.expression.getComplexParameterValue(workflowStartNode, webhookData.webhookDescription['responseHeaders'], executionMode, additionalKeys, undefined) as {
 				entries?: Array<{
 					name: string;
 					value: string;
@@ -338,7 +346,11 @@ export async function executeWebhook(workflow: Workflow, webhookData: IWebhookDa
 				return data;
 			}
 
-			const responseData = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseData'], executionMode, 'firstEntryJson');
+			const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+				$executionId: executionId,
+			};
+
+			const responseData = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseData'], executionMode, additionalKeys, 'firstEntryJson');
 
 			if (didSendResponse === false) {
 				let data: IDataObject | IDataObject[];
@@ -353,13 +365,13 @@ export async function executeWebhook(workflow: Workflow, webhookData: IWebhookDa
 
 					data = returnData.data!.main[0]![0].json;
 
-					const responsePropertyName = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responsePropertyName'], executionMode, undefined);
+					const responsePropertyName = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responsePropertyName'], executionMode, additionalKeys, undefined);
 
 					if (responsePropertyName !== undefined) {
 						data = get(data, responsePropertyName as string) as IDataObject;
 					}
 
-					const responseContentType = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseContentType'], executionMode, undefined);
+					const responseContentType = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseContentType'], executionMode, additionalKeys, undefined);
 
 					if (responseContentType !== undefined) {
 						// Send the webhook response manually to be able to set the content-type
@@ -392,7 +404,7 @@ export async function executeWebhook(workflow: Workflow, webhookData: IWebhookDa
 						didSendResponse = true;
 					}
 
-					const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseBinaryPropertyName'], executionMode, 'data');
+					const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseBinaryPropertyName'], executionMode, additionalKeys, 'data');
 
 					if (responseBinaryPropertyName === undefined && didSendResponse === false) {
 						responseCallback(new Error('No "responseBinaryPropertyName" is set.'), {});

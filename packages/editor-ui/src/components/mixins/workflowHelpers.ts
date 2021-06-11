@@ -1,4 +1,7 @@
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import {
+	PLACEHOLDER_EMPTY_EXECUTION_ID,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+} from '@/constants';
 
 import {
 	IConnections,
@@ -8,6 +11,7 @@ import {
 	INodeIssues,
 	INodeParameters,
 	NodeParameterValue,
+	INodeCredentials,
 	INodeType,
 	INodeTypes,
 	INodeTypeData,
@@ -15,7 +19,7 @@ import {
 	IRunData,
 	IRunExecutionData,
 	IWorfklowIssues,
-	INodeCredentials,
+	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
 	NodeHelpers,
 } from 'n8n-workflow';
@@ -367,7 +371,11 @@ export const workflowHelpers = mixins(
 					connectionInputData = [];
 				}
 
-				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', false) as IDataObject;
+				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+					$executionId: PLACEHOLDER_EMPTY_EXECUTION_ID,
+				};
+
+				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;
 			},
 
 			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {

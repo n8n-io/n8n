@@ -611,6 +611,10 @@ export interface IWorkflowDataProxyData {
 	$workflow: any; // tslint:disable-line:no-any
 }
 
+export interface IWorkflowDataProxyAdditionalKeys {
+	[key: string]: string | number | undefined;
+}
+
 export interface IWorkflowMetadata {
 	id?: number | string;
 	name?: string;
@@ -745,6 +749,7 @@ export interface IWorkflowExecuteAdditionalData {
 	encryptionKey: string;
 	executeWorkflow: (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[], parentExecutionId?: string, loadedWorkflowData?: IWorkflowBase, loadedRunData?: any) => Promise<any>; // tslint:disable-line:no-any
 	// hooks?: IWorkflowExecuteHooks;
+	executionId?: string;
 	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;

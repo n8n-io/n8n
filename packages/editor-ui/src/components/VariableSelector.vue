@@ -12,15 +12,17 @@
 
 <script lang="ts">
 
-import Vue from 'vue';
+import {
+	PLACEHOLDER_EMPTY_EXECUTION_ID,
+} from '@/constants';
 
 import {
 	GenericValue,
 	IContextObject,
 	IDataObject,
-	IRun,
 	IRunData,
 	IRunExecutionData,
+	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
 	WorkflowDataProxy,
 } from 'n8n-workflow';
@@ -379,7 +381,11 @@ export default mixins(
 					return returnData;
 				}
 
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual');
+				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+					$executionId: PLACEHOLDER_EMPTY_EXECUTION_ID,
+				};
+
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual', additionalKeys);
 				const proxy = dataProxy.getDataProxy();
 
 				// @ts-ignore
