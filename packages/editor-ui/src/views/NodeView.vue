@@ -384,7 +384,7 @@ export default mixins(
 				this.$router.push({ name: 'NodeViewNew' });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
-				this.$store.dispatch('workflows/setNewWorkflowName', data.name);
+				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
 
 				this.$externalHooks().run('template.open', { templateId, templateName: data.name });
 			},
