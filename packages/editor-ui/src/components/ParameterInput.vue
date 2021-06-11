@@ -56,7 +56,7 @@
 				:key="option.value"
 				:label="translateOptionName(parameter, option)"
 			>
-				<div class="option-headline">{{ $translateOptionName(parameter, option) }}</div>
+				<div class="option-headline">{{ translateOptionName(parameter, option) }}</div>
 				<div v-if="translateOptionDescription(parameter, option)" class="option-description" v-html="translateOptionDescription(parameter, option)"></div>
 			</el-option>
 		</el-select>
