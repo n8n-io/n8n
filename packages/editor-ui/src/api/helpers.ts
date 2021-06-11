@@ -1,5 +1,4 @@
 import axios, { AxiosRequestConfig, Method } from 'axios';
-import { response } from 'express';
 import {
 	IDataObject,
 } from 'n8n-workflow';
