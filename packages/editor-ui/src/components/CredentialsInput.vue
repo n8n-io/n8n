@@ -97,7 +97,7 @@
 			</el-col>
 			<el-col :span="18">
 				<el-transfer
-					:titles="[this.$translateBase('credentialsInput.noAccess'), this.$translateBase('credentialsInput.access')]"
+					:titles="[$translateBase('credentialsInput.noAccess'), $translateBase('credentialsInput.access')]"
 					v-model="nodesAccess"
 					:data="allNodesRequestingAccess">
 				</el-transfer>
