@@ -585,7 +585,7 @@ export default mixins(
 			// translation delegators
 
 			translatePlaceholder (
-				parameter: { name: string; placeholder: string; }
+				parameter: { name: string; placeholder: string; },
 			) {
 				return this.$translatePlaceholder(
 					parameter,

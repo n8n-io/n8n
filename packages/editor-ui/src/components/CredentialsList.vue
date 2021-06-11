@@ -4,7 +4,7 @@
 
 		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="$translateBase('credentialsList.yourSavedCredentials')" :before-close="closeDialog">
 			<div class="text-very-light">
-				{{ $translateBase('credentialsList.yourSavedCredentials', { colon: true }) }}:
+				{{ $translateBase('credentialsList.yourSavedCredentials') }}:
 			</div>
 
 			<el-button :title="$translateBase('credentialsList.createNewCredentials')" class="new-credentials-button" @click="createCredential()">
@@ -15,20 +15,20 @@
 			</el-button>
 
 			<el-table :data="credentials" :default-sort = "{prop: 'name', order: 'ascending'}" stripe @row-click="editCredential" max-height="450" v-loading="isDataLoading">
-				<el-table-column property="name" label="Name" class-name="clickable" sortable></el-table-column>
-				<el-table-column property="type" label="Type" class-name="clickable" sortable>
+				<el-table-column property="name" :label="$translateBase('credentialsList.tableLabels.name')" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="type" :label="$translateBase('credentialsList.tableLabels.type')" class-name="clickable" sortable>
 					<template slot-scope="scope">
 						{{credentialTypeDisplayNames[scope.row.type]}}
 					</template>
 				</el-table-column>
-				<el-table-column property="createdAt" label="Created" class-name="clickable" sortable></el-table-column>
-				<el-table-column property="updatedAt" label="Updated" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="createdAt" :label="$translateBase('credentialsList.tableLabels.created')" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="updatedAt" :label="$translateBase('credentialsList.tableLabels.updated')" class-name="clickable" sortable></el-table-column>
 				<el-table-column
-					label="Operations"
+					:label="$translateBase('credentialsList.tableLabels.operations')"
 					width="120">
 					<template slot-scope="scope">
-						<el-button title="Edit Credentials" @click.stop="editCredential(scope.row)" icon="el-icon-edit" circle></el-button>
-						<el-button title="Delete Credentials" @click.stop="deleteCredential(scope.row)" type="danger" icon="el-icon-delete" circle></el-button>
+						<el-button :title="$translateBase('credentialsList.editCredentials')" @click.stop="editCredential(scope.row)" icon="el-icon-edit" circle></el-button>
+						<el-button :title="$translateBase('credentialsList.deleteCredentials')" @click.stop="deleteCredential(scope.row)" type="danger" icon="el-icon-delete" circle></el-button>
 					</template>
 				</el-table-column>
 			</el-table>

@@ -55,6 +55,7 @@ export default {
 					title: 'Deutsch',
 				},
 			},
+			title: 'Deutsch',
 		},
 		credentialsInput: {
 			access: 'Deutsch',
@@ -101,10 +102,12 @@ export default {
 				cancelButtonText: 'Deutsch',
 				confirmButtonText: 'Deutsch',
 				headline: 'Deutsch',
-				message: 'Deutsch {credentialName} Deutsch?',
+				message: 'Deutsch',
 			},
 			createNewCredentials: 'Deutsch',
 			credentials: 'Deutsch',
+			editCredentials: 'Deutsch',
+			deleteCredentials: 'Deutsch',
 			showError: {
 				deleteCredential: {
 					message: 'Deutsch',
@@ -116,8 +119,15 @@ export default {
 				},
 			},
 			showMessage: {
-				message: 'Deutsch {credentialName} Deutsch?',
+				message: 'Deutsch',
 				title: 'Deutsch',
+			},
+			tableLabels: {
+				name: 'Deutsch',
+				type: 'Deutsch',
+				created: 'Deutsch',
+				updated: 'Deutsch',
+				operations: 'Deutsch',
 			},
 			yourSavedCredentials: 'Deutsch',
 		},

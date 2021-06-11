@@ -103,7 +103,11 @@ export default mixins(
 		title (): string {
 			if (this.editCredentials) {
 				const credentialType = this.$store.getters.credentialType(this.editCredentials.type);
-				return `Edit Credentials: "${credentialType.displayName}"`;
+				return this.$translateBase(
+					'credentialsEdit.title',
+					{ colon: true },
+				) + ` "${credentialType.displayName}"`;
+
 			} else {
 				if (this.credentialType) {
 					const credentialType = this.$store.getters.credentialType(this.credentialType);

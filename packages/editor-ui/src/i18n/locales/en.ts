@@ -55,6 +55,7 @@ export default {
 					title: 'Credential ID missing',
 				},
 			},
+			title: 'Edit Credentials',
 		},
 		credentialsInput: {
 			access: 'Access',
@@ -105,6 +106,8 @@ export default {
 			},
 			createNewCredentials: 'Create New Credentials',
 			credentials: 'Credentials',
+			editCredentials: 'Edit Credentials',
+			deleteCredentials: 'Delete Credentials',
 			showError: {
 				deleteCredential: {
 					message: 'There was a problem deleting the credentials',
@@ -118,6 +121,13 @@ export default {
 			showMessage: {
 				message: 'The credential {credentialsName} got deleted!',
 				title: 'Credentials deleted',
+			},
+			tableLabels: {
+				name: 'Name',
+				type: 'Type',
+				created: 'Created',
+				updated: 'Updated',
+				operations: 'Operations',
 			},
 			yourSavedCredentials: 'Your saved credentials',
 		},
