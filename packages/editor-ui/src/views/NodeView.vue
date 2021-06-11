@@ -377,8 +377,8 @@ export default mixins(
 				this.blankReset = hasStartNode;
 				this.$router.push({ name: 'NodeViewNew' });
 
-				this.$store.dispatch('workflows/setUniqueWorkflowName', data.name);
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
+				this.$store.dispatch('workflows/setUniqueWorkflowName', data.name);
 
 				this.$externalHooks().run('template.open', { templateId, templateName: data.name });
 			},
@@ -1626,7 +1626,6 @@ export default mixins(
 				// "requiredNodeTypes" are also defined in cli/commands/run.ts
 				const requiredNodeTypes = [ 'n8n-nodes-base.start' ];
 
-				console.log('yo', node);
 				if (requiredNodeTypes.includes(node.type)) {
 					// The node is of the required type so check first
 					// if any node of that type would be left when the
