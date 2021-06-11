@@ -59,8 +59,12 @@ export default mixins(translate).extend({
 		rows(): ITagRow[] {
 			const getUsage = (count: number | undefined) => count && count > 0
 				? this.$translateBase(
-					'tagsView.inUse',
-					{ interpolate: { sentenceFragment: `${count} workflow${count > 1 ? 's' : ''}` } },
+					count > 1 ? 'tagsView.inUse.plural' : 'tagsView.inUse.singular',
+					{
+						interpolate: {
+							count: count.toString(),
+						},
+					},
 				)
 				: this.$translateBase('tagsView.notBeingUsed');
 

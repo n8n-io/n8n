@@ -469,8 +469,10 @@ export default {
 					title: 'Deutsch',
 				},
 				showMaxNodeTypeError: {
-					message: 'Deutsch'
-					,
+					message: {
+						singular: 'Deutsch',
+						plural: 'Deutsch',
+					},
 					title: 'Deutsch',
 				},
 				stopExecutionCatch: {
@@ -614,7 +616,10 @@ export default {
 			searchTags: 'Deutsch',
 		},
 		tagsView: {
-			inUse: 'Deutsch',
+			inUse: {
+				singular: 'Deutsch',
+				plural: 'Deutsch',
+			},
 			notBeingUsed: 'Deutsch',
 		},
 		variableSelectorItem: {

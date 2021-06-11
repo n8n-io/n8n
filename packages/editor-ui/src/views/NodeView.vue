@@ -1046,14 +1046,17 @@ export default mixins(
 			},
 			showMaxNodeTypeError (nodeTypeData: INodeTypeDescription) {
 				const maxNodes = nodeTypeData.maxNodes;
+
 				this.$showMessage({
 					title: this.$translateBase('nodeView.showMessage.showMaxNodeTypeError.title'),
 					message: this.$translateBase(
-						'nodeView.showMessage.showMaxNodeTypeError.message',
+						maxNodes === 1
+							? 'nodeView.showMessage.showMaxNodeTypeError.message.singular'
+							: 'nodeView.showMessage.showMaxNodeTypeError.message.plural',
 						{
 							interpolate: {
 								maxNodes: maxNodes!.toString(),
-								sentenceFragment: `${maxNodes === 1 ? 'node' : 'nodes'} of type ${nodeTypeData.displayName} ${maxNodes === 1 ? 'is' : 'are'}`,
+								nodeTypeDataDisplayName: nodeTypeData.displayName,
 							},
 						},
 					),

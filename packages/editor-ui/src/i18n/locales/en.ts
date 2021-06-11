@@ -467,7 +467,10 @@ export default {
 					title: 'Created',
 				},
 				showMaxNodeTypeError: {
-					message: 'Node can not be created because in a workflow max. ${maxNodes} ${sentenceFragment} allowed!',
+					message: {
+						singular: 'Node can not be created because in a workflow max. {maxNodes} node of type ${nodeTypeDataDisplayName} is allowed!',
+						plural: 'Node can not be created because in a workflow max. {maxNodes} nodes of type ${nodeTypeDataDisplayName} are allowed!',
+					},
 					title: 'Could not create node!',
 				},
 				stopExecutionCatch: {
@@ -609,7 +612,10 @@ export default {
 			searchTags: 'Search Tags',
 		},
 		tagsView: {
-			inUse: '{sentenceFragment}',
+			inUse: {
+				singular: '{count} workflow',
+				plural: '{count} workflows',
+			},
 			notBeingUsed: 'Not being used',
 		},
 		variableSelectorItem: {
