@@ -316,6 +316,7 @@ export interface IExecutionShortResponse {
 export interface IExecutionsListResponse {
 	count: number;
 	results: IExecutionsSummary[];
+	estimated: boolean;
 }
 
 export interface IExecutionsCurrentSummaryExtended {

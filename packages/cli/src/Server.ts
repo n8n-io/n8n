@@ -33,6 +33,7 @@ import {
 	CredentialsHelper,
 	CredentialsOverwrites,
 	CredentialTypes,
+	DatabaseType,
 	Db,
 	ExternalHooks,
 	GenericHelpers,
@@ -1639,10 +1640,10 @@ class App {
 
 			const resultsPromise = resultsQuery.getMany();
 
-			const countPromise = Db.collections.Execution!.count(countFilter);
+			const countPromise = getExecutionsCount(countFilter);
 
 			const results: IExecutionFlattedDb[] = await resultsPromise;
-			const count = await countPromise;
+			const countedObjects = await countPromise;
 
 			const returnResults: IExecutionsSummary[] = [];
 
@@ -1661,8 +1662,9 @@ class App {
 			}
 
 			return {
-				count,
+				count: countedObjects.count,
 				results: returnResults,
+				estimated: countedObjects.estimate,
 			};
 		}));
 
@@ -2154,4 +2156,31 @@ export async function start(): Promise<void> {
 
 		await app.externalHooks.run('n8n.ready', [app]);
 	});
+}
+
+async function getExecutionsCount(countFilter: object): Promise<{count: number; estimate: boolean;}> {
+
+	const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
+
+	if (dbType !== 'postgresdb') {
+		const count = await Db.collections.Execution!.count(countFilter);
+		return {count, estimate: false};
+	}
+
+	// Get an estimate of rows count.
+	const estimateRowsNumberSql = "SELECT n_live_tup FROM pg_stat_all_tables WHERE relname = 'execution_entity';";
+
+	const rows: Array<{n_live_tup: number}> = await Db.collections.Execution!.query(estimateRowsNumberSql);
+
+	const estimate = rows[0].n_live_tup;
+	// If over 500k, return just an estimate.
+	if (estimate > 500000) {
+		// get order of magnitude
+		const order = Math.floor(Math.log(estimate) / Math.LN10 + 0.000000001); // float point stuff.
+		return {count: Math.pow(10,order), estimate: true};
+	} else {
+		const count = await Db.collections.Execution!.count(countFilter);
+		return {count, estimate: false};
+	}
+
 }
