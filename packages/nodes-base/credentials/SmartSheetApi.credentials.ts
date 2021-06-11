@@ -3,7 +3,7 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class SmartSheetAPI implements ICredentialType {
+export class SmartSheetApi implements ICredentialType {
 	name = 'smartSheetApi';
 	displayName = 'SmartSheet API';
     documentationUrl = 'smartSheet';

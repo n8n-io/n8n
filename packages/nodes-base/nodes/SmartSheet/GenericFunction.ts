@@ -1,7 +1,10 @@
+import { IDataObject } from "n8n-workflow";
+
 export async function createRowinSheet(this: any) {
     const client = require('smartsheet');
+    const credentials = this.getCredentials('smartSheetApi') as IDataObject;
     const sheetId = this.getNodeParameter('sheetId') as string;
-    const API_KEY = this.getNodeParameter('apiKey') as string;
+    const API_KEY = credentials.apiKey;
     const smartsheet = client.createClient({
         accessToken: API_KEY,
         logLevel: 'info'

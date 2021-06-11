@@ -24,7 +24,7 @@ export class SmartSheet implements INodeType {
         credentials: [
             {
                 name: 'smartSheetApi',
-                required: false,
+                required: true,
             },
         ],
         defaults: {
@@ -41,14 +41,7 @@ export class SmartSheet implements INodeType {
                 type: 'string',
                 required: true,
                 default: '',
-            },
-            {
-                displayName: 'API KEY',
-                name: 'apiKey',
-                type: 'string',
-                required: true,
-                default: '',
-            },
+            }
         ],
     };
 
