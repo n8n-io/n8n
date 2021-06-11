@@ -11,21 +11,7 @@ const module: Module<IWorkflowsState, IRootState> = {
 	namespaced: true,
 	state: {},
 	actions: {
-		setNewWorkflowName: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<void> => {
-			let newName = '';
-			try {
-				const newWorkflow = await getNewWorkflow(context.rootGetters.getRestApiContext);
-				newName = newWorkflow.name;
-			}
-			catch (e) {
-				// in case of error, default to original name
-				newName = DEFAULT_NEW_WORKFLOW_NAME;
-			}
-
-			context.commit('setWorkflowName', { newName }, { root: true });
-		},
-
-		setUniqueWorkflowName: async (context: ActionContext<IWorkflowsState, IRootState>, name: string): Promise<void> => {
+		setNewWorkflowName: async (context: ActionContext<IWorkflowsState, IRootState>, name?: string): Promise<void> => {
 			let newName = '';
 			try {
 				const newWorkflow = await getNewWorkflow(context.rootGetters.getRestApiContext, name);
@@ -33,7 +19,7 @@ const module: Module<IWorkflowsState, IRootState> = {
 			}
 			catch (e) {
 				// in case of error, default to original name
-				newName = name;
+				newName = name? name: DEFAULT_NEW_WORKFLOW_NAME;
 			}
 
 			context.commit('setWorkflowName', { newName }, { root: true });
