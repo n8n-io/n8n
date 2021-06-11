@@ -18,7 +18,7 @@
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
 				class="multi-parameter"
 			>
-				<div class="parameter-name" :title="parameter.displayName">
+				<div class="parameter-name" :title="$translateNodeParameterName(parameter)">
 					<div class="delete-option clickable" title="Delete" v-if="hideDelete !== true && !isReadOnly">
 						<font-awesome-icon
 							icon="trash"
@@ -28,8 +28,8 @@
 						/>
 					</div>
 					{{ $translateNodeParameterName(parameter) }}:
-					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
-						<div slot="content" v-html="parameter.description"></div>
+					<el-tooltip placement="top" class="parameter-info" v-if="$translateDescription(parameter)" effect="light">
+						<div slot="content" v-html="$translateDescription(parameter)"></div>
 						<font-awesome-icon icon="question-circle"/>
 					</el-tooltip>
 				</div>

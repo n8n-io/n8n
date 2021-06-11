@@ -82,7 +82,7 @@ export const translate = Vue.extend({
 		 */
 		$translateMultipleValueButtonText(
 			{ name: parameterName, typeOptions: { multipleValueButtonText } }:
-			{ name: string, typeOptions: { multipleValueButtonText: string }; },
+			{ name: string, typeOptions: { multipleValueButtonText: string } },
 		) {
 			return this.translateSpecific({
 				key: `${this.activeNodeType}.parameters.${parameterName}.multipleValueButtonText`,

@@ -97,6 +97,7 @@ module.exports = {
 				},
 				additionalParameters: {
 					displayName: 'Zusätzliche Parameter',
+					description: 'Beschreibung Additional Params Beschreibung',
 					options: {
 						author: {
 							displayName: 'Autor',
