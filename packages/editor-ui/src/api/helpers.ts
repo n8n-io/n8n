@@ -1,4 +1,5 @@
 import axios, { AxiosRequestConfig, Method } from 'axios';
+import { response } from 'express';
 import {
 	IDataObject,
 } from 'n8n-workflow';
@@ -42,48 +43,18 @@ class ResponseError extends Error {
 	}
 }
 
-export async function makeRestApiRequest(context: IRestApiContext, method: Method, endpoint: string, data?: IDataObject) {
-	const { baseUrl, sessionId } = context;
+async function request(config: {method: Method, baseURL: string, endpoint: string, headers?: IDataObject, data?: IDataObject}) {
+	const { method, baseURL, endpoint, headers, data } = config;
 	const options: AxiosRequestConfig = {
 		method,
 		url: endpoint,
-		baseURL: baseUrl,
-		headers: {
-			sessionid: sessionId,
-		},
+		baseURL,
+		headers,
 	};
 	if (['PATCH', 'POST', 'PUT'].includes(method)) {
 		options.data = data;
 	} else {
 		options.params = data;
-	}
-
-	try {
-		const response = await axios.request(options);
-		return response.data.data;
-	} catch (error) {
-		if (error.message === 'Network Error') {
-			throw new ResponseError('API-Server can not be reached. It is probably down.');
-		}
-
-		const errorResponseData = error.response.data;
-		if (errorResponseData !== undefined && errorResponseData.message !== undefined) {
-			throw new ResponseError(errorResponseData.message, {errorCode: errorResponseData.code, httpStatusCode: error.response.status, stack: errorResponseData.stack});
-		}
-
-		throw error;
-	}
-}
-
-export async function get(baseURL: string, endpoint: string, params?: IDataObject) {
-	const options: AxiosRequestConfig = {
-		method: 'GET',
-		url: endpoint,
-		baseURL,
-	};
-
-	if (params) {
-		options.params = params;
 	}
 
 	try {
@@ -94,11 +65,28 @@ export async function get(baseURL: string, endpoint: string, params?: IDataObjec
 			throw new ResponseError('API-Server can not be reached. It is probably down.');
 		}
 
-		const errorResponseData = error.response.data;
-		if (errorResponseData !== undefined && errorResponseData.message !== undefined) {
-			throw new ResponseError(errorResponseData.message, {errorCode: errorResponseData.code, httpStatusCode: error.response.status, stack: errorResponseData.stack});
+		if (error.response && error.response.data && error.response.data.message) {
+			const {message, code, status, stack } = error.response.data;
+			throw new ResponseError(message, {errorCode: code, httpStatusCode: status, stack});
 		}
 
 		throw error;
 	}
+}
+
+export async function makeRestApiRequest(context: IRestApiContext, method: Method, endpoint: string, data?: IDataObject) {
+	const response = await request({
+		method,
+		baseURL: context.baseUrl,
+		endpoint,
+		headers: {sessionid: context.sessionId},
+		data,
+	});
+
+	// @ts-ignore all cli rest api endpoints return data wrapped in `data` key
+	return response.data;
+}
+
+export async function get(baseURL: string, endpoint: string, params?: IDataObject) {
+	return await request({method: 'GET', baseURL, endpoint, data: params});
 }
