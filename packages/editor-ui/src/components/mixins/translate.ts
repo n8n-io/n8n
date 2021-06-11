@@ -1,50 +1,31 @@
 import { TranslationPath } from '@/Interface';
 import Vue from 'vue';
 
+/**
+ * Mixin to translate:
+ * - base strings, i.e. any string that is not node- or credentials-specific,
+ * - specific strings,
+ * 	- node-specific strings, i.e. those in `NodeView.vue`,
+ * 	- credentials-specific strings, i.e. those in `EditCredentials.vue`.
+ */
 export const translate = Vue.extend({
-	data() {
-		return {
-			mixinIsCredential: false,
-			mixinNodeType: '',
-			mixinCredentialName: '',
-		};
-	},
-
 	computed: {
-		nodeType (): string {
-			return this.mixinIsCredential
-				? this.mixinNodeType
-				: this.$store.getters.activeNode.type;
+		/**
+		 * Node type for the active node in `NodeView.vue`.
+		 */
+		activeNodeType (): string {
+			return this.$store.getters.activeNode.type;
 		},
 	},
 
 	methods: {
-		/**
-		 * Initialize the `translate` mixin with credentials data.
-		 */
-		initCredentialsData(
-			{ credentialName, isCredential, nodeType }:
-			{ credentialName: string, isCredential: boolean, nodeType: string },
-		) {
-			this.mixinCredentialName = credentialName;
-			this.mixinIsCredential = isCredential;
-			this.mixinNodeType = nodeType;
-		},
+		// -----------------------------------------
+		//               main methods
+		// -----------------------------------------
 
 		/**
-		 * Translate the value at the translation key, or return a fallback.
-		 */
-		translate({ key, fallback }: { key: string, fallback: string }): string {
-			return this.$te(key) ? this.$t(key).toString() : fallback;
-		},
-
-		// ----------------------------------
-		//           base strings
-		// ----------------------------------
-
-		/**
-		 * Translate a base UI string, i.e. any UI string that is not in
-		 * the node view or in the credentials modal.
+		 * Translate a base string. Called directly in Vue templates.
+		 * Optionally, [interpolate a variable](https://kazupon.github.io/vue-i18n/guide/formatting.html#named-formatting) and/or append a colon `:`.
 		 */
 		$translateBase(
 			key: TranslationPath,
@@ -57,89 +38,109 @@ export const translate = Vue.extend({
 			return translatedBaseString.toString() + (options && options.colon ? ':' : '');
 		},
 
-		// ----------------------------------
-		//          node strings
-		// ----------------------------------
+		/**
+		 * Translate a node- or credentials-specific string.
+		 * Called in-mixin by node- or credentials-specific methods,
+		 * which are called directly in Vue templates.
+		 */
+		translateSpecific(
+			{ key, fallback }: { key: string, fallback: string },
+		): string {
+			return this.$te(key) ? this.$t(key).toString() : fallback;
+		},
+
+		// -----------------------------------------
+		//           node-specific methods
+		// -----------------------------------------
 
 		/**
-		 * Translate a top-level node property name, i.e. leftmost parameter in `NodeView.vue`,
-		 * including those visually nested inside collections.
+		 * Translate a top-level node parameter name, i.e. leftmost parameter in `NodeView.vue`.
 		 */
-		$translateNodePropertyName(
+		$translateNodeParameterName(
 			{ name: parameterName, displayName }: { name: string; displayName: string; },
 		) {
-			return this.translate({
-				key: `${this.nodeType}.parameters.${parameterName}.displayName`,
+			return this.translateSpecific({
+				key: `${this.activeNodeType}.parameters.${parameterName}.displayName`,
 				fallback: displayName,
 			});
 		},
 
+		/**
+		 * Translate a top-level parameter description for a node or for credentials.
+		 */
+		 $translateDescription(
+			{ name: parameterName, description }: { name: string; description: string; },
+		) {
+			return this.translateSpecific({
+				key: `${this.activeNodeType}.parameters.${parameterName}.description`,
+				fallback: description,
+			});
+		},
 
-		// ----------------------------------
-		//        credentials strings
-		// ----------------------------------
+		/**
+		 * Translate the label for a button that adds another field-input pair to a collection.
+		 */
+		$translateMultipleValueButtonText(
+			{ name: parameterName, typeOptions: { multipleValueButtonText } }:
+			{ name: string, typeOptions: { multipleValueButtonText: string }; },
+		) {
+			return this.translateSpecific({
+				key: `${this.activeNodeType}.parameters.${parameterName}.multipleValueButtonText`,
+				fallback: multipleValueButtonText,
+			});
+		},
+
+		// -----------------------------------------
+		//          creds-specific methods
+		// -----------------------------------------
 
 		/**
 		 * Translate a credentials property name, i.e. leftmost parameter in `CredentialsEdit.vue`.
 		 */
 		 $translateCredentialsPropertyName(
 			{ name: parameterName, displayName }: { name: string; displayName: string; },
+			{ nodeType, credentialsName }: { nodeType: string, credentialsName: string; },
 		) {
 			if (['clientId', 'clientSecret'].includes(parameterName)) {
 				return this.$t(`oauth2.${parameterName}`);
 			}
 
-			return this.translate({
-				key: `${this.nodeType}.credentials.${this.mixinCredentialName}.${parameterName}.displayName`,
+			return this.translateSpecific({
+				key: `${nodeType}.credentials.${credentialsName}.${parameterName}.displayName`,
 				fallback: displayName,
 			});
 		},
 
 		/**
-		 * Translate a credentials property description, i.e. tooltip in `CredentialsEdit.vue`.
+		 * Translate a credentials property description, i.e. label tooltip in `CredentialsEdit.vue`.
 		 */
 		$translateCredentialsPropertyDescription(
 			{ name: parameterName, description }: { name: string; description: string; },
+			{ nodeType, credentialsName }: { nodeType: string, credentialsName: string; },
 		) {
-			return this.translate({
-				key: `${this.nodeType}.credentials.${this.mixinCredentialName}.${parameterName}.description`,
+			return this.translateSpecific({
+				key: `${nodeType}.credentials.${credentialsName}.${parameterName}.description`,
 				fallback: description,
 			});
 		},
 
-
-		// ----------------------------------
-		//    description, placeholder and
-		//     option name & description
-		// ----------------------------------
-
-		/**
-		 * Translate a top-level (node or credential) parameter description.
-		 */
-		 $translateDescription(
-			{ name: parameterName, description }: { name: string; description: string; },
-		) {
-			const key = this.mixinIsCredential
-				? `${this.nodeType}.credentials.${this.mixinCredentialName}.description`
-				: `${this.nodeType}.parameters.${parameterName}.description`;
-
-			return this.translate({
-				key,
-				fallback: description,
-			});
-		},
+		// -----------------------------------------
+		//     node- and creds-specific methods
+		// -----------------------------------------
 
 		/**
 		 * Translate the placeholder inside the input field for a string-type parameter.
 		 */
 		$translatePlaceholder(
 			{ name: parameterName, placeholder }: { name: string; placeholder: string; },
+			isCredential = false,
+			{ nodeType, credentialsName } = { nodeType: '', credentialsName: '' },
 		) {
-			const key = this.mixinIsCredential
-				? `${this.nodeType}.credentials.${this.mixinCredentialName}.placeholder`
-				: `${this.nodeType}.parameters.${parameterName}.placeholder`;
+			const key = isCredential
+				? `${nodeType}.credentials.${credentialsName}.placeholder`
+				: `${this.activeNodeType}.parameters.${parameterName}.placeholder`;
 
-			return this.translate({
+			return this.translateSpecific({
 				key,
 				fallback: placeholder,
 			});
@@ -151,12 +152,14 @@ export const translate = Vue.extend({
 		$translateOptionName(
 			{ name: parameterName }: { name: string },
 			{ value: optionName, name: displayName }: { value: string; name: string; },
+			isCredential = false,
+			{ nodeType, credentialsName } = { nodeType: '', credentialsName: '' },
 		) {
-			const key = this.mixinIsCredential
-				? `${this.nodeType}.credentials.${this.mixinCredentialName}.options.${optionName}.displayName`
-				: `${this.nodeType}.parameters.${parameterName}.options.${optionName}.displayName`;
+			const key = isCredential
+				? `${nodeType}.credentials.${credentialsName}.options.${optionName}.displayName`
+				: `${this.activeNodeType}.parameters.${parameterName}.options.${optionName}.displayName`;
 
-			return this.translate({
+			return this.translateSpecific({
 				key,
 				fallback: displayName,
 			});
@@ -168,33 +171,17 @@ export const translate = Vue.extend({
 		$translateOptionDescription(
 			{ name: parameterName }: { name: string },
 			{ value: optionName, description }: { value: string; description: string; },
+			isCredential = false,
+			{ nodeType, credentialsName } = { nodeType: '', credentialsName: '' },
 		) {
-			const key = this.mixinIsCredential
-				? `${this.nodeType}.credentials.${this.mixinCredentialName}.options.${optionName}.description`
-				: `${this.nodeType}.parameters.${parameterName}.options.${optionName}.description`;
+			const key = isCredential
+				? `${nodeType}.credentials.${credentialsName}.options.${optionName}.description`
+				: `${this.activeNodeType}.parameters.${parameterName}.options.${optionName}.description`;
 
-			return this.translate({
+			return this.translateSpecific({
 				key,
 				fallback: description,
 			});
 		},
-
-		// ----------------------------------
-		//           component
-		// ----------------------------------
-
-		/**
-		 * Translate the label for a button to add another field-input pair to a collection.
-		 */
-		$translateMultipleValueButtonText(
-			{ name: parameterName, typeOptions: { multipleValueButtonText } }:
-			{ name: string, typeOptions: { multipleValueButtonText: string }; },
-		) {
-			return this.translate({
-				key: `${this.nodeType}.parameters.${parameterName}.multipleValueButtonText`,
-				fallback: multipleValueButtonText,
-			});
-		},
-
 	},
 });

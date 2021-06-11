@@ -23,14 +23,22 @@
 		<div v-for="parameter in credentialProperties" :key="parameter.name">
 			<el-row class="parameter-wrapper">
 				<el-col :span="6" class="parameter-name">
-					{{ $translateCredentialsPropertyName(parameter) }}:
-					<el-tooltip placement="top" class="parameter-info" v-if="$translateCredentialsPropertyDescription(parameter)" effect="light">
-						<div slot="content" v-html="$translateCredentialsPropertyDescription(parameter)"></div>
+					{{ $translateCredentialsPropertyName(parameter, credentialsParams) }}:
+					<el-tooltip placement="top" class="parameter-info" v-if="$translateCredentialsPropertyDescription(parameter, credentialsParams)" effect="light">
+						<div slot="content" v-html="$translateCredentialsPropertyDescription(parameter, credentialsParams)"></div>
 						<font-awesome-icon icon="question-circle"/>
 					</el-tooltip>
 				</el-col>
 				<el-col :span="18">
-					<parameter-input :parameter="parameter" :credentialName="credentialTypeData.name" :value="propertyValue[parameter.name]" :path="parameter.name" :isCredential="true" :displayOptions="true" @valueChanged="valueChanged" />
+					<parameter-input
+						:parameter="parameter"
+						:value="propertyValue[parameter.name]"
+						:path="parameter.name"
+						:isCredential="true"
+						:displayOptions="true"
+						@valueChanged="valueChanged"
+						:credentialsParams="credentialsParams"
+					/>
 				</el-col>
 			</el-row>
 		</div>
@@ -182,15 +190,25 @@ export default mixins(
 			nodesAccess: [] as string[],
 			name: '',
 			propertyValue: {} as ICredentialDataDecryptedObject,
+			credentialsParams: {
+				nodeType: `n8n-nodes-base.${this.credentialTypeData.documentationUrl}`, // workaround
+				credentialsName: this.credentialTypeData.name,
+			},
 		};
 	},
-	beforeMount() {
-		this.loadNodesProperties();
 
-		this.initCredentialsData({
-			isCredential: true,
-			nodeType: `n8n-nodes-base.${this.credentialTypeData.documentationUrl}`,
-			credentialName: this.credentialTypeData.name,
+	/**
+	 * Before mounting, load the translations for this node (if any),
+	 * which may contain credentials parameters.
+	 */
+	beforeMount() {
+		return new Promise<void>(resolve => {
+			this.restApi().getNodesInformation([this.credentialsParams.nodeType])
+				.then(nodeInfo => {
+					const nodeTranslations = nodeInfo[0].translation;
+					if (nodeTranslations) addNodeTranslations(nodeTranslations);
+					resolve();
+				});
 		});
 	},
 
@@ -280,14 +298,12 @@ export default mixins(
 		},
 	},
 	methods: {
-		async loadNodesProperties(): Promise<void> {
-			const nodesToFetch = [`n8n-nodes-base.${this.credentialTypeData.documentationUrl}`];
-			const nodeInfo = await this.restApi().getNodesInformation(nodesToFetch);
+		// async loadNodeTranslations(): Promise<void> {
+		// 	const nodeInfo = await this.restApi().getNodesInformation([this.nodeTypeOfCredentials]);
+		// 	const nodeTranslations = nodeInfo[0].translation;
 
-			if (nodeInfo[0].translation) {
-				addNodeTranslations(nodeInfo[0].translation);
-			}
-		},
+		// 	if (nodeTranslations) addNodeTranslations(nodeTranslations);
+		// },
 
 		copyCallbackUrl (): void {
 			this.copyToClipboard(this.oAuthCallbackUrl);

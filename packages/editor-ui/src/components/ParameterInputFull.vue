@@ -1,7 +1,7 @@
 <template>
 	<el-row class="parameter-wrapper">
 		<el-col :span="isMultiLineParameter ? 24 : 10" class="parameter-name" :class="{'multi-line': isMultiLineParameter}">
-			<span class="title" :title="$translateNodePropertyName(parameter)">{{ $translateNodePropertyName(parameter) }}</span>:
+			<span class="title" :title="$translateNodeParameterName(parameter)">{{ $translateNodeParameterName(parameter) }}</span>:
 			<el-tooltip class="parameter-info" placement="top" v-if="$translateDescription(parameter)" effect="light">
 				<div slot="content" v-html="$translateDescription(parameter)"></div>
 				<font-awesome-icon icon="question-circle" />

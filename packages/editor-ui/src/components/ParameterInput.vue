@@ -10,7 +10,7 @@
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
 			</div>
 
-			<el-input v-else v-model="tempValue" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="!isValueExpression && isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'': $translatePlaceholder(parameter)">
+			<el-input v-else v-model="tempValue" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="!isValueExpression && isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'': translatePlaceholder(parameter)">
 				<font-awesome-icon v-if="!isValueExpression && !isReadOnly" slot="suffix" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
 			</el-input>
 		</div>
@@ -34,7 +34,7 @@
 
 		<div v-else-if="parameter.type === 'number'">
 			<!-- <el-slider :value="value" @input="valueChanged"></el-slider> -->
-			<el-input-number ref="inputField" size="small" :value="displayValue" :max="getArgument('maxValue')" :min="getArgument('minValue')" :precision="getArgument('numberPrecision')" :step="getArgument('numberStepSize')" :disabled="isReadOnly" @change="valueChanged" @focus="setFocus" @keydown.stop :title="displayTitle" :placeholder="$translatePlaceholder(parameter)"></el-input-number>
+			<el-input-number ref="inputField" size="small" :value="displayValue" :max="getArgument('maxValue')" :min="getArgument('minValue')" :precision="getArgument('numberPrecision')" :step="getArgument('numberStepSize')" :disabled="isReadOnly" @change="valueChanged" @focus="setFocus" @keydown.stop :title="displayTitle" :placeholder="translatePlaceholder(parameter)"></el-input-number>
 		</div>
 
 		<el-select
@@ -54,10 +54,10 @@
 				v-for="option in parameterOptions"
 				:value="option.value"
 				:key="option.value"
-				:label="$translateOptionName(parameter, option)"
+				:label="translateOptionName(parameter, option)"
 			>
 				<div class="option-headline">{{ $translateOptionName(parameter, option) }}</div>
-				<div v-if="$translateOptionDescription(parameter, option)" class="option-description" v-html="$translateOptionDescription(parameter, option)"></div>
+				<div v-if="translateOptionDescription(parameter, option)" class="option-description" v-html="translateOptionDescription(parameter, option)"></div>
 			</el-option>
 		</el-select>
 
@@ -165,7 +165,7 @@ export default mixins(
 			'path', // string
 			'value',
 			'isCredential', // boolean
-			'credentialName', // string
+			'credentialsParams', // { nodeType: string; credentialsName: string; }
 		],
 		data () {
 			return {
@@ -581,7 +581,42 @@ export default mixins(
 					this.valueChanged(this.expressionValueComputed || null);
 				}
 			},
+
+			// translation delegators
+
+			translatePlaceholder (
+				parameter: { name: string; placeholder: string; }
+			) {
+				return this.$translatePlaceholder(
+					parameter,
+					this.isCredential,
+					this.credentialsParams,
+				);
+			},
+			translateOptionName (
+				parameter: { name: string },
+				option: { value: string, name: string },
+			) {
+				return this.$translateOptionName(
+					parameter,
+					option,
+					this.isCredential,
+					this.credentialsParams,
+				);
+			},
+			translateOptionDescription (
+				parameter: { name: string },
+				option: { value: string; description: string; },
+			) {
+				return this.$translateOptionDescription(
+					parameter,
+					option,
+					this.isCredential,
+					this.credentialsParams);
+			},
 		},
+
+
 		mounted () {
 			this.tempValue = this.displayValue as string;
 			if (this.node !== null) {
@@ -624,13 +659,6 @@ export default mixins(
 					}
 				}
 			}
-		},
-		beforeMount() {
-			this.initCredentialsData({
-				isCredential: this.isCredential,
-				nodeType: `n8n-nodes-base.${this.nodeName}`,
-				credentialName: this.credentialName,
-			});
 		},
 	});
 </script>
