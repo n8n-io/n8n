@@ -101,7 +101,7 @@ export class Mandrill implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mandrill',
 		name: 'mandrill',
-		icon: 'file:mandrill.png',
+		icon: 'file:mandrill.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
