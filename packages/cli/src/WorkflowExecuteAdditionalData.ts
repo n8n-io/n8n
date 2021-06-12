@@ -656,7 +656,7 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 }
 
 
-export function sendMessageToUI(source: string, message: string) {
+export function sendMessageToUI(source: string, message: any) { // tslint:disable-line:no-any
 	if (this.sessionId === undefined) {
 		return;
 	}
