@@ -1,17 +1,17 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class Mqtt implements ICredentialType {
 	name = 'mqtt';
 	displayName = 'MQTT';
 	documentationUrl = 'mqtt';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Protocol',
 			name: 'protocol',
-			type: 'options' as NodePropertyTypes,
+			type: 'options',
 			options: [
 				{
 					name: 'mqtt',
@@ -27,25 +27,25 @@ export class Mqtt implements ICredentialType {
 		{
 			displayName: 'Host',
 			name: 'host',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Port',
 			name: 'port',
-			type: 'number' as NodePropertyTypes,
+			type: 'number',
 			default: 1883,
 		},
 		{
 			displayName: 'Username',
 			name: 'username',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				password: true,
 			},
@@ -54,14 +54,14 @@ export class Mqtt implements ICredentialType {
 		{
 			displayName: 'Clean Session',
 			name: 'clean',
-			type: 'boolean' as NodePropertyTypes,
+			type: 'boolean',
 			default: true,
 			description: `Set to false to receive QoS 1 and 2 messages while offline.`,
 		},
 		{
 			displayName: 'Client ID',
 			name: 'clientId',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			description: 'Client ID. If left empty, one is autogenrated for you',
 		},
