@@ -158,7 +158,7 @@ export class Notion implements INodeType {
 				const databases = await notionApiRequestAllItems.call(this, 'results', 'POST', `/search`, body);
 				for (const database of databases) {
 					returnData.push({
-						name: database.title[0].plain_text,
+						name: database.title[0]?.plain_text || database.id,
 						value: database.id,
 					});
 				}
