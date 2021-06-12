@@ -776,10 +776,11 @@ export interface ILogger {
 	warn: (message: string, meta?: object) => void;
 	error: (message: string, meta?: object) => void;
 }
-export interface IRawErrorObject {
-	[key: string]: string | object | number | boolean | undefined | null | string[] | object[] | number[] | boolean[];
-}
 
 export interface IStatusCodeMessages {
 	[key: string]: string;
 }
+
+export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+
+export type JsonObject = { [key: string]: JsonValue };
