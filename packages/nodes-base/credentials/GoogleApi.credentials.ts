@@ -20,8 +20,6 @@ export class GoogleApi implements ICredentialType {
 		{
 			displayName: 'Private Key',
 			name: 'privateKey',
-			// @ts-ignore
-			lines: 5,
 			type: 'string',
 			default: '',
 			description: 'Use the multiline editor. Make sure there are exactly 3 lines.<br />-----BEGIN PRIVATE KEY-----<br />KEY IN A SINGLE LINE<br />-----END PRIVATE KEY-----',
