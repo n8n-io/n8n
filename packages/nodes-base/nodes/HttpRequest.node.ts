@@ -868,7 +868,7 @@ export class HttpRequest implements INodeType {
 			}
 
 			try {
-				let sendRequest: any = requestOptions; // eslint-disable-line:no-any
+				let sendRequest: any = requestOptions; // tslint:disable-line:no-any
 				// Protect browser from sending large binary data
 				if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
 					sendRequest = {
@@ -877,7 +877,7 @@ export class HttpRequest implements INodeType {
 					};
 				}
 				this.sendMessageToUI(sendRequest);
-			} catch (e) {};
+			} catch (e) {}
 
 			// Now that the options are all set make the actual http request
 			if (oAuth1Api !== undefined) {
