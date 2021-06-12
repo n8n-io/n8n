@@ -317,6 +317,13 @@ export class Notion implements INodeType {
 						page_size: 100,
 						filter: { property: 'object', value: 'database' },
 					};
+
+   		 if (res.has_more) {
+        notion.search({
+            start_cursor: res.next_cursor
+        }
+    
+					};
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(this, 'results', 'POST', `/search`, body);
