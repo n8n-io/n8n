@@ -270,21 +270,27 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			};
 			break;
 		case 'date':
-			//&& value.dateStart !== 'Invalid date' && value.dateEnd !== 'Invalid date'
+			const format = getDateFormat(value.includeTime);
 			if (value.range === true) {
 				result = {
-					type: 'date', date: { start: moment.tz(value.dateStart, timezone).utc().format(), end: moment.tz(value.dateEnd, timezone).utc().format() },
+					type: 'date', date: { start: moment.tz(value.dateStart, timezone).format(format), end: moment.tz(value.dateEnd, timezone).format(format) },
 				};
-				//if (value.date !== 'Invalid date')
 			} else {
 				result = {
-					type: 'date', date: { start: moment.tz(value.date, timezone).utc().format(), end: null },
+					type: 'date', date: { start: moment.tz(value.date, timezone).format(format), end: null },
 				};
 			}
 			break;
 		default:
 	}
 	return result;
+}
+
+function getDateFormat(includeTime: boolean) {
+	if (includeTime === false) {
+		return 'yyyy-MM-DD';
+	}
+	return '';
 }
 
 function getNameAndType(key: string) {
