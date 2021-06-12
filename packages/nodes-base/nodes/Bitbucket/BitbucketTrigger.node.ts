@@ -21,7 +21,7 @@ export class BitbucketTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Bitbucket Trigger',
 		name: 'bitbucketTrigger',
-		icon: 'file:bitbucket.png',
+		icon: 'file:bitbucket.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Bitbucket events via webhooks',
