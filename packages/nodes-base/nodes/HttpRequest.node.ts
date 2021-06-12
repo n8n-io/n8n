@@ -867,6 +867,18 @@ export class HttpRequest implements INodeType {
 				}
 			}
 
+			try {
+				let sendRequest: any = requestOptions; // eslint-disable-line:no-any
+				// Protect browser from sending large binary data
+				if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
+					sendRequest = {
+						...requestOptions,
+						body: `Binary data got replaced with this text. Original was a Buffer with a size of ${requestOptions.body.length} byte.`,
+					};
+				}
+				this.sendMessageToUI(sendRequest);
+			} catch (e) {};
+
 			// Now that the options are all set make the actual http request
 			if (oAuth1Api !== undefined) {
 				requestPromises.push(this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions));
