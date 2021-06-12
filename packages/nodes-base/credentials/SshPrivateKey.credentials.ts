@@ -1,17 +1,17 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class SshPrivateKey implements ICredentialType {
 	name = 'sshPrivateKey';
 	displayName = 'SSH';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',
 			name: 'host',
 			required: true,
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			placeholder: 'localhost',
 		},
@@ -19,19 +19,19 @@ export class SshPrivateKey implements ICredentialType {
 			displayName: 'Port',
 			name: 'port',
 			required: true,
-			type: 'number' as NodePropertyTypes,
+			type: 'number',
 			default: 22,
 		},
 		{
 			displayName: 'Username',
 			name: 'username',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Private Key',
 			name: 'privateKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				rows: 4,
 			},
@@ -40,7 +40,7 @@ export class SshPrivateKey implements ICredentialType {
 		{
 			displayName: 'Passphrase',
 			name: 'passphrase',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			description: 'Passphase used to create the key, if no passphase was used leave empty',
 		},

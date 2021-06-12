@@ -1,43 +1,43 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class Kafka implements ICredentialType {
 	name = 'kafka';
 	displayName = 'Kafka';
 	documentationUrl = 'kafka';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Client ID',
 			name: 'clientId',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			placeholder: 'my-app',
 		},
 		{
 			displayName: 'Brokers',
 			name: 'brokers',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			placeholder: 'kafka1:9092,kafka2:9092',
 		},
 		{
 			displayName: 'SSL',
 			name: 'ssl',
-			type: 'boolean' as NodePropertyTypes,
+			type: 'boolean',
 			default: true,
 		},
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
-			type: 'boolean' as NodePropertyTypes,
+			type: 'boolean',
 			default: false,
 		},
 		{
 			displayName: 'Username',
 			name: 'username',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			displayOptions: {
 				show: {
 					authentication: [
@@ -51,7 +51,7 @@ export class Kafka implements ICredentialType {
 		{
 			displayName: 'Password',
 			name: 'password',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			displayOptions: {
 				show: {
 					authentication: [
@@ -68,7 +68,7 @@ export class Kafka implements ICredentialType {
 		{
 			displayName: 'SASL mechanism',
 			name: 'saslMechanism',
-			type: 'options' as NodePropertyTypes,
+			type: 'options',
 			displayOptions: {
 				show: {
 					authentication: [
