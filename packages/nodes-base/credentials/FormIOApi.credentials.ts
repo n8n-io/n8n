@@ -19,5 +19,11 @@ export class FormIOApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
+		{
+			displayName: 'Form.io EndPoint',
+			name: 'formIOEndpoint',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+		},
 	];
 }

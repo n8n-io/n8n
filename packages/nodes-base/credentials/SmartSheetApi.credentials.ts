@@ -6,13 +6,13 @@ import {
 export class SmartSheetApi implements ICredentialType {
 	name = 'smartSheetApi';
 	displayName = 'SmartSheet API';
-    documentationUrl = 'smartSheet';
+	documentationUrl = 'smartSheet';
 	properties = [
 		{
 			displayName: 'API KEY',
 			name: 'apiKey',
 			type: 'string' as NodePropertyTypes,
-            default: '',
+			default: '',
 		},
 	];
 }

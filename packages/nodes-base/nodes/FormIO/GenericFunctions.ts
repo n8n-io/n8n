@@ -13,11 +13,11 @@ import {
  * Method has the logic to get jwt token from Form.io 
  * @param this 
  */
-async function getToken(this: any) {
+async function getToken(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions) {
 	const credentials = this.getCredentials('formIOApi') as IDataObject;
+	const endpoint = credentials.formIOEndpoint;
 	const username = credentials.formIOUsername;
 	const password = credentials.formIOPassword;
-	const endpoint = this.getNodeParameter('formIOEndpoint') as string;
 	const resource = '/user/login';
 	const url = endpoint + resource;
 	const options = {
@@ -28,13 +28,13 @@ async function getToken(this: any) {
 		body: {
 			data: {
 				email: username,
-				password: password
-			}
+				password,
+			},
 		},
 		uri: url,
 		json: true,
-		resolveWithFullResponse: true
-	}
+		resolveWithFullResponse: true,
+	};
 	try {
 		const responseObject = await this.helpers.request!(options);
 		return responseObject.headers['x-jwt-token'];
@@ -43,21 +43,22 @@ async function getToken(this: any) {
 	}
 }
 
-export async function getFormFieldDetails(this: any) {
-	const endpoint = this.getNodeParameter('formIOEndpoint') as string;
-	const formId = this.getNodeParameter('formId') as string;
+export async function getFormFieldDetails(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions) {
+	const credentials = this.getCredentials('formIOApi') as IDataObject;
+	const endpoint = credentials.formIOEndpoint;
+	const formId = this.getNodeParameter('formId', 0) as string;
 	const resource = `/form/${formId}`;
 	const url = endpoint + resource;
 	const token = await getToken.call(this);
 	const options = {
 		headers: {
 			'Content-Type': 'application/json',
-			'x-jwt-token': token
+			'x-jwt-token': token,
 		},
 		method: 'GET',
 		uri: url,
 		json: true,
-	}
+	};
 	try {
 		const responseObject = await this.helpers.request!(options);
 		return responseObject;
@@ -70,43 +71,44 @@ export async function getFormFieldDetails(this: any) {
  * Method has the logic to register webhook in the provided Form.io form
  * @param this 
  */
-async function registerWebhook(this: any) {
-	const endpoint = this.getNodeParameter('formIOEndpoint') as string;
-	const formId = this.getNodeParameter('formId') as string;
+async function registerWebhook(this: IHookFunctions ) {
+	const credentials = this.getCredentials('formIOApi') as IDataObject;
+	const endpoint = credentials.formIOEndpoint;
+	const formId = this.getNodeParameter('formId',0) as string;
 	const resource = `/form/${formId}/action`;
-	const webhookUrl = this.getNodeWebhookUrl('default');
+	const webhookUrl = this.getNodeWebhookUrl('default') as string;
 	const token = await getToken.call(this);
 	const payload = {
 		data: {
 			name: 'webhook',
 			title: 'webhook',
 			method: [
-				"create", "update"
+				'create', 'update',
 			],
 			handler: [
-				"after"
+				'after',
 			],
 			priority: 0,
 			settings: {
 				block: false,
-				url: webhookUrl
+				url: webhookUrl,
 			},
 			condition: {
-				field: "submit"
-			}
-		}
-	}
+				field: 'submit',
+			},
+		},
+	};
 	const url = endpoint + resource;
 	const options = {
 		headers: {
 			'Content-Type': 'application/json',
-			'x-jwt-token': token
+			'x-jwt-token': token,
 		},
 		method: 'POST',
 		body: payload,
 		uri: url,
-		json: true
-	}
+		json: true,
+	};
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
@@ -118,9 +120,10 @@ async function registerWebhook(this: any) {
  * Method has the logic to list registered webhooks in the provided Form.io form
  * @param this 
  */
-async function listRegisteredWebhooks(this: any) {
-	const endpoint = this.getNodeParameter('formIOEndpoint') as string;
-	const formId = this.getNodeParameter('formId') as string;
+async function listRegisteredWebhooks(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions) {
+	const credentials = this.getCredentials('formIOApi') as IDataObject;
+	const endpoint = credentials.formIOEndpoint;
+	const formId = this.getNodeParameter('formId' , 0) as string;
 	const resource = `/form/${formId}/action`;
 	const token = await getToken.call(this);
 
@@ -128,12 +131,12 @@ async function listRegisteredWebhooks(this: any) {
 	const options = {
 		headers: {
 			'Content-Type': 'application/json',
-			'x-jwt-token': token
+			'x-jwt-token': token,
 		},
 		method: 'GET',
 		uri: url,
-		json: true
-	}
+		json: true,
+	};
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
@@ -146,7 +149,7 @@ async function listRegisteredWebhooks(this: any) {
  * @param this 
  * @param method 
  */
-export async function formIOApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string): Promise<any> { // tslint:disable-line:no-any
+export async function formIOApiRequest(this: IHookFunctions , method: string): Promise<any> { // tslint:disable-line:no-any
 
 	try {
 		if (method === 'GET') {
