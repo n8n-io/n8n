@@ -637,7 +637,7 @@
     "mailparser": "^3.2.0",
     "moment": "2.29.1",
     "moment-timezone": "^0.5.28",
-    "mongodb": "3.6.6",
+    "mongodb": "^3.6.9",
     "mqtt": "4.2.6",
     "mssql": "^6.2.0",
     "node-ssh": "^11.0.0",
