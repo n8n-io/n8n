@@ -246,8 +246,11 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			};
 			break;
 		case 'multi_select':
+			const multiSelectValue = value.multiSelectValue;
 			result = {
-				type: 'multi_select', multi_select: value.multiSelectValue
+				type: 'multi_select',
+				// tslint:disable-next-line: no-any
+				multi_select: (Array.isArray(multiSelectValue) ? multiSelectValue : multiSelectValue.split(',').map(v => v.trim()))
 					// tslint:disable-next-line: no-any
 					.filter((value: any) => value !== null)
 					.map((option: string) =>
