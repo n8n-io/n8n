@@ -47,6 +47,7 @@ import {
 	databasePageFields,
 	databasePageOperations,
 } from './DatabasePageDescription';
+import { getServers } from 'dns';
 
 export class Notion implements INodeType {
 	description: INodeTypeDescription = {
@@ -215,8 +216,16 @@ export class Notion implements INodeType {
 				const resource = this.getCurrentNodeParameter('resource') as string;
 				const operation = this.getCurrentNodeParameter('operation') as string;
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
-				const useNames = (resource === 'databasePage' && operation === 'getAll');
-				return (properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: (['select', 'multi_select'].includes(type) && useNames) ? option.name : option.id }));
+				if (resource === 'databasePage') {
+					if (['multi_select', 'select'].includes(type) && operation === 'getAll') {
+						return (properties[name][type].options)
+							.map((option: IDataObject) => ({ name: option.name, value: option.name }));
+					} else if (['multi_select'].includes(type) && ['create', 'update'].includes(operation)) {
+						return (properties[name][type].options)
+							.map((option: IDataObject) => ({ name: option.name, value: option.name }));
+					}
+				}
+				return (properties[name][type].options).map((option: IDataObject) => ({ name: option.name, value: option.id }));
 			},
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
