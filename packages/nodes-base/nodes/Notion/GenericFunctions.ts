@@ -24,6 +24,8 @@ import {
 
 import * as moment from 'moment-timezone';
 
+import { validate as uuidValidate } from 'uuid';
+
 export async function notionApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	try {
@@ -244,9 +246,15 @@ function getPropertyKeyValue(value: any, type: string, timezone: string) {
 			};
 			break;
 		case 'multi_select':
+			const multiSelectValue = value.multiSelectValue;
 			result = {
+				type: 'multi_select',
 				// tslint:disable-next-line: no-any
-				type: 'multi_select', multi_select: value.multiSelectValue.filter((id: any) => id !== null).map((option: string) => ({ id: option })),
+				multi_select: (Array.isArray(multiSelectValue) ? multiSelectValue : multiSelectValue.split(',').map(v => v.trim()))
+					// tslint:disable-next-line: no-any
+					.filter((value: any) => value !== null)
+					.map((option: string) =>
+						((!uuidValidate(option)) ? { name: option } : { id: option })),
 			};
 			break;
 		case 'email':
