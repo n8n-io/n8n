@@ -94,7 +94,7 @@ module.exports = {
 				},
 				additionalParameters: {
 					displayName: 'Zusätzliche Parameter',
-					description: 'Beschreibung Additional Params Beschreibung',
+					description: 'Beschreibung der zusätzlichen Parameter',
 					options: {
 						author: {
 							displayName: 'Autor',
@@ -107,6 +107,19 @@ module.exports = {
 						},
 					},
 				},
+				branch: {
+					displayName: 'Ast',
+					description: 'Beschreibung',
+				},
+				author: {
+					displayName: 'Autor',
+					description: 'Beschreibung',
+				},
+				committer: {
+					displayName: 'Commit-Macher',
+					description: 'Beschreibung',
+				},
+
 			},
 		},
 	},
