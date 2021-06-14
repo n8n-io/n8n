@@ -172,6 +172,9 @@ import {
 } from '../Interface';
 import { mapGetters } from 'vuex';
 
+const DEFAULT_START_POSITION_X = 250;
+const DEFAULT_START_POSITION_Y = 300;
+
 export default mixins(
 	copyPaste,
 	externalHooks,
@@ -383,11 +386,34 @@ export default mixins(
 				const nodes = data.workflow.nodes;
 				const hasStartNode = nodes.reduce((accu, node) => accu || node.type === START_NODE_TYPE , false);
 
+				let minX = nodes[0].position[0];
+				let minY = nodes[0].position[1];
+
+				nodes.forEach(node => {
+					if (node.position[0] < minX) {
+						minX = node.position[0];
+					}
+					if (node.position[1] < minY) {
+						minY = node.position[1];
+					}
+				});
+
+				const diffX = DEFAULT_START_POSITION_X - minX;
+				const diffY = DEFAULT_START_POSITION_Y - minY;
+
+				data.workflow.nodes.map((node) => {
+					node.position[0] += diffX + (hasStartNode? 0 : 100 + 100);
+					node.position[1] += diffY;
+				});
+
 				this.blankReset = hasStartNode;
 				this.$router.push({ name: 'NodeViewNew' });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
+				setTimeout(() => {
+					this.zoomToFit();
+				}, 0);
 
 				this.$externalHooks().run('template.open', { templateId, templateName: data.name });
 			},
@@ -1504,8 +1530,8 @@ export default mixins(
 						type: 'n8n-nodes-base.start',
 						typeVersion: 1,
 						position: [
-							250,
-							300,
+							DEFAULT_START_POSITION_X,
+							DEFAULT_START_POSITION_Y,
 						] as XYPositon,
 						parameters: {},
 					},
