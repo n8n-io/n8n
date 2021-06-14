@@ -95,6 +95,7 @@ module.exports = {
 
 				/**
 				 * Examples of `collection` parameters.
+				 * `multipleValueButtonText` is the button label.
 				 */
 				labels: {
 					displayName: 'Etiketten',
@@ -122,10 +123,12 @@ module.exports = {
 
 				/**
 				 * Example of a `fixedCollection` parameter.
+				 * `placeholder` is the button label.
 				 */
 				additionalParameters: {
 					displayName: 'Zusätzliche Parameter',
 					description: 'Beschreibung der zusätzlichen Parameter',
+					placeholder: 'Deutsch',
 					options: {
 						author: {
 							displayName: 'Autor',

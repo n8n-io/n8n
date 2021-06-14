@@ -13,6 +13,7 @@ export default {
 			dataToDisplayDidNotGetFound: 'Deutsch',
 		},
 		collectionParameter: {
+			chooseOptionToAdd: 'Choose Option To Add',
 			currentlyNoPropertiesExist: 'Deutsch',
 		},
 		credentialsEdit: {
@@ -239,6 +240,7 @@ export default {
 			variableSelector: 'Deutsch',
 		},
 		fixedCollectionParameter: {
+			chooseOptionToAdd: 'Deutsch ooo',
 			currentlyNoItemsExist: 'Deutsch',
 		},
 		genericHelpers: {

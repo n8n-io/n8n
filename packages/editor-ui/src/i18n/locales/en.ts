@@ -13,6 +13,7 @@ const baseTranslations = {
 			dataToDisplayDidNotGetFound: 'Data to display did not get found',
 		},
 		collectionParameter: {
+			chooseOptionToAdd: 'Choose Option To Add',
 			currentlyNoPropertiesExist: 'Currently no properties exist',
 		},
 		credentialsEdit: {
@@ -239,6 +240,7 @@ const baseTranslations = {
 			variableSelector: 'Variable Selector',
 		},
 		fixedCollectionParameter: {
+			chooseOptionToAdd: 'Choose Option To Add',
 			currentlyNoItemsExist: 'Currently no items exist',
 		},
 		genericHelpers: {

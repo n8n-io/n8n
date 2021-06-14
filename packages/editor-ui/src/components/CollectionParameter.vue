@@ -60,7 +60,9 @@ export default mixins(
 		},
 		computed: {
 			getPlaceholderText (): string {
-				return this.parameter.placeholder ? this.parameter.placeholder : 'Choose Option To Add';
+				return this.$translatePlaceholder(this.parameter)
+					? this.$translatePlaceholder(this.parameter)
+					: this.$translateBase('fixedCollectionParameter.chooseOptionToAdd');
 			},
 			getProperties (): INodeProperties[] {
 				const returnProperties = [];
