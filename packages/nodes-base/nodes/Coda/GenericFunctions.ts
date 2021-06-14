@@ -1,10 +1,18 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
+
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
+
+import {
+	IDataObject,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 export async function codaApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('codaApi');
@@ -13,11 +21,11 @@ export async function codaApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 	}
 
 	let options: OptionsWithUri = {
-		headers: { 'Authorization': `Bearer ${credentials.accessToken}`},
+		headers: { 'Authorization': `Bearer ${credentials.accessToken}` },
 		method,
 		qs,
 		body,
-		uri: uri ||`https://coda.io/apis/v1${resource}`,
+		uri: uri || `https://coda.io/apis/v1${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -27,6 +35,7 @@ export async function codaApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 
 	try {
 		return await this.helpers.request!(options);
+
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -48,8 +57,8 @@ export async function codaApiRequestAllItems(this: IExecuteFunctions | ILoadOpti
 
 	do {
 		responseData = await codaApiRequest.call(this, method, resource, body, query, uri);
-		uri = responseData.nextPageLink;
-		// @ts-ignore
+		if (responseData === undefined) return returnData;
+		uri = responseData?.nextPageLink;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
 		responseData.nextPageLink !== undefined &&

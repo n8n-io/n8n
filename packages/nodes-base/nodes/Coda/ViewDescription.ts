@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import { 
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const viewOperations = [
 	{
@@ -653,6 +655,7 @@ export const viewFields = [
 			loadOptionsMethod: 'getViewRows',
 			loadOptionsDependsOn: [
 				'viewId',
+				'docId',
 			],
 		},
 		displayOptions: {
@@ -683,7 +686,7 @@ export const viewFields = [
 				],
 			},
 		},
-		description: 'The view to get the row from.',
+		description: 'Key property that holds the columns to be updated',
 	},
 	{
 		displayName: 'Options',
