@@ -23,7 +23,7 @@
 				:value="displayValue"
 				:title="displayTitle"
 				:disabled="isReadOnly"
-				:placeholder="parameter.placeholder?parameter.placeholder:'Select date and time'"
+				:placeholder="translatePlaceholder(parameter) ? translatePlaceholder(parameter) : $translateBase('parameterInput.selectDateAndTime')"
 				:picker-options="dateTimePickerOptions"
 				@change="valueChanged"
 				@focus="setFocus"

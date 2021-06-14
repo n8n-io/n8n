@@ -1,6 +1,11 @@
 module.exports = {
 	de: {
 		bitwarden: {
+
+			// ----------------------------------
+			//       credentials params
+			// ----------------------------------
+
 			credentials: {
 				bitwardenApi: {
 					environment: {
@@ -17,7 +22,15 @@ module.exports = {
 				},
 			},
 
+			// ----------------------------------
+			//          node params
+			// ----------------------------------
+
 			parameters: {
+
+				/**
+				 * Examples of `options` parameters.
+				 */
 				resource: {
 					displayName: 'Ressource',
 					options: {
@@ -52,6 +65,10 @@ module.exports = {
 						},
 					},
 				},
+
+				/**
+				 * Examples of `string`, `number` and `boolean` parameters.
+				 */
 				collectionId: {
 					displayName: 'Sammlung-ID',
 				},
@@ -78,20 +95,41 @@ module.exports = {
 				// 	displayName: 'Artikel-ID',
 				// },
 
+				/**
+				 * Example of `collection` parameters.
+				 */
 				filters: {
 					displayName: 'Filter',
 					options: {
-						author: {
-							displayName: 'Autor',
+						actingUserId: {
+							displayName: 'Handelnder Benutzer',
+							description: 'Die eindeutige Kennung des handelnden Benutzers.',
 						},
-						branch: {
-							displayName: 'Ast',
+						start: {
+							displayName: 'Startdatum',
 						},
-						committer: {
-							displayName: 'Commit-Macher',
+						end: {
+							displayName: 'Enddatum',
 						},
 					},
 				},
+
+				/**
+				 * Examples of fields in `collection` parameters.
+				 * Note: Same level of nesting as `collection`.
+				 */
+				actingUserId: {
+					displayName: 'Handelnder Benutzer',
+				},
+				start: {
+					displayName: 'Startdatum',
+					placeholder: 'Deutsch',
+				},
+				end: {
+					displayName: 'Enddatum',
+					placeholder: 'Deutsch',
+				},
+
 			},
 		},
 	},

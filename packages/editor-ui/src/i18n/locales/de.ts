@@ -514,6 +514,7 @@ export default {
 			addExpression: 'Deutsch',
 			removeExpression: 'Deutsch',
 			resetValue: 'Deutsch',
+			selectDateAndTime: 'Deutsch',
 		},
 		pushConnection: {
 			showMessage: {

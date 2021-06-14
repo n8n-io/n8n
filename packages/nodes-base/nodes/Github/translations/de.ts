@@ -26,18 +26,21 @@ module.exports = {
 			// ----------------------------------
 
 			parameters: {
+
+				/**
+				 * Examples of `options` parameters.
+				 */
 				authentication: {
 					displayName: 'Authentifizierung',
 					options: {
 						accessToken: {
 							displayName: 'Zugangstoken',
 						},
+						oAuth2: {
+							displayName: 'OAuth2',
+						},
 					},
 				},
-
-				/**
-				 * Examples of two `options` parameters.
-				 */
 				resource: {
 					displayName: 'Ressource',
 					description: 'Beschreibung der Ressourcen',
@@ -75,7 +78,7 @@ module.exports = {
 				},
 
 				/**
-				 * Examples of `string` parameter.
+				 * Examples of `string` parameters.
 				 */
 				owner: {
 					displayName: 'Repo Besitzer',

@@ -512,6 +512,7 @@ const baseTranslations = {
 			addExpression: 'Add Expression',
 			removeExpression: 'Remove Expression',
 			resetValue: 'Reset Value',
+			selectDateAndTime: 'Select date and time',
 		},
 		pushConnection: {
 			showMessage: {
