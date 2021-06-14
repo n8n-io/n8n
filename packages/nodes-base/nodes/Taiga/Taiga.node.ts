@@ -17,17 +17,17 @@ import {
 } from './GenericFunctions';
 
 import {
-	issueOperations,
-} from './IssueOperations';
+	generalOperations,
+} from './generalOperations';
 
 import {
-	issueOperationFields,
-} from './issueOperationFields';
+	operationFields,
+} from './operationFields';
 
 export class Taiga implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Taiga-dev',
-		name: 'taiga-dev',
+		displayName: 'Taiga',
+		name: 'taiga',
 		icon: 'file:taiga.png',
 		group: ['transform'],
 		version: 1,
@@ -101,8 +101,8 @@ export class Taiga implements INodeType {
 				default: 'userstory',
 				description: 'Resource to consume.',
 			},
-			...issueOperations,
-			...issueOperationFields,
+			...generalOperations,
+			...operationFields,
 		],
 	};
 

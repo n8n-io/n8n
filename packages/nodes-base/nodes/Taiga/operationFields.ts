@@ -6,7 +6,7 @@ import {
 // Issue Update Fields
 // Task Update Fields
 
-export const issueOperationFields = [
+export const operationFields = [
 	{
 		displayName: 'Project ID',
 		name: 'projectId',
@@ -17,6 +17,7 @@ export const issueOperationFields = [
 		displayOptions: {
 			show: {
 				resource: [
+					'userstory',
 					'issue',
 					'task',
 				],
@@ -389,14 +390,14 @@ export const issueOperationFields = [
 					loadOptionsMethod: 'getProjectUsers',
 				},
 				default: '',
-				description: 'User id to you want assign the issue to',
+				description: 'User id to you want assign the user story to',
 			},
 			{
 				displayName: 'Blocked Note',
 				name: 'blocked_note',
 				type: 'string',
 				default: '',
-				description: 'Reason why the issue is blocked',
+				description: 'Reason why the user story is blocked',
 			},
 			{
 				displayName: 'Due Date',
@@ -460,9 +461,10 @@ export const issueOperationFields = [
 				default: '',
 			},
 			{
-				displayName: 'User Story Status ID',
+				displayName: 'Status ID',
 				name: 'status',
 				type: 'options',
+				description: 'Select the status you want the user story to be changed to.',
 				typeOptions: {
 					loadOptionsMethod: 'getUserstoryStatuses',
 				},
@@ -530,14 +532,14 @@ export const issueOperationFields = [
 					loadOptionsMethod: 'getProjectUsers',
 				},
 				default: '',
-				description: 'User id to you want assign the issue to',
+				description: 'User id to you want assign the task to',
 			},
 			{
 				displayName: 'Blocked Note',
 				name: 'blocked_note',
 				type: 'string',
 				default: '',
-				description: 'Reason why the issue is blocked',
+				description: 'Reason why the task is blocked',
 			},
 			{
 				displayName: 'Due Date',
