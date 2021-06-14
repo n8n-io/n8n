@@ -78,6 +78,20 @@ export const translate = Vue.extend({
 		},
 
 		/**
+		 * Translate the name for an option in a `collection` or `fixed collection` parameter,
+		 * e.g. an option name in an "Additional Options" fixed collection.
+		 */
+		$translateCollectionOptionName(
+			{ name: parameterName }: { name: string; },
+			{ name: optionName, displayName }: { name: string; displayName: string; },
+		) {
+			return this.translateSpecific({
+				key: `${this.activeNodeType}.parameters.${parameterName}.options.${optionName}.displayName`,
+				fallback: displayName,
+			});
+		},
+
+		/**
 		 * Translate the label for a button that adds another field-input pair to a collection.
 		 */
 		$translateMultipleValueButtonText(
@@ -147,7 +161,8 @@ export const translate = Vue.extend({
 		},
 
 		/**
-		 * Translate the name for an option inside the dropdown menu for an options-type parameter.
+		 * Translate the name for an option in an `options` parameter,
+		 * e.g. an option name in a "Resource" or "Operation" dropdown menu.
 		 */
 		$translateOptionName(
 			{ name: parameterName }: { name: string },
