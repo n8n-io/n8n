@@ -171,6 +171,7 @@ import {
 	IWorkflowTemplate,
 } from '../Interface';
 import { mapGetters } from 'vuex';
+import { ResponseError } from '@/api/helpers';
 
 const DEFAULT_START_POSITION_X = 250;
 const DEFAULT_START_POSITION_Y = 300;
@@ -374,11 +375,12 @@ export default mixins(
 					
 					data.workflow.nodes.forEach((node) => {
 						if (!this.$store.getters.nodeType(node.type)) {
-							throw new Error(`Node "${node.type}" is not supported`);
+							const name = node.type.replace('n8n-nodes-base.', '');
+							throw new Error(`The ${name} node is not supported`);
 						}
 					});
 				} catch (error) {
-					this.$showError(error, 'Problem opening template', 'There was a problem opening the template:');
+					this.$showError(error, `Couldn't import workflow`);
 					this.$router.push({ name: 'NodeViewNew' });
 					return;
 				}

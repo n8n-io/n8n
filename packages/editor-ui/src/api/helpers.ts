@@ -7,7 +7,7 @@ import {
 } from '../Interface';
 
 
-class ResponseError extends Error {
+export class ResponseError extends Error {
 	// The HTTP status code of response
 	httpStatusCode?: number;
 
@@ -65,8 +65,8 @@ async function request(config: {method: Method, baseURL: string, endpoint: strin
 		}
 
 		if (error.response && error.response.data && error.response.data.message) {
-			const {message, code, status, stack } = error.response.data;
-			throw new ResponseError(message, {errorCode: code, httpStatusCode: status, stack});
+			const {message, code, statusCode, stack } = error.response.data;
+			throw new ResponseError(message, {errorCode: code, httpStatusCode: statusCode, stack});
 		}
 
 		throw error;
