@@ -334,7 +334,7 @@ const config = convict({
 	},
 	host: {
 		format: String,
-		default: '172.17.0.1',
+		default: 'localhost',
 		arg: 'host',
 		env: 'N8N_HOST',
 		doc: 'Host name n8n can be reached',
