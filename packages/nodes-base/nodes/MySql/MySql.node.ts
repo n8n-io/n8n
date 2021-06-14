@@ -15,7 +15,7 @@ export class MySql implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MySQL',
 		name: 'mySql',
-		icon: 'file:mysql.png',
+		icon: 'file:mysql.svg',
 		group: ['input'],
 		version: 1,
 		description: 'Get, add and update data in MySQL.',
@@ -288,7 +288,7 @@ export class MySql implements INodeType {
 
 			const insertSQL = `INSERT ${insertPriority || ''} ${insertIgnore ? 'IGNORE' : ''} INTO ${table}(${columnString}) VALUES ${items.map(item => insertPlaceholder).join(',')};`;
 			const queryItems = insertItems.reduce((collection, item) => collection.concat(Object.values(item as any)), []); // tslint:disable-line:no-any
-			
+
 			const queryResult = await connection.query(insertSQL, queryItems);
 
 			returnItems = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);

@@ -223,6 +223,7 @@ export interface IExecuteFunctions {
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;
 	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
+	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
 	helpers: {
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
 	};
@@ -744,6 +745,7 @@ export interface IWorkflowExecuteAdditionalData {
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
 	restApiUrl: string;
+	sendMessageToUI?: (source: string, message: any) => void; // tslint:disable-line:no-any
 	timezone: string;
 	webhookBaseUrl: string;
 	webhookTestBaseUrl: string;
@@ -764,10 +766,21 @@ export interface IWorkflowSettings {
 	[key: string]: IDataObject | string | number | boolean | undefined;
 }
 
-export interface IRawErrorObject {
-	[key: string]: string | object | number | boolean | undefined | null | string[] | object[] | number[] | boolean[];
+export type LogTypes = 'debug' | 'verbose' | 'info' | 'warn' | 'error';
+
+export interface ILogger {
+	log: (type: LogTypes, message: string, meta?: object) => void;
+	debug: (message: string, meta?: object) => void;
+	verbose: (message: string, meta?: object) => void;
+	info: (message: string, meta?: object) => void;
+	warn: (message: string, meta?: object) => void;
+	error: (message: string, meta?: object) => void;
 }
 
 export interface IStatusCodeMessages {
 	[key: string]: string;
 }
+
+export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+
+export type JsonObject = { [key: string]: JsonValue };

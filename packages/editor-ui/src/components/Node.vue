@@ -47,14 +47,11 @@
 
 import Vue from 'vue';
 import { nodeBase } from '@/components/mixins/nodeBase';
+import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import {
-	INode,
-	INodeIssueObjectProperty,
-	INodePropertyOptions,
 	INodeTypeDescription,
-	ITaskData,
 	NodeHelpers,
 } from 'n8n-workflow';
 
@@ -62,7 +59,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 
 import mixins from 'vue-typed-mixins';
 
-export default mixins(nodeBase, workflowHelpers).extend({
+export default mixins(nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Node',
 	components: {
 		NodeIcon,
@@ -133,41 +130,7 @@ export default mixins(nodeBase, workflowHelpers).extend({
 			}
 		},
 		nodeSubtitle (): string | undefined {
-			if (this.data.notesInFlow) {
-				return this.data.notes;
-			}
-
-			if (this.nodeType !== null && this.nodeType.subtitle !== undefined) {
-				return this.workflow.expression.getSimpleParameterValue(this.data as INode, this.nodeType.subtitle, 'internal') as string | undefined;
-			}
-
-			if (this.data.parameters.operation !== undefined) {
-				const operation = this.data.parameters.operation as string;
-				if (this.nodeType === null) {
-					return operation;
-				}
-
-				const operationData = this.nodeType.properties.find((property) => {
-					return property.name === 'operation';
-				});
-				if (operationData === undefined) {
-					return operation;
-				}
-
-				if (operationData.options === undefined) {
-					return operation;
-				}
-
-				const optionData = operationData.options.find((option) => {
-					return (option as INodePropertyOptions).value === this.data.parameters.operation;
-				});
-				if (optionData === undefined) {
-					return operation;
-				}
-
-				return optionData.name;
-			}
-			return undefined;
+			return this.getNodeSubtitle(this.data, this.nodeType, this.workflow);
 		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
@@ -186,7 +149,7 @@ export default mixins(nodeBase, workflowHelpers).extend({
 			this.disableNodes([this.data]);
 		},
 		executeNode () {
-			this.$emit('runWorkflow', this.data.name);
+			this.$emit('runWorkflow', this.data.name, 'Node.executeNode');
 		},
 		deleteNode () {
 			Vue.nextTick(() => {

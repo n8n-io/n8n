@@ -1,7 +1,8 @@
 {
 	"compilerOptions": {
 		"lib": [
-			"es2017"
+			"es2017",
+			"es2019.array"
 		],
 		"types": [
 			"node",

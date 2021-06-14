@@ -11,7 +11,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import * as uuid from 'uuid/v4';
+import { v4 as uuid } from 'uuid';
 
 import {
 	snakeCase,
@@ -29,7 +29,7 @@ export class FacebookTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Facebook Trigger',
 		name: 'facebookTrigger',
-		icon: 'file:facebook.png',
+		icon: 'file:facebook.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["appId"] +"/"+ $parameter["object"]}}',
