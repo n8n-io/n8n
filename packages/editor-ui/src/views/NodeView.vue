@@ -415,6 +415,7 @@ export default mixins(
 				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
 				setTimeout(() => {
 					this.zoomToFit();
+					this.$store.commit('setStateDirty', true);
 				}, 0);
 
 				this.$externalHooks().run('template.open', { templateId, templateName: data.name });
