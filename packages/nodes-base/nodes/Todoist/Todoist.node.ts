@@ -35,7 +35,7 @@ export class Todoist implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Todoist',
 		name: 'todoist',
-		icon: 'file:todoist.png',
+		icon: 'file:todoist.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

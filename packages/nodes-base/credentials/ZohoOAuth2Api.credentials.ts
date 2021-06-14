@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class ZohoOAuth2Api implements ICredentialType {
@@ -10,11 +10,11 @@ export class ZohoOAuth2Api implements ICredentialType {
 	];
 	displayName = 'Zoho OAuth2 API';
 	documentationUrl = 'zoho';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
-			type: 'options' as NodePropertyTypes,
+			type: 'options',
 			options: [
 				{
 					name: 'https://accounts.zoho.com/oauth/v2/auth',
@@ -33,7 +33,7 @@ export class ZohoOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
-			type: 'options' as NodePropertyTypes,
+			type: 'options',
 			options: [
 				{
 					name: 'US - https://accounts.zoho.com/oauth/v2/token',
@@ -62,19 +62,19 @@ export class ZohoOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: 'ZohoCRM.modules.ALL,ZohoCRM.settings.all,ZohoCRM.users.all',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: 'access_type=offline',
 		},
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: 'body',
 		},
 	];
