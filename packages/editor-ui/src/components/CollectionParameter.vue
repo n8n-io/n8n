@@ -13,7 +13,7 @@
 					<el-option
 						v-for="item in parameterOptions"
 						:key="item.name"
-						:label="$translateCollectionOptionName(item.displayName)"
+						:label="$translateCollectionOptionName(parameter, item)"
 						:value="item.name">
 					</el-option>
 				</el-select>
