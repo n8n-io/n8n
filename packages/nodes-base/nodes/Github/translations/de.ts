@@ -1,6 +1,11 @@
 module.exports = {
 	de: {
 		github: {
+
+			// ----------------------------------
+			//       credentials params
+			// ----------------------------------
+
 			credentials: {
 				githubOAuth2Api: {
 					server: {
@@ -16,6 +21,10 @@ module.exports = {
 				},
 			},
 
+			// ----------------------------------
+			//          node params
+			// ----------------------------------
+
 			parameters: {
 				authentication: {
 					displayName: 'Authentifizierung',
@@ -25,6 +34,10 @@ module.exports = {
 						},
 					},
 				},
+
+				/**
+				 * Examples of two `options` parameters.
+				 */
 				resource: {
 					displayName: 'Ressource',
 					description: 'Beschreibung der Ressourcen',
@@ -60,9 +73,14 @@ module.exports = {
 						},
 					},
 				},
+
+				/**
+				 * Examples of `string` parameter.
+				 */
 				owner: {
 					displayName: 'Repo Besitzer',
-					placeholder: 'Die n8n-io',
+					placeholder: 'Deutsch',
+					description: 'Deutsch',
 				},
 				repository: {
 					displayName: 'Repo Name',
@@ -74,14 +92,10 @@ module.exports = {
 				body: {
 					displayName: 'Körper',
 				},
-				label: {
-					displayName: 'Etikett',
-					description: 'Beschreibung des Etikettes',
-				},
-				assignee: {
-					displayName: 'Beauftragte',
-					description: 'Beschreibung des Beauftragtens',
-				},
+
+				/**
+				 * Examples of `collection` parameters.
+				 */
 				labels: {
 					displayName: 'Etiketten',
 					description: 'Beschreibung der Etiketten',
@@ -92,6 +106,23 @@ module.exports = {
 					description: 'Beschreibung der Beauftragten',
 					multipleValueButtonText: 'Beautragten hinzufügen',
 				},
+
+				/**
+				 * Examples of fields in `collection` parameters.
+				 * Note: Same level of nesting as `collection`.
+				 */
+				label: {
+					displayName: 'Etikett',
+					description: 'Beschreibung des Etikettes',
+				},
+				assignee: {
+					displayName: 'Beauftragte',
+					description: 'Beschreibung des Beauftragtens',
+				},
+
+				/**
+				 * Example of a `fixedCollection` parameter.
+				 */
 				additionalParameters: {
 					displayName: 'Zusätzliche Parameter',
 					description: 'Beschreibung der zusätzlichen Parameter',
@@ -107,17 +138,27 @@ module.exports = {
 						},
 					},
 				},
-				branch: {
-					displayName: 'Ast',
-					description: 'Beschreibung',
-				},
-				author: {
-					displayName: 'Autor',
-					description: 'Beschreibung',
-				},
+
+				/**
+				 * Example of a field in a `fixedCollection` parameter.
+				 * Note: Same level of nesting as `fixedCollection`.
+				 */
 				committer: {
 					displayName: 'Commit-Macher',
 					description: 'Beschreibung',
+				},
+
+				/**
+				 * Examples of options in a field in a `fixedCollection` parameter.
+				 * Note: Same level of nesting as `fixedCollection`.
+				 */
+				name: {
+					displayName: 'Deutsch',
+					description: 'Deutsch',
+				},
+				email: {
+					displayName: 'Deutsch',
+					description: 'Deutsch',
 				},
 
 			},
