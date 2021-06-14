@@ -833,12 +833,12 @@ export default mixins(
 				const scaleY = editorHeight / diffY;
 
 				const zoomLevel = Math.min(scaleX, scaleY, 1);
-				const xOffset = (minX * -1 + 30) * zoomLevel + SIDEBAR_WIDTH;
-				let yOffset = (minY * -1 + 30) * zoomLevel + HEADER_HEIGHT;
-				if ((maxY - minY) < editorHeight / 2) {
-					yOffset = (minY * -1 / 2 + 30) * zoomLevel + HEADER_HEIGHT;
-				}
+				let xOffset = (minX * -1 + 30) * zoomLevel + SIDEBAR_WIDTH;
+				xOffset += (editorWidth - SIDEBAR_WIDTH - (maxX - minX + 200) * zoomLevel) / 2;
 
+				let yOffset = (minY * -1 + 30) * zoomLevel + HEADER_HEIGHT;
+				yOffset += (editorHeight - HEADER_HEIGHT - (maxY - minY + 250) * zoomLevel) / 2;
+				
 				this.nodeViewScale = zoomLevel;
 				this.setZoomLevel(zoomLevel);
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
