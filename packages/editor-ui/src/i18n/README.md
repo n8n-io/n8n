@@ -2,9 +2,9 @@
 
 You can translate:
 
-- strings for node-specific params, e.g. `Resource` and `Operation` in the GitHub node.
-- strings for credentials-specific params, e.g. `Server` in the GitHub node's OAuth2 credentials.
-- strings for base UI elements, i.e. any other string in the n8n frontend.
+  - strings for node-specific params, e.g. `Resource` and `Operation` in the GitHub node.
+  - strings for credentials-specific params, e.g. `Server` in the GitHub node's OAuth2 credentials.
+  - strings for base UI elements, i.e. any other string in the n8n frontend.
 
 Any untranslated parameter values will fall back to the originals in English.
 
@@ -18,19 +18,19 @@ A locale identifiers is a two-letter language code compatible with the [`Accept-
 
 To translate node-specific params:
 
-1. Select a node to translate.
-2. Navigate to `/packages/nodes-base/nodes/{node}`.
-3. Create a dir called `translations`.
-4. Create a `{localeIdentifier}.ts` file containing the translations, e.g. `de.ts`.
-5. Populate the `{localeIdentifier}.ts` file - see below.
-6. (TODO: Switch the n8n language. How?)
+ 1. Select a node to translate.
+ 2. Navigate to `/packages/nodes-base/nodes/{node}`.
+ 3. Create a dir called `translations`.
+ 4. Create a `{localeIdentifier}.ts` file containing the translations, e.g. `de.ts`.
+ 5. Populate the `{localeIdentifier}.ts` file - see below.
+ 6. (TODO: Switch the n8n language. How?)
 
 To populate the `{localeIdentifier}.ts` file, you will need:
 
-- the name of the node to translate (`nodeName` below), located in `/packages/nodes-base/nodes/{node}/{node}.node.ts`, in the class field `name`, e.g. for the GitHub node it is `github`, and
-- the names of the node params to translate (`parameterName` below),
-	- located in `/packages/nodes-base/nodes/{node}/{node}.node.ts`, in the class field `properties`, and
-	- if present, located in `/packages/nodes-base/nodes/{node}/**/{node}Description.ts`, in the `*Operations` and `*Fields` constants.
+  - the name of the node to translate (`nodeName` below), located in `/packages/nodes-base/nodes/{node}/{node}.node.ts`, in the class field `name`, e.g. for the GitHub node it is `github`, and
+  - the names of the node params to translate (`parameterName` below),
+   - located in `/packages/nodes-base/nodes/{node}/{node}.node.ts`, in the class field `properties`, and
+   - if present, located in `/packages/nodes-base/nodes/{node}/**/{node}Description.ts`, in the `*Operations` and `*Fields` constants.
 
 Example:
 
@@ -52,21 +52,21 @@ The square brackets `[]` indicate a value to enter and should _not_ be included.
 
 Inside `[parameterName]`, translatable keys may be:
 
-- `displayName`,
-- `name`,
-- `description`,
-- `placeholder`,
-- `options`, and
-- `multipleValueButtonText`.
+  - `displayName`,
+  - `name`,
+  - `description`,
+  - `placeholder`,
+  - `options`, and
+  - `multipleValueButtonText`.
 
 This applies to all param types:
 
-- `string`,
-- `number`,
-- `boolean`,
-- `options`,
-- `collection`, and
-- `fixedCollection`
+  - `string`,
+  - `number`,
+  - `boolean`,
+  - `options`,
+  - `collection`, and
+  - `fixedCollection`.
 
 > Note: Only keys _existing in the node param_ may be translated. If a node has a parameter that does not have a description, then adding a translation for `description` will have no effect.
 
@@ -127,20 +127,20 @@ committer: {
 
 To translate credentials-specific params:
 
-1. Select a node's credentials to translate.
-2. Navigate to `/packages/nodes-base/nodes/{node}`.
-3. Create a dir called `translations`.
-4. Create a `{localeIdentifier}.ts` file containing the translations, e.g. `de.ts`.
-5. Populate the `{localeIdentifier}.ts` file - see below.
-6. (TODO: Switch the n8n language. How?)
+ 1. Select a node's credentials to translate.
+ 2. Navigate to `/packages/nodes-base/nodes/{node}`.
+ 3. Create a dir called `translations`.
+ 4. Create a `{localeIdentifier}.ts` file containing the translations, e.g. `de.ts`.
+ 5. Populate the `{localeIdentifier}.ts` file - see below.
+ 6. (TODO: Switch the n8n language. How?)
 
 > If you already have a `.ts` file for node-specific params, use that one. There should be only one locale identifier file per language.
 
 To populate the `{localeIdentifier}.ts` file, you will need:
 
-- the name of the node to translate (`nodeName` below), located in `/packages/nodes-base/nodes/{node}/{node}.node.ts`, in the class field `name`, e.g. for the GitHub node it is `github`,
-- the name of the credentials type(s) to translate (`credentialsType1` and `credentialsType2` below), located in `/packages/nodes-base/nodes/{node}/{node}.node.ts`, in the class field `credentials`, in the key `name`, and
-- the names of the credentials params to translate (`parameterName` below), located in `/packages/nodes-base/credentials/{node}Api.credentials.ts` or `/packages/nodes-base/credentials/{node}OAuth2Api.credentials.ts`, in the class field `properties`.
+  - the name of the node to translate (`nodeName` below), located in `/packages/nodes-base/nodes/{node}/{node}.node.ts`, in the class field `name`, e.g. for the GitHub node it is `github`,
+  - the name of the credentials type(s) to translate (`credentialsType1` and `credentialsType2` below), located in `/packages/nodes-base/nodes/{node}/{node}.node.ts`, in the class field `credentials`, in the key `name`, and
+  - the names of the credentials params to translate (`parameterName` below), located in `/packages/nodes-base/credentials/{node}Api.credentials.ts` or `/packages/nodes-base/credentials/{node}OAuth2Api.credentials.ts`, in the class field `properties`.
 
 Example:
 
@@ -175,13 +175,13 @@ The properties in the class field `properties` with `type: "hidden"` are not use
 
 To translate base UI strings:
 
-1. Navigate to `/packages/editor-ui/i18n/locales`.
-2. Create a `{localeIdentifier}.ts` file containing the translations, e.g. `de.ts`.
-	2.1. Copy the `en.ts` file and place it alongside the original.
-	2.2. Rename the copy using the locale identifier, e.g. `de.ts`.
-	2.3. Replace `en` in line 2 of the copy with the locale identifier.
-3. Populate the `{localeIdentifier}.ts` file - see below.
-4. (TODO: Switch the n8n language. How?)
+ 1. Navigate to `/packages/editor-ui/i18n/locales`.
+ 2. Create a `{localeIdentifier}.ts` file containing the translations, e.g. `de.ts`.
+  2.1. Copy the `en.ts` file and place it alongside the original.
+  2.2. Rename the copy using the locale identifier, e.g. `de.ts`.
+  2.3. Replace `en` in line 2 of the copy with the locale identifier.
+ 3. Populate the `{localeIdentifier}.ts` file - see below.
+ 4. (TODO: Switch the n8n language. How?)
 
 Example:
 
