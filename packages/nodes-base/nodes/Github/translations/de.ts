@@ -74,9 +74,6 @@ module.exports = {
 				body: {
 					displayName: 'Körper',
 				},
-				// TODO: Decide if a param like `Label` should be considered
-				// a) a hidden top-level param with a header `Labels`, or
-				// b) a nested param under the top-level param `Labels`
 				label: {
 					displayName: 'Etikett',
 					description: 'Beschreibung des Etikettes',
