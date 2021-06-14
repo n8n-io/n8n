@@ -789,9 +789,10 @@ const baseTranslations = {
 			workflowSettings: 'Workflow Settings',
 		},
 
+		// TODO: Only for testing? Remove?
 		'n8n-nodes-base': {
 			start: {
-				hello: 'hallöchen',
+				hello: 'Hello!',
 			},
 		},
 	},

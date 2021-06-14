@@ -568,8 +568,7 @@ export default {
 			noMatchingTagsExist: 'Deutsch',
 			noTagsExist: 'Deutsch',
 			showError: {
-				message: 'Deutsch'
-				,
+				message: 'Deutsch',
 				title: 'Deutsch',
 			},
 			typeToCreateATag: 'Deutsch',
@@ -793,6 +792,7 @@ export default {
 			workflowSettings: 'Deutsch',
 		},
 
+		// TODO: Only for testing? Remove?
 		'n8n-nodes-base': {
 			start: {
 				hello: 'Deutsch',
