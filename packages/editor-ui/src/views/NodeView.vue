@@ -39,6 +39,9 @@
 			@closeNodeCreator="closeNodeCreator"
 			></node-creator>
 		<div :class="{ 'zoom-menu': true, expanded: !sidebarMenuCollapsed }">
+			<button @click="zoomToFit" class="button-white" title="Zoom To Fit">
+				<font-awesome-icon icon="expand"/>
+			</button>
 			<button @click="setZoom('in')" class="button-white" title="Zoom In">
 				<font-awesome-icon icon="search-plus"/>
 			</button>
@@ -747,9 +750,10 @@ export default mixins(
 				} else {
 					this.nodeViewScale = 1;
 				}
+				this.setZoomLevel(this.nodeViewScale);
+			},
 
-				const zoomLevel = this.nodeViewScale;
-
+			setZoomLevel (zoomLevel: number) {
 				const element = this.instance.getContainer() as HTMLElement;
 				const prependProperties = ['webkit', 'moz', 'ms', 'o'];
 				const scaleString = 'scale(' + zoomLevel + ')';
@@ -762,6 +766,54 @@ export default mixins(
 
 				// @ts-ignore
 				this.instance.setZoom(zoomLevel);
+			},
+
+			zoomToFit () {
+				const nodes = this.$store.getters.allNodes as INodeUi[];
+				let minX = nodes[0].position[0];
+				let minY = nodes[0].position[1];
+				let maxX = nodes[0].position[0];
+				let maxY = nodes[0].position[1];
+
+				nodes.forEach(node => {
+					if (node.position[0] < minX) {
+						minX = node.position[0];
+					}
+					if (node.position[1] < minY) {
+						minY = node.position[1];
+					}
+					if (node.position[0] > maxX) {
+						maxX = node.position[0];
+					}
+					if (node.position[1] > maxY) {
+						maxY = node.position[1];
+					}
+				});
+
+				const HEADER_HEIGHT = 65;
+				const SIDEBAR_WIDTH = 65;
+
+				const PADDING_Y = 400;
+				const PADDING_X = 400;
+
+				const editorWidth = window.innerWidth;
+				const diffX = maxX - minX + SIDEBAR_WIDTH + PADDING_X;
+				const scaleX = editorWidth / diffX;
+
+				const editorHeight = window.innerHeight;
+				const diffY = maxY - minY + HEADER_HEIGHT + PADDING_Y;
+				const scaleY = editorHeight / diffY;
+
+				const zoomLevel = Math.min(scaleX, scaleY, 1);
+				const xOffset = (minX * -1 + 30) * zoomLevel + SIDEBAR_WIDTH;
+				let yOffset = (minY * -1 + 30) * zoomLevel + HEADER_HEIGHT;
+				if ((maxY - minY) < editorHeight / 2) {
+					yOffset = (minY * -1 / 2 + 30) * zoomLevel + HEADER_HEIGHT;
+				}
+
+				this.nodeViewScale = zoomLevel;
+				this.setZoomLevel(zoomLevel);
+				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
 			},
 
 			async stopExecution () {
