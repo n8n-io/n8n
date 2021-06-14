@@ -194,4 +194,6 @@ export default {
 
 To populate the `{localeIdentifier}.ts` file, translate the strings and remove those that will not be translated. Any untranslated strings will fall back to the originals in English.
 
+For base UI strings that contain a variable in curly braces `{var}`, e.g. `'The execution with the id {activeExecutionId} got stopped!'`, the translation _must not modify_ the variable with curly braces, keeping it exactly as in English: `'Die Ausführung mit der ID {activeExecutionId} wurde gestoppt!'`.
+
 > Note that the strings in `en.ts` are _most but not all_ the strings in the n8n frontend. Bear in mind also that some of the strings visible in the frontend are set in the backend, which remains to be adjusted for translation.
