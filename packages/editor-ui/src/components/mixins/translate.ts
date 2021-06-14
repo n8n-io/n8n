@@ -164,7 +164,7 @@ export const translate = Vue.extend({
 		 * Translate the name for an option in an `options` parameter,
 		 * e.g. an option name in a "Resource" or "Operation" dropdown menu.
 		 */
-		$translateOptionName(
+		$translateOptionsOptionName(
 			{ name: parameterName }: { name: string },
 			{ value: optionName, name: displayName }: { value: string; name: string; },
 			isCredential = false,
@@ -181,9 +181,10 @@ export const translate = Vue.extend({
 		},
 
 		/**
-		 * Translate the description for an option inside the dropdown for an options-type parameter.
+		 * Translate the description for an option in an `options` parameter,
+		 * e.g. an option name in a "Resource" or "Operation" dropdown menu.
 		 */
-		$translateOptionDescription(
+		$translateOptionsOptionDescription(
 			{ name: parameterName }: { name: string },
 			{ value: optionName, description }: { value: string; description: string; },
 			isCredential = false,

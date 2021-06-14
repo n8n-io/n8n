@@ -54,10 +54,10 @@
 				v-for="option in parameterOptions"
 				:value="option.value"
 				:key="option.value"
-				:label="translateOptionName(parameter, option)"
+				:label="translateOptionsOptionName(parameter, option)"
 			>
-				<div class="option-headline">{{ translateOptionName(parameter, option) }}</div>
-				<div v-if="translateOptionDescription(parameter, option)" class="option-description" v-html="translateOptionDescription(parameter, option)"></div>
+				<div class="option-headline">{{ translateOptionsOptionName(parameter, option) }}</div>
+				<div v-if="translateOptionsOptionDescription(parameter, option)" class="option-description" v-html="translateOptionsOptionDescription(parameter, option)"></div>
 			</el-option>
 		</el-select>
 
@@ -593,22 +593,22 @@ export default mixins(
 					this.credentialsParams,
 				);
 			},
-			translateOptionName (
+			translateOptionsOptionName (
 				parameter: { name: string },
 				option: { value: string, name: string },
 			) {
-				return this.$translateOptionName(
+				return this.$translateOptionsOptionName(
 					parameter,
 					option,
 					this.isCredential,
 					this.credentialsParams,
 				);
 			},
-			translateOptionDescription (
+			translateOptionsOptionDescription (
 				parameter: { name: string },
 				option: { value: string; description: string; },
 			) {
-				return this.$translateOptionDescription(
+				return this.$translateOptionsOptionDescription(
 					parameter,
 					option,
 					this.isCredential,
