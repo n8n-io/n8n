@@ -505,8 +505,8 @@ const baseTranslations = {
 			withWorkflowTagsYouReFree: 'With workflow tags, you\'re free to create the perfect tagging system for your flows',
 		},
 		oauth2: {
-			clientId: '',
-			clientSecret: '',
+			clientId: 'Client ID',
+			clientSecret: 'Client Secret',
 		},
 		parameterInput: {
 			addExpression: 'Add Expression',
