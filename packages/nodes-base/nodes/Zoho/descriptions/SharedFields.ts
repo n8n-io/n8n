@@ -380,14 +380,14 @@ export const makeGetAllFields = (resource: CamelCaseResource) => {
 					name: 'approved',
 					type: 'boolean',
 					default: true,
-					description: 'Retrieve only approved leads. Defaults to true.',
+					description: 'Retrieve only approved records. Defaults to true.',
 				},
 				{
 					displayName: 'Converted',
 					name: 'converted',
 					type: 'boolean',
 					default: false,
-					description: 'Retrieve only converted leads. Defaults to false.',
+					description: 'Retrieve only converted records. Defaults to false.',
 				},
 				{
 					displayName: 'Fields',
@@ -404,7 +404,7 @@ export const makeGetAllFields = (resource: CamelCaseResource) => {
 					name: 'include_child',
 					type: 'boolean',
 					default: false,
-					description: 'Retrieve only leads from child territories.',
+					description: 'Retrieve only records from child territories.',
 				},
 				{
 					displayName: 'Sort By',
@@ -414,7 +414,7 @@ export const makeGetAllFields = (resource: CamelCaseResource) => {
 						loadOptionsMethod,
 					},
 					default: [],
-					description: 'Field to sort leads by.',
+					description: 'Field to sort records by.',
 				},
 				{
 					displayName: 'Sort Order',
@@ -438,7 +438,7 @@ export const makeGetAllFields = (resource: CamelCaseResource) => {
 					name: 'territory_id',
 					type: 'string',
 					default: '',
-					description: 'Retrieve only leads from this territory.',
+					description: 'Retrieve only records from this territory.',
 				},
 			],
 		},
