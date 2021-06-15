@@ -13,7 +13,7 @@ export default {
 			dataToDisplayDidNotGetFound: 'Deutsch',
 		},
 		collectionParameter: {
-			chooseOptionToAdd: 'Choose Option To Add',
+			chooseOptionToAdd: 'Deutsch',
 			currentlyNoPropertiesExist: 'Deutsch',
 		},
 		credentialsEdit: {
@@ -792,11 +792,5 @@ export default {
 			workflowSettings: 'Deutsch',
 		},
 
-		// TODO: Only for testing? Remove?
-		'n8n-nodes-base': {
-			start: {
-				hello: 'Deutsch',
-			},
-		},
 	},
 };
