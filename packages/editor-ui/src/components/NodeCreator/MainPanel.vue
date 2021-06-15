@@ -1,7 +1,7 @@
 <template>
 	<div @click="onClickInside" class="container">
 		<SlideTransition>
-			<SubcategoryPanel v-if="activeSubcategory" :elements="subcategorizedNodes" :title="activeSubcategory.properties.subcategory" :activeIndex="activeIndex" @close="onSubcategoryClose" @selected="selected" />
+			<SubcategoryPanel v-if="activeSubcategory" :elements="subcategorizedNodes" :title="activeSubcategory.properties.subcategory" :activeIndex="activeSubcategoryIndex" @close="onSubcategoryClose" @selected="selected" />
 		</SlideTransition>
 		<div class="main-panel">
 			<SearchBar
@@ -72,6 +72,7 @@ export default mixins(externalHooks).extend({
 			activeCategory: [] as string[],
 			activeSubcategory: null as INodeCreateElement | null,
 			activeIndex: 1,
+			activeSubcategoryIndex: 0,
 			nodeFilter: '',
 			selectedType: ALL_NODE_FILTER,
 			searchEventBus: new Vue(),
@@ -158,11 +159,40 @@ export default mixins(externalHooks).extend({
 	},
 	methods: {
 		nodeFilterKeyDown(e: KeyboardEvent) {
+			if (!['Escape', 'Tab'].includes(e.key)) {
+				// We only want to propagate 'Escape' as it closes the node-creator and
+				// 'Tab' which toggles it
+				e.stopPropagation();
+			}
+
+			if (this.activeSubcategory) {
+				const activeList = this.subcategorizedNodes;
+				const activeNodeType = activeList[this.activeSubcategoryIndex];
+
+				if (e.key === 'ArrowDown' && this.activeSubcategory) {
+					this.activeSubcategoryIndex++;
+					this.activeSubcategoryIndex = Math.min(
+						this.activeSubcategoryIndex,
+						activeList.length - 1,
+					);
+				}
+				else if (e.key === 'ArrowUp' && this.activeSubcategory) {
+					this.activeSubcategoryIndex--;
+					this.activeSubcategoryIndex = Math.max(this.activeSubcategoryIndex, 0);
+				}
+				else if (e.key === 'Enter') {
+					this.selected(activeNodeType);
+				}
+				else if (e.key === 'ArrowLeft') {
+					this.onSubcategoryClose();
+				}
+
+				return;
+			}
+
 			let activeList;
 			if (this.searchFilter.length > 0) {
 				activeList = this.filteredNodeTypes;
-			} else if (this.activeSubcategory) {
-				activeList = this.subcategorizedNodes;
 			} else {
 				activeList = this.categorized;
 			}
@@ -183,14 +213,6 @@ export default mixins(externalHooks).extend({
 				this.selected(activeNodeType);
 			} else if (e.key === 'ArrowRight' && activeNodeType.type === 'subcategory') {
 				this.selected(activeNodeType);
-			} else if (e.key === 'ArrowLeft' && this.activeSubcategory) {
-				this.onSubcategoryClose();
-			}
-
-			if (!['Escape', 'Tab'].includes(e.key)) {
-				// We only want to propagate 'Escape' as it closes the node-creator and
-				// 'Tab' which toggles it
-				e.stopPropagation();
 			}
 		},
 		selected(element: INodeCreateElement) {
@@ -221,13 +243,13 @@ export default mixins(externalHooks).extend({
 			);
 		},
 		onSubcategorySelected(selected: INodeCreateElement) {
+			this.activeSubcategoryIndex = 0;
 			this.activeSubcategory = selected;
-			this.activeIndex = 0;
 		},
 
 		onSubcategoryClose() {
 			this.activeSubcategory = null;
-			this.activeIndex = 0;
+			this.activeSubcategoryIndex = 0;
 			this.nodeFilter = '';
 		},
 
