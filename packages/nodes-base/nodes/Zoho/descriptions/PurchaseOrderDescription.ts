@@ -28,6 +28,10 @@ export const purchaseOrderOperations = [
 				value: 'create',
 			},
 			{
+				name: 'Create or update',
+				value: 'upsert',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 			},
@@ -42,10 +46,6 @@ export const purchaseOrderOperations = [
 			{
 				name: 'Update',
 				value: 'update',
-			},
-			{
-				name: 'Upsert',
-				value: 'upsert',
 			},
 		],
 		default: 'create',

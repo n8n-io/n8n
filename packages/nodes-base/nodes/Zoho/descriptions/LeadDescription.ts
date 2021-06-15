@@ -26,6 +26,10 @@ export const leadOperations = [
 				value: 'create',
 			},
 			{
+				name: 'Create or update',
+				value: 'upsert',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 			},
@@ -40,10 +44,6 @@ export const leadOperations = [
 			{
 				name: 'Update',
 				value: 'update',
-			},
-			{
-				name: 'Upsert',
-				value: 'upsert',
 			},
 		],
 		default: 'create',
