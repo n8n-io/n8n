@@ -203,7 +203,7 @@ const getWorkflowCorners = (nodes: INodeUi[]): {minX: number, minY: number, maxX
 		minX,
 		minY,
 		maxX,
-		maxY
+		maxY,
 	};
 };
 
