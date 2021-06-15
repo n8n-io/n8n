@@ -171,10 +171,12 @@ import {
 	IWorkflowTemplate,
 } from '../Interface';
 import { mapGetters } from 'vuex';
-import { ResponseError } from '@/api/helpers';
 
+const NODE_SIZE = 100;
 const DEFAULT_START_POSITION_X = 250;
 const DEFAULT_START_POSITION_Y = 300;
+const HEADER_HEIGHT = 65;
+const SIDEBAR_WIDTH = 65;
 
 export default mixins(
 	copyPaste,
@@ -404,7 +406,7 @@ export default mixins(
 				const diffY = DEFAULT_START_POSITION_Y - minY;
 
 				data.workflow.nodes.map((node) => {
-					node.position[0] += diffX + (hasStartNode? 0 : 100 + 100);
+					node.position[0] += diffX + (hasStartNode? 0 : NODE_SIZE * 2);
 					node.position[1] += diffY;
 				});
 
@@ -413,10 +415,10 @@ export default mixins(
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 				await this.$store.dispatch('workflows/setNewWorkflowName', data.name);
-				setTimeout(() => {
+				this.$nextTick(() => {
 					this.zoomToFit();
 					this.$store.commit('setStateDirty', true);
-				}, 0);
+				});
 
 				this.$externalHooks().run('template.open', { templateId, templateName: data.name });
 			},
@@ -772,18 +774,22 @@ export default mixins(
 			},
 
 			setZoom (zoom: string) {
+				let scale = this.nodeViewScale;
 				if (zoom === 'in') {
-					this.nodeViewScale *= 1.25;
+					scale *= 1.25;
 				} else if (zoom === 'out') {
-					this.nodeViewScale /= 1.25;
+					scale /= 1.25;
 				} else {
-					this.nodeViewScale = 1;
+					scale = 1;
 				}
-				this.setZoomLevel(this.nodeViewScale);
+				this.setZoomLevel(scale);
 			},
 
 			setZoomLevel (zoomLevel: number) {
+				this.nodeViewScale = zoomLevel; // important for background
 				const element = this.instance.getContainer() as HTMLElement;
+
+				// https://docs.jsplumbtoolkit.com/community/current/articles/zooming.html
 				const prependProperties = ['webkit', 'moz', 'ms', 'o'];
 				const scaleString = 'scale(' + zoomLevel + ')';
 
@@ -819,28 +825,24 @@ export default mixins(
 					}
 				});
 
-				const HEADER_HEIGHT = 65;
-				const SIDEBAR_WIDTH = 65;
 
-				const PADDING_Y = 400;
-				const PADDING_X = 400;
+				const PADDING = NODE_SIZE * 4;
 
 				const editorWidth = window.innerWidth;
-				const diffX = maxX - minX + SIDEBAR_WIDTH + PADDING_X;
+				const diffX = maxX - minX + SIDEBAR_WIDTH + PADDING;
 				const scaleX = editorWidth / diffX;
 
 				const editorHeight = window.innerHeight;
-				const diffY = maxY - minY + HEADER_HEIGHT + PADDING_Y;
+				const diffY = maxY - minY + HEADER_HEIGHT + PADDING;
 				const scaleY = editorHeight / diffY;
 
 				const zoomLevel = Math.min(scaleX, scaleY, 1);
-				let xOffset = (minX * -1 + 30) * zoomLevel + SIDEBAR_WIDTH;
-				xOffset += (editorWidth - SIDEBAR_WIDTH - (maxX - minX + 200) * zoomLevel) / 2;
+				let xOffset = (minX * -1) * zoomLevel + SIDEBAR_WIDTH; // find top right corner
+				xOffset += (editorWidth - SIDEBAR_WIDTH - (maxX - minX + NODE_SIZE) * zoomLevel) / 2; // add padding to center workflow
 
-				let yOffset = (minY * -1 + 30) * zoomLevel + HEADER_HEIGHT;
-				yOffset += (editorHeight - HEADER_HEIGHT - (maxY - minY + 250) * zoomLevel) / 2;
+				let yOffset = (minY * -1) * zoomLevel + HEADER_HEIGHT; // find top right corner
+				yOffset += (editorHeight - HEADER_HEIGHT - (maxY - minY + NODE_SIZE * 2) * zoomLevel) / 2; // add padding to center workflow
 				
-				this.nodeViewScale = zoomLevel;
 				this.setZoomLevel(zoomLevel);
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
 			},

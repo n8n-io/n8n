@@ -7,7 +7,7 @@ import {
 } from '../Interface';
 
 
-export class ResponseError extends Error {
+class ResponseError extends Error {
 	// The HTTP status code of response
 	httpStatusCode?: number;
 
