@@ -13,14 +13,14 @@ export const billingAddress = {
 			name: 'address_fields',
 			values: [
 				{
-					displayName: 'City',
-					name: 'Billing_City',
+					displayName: 'Street',
+					name: 'Billing_Street',
 					type: 'string',
 					default: '',
 				},
 				{
-					displayName: 'Country',
-					name: 'Billing_Country',
+					displayName: 'City',
+					name: 'Billing_City',
 					type: 'string',
 					default: '',
 				},
@@ -31,8 +31,8 @@ export const billingAddress = {
 					default: '',
 				},
 				{
-					displayName: 'Street',
-					name: 'Billing_Street',
+					displayName: 'Country',
+					name: 'Billing_Country',
 					type: 'string',
 					default: '',
 				},
@@ -59,14 +59,14 @@ export const shippingAddress = {
 			name: 'address_fields',
 			values: [
 				{
-					displayName: 'City',
-					name: 'Shipping_City',
+					displayName: 'Street',
+					name: 'Shipping_Street',
 					type: 'string',
 					default: '',
 				},
 				{
-					displayName: 'Country',
-					name: 'Shipping_Country',
+					displayName: 'City',
+					name: 'Shipping_City',
 					type: 'string',
 					default: '',
 				},
@@ -77,8 +77,8 @@ export const shippingAddress = {
 					default: '',
 				},
 				{
-					displayName: 'Street',
-					name: 'Shipping_Street',
+					displayName: 'Country',
+					name: 'Shipping_Country',
 					type: 'string',
 					default: '',
 				},
@@ -105,14 +105,14 @@ export const mailingAddress = {
 			name: 'address_fields',
 			values: [
 				{
-					displayName: 'City',
-					name: 'Mailing_City',
+					displayName: 'Street',
+					name: 'Mailing_Street',
 					type: 'string',
 					default: '',
 				},
 				{
-					displayName: 'Country',
-					name: 'Mailing_Country',
+					displayName: 'City',
+					name: 'Mailing_City',
 					type: 'string',
 					default: '',
 				},
@@ -123,8 +123,8 @@ export const mailingAddress = {
 					default: '',
 				},
 				{
-					displayName: 'Street',
-					name: 'Mailing_Street',
+					displayName: 'Country',
+					name: 'Mailing_Country',
 					type: 'string',
 					default: '',
 				},
@@ -151,6 +151,12 @@ export const otherAddress = {
 			name: 'address_fields',
 			values: [
 				{
+					displayName: 'Street',
+					name: 'Other_Street',
+					type: 'string',
+					default: '',
+				},
+				{
 					displayName: 'City',
 					name: 'Other_City',
 					type: 'string',
@@ -159,12 +165,6 @@ export const otherAddress = {
 				{
 					displayName: 'State',
 					name: 'Other_State',
-					type: 'string',
-					default: '',
-				},
-				{
-					displayName: 'Street',
-					name: 'Other_Street',
 					type: 'string',
 					default: '',
 				},
@@ -191,14 +191,14 @@ export const address = {
 			name: 'address_fields',
 			values: [
 				{
-					displayName: 'City',
-					name: 'City',
+					displayName: 'Street',
+					name: 'Street',
 					type: 'string',
 					default: '',
 				},
 				{
-					displayName: 'Country',
-					name: 'Country',
+					displayName: 'City',
+					name: 'City',
 					type: 'string',
 					default: '',
 				},
@@ -209,8 +209,8 @@ export const address = {
 					default: '',
 				},
 				{
-					displayName: 'Street',
-					name: 'Street',
+					displayName: 'Country',
+					name: 'Country',
 					type: 'string',
 					default: '',
 				},
