@@ -60,6 +60,10 @@ async function request(config: {method: Method, baseURL: string, endpoint: strin
 		const response = await axios.request(options);
 		return response.data;
 	} catch (error) {
+		if (error.message === 'Network Error') {
+			throw new ResponseError('API-Server can not be reached. It is probably down.');
+		}
+
 		const errorResponseData = error.response.data;
 		if (errorResponseData !== undefined && errorResponseData.message !== undefined) {
 			if (errorResponseData.name === 'NodeApiError') {
