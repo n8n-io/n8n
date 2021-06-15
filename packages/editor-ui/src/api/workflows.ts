@@ -7,5 +7,5 @@ export async function getNewWorkflow(context: IRestApiContext, name?: string) {
 }
 
 export async function getWorkflowTemplate(templateId: string): Promise<IWorkflowTemplate> {
-	return await get(TEMPLATES_BASE_URL, `/workflows/${templateId}`);
+	return await get(TEMPLATES_BASE_URL, `/workflows/template/${templateId}`);
 }
