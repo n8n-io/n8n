@@ -60,18 +60,14 @@ async function request(config: {method: Method, baseURL: string, endpoint: strin
 		const response = await axios.request(options);
 		return response.data;
 	} catch (error) {
-		if (error.message === 'Network Error') {
-			throw new ResponseError('API-Server can not be reached. It is probably down.');
-		}
-
-		if (error.response && error.response.data && error.response.data.message) {
-			const errorData = error.response.data;
-			const {message, code, statusCode, stack, name, status } = errorData;
-			if (name === 'NodeApiError') {
-				errorData.httpStatusCode = error.response.status;
-				throw errorData;
+		const errorResponseData = error.response.data;
+		if (errorResponseData !== undefined && errorResponseData.message !== undefined) {
+			if (errorResponseData.name === 'NodeApiError') {
+				errorResponseData.httpStatusCode = error.response.status;
+				throw errorResponseData;
 			}
-			throw new ResponseError(message, {errorCode: code, httpStatusCode: statusCode || status, stack});
+
+			throw new ResponseError(errorResponseData.message, {errorCode: errorResponseData.code, httpStatusCode: error.response.status, stack: errorResponseData.stack});
 		}
 
 		throw error;
