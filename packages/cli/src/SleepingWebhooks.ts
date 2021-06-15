@@ -62,7 +62,7 @@ export class SleepingWebhooks {
 			fullPath = fullPath.slice(0, -1);
 		}
 
-		const pathParts = fullPath.split('/');;
+		const pathParts = fullPath.split('/');
 
 		const executionId = pathParts.shift();
 		const path = pathParts.join('/');
@@ -70,7 +70,7 @@ export class SleepingWebhooks {
 		console.log('executionId', executionId);
 		console.log('path', path);
 
-		let execution = await Db.collections.Execution?.findOne(executionId);
+		const execution = await Db.collections.Execution?.findOne(executionId);
 
 		if (execution === undefined) {
 			throw new ResponseHelper.ResponseError(`The execution "${executionId} does not exist.`, 404, 404);
