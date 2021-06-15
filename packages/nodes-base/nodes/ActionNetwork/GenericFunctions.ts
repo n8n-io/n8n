@@ -169,7 +169,7 @@ function adjustPostalAddresses(allFields: AllFieldsUi) {
 			};
 
 			if (field.address_lines) {
-				copy.address_lines = field.address_lines.line_fields.map(({ line }) => line);
+				copy.address_lines = [field.address_lines];
 			}
 
 			if (field.location) {
@@ -196,7 +196,7 @@ function adjustLocation(allFields: AllFieldsUi) {
 	};
 
 	if (locationFields.address_lines) {
-		adjusted.address_lines = locationFields.address_lines.line_fields.map(({ line }) => line);
+		adjusted.address_lines = [locationFields.address_lines];
 	}
 
 	if (locationFields.location) {

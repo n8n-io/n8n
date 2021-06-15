@@ -7,30 +7,11 @@ const postalAddressesFields = [
 		description: 'Whether this is the person\'s primary address.',
 	},
 	{
-		displayName: 'Address Lines',
+		displayName: 'Address Line',
 		name: 'address_lines',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		default: {},
-		description: 'Lines of a person\'s address.',
-		placeholder: 'Add Line Field',
-		options: [
-			{
-				displayName: 'Line Fields',
-				name: 'line_fields',
-				values: [
-					{
-						displayName: 'Line',
-						name: 'line',
-						type: 'string',
-						default: '',
-						description: 'Address line.',
-					},
-				],
-			},
-		],
+		type: 'string', // The Action Network API expects a string array but ignores any string beyond the first, so this input field is simplified to string.
+		default: '',
+		description: 'Line for a person\'s address.',
 	},
 	{
 		displayName: 'Locality',

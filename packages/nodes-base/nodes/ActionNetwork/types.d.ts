@@ -41,7 +41,7 @@ type LocationUi = {
 
 type AddressField = {
 	primary: boolean;
-	address_lines: { line_fields: Array<{ line: string }> };
+	address_lines: string;
 	locality: string;
 	region: string;
 	postal_code: string;
