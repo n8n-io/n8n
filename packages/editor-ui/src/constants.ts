@@ -34,7 +34,9 @@ export const SUBCATEGORY_DESCRIPTIONS: {
 		Helpers: 'HTTP Requests (API calls), date and time, scrape HTML',
 	},
 };
-
+export const REGULAR_NODE_FILTER = 'Regular';
+export const TRIGGER_NODE_FILTER = 'Trigger';
+export const ALL_NODE_FILTER = 'All';
 export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
 export const HIDDEN_NODES = ['n8n-nodes-base.start'];

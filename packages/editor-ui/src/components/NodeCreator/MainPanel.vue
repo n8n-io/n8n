@@ -11,9 +11,9 @@
 			/>
 			<div class="type-selector">
 				<el-tabs v-model="selectedType" stretch>
-					<el-tab-pane label="All" name="All"></el-tab-pane>
-					<el-tab-pane label="Regular" name="Regular"></el-tab-pane>
-					<el-tab-pane label="Trigger" name="Trigger"></el-tab-pane>
+					<el-tab-pane label="All" :name="ALL_NODE_FILTER"></el-tab-pane>
+					<el-tab-pane label="Regular" :name="REGULAR_NODE_FILTER"></el-tab-pane>
+					<el-tab-pane label="Trigger" :name="TRIGGER_NODE_FILTER"></el-tab-pane>
 				</el-tabs>
 			</div>
 			<div v-if="searchFilter.length === 0" class="scrollable">
@@ -52,7 +52,7 @@ import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
 import SubcategoryPanel from './SubcategoryPanel.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Interface';
-import { CORE_NODES_CATEGORY  } from '@/constants';
+import { CORE_NODES_CATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER, ALL_NODE_FILTER } from '@/constants';
 import SlideTransition from '../transitions/SlideTransition.vue';
 import { matchesNodeType, matchesSelectType } from './helpers';
 
@@ -73,8 +73,11 @@ export default mixins(externalHooks).extend({
 			activeSubcategory: null as INodeCreateElement | null,
 			activeIndex: 1,
 			nodeFilter: '',
-			selectedType: 'All',
+			selectedType: ALL_NODE_FILTER,
 			searchEventBus: new Vue(),
+			REGULAR_NODE_FILTER,
+			TRIGGER_NODE_FILTER,
+			ALL_NODE_FILTER,
 		};
 	},
 	computed: {
@@ -116,13 +119,13 @@ export default mixins(externalHooks).extend({
 					}
 
 					if (el.type === 'category') {
-						return [...accu, {
+						return accu.concat({
 							...el,
 							expanded: this.activeCategory.includes(el.category),
-						}];
+						} as INodeCreateElement);
 					}
 
-					return [...accu, el];
+					return accu.concat(el);
 				}, []);
 		},
 
@@ -210,7 +213,7 @@ export default mixins(externalHooks).extend({
 					(active: string) => active !== category,
 				);
 			} else {
-				this.activeCategory = [...this.activeCategory, category];
+				this.activeCategory = this.activeCategory.concat(category);
 			}
 
 			this.activeIndex = this.categorized.findIndex(
@@ -233,10 +236,10 @@ export default mixins(externalHooks).extend({
 		},
 	},
 	async mounted() {
-		setTimeout(() => {
+		this.$nextTick(() => {
 			// initial opening effect
 			this.activeCategory = [CORE_NODES_CATEGORY];
-		}, 0);
+		});
 		this.$externalHooks().run('nodeCreateList.mounted');
 	},
 	async destroyed() {

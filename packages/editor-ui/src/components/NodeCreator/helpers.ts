@@ -1,10 +1,10 @@
-import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, SUBCATEGORY_DESCRIPTIONS, UNCATEGORIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY, HIDDEN_NODES  } from '@/constants';
+import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, SUBCATEGORY_DESCRIPTIONS, UNCATEGORIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER, ALL_NODE_FILTER  } from '@/constants';
 import { INodeCreateElement, ICategoriesWithNodes, INodeItemProps } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 
 
 export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[]): ICategoriesWithNodes => {
-	const categorized = nodeTypes.reduce(
+	return nodeTypes.reduce(
 		(accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
 			if (!nodeType.codex || !nodeType.codex.categories) {
 				accu[UNCATEGORIZED_CATEGORY][UNCATEGORIZED_SUBCATEGORY].nodes.push({
@@ -69,8 +69,6 @@ export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[]): ICate
 			},
 		},
 	);
-
-	return categorized;
 };
 
 const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
@@ -81,13 +79,13 @@ const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
 	);
 	sorted.sort();
 
-	return [CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, ...sorted, UNCATEGORIZED_CATEGORY];
+	return [CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY].concat(sorted.concat(UNCATEGORIZED_CATEGORY));
 };
 
 export const getCategorizedList = (categoriesWithNodes: ICategoriesWithNodes): INodeCreateElement[] => {
 	const categories = getCategories(categoriesWithNodes);
 
-	const allItems = categories.reduce(
+	return categories.reduce(
 		(accu: INodeCreateElement[], category: string) => {
 			if (!categoriesWithNodes[category]) {
 				return accu;
@@ -113,7 +111,7 @@ export const getCategorizedList = (categoriesWithNodes: ICategoriesWithNodes): I
 				if (subcategory.regularCount > 0) {
 					categoryEl.includedByRegular = subcategory.regularCount > 0;
 				}
-				return [...accu, categoryEl, ...subcategory.nodes];
+				return accu.concat([categoryEl].concat(subcategory.nodes));
 			}
 
 			subcategories.sort();
@@ -138,28 +136,26 @@ export const getCategorizedList = (categoriesWithNodes: ICategoriesWithNodes): I
 						categoryEl.includedByRegular = true;
 					}
 
-					return [...accu, subcategoryEl];
+					return accu.concat(subcategoryEl);
 				},
 				[],
 			);
 
-			return [...accu, categoryEl, ...subcategorized];
+			return accu.concat([categoryEl].concat(subcategorized));
 		},
 		[],
 	);
-
-	return allItems;
 };
 
 export const matchesSelectType = (el: INodeCreateElement, selectedType: string) => {
-	if (selectedType === 'Trigger' && el.includedByTrigger) {
+	if (selectedType === REGULAR_NODE_FILTER && el.includedByRegular) {
 		return true;
 	}
-	if (selectedType === 'Regular' && el.includedByRegular) {
+	if (selectedType === TRIGGER_NODE_FILTER && el.includedByTrigger) {
 		return true;
 	}
 
-	return selectedType === 'All';
+	return selectedType === ALL_NODE_FILTER;
 };
 
 const matchesAlias = (nodeType: INodeTypeDescription, filter: string): boolean => {
