@@ -207,6 +207,17 @@ const getWorkflowCorners = (nodes: INodeUi[]): {minX: number, minY: number, maxX
 	};
 };
 
+const DEFAULT_START_NODE = {
+	name: 'Start',
+	type: 'n8n-nodes-base.start',
+	typeVersion: 1,
+	position: [
+		DEFAULT_START_POSITION_X,
+		DEFAULT_START_POSITION_Y,
+	] as XYPositon,
+	parameters: {},
+};
+
 export default mixins(
 	copyPaste,
 	externalHooks,
@@ -350,7 +361,7 @@ export default mixins(
 				nodeViewScale: 1,
 				ctrlKeyPressed: false,
 				stopExecutionInProgress: false,
-				blankReset: false,
+				blankRedirect: false,
 			};
 		},
 		beforeDestroy () {
@@ -429,7 +440,11 @@ export default mixins(
 					node.position[1] += diffY;
 				});
 
-				this.blankReset = hasStartNode;
+				if (!hasStartNode) {
+					data.workflow.nodes = data.workflow.nodes.concat([DEFAULT_START_NODE]);
+				}
+
+				this.blankRedirect = true;
 				this.$router.push({ name: 'NodeViewNew' });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
@@ -1524,26 +1539,8 @@ export default mixins(
 				await this.resetWorkspace();
 				await this.$store.dispatch('workflows/setNewWorkflowName');
 				this.$store.commit('setStateDirty', false);
-				if (this.blankReset) {
-					this.blankReset = false;
-					return;
-				}
 
-				// Create start node
-				const defaultNodes = [
-					{
-						name: 'Start',
-						type: 'n8n-nodes-base.start',
-						typeVersion: 1,
-						position: [
-							DEFAULT_START_POSITION_X,
-							DEFAULT_START_POSITION_Y,
-						] as XYPositon,
-						parameters: {},
-					},
-				];
-
-				await this.addNodes(defaultNodes);
+				await this.addNodes([DEFAULT_START_NODE]);
 				this.$store.commit('setStateDirty', false);
 
 			},
@@ -1555,7 +1552,10 @@ export default mixins(
 					return Promise.resolve();
 				}
 
-				if (this.$route.name === 'WorkflowTemplate') {
+				if (this.blankRedirect) {
+					this.blankRedirect = false;
+				}
+				else if (this.$route.name === 'WorkflowTemplate') {
 					const templateId = this.$route.params.id;
 					await this.openWorkflowTemplate(templateId);
 				}
