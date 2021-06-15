@@ -60,7 +60,6 @@ export async function actionNetworkApiRequest(
 			delete options.qs;
 		}
 
-		// console.log(JSON.stringify(options, null, 2));
 		return await this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -86,24 +85,8 @@ export async function handleListing(
 
 	const itemsKey = toItemsKey(endpoint);
 
-	// convert endpoint to key, e.g. /events → osdi:events
-	// const itemsKey = `osdi:${endpoint.replace(/\//g, '')}`;
-
-	// if (endpoint.includes('signature')) {
-	// 	itemsKey = 'osdi:signatures';
-	// } else if (endpoint.includes('people')) {
-	// 	itemsKey = 'osdi:people';
-	// } else if (endpoint.includes('attendances')) {
-	// 	itemsKey = 'osdi:attendances';
-	// } else if (endpoint.includes('taggings')) {
-	// 	itemsKey = 'osdi:taggings';
-	// } else {
-	// 	itemsKey = `osdi:${endpoint.replace(/\//g, '')}`;
-	// }
-
 	do {
 		responseData = await actionNetworkApiRequest.call(this, method, endpoint, body, qs);
-		// console.log(responseData);
 		const items = responseData._embedded[itemsKey];
 		returnData.push(...items);
 
