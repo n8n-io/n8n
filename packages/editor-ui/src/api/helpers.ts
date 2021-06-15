@@ -65,8 +65,13 @@ async function request(config: {method: Method, baseURL: string, endpoint: strin
 		}
 
 		if (error.response && error.response.data && error.response.data.message) {
-			const {message, code, statusCode, stack } = error.response.data;
-			throw new ResponseError(message, {errorCode: code, httpStatusCode: statusCode, stack});
+			const errorData = error.response.data;
+			const {message, code, statusCode, stack, name, status } = errorData;
+			if (name === 'NodeApiError') {
+				errorData.httpStatusCode = error.response.status;
+				throw errorData;
+			}
+			throw new ResponseError(message, {errorCode: code, httpStatusCode: statusCode || status, stack});
 		}
 
 		throw error;
