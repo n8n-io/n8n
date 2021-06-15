@@ -178,6 +178,10 @@ export default mixins(externalHooks).extend({
 				this.activeIndex = Math.max(this.activeIndex, 0);
 			} else if (e.key === 'Enter' && activeNodeType) {
 				this.selected(activeNodeType);
+			} else if (e.key === 'ArrowRight' && activeNodeType.type === 'subcategory') {
+				this.selected(activeNodeType);
+			} else if (e.key === 'ArrowLeft' && this.activeSubcategory) {
+				this.onSubcategoryClose();
 			}
 
 			if (!['Escape', 'Tab'].includes(e.key)) {
@@ -242,6 +246,10 @@ export default mixins(externalHooks).extend({
 </script>
 
 <style lang="scss" scoped>
+/deep/ .el-tabs__item {
+	padding: 0;
+}
+
 /deep/ .el-tabs__active-bar {
 	height: 1px;
 }

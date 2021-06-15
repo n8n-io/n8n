@@ -43,7 +43,7 @@ export default {
 <style lang="scss" scoped>
 .container {
 	position: relative;
-	border-left: 1px solid transparent;
+	border-left: 2px solid transparent;
 
 	&:hover {
 		border-color: $--node-creator-item-hover-border-color;
