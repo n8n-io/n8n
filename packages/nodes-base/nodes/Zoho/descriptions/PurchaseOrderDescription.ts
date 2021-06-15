@@ -56,7 +56,7 @@ export const purchaseOrderOperations = [
 
 export const purchaseOrderFields = [
 	// ----------------------------------------
-	//      purchaseOrder: create + upsert
+	//         purchaseOrder: create
 	// ----------------------------------------
 	{
 		displayName: 'Subject',
@@ -72,11 +72,36 @@ export const purchaseOrderFields = [
 				],
 				operation: [
 					'create',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------------
+	//         purchaseOrder: upsert
+	// ----------------------------------------
+	{
+		displayName: 'Subject',
+		name: 'subject',
+		description: 'Subject or title of the purchase order. If a record with this subject exists it will be updated, otherwise a new one will be created.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'purchaseOrder',
+				],
+				operation: [
 					'upsert',
 				],
 			},
 		},
 	},
+
+	// ----------------------------------------
+	//      purchaseOrder: create + upsert
+	// ----------------------------------------
 	{
 		displayName: 'Vendor ID',
 		name: 'vendorId',

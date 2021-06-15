@@ -56,7 +56,7 @@ export const invoiceOperations = [
 
 export const invoiceFields = [
 	// ----------------------------------------
-	//        invoice: create + upsert
+	//            invoice: create
 	// ----------------------------------------
 	{
 		displayName: 'Subject',
@@ -72,11 +72,36 @@ export const invoiceFields = [
 				],
 				operation: [
 					'create',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------------
+	//            invoice: upsert
+	// ----------------------------------------
+	{
+		displayName: 'Subject',
+		name: 'subject',
+		description: 'Subject or title of the invoice. If a record with this subject exists it will be updated, otherwise a new one will be created.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'invoice',
+				],
+				operation: [
 					'upsert',
 				],
 			},
 		},
 	},
+
+	// ----------------------------------------
+	//        invoice: create + upsert
+	// ----------------------------------------
 	makeProductDetails('invoice'),
 	{
 		displayName: 'Additional Fields',

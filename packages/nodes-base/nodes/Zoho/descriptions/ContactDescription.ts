@@ -55,7 +55,7 @@ export const contactOperations = [
 
 export const contactFields = [
 	// ----------------------------------------
-	//        contact: create + upsert
+	//             contact: create
 	// ----------------------------------------
 	{
 		displayName: 'Last Name',
@@ -70,7 +70,6 @@ export const contactFields = [
 				],
 				operation: [
 					'create',
-					'upsert',
 				],
 			},
 		},
@@ -88,6 +87,167 @@ export const contactFields = [
 				],
 				operation: [
 					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Assistant',
+				name: 'Assistant',
+				type: 'string',
+				default: '',
+				description: 'Name of the contact’s assistant.',
+			},
+			{
+				displayName: 'Assistant’s Phone',
+				name: 'Asst_Phone',
+				type: 'string',
+				default: '',
+				description: 'Phone number of the contact’s assistant.',
+			},
+			{
+				displayName: 'Currency',
+				name: 'Currency',
+				type: 'string',
+				default: '',
+				description: 'Symbol of the currency in which revenue is generated.',
+			},
+			makeCustomFieldsFixedCollection('contact'),
+			{
+				displayName: 'Date of Birth',
+				name: 'Date_of_Birth',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Department',
+				name: 'Department',
+				type: 'string',
+				default: '',
+				description: 'Company department to which the contact belongs.',
+			},
+			{
+				displayName: 'Description',
+				name: 'Description',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Email',
+				name: 'Email',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Fax',
+				name: 'Fax',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'First Name',
+				name: 'First_Name',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Full Name',
+				name: 'Full_Name',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Home Phone',
+				name: 'Home_Phone',
+				type: 'string',
+				default: '',
+			},
+			mailingAddress,
+			{
+				displayName: 'Mobile',
+				name: 'Mobile',
+				type: 'string',
+				default: '',
+			},
+			otherAddress,
+			{
+				displayName: 'Other Phone',
+				name: 'Other_Phone',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Phone',
+				name: 'Phone',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Salutation',
+				name: 'Salutation',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Secondary Email',
+				name: 'Secondary_Email',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Skype ID',
+				name: 'Skype_ID',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Title',
+				name: 'Title',
+				type: 'string',
+				default: '',
+				description: 'Position of the contact at their company.',
+			},
+			{
+				displayName: 'Twitter',
+				name: 'Twitter',
+				type: 'string',
+				default: '',
+			},
+		],
+	},
+
+	// ----------------------------------------
+	//           contact: upsert
+	// ----------------------------------------
+	{
+		displayName: 'Last Name',
+		name: 'lastName',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
 					'upsert',
 				],
 			},
@@ -139,6 +299,7 @@ export const contactFields = [
 				name: 'Email',
 				type: 'string',
 				default: '',
+				description: 'Email of the contact. If a record with this email exists it will be updated, otherwise a new one will be created.',
 			},
 			{
 				displayName: 'Fax',

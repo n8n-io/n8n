@@ -53,7 +53,7 @@ export const dealOperations = [
 
 export const dealFields = [
 	// ----------------------------------------
-	//          deal: create + upsert
+	//              deal: create
 	// ----------------------------------------
 	{
 		displayName: 'Deal Name',
@@ -68,11 +68,36 @@ export const dealFields = [
 				],
 				operation: [
 					'create',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------------
+	//             deal: upsert
+	// ----------------------------------------
+	{
+		displayName: 'Deal Name',
+		name: 'dealName',
+		description: 'Name of the deal. If a record with this deal name exists it will be updated, otherwise a new one will be created.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'deal',
+				],
+				operation: [
 					'upsert',
 				],
 			},
 		},
 	},
+
+	// ----------------------------------------
+	//          deal: create + upsert
+	// ----------------------------------------
 	{
 		displayName: 'Stage',
 		name: 'stage',

@@ -53,7 +53,7 @@ export const productOperations = [
 
 export const productFields = [
 	// ----------------------------------------
-	//         product: create + upsert
+	//           product: create
 	// ----------------------------------------
 	{
 		displayName: 'Product Name',
@@ -68,11 +68,36 @@ export const productFields = [
 				],
 				operation: [
 					'create',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------------
+	//            product: upsert
+	// ----------------------------------------
+	{
+		displayName: 'Product Name',
+		name: 'productName',
+		description: 'Name of the product. If a record with this product name exists it will be updated, otherwise a new one will be created.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'product',
+				],
+				operation: [
 					'upsert',
 				],
 			},
 		},
 	},
+
+	// ----------------------------------------
+	//         product: create + upsert
+	// ----------------------------------------
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

@@ -55,7 +55,7 @@ export const accountOperations = [
 
 export const accountFields = [
 	// ----------------------------------------
-	//        account: create + upsert
+	//            account: create
 	// ----------------------------------------
 	{
 		displayName: 'Account Name',
@@ -70,11 +70,36 @@ export const accountFields = [
 				],
 				operation: [
 					'create',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------------
+	//          account: upsert
+	// ----------------------------------------
+	{
+		displayName: 'Account Name',
+		name: 'accountName',
+		description: 'Name of the account. If a record with this account name exists it will be updated, otherwise a new one will be created.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'account',
+				],
+				operation: [
 					'upsert',
 				],
 			},
 		},
 	},
+
+	// ----------------------------------------
+	//        account: create + upsert
+	// ----------------------------------------
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

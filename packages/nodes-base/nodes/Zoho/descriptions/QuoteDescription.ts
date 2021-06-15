@@ -56,7 +56,7 @@ export const quoteOperations = [
 
 export const quoteFields = [
 	// ----------------------------------------
-	//          quote: create + upsert
+	//            quote: create
 	// ----------------------------------------
 	{
 		displayName: 'Subject',
@@ -72,11 +72,36 @@ export const quoteFields = [
 				],
 				operation: [
 					'create',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------------
+	//            quote: upsert
+	// ----------------------------------------
+	{
+		displayName: 'Subject',
+		name: 'subject',
+		description: 'Subject or title of the quote. If a record with this subject exists it will be updated, otherwise a new one will be created.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'quote',
+				],
+				operation: [
 					'upsert',
 				],
 			},
 		},
 	},
+
+	// ----------------------------------------
+	//          quote: create + upsert
+	// ----------------------------------------
 	makeProductDetails('quote'),
 	{
 		displayName: 'Additional Fields',

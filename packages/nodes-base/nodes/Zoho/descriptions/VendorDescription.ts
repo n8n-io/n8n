@@ -54,7 +54,7 @@ export const vendorOperations = [
 
 export const vendorFields = [
 	// ----------------------------------------
-	//         vendor: create + upsert
+	//            vendor: create
 	// ----------------------------------------
 	{
 		displayName: 'Vendor Name',
@@ -69,11 +69,36 @@ export const vendorFields = [
 				],
 				operation: [
 					'create',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------------
+	//           vendor: upsert
+	// ----------------------------------------
+	{
+		displayName: 'Vendor Name',
+		name: 'vendorName',
+		description: 'Name of the vendor. If a record with this vendor name exists it will be updated, otherwise a new one will be created.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'vendor',
+				],
+				operation: [
 					'upsert',
 				],
 			},
 		},
 	},
+
+	// ----------------------------------------
+	//         vendor: create + upsert
+	// ----------------------------------------
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

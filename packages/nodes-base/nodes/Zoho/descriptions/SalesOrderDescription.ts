@@ -79,6 +79,10 @@ export const salesOrderFields = [
 			},
 		},
 	},
+
+	// ----------------------------------------
+	//           salesOrder: create
+	// ----------------------------------------
 	{
 		displayName: 'Subject',
 		name: 'subject',
@@ -93,11 +97,36 @@ export const salesOrderFields = [
 				],
 				operation: [
 					'create',
+				],
+			},
+		},
+	},
+
+	// ----------------------------------------
+	//           salesOrder: upsert
+	// ----------------------------------------
+	{
+		displayName: 'Subject',
+		name: 'subject',
+		description: 'Subject or title of the sales order. If a record with this subject exists it will be updated, otherwise a new one will be created.',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'salesOrder',
+				],
+				operation: [
 					'upsert',
 				],
 			},
 		},
 	},
+
+	// ----------------------------------------
+	//       salesOrder: create + upsert
+	// ----------------------------------------
 	makeProductDetails('salesOrder'),
 	{
 		displayName: 'Additional Fields',
