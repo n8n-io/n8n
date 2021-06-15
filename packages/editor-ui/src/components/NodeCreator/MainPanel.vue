@@ -124,7 +124,7 @@ export default mixins(externalHooks).extend({
 							...el,
 							properties: {
 								expanded: this.activeCategory.includes(el.category),
-							}
+							},
 						} as INodeCreateElement);
 					}
 
