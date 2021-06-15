@@ -136,6 +136,8 @@ import NodeCreator from '@/components/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
+import { getWorkflowCorners } from './helpers';
+
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
 import axios from 'axios';
@@ -177,35 +179,6 @@ const DEFAULT_START_POSITION_X = 250;
 const DEFAULT_START_POSITION_Y = 300;
 const HEADER_HEIGHT = 65;
 const SIDEBAR_WIDTH = 65;
-
-const getWorkflowCorners = (nodes: INodeUi[]): {minX: number, minY: number, maxX: number, maxY: number} => {
-	let minX = nodes[0].position[0];
-	let minY = nodes[0].position[1];
-	let maxX = nodes[0].position[0];
-	let maxY = nodes[0].position[1];
-
-	nodes.forEach(node => {
-		if (node.position[0] < minX) {
-			minX = node.position[0];
-		}
-		if (node.position[1] < minY) {
-			minY = node.position[1];
-		}
-		if (node.position[0] > maxX) {
-			maxX = node.position[0];
-		}
-		if (node.position[1] > maxY) {
-			maxY = node.position[1];
-		}
-	});
-
-	return {
-		minX,
-		minY,
-		maxX,
-		maxY,
-	};
-};
 
 const DEFAULT_START_NODE = {
 	name: 'Start',
