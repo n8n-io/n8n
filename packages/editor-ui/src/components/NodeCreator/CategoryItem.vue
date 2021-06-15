@@ -4,7 +4,7 @@
 		<font-awesome-icon
 			:class="$style.arrow"
 			icon="chevron-down"
-			v-if="props.item.expanded"
+			v-if="props.item.properties.expanded"
 		/>
 		<font-awesome-icon :class="$style.arrow" icon="chevron-up" v-else />
 	</div>

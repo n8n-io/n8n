@@ -1,7 +1,7 @@
 <template functional>
 	<span :class="$style.trigger">
 		<svg width="36px" height="36px" viewBox="0 0 36 36" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-				<title>Trigger Icon</title>
+				<title>Trigger node</title>
 				<g id="/integrations-(V1-feature)" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
 						<g id="Individual-node-view" transform="translate(-304.000000, -137.000000)" fill-rule="nonzero">
 								<g id="left-column" transform="translate(120.000000, 131.000000)">
