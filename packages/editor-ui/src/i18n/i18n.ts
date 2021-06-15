@@ -1,7 +1,7 @@
 import Vue from 'vue';
 import VueI18n from 'vue-i18n';
 import messagesEn from './locales/en';
-import messagesDe from './locales/de'; // TODO: Decide how to switch language
+import messagesDe from './locales/de'; // TODO: Switch language using env var
 import axios from 'axios';
 
 Vue.use(VueI18n);
@@ -22,7 +22,7 @@ function setI18nLanguage (lang: string): string {
 	return lang;
 }
 
-setI18nLanguage('de'); // TODO: Decide how to switch language
+setI18nLanguage('de'); // TODO: Switch language using env var
 
 export function addNodeTranslations(translations: { [key: string]: string | object }) {
 	const lang = Object.keys(translations)[0];
