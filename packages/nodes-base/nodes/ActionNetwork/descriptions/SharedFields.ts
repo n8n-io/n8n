@@ -166,26 +166,6 @@ export const eventAdditionalFieldsOptions = [
 		default: '',
 		description: 'Start date and time of the event.',
 	},
-	{
-		displayName: 'Status',
-		name: 'status',
-		type: 'options',
-		default: 'confirmed',
-		options: [
-			{
-				name: 'Cancelled',
-				value: 'cancelled',
-			},
-			{
-				name: 'Confirmed',
-				value: 'confirmed',
-			},
-			{
-				name: 'Tentative',
-				value: 'tentative',
-			},
-		],
-	},
 ];
 
 export const personAdditionalFieldsOptions = [

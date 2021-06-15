@@ -62,11 +62,8 @@ export const taggingFields = [
 		displayName: 'Person ID',
 		name: 'personId',
 		description: 'ID of the person to add the tag to.',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getPersons',
-		},
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {

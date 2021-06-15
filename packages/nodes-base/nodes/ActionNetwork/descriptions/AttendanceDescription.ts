@@ -45,11 +45,8 @@ export const attendanceFields = [
 		displayName: 'Person ID',
 		name: 'personId',
 		description: 'ID of the person to create an attendance for.',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getPersons',
-		},
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -66,11 +63,8 @@ export const attendanceFields = [
 		displayName: 'Event ID',
 		name: 'eventId',
 		description: 'ID of the event to create an attendance for.',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getEvents',
-		},
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -91,11 +85,8 @@ export const attendanceFields = [
 		displayName: 'Event ID',
 		name: 'eventId',
 		description: 'ID of the event whose attendance to retrieve.',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getEvents',
-		},
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -140,11 +131,8 @@ export const attendanceFields = [
 		displayName: 'Event ID',
 		name: 'eventId',
 		description: 'ID of the event to create an attendance for.',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getEvents',
-		},
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -205,11 +193,8 @@ export const attendanceFields = [
 		displayName: 'Event ID',
 		name: 'eventId',
 		description: 'ID of the event whose attendance to update.',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getEvents',
-		},
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {

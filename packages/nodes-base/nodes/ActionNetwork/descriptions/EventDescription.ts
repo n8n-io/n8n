@@ -100,11 +100,8 @@ export const eventFields = [
 		displayName: 'Event ID',
 		name: 'eventId',
 		description: 'ID of the event to retrieve.',
-		typeOptions: {
-			loadOptionsMethod: 'getEvents',
-		},
-		type: 'options',
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {

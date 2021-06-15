@@ -107,11 +107,8 @@ export const petitionFields = [
 		displayName: 'Petition ID',
 		name: 'petitionId',
 		description: 'ID of the petition to retrieve.',
-		typeOptions: {
-			loadOptionsMethod: 'getPetitions',
-		},
-		type: 'options',
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -176,11 +173,8 @@ export const petitionFields = [
 		displayName: 'Petition ID',
 		name: 'petitionId',
 		description: 'ID of the petition to update.',
-		typeOptions: {
-			loadOptionsMethod: 'getPetitions',
-		},
-		type: 'options',
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {

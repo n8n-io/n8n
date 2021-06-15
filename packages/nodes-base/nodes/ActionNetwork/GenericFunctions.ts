@@ -20,8 +20,6 @@ import {
 
 import {
 	AllFieldsUi,
-	LoadedPerson,
-	LoadedPetition,
 	LoadedTag,
 	LodadedTagging,
 	ResourceIds,
@@ -257,47 +255,6 @@ export const resourceLoaders = {
 		) as ResourceIds[];
 
 		return attendances.map((signature) => {
-			return {
-				name: extractId(signature.identifiers),
-				value: extractId(signature.identifiers),
-			};
-		});
-	},
-
-	async getEvents(this: ILoadOptionsFunctions) {
-		const events = await loadResource.call(this, 'events') as LoadedPetition[];
-
-		return events.map(({ title, identifiers }) => {
-			return { name: title, value: extractId(identifiers) };
-		});
-	},
-
-	async getPersons(this: ILoadOptionsFunctions) {
-		const persons = await loadResource.call(this, 'people') as LoadedPerson[];
-
-		return persons.map(({ family_name, given_name, identifiers }) => {
-			return { name: `${family_name}, ${given_name}`, value: extractId(identifiers) };
-		});
-	},
-
-	async getPetitions(this: ILoadOptionsFunctions) {
-		const petitions = await loadResource.call(this, 'petitions') as LoadedPetition[];
-
-		return petitions.map(({ title, identifiers }) => {
-			return { name: title, value: extractId(identifiers) };
-		});
-	},
-
-	async getSignatures(this: ILoadOptionsFunctions) {
-		const petitionId = this.getNodeParameter('petitionId', 0);
-		const endpoint = `/petitions/${petitionId}/signatures`;
-
-		// two-resource endpoint, so direct call
-		const signatures = await handleListing.call(
-			this, 'GET', endpoint, {}, {}, { returnAll: true },
-		) as ResourceIds[];
-
-		return signatures.map((signature) => {
 			return {
 				name: extractId(signature.identifiers),
 				value: extractId(signature.identifiers),

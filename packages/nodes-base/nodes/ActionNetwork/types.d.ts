@@ -61,13 +61,6 @@ type LatitudeLongitude = {
 
 export type ResourceIds = { identifiers: string[] }
 
-export type LoadedPerson = ResourceIds & {
-	family_name: string;
-	given_name: string;
-};
-
-export type LoadedPetition = ResourceIds & { title: string };
-
 export type LoadedTag = ResourceIds & { name: string };
 
 export type LodadedTagging = {

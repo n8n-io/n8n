@@ -45,11 +45,8 @@ export const signatureFields = [
 		displayName: 'Person ID',
 		name: 'personId',
 		description: 'ID of the person whose signature to create.',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getPersons',
-		},
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -66,11 +63,8 @@ export const signatureFields = [
 		displayName: 'Petition ID',
 		name: 'petitionId',
 		description: 'ID of the petition to sign.',
-		typeOptions: {
-			loadOptionsMethod: 'getPetitions',
-		},
-		type: 'options',
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -117,11 +111,8 @@ export const signatureFields = [
 		displayName: 'Petition ID',
 		name: 'petitionId',
 		description: 'ID of the petition whose signature to retrieve.',
-		typeOptions: {
-			loadOptionsMethod: 'getPetitions',
-		},
-		type: 'options',
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -138,13 +129,8 @@ export const signatureFields = [
 		displayName: 'Signature ID',
 		name: 'signatureId',
 		description: 'ID of the signature to retrieve.',
-		typeOptions: {
-			loadOptionsDependsOn: [
-				'petitionId',
-			],
-			loadOptionsMethod: 'getSignatures',
-		},
-		type: 'options',
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -165,11 +151,8 @@ export const signatureFields = [
 		displayName: 'Petition ID',
 		name: 'petitionId',
 		description: 'ID of the petition whose signatures to retrieve.',
-		typeOptions: {
-			loadOptionsMethod: 'getPetitions',
-		},
-		type: 'options',
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -230,11 +213,8 @@ export const signatureFields = [
 		displayName: 'Petition ID',
 		name: 'petitionId',
 		description: 'ID of the petition whose signature to update.',
-		typeOptions: {
-			loadOptionsMethod: 'getPetitions',
-		},
-		type: 'options',
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -251,13 +231,8 @@ export const signatureFields = [
 		displayName: 'Signature ID',
 		name: 'signatureId',
 		description: 'ID of the signature to update.',
-		typeOptions: {
-			loadOptionsDependsOn: [
-				'petitionId',
-			],
-			loadOptionsMethod: 'getSignatures',
-		},
-		type: 'options',
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {

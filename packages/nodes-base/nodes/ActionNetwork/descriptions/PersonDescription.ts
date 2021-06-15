@@ -144,12 +144,9 @@ export const personFields = [
 		displayName: 'Person ID',
 		name: 'personId',
 		description: 'ID of the person to retrieve.',
-		typeOptions: {
-			loadOptionsMethod: 'getPersons',
-		},
-		type: 'options',
+		type: 'string',
 		required: true,
-		default: [],
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -213,12 +210,9 @@ export const personFields = [
 		displayName: 'Person ID',
 		name: 'personId',
 		description: 'ID of the person to update.',
-		typeOptions: {
-			loadOptionsMethod: 'getPersons',
-		},
-		type: 'options',
+		type: 'string',
 		required: true,
-		default: [],
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
