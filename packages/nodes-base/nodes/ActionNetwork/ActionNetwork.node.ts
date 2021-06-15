@@ -149,12 +149,6 @@ export class ActionNetwork implements INodeType {
 
 					const body = makeOsdiLink(personId) as IDataObject;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					if (Object.keys(additionalFields).length) {
-						Object.assign(body, additionalFields);
-					}
-
 					const endpoint = `/events/${eventId}/attendances`;
 					responseData = await actionNetworkApiRequest.call(this, 'POST', endpoint, body);
 

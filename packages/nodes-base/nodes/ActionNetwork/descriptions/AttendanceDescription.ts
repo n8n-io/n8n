@@ -2,10 +2,6 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import {
-	attendanceAdditionalFieldsOptions,
-} from './SharedFields';
-
 export const attendanceOperations = [
 	{
 		displayName: 'Operation',
@@ -86,24 +82,6 @@ export const attendanceFields = [
 				],
 			},
 		},
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'attendance',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		options: attendanceAdditionalFieldsOptions,
 	},
 
 	// ----------------------------------------
@@ -267,23 +245,5 @@ export const attendanceFields = [
 				],
 			},
 		},
-	},
-	{
-		displayName: 'Update Fields',
-		name: 'updateFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'attendance',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-		options: attendanceAdditionalFieldsOptions,
 	},
 ] as INodeProperties[];

@@ -97,34 +97,6 @@ const postalAddressesFields = [
 	},
 ];
 
-export const attendanceAdditionalFieldsOptions = [
-	{
-		displayName: 'Status',
-		name: 'status',
-		type: 'options',
-		default: 'declined',
-		description: 'Status of the attendance.',
-		options: [
-			{
-				name: 'Accepted',
-				value: 'accepted',
-			},
-			{
-				name: 'Declined',
-				value: 'declined',
-			},
-			{
-				name: 'Needs Action',
-				value: 'needsaction',
-			},
-			{
-				name: 'Tentative',
-				value: 'tentative',
-			},
-		],
-	},
-];
-
 export const eventAdditionalFieldsOptions = [
 	{
 		displayName: 'Browser URL',
