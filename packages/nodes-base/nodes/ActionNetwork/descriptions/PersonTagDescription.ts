@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const taggingOperations = [
+export const personTagOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const taggingOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'tagging',
+					'personTag',
 				],
 			},
 		},
@@ -33,9 +33,9 @@ export const taggingOperations = [
 	},
 ] as INodeProperties[];
 
-export const taggingFields = [
+export const personTagFields = [
 	// ----------------------------------------
-	//             tagging: create
+	//             personTag: create
 	// ----------------------------------------
 	{
 		displayName: 'Tag ID',
@@ -50,7 +50,7 @@ export const taggingFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'tagging',
+					'personTag',
 				],
 				operation: [
 					'create',
@@ -68,7 +68,7 @@ export const taggingFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'tagging',
+					'personTag',
 				],
 				operation: [
 					'create',
@@ -78,7 +78,7 @@ export const taggingFields = [
 	},
 
 	// ----------------------------------------
-	//             tagging: delete
+	//             personTag: delete
 	// ----------------------------------------
 	{
 		displayName: 'Tag ID',
@@ -93,7 +93,7 @@ export const taggingFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'tagging',
+					'personTag',
 				],
 				operation: [
 					'delete',
@@ -115,7 +115,7 @@ export const taggingFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'tagging',
+					'personTag',
 				],
 				operation: [
 					'delete',
@@ -125,7 +125,7 @@ export const taggingFields = [
 	},
 
 	// ----------------------------------------
-	//             tagging: getAll
+	//             personTag: getAll
 	// ----------------------------------------
 	{
 		displayName: 'Tag ID',
@@ -140,7 +140,7 @@ export const taggingFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'tagging',
+					'personTag',
 				],
 				operation: [
 					'getAll',
@@ -157,7 +157,7 @@ export const taggingFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'tagging',
+					'personTag',
 				],
 				operation: [
 					'getAll',
@@ -177,7 +177,7 @@ export const taggingFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'tagging',
+					'personTag',
 				],
 				operation: [
 					'getAll',

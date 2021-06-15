@@ -26,13 +26,13 @@ import {
 	eventOperations,
 	personFields,
 	personOperations,
+	personTagFields,
+	personTagOperations,
 	petitionFields,
 	petitionOperations,
 	signatureFields,
 	signatureOperations,
 	tagFields,
-	taggingFields,
-	taggingOperations,
 	tagOperations,
 } from './descriptions';
 
@@ -81,6 +81,10 @@ export class ActionNetwork implements INodeType {
 						value: 'person',
 					},
 					{
+						name: 'Person Tag',
+						value: 'personTag',
+					},
+					{
 						name: 'Petition',
 						value: 'petition',
 					},
@@ -91,10 +95,6 @@ export class ActionNetwork implements INodeType {
 					{
 						name: 'Tag',
 						value: 'tag',
-					},
-					{
-						name: 'Tagging',
-						value: 'tagging',
 					},
 				],
 				default: 'attendance',
@@ -112,8 +112,8 @@ export class ActionNetwork implements INodeType {
 			...signatureFields,
 			...tagOperations,
 			...tagFields,
-			...taggingOperations,
-			...taggingFields,
+			...personTagOperations,
+			...personTagFields,
 		],
 	};
 
@@ -465,16 +465,16 @@ export class ActionNetwork implements INodeType {
 
 				}
 
-			} else if (resource === 'tagging') {
+			} else if (resource === 'personTag') {
 
 				// **********************************************************************
-				//                                tagging
+				//                                personTag
 				// **********************************************************************
 
 				if (operation === 'create') {
 
 					// ----------------------------------------
-					//             tagging: create
+					//             personTag: create
 					// ----------------------------------------
 
 					const personId = this.getNodeParameter('personId', i) as string;
@@ -488,7 +488,7 @@ export class ActionNetwork implements INodeType {
 				} else if (operation === 'delete') {
 
 					// ----------------------------------------
-					//             tagging: delete
+					//             personTag: delete
 					// ----------------------------------------
 
 					const tagId = this.getNodeParameter('tagId', i);
@@ -500,7 +500,7 @@ export class ActionNetwork implements INodeType {
 				} else if (operation === 'getAll') {
 
 					// ----------------------------------------
-					//             tagging: getAll
+					//             personTag: getAll
 					// ----------------------------------------
 
 					const tagId = this.getNodeParameter('tagId', i);

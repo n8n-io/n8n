@@ -4,4 +4,4 @@ export * from './PersonDescription';
 export * from './PetitionDescription';
 export * from './SignatureDescription';
 export * from './TagDescription';
-export * from './TaggingDescription';
+export * from './PersonTagDescription';
