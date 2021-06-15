@@ -390,7 +390,7 @@ export class Wait implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 
-		let webhookResponse: string | undefined;
+		const webhookResponse: string | undefined;
 		// if (options.responseData) {
 		// 	webhookResponse = options.responseData as string;
 		// }
