@@ -673,9 +673,9 @@ class App {
 			await WorkflowHelpers.validateWorkflow(updateData);
 			await Db.collections.Workflow!.update(id, updateData).catch(WorkflowHelpers.throwDuplicateEntryError);
 
-			const tablePrefix = config.get('database.tablePrefix');
-			await TagHelpers.removeRelations(req.params.id, tablePrefix);
-			if (tags?.length) {
+			if (tags) {
+				const tablePrefix = config.get('database.tablePrefix');
+				await TagHelpers.removeRelations(req.params.id, tablePrefix);
 				await TagHelpers.createRelations(req.params.id, tags, tablePrefix);
 			}
 
@@ -687,7 +687,7 @@ class App {
 				throw new ResponseHelper.ResponseError(`Workflow with id "${id}" could not be found to be updated.`, undefined, 400);
 			}
 
-			if (tags?.length) {
+			if (tags) {
 				workflow.tags = TagHelpers.sortByRequestOrder(workflow.tags, tags);
 			}
 
