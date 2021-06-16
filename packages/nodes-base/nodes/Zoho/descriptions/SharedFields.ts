@@ -367,7 +367,7 @@ export const makeGetAllFields = (resource: CamelCaseResource) => {
 			displayOptions: {
 				show: {
 					resource: [
-						resource,,
+						resource,
 					],
 					operation: [
 						'getAll',
