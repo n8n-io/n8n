@@ -254,12 +254,6 @@ export const makeProductDetails = (resource: CamelCaseResource) => ({
 			default: '',
 		},
 		{
-			displayName: 'Net Total',
-			name: 'net_total',
-			type: 'number',
-			default: '',
-		},
-		{
 			displayName: 'Product ID',
 			name: 'id',
 			type: 'options',
@@ -301,6 +295,12 @@ export const makeProductDetails = (resource: CamelCaseResource) => ({
 		{
 			displayName: 'Total After Discount',
 			name: 'total_after_discount',
+			type: 'number',
+			default: '',
+		},
+		{
+			displayName: 'Total (Net)',
+			name: 'net_total',
 			type: 'number',
 			default: '',
 		},
