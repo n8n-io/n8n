@@ -1,4 +1,4 @@
-import { INode, IRawErrorObject, IStatusCodeMessages} from '.';
+import { INode, IStatusCodeMessages, JsonObject} from '.';
 import { parseString } from 'xml2js';
 
 /**
@@ -46,12 +46,13 @@ const ERROR_NESTING_PROPERTIES = ['error', 'err', 'response', 'body', 'data'];
  */
 abstract class NodeError extends Error {
 	description: string | null | undefined;
-	cause: Error | IRawErrorObject;
+	cause: Error | JsonObject;
 	node: INode;
 	timestamp: number;
 
-	constructor(node: INode, error: Error | IRawErrorObject) {
+	constructor(node: INode, error: Error | JsonObject) {
 		super();
+		this.removeCircularRefs(error as JsonObject);
 		this.name = this.constructor.name;
 		this.cause = error;
 		this.node = node;
@@ -72,7 +73,9 @@ abstract class NodeError extends Error {
 	 * (2) if an array,
 	 * 		its string or number elements are collected as a long string,
 	 * 		its object elements are traversed recursively (restart this function
-	 *    with each object as a starting point)
+	 *    with each object as a starting point), or
+	 * (3) if it is an object, it traverses the object and nested ones recursively
+	 * 		based on the `potentialKeys` and returns a string if found.
 	 *
 	 * If nothing found via `potentialKeys` this method iterates over `traversalKeys` and
 	 * if the value at the key is a traversable object, it restarts with the object as the
@@ -83,15 +86,15 @@ abstract class NodeError extends Error {
 	 * Otherwise, if all the paths have been exhausted and no value is eligible, `null` is
 	 * returned.
 	 *
-	 * @param {IRawErrorObject} error
+	 * @param {JsonObject} error
 	 * @param {string[]} potentialKeys
 	 * @param {string[]} traversalKeys
 	 * @returns {string | null}
 	 */
 	protected findProperty(
-		error: IRawErrorObject,
+		error: JsonObject,
 		potentialKeys: string[],
-		traversalKeys: string[],
+		traversalKeys: string[] = [],
 	): string | null {
 		for(const key of potentialKeys) {
 			if (error[key]) {
@@ -103,7 +106,7 @@ abstract class NodeError extends Error {
 							if (typeof error === 'string') return error;
 							if (typeof error === 'number') return error.toString();
 							if (this.isTraversableObject(error)) {
-								return this.findProperty(error, potentialKeys, traversalKeys);
+								return this.findProperty(error, potentialKeys);
 							}
 							return null;
 						})
@@ -114,12 +117,18 @@ abstract class NodeError extends Error {
 					}
 					return resolvedErrors.join(' | ');
 				}
+				if (this.isTraversableObject(error[key])) {
+					const property = this.findProperty(error[key] as JsonObject, potentialKeys);
+					if (property) {
+						return property;
+					}
+				}
 			}
 		}
 
 		for (const key of traversalKeys) {
 			if (this.isTraversableObject(error[key])) {
-				const property = this.findProperty(error[key] as IRawErrorObject, potentialKeys, traversalKeys);
+				const property = this.findProperty(error[key] as JsonObject, potentialKeys, traversalKeys);
 				if (property) {
 					return property;
 				}
@@ -132,8 +141,32 @@ abstract class NodeError extends Error {
 	/**
 	 * Check if a value is an object with at least one key, i.e. it can be traversed.
 	 */
-	private isTraversableObject(value: any): value is IRawErrorObject { // tslint:disable-line:no-any
+	protected isTraversableObject(value: any): value is JsonObject { // tslint:disable-line:no-any
 		return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
+	}
+
+	/**
+	 * Remove circular references from objects.
+	 */
+	 protected removeCircularRefs(obj: JsonObject, seen = new Set()) {
+		seen.add(obj);
+		Object.entries(obj).forEach(([key, value]) => {
+			if (this.isTraversableObject(value)) {
+				seen.has(value) ? obj[key] = { circularReference: true } : this.removeCircularRefs(value, seen);
+				return;
+			}
+			if (Array.isArray(value)) {
+				value.forEach((val, index) => {
+					if (seen.has(val)) {
+						value[index] = { circularReference: true };
+						return;
+					}
+					if (this.isTraversableObject(val)) {
+						this.removeCircularRefs(val, seen);
+					}
+				});
+			}
+		});
 	}
 }
 
@@ -178,7 +211,7 @@ export class NodeApiError extends NodeError {
 
 	constructor(
 		node: INode,
-		error: IRawErrorObject,
+		error: JsonObject,
 		{ message, description, httpCode, parseXml }: { message?: string, description?: string, httpCode?: string, parseXml?: boolean } = {},
 	) {
 		super(node, error);
@@ -215,7 +248,6 @@ export class NodeApiError extends NodeError {
 	 * @returns {void}
 	 */
 	private setMessage() {
-
 		if (!this.httpCode) {
 			this.httpCode = null;
 			this.message = UNKNOWN_ERROR_MESSAGE;
