@@ -71,8 +71,8 @@ export class ZohoCrm implements INodeType {
 		name: 'zohoCrm',
 		icon: 'file:zoho.svg',
 		group: ['transform'],
-		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		version: 1,
 		description: 'Consume the Zoho API',
 		defaults: {
 			name: 'Zoho',

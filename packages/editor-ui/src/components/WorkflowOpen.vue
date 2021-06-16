@@ -32,7 +32,7 @@
 						<template slot-scope="scope">
 							<div :key="scope.row.id">
 								<span class="name">{{scope.row.name}}</span>
-								<TagsContainer class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="3" @click="onTagClick" />
+								<TagsContainer class="hidden-sm-and-down" :tagIds="getIds(scope.row.tags)" :limit="3" />
 							</div>
 						</template>
 					</el-table-column>
@@ -123,11 +123,6 @@ export default mixins(
 		},
 		updateTagsFilter(tags: string[]) {
 			this.filterTagIds = tags;
-		},
-		onTagClick(tagId: string) {
-			if (tagId !== 'count' && !this.filterTagIds.includes(tagId)) {
-				this.filterTagIds.push(tagId);
-			}
 		},
 		async openWorkflow (data: IWorkflowShortResponse, column: any) { // tslint:disable-line:no-any
 			if (column.label !== 'Active') {
