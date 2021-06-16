@@ -458,6 +458,7 @@ export default mixins(
 				await this.addNodes(data.nodes, data.connections);
 
 				this.$store.commit('setStateDirty', false);
+				this.zoomToFit();
 
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
 
