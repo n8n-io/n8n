@@ -120,6 +120,7 @@ export const productFields = [
 				displayName: 'Commission Rate',
 				name: 'Commission_Rate',
 				type: 'number',
+				description: 'Commission rate for the product. For example, enter 12 for 12%.',
 				typeOptions: {
 					minValue: 0,
 				},
@@ -277,6 +278,7 @@ export const productFields = [
 				displayName: 'Commission Rate',
 				name: 'Commission_Rate',
 				type: 'number',
+				description: 'Commission rate for the product. For example, enter 12 for 12%.',
 				typeOptions: {
 					minValue: 0,
 				},

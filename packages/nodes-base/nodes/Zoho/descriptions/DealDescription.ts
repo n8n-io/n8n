@@ -191,7 +191,7 @@ export const dealFields = [
 					maxValue: 100,
 				},
 				default: '',
-				description: 'Probability of deal closure as a percentage.',
+				description: 'Probability of deal closure as a percentage. For example, enter 12 for 12%.',
 			},
 			{
 				displayName: 'Sales Cycle Duration',
@@ -353,7 +353,7 @@ export const dealFields = [
 					maxValue: 100,
 				},
 				default: '',
-				description: 'Probability of deal closure as a percentage.',
+				description: 'Probability of deal closure as a percentage. For example, enter 12 for 12%.',
 			},
 			{
 				displayName: 'Sales Cycle Duration',
