@@ -218,7 +218,7 @@ export const accountFields = [
 	{
 		displayName: 'Account ID',
 		name: 'accountId',
-		description: 'ID of the account to delete.',
+		description: 'ID of the account to delete. Can be found at the end of the URL.',
 		type: 'string',
 		required: true,
 		default: '',
@@ -240,7 +240,7 @@ export const accountFields = [
 	{
 		displayName: 'Account ID',
 		name: 'accountId',
-		description: 'ID of the account to retrieve.',
+		description: 'ID of the account to retrieve. Can be found at the end of the URL.',
 		type: 'string',
 		required: true,
 		default: '',
@@ -267,7 +267,7 @@ export const accountFields = [
 	{
 		displayName: 'Account ID',
 		name: 'accountId',
-		description: 'ID of the account to update.',
+		description: 'ID of the account to update. Can be found at the end of the URL.',
 		type: 'string',
 		required: true,
 		default: '',
