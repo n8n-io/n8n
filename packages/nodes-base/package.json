@@ -450,6 +450,7 @@
       "dist/nodes/Mindee/Mindee.node.js",
       "dist/nodes/MoveBinaryData.node.js",
       "dist/nodes/Mocean/Mocean.node.js",
+      "dist/nodes/MondayCom/MondayCom.node.js",
       "dist/nodes/MongoDb/MongoDb.node.js",
       "dist/nodes/MQTT/Mqtt.node.js",
       "dist/nodes/MQTT/MqttTrigger.node.js",
