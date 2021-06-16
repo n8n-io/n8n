@@ -676,7 +676,10 @@ class App {
 			if (tags) {
 				const tablePrefix = config.get('database.tablePrefix');
 				await TagHelpers.removeRelations(req.params.id, tablePrefix);
-				await TagHelpers.createRelations(req.params.id, tags, tablePrefix);
+
+				if (tags.length) {
+					await TagHelpers.createRelations(req.params.id, tags, tablePrefix);
+				}
 			}
 
 			// We sadly get nothing back from "update". Neither if it updated a record
@@ -687,7 +690,7 @@ class App {
 				throw new ResponseHelper.ResponseError(`Workflow with id "${id}" could not be found to be updated.`, undefined, 400);
 			}
 
-			if (tags) {
+			if (tags?.length) {
 				workflow.tags = TagHelpers.sortByRequestOrder(workflow.tags, tags);
 			}
 
