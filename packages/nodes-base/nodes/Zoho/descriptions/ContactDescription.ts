@@ -105,13 +105,6 @@ export const contactFields = [
 				default: '',
 				description: 'Phone number of the contact’s assistant.',
 			},
-			{
-				displayName: 'Currency',
-				name: 'Currency',
-				type: 'string',
-				default: '',
-				description: 'Symbol of the currency in which revenue is generated.',
-			},
 			makeCustomFieldsFixedCollection('contact'),
 			{
 				displayName: 'Date of Birth',
@@ -266,13 +259,6 @@ export const contactFields = [
 				type: 'string',
 				default: '',
 				description: 'Phone number of the contact’s assistant.',
-			},
-			{
-				displayName: 'Currency',
-				name: 'Currency',
-				type: 'string',
-				default: '',
-				description: 'Symbol of the currency in which revenue is generated.',
 			},
 			makeCustomFieldsFixedCollection('contact'),
 			{
