@@ -196,8 +196,8 @@ export const dealFields = [
 			{
 				displayName: 'Sales Cycle Duration',
 				name: 'Sales_Cycle_Duration',
-				type: 'string',
-				default: '',
+				type: 'number',
+				default: 0,
 				description: 'Averge number of days for the deal to be won.',
 			},
 		],
@@ -358,8 +358,8 @@ export const dealFields = [
 			{
 				displayName: 'Sales Cycle Duration',
 				name: 'Sales_Cycle_Duration',
-				type: 'string',
-				default: '',
+				type: 'number',
+				default: 0,
 				description: 'Averge number of days to win the deal.',
 			},
 			{
