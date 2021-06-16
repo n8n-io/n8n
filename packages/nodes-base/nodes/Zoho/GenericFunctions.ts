@@ -327,9 +327,21 @@ export async function getFields(
 	resource: SnakeCaseResource,
 	{ onlyCustom } = { onlyCustom: false },
 ) {
-	const endpoint = '/settings/fields';
-	const qs = { module: `${resource}s` };
-	let { fields } = await zohoApiRequest.call(this, 'GET', endpoint, {}, qs) as LoadedFields;
+	const moduleMap: { [resource: string]: string } = {
+		account: 'Accounts',
+		contact: 'Contacts',
+		deal: 'Deals',
+		invoice: 'Invoices',
+		lead: 'Leads',
+		product: 'Products',
+		purchaseOrder: 'Purchase_Orders',
+		salesOrder: 'Sales_Orders',
+		vendor: 'Vendors',
+	};
+
+	const qs = { module: moduleMap[resource] };
+
+	let { fields } = await zohoApiRequest.call(this, 'GET', '/settings/fields', {}, qs) as LoadedFields;
 
 	if (onlyCustom) {
 		fields = fields.filter(({ custom_field }) => custom_field);
