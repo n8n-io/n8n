@@ -247,7 +247,7 @@ export const salesOrderFields = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Commission of sales person on deal closure.',
+				description: 'Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%.',
 			},
 			shippingAddress,
 			{
@@ -484,7 +484,7 @@ export const salesOrderFields = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Commission of sales person on deal closure.',
+				description: 'Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%.',
 			},
 			shippingAddress,
 			{

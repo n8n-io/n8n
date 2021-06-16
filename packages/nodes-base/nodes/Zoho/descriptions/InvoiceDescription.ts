@@ -190,7 +190,7 @@ export const invoiceFields = [
 				name: 'Sales_Commission',
 				type: 'number',
 				default: '',
-				description: 'Commission of sales person on deal closure.',
+				description: 'Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%.',
 			},
 			shippingAddress,
 			{
@@ -379,7 +379,7 @@ export const invoiceFields = [
 				name: 'Sales_Commission',
 				type: 'number',
 				default: '',
-				description: 'Commission of sales person on deal closure.',
+				description: 'Commission of sales person on deal closure as a percentage. For example, enter 12 for 12%.',
 			},
 			shippingAddress,
 			{
