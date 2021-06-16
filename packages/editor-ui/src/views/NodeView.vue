@@ -136,7 +136,7 @@ import NodeCreator from '@/components/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { getWorkflowCorners } from './helpers';
+import { getWorkflowCorners, getLeftmostTopNode } from './helpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -403,10 +403,10 @@ export default mixins(
 				const nodes = data.workflow.nodes;
 				const hasStartNode = nodes.reduce((accu, node) => accu || node.type === START_NODE_TYPE , false);
 
-				const {minX, minY} = getWorkflowCorners(nodes);
+				const leftmostTop = getLeftmostTopNode(nodes);
 
-				const diffX = DEFAULT_START_POSITION_X - minX;
-				const diffY = DEFAULT_START_POSITION_Y - minY;
+				const diffX = DEFAULT_START_POSITION_X - leftmostTop.position[0];
+				const diffY = DEFAULT_START_POSITION_Y - leftmostTop.position[1];
 
 				data.workflow.nodes.map((node) => {
 					node.position[0] += diffX + (hasStartNode? 0 : NODE_SIZE * 2);
