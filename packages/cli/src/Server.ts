@@ -673,10 +673,13 @@ class App {
 			await WorkflowHelpers.validateWorkflow(updateData);
 			await Db.collections.Workflow!.update(id, updateData).catch(WorkflowHelpers.throwDuplicateEntryError);
 
-			const tablePrefix = config.get('database.tablePrefix');
-			await TagHelpers.removeRelations(req.params.id, tablePrefix);
-			if (tags?.length) {
-				await TagHelpers.createRelations(req.params.id, tags, tablePrefix);
+			if (tags) {
+				const tablePrefix = config.get('database.tablePrefix');
+				await TagHelpers.removeRelations(req.params.id, tablePrefix);
+
+				if (tags.length) {
+					await TagHelpers.createRelations(req.params.id, tags, tablePrefix);
+				}
 			}
 
 			// We sadly get nothing back from "update". Neither if it updated a record
