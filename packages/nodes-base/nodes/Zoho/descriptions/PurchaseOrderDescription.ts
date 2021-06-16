@@ -222,6 +222,7 @@ export const purchaseOrderFields = [
 				displayName: 'Discount',
 				name: 'Discount',
 				type: 'number',
+				description: 'Discount applied to the purchase order. For example, enter 12 for 12%.',
 				default: 0,
 				typeOptions: {
 					minValue: 0,

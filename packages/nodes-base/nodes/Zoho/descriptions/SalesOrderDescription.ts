@@ -200,6 +200,7 @@ export const salesOrderFields = [
 				displayName: 'Discount',
 				name: 'Discount',
 				type: 'number',
+				description: 'Discount applied to the sales order. For example, enter 12 for 12%.',
 				default: 0,
 				typeOptions: {
 					minValue: 0,
