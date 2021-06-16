@@ -57,15 +57,15 @@ import {
 
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'QuickBooks',
+		displayName: 'QuickBooks Online',
 		name: 'quickbooks',
 		icon: 'file:quickbooks.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume the QuickBooks API',
+		description: 'Consume the QuickBooks Online API',
 		defaults: {
-			name: 'QuickBooks',
+			name: 'QuickBooks Online',
 			color: '#2CA01C',
 		},
 		inputs: ['main'],

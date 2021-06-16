@@ -10,7 +10,7 @@ export class QuickBooksOAuth2Api implements ICredentialType {
 	extends = [
 		'oAuth2Api',
 	];
-	displayName = 'QuickBooks OAuth2 API';
+	displayName = 'QuickBooks Online OAuth2 API';
 	documentationUrl = 'quickbooks';
 	properties: INodeProperties[] = [
 		{
