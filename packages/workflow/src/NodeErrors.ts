@@ -52,7 +52,6 @@ abstract class NodeError extends Error {
 
 	constructor(node: INode, error: Error | JsonObject) {
 		super();
-		this.removeCircularRefs(error as JsonObject);
 		this.name = this.constructor.name;
 		this.cause = error;
 		this.node = node;
@@ -215,6 +214,9 @@ export class NodeApiError extends NodeError {
 		{ message, description, httpCode, parseXml }: { message?: string, description?: string, httpCode?: string, parseXml?: boolean } = {},
 	) {
 		super(node, error);
+		if (error.error) { // only for request library error
+			this.removeCircularRefs(error.error as JsonObject);
+		}
 		if (message) {
 			this.message = message;
 			this.description = description;
