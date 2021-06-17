@@ -39,7 +39,7 @@
 			@closeNodeCreator="closeNodeCreator"
 			></node-creator>
 		<div :class="{ 'zoom-menu': true, expanded: !sidebarMenuCollapsed }">
-			<button @click="zoomToFit" class="button-white" title="Zoom To Fit">
+			<button @click="zoomToFit" class="button-white" title="Zoom to Fit">
 				<font-awesome-icon icon="expand"/>
 			</button>
 			<button @click="setZoom('in')" class="button-white" title="Zoom In">
