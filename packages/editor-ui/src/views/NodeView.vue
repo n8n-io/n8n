@@ -543,13 +543,13 @@ export default mixins(
 						this.callDebounced('renameNodePrompt', 1500, lastSelectedNode.name);
 					}
 				} else if (e.key === '+' && !this.isCtrlKeyPressed(e)) {
-					this.callDebounced('setZoom', 300, 'in');
+					this.setZoom('in');
 				} else if (e.key === '-' && !this.isCtrlKeyPressed(e)) {
-					this.callDebounced('setZoom', 300, 'out');
+					this.setZoom('out');
 				} else if ((e.key === '0') && !this.isCtrlKeyPressed(e)) {
-					this.callDebounced('setZoom', 300, 'reset');
+					this.setZoom('reset');
 				} else if ((e.key === '1') && !this.isCtrlKeyPressed(e)) {
-					this.callDebounced('zoomToFit', 300);
+					this.zoomToFit();
 				} else if ((e.key === 'a') && (this.isCtrlKeyPressed(e) === true)) {
 					// Select all nodes
 					e.stopPropagation();
