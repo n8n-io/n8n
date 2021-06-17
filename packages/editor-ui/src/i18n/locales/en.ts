@@ -1,4 +1,4 @@
-const baseTranslations = {
+const baseStrings = {
 	en: {
 		about: {
 			aboutN8n: 'About n8n',
@@ -793,4 +793,4 @@ const baseTranslations = {
 	},
 };
 
-export default baseTranslations;
+export default baseStrings;

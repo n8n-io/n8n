@@ -24,7 +24,7 @@ import {
 	PaintStyle,
 } from 'jsplumb';
 
-import baseTranslations from '@/i18n/locales/en';
+import baseStrings from '@/i18n/locales/en';
 
 declare module 'jsplumb' {
 	interface Anchor {
@@ -574,19 +574,20 @@ export interface IRestApiContext {
 
 
 /**
- * Shape of the top-level 'en' key in 'baseTranslations' object.
+ * Shape of the top-level 'en' key in `baseStrings` object.
  */
-type BaseTranslations = typeof baseTranslations['en'];
+type BaseStrings = typeof baseStrings['en'];
 
 /**
- * Union of string keys representing paths of the translation object.
+ * Union of string keys representing keys of the translation object.
  */
 type TranslationKeys<TranslationObject> = keyof TranslationObject extends string
 	? keyof TranslationObject
 	: never;
 
 /**
- * Union of arrays of string keys representing paths of the translation object.
+ * Union of string arrays, each of them making up a path to the key
+ * at the deepest level of nesting in a translation object.
  */
 type PathCollection<TranslationObject> = TranslationObject extends string
 	? []
@@ -610,6 +611,6 @@ type Join<StringLiteralArray extends string[], Delimiter extends string> =
 /**
  * Union of strings that represent valid dot-delimited paths of the translation object.
  */
-type TranslationPath = Join<PathCollection<BaseTranslations>, '.'>;
+type TranslationPath = Join<PathCollection<BaseStrings>, '.'>;
 
 export type { TranslationPath };
