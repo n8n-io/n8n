@@ -200,14 +200,19 @@ export default mixins(
 	/**
 	 * Before mounting, load the translations for this node (if any),
 	 * which may contain credentials parameters.
+	 *
+	 * This is necessary in case the node has not been placed on the canvas,
+	 * so its translations are not yet available.
 	 */
 	beforeMount() {
 		return new Promise<void>(resolve => {
 			this.restApi().getNodesInformation([this.credentialsParams.nodeType])
 				.then(nodeInfo => {
-					const nodeTranslations = nodeInfo[0].translation;
-					if (nodeTranslations) addNodeTranslations(nodeTranslations);
-					resolve();
+					if (nodeInfo[0] && nodeInfo[0].translation) {
+						const nodeTranslations = nodeInfo[0].translation;
+						if (nodeTranslations) addNodeTranslations(nodeTranslations);
+						resolve();
+					}
 				});
 		});
 	},
