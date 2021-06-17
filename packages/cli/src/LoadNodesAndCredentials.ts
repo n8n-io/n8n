@@ -26,6 +26,8 @@ import {
 import * as glob from 'glob-promise';
 import * as path from 'path';
 
+const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
+
 
 class LoadNodesAndCredentialsClass {
 	nodeTypes: INodeTypeData = {};
@@ -238,13 +240,19 @@ class LoadNodesAndCredentialsClass {
 
 			if (isCustom) {
 				codex.categories = codex.categories
-					? codex.categories.concat('Custom Nodes')
-					: ['Custom Nodes'];
+					? codex.categories.concat(CUSTOM_NODES_CATEGORY)
+					: [CUSTOM_NODES_CATEGORY];
 			}
 
 			node.description.codex = codex;
 		} catch (_) {
 			this.logger.warn(`No codex available for: ${filePath.split('/').pop()}`);
+
+			if (isCustom) {
+				node.description.codex = {
+					categories: [CUSTOM_NODES_CATEGORY],
+				};
+			}
 		}
 	}
 
