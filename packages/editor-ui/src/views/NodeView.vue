@@ -542,9 +542,9 @@ export default mixins(
 					if (lastSelectedNode !== null) {
 						this.callDebounced('renameNodePrompt', 1500, lastSelectedNode.name);
 					}
-				} else if (e.key === '+' && !this.isCtrlKeyPressed(e)) {
+				} else if ((e.key === '=' || e.key === '+') && !this.isCtrlKeyPressed(e)) {
 					this.setZoom('in');
-				} else if (e.key === '-' && !this.isCtrlKeyPressed(e)) {
+				} else if ((e.key === '_' || e.key === '-') && !this.isCtrlKeyPressed(e)) {
 					this.setZoom('out');
 				} else if ((e.key === '0') && !this.isCtrlKeyPressed(e)) {
 					this.setZoom('reset');
