@@ -51,7 +51,7 @@ export class AwsS3 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS S3',
 		name: 'awsS3',
-		icon: 'file:s3.png',
+		icon: 'file:s3.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

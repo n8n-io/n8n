@@ -15,7 +15,7 @@ export class Postgres implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Postgres',
 		name: 'postgres',
-		icon: 'file:postgres.png',
+		icon: 'file:postgres.svg',
 		group: ['input'],
 		version: 1,
 		description: 'Gets, add and update data in Postgres.',
