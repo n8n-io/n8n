@@ -792,5 +792,6 @@ export default {
 			workflowSettings: 'Deutsch',
 		},
 
+		'n8n-nodes-base': {},
 	},
 };
