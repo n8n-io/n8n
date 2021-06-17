@@ -546,10 +546,10 @@ export default mixins(
 					this.callDebounced('setZoom', 300, 'in');
 				} else if (e.key === '-' && !this.isCtrlKeyPressed(e)) {
 					this.callDebounced('setZoom', 300, 'out');
-				} else if ((e.key === '0') && (this.isCtrlKeyPressed(e) !== true)) {
-					this.callDebounced('zoomToFit', 300);
-				} else if ((e.key === '0') && (this.isCtrlKeyPressed(e) === true)) {
+				} else if ((e.key === '0') && !this.isCtrlKeyPressed(e)) {
 					this.callDebounced('setZoom', 300, 'reset');
+				} else if ((e.key === '1') && !this.isCtrlKeyPressed(e)) {
+					this.callDebounced('zoomToFit', 300);
 				} else if ((e.key === 'a') && (this.isCtrlKeyPressed(e) === true)) {
 					// Select all nodes
 					e.stopPropagation();
