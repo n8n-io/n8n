@@ -783,14 +783,24 @@ export default mixins(
 
 			setZoom (zoom: string) {
 				let scale = this.nodeViewScale;
+				let [xOffset, yOffset] = this.$store.getters.getNodeViewOffsetPosition;
 				if (zoom === 'in') {
 					scale *= 1.25;
+					xOffset -= window.innerWidth / 10;
+					yOffset -= window.innerHeight / 10;
+					xOffset *= 1.25;
+					yOffset *= 1.25;
 				} else if (zoom === 'out') {
 					scale /= 1.25;
+					xOffset /= 1.25;
+					yOffset /= 1.25;
+					xOffset += window.innerWidth / 10;
+					yOffset += window.innerHeight / 10;
 				} else {
 					scale = 1;
 				}
 				this.setZoomLevel(scale);
+				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
 			},
 
 			setZoomLevel (zoomLevel: number) {
