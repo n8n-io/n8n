@@ -757,6 +757,7 @@ export function WorkflowExecuteAdditionalData(waitPromise: IDeferredPromise<IRun
 		encryptionKey: 'test',
 		timezone: 'America/New_York',
 		webhookBaseUrl: 'webhook',
+		webhookSleepingBaseUrl: 'webhook-sleeping',
 		webhookTestBaseUrl: 'webhook-test',
 	};
 }

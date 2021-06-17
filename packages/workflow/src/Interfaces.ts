@@ -757,6 +757,7 @@ export interface IWorkflowExecuteAdditionalData {
 	sendMessageToUI?: (source: string, message: string) => void;
 	timezone: string;
 	webhookBaseUrl: string;
+	webhookSleepingBaseUrl: string;
 	webhookTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;

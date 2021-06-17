@@ -1,5 +1,5 @@
 import {
-	PLACEHOLDER_EMPTY_EXECUTION_ID,
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 } from '@/constants';
 
@@ -372,7 +372,8 @@ export const workflowHelpers = mixins(
 				}
 
 				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-					$executionId: PLACEHOLDER_EMPTY_EXECUTION_ID,
+					$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					$restartWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
 				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndex, itemIndex, activeNode.name, connectionInputData, 'manual', additionalKeys, false) as IDataObject;

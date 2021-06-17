@@ -1,5 +1,5 @@
 import {
-	PLACEHOLDER_EMPTY_EXECUTION_ID,
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 } from '@/constants';
 
 import {
@@ -334,7 +334,7 @@ export const nodeHelpers = mixins(
 				}
 
 				if (nodeType !== null && nodeType.subtitle !== undefined) {
-					return workflow.expression.getSimpleParameterValue(data as INode, nodeType.subtitle, 'internal', PLACEHOLDER_EMPTY_EXECUTION_ID) as string | undefined;
+					return workflow.expression.getSimpleParameterValue(data as INode, nodeType.subtitle, 'internal', PLACEHOLDER_FILLED_AT_EXECUTION_TIME) as string | undefined;
 				}
 
 				if (data.parameters.operation !== undefined) {

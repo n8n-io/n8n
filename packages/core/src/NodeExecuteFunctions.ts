@@ -310,6 +310,23 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
 
 
 /**
+ * Returns the additional keys for Expressions and Function-Nodes
+ *
+ * @export
+ * @param {IWorkflowExecuteAdditionalData} additionalData
+ * @returns {(IWorkflowDataProxyAdditionalKeys)}
+ */
+export function getAdditionalKeys(additionalData: IWorkflowExecuteAdditionalData): IWorkflowDataProxyAdditionalKeys {
+	const executionId = additionalData.executionId || PLACEHOLDER_EMPTY_EXECUTION_ID;
+	return {
+		$executionId: executionId,
+		$restartWebhookUrl: `${additionalData.webhookSleepingBaseUrl}/${executionId}`,
+	};
+}
+
+
+
+/**
  * Returns the requested decrypted credentials if the node has access to them.
  *
  * @export
@@ -575,11 +592,7 @@ export function getExecutePollFunctions(workflow: Workflow, node: INode, additio
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] = [];
 
-				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-					$executionId: PLACEHOLDER_EMPTY_EXECUTION_ID,
-				};
-
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, additionalKeys, fallbackValue);
+				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, getAdditionalKeys(additionalData), fallbackValue);
 			},
 			getRestApiUrl: (): string => {
 				return additionalData.restApiUrl;
@@ -645,11 +658,7 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] = [];
 
-				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-					$executionId: PLACEHOLDER_EMPTY_EXECUTION_ID,
-				};
-
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, additionalKeys, fallbackValue);
+				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, getAdditionalKeys(additionalData), fallbackValue);
 			},
 			getRestApiUrl: (): string => {
 				return additionalData.restApiUrl;
@@ -701,12 +710,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				return continueOnFail(node);
 			},
 			evaluateExpression: (expression: string, itemIndex: number) => {
-
-				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-					$executionId: additionalData.executionId,
-				};
-
-				return workflow.expression.resolveSimpleParameterValue('=' + expression, {}, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, mode, additionalKeys);
+				return workflow.expression.resolveSimpleParameterValue('=' + expression, {}, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, mode, getAdditionalKeys(additionalData));
 			},
 			async executeWorkflow(workflowInfo: IExecuteWorkflowInfo, inputData?: INodeExecutionData[]): Promise<any> { // tslint:disable-line:no-any
 				return additionalData.executeWorkflow(workflowInfo, additionalData, inputData);
@@ -732,7 +736,6 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 					throw new Error(`Could not get input index "${inputIndex}" of input "${inputName}"!`);
 				}
 
-
 				if (inputData[inputName][inputIndex] === null) {
 					// return [];
 					throw new Error(`Value "${inputIndex}" of input "${inputName}" did not get set!`);
@@ -741,10 +744,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				return inputData[inputName][inputIndex] as INodeExecutionData[];
 			},
 			getNodeParameter: (parameterName: string, itemIndex: number, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object => { //tslint:disable-line:no-any
-				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-					$executionId: additionalData.executionId,
-				};
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, additionalKeys, fallbackValue);
+				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, getAdditionalKeys(additionalData), fallbackValue);
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
@@ -762,10 +762,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				return getWorkflowMetadata(workflow);
 			},
 			getWorkflowDataProxy: (itemIndex: number): IWorkflowDataProxyData => {
-				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-					$executionId: additionalData.executionId as string,
-				};
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, {}, mode, additionalKeys);
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, {}, mode, getAdditionalKeys(additionalData));
 				return dataProxy.getDataProxy();
 			},
 			getWorkflowStaticData(type: string): IDataObject {
@@ -827,10 +824,7 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 			},
 			evaluateExpression: (expression: string, evaluateItemIndex: number | undefined) => {
 				evaluateItemIndex = evaluateItemIndex === undefined ? itemIndex : evaluateItemIndex;
-				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-					$executionId: additionalData.executionId,
-				};
-				return workflow.expression.resolveSimpleParameterValue('=' + expression, {}, runExecutionData, runIndex, evaluateItemIndex, node.name, connectionInputData, mode, additionalKeys);
+				return workflow.expression.resolveSimpleParameterValue('=' + expression, {}, runExecutionData, runIndex, evaluateItemIndex, node.name, connectionInputData, mode, getAdditionalKeys(additionalData));
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
@@ -876,19 +870,13 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 				return getTimezone(workflow, additionalData);
 			},
 			getNodeParameter: (parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object => { //tslint:disable-line:no-any
-				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-					$executionId: additionalData.executionId,
-				};
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, additionalKeys, fallbackValue);
+				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, getAdditionalKeys(additionalData), fallbackValue);
 			},
 			getWorkflow: () => {
 				return getWorkflowMetadata(workflow);
 			},
 			getWorkflowDataProxy: (): IWorkflowDataProxyData => {
-				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-					$executionId: additionalData.executionId as string,
-				};
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, {}, mode, additionalKeys);
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, node.name, connectionInputData, {}, mode, getAdditionalKeys(additionalData));
 				return dataProxy.getDataProxy();
 			},
 			getWorkflowStaticData(type: string): IDataObject {
@@ -945,11 +933,7 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, path: s
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] = [];
 
-				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-					$executionId: PLACEHOLDER_EMPTY_EXECUTION_ID,
-				};
-
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, 'internal' as WorkflowExecuteMode, additionalKeys, fallbackValue);
+				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, 'internal' as WorkflowExecuteMode, getAdditionalKeys(additionalData), fallbackValue);
 			},
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
@@ -1003,16 +987,11 @@ export function getExecuteHookFunctions(workflow: Workflow, node: INode, additio
 				const itemIndex = 0;
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] = [];
-				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-					$executionId: PLACEHOLDER_EMPTY_EXECUTION_ID,
-				};
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, additionalKeys, fallbackValue);
+
+				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, getAdditionalKeys(additionalData), fallbackValue);
 			},
 			getNodeWebhookUrl: (name: string): string | undefined => {
-				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-					$executionId: PLACEHOLDER_EMPTY_EXECUTION_ID,
-				};
-				return getNodeWebhookUrl(name, workflow, node, additionalData, mode, additionalKeys, isTest);
+				return getNodeWebhookUrl(name, workflow, node, additionalData, mode, getAdditionalKeys(additionalData), isTest);
 			},
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
@@ -1088,10 +1067,8 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 				const itemIndex = 0;
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] = [];
-				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-					$executionId: PLACEHOLDER_EMPTY_EXECUTION_ID,
-				};
-				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, additionalKeys, fallbackValue);
+
+				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, mode, getAdditionalKeys(additionalData), fallbackValue);
 			},
 			getParamsData(): object {
 				if (additionalData.httpRequest === undefined) {
@@ -1118,10 +1095,7 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 				return additionalData.httpResponse;
 			},
 			getNodeWebhookUrl: (name: string): string | undefined => {
-				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-					$executionId: PLACEHOLDER_EMPTY_EXECUTION_ID,
-				};
-				return getNodeWebhookUrl(name, workflow, node, additionalData, mode, additionalKeys);
+				return getNodeWebhookUrl(name, workflow, node, additionalData, mode, getAdditionalKeys(additionalData));
 			},
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);

@@ -13,7 +13,7 @@
 <script lang="ts">
 
 import {
-	PLACEHOLDER_EMPTY_EXECUTION_ID,
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 } from '@/constants';
 
 import {
@@ -382,7 +382,8 @@ export default mixins(
 				}
 
 				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-					$executionId: PLACEHOLDER_EMPTY_EXECUTION_ID,
+					$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					$restartWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
 				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual', additionalKeys);

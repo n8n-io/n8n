@@ -40,11 +40,11 @@ export class SleepTracker {
 		// TODO: Currently order gets messed up in execution list and waiting
 		//       disappears, probably a the already fixed old bug but double check
 		// TODO: Make it possible to select "waiting" executions in Execution List
-		// TODO: Make it possible to get restart workflow-URL in workflow-execution
 		// TODO: Display correct URL in wait-node (will probably be only placeholder one as execution-ID will be unknown)
 		// TODO: Think about security. Is it OK that people can restart an execution by knowing (or guessing) the execution-ID?
 		// TODO: Think about how to best mark an execution waiting for a webhook in DB (currently also uses time)
 		// TODO: Implement the missing webhook functionality (for example receive binary data)
+		// TODO: Display sleeping URL information on wait-node so that people know how to retrieve it
 
 		// Example URL:
 		// http://localhost:5678/webhook-sleeping/13485

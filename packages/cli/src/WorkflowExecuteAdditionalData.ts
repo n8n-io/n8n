@@ -692,6 +692,7 @@ export async function getBase(credentials: IWorkflowCredentials, currentNodePara
 
 	const timezone = config.get('generic.timezone') as string;
 	const webhookBaseUrl = urlBaseWebhook + config.get('endpoints.webhook') as string;
+	const webhookSleepingBaseUrl = urlBaseWebhook + config.get('endpoints.webhookSleeping') as string;
 	const webhookTestBaseUrl = urlBaseWebhook + config.get('endpoints.webhookTest') as string;
 
 	const encryptionKey = await UserSettings.getEncryptionKey();
@@ -707,6 +708,7 @@ export async function getBase(credentials: IWorkflowCredentials, currentNodePara
 		restApiUrl: urlBaseWebhook + config.get('endpoints.rest') as string,
 		timezone,
 		webhookBaseUrl,
+		webhookSleepingBaseUrl,
 		webhookTestBaseUrl,
 		currentNodeParameters,
 		executionTimeoutTimestamp,
