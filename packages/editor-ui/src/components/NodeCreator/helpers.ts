@@ -79,7 +79,7 @@ const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
 	);
 	sorted.sort();
 
-	return [CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY].concat(sorted.concat(UNCATEGORIZED_CATEGORY));
+	return [CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, ...sorted, UNCATEGORIZED_CATEGORY];
 };
 
 export const getCategorizedList = (categoriesWithNodes: ICategoriesWithNodes): INodeCreateElement[] => {
@@ -111,7 +111,7 @@ export const getCategorizedList = (categoriesWithNodes: ICategoriesWithNodes): I
 				if (subcategory.regularCount > 0) {
 					categoryEl.includedByRegular = subcategory.regularCount > 0;
 				}
-				return accu.concat([categoryEl].concat(subcategory.nodes));
+				return [...accu, categoryEl, ...subcategory.nodes];
 			}
 
 			subcategories.sort();
@@ -136,12 +136,13 @@ export const getCategorizedList = (categoriesWithNodes: ICategoriesWithNodes): I
 						categoryEl.includedByRegular = true;
 					}
 
-					return accu.concat(subcategoryEl);
+					accu.push(subcategoryEl);
+					return accu;
 				},
 				[],
 			);
 
-			return accu.concat([categoryEl].concat(subcategorized));
+			return [...accu, categoryEl, ...subcategorized];
 		},
 		[],
 	);

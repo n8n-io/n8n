@@ -120,15 +120,17 @@ export default mixins(externalHooks).extend({
 					}
 
 					if (el.type === 'category') {
-						return accu.concat({
+						accu.push({
 							...el,
 							properties: {
 								expanded: this.activeCategory.includes(el.category),
 							},
 						} as INodeCreateElement);
+						return accu;
 					}
 
-					return accu.concat(el);
+					accu.push(el);
+					return accu;
 				}, []);
 		},
 
@@ -241,7 +243,7 @@ export default mixins(externalHooks).extend({
 					(active: string) => active !== category,
 				);
 			} else {
-				this.activeCategory = this.activeCategory.concat(category);
+				this.activeCategory = [...this.activeCategory, category];
 			}
 
 			this.activeIndex = this.categorized.findIndex(
