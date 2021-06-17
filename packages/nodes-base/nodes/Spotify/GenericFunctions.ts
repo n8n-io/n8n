@@ -65,9 +65,12 @@ export async function spotifyApiRequestAllItems(this: IHookFunctions | IExecuteF
 		returnData.push.apply(returnData, get(responseData, propertyName));
 		uri = responseData.next || responseData[propertyName.split('.')[0]].next;
 		//remove the query as the query parameters are already included in the next, else api throws error.
-		query = {}; 
+		query = {};
+		if (uri?.includes('offset=1000')) {
+			return returnData;
+		}
 	} while (
-		(responseData['next'] !== null && responseData['next'] !== undefined ) ||
+		(responseData['next'] !== null && responseData['next'] !== undefined) ||
 		responseData[propertyName.split('.')[0]].next !== null
 	);
 

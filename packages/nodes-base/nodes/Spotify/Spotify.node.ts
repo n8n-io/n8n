@@ -423,11 +423,6 @@ export class Spotify implements INodeType {
 						description: 'Remove tracks from a playlist by track and playlist URI or ID.',
 					},
 					{
-						name: 'Remove an Item',
-						value: 'delete',
-						description: 'Remove tracks from a playlist by track and playlist URI or ID.',
-					},
-					{
 						name: `Search`,
 						value: 'search',
 						description: `Search playlists by keyword.`,
@@ -1165,6 +1160,7 @@ export class Spotify implements INodeType {
 
 					qs = {
 						q,
+						limit: 50,
 						type: 'artist',
 						...filters,
 					};
@@ -1297,6 +1293,7 @@ export class Spotify implements INodeType {
 					qs = {
 						q,
 						type: 'playlist',
+						limit: 50,
 						...filters,
 					};
 
@@ -1340,6 +1337,7 @@ export class Spotify implements INodeType {
 					qs = {
 						q,
 						type: 'track',
+						limit: 50,
 						...filters,
 					};
 
