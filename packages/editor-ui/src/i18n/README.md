@@ -181,7 +181,8 @@ To translate base UI strings:
   2.2. Rename the copy using the locale identifier, e.g. `de.ts`.
   2.3. Replace `en` in line 2 of the copy with the locale identifier.
  3. Populate the `{localeIdentifier}.ts` file - see below.
- 4. (TODO: Switch the n8n language. How?)
+ 4. Add `'n8n-nodes-base': {},` to the `{localeIdentifier}.ts` file.
+ 5. (TODO: Switch the n8n language. How?)
 
 Example:
 

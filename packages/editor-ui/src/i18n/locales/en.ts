@@ -789,7 +789,7 @@ const baseTranslations = {
 			workflowSettings: 'Workflow Settings',
 		},
 
-		'n8n-nodes-base': {},
+		'n8n-nodes-base': {}, // required for node translation
 	},
 };
 
