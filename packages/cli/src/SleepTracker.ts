@@ -43,6 +43,7 @@ export class SleepTracker {
 		// TODO: Think about how to best mark an execution waiting for a webhook in DB (currently also uses time)
 		// TODO: Implement the missing webhook functionality (for example receive binary data)
 		// TODO: Display sleeping URL information on wait-node so that people know how to retrieve it
+		// TODO: Allow to set time to continue (absolute & relative) in webhook-mode so that it goes on if no webhook is received (separate output?)
 
 		// Example URL:
 		// http://localhost:5678/webhook-sleeping/13485
