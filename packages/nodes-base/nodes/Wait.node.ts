@@ -1,4 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+	SLEEP_TIME_UNLIMITED,
+} from 'n8n-core';
 import {
 	INodeExecutionData,
 	INodeType,
@@ -421,8 +424,7 @@ export class Wait implements INodeType {
 
 		if (mode === 'webhook') {
 			// TODO: Think about proper solution
-			const sleepTill = new Date(new Date().getTime() + 9999999999999);
-			await this.putExecutionToSleep(sleepTill);
+			await this.putExecutionToSleep(new Date(SLEEP_TIME_UNLIMITED));
 
 			return [this.getInputData()];
 		}
