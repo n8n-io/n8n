@@ -37,8 +37,6 @@ export class SleepTracker {
 		// TODO: Implement and test for/with other databases
 		// TODO: Check with different modes: own, main, queue (basic tests done for "own" & "main", for "queue" not implemented at all)
 		// TODO: Do proper testing
-		// TODO: Currently order gets messed up in execution list and waiting
-		//       disappears, probably a the already fixed old bug but double check
 		// TODO: Make it possible to select "waiting" executions in Execution List
 		// TODO: Display correct URL in wait-node (will probably be only placeholder one as execution-ID will be unknown)
 		// TODO: Think about security. Is it OK that people can restart an execution by knowing (or guessing) the execution-ID?

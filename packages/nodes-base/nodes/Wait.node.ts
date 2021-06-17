@@ -2,7 +2,9 @@ import {
 	IExecuteFunctions,
 	SLEEP_TIME_UNLIMITED,
 } from 'n8n-core';
+
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -10,6 +12,26 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
+import * as basicAuth from 'basic-auth';
+
+import { Response } from 'express';
+
+function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
+	if (message === undefined) {
+		message = 'Authorization problem!';
+		if (responseCode === 401) {
+			message = 'Authorization is required!';
+		} else if (responseCode === 403) {
+			message = 'Authorization data is wrong!';
+		}
+	}
+
+	resp.writeHead(responseCode, { 'WWW-Authenticate': `Basic realm="${realm}"` });
+	resp.end(message);
+	return {
+		noWebhookResponse: true,
+	};
+}
 
 export class Wait implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,6 +47,30 @@ export class Wait implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		credentials: [
+			{
+				name: 'httpBasicAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'basicAuth',
+						],
+					},
+				},
+			},
+			{
+				name: 'httpHeaderAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'headerAuth',
+						],
+					},
+				},
+			},
+		],
 		webhooks: [
 			{
 				name: 'default',
@@ -42,6 +88,34 @@ export class Wait implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				displayOptions: {
+					show: {
+						mode: [
+							'webhook',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Basic Auth',
+						value: 'basicAuth',
+					},
+					{
+						name: 'Header Auth',
+						value: 'headerAuth',
+					},
+					{
+						name: 'None',
+						value: 'none',
+					},
+				],
+				default: 'none',
+				description: 'The way to authenticate.',
+			},
 			{
 				displayName: 'Mode',
 				name: 'mode',
@@ -392,12 +466,53 @@ export class Wait implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const authentication = this.getNodeParameter('authentication') as string;
+		const req = this.getRequestObject();
+		const resp = this.getResponseObject();
+		const headers = this.getHeaderData();
+		const realm = 'Webhook';
+
+		if (authentication === 'basicAuth') {
+			// Basic authorization is needed to call webhook
+			const httpBasicAuth = this.getCredentials('httpBasicAuth');
+
+			if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
+				// Data is not defined on node so can not authenticate
+				return authorizationError(resp, realm, 500, 'No authentication data defined on node!');
+			}
+
+			const basicAuthData = basicAuth(req);
+
+			if (basicAuthData === undefined) {
+				// Authorization data is missing
+				return authorizationError(resp, realm, 401);
+			}
+
+			if (basicAuthData.name !== httpBasicAuth!.user || basicAuthData.pass !== httpBasicAuth!.password) {
+				// Provided authentication data is wrong
+				return authorizationError(resp, realm, 403);
+			}
+		} else if (authentication === 'headerAuth') {
+			// Special header with value is needed to call webhook
+			const httpHeaderAuth = this.getCredentials('httpHeaderAuth');
+
+			if (httpHeaderAuth === undefined || !httpHeaderAuth.name || !httpHeaderAuth.value) {
+				// Data is not defined on node so can not authenticate
+				return authorizationError(resp, realm, 500, 'No authentication data defined on node!');
+			}
+			const headerName = (httpHeaderAuth.name as string).toLowerCase();
+			const headerValue = (httpHeaderAuth.value as string);
+
+			if (!headers.hasOwnProperty(headerName) || (headers as IDataObject)[headerName] !== headerValue) {
+				// Provided authentication data is wrong
+				return authorizationError(resp, realm, 403);
+			}
+		}
 
 		// let webhookResponse: string | undefined;
 		// if (options.responseData) {
 		// 	webhookResponse = options.responseData as string;
 		// }
-		const headers = this.getHeaderData();
 
 		const response: INodeExecutionData = {
 			json: {
