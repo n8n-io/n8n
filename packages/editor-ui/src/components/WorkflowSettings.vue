@@ -61,7 +61,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $translateBase('workflowSettings.saveDataSuccessExecution') }}::
+						{{ $translateBase('workflowSettings.saveDataSuccessExecution', { colon: true }) }}
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.saveDataSuccessExecution"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -80,7 +80,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $translateBase('workflowSettings.saveManualExecutions') }}::
+						{{ $translateBase('workflowSettings.saveManualExecutions', { colon: true }) }}
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.saveManualExecutions"></div>
 							<font-awesome-icon icon="question-circle" />
