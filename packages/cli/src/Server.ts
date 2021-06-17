@@ -123,6 +123,7 @@ class App {
 	activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
 	testWebhooks: TestWebhooks.TestWebhooks;
 	endpointWebhook: string;
+	endpointWebhookSleeping: string;
 	endpointWebhookTest: string;
 	endpointPresetCredentials: string;
 	externalHooks: IExternalHooksClass;
@@ -149,6 +150,7 @@ class App {
 		this.app = express();
 
 		this.endpointWebhook = config.get('endpoints.webhook') as string;
+		this.endpointWebhookSleeping = config.get('endpoints.webhookSleeping') as string;
 		this.endpointWebhookTest = config.get('endpoints.webhookTest') as string;
 
 		this.defaultWorkflowName = config.get('workflows.defaultName') as string;

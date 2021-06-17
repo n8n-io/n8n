@@ -35,9 +35,9 @@ export function registerProductionWebhooks() {
 	const sleepingWebhooks = new SleepingWebhooks();
 
 	// HEAD webhook-sleeping requests
-	this.app.head(`/${this.endpointWebhook}-sleeping/*`, async (req: express.Request, res: express.Response) => {
+	this.app.head(`/${this.endpointWebhookSleeping}/*`, async (req: express.Request, res: express.Response) => {
 		// Cut away the "/webhook-sleeping/" to get the registred part of the url
-		const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 11);
+		const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookSleeping.length + 2);
 
 		let response;
 		try {
@@ -56,9 +56,9 @@ export function registerProductionWebhooks() {
 	});
 
 	// GET webhook-sleeping requests
-	this.app.get(`/${this.endpointWebhook}-sleeping/*`, async (req: express.Request, res: express.Response) => {
+	this.app.get(`/${this.endpointWebhookSleeping}/*`, async (req: express.Request, res: express.Response) => {
 		// Cut away the "/webhook-sleeping/" to get the registred part of the url
-		const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 11);
+		const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookSleeping.length + 2);
 
 		let response;
 		try {
@@ -77,9 +77,9 @@ export function registerProductionWebhooks() {
 	});
 
 	// POST webhook-sleeping requests
-	this.app.post(`/${this.endpointWebhook}-sleeping/*`, async (req: express.Request, res: express.Response) => {
+	this.app.post(`/${this.endpointWebhookSleeping}/*`, async (req: express.Request, res: express.Response) => {
 		// Cut away the "/webhook-sleeping/" to get the registred part of the url
-		const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 11);
+		const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookSleeping.length + 2);
 
 		let response;
 		try {
