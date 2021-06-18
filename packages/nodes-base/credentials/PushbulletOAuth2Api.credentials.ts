@@ -9,6 +9,7 @@ export class PushbulletOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Pushbullet OAuth2 API';
+	documentationUrl = 'pushbullet';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Authorization URL',
