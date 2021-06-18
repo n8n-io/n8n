@@ -84,7 +84,7 @@ export class Spotify implements INodeType {
 
 			// --------------------------------------------------------------------------------------------------------
 			//         Player Operations
-			//         Pause, Play, Resume, Get Recently Played, Get Currently Playing, Next Song, Previous Song, 
+			//         Pause, Play, Resume, Get Recently Played, Get Currently Playing, Next Song, Previous Song,
 			//         Add to Queue, Set Volume
 			// --------------------------------------------------------------------------------------------------------
 			{
@@ -120,11 +120,6 @@ export class Spotify implements INodeType {
 						description: 'Pause your music.',
 					},
 					{
-						name: 'Resume',
-						value: 'resume',
-						description: 'Resume playback on the current active device.',
-					},
-					{
 						name: 'Previous Song',
 						value: 'previousSong',
 						description: 'Skip to your previous song.',
@@ -135,14 +130,19 @@ export class Spotify implements INodeType {
 						description: 'Get your recently played tracks.',
 					},
 					{
-						name: 'Start Music',
-						value: 'startMusic',
-						description: 'Start playing a playlist, artist, or album.',
+						name: 'Resume',
+						value: 'resume',
+						description: 'Resume playback on the current active device.',
 					},
 					{
 						name: 'Set Volume',
 						value: 'volume',
 						description: 'Set volume on the current active device.',
+					},
+					{
+						name: 'Start Music',
+						value: 'startMusic',
+						description: 'Start playing a playlist, artist, or album.',
 					},
 				],
 				default: 'addSongToQueue',
@@ -254,7 +254,7 @@ export class Spotify implements INodeType {
 			},
 			{
 				displayName: 'Search Keyword',
-				name: 'q',
+				name: 'query',
 				type: 'string',
 				required: true,
 				default: '',
@@ -359,7 +359,7 @@ export class Spotify implements INodeType {
 
 			{
 				displayName: 'Search Keyword',
-				name: 'q',
+				name: 'query',
 				type: 'string',
 				required: true,
 				default: '',
@@ -558,7 +558,7 @@ export class Spotify implements INodeType {
 			},
 			{
 				displayName: 'Search Keyword',
-				name: 'q',
+				name: 'query',
 				type: 'string',
 				required: true,
 				default: '',
@@ -633,7 +633,7 @@ export class Spotify implements INodeType {
 			},
 			{
 				displayName: 'Search Keyword',
-				name: 'q',
+				name: 'query',
 				type: 'string',
 				required: true,
 				default: '',
@@ -1072,7 +1072,7 @@ export class Spotify implements INodeType {
 					propertyName = 'albums.items';
 
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const q = this.getNodeParameter('q', i) as string;
+					const q = this.getNodeParameter('query', i) as string;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
 					qs = {
@@ -1155,7 +1155,7 @@ export class Spotify implements INodeType {
 					propertyName = 'artists.items';
 
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const q = this.getNodeParameter('q', i) as string;
+					const q = this.getNodeParameter('query', i) as string;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
 					qs = {
@@ -1287,7 +1287,7 @@ export class Spotify implements INodeType {
 					propertyName = 'playlists.items';
 
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const q = this.getNodeParameter('q', i) as string;
+					const q = this.getNodeParameter('query', i) as string;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
 					qs = {
@@ -1331,7 +1331,7 @@ export class Spotify implements INodeType {
 					propertyName = 'tracks.items';
 
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const q = this.getNodeParameter('q', i) as string;
+					const q = this.getNodeParameter('query', i) as string;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
 					qs = {
