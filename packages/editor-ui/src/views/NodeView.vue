@@ -42,15 +42,15 @@
 			<button @click="zoomToFit" class="button-white" title="Zoom to Fit">
 				<font-awesome-icon icon="expand"/>
 			</button>
-			<button @click="setZoom('in')" class="button-white" title="Zoom In">
+			<button @click="zoomIn()" class="button-white" title="Zoom In">
 				<font-awesome-icon icon="search-plus"/>
 			</button>
-			<button @click="setZoom('out')" class="button-white" title="Zoom Out">
+			<button @click="zoomOut()" class="button-white" title="Zoom Out">
 				<font-awesome-icon icon="search-minus"/>
 			</button>
 			<button
 				v-if="nodeViewScale !== 1"
-				@click="setZoom('reset')"
+				@click="resetZoom()"
 				class="button-white"
 				title="Reset Zoom"
 				>
@@ -490,9 +490,9 @@ export default mixins(
 				//* Control + scroll zoom
 				if (e.ctrlKey) {
 					if (e.deltaY > 0) {
-						this.setZoom('out');
+						this.zoomOut();
 					} else {
-						this.setZoom('in');
+						this.zoomIn();
 					}
 
 					e.preventDefault();
@@ -543,11 +543,11 @@ export default mixins(
 						this.callDebounced('renameNodePrompt', 1500, lastSelectedNode.name);
 					}
 				} else if ((e.key === '=' || e.key === '+') && !this.isCtrlKeyPressed(e)) {
-					this.setZoom('in');
+					this.zoomIn();
 				} else if ((e.key === '_' || e.key === '-') && !this.isCtrlKeyPressed(e)) {
-					this.setZoom('out');
+					this.zoomOut();
 				} else if ((e.key === '0') && !this.isCtrlKeyPressed(e)) {
-					this.setZoom('reset');
+					this.resetZoom();
 				} else if ((e.key === '1') && !this.isCtrlKeyPressed(e)) {
 					this.zoomToFit();
 				} else if ((e.key === 'a') && (this.isCtrlKeyPressed(e) === true)) {
@@ -783,45 +783,60 @@ export default mixins(
 				});
 			},
 
-			setZoom (zoom: string) {
+			resetZoom () {
 				let scale = this.nodeViewScale;
 				let [xOffset, yOffset] = this.$store.getters.getNodeViewOffsetPosition;
-				if (zoom === 'in') {
-					scale *= 1.25;
-					xOffset -= window.innerWidth / 10;
-					yOffset -= window.innerHeight / 10;
-					xOffset *= 1.25;
-					yOffset *= 1.25;
-				} else if (zoom === 'out') {
-					scale /= 1.25;
-					xOffset /= 1.25;
-					yOffset /= 1.25;
-					xOffset += window.innerWidth / 10;
-					yOffset += window.innerHeight / 10;
-				} else {
-					if (scale > 1) { // zoomed in
-						while (scale > 1) {
-							scale /= 1.25;
-							xOffset /= 1.25;
-							yOffset /= 1.25;
-							xOffset += window.innerWidth / 10;
-							yOffset += window.innerHeight / 10;
-						}
-					}
-					else {
-						while (scale < 1) {
-							scale *= 1.25;
-							xOffset -= window.innerWidth / 10;
-							yOffset -= window.innerHeight / 10;
-							xOffset *= 1.25;
-							yOffset *= 1.25;
-						}
-					}
 
-					scale = 1;
+				if (scale > 1) { // zoomed in
+					while (scale > 1) {
+						scale /= 1.25;
+						xOffset /= 1.25;
+						yOffset /= 1.25;
+						xOffset += window.innerWidth / 10;
+						yOffset += window.innerHeight / 10;
+					}
 				}
+				else {
+					while (scale < 1) {
+						scale *= 1.25;
+						xOffset -= window.innerWidth / 10;
+						yOffset -= window.innerHeight / 10;
+						xOffset *= 1.25;
+						yOffset *= 1.25;
+					}
+				}
+
+				scale = 1;
 				this.setZoomLevel(scale);
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
+			},
+
+			zoomIn() {
+				let scale = this.nodeViewScale;
+				let [xOffset, yOffset] = this.$store.getters.getNodeViewOffsetPosition;
+
+				scale *= 1.25;
+				xOffset -= window.innerWidth / 10;
+				yOffset -= window.innerHeight / 10;
+				xOffset *= 1.25;
+				yOffset *= 1.25;
+
+				this.setZoomLevel(scale);
+				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
+			},
+
+			zoomOut() {
+				let scale = this.nodeViewScale;
+				let [xOffset, yOffset] = this.$store.getters.getNodeViewOffsetPosition;
+
+				scale /= 1.25;
+				xOffset /= 1.25;
+				yOffset /= 1.25;
+				xOffset += window.innerWidth / 10;
+				yOffset += window.innerHeight / 10;
+
+				this.setZoomLevel(scale);
+				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});				
 			},
 
 			setZoomLevel (zoomLevel: number) {
