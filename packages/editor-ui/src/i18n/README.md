@@ -2,9 +2,9 @@
 
 You can translate:
 
-- strings for node-specific params, e.g. `Resource` and `Operation` in the GitHub node.
-- strings for credentials-specific params, e.g. `Server` in the GitHub node's OAuth2 credentials.
-- strings for base UI elements, i.e. any other string in the n8n frontend.
+  - strings for node-specific params, e.g. `Resource` and `Operation` in the GitHub node.
+  - strings for credentials-specific params, e.g. `Server` in the GitHub node's OAuth2 credentials.
+  - strings for base UI elements, i.e. any other string in the n8n frontend.
 
 Any untranslated parameter values will fall back to the originals in English.
 
@@ -18,12 +18,11 @@ A locale identifiers is a two-letter language code compatible with the [`Accept-
 
 To translate node-specific params:
 
-1. Select a node to translate.
-2. Navigate to `/packages/nodes-base/nodes/{node}`.
-3. Create a dir called `translations`.
-4. Create a `{localeIdentifier}.ts` file containing the translations, e.g. `de.ts`.
-5. Populate the `{localeIdentifier}.ts` file - see below.
-6. (TODO: Switch the n8n language. How?)
+ 1. Select a node to translate.
+ 2. Navigate to `/packages/nodes-base/nodes/{node}`.
+ 3. Create a dir called `translations`.
+ 4. Create a `{localeIdentifier}.ts` file containing the translations, e.g. `de.ts`.
+ 5. Populate the `{localeIdentifier}.ts` file - see below.
 
 To populate the `{localeIdentifier}.ts` file, you will need:
 
@@ -50,21 +49,21 @@ The square brackets `[]` indicate a value to enter and should _not_ be included.
 
 Inside `[parameterName]`, translatable keys may be:
 
-- `displayName`,
-- `name`,
-- `description`,
-- `placeholder`,
-- `options`, and
-- `multipleValueButtonText`.
+  - `displayName`,
+  - `name`,
+  - `description`,
+  - `placeholder`,
+  - `options`, and
+  - `multipleValueButtonText`.
 
 This applies to all param types:
 
-- `string`,
-- `number`,
-- `boolean`,
-- `options`,
-- `collection`, and
-- `fixedCollection`.
+  - `string`,
+  - `number`,
+  - `boolean`,
+  - `options`,
+  - `collection`, and
+  - `fixedCollection`.
 
 > Note: Only keys _existing in the node param_ may be translated. If a node has a parameter that does not have a description, then adding a translation for `description` will have no effect.
 
@@ -130,7 +129,6 @@ To translate credentials-specific params:
  3. Create a dir called `translations`.
  4. Create a `{localeIdentifier}.ts` file containing the translations, e.g. `de.ts`.
  5. Populate the `{localeIdentifier}.ts` file - see below.
- 6. (TODO: Switch the n8n language. How?)
 
 > If you already have a `.ts` file for node-specific params, use that one. There should be only one locale identifier file per language.
 
@@ -173,14 +171,13 @@ The properties in the class field `properties` with `type: "hidden"` are not use
 
 To translate base UI strings:
 
-1. Navigate to `/packages/editor-ui/i18n/locales`.
-2. Create a `{localeIdentifier}.ts` file containing the translations, e.g. `de.ts`.
-2.1. Copy the `en.ts` file and place it alongside the original.
-2.2. Rename the copy using the locale identifier, e.g. `de.ts`.
-2.3. Replace `en` in line 2 of the copy with the locale identifier.
-3. Populate the `{localeIdentifier}.ts` file - see below.
-4. Add `'n8n-nodes-base': {},` to the `{localeIdentifier}.ts` file.
-5. (TODO: Switch the n8n language. How?)
+ 1. Navigate to `/packages/editor-ui/i18n/locales`.
+ 2.1. Create a `{localeIdentifier}.ts` file containing the translations, e.g. `de.ts`.
+ 2.2. Copy the `en.ts` file and place it alongside the original.
+ 2.3. Rename the copy using the locale identifier, e.g. `de.ts`.
+ 2.4. Replace `en` in line 2 of the copy with the locale identifier.
+ 3. Populate the `{localeIdentifier}.ts` file - see below.
+ 4. Add `'n8n-nodes-base': {},` to the `{localeIdentifier}.ts` file.
 
 Example:
 
@@ -195,4 +192,3 @@ To populate the `{localeIdentifier}.ts` file, translate the strings and remove t
 
 For base UI strings that contain a variable in curly braces `{var}`, e.g. `'The execution with the id {activeExecutionId} got stopped!'`, the translation _must not modify_ the variable with curly braces, keeping it exactly as in English: `'Die Ausführung mit der ID {activeExecutionId} wurde gestoppt!'`.
 
-> Note that the strings in `en.ts` are _most but not all_ the strings in the n8n frontend. Bear in mind also that some of the strings visible in the frontend are set in the backend, which remains to be adjusted for translation.
