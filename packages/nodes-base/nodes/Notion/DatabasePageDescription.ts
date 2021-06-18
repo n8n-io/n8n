@@ -340,6 +340,20 @@ export const databasePageFields = [
 						description: 'Weather or not you want to define a date range.',
 					},
 					{
+						displayName: 'Include Time',
+						name: 'includeTime',
+						displayOptions: {
+							show: {
+								type: [
+									'date',
+								],
+							},
+						},
+						type: 'boolean',
+						default: true,
+						description: 'Weather or not to include the time in the date.',
+					},
+					{
 						displayName: 'Date',
 						name: 'date',
 						displayOptions: {
@@ -684,6 +698,20 @@ export const databasePageFields = [
 						type: 'boolean',
 						default: false,
 						description: 'Weather or not you want to define a date range.',
+					},
+					{
+						displayName: 'Include Time',
+						name: 'includeTime',
+						displayOptions: {
+							show: {
+								type: [
+									'date',
+								],
+							},
+						},
+						type: 'boolean',
+						default: true,
+						description: 'Weather or not to include the time in the date.',
 					},
 					{
 						displayName: 'Date',
