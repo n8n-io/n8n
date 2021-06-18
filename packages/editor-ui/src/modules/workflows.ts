@@ -19,7 +19,7 @@ const module: Module<IWorkflowsState, IRootState> = {
 			}
 			catch (e) {
 				// in case of error, default to original name
-				newName = name? name: DEFAULT_NEW_WORKFLOW_NAME;
+				newName = name || DEFAULT_NEW_WORKFLOW_NAME;
 			}
 
 			context.commit('setWorkflowName', { newName }, { root: true });

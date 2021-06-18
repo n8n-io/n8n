@@ -401,7 +401,7 @@ export default mixins(
 				}
 
 				const nodes = data.workflow.nodes;
-				const hasStartNode = nodes.reduce((accu, node) => accu || node.type === START_NODE_TYPE , false);
+				const hasStartNode = !!nodes.find(node => node.type === START_NODE_TYPE);
 
 				const leftmostTop = getLeftmostTopNode(nodes);
 
@@ -414,7 +414,7 @@ export default mixins(
 				});
 
 				if (!hasStartNode) {
-					data.workflow.nodes = data.workflow.nodes.concat([DEFAULT_START_NODE]);
+					data.workflow.nodes.push(DEFAULT_START_NODE);
 				}
 
 				this.blankRedirect = true;
@@ -427,7 +427,7 @@ export default mixins(
 					this.$store.commit('setStateDirty', true);
 				});
 
-				this.$externalHooks().run('template.open', { templateId, templateName: data.name });
+				this.$externalHooks().run('template.open', { templateId, templateName: data.name, workflow: data.workflow });
 			},
 			async openWorkflow (workflowId: string) {
 				this.resetWorkspace();
