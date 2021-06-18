@@ -1,7 +1,7 @@
 <template>
-	<div class="node-icon-wrapper" :style="iconStyleData" :class="{full: isSvgIcon}">
+	<div class="node-icon-wrapper" :style="iconStyleData" :class="{shrink: isSvgIcon && shrink, full: !shrink}">
 		<div v-if="nodeIconData !== null" class="icon">
-			<img :src="nodeIconData.path" style="width: 100%; height: 100%;" v-if="nodeIconData.type === 'file'"/>
+			<img :src="nodeIconData.path" style="max-width: 100%; max-height: 100%;" v-if="nodeIconData.type === 'file'"/>
 			<font-awesome-icon :icon="nodeIconData.path" v-else-if="nodeIconData.type === 'fa'" />
 		</div>
 		<div v-else class="node-icon-placeholder">
@@ -25,6 +25,7 @@ export default Vue.extend({
 	props: [
 		'nodeType',
 		'size',
+		'shrink',
 	],
 	computed: {
 		iconStyleData (): object {
@@ -79,19 +80,23 @@ export default Vue.extend({
 <style lang="scss">
 
 .node-icon-wrapper {
-	width: 30px;
-	height: 30px;
-	border-radius: 15px;
+	width: 26px;
+	height: 26px;
+	border-radius: 4px;
 	color: #444;
-	line-height: 30px;
+	line-height: 26px;
 	font-size: 1.1em;
 	overflow: hidden;
-	background-color: #fff;
 	text-align: center;
 	font-weight: bold;
 	font-size: 20px;
 
 	&.full .icon {
+		height: 100%;
+		width: 100%;
+	}
+
+	&.shrink .icon {
 		margin: 0.24em;
 	}
 
