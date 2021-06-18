@@ -799,6 +799,25 @@ export default mixins(
 					xOffset += window.innerWidth / 10;
 					yOffset += window.innerHeight / 10;
 				} else {
+					if (scale > 1) { // zoomed in
+						while (scale > 1) {
+							scale /= 1.25;
+							xOffset /= 1.25;
+							yOffset /= 1.25;
+							xOffset += window.innerWidth / 10;
+							yOffset += window.innerHeight / 10
+						}
+					}
+					else {
+						while (scale < 1) {
+							scale *= 1.25;
+							xOffset -= window.innerWidth / 10;
+							yOffset -= window.innerHeight / 10;
+							xOffset *= 1.25;
+							yOffset *= 1.25;
+						}
+					}
+
 					scale = 1;
 				}
 				this.setZoomLevel(scale);
