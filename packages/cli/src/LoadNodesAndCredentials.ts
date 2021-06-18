@@ -246,7 +246,7 @@ class LoadNodesAndCredentialsClass {
 
 			node.description.codex = codex;
 		} catch (_) {
-			this.logger.warn(`No codex available for: ${filePath.split('/').pop()}`);
+			this.logger.debug(`No codex available for: ${filePath.split('/').pop()}`);
 
 			if (isCustom) {
 				node.description.codex = {

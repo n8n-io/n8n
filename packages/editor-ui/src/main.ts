@@ -28,8 +28,8 @@ import {
 	faAngleDown,
 	faAngleRight,
 	faAngleUp,
-	faArrowRight,
 	faArrowLeft,
+	faArrowRight,
 	faAt,
 	faBook,
 	faBug,
@@ -82,9 +82,9 @@ import {
 	faRedo,
 	faRss,
 	faSave,
+	faSearch,
 	faSearchMinus,
 	faSearchPlus,
-	faSearch,
 	faServer,
 	faSignInAlt,
 	faSlidersH,
@@ -116,8 +116,8 @@ library.add(faAngleDoubleLeft);
 library.add(faAngleDown);
 library.add(faAngleRight);
 library.add(faAngleUp);
-library.add(faArrowRight);
 library.add(faArrowLeft);
+library.add(faArrowRight);
 library.add(faAt);
 library.add(faBook);
 library.add(faBug);

@@ -5,7 +5,7 @@
 		</SlideTransition>
 		<div class="main-panel">
 			<SearchBar
-				v-model="nodeFilter"	
+				v-model="nodeFilter"
 				:eventBus="searchEventBus"
 				@keydown.native="nodeFilterKeyDown"
 			/>
@@ -52,7 +52,7 @@ import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
 import SubcategoryPanel from './SubcategoryPanel.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Interface';
-import { CORE_NODES_CATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER, ALL_NODE_FILTER } from '@/constants';
+import { ALL_NODE_FILTER, CORE_NODES_CATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER } from '@/constants';
 import SlideTransition from '../transitions/SlideTransition.vue';
 import { matchesNodeType, matchesSelectType } from './helpers';
 

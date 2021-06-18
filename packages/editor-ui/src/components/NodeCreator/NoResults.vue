@@ -35,7 +35,7 @@
 
 
 <script lang="ts">
-import { HTTP_REQUEST_NODE_NAME, WEBHOOK_NODE_NAME, REQUEST_NODE_FORM_URL } from '@/constants';
+import { HTTP_REQUEST_NODE_NAME, REQUEST_NODE_FORM_URL, WEBHOOK_NODE_NAME } from '@/constants';
 import Vue from 'vue';
 
 import NoResultsIcon from './NoResultsIcon.vue';
