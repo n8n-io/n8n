@@ -1,3 +1,71 @@
+
+export const languageOptions = [
+	{
+		name: 'English',
+		value: 'en',
+	},
+	{
+		name: 'Danish',
+		value: 'da',
+	},
+	{
+		name: 'Dutch',
+		value: 'nl',
+	},
+	{
+		name: 'Finnish',
+		value: 'fi',
+	},
+	{
+		name: 'French',
+		value: 'fr',
+	},
+	{
+		name: 'German',
+		value: 'de',
+	},
+	{
+		name: 'Hungarian',
+		value: 'hu',
+	},
+	{
+		name: 'Indonesian',
+		value: 'id',
+	},
+	{
+		name: 'Japanese',
+		value: 'ja',
+	},
+	{
+		name: 'Portuguese - Portugal',
+		value: 'pt',
+	},
+	{
+		name: 'Portuguese - Brazil',
+		value: 'BR',
+	},
+	{
+		name: 'Rumanian',
+		value: 'ru',
+	},
+	{
+		name: 'Spanish',
+		value: 'es',
+	},
+	{
+		name: 'Swedish',
+		value: 'sv',
+	},
+	{
+		name: 'Turkish',
+		value: 'tr',
+	},
+	{
+		name: 'Welsh',
+		value: 'cy',
+	},
+] as const;
+
 const postalAddressesFields = [
 	{
 		displayName: 'Primary',
@@ -170,72 +238,7 @@ export const personAdditionalFieldsOptions = [
 		type: 'options', // Action Network accepts a `string[]` of language codes, but supports only one language per person - sending an array of 2+ languages will result in the first valid language being set as the preferred language for the person. Therefore, the user may select only one option in the n8n UI.
 		default: [],
 		description: 'Language spoken by the person',
-		options: [
-			{
-				name: 'English',
-				value: 'en',
-			},
-			{
-				name: 'Danish',
-				value: 'da',
-			},
-			{
-				name: 'Dutch',
-				value: 'nl',
-			},
-			{
-				name: 'Finnish',
-				value: 'fi',
-			},
-			{
-				name: 'French',
-				value: 'fr',
-			},
-			{
-				name: 'German',
-				value: 'de',
-			},
-			{
-				name: 'Hungarian',
-				value: 'hu',
-			},
-			{
-				name: 'Indonesian',
-				value: 'id',
-			},
-			{
-				name: 'Japanese',
-				value: 'ja',
-			},
-			{
-				name: 'Portuguese - Portugal',
-				value: 'pt',
-			},
-			{
-				name: 'Portuguese - Brazil',
-				value: 'BR',
-			},
-			{
-				name: 'Rumanian',
-				value: 'ru',
-			},
-			{
-				name: 'Spanish',
-				value: 'es',
-			},
-			{
-				name: 'Swedish',
-				value: 'sv',
-			},
-			{
-				name: 'Turkish',
-				value: 'tr',
-			},
-			{
-				name: 'Welsh',
-				value: 'cy',
-			},
-		],
+		options: languageOptions,
 	},
 	{
 		displayName: 'Phone Number', // on create, only _one_ must be passed in
@@ -259,8 +262,8 @@ export const personAdditionalFieldsOptions = [
 					{
 						displayName: 'Primary',
 						name: 'primary',
-						type: 'boolean',
-						default: false,
+						type: 'hidden',
+						default: true,
 						description: 'Whether this is the person\'s primary phone number.',
 					},
 					{
@@ -349,3 +352,21 @@ export const petitionAdditionalFieldsOptions = [
 		description: 'Comma-separated names of targets for this petition.',
 	},
 ];
+
+export const makeSimpleField = (resource: string, operation: string) => ({
+	displayName: 'Simple',
+	name: 'simple',
+	type: 'boolean',
+	displayOptions: {
+		show: {
+			resource: [
+				resource,
+			],
+			operation: [
+				operation,
+			],
+		},
+	},
+	default: true,
+	description: 'Return a simplified version of the response instead of the raw data.',
+});

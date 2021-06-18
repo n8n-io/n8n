@@ -14,9 +14,12 @@ import {
 	adjustEventPayload,
 	adjustPersonPayload,
 	adjustPetitionPayload,
+	extractId,
 	handleListing,
+	isPrimary,
 	makeOsdiLink,
 	resourceLoaders,
+	simplifyPersonResponse,
 } from './GenericFunctions';
 
 import {
@@ -39,7 +42,12 @@ import {
 import {
 	AllFieldsUi,
 	EmailAddressUi,
+	PersonResponse,
 } from './types';
+
+import {
+	omit,
+} from 'lodash';
 
 export class ActionNetwork implements INodeType {
 	description: INodeTypeDescription = {
@@ -270,7 +278,13 @@ export class ActionNetwork implements INodeType {
 
 					const personId = this.getNodeParameter('personId', i);
 
-					responseData = await actionNetworkApiRequest.call(this, 'GET', `/people/${personId}`);
+					responseData = await actionNetworkApiRequest.call(this, 'GET', `/people/${personId}`) as PersonResponse;
+
+					const simplify = this.getNodeParameter('simple', i) as boolean;
+
+					if (simplify) {
+						responseData = simplifyPersonResponse(responseData);
+					}
 
 				} else if (operation === 'getAll') {
 
@@ -278,7 +292,13 @@ export class ActionNetwork implements INodeType {
 					//              person: getAll
 					// ----------------------------------------
 
-					responseData = await handleListing.call(this, 'GET', '/people');
+					responseData = await handleListing.call(this, 'GET', '/people') as PersonResponse[];
+
+					const simplify = this.getNodeParameter('simple', i) as boolean;
+
+					if (simplify) {
+						responseData = responseData.map(simplifyPersonResponse);
+					}
 
 				} else if (operation === 'update') {
 
@@ -297,6 +317,12 @@ export class ActionNetwork implements INodeType {
 					}
 
 					responseData = await actionNetworkApiRequest.call(this, 'PUT', `/people/${personId}`, body);
+
+					const simplify = this.getNodeParameter('simple', i) as boolean;
+
+					if (simplify) {
+						responseData = simplifyPersonResponse(responseData);
+					}
 
 				}
 
@@ -474,7 +500,7 @@ export class ActionNetwork implements INodeType {
 				if (operation === 'create') {
 
 					// ----------------------------------------
-					//             personTag: create
+					//             personTag: add
 					// ----------------------------------------
 
 					const personId = this.getNodeParameter('personId', i) as string;
@@ -488,7 +514,7 @@ export class ActionNetwork implements INodeType {
 				} else if (operation === 'delete') {
 
 					// ----------------------------------------
-					//             personTag: delete
+					//             personTag: remove
 					// ----------------------------------------
 
 					const tagId = this.getNodeParameter('tagId', i);
@@ -496,17 +522,6 @@ export class ActionNetwork implements INodeType {
 
 					const endpoint = `/tags/${tagId}/taggings/${taggingId}`;
 					responseData = await actionNetworkApiRequest.call(this, 'DELETE', endpoint);
-
-				} else if (operation === 'getAll') {
-
-					// ----------------------------------------
-					//             personTag: getAll
-					// ----------------------------------------
-
-					const tagId = this.getNodeParameter('tagId', i);
-
-					const endpoint = `/tags/${tagId}/taggings`;
-					responseData = await handleListing.call(this, 'GET', endpoint);
 
 				}
 

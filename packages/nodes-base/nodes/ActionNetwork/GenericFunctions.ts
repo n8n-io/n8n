@@ -20,8 +20,12 @@ import {
 
 import {
 	AllFieldsUi,
+	EmailAddressField,
 	LoadedTag,
 	LodadedTagging,
+	PersonResponse,
+	PhoneNumberField,
+	PostalAddressField,
 	ResourceIds,
 } from './types';
 
@@ -136,6 +140,10 @@ export const makeOsdiLink = (personId: string) => {
 	};
 };
 
+export const isPrimary = (
+	field: EmailAddressField | PhoneNumberField | PostalAddressField,
+) => field.primary;
+
 
 // ----------------------------------------
 //           field adjusters
@@ -155,7 +163,9 @@ function adjustPhoneNumbers(allFields: AllFieldsUi) {
 
 	return {
 		...omit(allFields, ['phone_numbers']),
-		phone_numbers: [allFields.phone_numbers.phone_numbers_fields],
+		phone_numbers: [
+			allFields.phone_numbers.phone_numbers_fields,
+		],
 	};
 }
 
@@ -288,4 +298,37 @@ export const resourceLoaders = {
 			};
 		});
 	},
+};
+
+
+// ----------------------------------------
+//           resource loaders
+// ----------------------------------------
+
+export const simplifyPersonResponse = (responseData: PersonResponse) => {
+	const emailAddress = responseData.email_addresses.filter(isPrimary);
+	const phoneNumber = responseData.phone_numbers.filter(isPrimary);
+	const postalAddress = responseData.postal_addresses.filter(isPrimary);
+
+	const fieldsToSimplify = [
+		'identifiers',
+		'email_addresses',
+		'phone_numbers',
+		'postal_addresses',
+		'languages_spoken',
+		'_links',
+	];
+
+	return {
+		id: extractId(responseData.identifiers),
+		...omit(responseData, fieldsToSimplify),
+		...emailAddress.length && { email_address: emailAddress[0].address },
+		...phoneNumber.length && { phone_number: phoneNumber[0].number },
+		...postalAddress.length && { postal_address: {
+				...postalAddress && omit(postalAddress[0], 'address_lines'),
+				address_lines: postalAddress[0].address_lines ?? '',
+			},
+		},
+		language_spoken: responseData.languages_spoken[0],
+	};
 };

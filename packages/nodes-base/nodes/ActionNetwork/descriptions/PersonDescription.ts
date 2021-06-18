@@ -3,6 +3,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	makeSimpleField,
 	personAdditionalFieldsOptions,
 } from './SharedFields';
 
@@ -77,8 +78,8 @@ export const personFields = [
 					{
 						displayName: 'Primary',
 						name: 'primary',
-						type: 'boolean',
-						default: false,
+						type: 'hidden',
+						default: true,
 						description: 'Whether this is the person\'s primary email address.',
 					},
 					{
@@ -158,6 +159,7 @@ export const personFields = [
 			},
 		},
 	},
+	makeSimpleField('person', 'get'),
 
 	// ----------------------------------------
 	//              person: getAll
@@ -202,6 +204,7 @@ export const personFields = [
 			},
 		},
 	},
+	makeSimpleField('person', 'getAll'),
 
 	// ----------------------------------------
 	//              person: update
@@ -224,6 +227,7 @@ export const personFields = [
 			},
 		},
 	},
+	makeSimpleField('person', 'update'),
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',

@@ -16,19 +16,15 @@ export const personTagOperations = [
 		},
 		options: [
 			{
-				name: 'Create',
-				value: 'create',
+				name: 'Add',
+				value: 'add',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
+				name: 'Remove',
+				value: 'remove',
 			},
 		],
-		default: 'create',
+		default: 'add',
 		description: 'Operation to perform',
 	},
 ] as INodeProperties[];
@@ -119,71 +115,6 @@ export const personTagFields = [
 				],
 				operation: [
 					'delete',
-				],
-			},
-		},
-	},
-
-	// ----------------------------------------
-	//             personTag: getAll
-	// ----------------------------------------
-	{
-		displayName: 'Tag ID',
-		name: 'tagId',
-		description: 'ID of the tag whose taggings to retrieve.',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getTags',
-		},
-		default: [],
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'personTag',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		default: false,
-		description: 'Return all results.',
-		displayOptions: {
-			show: {
-				resource: [
-					'personTag',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		default: 50,
-		description: 'The number of results to return.',
-		typeOptions: {
-			minValue: 1,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'personTag',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
 				],
 			},
 		},
