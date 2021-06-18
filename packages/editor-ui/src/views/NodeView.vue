@@ -805,7 +805,7 @@ export default mixins(
 							xOffset /= 1.25;
 							yOffset /= 1.25;
 							xOffset += window.innerWidth / 10;
-							yOffset += window.innerHeight / 10
+							yOffset += window.innerHeight / 10;
 						}
 					}
 					else {
