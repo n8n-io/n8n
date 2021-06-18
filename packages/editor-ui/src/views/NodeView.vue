@@ -453,6 +453,7 @@ export default mixins(
 
 					this.callDebounced('deleteSelectedNodes', 500);
 				} else if (e.key === 'Escape') {
+					this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 					this.createNodeActive = false;
 					this.$store.commit('setActiveNode', null);
 				} else if (e.key === 'Tab') {
