@@ -1,3 +1,7 @@
+import {
+	Operation,
+	Resource,
+} from '../types';
 
 export const languageOptions = [
 	{
@@ -42,7 +46,7 @@ export const languageOptions = [
 	},
 	{
 		name: 'Portuguese - Brazil',
-		value: 'BR',
+		value: 'br',
 	},
 	{
 		name: 'Rumanian',
@@ -353,7 +357,7 @@ export const petitionAdditionalFieldsOptions = [
 	},
 ];
 
-export const makeSimpleField = (resource: string, operation: string) => ({
+export const makeSimpleField = (resource: Resource, operation: Operation) => ({
 	displayName: 'Simple',
 	name: 'simple',
 	type: 'boolean',

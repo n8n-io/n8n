@@ -1,5 +1,9 @@
 import { languageOptions } from './descriptions/SharedFields';
 
+export type Resource = 'attendance' | 'event' | 'person' | 'personTag' | 'petition' | 'signature' | 'tag';
+
+export type Operation = 'create' | 'delete' | 'get' | 'getAll' | 'update';
+
 export type LanguageCodes = typeof languageOptions[number]['value']
 
 // ----------------------------------------

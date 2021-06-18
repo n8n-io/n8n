@@ -1,6 +1,7 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
+import { makeSimpleField } from './SharedFields';
 
 export const tagOperations = [
 	{
@@ -55,6 +56,7 @@ export const tagFields = [
 			},
 		},
 	},
+	makeSimpleField('tag', 'create'),
 
 	// ----------------------------------------
 	//                 tag: get
@@ -80,6 +82,7 @@ export const tagFields = [
 			},
 		},
 	},
+	makeSimpleField('tag', 'get'),
 
 	// ----------------------------------------
 	//               tag: getAll
@@ -124,4 +127,5 @@ export const tagFields = [
 			},
 		},
 	},
+	makeSimpleField('tag', 'getAll'),
 ] as INodeProperties[];

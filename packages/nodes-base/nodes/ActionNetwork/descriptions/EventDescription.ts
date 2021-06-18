@@ -1,7 +1,7 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
-import { eventAdditionalFieldsOptions } from './SharedFields';
+import { eventAdditionalFieldsOptions, makeSimpleField } from './SharedFields';
 
 export const eventOperations = [
 	{
@@ -74,6 +74,7 @@ export const eventFields = [
 			},
 		},
 	},
+	makeSimpleField('event', 'create'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -114,6 +115,7 @@ export const eventFields = [
 			},
 		},
 	},
+	makeSimpleField('event', 'get'),
 
 	// ----------------------------------------
 	//              event: getAll
@@ -158,4 +160,5 @@ export const eventFields = [
 			},
 		},
 	},
+	makeSimpleField('event', 'getAll'),
 ] as INodeProperties[];

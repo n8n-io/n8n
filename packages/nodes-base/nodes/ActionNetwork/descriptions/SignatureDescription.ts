@@ -1,6 +1,7 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
+import { makeSimpleField } from './SharedFields';
 
 export const signatureOperations = [
 	{
@@ -77,6 +78,7 @@ export const signatureFields = [
 			},
 		},
 	},
+	makeSimpleField('signature', 'create'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -143,6 +145,7 @@ export const signatureFields = [
 			},
 		},
 	},
+	makeSimpleField('signature', 'get'),
 
 	// ----------------------------------------
 	//            signature: getAll
@@ -205,6 +208,7 @@ export const signatureFields = [
 			},
 		},
 	},
+	makeSimpleField('signature', 'getAll'),
 
 	// ----------------------------------------
 	//            signature: update
@@ -245,6 +249,7 @@ export const signatureFields = [
 			},
 		},
 	},
+	makeSimpleField('signature', 'update'),
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',

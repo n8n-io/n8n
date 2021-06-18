@@ -31,7 +31,7 @@ export const personTagOperations = [
 
 export const personTagFields = [
 	// ----------------------------------------
-	//             personTag: create
+	//             personTag: add
 	// ----------------------------------------
 	{
 		displayName: 'Tag ID',
@@ -49,7 +49,7 @@ export const personTagFields = [
 					'personTag',
 				],
 				operation: [
-					'create',
+					'add',
 				],
 			},
 		},
@@ -67,14 +67,14 @@ export const personTagFields = [
 					'personTag',
 				],
 				operation: [
-					'create',
+					'add',
 				],
 			},
 		},
 	},
 
 	// ----------------------------------------
-	//             personTag: delete
+	//             personTag: remove
 	// ----------------------------------------
 	{
 		displayName: 'Tag ID',
@@ -92,7 +92,7 @@ export const personTagFields = [
 					'personTag',
 				],
 				operation: [
-					'delete',
+					'remove',
 				],
 			},
 		},
@@ -100,7 +100,7 @@ export const personTagFields = [
 	{
 		displayName: 'Tagging ID',
 		name: 'taggingId',
-		description: 'ID of the tagging to delete.',
+		description: 'ID of the tagging to remove.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsDependsOn: 'tagId',
@@ -114,7 +114,7 @@ export const personTagFields = [
 					'personTag',
 				],
 				operation: [
-					'delete',
+					'remove',
 				],
 			},
 		},

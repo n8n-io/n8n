@@ -1,6 +1,7 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
+import { makeSimpleField } from './SharedFields';
 
 export const attendanceOperations = [
 	{
@@ -77,6 +78,7 @@ export const attendanceFields = [
 			},
 		},
 	},
+	makeSimpleField('attendance', 'create'),
 
 	// ----------------------------------------
 	//             attendance: get
@@ -123,6 +125,7 @@ export const attendanceFields = [
 			},
 		},
 	},
+	makeSimpleField('attendance', 'get'),
 
 	// ----------------------------------------
 	//            attendance: getAll
@@ -185,6 +188,7 @@ export const attendanceFields = [
 			},
 		},
 	},
+	makeSimpleField('attendance', 'getAll'),
 
 	// ----------------------------------------
 	//            attendance: update
@@ -231,4 +235,5 @@ export const attendanceFields = [
 			},
 		},
 	},
+	makeSimpleField('attendance', 'update'),
 ] as INodeProperties[];

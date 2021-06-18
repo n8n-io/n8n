@@ -302,13 +302,31 @@ export const resourceLoaders = {
 
 
 // ----------------------------------------
-//           resource loaders
+//          response simplifiers
 // ----------------------------------------
 
-export const simplifyPersonResponse = (responseData: PersonResponse) => {
-	const emailAddress = responseData.email_addresses.filter(isPrimary);
-	const phoneNumber = responseData.phone_numbers.filter(isPrimary);
-	const postalAddress = responseData.postal_addresses.filter(isPrimary);
+// tslint:disable-next-line: no-any
+export const simplifyResponse = (response: any) => (isPerson = false) => {
+	if (isPerson) {
+		return simplifyPersonResponse(response);
+	}
+
+	const fieldsToSimplify = [
+		'identifiers',
+		'_links',
+	];
+
+	return {
+		id: extractId(response.identifiers),
+		...omit(response, fieldsToSimplify),
+	};
+};
+
+
+export const simplifyPersonResponse = (response: PersonResponse) => {
+	const emailAddress = response.email_addresses.filter(isPrimary);
+	const phoneNumber = response.phone_numbers.filter(isPrimary);
+	const postalAddress = response.postal_addresses.filter(isPrimary);
 
 	const fieldsToSimplify = [
 		'identifiers',
@@ -320,8 +338,8 @@ export const simplifyPersonResponse = (responseData: PersonResponse) => {
 	];
 
 	return {
-		id: extractId(responseData.identifiers),
-		...omit(responseData, fieldsToSimplify),
+		id: extractId(response.identifiers),
+		...omit(response, fieldsToSimplify),
 		...emailAddress.length && { email_address: emailAddress[0].address },
 		...phoneNumber.length && { phone_number: phoneNumber[0].number },
 		...postalAddress.length && { postal_address: {
@@ -329,6 +347,6 @@ export const simplifyPersonResponse = (responseData: PersonResponse) => {
 				address_lines: postalAddress[0].address_lines ?? '',
 			},
 		},
-		language_spoken: responseData.languages_spoken[0],
+		language_spoken: response.languages_spoken[0],
 	};
 };
