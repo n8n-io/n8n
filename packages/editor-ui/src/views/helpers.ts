@@ -1,47 +1,42 @@
 import { INodeUi } from "@/Interface";
 
+interface ICorners {
+	minX: number;
+	minY: number;
+	maxX: number;
+	maxY: number;
+}
+
 export const getLeftmostTopNode = (nodes: INodeUi[]): INodeUi => {
-	let leftmostTop = nodes[0];
-
-	nodes.forEach(node => {
-		if (node.position[0] < leftmostTop.position[0]) {
-			leftmostTop = node;
+	return nodes.reduce((leftmostTop, node) => {
+		if (node.position[0] > leftmostTop.position[0] || node.position[1] > leftmostTop.position[1]) {
+			return leftmostTop;
 		}
 
-		if (node.position[0] < leftmostTop.position[0] && node.position[1] < leftmostTop.position[1]) {
-			leftmostTop = node;
-		}
+		return node;
 	});
-
-	return leftmostTop;
 };
 
+export const getWorkflowCorners = (nodes: INodeUi[]): ICorners => {
+	return nodes.reduce((accu: ICorners, node: INodeUi) => {
+		if (node.position[0] < accu.minX) {
+			accu.minX = node.position[0];
+		}
+		if (node.position[1] < accu.minY) {
+			accu.minY = node.position[1];
+		}
+		if (node.position[0] > accu.maxX) {
+			accu.maxX = node.position[0];
+		}
+		if (node.position[1] > accu.maxY) {
+			accu.maxY = node.position[1];
+		}
 
-export const getWorkflowCorners = (nodes: INodeUi[]): {minX: number, minY: number, maxX: number, maxY: number} => {
-	let minX = nodes[0].position[0];
-	let minY = nodes[0].position[1];
-	let maxX = nodes[0].position[0];
-	let maxY = nodes[0].position[1];
-
-	nodes.forEach(node => {
-		if (node.position[0] < minX) {
-			minX = node.position[0];
-		}
-		if (node.position[1] < minY) {
-			minY = node.position[1];
-		}
-		if (node.position[0] > maxX) {
-			maxX = node.position[0];
-		}
-		if (node.position[1] > maxY) {
-			maxY = node.position[1];
-		}
+		return accu;
+	}, {
+		minX: nodes[0].position[0],
+		minY: nodes[0].position[1],
+		maxX: nodes[0].position[0],
+		maxY: nodes[0].position[1],
 	});
-
-	return {
-		minX,
-		minY,
-		maxX,
-		maxY,
-	};
 };
