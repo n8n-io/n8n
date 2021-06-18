@@ -129,7 +129,7 @@ import { workflowRun } from '@/components/mixins/workflowRun';
 import DataDisplay from '@/components/DataDisplay.vue';
 import Modals from '@/components/Modals.vue';
 import Node from '@/components/Node.vue';
-import NodeCreator from '@/components/NodeCreator.vue';
+import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 

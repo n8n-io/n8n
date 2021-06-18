@@ -48,7 +48,7 @@ export class Pipedrive implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pipedrive',
 		name: 'pipedrive',
-		icon: 'file:pipedrive.png',
+		icon: 'file:pipedrive.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

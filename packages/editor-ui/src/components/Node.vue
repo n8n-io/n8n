@@ -30,7 +30,7 @@
 				</div>
 			</div>
 
-			<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :style="nodeIconStyle"/>
+			<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :style="nodeIconStyle" :shrink="true"/>
 		</div>
 		<div class="node-description">
 			<div class="node-name" :title="data.name">
