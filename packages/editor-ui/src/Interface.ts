@@ -489,6 +489,39 @@ export interface ILinkMenuItemProperties {
 	newWindow?: boolean;
 }
 
+export interface ISubcategoryItemProps {
+	subcategory: string;
+	description: string;
+}
+
+export interface INodeItemProps {
+	subcategory: string;
+	nodeType: INodeTypeDescription;
+}
+
+export interface ICategoryItemProps {
+	expanded: boolean;
+}
+
+export interface INodeCreateElement {
+	type: 'node' | 'category' | 'subcategory';
+	category: string;
+	key: string;
+	includedByTrigger?: boolean;
+	includedByRegular?: boolean;
+	properties: ISubcategoryItemProps | INodeItemProps | ICategoryItemProps;
+}
+
+export interface ICategoriesWithNodes {
+	[category: string]: {
+		[subcategory: string]: {
+			regularCount: number;
+			triggerCount: number;
+			nodes: INodeCreateElement[];
+		};
+	};
+}
+
 export interface ITag {
 	id: string;
 	name: string;
