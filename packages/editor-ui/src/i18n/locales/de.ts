@@ -319,16 +319,6 @@ export default {
 		multipleParameter: {
 			currentlyNoItemsExist: 'Deutsch',
 		},
-		nodeCreateList: {
-			all: 'Deutsch',
-			noNodesMatchYourSearchCriteria: 'Deutsch',
-			regular: 'Deutsch',
-			trigger: 'Deutsch',
-			typeToFilter: 'Deutsch',
-		},
-		nodeCreator: {
-			createNode: 'Deutsch',
-		},
 		nodeCredentials: {
 			credentials: 'Deutsch',
 			showMessage: {

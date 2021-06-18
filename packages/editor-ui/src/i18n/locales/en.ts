@@ -319,16 +319,6 @@ const baseStrings = {
 		multipleParameter: {
 			currentlyNoItemsExist: 'Currently no items exist',
 		},
-		nodeCreateList: {
-			all: 'All',
-			noNodesMatchYourSearchCriteria: '🙃 no nodes matching your search criteria',
-			regular: 'Regular',
-			trigger: 'Trigger',
-			typeToFilter: 'Type to filter...',
-		},
-		nodeCreator: {
-			createNode: 'Create Node',
-		},
 		nodeCredentials: {
 			credentials: 'Credentials',
 			showMessage: {
