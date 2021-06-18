@@ -85,11 +85,11 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
 		// Run the error workflow
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
 		if (workflowData.settings !== undefined && workflowData.settings.errorWorkflow && !(mode === 'error' && workflowData.id && workflowData.settings.errorWorkflow.toString() === workflowData.id.toString())) {
-			Logger.verbose(`Start external error workflow`, { executionId: this.executionId, errorWorkflowId: workflowData.settings.errorWorkflow.toString(), workflowId: this.workflowData.id });
+			Logger.verbose(`Start external error workflow`, { executionId, errorWorkflowId: workflowData.settings.errorWorkflow.toString(), workflowId: workflowData.id });
 			// If a specific error workflow is set run only that one
 			WorkflowHelpers.executeErrorWorkflow(workflowData.settings.errorWorkflow as string, workflowErrorData);
 		} else if (mode !== 'error' && workflowData.id !== undefined && workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)) {
-			Logger.verbose(`Start internal error workflow`, { executionId: this.executionId, workflowId: this.workflowData.id });
+			Logger.verbose(`Start internal error workflow`, { executionId, workflowId: workflowData.id });
 			// If the workflow contains
 			WorkflowHelpers.executeErrorWorkflow(workflowData.id.toString(), workflowErrorData);
 		}
@@ -387,7 +387,12 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					// Leave log message before flatten as that operation increased memory usage a lot and the chance of a crash is highest here
-					Logger.debug(`Save execution data to database for execution ID ${this.executionId}`, { executionId: this.executionId, workflowId: this.workflowData.id });
+					Logger.debug(`Save execution data to database for execution ID ${this.executionId}`, { 
+						executionId: this.executionId, 
+						workflowId: this.workflowData.id, 
+						finished: fullExecutionData.finished,
+						stoppedAt: fullExecutionData.stoppedAt,
+					});
 
 					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
@@ -404,6 +409,12 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, this.retryOf);
 					}
 				} catch (error) {
+					Logger.error(`Failed saving execution data to DB on execution ID ${this.executionId}`, { 
+						executionId: this.executionId, 
+						workflowId: this.workflowData.id,
+						error,
+					});
+					
 					if (!isManualMode) {
 						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
 					}
@@ -438,14 +449,8 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						}
 					}
 
-					// Check config to know if execution should be saved or not
-					let saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
-					if (this.workflowData.settings !== undefined) {
-						saveDataErrorExecution = (this.workflowData.settings.saveDataErrorExecution as string) || saveDataErrorExecution;
-					}
-
 					const workflowDidSucceed = !fullRunData.data.resultData.error;
-					if (workflowDidSucceed === false && saveDataErrorExecution === 'none') {
+					if (workflowDidSucceed === false) {
 						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
 					}
 
@@ -473,7 +478,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
-						// await Db.collections.Execution!.save(executionData as IExecutionFlattedDb);
 						await Db.collections.Execution!.update(this.retryOf, { retrySuccessId: this.executionId });
 					}
 				} catch (error) {
@@ -619,7 +623,16 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	// This one already contains changes to talk to parent process
 	// and get executionID from `activeExecutions` running on main process
 	additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
-	additionalDataIntegrated.executionTimeoutTimestamp = additionalData.executionTimeoutTimestamp;
+
+	let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
+	if (workflowData.settings?.executionTimeout !== undefined && workflowData.settings.executionTimeout > 0) {
+		// We might have received a max timeout timestamp from the parent workflow
+		// If we did, then we get the minimum time between the two timeouts
+		// If no timeout was given from the parent, then we use our timeout.
+		subworkflowTimeout = Math.min(additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER, Date.now() + (workflowData.settings.executionTimeout as number * 1000));
+	}
+
+	additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
 
 
 	// Execute the workflow
@@ -650,6 +663,24 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 			...error,
 			stack: error!.stack,
 		};
+	}
+}
+
+
+export function sendMessageToUI(source: string, message: any) { // tslint:disable-line:no-any
+	if (this.sessionId === undefined) {
+		return;
+	}
+
+	// Push data to session which started workflow
+	try {
+		const pushInstance = Push.getInstance();
+		pushInstance.send('sendConsoleMessage', {
+			source: `Node: "${source}"`,
+			message,
+		}, this.sessionId);
+	} catch (error) {
+		Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
 	}
 }
 
@@ -776,4 +807,3 @@ export function getWorkflowHooksMain(data: IWorkflowExecutionDataProcess, execut
 
 	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, { sessionId: data.sessionId, retryOf: data.retryOf as string });
 }
-

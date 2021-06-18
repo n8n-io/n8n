@@ -401,6 +401,13 @@ export class WorkflowExecute {
 
 							nodeToAdd = parentNode;
 						}
+						const parentNodesNodeToAdd = workflow.getParentNodes(nodeToAdd as string);
+						if (parentNodesNodeToAdd.includes(parentNodeName) && nodeSuccessData[outputIndex].length === 0) {
+							// We do not add the node if there is no input data and the node that should be connected
+							// is a child of the parent node. Because else it would run a node even though it should be
+							// specifically not run, as it did not receive any data.
+							nodeToAdd = undefined;
+						}
 
 						if (nodeToAdd === undefined) {
 							// No node has to get added so process

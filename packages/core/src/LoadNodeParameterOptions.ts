@@ -19,11 +19,13 @@ const TEMP_WORKFLOW_NAME = 'Temp-Workflow';
 
 
 export class LoadNodeParameterOptions {
+	path: string;
 	workflow: Workflow;
 
 
-	constructor(nodeTypeNameAndVersion: INodeTypeNameVersion, nodeTypes: INodeTypes, currentNodeParameters: INodeParameters, credentials?: INodeCredentials) {
+	constructor(nodeTypeNameAndVersion: INodeTypeNameVersion, nodeTypes: INodeTypes, path: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials) {
 		const nodeType = nodeTypes.getByNameAndVersion(nodeTypeNameAndVersion.name, nodeTypeNameAndVersion.version);
+		this.path = path;
 		if (nodeType === undefined) {
 			throw new Error(`The node-type "${nodeTypeNameAndVersion.name} v${nodeTypeNameAndVersion.version}"  is not known!`);
 		}
@@ -89,7 +91,7 @@ export class LoadNodeParameterOptions {
 			throw new Error(`The node-type "${node!.type}" does not have the method "${methodName}" defined!`);
 		}
 
-		const thisArgs = NodeExecuteFunctions.getLoadOptionsFunctions(this.workflow, node!, additionalData);
+		const thisArgs = NodeExecuteFunctions.getLoadOptionsFunctions(this.workflow, node!, this.path, additionalData);
 
 		return nodeType!.methods.loadOptions[methodName].call(thisArgs);
 	}
