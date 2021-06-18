@@ -6,6 +6,7 @@ import {
 export class UProcApi implements ICredentialType {
 	name = 'uprocApi';
 	displayName = 'uProc API';
+	documentationUrl = 'uProc';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Email',
