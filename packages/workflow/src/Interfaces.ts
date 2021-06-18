@@ -568,6 +568,7 @@ export interface INodeTypeDescription {
 		deactivate?: INodeHookDescription[];
 	};
 	webhooks?: IWebhookDescription[];
+	codex?: CodexData;
 }
 
 export interface INodeHookDescription {
@@ -783,6 +784,12 @@ export interface ILogger {
 export interface IStatusCodeMessages {
 	[key: string]: string;
 }
+
+export type CodexData = {
+	categories?: string[];
+	subcategories?: {[category: string]: string[]};
+	alias?: string[];
+};
 
 export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
 
