@@ -6,6 +6,7 @@ import {
 export class GitPassword implements ICredentialType {
 	name = 'gitPassword';
 	displayName = 'Git';
+	documentationUrl = 'git';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',
