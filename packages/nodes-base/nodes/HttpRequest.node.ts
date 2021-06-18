@@ -301,6 +301,20 @@ export class HttpRequest implements INodeType {
 						description: 'Content-Type to use to send body parameters.',
 					},
 					{
+						displayName: 'Flatten output',
+						name: 'flattenOutput',
+						type: 'boolean',
+						default: false,
+						description: 'Convert the output to a single array of elements',
+						displayOptions: {
+							show: {
+								'/responseFormat': [
+									'json',
+								],
+							},
+						},
+					},
+					{
 						displayName: 'Full Response',
 						name: 'fullResponse',
 						type: 'boolean',
@@ -1005,7 +1019,11 @@ export class HttpRequest implements INodeType {
 						}
 					}
 
-					returnItems.push({ json: response });
+					if (options.flattenOutput === true && Array.isArray(response)) {
+						response.forEach(item => returnItems.push({ json: item }));
+					} else {
+						returnItems.push({ json: response });
+					}
 				}
 			}
 		}
