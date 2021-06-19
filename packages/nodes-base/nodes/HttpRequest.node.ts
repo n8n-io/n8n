@@ -797,8 +797,22 @@ export class HttpRequest implements INodeType {
 						// @ts-ignore
 						requestOptions[optionName] = {};
 						for (const parameterData of setUiParameter!.parameter as IDataObject[]) {
-							// @ts-ignore
-							requestOptions[optionName][parameterData!.name as string] = parameterData!.value;
+							const parameterDataName = parameterData!.name as string;
+							const newValue = parameterData!.value;
+							if (optionName === 'qs') {
+								const requestOption = requestOptions[optionName];
+								const oldValue = requestOption[parameterDataName];
+								if (typeof oldValue === 'string') {
+									requestOption[parameterDataName] = [oldValue, newValue];
+								} else if (Array.isArray(oldValue)) {
+									oldValue.push(parameterData!.value)
+								} else {
+									requestOption[parameterDataName] = newValue;
+								}
+							} else {
+								// @ts-ignore
+								requestOptions[optionName][parameterDataName] = newValue;
+							}
 						}
 					}
 				}
