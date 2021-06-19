@@ -1,6 +1,6 @@
 
 export interface IAttachment {
-	fields: {
+	fields?: {
 		item?: object[];
 	};
 }

@@ -24,6 +24,8 @@ import {
 	PaintStyle,
 } from 'jsplumb';
 
+import baseStrings from '@/i18n/locales/en';
+
 declare module 'jsplumb' {
 	interface Anchor {
 		lastReturnValue: number[];
@@ -602,3 +604,46 @@ export interface IRestApiContext {
 	baseUrl: string;
 	sessionId: string;
 }
+
+
+/**
+ * Shape of the top-level 'en' key in `baseStrings` object.
+ */
+type BaseStrings = typeof baseStrings['en'];
+
+/**
+ * Union of string keys representing keys of the translation object.
+ */
+type TranslationKeys<TranslationObject> = keyof TranslationObject extends string
+	? keyof TranslationObject
+	: never;
+
+/**
+ * Union of string arrays, each of them making up a path to the key
+ * at the deepest level of nesting in a translation object.
+ */
+type PathCollection<TranslationObject> = TranslationObject extends string
+	? []
+	: { [Key in TranslationKeys<TranslationObject> ]: [Key, ...PathCollection<TranslationObject[Key]>] }[TranslationKeys<TranslationObject>];
+
+/**
+ * Union of strings made up of arrays of string keys representing paths of the
+ * translation object joined by a delimiter.
+ */
+type Join<StringLiteralArray extends string[], Delimiter extends string> =
+	StringLiteralArray extends []
+		? never
+		: StringLiteralArray extends [infer First]
+			? First
+			: StringLiteralArray extends [infer First, ...infer Rest]
+				? First extends string
+					? `${First}${Delimiter}${Join<Extract<Rest, string[]>, Delimiter>}`
+					: never
+				: string;
+
+/**
+ * Union of strings that represent valid dot-delimited paths of the translation object.
+ */
+type TranslationPath = Join<PathCollection<BaseStrings>, '.'>;
+
+export type { TranslationPath };

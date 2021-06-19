@@ -35,6 +35,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
+import { translate } from '@/components/mixins/translate';
 
 import { isEqual } from 'lodash';
 
@@ -45,6 +46,7 @@ export const workflowHelpers = mixins(
 	nodeHelpers,
 	restApi,
 	showMessage,
+	translate,
 )
 	.extend({
 		methods: {
@@ -426,8 +428,8 @@ export const workflowHelpers = mixins(
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
 					this.$showMessage({
-						title: 'Problem saving workflow',
-						message: `There was a problem saving the workflow: "${e.message}"`,
+						title: this.$translateBase('workflowHelpers.showMessage.saveCurrentWorkflow.title'),
+						message: this.$translateBase('workflowHelpers.showMessage.saveCurrentWorkflow.message', { colon: true }) + ` "${e.message}"`,
 						type: 'error',
 					});
 
@@ -476,8 +478,8 @@ export const workflowHelpers = mixins(
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
 					this.$showMessage({
-						title: 'Problem saving workflow',
-						message: `There was a problem saving the workflow: "${e.message}"`,
+						title: this.$translateBase('workflowHelpers.showMessage.saveAsNewWorkflow.title'),
+						message: this.$translateBase('workflowHelpers.showMessage.saveAsNewWorkflow.message', { colon: true }) + ` "${e.message}"`,
 						type: 'error',
 					});
 
@@ -518,7 +520,7 @@ export const workflowHelpers = mixins(
 				const currentData = await this.getWorkflowDataToSave();
 
 				let data: IWorkflowDb;
-				data = await this.restApi().getWorkflow(id);
+				data = await this.restApi().getWorkflow(id); // eslint-disable-line
 
 				if(data !== undefined) {
 					const x = {

@@ -2,7 +2,7 @@
 	<div @keydown.stop class="credentials-input-wrapper">
 		<el-row>
 			<el-col :span="6" class="headline-regular">
-				Credentials Name:
+				{{ $translateBase('credentialsInput.credentialsName') }}:
 				<el-tooltip class="credentials-info" placement="top" effect="light">
 					<div slot="content" v-html="helpTexts.credentialsName"></div>
 					<font-awesome-icon icon="question-circle" />
@@ -14,7 +14,7 @@
 		</el-row>
 		<br />
 		<div class="headline" v-if="credentialProperties.length">
-			Credential Data:
+			{{ $translateBase('credentialsInput.credentialData') }}:
 			<el-tooltip class="credentials-info" placement="top" effect="light">
 				<div slot="content" v-html="helpTexts.credentialsData"></div>
 				<font-awesome-icon icon="question-circle" />
@@ -23,14 +23,22 @@
 		<div v-for="parameter in credentialProperties" :key="parameter.name">
 			<el-row class="parameter-wrapper">
 				<el-col :span="6" class="parameter-name">
-					{{parameter.displayName}}:
-					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
-						<div slot="content" v-html="parameter.description"></div>
+					{{ $translateCredentialsPropertyName(parameter, credentialsParams) }}:
+					<el-tooltip placement="top" class="parameter-info" v-if="$translateCredentialsPropertyDescription(parameter, credentialsParams)" effect="light">
+						<div slot="content" v-html="$translateCredentialsPropertyDescription(parameter, credentialsParams)"></div>
 						<font-awesome-icon icon="question-circle"/>
 					</el-tooltip>
 				</el-col>
 				<el-col :span="18">
-					<parameter-input :parameter="parameter" :value="propertyValue[parameter.name]" :path="parameter.name" :isCredential="true" :displayOptions="true" @valueChanged="valueChanged" />
+					<parameter-input
+						:parameter="parameter"
+						:value="propertyValue[parameter.name]"
+						:path="parameter.name"
+						:isCredential="true"
+						:displayOptions="true"
+						@valueChanged="valueChanged"
+						:credentialsParams="credentialsParams"
+					/>
 				</el-col>
 			</el-row>
 		</div>
@@ -44,13 +52,13 @@
 					<el-button title="Connect OAuth Credentials" circle :disabled="true">
 						<font-awesome-icon icon="redo" />
 					</el-button>
-					Enter all required properties
+					{{ $translateBase('credentialsInput.enterAllRequiredProperties') }}
 				</span>
 				<span v-else-if="isOAuthConnected === true">
 					<el-button title="Reconnect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" circle>
 						<font-awesome-icon icon="redo" />
 					</el-button>
-					Connected
+					{{ $translateBase('credentialsInput.connected') }}
 				</span>
 				<span v-else>
 					<span v-if="isGoogleOAuthType">
@@ -60,14 +68,14 @@
 						<el-button title="Connect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" circle>
 							<font-awesome-icon icon="sign-in-alt" />
 						</el-button>
-						Not connected
+						{{ $translateBase('credentialsInput.notConnected') }}
 					</span>
 				</span>
 
 				<div v-if="credentialProperties.length">
 					<div class="clickable oauth-callback-headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? 'Click to display Webhook URLs' : 'Click to hide Webhook URLs'">
 						<font-awesome-icon icon="angle-up" class="minimize-button minimize-icon" />
-						OAuth Callback URL
+						{{ $translateBase('credentialsInput.oAuth2CallbackUrl') }}
 					</div>
 					<el-tooltip v-if="!isMinimized" class="item" effect="light" content="Click to copy Callback URL" placement="right">
 						<div class="callback-url left-ellipsis clickable" @click="copyCallbackUrl">
@@ -81,7 +89,7 @@
 
 		<el-row class="nodes-access-wrapper">
 			<el-col :span="6" class="headline">
-				Nodes with access:
+				{{ $translateBase('credentialsInput.nodesWithAccess', { colon: true }) }}
 				<el-tooltip class="credentials-info" placement="top" effect="light">
 					<div slot="content" v-html="helpTexts.nodesWithAccess"></div>
 					<font-awesome-icon icon="question-circle" />
@@ -89,26 +97,26 @@
 			</el-col>
 			<el-col :span="18">
 				<el-transfer
-					:titles="['No Access', 'Access ']"
+					:titles="[$translateBase('credentialsInput.noAccess'), $translateBase('credentialsInput.access')]"
 					v-model="nodesAccess"
 					:data="allNodesRequestingAccess">
 				</el-transfer>
 
 				<div v-if="nodesAccess.length === 0" class="no-nodes-access">
 					<strong>
-						Important
+						{{ $translateBase('credentialsInput.important') }}
 					</strong><br />
-					Add at least one node which has access to the credentials!
+					{{ $translateBase('credentialsInput.addAtLeastOneNodeWhichHasAccessToTheCredentials') }}
 				</div>
 			</el-col>
 		</el-row>
 
 		<div class="action-buttons">
 			<el-button type="success" @click="updateCredentials(true)" v-if="credentialDataDynamic">
-				Save
+				{{ $translateBase('credentialsInput.save') }}
 			</el-button>
 			<el-button type="success" @click="createCredentials(true)" v-else>
-				Create
+				{{ $translateBase('credentialsInput.create') }}
 			</el-button>
 		</div>
 
@@ -123,6 +131,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
+import { translate } from '@/components/mixins/translate';
 
 import {
 	ICredentialsDecryptedResponse,
@@ -146,12 +155,15 @@ import ParameterInput from '@/components/ParameterInput.vue';
 
 import mixins from 'vue-typed-mixins';
 
+import { addNodeTranslations } from '@/i18n/i18n';
+
 export default mixins(
 	copyPaste,
 	externalHooks,
 	nodeHelpers,
 	restApi,
 	showMessage,
+	translate,
 ).extend({
 	name: 'CredentialsInput',
 	props: [
@@ -178,8 +190,33 @@ export default mixins(
 			nodesAccess: [] as string[],
 			name: '',
 			propertyValue: {} as ICredentialDataDecryptedObject,
+			credentialsParams: {
+				nodeType: `n8n-nodes-base.${this.credentialTypeData.documentationUrl}`, // workaround
+				credentialsName: this.credentialTypeData.name,
+			},
 		};
 	},
+
+	/**
+	 * Before mounting, load the translations for this node (if any),
+	 * which may contain credentials parameters.
+	 *
+	 * This is necessary in case the node has not been placed on the canvas,
+	 * so its translations are not yet available.
+	 */
+	beforeMount() {
+		return new Promise<void>(resolve => {
+			this.restApi().getNodesInformation([this.credentialsParams.nodeType])
+				.then(nodeInfo => {
+					if (nodeInfo[0] && nodeInfo[0].translation) {
+						const nodeTranslations = nodeInfo[0].translation;
+						if (nodeTranslations) addNodeTranslations(nodeTranslations);
+						resolve();
+					}
+				});
+		});
+	},
+
 	computed: {
 		allNodesRequestingAccess (): Array<{key: string, label: string}> {
 			const returnNodeTypes: string[] = [];
@@ -266,12 +303,19 @@ export default mixins(
 		},
 	},
 	methods: {
+		// async loadNodeTranslations(): Promise<void> {
+		// 	const nodeInfo = await this.restApi().getNodesInformation([this.nodeTypeOfCredentials]);
+		// 	const nodeTranslations = nodeInfo[0].translation;
+
+		// 	if (nodeTranslations) addNodeTranslations(nodeTranslations);
+		// },
+
 		copyCallbackUrl (): void {
 			this.copyToClipboard(this.oAuthCallbackUrl);
 
 			this.$showMessage({
-				title: 'Copied',
-				message: `Callback URL was successfully copied!`,
+				title: this.$translateBase('credentialsInput.showMessage.copyCallbackUrl.title'),
+				message: this.$translateBase('credentialsInput.showMessage.copyCallbackUrl.message'),
 				type: 'success',
 			});
 		},
@@ -329,7 +373,11 @@ export default mixins(
 			try {
 				result = await this.restApi().createNewCredentials(newCredentials);
 			} catch (error) {
-				this.$showError(error, 'Problem Creating Credentials', 'There was a problem creating the credentials:');
+				this.$showError(
+					error,
+					this.$translateBase('credentialsInput.showError.createCredentials.title'),
+					this.$translateBase('credentialsInput.showError.createCredentials.message', { colon: true }),
+				);
 				return null;
 			}
 
@@ -378,7 +426,11 @@ export default mixins(
 					url = await this.restApi().oAuth1CredentialAuthorize(credentialData as ICredentialsResponse) as string;
 				}
 			} catch (error) {
-				this.$showError(error, 'OAuth Authorization Error', 'Error generating authorization URL:');
+				this.$showError(
+					error,
+					this.$translateBase('credentialsInput.showError.oAuthCredentialAuthorize.title'),
+					this.$translateBase('credentialsInput.showError.oAuthCredentialAuthorize.message', { colon: true }),
+				);
 				return;
 			}
 
@@ -417,8 +469,8 @@ export default mixins(
 					}
 
 					this.$showMessage({
-						title: 'Connected',
-						message: 'Connected successfully!',
+						title: this.$translateBase('credentialsInput.showMessage.receiveMessage.title'),
+						message: this.$translateBase('credentialsInput.showMessage.receiveMessage.message'),
 						type: 'success',
 					});
 
@@ -464,7 +516,11 @@ export default mixins(
 			try {
 				result = await this.restApi().updateCredentials((this.credentialDataDynamic as ICredentialsDecryptedResponse).id as string, newCredentials);
 			} catch (error) {
-				this.$showError(error, 'Problem Updating Credentials', 'There was a problem updating the credentials:');
+				this.$showError(
+					error,
+					this.$translateBase('credentialsInput.showError.updateCredentials.title'),
+					this.$translateBase('credentialsInput.showError.updateCredentials.message', { colon: true }),
+				);
 				return null;
 			}
 

@@ -8,7 +8,7 @@
 					:custom="true"
 				>
 					<template v-slot="{ shortenedName }">
-						<InlineTextEdit 
+						<InlineTextEdit
 							:value="workflowName"
 							:previewValue="shortenedName"
 							:isEditEnabled="isNameEditEnabled"
@@ -45,8 +45,8 @@
 			<span
 				class="add-tag clickable"
 				@click="onTagsEditEnable"
-			>	
-				+ Add tag
+			>
+				+ {{ $translateBase('workflowDetails.addTag') }}
 			</span>
 		</div>
 		<TagsContainer
@@ -62,7 +62,7 @@
 		<PushConnectionTracker class="actions">
 			<template>
 				<span class="activator">
-					<span>Active:</span>
+					<span>{{ $translateBase('workflowDetails.active') }}:</span>
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" :disabled="!currentWorkflowId"/>
 				</span>
 				<SaveWorkflowButton />
@@ -120,7 +120,7 @@ export default mixins(workflowHelpers).extend({
 	},
 	computed: {
 		...mapGetters({
-			isWorkflowActive: "isActive", 
+			isWorkflowActive: "isActive",
 			workflowName: "workflowName",
 			isDirty: "getStateIsDirty",
 			currentWorkflowTagIds: "workflowTags",
@@ -184,8 +184,8 @@ export default mixins(workflowHelpers).extend({
 			const newName = name.trim();
 			if (!newName) {
 				this.$showMessage({
-					title: "Name missing",
-					message: `Please enter a name, or press 'esc' to go back to the old one.`,
+					title: this.$translateBase('workflowDetails.showMessage.title'),
+					message: this.$translateBase('workflowDetails.showMessage.message'),
 					type: "error",
 				});
 

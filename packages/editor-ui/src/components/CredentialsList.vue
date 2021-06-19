@@ -2,33 +2,33 @@
 	<div v-if="dialogVisible">
 		<credentials-edit :dialogVisible="credentialEditDialogVisible" @closeDialog="closeCredentialEditDialog" @credentialsUpdated="reloadCredentialList" @credentialsCreated="reloadCredentialList" :setCredentialType="editCredentials && editCredentials.type" :editCredentials="editCredentials"></credentials-edit>
 
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" title="Credentials" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="$translateBase('credentialsList.yourSavedCredentials')" :before-close="closeDialog">
 			<div class="text-very-light">
-				Your saved credentials:
+				{{ $translateBase('credentialsList.yourSavedCredentials') }}:
 			</div>
 
-			<el-button title="Create New Credentials" class="new-credentials-button" @click="createCredential()">
+			<el-button :title="$translateBase('credentialsList.createNewCredentials')" class="new-credentials-button" @click="createCredential()">
 				<font-awesome-icon icon="plus" />
 				<div class="next-icon-text">
-					Add New
+					{{ $translateBase('credentialsList.addNew') }}
 				</div>
 			</el-button>
 
 			<el-table :data="credentials" :default-sort = "{prop: 'name', order: 'ascending'}" stripe @row-click="editCredential" max-height="450" v-loading="isDataLoading">
-				<el-table-column property="name" label="Name" class-name="clickable" sortable></el-table-column>
-				<el-table-column property="type" label="Type" class-name="clickable" sortable>
+				<el-table-column property="name" :label="$translateBase('credentialsList.tableLabels.name')" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="type" :label="$translateBase('credentialsList.tableLabels.type')" class-name="clickable" sortable>
 					<template slot-scope="scope">
 						{{credentialTypeDisplayNames[scope.row.type]}}
 					</template>
 				</el-table-column>
-				<el-table-column property="createdAt" label="Created" class-name="clickable" sortable></el-table-column>
-				<el-table-column property="updatedAt" label="Updated" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="createdAt" :label="$translateBase('credentialsList.tableLabels.created')" class-name="clickable" sortable></el-table-column>
+				<el-table-column property="updatedAt" :label="$translateBase('credentialsList.tableLabels.updated')" class-name="clickable" sortable></el-table-column>
 				<el-table-column
-					label="Operations"
+					:label="$translateBase('credentialsList.tableLabels.operations')"
 					width="120">
 					<template slot-scope="scope">
-						<el-button title="Edit Credentials" @click.stop="editCredential(scope.row)" icon="el-icon-edit" circle></el-button>
-						<el-button title="Delete Credentials" @click.stop="deleteCredential(scope.row)" type="danger" icon="el-icon-delete" circle></el-button>
+						<el-button :title="$translateBase('credentialsList.editCredentials')" @click.stop="editCredential(scope.row)" icon="el-icon-edit" circle></el-button>
+						<el-button :title="$translateBase('credentialsList.deleteCredentials')" @click.stop="deleteCredential(scope.row)" type="danger" icon="el-icon-delete" circle></el-button>
 					</template>
 				</el-table-column>
 			</el-table>
@@ -44,6 +44,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import CredentialsEdit from '@/components/CredentialsEdit.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { translate } from '@/components/mixins/translate';
 
 import mixins from 'vue-typed-mixins';
 
@@ -53,6 +54,7 @@ export default mixins(
 	nodeHelpers,
 	restApi,
 	showMessage,
+	translate,
 ).extend({
 	name: 'CredentialsList',
 	props: [
@@ -127,7 +129,11 @@ export default mixins(
 			try {
 				this.credentials = JSON.parse(JSON.stringify(this.$store.getters.allCredentials));
 			} catch (error) {
-				this.$showError(error, 'Problem loading credentials', 'There was a problem loading the credentials:');
+				this.$showError(
+					error,
+					this.$translateBase('credentialsList.showError.loadCredentials.title'),
+					this.$translateBase('credentialsList.showError.loadCredentials.message', { colon: true }),
+				);
 				this.isDataLoading = false;
 				return;
 			}
@@ -141,7 +147,16 @@ export default mixins(
 		},
 
 		async deleteCredential (credential: ICredentialsResponse) {
-			const deleteConfirmed = await this.confirmMessage(`Are you sure you want to delete "${credential.name}" credentials?`, 'Delete Credentials?', 'warning', 'Yes, delete!');
+			const deleteConfirmed = await this.confirmMessage(
+				this.$translateBase(
+					'credentialsList.confirmMessage.message',
+					{ interpolate: { credentialName: credential.name }},
+				),
+				this.$translateBase('credentialsList.confirmMessage.headline'),
+				'warning',
+				this.$translateBase('credentialsList.confirmMessage.confirmButtonText'),
+				this.$translateBase('credentialsList.confirmMessage.cancelButtonText'),
+			);
 
 			if (deleteConfirmed === false) {
 				return;
@@ -150,7 +165,11 @@ export default mixins(
 			try {
 				await this.restApi().deleteCredentials(credential.id!);
 			} catch (error) {
-				this.$showError(error, 'Problem deleting credentials', 'There was a problem deleting the credentials:');
+				this.$showError(
+					error,
+					this.$translateBase('credentialsList.showError.deleteCredential.title'),
+					this.$translateBase('credentialsList.showError.deleteCredential.message', { colon: true }),
+				);
 				return;
 			}
 
@@ -161,8 +180,11 @@ export default mixins(
 			this.updateNodesCredentialsIssues();
 
 			this.$showMessage({
-				title: 'Credentials deleted',
-				message: `The credential "${credential.name}" got deleted!`,
+				title: this.$translateBase('credentialsList.showMessage.title'),
+				message: this.$translateBase(
+					'credentialsList.showMessage.message',
+					{ interpolate: { credentialsName: credential.name }},
+				),
 				type: 'success',
 			});
 

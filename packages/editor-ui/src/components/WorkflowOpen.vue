@@ -6,11 +6,11 @@
 			<template v-slot:header>
 				<div class="workflows-header">
 					<div class="title">
-						<h1>Open Workflow</h1>
+						<h1>{{ $translateBase('workflowOpen.openWorkflow') }}</h1>
 					</div>
 					<div class="tags-filter">
 						<TagsDropdown
-							placeholder="Filter by tags..."
+							:placeholder="$translateBase('workflowOpen.openWorkflow')"
 							:currentTagIds="filterTagIds"
 							:createEnabled="false"
 							@update="updateTagsFilter"
@@ -19,7 +19,7 @@
 						/>
 					</div>
 					<div class="search-filter">
-						<el-input placeholder="Search workflows..." ref="inputFieldFilter" v-model="filterText">
+						<el-input :placeholder="$translateBase('workflowOpen.searchWorkflows')" ref="inputFieldFilter" v-model="filterText">
 							<i slot="prefix" class="el-input__icon el-icon-search"></i>
 						</el-input>
 					</div>
@@ -36,9 +36,9 @@
 							</div>
 						</template>
 					</el-table-column>
-					<el-table-column property="createdAt" label="Created" class-name="clickable" width="155" sortable></el-table-column>
-					<el-table-column property="updatedAt" label="Updated" class-name="clickable" width="155" sortable></el-table-column>
-					<el-table-column label="Active" width="75">
+					<el-table-column property="createdAt" :label="$translateBase('workflowOpen.created')" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column property="updatedAt" :label="$translateBase('workflowOpen.updated')" class-name="clickable" width="155" sortable></el-table-column>
+					<el-table-column :label="$translateBase('workflowOpen.active')" width="75">
 						<template slot-scope="scope">
 							<workflow-activator :workflow-active="scope.row.active" :workflow-id="scope.row.id" @workflowActiveChanged="workflowActiveChanged" />
 						</template>
@@ -58,6 +58,7 @@ import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
+import { translate } from '@/components/mixins/translate';
 
 import Modal from '@/components/Modal.vue';
 import TagsContainer from '@/components/TagsContainer.vue';
@@ -69,6 +70,7 @@ export default mixins(
 	restApi,
 	showMessage,
 	workflowHelpers,
+	translate,
 ).extend({
 	name: 'WorkflowOpen',
 	components: {
@@ -131,8 +133,8 @@ export default mixins(
 
 				if (data.id === currentWorkflowId) {
 					this.$showMessage({
-						title: 'Already open',
-						message: 'This is the current workflow',
+						title: this.$translateBase('workflowOpen.showMessage.title'),
+						message: this.$translateBase('workflowOpen.showMessage.message'),
 						type: 'error',
 						duration: 1500,
 					});
@@ -142,7 +144,13 @@ export default mixins(
 
 				const result = this.$store.getters.getStateIsDirty;
 				if(result) {
-					const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+					const importConfirm = await this.confirmMessage(
+						this.$translateBase('workflowOpen.confirmMessage.message'),
+						this.$translateBase('workflowOpen.confirmMessage.headline'),
+						'warning',
+						this.$translateBase('workflowOpen.confirmMessage.confirmButtonText'),
+						this.$translateBase('workflowOpen.confirmMessage.cancelButtonText'),
+					);
 					if (importConfirm === false) {
 						return;
 					} else {
@@ -179,7 +187,11 @@ export default mixins(
 				)
 				.catch(
 					(error: Error) => {
-						this.$showError(error, 'Problem loading workflows', 'There was a problem loading the workflows:');
+						this.$showError(
+							error,
+							this.$translateBase('workflowOpen.showError.title'),
+							this.$translateBase('workflowOpen.showError.message', { colon: true }),
+						);
 						this.isDataLoading = false;
 					},
 				);

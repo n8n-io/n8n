@@ -61,7 +61,7 @@
 				class="workflow-run-button"
 				:class="{'running': workflowRunning}"
 				:disabled="workflowRunning"
-				title="Executes the Workflow from the Start or Webhook Node."
+				:title="$translateBase('nodeView.executesTheWorkflowFromTheStartOrWebhookNode')"
 			>
 				<div class="run-icon">
 					<font-awesome-icon icon="spinner" spin v-if="workflowRunning"/>
@@ -77,7 +77,7 @@
 				type="text"
 				@click.stop="stopExecution()"
 				class="stop-execution"
-				:title="stopExecutionInProgress ? 'Stopping current execution':'Stop current execution'"
+				:title="stopExecutionInProgress ? $translateBase('nodeView.stoppingCurrentExecution') :$translateBase('nodeView.stopCurrentExecution')"
 			>
 				<font-awesome-icon icon="stop" :class="{'fa-spin': stopExecutionInProgress}"/>
 			</el-button>
@@ -166,6 +166,7 @@ import {
 	IPushDataExecutionFinished,
 	ITag,
 } from '../Interface';
+import { addNodeTranslations } from '@/i18n/i18n';
 import { mapGetters } from 'vuex';
 
 export default mixins(
@@ -225,7 +226,13 @@ export default mixins(
 		async beforeRouteLeave(to, from, next) {
 			const result = this.$store.getters.getStateIsDirty;
 			if(result) {
-				const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+				const importConfirm = await this.confirmMessage(
+					this.$translateBase('nodeView.confirmMessage.beforeRouteLeave.message'),
+					this.$translateBase('nodeView.confirmMessage.beforeRouteLeave.headline'),
+					'warning',
+					this.$translateBase('nodeView.confirmMessage.beforeRouteLeave.confirmButtonText'),
+					this.$translateBase('nodeView.confirmMessage.beforeRouteLeave.cancelButtonText'),
+				);
 				if (importConfirm === false) {
 					next(false);
 				} else {
@@ -258,14 +265,14 @@ export default mixins(
 			},
 			runButtonText (): string {
 				if (this.workflowRunning === false) {
-					return 'Execute Workflow';
+					return this.$translateBase('nodeView.runButtonText.executeWorkflow');
 				}
 
 				if (this.executionWaitingForWebhook === true) {
-					return 'Waiting for Webhook-Call';
+					return this.$translateBase('nodeView.runButtonText.waitingForWebhookCall');
 				}
 
-				return 'Executing Workflow';
+				return this.$translateBase('nodeView.runButtonText.executingWorkflow');
 			},
 			workflowStyle (): object {
 				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
@@ -335,7 +342,11 @@ export default mixins(
 				try {
 					data = await this.restApi().getExecution(executionId);
 				} catch (error) {
-					this.$showError(error, 'Problem loading execution', 'There was a problem opening the execution:');
+					this.$showError(
+						error,
+						this.$translateBase('nodeView.showError.openExecution.title'),
+						this.$translateBase('nodeView.showError.openExecution.message', { colon: true }),
+					);
 					return;
 				}
 
@@ -359,7 +370,11 @@ export default mixins(
 				try {
 					data = await this.restApi().getWorkflow(workflowId);
 				} catch (error) {
-					this.$showError(error, 'Problem opening workflow', 'There was a problem opening the workflow:');
+					this.$showError(
+						error,
+						this.$translateBase('nodeView.showError.openWorkflow.title'),
+						this.$translateBase('nodeView.showError.openWorkflow.message', { colon: true }),
+					);
 					return;
 				}
 
@@ -503,8 +518,8 @@ export default mixins(
 					}
 
 					this.$showMessage({
-						title: 'Workflow created',
-						message: 'A new workflow got created!',
+						title: this.$translateBase('nodeView.showMessage.keyDown.title'),
+						message: this.$translateBase('nodeView.showMessage.keyDown.message'),
 						type: 'success',
 					});
 				} else if ((e.key === 's') && (this.isCtrlKeyPressed(e) === true)) {
@@ -739,8 +754,11 @@ export default mixins(
 					this.stopExecutionInProgress = true;
 					const stopData: IExecutionsStopData = await this.restApi().stopCurrentExecution(executionId);
 					this.$showMessage({
-						title: 'Execution stopped',
-						message: `The execution with the id "${executionId}" got stopped!`,
+						title: this.$translateBase('nodeView.showMessage.stopExecutionTry.title'),
+						message: this.$translateBase(
+							'nodeView.showMessage.stopExecutionTry.message',
+							{ interpolate: { executionId } },
+						),
 						type: 'success',
 					});
 				} catch (error) {
@@ -765,12 +783,16 @@ export default mixins(
 						this.$store.commit('setWorkflowExecutionData', executedData);
 						this.$store.commit('removeActiveAction', 'workflowRunning');
 						this.$showMessage({
-							title: 'Workflow finished executing',
-							message: 'Unable to stop operation in time. Workflow finished executing already.',
+							title: this.$translateBase('nodeView.showMessage.stopExecutionCatch.title'),
+							message: this.$translateBase('nodeView.showMessage.stopExecutionCatch.message'),
 							type: 'success',
 						});
 					} else {
-						this.$showError(error, 'Problem stopping execution', 'There was a problem stopping the execuction:');
+						this.$showError(
+							error,
+							this.$translateBase('nodeView.showError.stopExecution.title'),
+							this.$translateBase('nodeView.showError.stopExecution.message', { colon: true }),
+						);
 					}
 				}
 				this.stopExecutionInProgress = false;
@@ -781,13 +803,17 @@ export default mixins(
 				try {
 					result = await this.restApi().removeTestWebhook(this.$store.getters.workflowId);
 				} catch (error) {
-					this.$showError(error, 'Problem deleting the test-webhook', 'There was a problem deleting webhook:');
+					this.$showError(
+						error,
+						this.$translateBase('nodeView.showError.stopWaitingForWebhook.title'),
+						this.$translateBase('nodeView.showError.stopWaitingForWebhook.message', { colon: true }),
+					);
 					return;
 				}
 
 				this.$showMessage({
-					title: 'Webhook got deleted',
-					message: `The webhook got deleted!`,
+					title: this.$translateBase('nodeView.showMessage.stopWaitingForWebhook.title'),
+					message: this.$translateBase('nodeView.showMessage.stopWaitingForWebhook.message'),
 					type: 'success',
 				});
 			},
@@ -806,7 +832,16 @@ export default mixins(
 						return;
 					}
 
-					const importConfirm = await this.confirmMessage(`Import workflow from this URL:<br /><i>${plainTextData}<i>`, 'Import Workflow from URL?', 'warning', 'Yes, import!');
+					const importConfirm = await this.confirmMessage(
+						this.$translateBase(
+							'nodeView.confirmMessage.receivedCopyPasteData.message',
+							{ interpolate: { plainTextData } },
+						),
+						this.$translateBase('nodeView.confirmMessage.receivedCopyPasteData.headline'),
+						'warning',
+						this.$translateBase('nodeView.confirmMessage.receivedCopyPasteData.confirmButtonText'),
+						this.$translateBase('nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText'),
+					);
 
 					if (importConfirm === false) {
 						return;
@@ -844,7 +879,11 @@ export default mixins(
 					workflowData = await this.restApi().getWorkflowFromUrl(url);
 				} catch (error) {
 					this.stopLoading();
-					this.$showError(error, 'Problem loading workflow', 'There was a problem loading the workflow data from URL:');
+					this.$showError(
+						error,
+						this.$translateBase('nodeView.showError.getWorkflowDataFromUrl.title'),
+						this.$translateBase('nodeView.showError.getWorkflowDataFromUrl.message', { colon: true }),
+					);
 					return;
 				}
 				this.stopLoading();
@@ -880,7 +919,11 @@ export default mixins(
 						});
 					});
 				} catch (error) {
-					this.$showError(error, 'Problem importing workflow', 'There was a problem importing workflow data:');
+					this.$showError(
+						error,
+						this.$translateBase('nodeView.showError.importWorkflowData.title'),
+						this.$translateBase('nodeView.showError.importWorkflowData.message', { colon: true }),
+					);
 				}
 			},
 
@@ -1004,9 +1047,20 @@ export default mixins(
 			},
 			showMaxNodeTypeError (nodeTypeData: INodeTypeDescription) {
 				const maxNodes = nodeTypeData.maxNodes;
+
 				this.$showMessage({
-					title: 'Could not create node!',
-					message: `Node can not be created because in a workflow max. ${maxNodes} ${maxNodes === 1 ? 'node' : 'nodes'} of type "${nodeTypeData.displayName}" ${maxNodes === 1 ? 'is' : 'are'} allowed!`,
+					title: this.$translateBase('nodeView.showMessage.showMaxNodeTypeError.title'),
+					message: this.$translateBase(
+						maxNodes === 1
+							? 'nodeView.showMessage.showMaxNodeTypeError.message.singular'
+							: 'nodeView.showMessage.showMaxNodeTypeError.message.plural',
+						{
+							interpolate: {
+								maxNodes: maxNodes!.toString(),
+								nodeTypeDataDisplayName: nodeTypeData.displayName,
+							},
+						},
+					),
 					type: 'error',
 					duration: 0,
 				});
@@ -1020,8 +1074,11 @@ export default mixins(
 
 				if (nodeTypeData === null) {
 					this.$showMessage({
-						title: 'Could not create node!',
-						message: `Node of type "${nodeTypeName}" could not be created as it is not known.`,
+						title: this.$translateBase('nodeView.showMessage.addNodeButton.title'),
+						message: this.$translateBase(
+							'nodeView.showMessage.addNodeButton.message',
+							{ interpolate: { nodeTypeName } },
+						),
 						type: 'error',
 					});
 					return;
@@ -1440,7 +1497,13 @@ export default mixins(
 
 					const result = this.$store.getters.getStateIsDirty;
 					if(result) {
-						const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+						const importConfirm = await this.confirmMessage(
+							this.$translateBase('nodeView.confirmMessage.initView.message'),
+							this.$translateBase('nodeView.confirmMessage.initView.headline'),
+							'warning',
+							this.$translateBase('nodeView.confirmMessage.initView.confirmButtonText'),
+							this.$translateBase('nodeView.confirmMessage.initView.cancelButtonText'),
+						);
 						if (importConfirm === false) {
 							return Promise.resolve();
 						}
@@ -1647,13 +1710,17 @@ export default mixins(
 			},
 			async renameNodePrompt (currentName: string) {
 				try {
-					const promptResponsePromise = this.$prompt('New Name:', `Rename Node: "${currentName}"`, {
-						customClass: 'rename-prompt',
-						confirmButtonText: 'Rename',
-						cancelButtonText: 'Cancel',
-						inputErrorMessage: 'Invalid Name',
-						inputValue: currentName,
-					});
+					const promptResponsePromise = this.$prompt(
+						this.$translateBase('nodeView.prompt.newName') + ":",
+						this.$translateBase('nodeView.prompt.renameNode', { colon: true }) + ` ${currentName}`,
+						{
+							customClass: 'rename-prompt',
+							confirmButtonText: this.$translateBase('nodeView.prompt.rename'),
+							cancelButtonText: this.$translateBase('nodeView.prompt.cancel'),
+							inputErrorMessage: this.$translateBase('nodeView.prompt.invalidName'),
+							inputValue: currentName,
+						},
+					);
 
 					// Wait till it had time to display
 					await Vue.nextTick();
@@ -2057,6 +2124,11 @@ export default mixins(
 					// Only call API if node information is actually missing
 					this.startLoading();
 					const nodeInfo = await this.restApi().getNodesInformation(nodesToBeFetched);
+
+					if (nodeInfo[0].translation) {
+						addNodeTranslations(nodeInfo[0].translation);
+					}
+
 					this.$store.commit('updateNodeTypes', nodeInfo);
 					this.stopLoading();
 				}
@@ -2090,7 +2162,11 @@ export default mixins(
 			try {
 				await Promise.all(loadPromises);
 			} catch (error) {
-				this.$showError(error, 'Init Problem', 'There was a problem loading init data:');
+				this.$showError(
+					error,
+					this.$translateBase('nodeView.showError.mounted1.title'),
+					this.$translateBase('nodeView.showError.mounted1.message', { colon: true }),
+				);
 				return;
 			}
 
@@ -2099,7 +2175,11 @@ export default mixins(
 					this.initNodeView();
 					await this.initView();
 				} catch (error) {
-					this.$showError(error, 'Init Problem', 'There was a problem initializing the workflow:');
+					this.$showError(
+						error,
+						this.$translateBase('nodeView.showError.mounted2.title'),
+						this.$translateBase('nodeView.showError.mounted2.message', { colon: true }),
+					);
 				}
 				this.stopLoading();
 			});

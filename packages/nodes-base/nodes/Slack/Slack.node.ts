@@ -61,7 +61,7 @@ import {
 import moment = require('moment');
 
 interface Attachment {
-	fields: {
+	fields?: {
 		item?: object[];
 	};
 }

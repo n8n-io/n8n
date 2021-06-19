@@ -1,18 +1,18 @@
 <template>
 	<div>
 		<div class="error-header">
-			<div class="error-message">ERROR: {{error.message}}</div>
+			<div class="error-message">{{ $translateBase('nodeErrorView.error') }}: {{error.message}}</div>
 			<div class="error-description" v-if="error.description">{{error.description}}</div>
 		</div>
 		<details>
 			<summary class="error-details__summary">
-				<font-awesome-icon class="error-details__icon" icon="angle-right" /> Details
+				<font-awesome-icon class="error-details__icon" icon="angle-right" /> {{ $translateBase('nodeErrorView.details') }}
 			</summary>
 			<div class="error-details__content">
 				<div v-if="error.timestamp">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
-							<span>Time</span>
+							<span>{{ $translateBase('nodeErrorView.time') }}</span>
 						</div>
 						<div>
 							{{new Date(error.timestamp).toLocaleString()}}
@@ -22,7 +22,7 @@
 				<div v-if="error.httpCode">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
-							<span>HTTP-Code</span>
+							<span>{{ $translateBase('nodeErrorView.httpCode') }}</span>
 						</div>
 						<div>
 							{{error.httpCode}}
@@ -32,9 +32,9 @@
 				<div v-if="error.cause">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
-							<span>Cause</span>
+							<span>{{ $translateBase('nodeErrorView.cause') }}</span>
 							<br>
-							<span class="box-card__subtitle">Data below may contain sensitive information. Proceed with caution when sharing.</span>
+							<span class="box-card__subtitle">{{ $translateBase('nodeErrorView.dataBelowMayContain') }}</span>
 						</div>
 						<div>
 							<el-button v-if="displayCause" class="copy-button" @click="copyCause" circle type="text" title="Copy to clipboard">
@@ -58,7 +58,7 @@
 				<div v-if="error.stack">
 					<el-card class="box-card" shadow="never">
 						<div slot="header" class="clearfix box-card__title">
-							<span>Stack</span>
+							<span>{{ $translateBase('nodeErrorView.stack') }}</span>
 						</div>
 						<div>
 							<pre><code>{{error.stack}}</code></pre>
@@ -75,6 +75,7 @@
 import VueJsonPretty from 'vue-json-pretty';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { showMessage } from '@/components/mixins/showMessage';
+import { translate } from '@/components/mixins/translate';
 import mixins from 'vue-typed-mixins';
 import {
 	MAX_DISPLAY_DATA_SIZE,
@@ -83,6 +84,7 @@ import {
 export default mixins(
 	copyPaste,
 	showMessage,
+	translate,
 ).extend({
 	name: 'NodeErrorView',
 	props: [
@@ -103,8 +105,8 @@ export default mixins(
 		},
 		copySuccess() {
 			this.$showMessage({
-				title: 'Copied to clipboard',
-				message: '',
+				title: this.$translateBase('nodeErrorView.showMessage.title'),
+				message: this.$translateBase('nodeErrorView.showMessage.message'),
 				type: 'info',
 			});
 		},

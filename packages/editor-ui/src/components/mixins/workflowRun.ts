@@ -12,6 +12,7 @@ import {
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
+import { translate } from '@/components/mixins/translate';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
@@ -22,6 +23,7 @@ export const workflowRun = mixins(
 	restApi,
 	workflowHelpers,
 	titleChange,
+	translate,
 ).extend({
 	methods: {
 		// Starts to executes a workflow on server.
@@ -78,8 +80,8 @@ export const workflowRun = mixins(
 						}
 
 						this.$showMessage({
-							title: 'Workflow can not be executed',
-							message: 'The workflow has issues. Please fix them first:<br />&nbsp;&nbsp;- ' + errorMessages.join('<br />&nbsp;&nbsp;- '),
+							title: this.$translateBase('workflowRun.showMessage.title'),
+							message: this.$translateBase('workflowRun.showMessage.message') + ':<br />&nbsp;&nbsp;- ' + errorMessages.join('<br />&nbsp;&nbsp;- '),
 							type: 'error',
 							duration: 0,
 						});
@@ -179,7 +181,11 @@ export const workflowRun = mixins(
 				 return runWorkflowApiResponse;
 			} catch (error) {
 				this.$titleSet(workflow.name as string, 'ERROR');
-				this.$showError(error, 'Problem running workflow', 'There was a problem running the workflow:');
+				this.$showError(
+					error,
+					this.$translateBase('workflowRun.showError.title'),
+					this.$translateBase('workflowRun.showError.message', { colon: true }),
+				);
 				return undefined;
 			}
 		},

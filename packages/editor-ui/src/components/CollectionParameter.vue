@@ -2,7 +2,7 @@
 	<div @keydown.stop class="collection-parameter">
 		<div class="collection-parameter-wrapper">
 			<div v-if="getProperties.length === 0" class="no-items-exist">
-				Currently no properties exist
+				{{ $translateBase('collectionParameter.currentlyNoPropertiesExist') }}
 			</div>
 
 			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" @valueChanged="valueChanged" />
@@ -13,7 +13,7 @@
 					<el-option
 						v-for="item in parameterOptions"
 						:key="item.name"
-						:label="item.displayName"
+						:label="$translateCollectionOptionName(parameter, item)"
 						:value="item.name">
 					</el-option>
 				</el-select>
@@ -60,7 +60,9 @@ export default mixins(
 		},
 		computed: {
 			getPlaceholderText (): string {
-				return this.parameter.placeholder ? this.parameter.placeholder : 'Choose Option To Add';
+				return this.$translatePlaceholder(this.parameter)
+					? this.$translatePlaceholder(this.parameter)
+					: this.$translateBase('fixedCollectionParameter.chooseOptionToAdd');
 			},
 			getProperties (): INodeProperties[] {
 				const returnProperties = [];

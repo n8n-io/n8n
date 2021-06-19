@@ -10,7 +10,7 @@
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
 			</div>
 
-			<el-input v-else v-model="tempValue" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="!isValueExpression && isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
+			<el-input v-else v-model="tempValue" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="!isValueExpression && isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'': translatePlaceholder(parameter)">
 				<font-awesome-icon v-if="!isValueExpression && !isReadOnly" slot="suffix" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
 			</el-input>
 		</div>
@@ -23,7 +23,7 @@
 				:value="displayValue"
 				:title="displayTitle"
 				:disabled="isReadOnly"
-				:placeholder="parameter.placeholder?parameter.placeholder:'Select date and time'"
+				:placeholder="translatePlaceholder(parameter) ? translatePlaceholder(parameter) : $translateBase('parameterInput.selectDateAndTime')"
 				:picker-options="dateTimePickerOptions"
 				@change="valueChanged"
 				@focus="setFocus"
@@ -34,7 +34,7 @@
 
 		<div v-else-if="parameter.type === 'number'">
 			<!-- <el-slider :value="value" @input="valueChanged"></el-slider> -->
-			<el-input-number ref="inputField" size="small" :value="displayValue" :max="getArgument('maxValue')" :min="getArgument('minValue')" :precision="getArgument('numberPrecision')" :step="getArgument('numberStepSize')" :disabled="isReadOnly" @change="valueChanged" @focus="setFocus" @keydown.stop :title="displayTitle" :placeholder="parameter.placeholder"></el-input-number>
+			<el-input-number ref="inputField" size="small" :value="displayValue" :max="getArgument('maxValue')" :min="getArgument('minValue')" :precision="getArgument('numberPrecision')" :step="getArgument('numberStepSize')" :disabled="isReadOnly" @change="valueChanged" @focus="setFocus" @keydown.stop :title="displayTitle" :placeholder="translatePlaceholder(parameter)"></el-input-number>
 		</div>
 
 		<el-select
@@ -54,10 +54,10 @@
 				v-for="option in parameterOptions"
 				:value="option.value"
 				:key="option.value"
-				:label="option.name"
+				:label="translateOptionsOptionName(parameter, option)"
 			>
-				<div class="option-headline">{{ option.name }}</div>
-				<div v-if="option.description" class="option-description" v-html="option.description"></div>
+				<div class="option-headline">{{ translateOptionsOptionName(parameter, option) }}</div>
+				<div v-if="translateOptionsOptionDescription(parameter, option)" class="option-description" v-html="translateOptionsOptionDescription(parameter, option)"></div>
 			</el-option>
 		</el-select>
 
@@ -97,9 +97,9 @@
 					<font-awesome-icon icon="cogs" class="reset-icon clickable" title="Parameter Options"/>
 				</span>
 				<el-dropdown-menu slot="dropdown">
-					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">Add Expression</el-dropdown-item>
-					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">Remove Expression</el-dropdown-item>
-					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>Reset Value</el-dropdown-item>
+					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">{{ $translateBase('parameterInput.addExpression') }}</el-dropdown-item>
+					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">{{ $translateBase('parameterInput.removeExpression') }}</el-dropdown-item>
+					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>{{ $translateBase('parameterInput.resetValue') }}</el-dropdown-item>
 				</el-dropdown-menu>
 			</el-dropdown>
 
@@ -137,6 +137,7 @@ import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { translate } from '@/components/mixins/translate';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -147,6 +148,7 @@ export default mixins(
 	genericHelpers,
 	nodeHelpers,
 	showMessage,
+	translate,
 	workflowHelpers,
 )
 	.extend({
@@ -163,6 +165,7 @@ export default mixins(
 			'path', // string
 			'value',
 			'isCredential', // boolean
+			'credentialsParams', // { nodeType: string; credentialsName: string; }
 		],
 		data () {
 			return {
@@ -533,7 +536,7 @@ export default mixins(
 					// @ts-ignore
 					if (this.$refs.inputField.$el) {
 						// @ts-ignore
-						(this.$refs.inputField.$el.querySelector(this.getStringInputType === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
+						(this.$refs.inputField.$el.querySelector('input') as HTMLInputElement).focus();
 					}
 				});
 			},
@@ -578,7 +581,42 @@ export default mixins(
 					this.valueChanged(this.expressionValueComputed || null);
 				}
 			},
+
+			// translation delegators
+
+			translatePlaceholder (
+				parameter: { name: string; placeholder: string; },
+			) {
+				return this.$translatePlaceholder(
+					parameter,
+					this.isCredential,
+					this.credentialsParams,
+				);
+			},
+			translateOptionsOptionName (
+				parameter: { name: string },
+				option: { value: string, name: string },
+			) {
+				return this.$translateOptionsOptionName(
+					parameter,
+					option,
+					this.isCredential,
+					this.credentialsParams,
+				);
+			},
+			translateOptionsOptionDescription (
+				parameter: { name: string },
+				option: { value: string; description: string; },
+			) {
+				return this.$translateOptionsOptionDescription(
+					parameter,
+					option,
+					this.isCredential,
+					this.credentialsParams);
+			},
 		},
+
+
 		mounted () {
 			this.tempValue = this.displayValue as string;
 			if (this.node !== null) {

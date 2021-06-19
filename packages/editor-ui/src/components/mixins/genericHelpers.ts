@@ -1,12 +1,13 @@
 import dateformat from 'dateformat';
 
 import { showMessage } from '@/components/mixins/showMessage';
+import { translate } from '@/components/mixins/translate';
 import { MessageType } from '@/Interface';
 import { debounce } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 
-export const genericHelpers = mixins(showMessage).extend({
+export const genericHelpers = mixins(showMessage, translate).extend({
 	data () {
 		return {
 			loadingService: null as any | null, // tslint:disable-line:no-any
@@ -43,8 +44,8 @@ export const genericHelpers = mixins(showMessage).extend({
 		editAllowedCheck (): boolean {
 			if (this.isReadOnly) {
 				this.$showMessage({
-					title: 'Workflow can not be changed!',
-					message: `The workflow can not be edited as a past execution gets displayed. To make changed either open the original workflow of which the execution gets displayed or save it under a new name first.`,
+					title: this.$translateBase('genericHelpers.showMessage.title'),
+					message: this.$translateBase('genericHelpers.showMessage.message'),
 					type: 'error',
 					duration: 0,
 				});

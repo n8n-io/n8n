@@ -1,10 +1,10 @@
 <template>
 	<span>
-		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`Workflow Executions (${combinedExecutions.length}/${combinedExecutionsCount})`" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="`${this.$translateBase('executionsList.workflowExecutions')} (${combinedExecutions.length}/${combinedExecutionsCount})`" :before-close="closeDialog">
 			<div class="filters">
 				<el-row>
 					<el-col :span="4" class="filter-headline">
-						Filters:
+						{{ $translateBase('executionsList.filters', { colon: true }) }}
 					</el-col>
 					<el-col :span="6">
 						<el-select v-model="filter.workflowId" placeholder="Select Workflow" size="small" filterable @change="handleFilterChanged">
@@ -31,14 +31,14 @@
 					<el-col :span="4">&nbsp;
 					</el-col>
 					<el-col :span="4" class="autorefresh">
-						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">Auto refresh</el-checkbox>
+						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">{{ $translateBase('executionsList.autoRefresh') }}</el-checkbox>
 					</el-col>
 				</el-row>
 			</div>
 
 			<div class="selection-options">
 				<span v-if="checkAll === true || isIndeterminate === true">
-					Selected: {{numSelected}}/{{finishedExecutionsCount}}
+					{{ $translateBase('executionsList.selected') }}: {{numSelected}}/{{finishedExecutionsCount}}
 					<el-button type="danger" title="Delete Selected" icon="el-icon-delete" size="mini" @click="handleDeleteSelected" circle></el-button>
 				</span>
 			</div>
@@ -47,71 +47,71 @@
 				<el-table-column label="" width="30">
 					<!-- eslint-disable-next-line vue/no-unused-vars -->
 					<template slot="header" slot-scope="scope">
-						<el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange">Check all</el-checkbox>
+						<el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange">{{ $translateBase('executionsList.checkAll') }}</el-checkbox>
 					</template>
 					<template slot-scope="scope">
 						<el-checkbox v-if="scope.row.stoppedAt !== undefined && scope.row.id" :value="selectedItems[scope.row.id.toString()] || checkAll" @change="handleCheckboxChanged(scope.row.id)" >Check all</el-checkbox>
 					</template>
 				</el-table-column>
-				<el-table-column property="startedAt" label="Started At / ID" width="205">
+				<el-table-column property="startedAt" :label="$translateBase('executionsList.startedAtId')" width="205">
 					<template slot-scope="scope">
 						{{convertToDisplayDate(scope.row.startedAt)}}<br />
 						<small v-if="scope.row.id">ID: {{scope.row.id}}</small>
 					</template>
 				</el-table-column>
-				<el-table-column property="workflowName" label="Name">
+				<el-table-column property="workflowName" :label="$translateBase('executionsList.name')">
 					<template slot-scope="scope">
 						<span class="workflow-name">
 							{{scope.row.workflowName || '[UNSAVED WORKFLOW]'}}
 						</span>
 
 						<span v-if="scope.row.stoppedAt === undefined">
-							(running)
+							({{ $translateBase('executionsList.runningParens') }})
 						</span>
 						<span v-if="scope.row.retryOf !== undefined">
-							<br /><small>Retry of "{{scope.row.retryOf}}"</small>
+							<br /><small>{{ $translateBase('executionsList.retryOf') }} "{{scope.row.retryOf}}"</small>
 						</span>
 						<span v-else-if="scope.row.retrySuccessId !== undefined">
-							<br /><small>Success retry "{{scope.row.retrySuccessId}}"</small>
+							<br /><small>{{ $translateBase('executionsList.successRetry') }} "{{scope.row.retrySuccessId}}"</small>
 						</span>
 					</template>
 				</el-table-column>
-				<el-table-column label="Status" width="120" align="center">
+				<el-table-column :label="$translateBase('executionsList.status')" width="120" align="center">
 					<template slot-scope="scope" align="center">
 
 						<el-tooltip placement="top" effect="light">
 							<div slot="content" v-html="statusTooltipText(scope.row)"></div>
 
 							<span class="status-badge running" v-if="scope.row.stoppedAt === undefined">
-								Running
+								{{ $translateBase('executionsList.running') }}
 							</span>
 							<span class="status-badge success" v-else-if="scope.row.finished">
-								Success
+								{{ $translateBase('executionsList.success') }}
 							</span>
 							<span class="status-badge error" v-else-if="scope.row.stoppedAt !== null">
-								Error
+								{{ $translateBase('executionsList.error') }}
 							</span>
 							<span class="status-badge warning" v-else>
-								Unknown
+								{{ $translateBase('executionsList.unknown') }}
 							</span>
 						</el-tooltip>
 
 						<el-dropdown trigger="click" @command="handleRetryClick">
 							<span class="el-dropdown-link">
-								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" type="text" size="small" title="Retry execution">
+								<el-button class="retry-button" v-bind:class="{ warning: scope.row.stoppedAt === null }" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" type="text" size="small" :title="$translateBase('executionsList.retryExecution')">
 									<font-awesome-icon icon="redo" />
 								</el-button>
 							</span>
 							<el-dropdown-menu slot="dropdown">
-								<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">Retry with currently saved workflow</el-dropdown-item>
-								<el-dropdown-item :command="{command: 'original', row: scope.row}">Retry with original workflow</el-dropdown-item>
+								<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">{{ $translateBase('executionsList.retryWithCurrentlySavedWorkflow') }}</el-dropdown-item>
+								<el-dropdown-item :command="{command: 'original', row: scope.row}">{{ $translateBase('executionsList.retryWithOriginalworkflow') }}</el-dropdown-item>
 							</el-dropdown-menu>
 						</el-dropdown>
 
 					</template>
 				</el-table-column>
-				<el-table-column property="mode" label="Mode" width="100" align="center"></el-table-column>
-				<el-table-column label="Running Time" width="150" align="center">
+				<el-table-column property="mode" :label="$translateBase('executionsList.mode')" width="100" align="center"></el-table-column>
+				<el-table-column :label="$translateBase('executionsList.runningTime')" width="150" align="center">
 					<template slot-scope="scope">
 						<span v-if="scope.row.stoppedAt === undefined">
 							<font-awesome-icon icon="spinner" spin />
@@ -134,7 +134,7 @@
 							</el-button>
 						</span>
 						<span v-else-if="scope.row.id">
-							<el-button circle title="Open Past Execution" @click.stop="displayExecution(scope.row)" size="mini">
+							<el-button circle :title="$translateBase('executionsList.openPastExecution')" @click.stop="displayExecution(scope.row)" size="mini">
 								<font-awesome-icon icon="folder-open" />
 							</el-button>
 						</span>
@@ -162,6 +162,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
+import { translate } from '@/components/mixins/translate';
 import {
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
@@ -187,6 +188,7 @@ export default mixins(
 	genericHelpers,
 	restApi,
 	showMessage,
+	translate,
 ).extend({
 	name: 'ExecutionsList',
 	props: [
@@ -221,19 +223,19 @@ export default mixins(
 			statuses: [
 				{
 					id: 'ALL',
-					name: 'Any Status',
+					name: this.$translateBase('executionsList.anyStatus'),
 				},
 				{
 					id: 'error',
-					name: 'Error',
+					name: this.$translateBase('executionsList.error'),
 				},
 				{
 					id: 'running',
-					name: 'Running',
+					name: this.$translateBase('executionsList.running'),
 				},
 				{
 					id: 'success',
-					name: 'Success',
+					name: this.$translateBase('executionsList.success'),
 				},
 			],
 
@@ -343,7 +345,16 @@ export default mixins(
 			}
 		},
 		async handleDeleteSelected () {
-			const deleteExecutions = await this.confirmMessage(`Are you sure that you want to delete the ${this.numSelected} selected executions?`, 'Delete Executions?', 'warning', 'Yes, delete!');
+			const deleteExecutions = await this.confirmMessage(
+				this.$translateBase(
+					'executionsList.confirmMessage.message',
+					{ interpolate: { numSelected: this.numSelected.toString() }},
+				),
+				this.$translateBase('executionsList.confirmMessage.headline'),
+				'warning',
+				this.$translateBase('executionsList.confirmMessage.confirmButtonText'),
+				this.$translateBase('executionsList.confirmMessage.cancelButtonText'),
+			);
 
 			if (deleteExecutions === false) {
 				return;
@@ -364,15 +375,19 @@ export default mixins(
 				await this.restApi().deleteExecutions(sendData);
 			} catch (error) {
 				this.isDataLoading = false;
-				this.$showError(error, 'Problem deleting executions', 'There was a problem deleting the executions:');
+				this.$showError(
+					error,
+					this.$translateBase('executionsList.showError.handleDeleteSelected.title'),
+					this.$translateBase('executionsList.showError.handleDeleteSelected.message', { colon: true }),
+				);
 
 				return;
 			}
 			this.isDataLoading = false;
 
 			this.$showMessage({
-				title: 'Execution deleted',
-				message: 'The executions got deleted!',
+				title: this.$translateBase('executionsList.showMessage.handleDeleteSelected.title'),
+				message: this.$translateBase('executionsList.showMessage.handleDeleteSelected.message'),
 				type: 'success',
 			});
 
@@ -520,7 +535,11 @@ export default mixins(
 				data = await this.restApi().getPastExecutions(filter, this.requestItemsPerRequest, lastId);
 			} catch (error) {
 				this.isDataLoading = false;
-				this.$showError(error, 'Problem loading workflows', 'There was a problem loading the workflows:');
+				this.$showError(
+					error,
+					this.$translateBase('executionsList.showError.loadMore.title'),
+					this.$translateBase('executionsList.showError.loadMore.message', { colon: true }),
+				);
 				return;
 			}
 
@@ -545,12 +564,16 @@ export default mixins(
 				// @ts-ignore
 				workflows.unshift({
 					id: 'ALL',
-					name: 'All Workflows',
+					name: this.$translateBase('executionsList.allWorkflows'),
 				});
 
 				Vue.set(this, 'workflows', workflows);
 			} catch (error) {
-				this.$showError(error, 'Problem loading workflows', 'There was a problem loading the workflows:');
+				this.$showError(
+					error,
+					this.$translateBase('executionsList.showError.loadWorkflows.title'),
+					this.$translateBase('executionsList.showError.loadWorkflows.message', { colon: true }),
+				);
 			}
 		},
 		async openDialog () {
@@ -572,21 +595,25 @@ export default mixins(
 
 				if (retrySuccessful === true) {
 					this.$showMessage({
-						title: 'Retry successful',
-						message: 'The retry was successful!',
+						title: this.$translateBase('executionsList.showMessage.retrySuccessfulTrue.title'),
+						message: this.$translateBase('executionsList.showMessage.retrySuccessfulTrue.message'),
 						type: 'success',
 					});
 				} else {
 					this.$showMessage({
-						title: 'Retry unsuccessful',
-						message: 'The retry was not successful!',
+						title: this.$translateBase('executionsList.showMessage.retrySuccessfulFalse.title'),
+						message: this.$translateBase('executionsList.showMessage.retrySuccessfulFalse.message'),
 						type: 'error',
 					});
 				}
 
 				this.isDataLoading = false;
 			} catch (error) {
-				this.$showError(error, 'Problem with retry', 'There was a problem with the retry:');
+				this.$showError(
+					error,
+					this.$translateBase('executionsList.showError.retryExecution.title'),
+					this.$translateBase('executionsList.showError.retryExecution.message', { colon: true }),
+				);
 
 				this.isDataLoading = false;
 			}
@@ -599,26 +626,39 @@ export default mixins(
 				const finishedExecutionsPromise = this.loadFinishedExecutions();
 				await Promise.all([activeExecutionsPromise, finishedExecutionsPromise]);
 			} catch (error) {
-				this.$showError(error, 'Problem loading', 'There was a problem loading the data:');
+				this.$showError(
+					error,
+					this.$translateBase('executionsList.showError.refreshData.title'),
+					this.$translateBase('executionsList.showError.refreshData.message', { colon: true }),
+				);
 			}
 
 			this.isDataLoading = false;
 		},
 		statusTooltipText (entry: IExecutionsSummary): string {
 			if (entry.stoppedAt === undefined) {
-				return 'The worklow is currently executing.';
+				return this.$translateBase('executionsList.statusTooltipText.theWorkflowIsCurrentlyExecuting');
 			} else if (entry.finished === true && entry.retryOf !== undefined) {
-				return `The workflow execution was a retry of "${entry.retryOf}" and it was successful.`;
+				return this.$translateBase(
+					'executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndItWasSuccessful',
+					{ interpolate: { entryRetryOf: entry.retryOf }},
+				);
 			} else if (entry.finished === true) {
-				return 'The worklow execution was successful.';
+				return this.$translateBase('executionsList.statusTooltipText.theWorkflowExecutionWasSuccessful');
 			} else if (entry.retryOf !== undefined) {
-				return `The workflow execution was a retry of "${entry.retryOf}" and failed.<br />New retries have to be started from the original execution.`;
+				return this.$translateBase(
+					'executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndFailed',
+					{ interpolate: { entryRetryOf: entry.retryOf }},
+				);
 			} else if (entry.retrySuccessId !== undefined) {
-				return `The workflow execution failed but the retry "${entry.retrySuccessId}" was successful.`;
+				return this.$translateBase(
+					'executionsList.statusTooltipText.theWorkflowExecutionFailedButTheRetryWasSuccessful',
+					{ interpolate: { entryRetrySuccessId: entry.retrySuccessId }},
+				);
 			} else if (entry.stoppedAt === null) {
-				return 'The workflow execution is probably still running but it may have crashed and n8n cannot safely tell. ';
+				return this.$translateBase('executionsList.statusTooltipText.theWorkflowExecutionIsProbablyStillRunning');
 			} else {
-				return 'The workflow execution failed.';
+				return this.$translateBase('executionsList.statusTooltipText.theWorkflowExecutionFailed');
 			}
 		},
 		async stopExecution (activeExecutionId: string) {
@@ -634,14 +674,21 @@ export default mixins(
 				this.stoppingExecutions.splice(index, 1);
 
 				this.$showMessage({
-					title: 'Execution stopped',
-					message: `The execution with the id "${activeExecutionId}" got stopped!`,
+					title: this.$translateBase('executionsList.showMessage.stopExecution.title'),
+					message: this.$translateBase('executionsList.showMessage.stopExecution.message'),
 					type: 'success',
 				});
 
 				this.refreshData();
 			} catch (error) {
-				this.$showError(error, 'Problem stopping execution', 'There was a problem stopping the execuction:');
+				this.$showError(
+					error,
+					this.$translateBase('executionsList.showError.stopExecution.title'),
+					this.$translateBase(
+						'executionsList.showError.stopExecution.message',
+						{ colon: true, interpolate: { activeExecutionId } },
+					),
+				);
 			}
 		},
 	},

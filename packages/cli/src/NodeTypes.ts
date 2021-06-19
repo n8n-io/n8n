@@ -1,6 +1,7 @@
 import {
 	INodeType,
 	INodeTypeData,
+	INodeTypeDataContent,
 	INodeTypes,
 	NodeHelpers,
 } from 'n8n-workflow';
@@ -28,11 +29,16 @@ class NodeTypesClass implements INodeTypes {
 		return Object.values(this.nodeTypes).map((data) => data.type);
 	}
 
-	getByName(nodeType: string): INodeType | undefined {
-		if (this.nodeTypes[nodeType] === undefined) {
+	getByName(nodeType: string): INodeType;
+	getByName(nodeType: string, fullNode: true): INodeTypeDataContent;
+	getByName(nodeType: string, fullNode?: boolean): INodeType | INodeTypeDataContent {
+		const node = this.nodeTypes[nodeType];
+
+		if (node === undefined) {
 			throw new Error(`The node-type "${nodeType}" is not known!`);
 		}
-		return this.nodeTypes[nodeType].type;
+
+		return fullNode ? node : node.type;
 	}
 }
 

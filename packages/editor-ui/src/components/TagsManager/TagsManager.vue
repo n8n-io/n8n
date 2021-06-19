@@ -1,6 +1,6 @@
 <template>
 	<Modal
-		title="Manage tags"
+		:title="$translateBase('tagsManager.manageTags')"
 		:name="modalName"
 		:eventBus="modalBus"
 		@enter="onEnter"
@@ -18,13 +18,13 @@
 					@delete="onDelete"
 					@disableCreate="onDisableCreate"
 				/>
-				<NoTagsView 
+				<NoTagsView
 					@enableCreate="onEnableCreate"
 					v-else />
 			</el-row>
 		</template>
 		<template v-slot:footer="{ close }">
-				<el-button size="small" @click="close">Done</el-button>
+				<el-button size="small" @click="close">{{ $translateBase('tagsManager.done') }}</el-button>
 		</template>
 	</Modal>
 </template>
@@ -37,11 +37,12 @@ import { mapGetters } from "vuex";
 import { ITag } from "@/Interface";
 
 import { showMessage } from "@/components/mixins/showMessage";
+import { translate } from "@/components/mixins/translate";
 import TagsView from "@/components/TagsManager/TagsView/TagsView.vue";
 import NoTagsView from "@/components/TagsManager/NoTagsView.vue";
 import Modal from "@/components/Modal.vue";
 
-export default mixins(showMessage).extend({
+export default mixins(showMessage, translate).extend({
 	name: "TagsManager",
 	created() {
 		this.$store.dispatch("tags/fetchAll", {force: true, withUsageCount: true});
@@ -94,8 +95,11 @@ export default mixins(showMessage).extend({
 				const escapedName = escape(name);
 				this.$showError(
 					error,
-					"New tag was not created",
-					`A problem occurred when trying to create the "${escapedName}" tag`,
+					this.$translateBase('tagsManager.showError.onCreate.title'),
+					this.$translateBase(
+						'tagsManager.showError.onCreate.message',
+						{ colon: true, interpolate: { escapedName } },
+					),
 				);
 				cb(null, error);
 			}
@@ -114,24 +118,30 @@ export default mixins(showMessage).extend({
 					cb(true);
 					return;
 				}
-				
+
 				const updatedTag = await this.$store.dispatch("tags/rename", { id, name });
 				cb(!!updatedTag);
-			
+
 				const escapedName = escape(name);
 				const escapedOldName = escape(oldName);
 
 				this.$showMessage({
-					title: "Tag was updated",
-					message: `The "${escapedOldName}" tag was successfully updated to "${escapedName}"`,
+					title: this.$translateBase('tagsManager.showMessage.onUpdate.title'),
+					message: this.$translateBase(
+						'tagsManager.showMessage.onUpdate.message',
+						{ interpolate: { escapedName, escapedOldName } },
+					),
 					type: "success",
 				});
 			} catch (error) {
 				const escapedName = escape(oldName);
 				this.$showError(
 					error,
-					"Tag was not updated",
-					`A problem occurred when trying to update the "${escapedName}" tag`,
+					this.$translateBase('tagsManager.showError.onUpdate.title'),
+					this.$translateBase(
+						'tagsManager.showError.onUpdate.message',
+						{ colon: true, interpolate: { escapedName } },
+					),
 				);
 				cb(false, error);
 			}
@@ -144,7 +154,7 @@ export default mixins(showMessage).extend({
 			try {
 				const deleted = await this.$store.dispatch("tags/delete", id);
 				if (!deleted) {
-					throw new Error('Could not delete tag');
+					throw new Error(this.$translateBase('tagsManager.couldNotDeleteTag'));
 				}
 
 				this.$data.tagIds = this.$data.tagIds.filter((tagId: string) => tagId !== id);
@@ -153,16 +163,22 @@ export default mixins(showMessage).extend({
 
 				const escapedName = escape(name);
 				this.$showMessage({
-					title: "Tag was deleted",
-					message: `The "${escapedName}" tag was successfully deleted from your tag collection`,
+					title: this.$translateBase('tagsManager.showMessage.onDelete.title'),
+					message: this.$translateBase(
+						'tagsManager.showMessage.onDelete.message',
+						{ interpolate: { escapedName } },
+					),
 					type: "success",
 				});
 			} catch (error) {
 				const escapedName = escape(name);
 				this.$showError(
 					error,
-					"Tag was not deleted",
-					`A problem occurred when trying to delete the "${escapedName}" tag`,
+					this.$translateBase('tagsManager.showError.onDelete.title'),
+					this.$translateBase(
+						'tagsManager.showError.onDelete.message',
+						{ colon: true, interpolate: { escapedName } },
+					),
 				);
 				cb(false, error);
 			}
@@ -183,7 +199,7 @@ export default mixins(showMessage).extend({
 });
 </script>
 
-<style lang="scss" scoped>	
+<style lang="scss" scoped>
 .el-row {
 	min-height: $--tags-manager-min-height;
 }

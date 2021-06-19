@@ -6,7 +6,7 @@
 				<div class="title-right">
 					<div v-if="credentialType && documentationUrl" class="docs-container">
 						<svg class="help-logo" target="_blank" width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-							<title>Node Documentation</title>
+							<title>{{ $translateBase('credentialsEdit.nodeDocumentation') }}</title>
 							<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
 								<g transform="translate(-1127.000000, -836.000000)" fill-rule="nonzero">
 									<g transform="translate(1117.000000, 825.000000)">
@@ -20,14 +20,14 @@
 								</g>
 							</g>
 						</svg>
-						<span class="doc-link-text">Need help? <a class="doc-hyperlink" :href="documentationUrl" target="_blank">Open credential docs</a></span>
+						<span class="doc-link-text">{{ $translateBase('credentialsEdit.needHelp') }} <a class="doc-hyperlink" :href="documentationUrl" target="_blank">{{ $translateBase('credentialsEdit.openCredentialDocs') }}</a></span>
 					</div>
 				</div>
 			</div>
 			<div class="credential-type-item">
 				<el-row v-if="!setCredentialType">
 					<el-col :span="6">
-						Credential type:
+						{{ $translateBase('credentialsEdit.credentialType') }}:
 					</el-col>
 					<el-col :span="18">
 						<el-select v-model="credentialType" filterable placeholder="Select Type" size="small" ref="credentialsDropdown">
@@ -68,11 +68,13 @@ import {
 
 import mixins from 'vue-typed-mixins';
 import { INodeUi } from '../Interface';
+import { translate } from '@/components/mixins/translate';
 
 export default mixins(
 	restApi,
 	showMessage,
 	externalHooks,
+	translate,
 ).extend({
 	name: 'CredentialsEdit',
 	props: [
@@ -101,13 +103,17 @@ export default mixins(
 		title (): string {
 			if (this.editCredentials) {
 				const credentialType = this.$store.getters.credentialType(this.editCredentials.type);
-				return `Edit Credentials: "${credentialType.displayName}"`;
+				return this.$translateBase(
+					'credentialsEdit.title',
+					{ colon: true },
+				) + ` "${credentialType.displayName}"`;
+
 			} else {
 				if (this.credentialType) {
 					const credentialType = this.$store.getters.credentialType(this.credentialType);
-					return `Create New Credentials: "${credentialType.displayName}"`;
+					return this.$translateBase('credentialsEdit.createNewCredentials') + ": " + credentialType.displayName;
 				} else {
-					return `Create New Credentials`;
+					return this.$translateBase('credentialsEdit.createNewCredentials');
 				}
 			}
 		},
@@ -150,8 +156,11 @@ export default mixins(
 
 					if (credentialType === null) {
 						this.$showMessage({
-							title: 'Credential type not known',
-							message: `Credentials of type "${this.editCredentials.type}" are not known.`,
+							title: this.$translateBase('credentialsEdit.showMessage.credentialTypeNull1.title'),
+							message: this.$translateBase(
+								'credentialsEdit.showMessage.credentialTypeNull1.message',
+								{ interpolate: { credentialsType: this.editCredentials.type }},
+							),
 							type: 'error',
 							duration: 0,
 						});
@@ -161,8 +170,8 @@ export default mixins(
 
 					if (this.editCredentials.id === undefined) {
 						this.$showMessage({
-							title: 'Credential ID missing',
-							message: 'The ID of the credentials which should be edited is missing!',
+							title: this.$translateBase('credentialsEdit.showMessage.editCredentialsIdUndefined.title'),
+							message: this.$translateBase('credentialsEdit.showMessage.editCredentialsIdUndefined.message'),
 							type: 'error',
 						});
 						this.closeDialog();
@@ -173,15 +182,19 @@ export default mixins(
 					try {
 						currentCredentials = await this.restApi().getCredentials(this.editCredentials.id as string, true) as ICredentialsDecryptedResponse | undefined;
 					} catch (error) {
-						this.$showError(error, 'Problem loading credentials', 'There was a problem loading the credentials:');
+						this.$showError(
+							error,
+							this.$translateBase('credentialsEdit.showError.title'),
+							this.$translateBase('credentialsEdit.showError.message', { colon: true }),
+						);
 						this.closeDialog();
 						return;
 					}
 
 					if (currentCredentials === undefined) {
 						this.$showMessage({
-							title: 'Credentials not found',
-							message: `Could not find the credentials with the id: ${this.editCredentials.id}`,
+							title: this.$translateBase('credentialsEdit.showMessage.currentCredentialsUndefined1.title'),
+							message: this.$translateBase('credentialsEdit.showMessage.currentCredentialsUndefined1.message') + ': ' + this.editCredentials.id,
 							type: 'error',
 							duration: 0,
 						});
@@ -191,8 +204,8 @@ export default mixins(
 
 					if (currentCredentials === undefined) {
 						this.$showMessage({
-							title: 'Problem loading credentials',
-							message: 'No credentials could be loaded!',
+							title: this.$translateBase('credentialsEdit.showMessage.currentCredentialsUndefined2.title'),
+							message: this.$translateBase('credentialsEdit.showMessage.currentCredentialsUndefined2.message'),
 							type: 'error',
 						});
 						return;
@@ -206,8 +219,11 @@ export default mixins(
 						const credentialType = this.$store.getters.credentialType(this.credentialType || this.setCredentialType);
 						if (credentialType === null) {
 							this.$showMessage({
-								title: 'Credential type not known',
-								message: `Credentials of type "${this.credentialType || this.setCredentialType}" are not known.`,
+								title: this.$translateBase('credentialsEdit.showMessage.credentialTypeNull2.title'),
+								message: this.$translateBase(
+									'credentialsEdit.showMessage.credentialTypeNull2.message',
+									{ interpolate: { credentialsType: this.credentialType || this.setCredentialType }},
+								),
 								type: 'error',
 								duration: 0,
 							});
@@ -273,8 +289,8 @@ export default mixins(
 			this.$emit('credentialsCreated', eventData);
 
 			this.$showMessage({
-				title: 'Credentials created',
-				message: `"${eventData.data.name}" credentials were successfully created!`,
+				title: this.$translateBase('credentialsEdit.showMessage.credentialsCreated.title'),
+				message: `"${eventData.data.name}" ${this.$translateBase('credentialsEdit.showMessage.credentialsCreated.message')}`,
 				type: 'success',
 			});
 
@@ -286,8 +302,8 @@ export default mixins(
 			this.$emit('credentialsUpdated', eventData);
 
 			this.$showMessage({
-				title: 'Credentials updated',
-				message: `"${eventData.data.name}" credentials were successfully updated!`,
+				title: this.$translateBase('credentialsEdit.showMessage.credentialsUpdated.title'),
+				message: `"${eventData.data.name}" ${this.$translateBase('credentialsEdit.showMessage.credentialsUpdated.message')}`,
 				type: 'success',
 			});
 

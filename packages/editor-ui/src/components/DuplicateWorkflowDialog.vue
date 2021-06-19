@@ -4,14 +4,14 @@
 		:eventBus="modalBus"
 		@enter="save"
 		size="sm"
-		title="Duplicate Workflow"	
+		:title="$translateBase('duplicateWorkflowDialog.duplicateWorkflow')"
 	>
 		<template v-slot:content>
 			<el-row>
 				<el-input
 					v-model="name"
 					ref="nameInput"
-					placeholder="Enter workflow name"
+					:placeholder="$translateBase('duplicateWorkflowDialog.enterWorkflowName')"
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
 			</el-row>
@@ -23,14 +23,14 @@
 					@blur="onTagsBlur"
 					@esc="onTagsEsc"
 					@update="onTagsUpdate"
-					placeholder="Choose or create a tag"
+					:placeholder="$translateBase('duplicateWorkflowDialog.chooseOrCreateATag')"
 					ref="dropdown"
 				/>
 			</el-row>
 		</template>
 		<template v-slot:footer="{ close }">
-			<el-button size="small" @click="save" :loading="isSaving">Save</el-button>
-			<el-button size="small" @click="close" :disabled="isSaving">Cancel</el-button>
+			<el-button size="small" @click="save" :loading="isSaving">{{ $translateBase('duplicateWorkflowDialog.save') }}</el-button>
+			<el-button size="small" @click="close" :disabled="isSaving">{{ $translateBase('duplicateWorkflowDialog.cancel') }}</el-button>
 		</template>
 	</Modal>
 </template>
@@ -99,8 +99,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 			const name = this.name.trim();
 			if (!name) {
 				this.$showMessage({
-					title: "Name missing",
-					message: `Please enter a name.`,
+					title: this.$translateBase('duplicateWorkflowDialog.showMessage.title'),
+					message: this.$translateBase('duplicateWorkflowDialog.showMessage.message'),
 					type: "error",
 				});
 

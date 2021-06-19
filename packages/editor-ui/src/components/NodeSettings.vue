@@ -13,16 +13,20 @@
 			<span v-else>No node active</span>
 		</div>
 		<div class="node-is-not-valid" v-if="node && !nodeValid">
-			The node is not valid as its type "{{node.type}}" is unknown.
+			{{ $translateBase(
+				'nodeSettings.theNodeIsNotValidAsItsTypeIsUnknown',
+				{ interpolate: { nodeType: node.type } },
+				)
+			}}
 		</div>
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<el-tabs stretch>
 				<el-tab-pane label="Parameters">
 					<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
-					<node-webhooks :node="node" :nodeType="nodeType" />
+					<node-webhooks :node="node" :nodeTypeDescription="nodeType" />
 					<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
 					<div v-if="parametersNoneSetting.length === 0">
-						This node does not have any parameters.
+						{{ $translateBase('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
 					</div>
 				</el-tab-pane>
 				<el-tab-pane label="Settings">
@@ -153,7 +157,7 @@ export default mixins(
 
 				nodeSettings: [
 					{
-						displayName: 'Notes',
+						displayName: this.$translateBase('nodeSettings.settings.notes.displayName'),
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
@@ -161,50 +165,50 @@ export default mixins(
 						},
 						default: '',
 						noDataExpression: true,
-						description: 'Optional note to save with the node.',
+						description: this.$translateBase('nodeSettings.settings.notes.description'),
 					},
 					{
-						displayName: 'Display note in flow?',
+						displayName: this.$translateBase('nodeSettings.settings.notesInFlow.displayName'),
 						name: 'notesInFlow',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If active, the note above will display in the flow as a subtitle.',
+						description: this.$translateBase('nodeSettings.settings.notesInFlow.description'),
 					},
 					{
-						displayName: 'Node Color',
+						displayName: this.$translateBase('nodeSettings.settings.color.displayName'),
 						name: 'color',
 						type: 'color',
 						default: '#ff0000',
 						noDataExpression: true,
-						description: 'The color of the node in the flow.',
+						description: this.$translateBase('nodeSettings.settings.color.description'),
 					},
 					{
-						displayName: 'Always Output Data',
+						displayName: this.$translateBase('nodeSettings.settings.alwaysOutputData.displayName'),
 						name: 'alwaysOutputData',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If active, the node will return an empty item even if the <br />node returns no data during an initial execution. Be careful setting <br />this on IF-Nodes as it could cause an infinite loop.',
+						description: this.$translateBase('nodeSettings.settings.alwaysOutputData.description'),
 					},
 					{
-						displayName: 'Execute Once',
+						displayName: this.$translateBase('nodeSettings.settings.executeOnce.displayName'),
 						name: 'executeOnce',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If active, the node executes only once, with data<br /> from the first item it recieves. ',
+						description: this.$translateBase('nodeSettings.settings.executeOnce.description'),
 					},
 					{
-						displayName: 'Retry On Fail',
+						displayName: this.$translateBase('nodeSettings.settings.retryOnFail.displayName'),
 						name: 'retryOnFail',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If active, the node tries to execute a failed attempt <br /> multiple times until it succeeds.',
+						description: this.$translateBase('nodeSettings.settings.retryOnFail.description'),
 					},
 					{
-						displayName: 'Max. Tries',
+						displayName: this.$translateBase('nodeSettings.settings.maxTries.displayName'),
 						name: 'maxTries',
 						type: 'number',
 						typeOptions: {
@@ -220,10 +224,10 @@ export default mixins(
 							},
 						},
 						noDataExpression: true,
-						description: 'Number of times Retry On Fail should attempt to execute the node <br />before stopping and returning the execution as failed.',
+						description: this.$translateBase('nodeSettings.settings.maxTries.description'),
 					},
 					{
-						displayName: 'Wait Between Tries',
+						displayName: this.$translateBase('nodeSettings.settings.waitBetweenTries.displayName'),
 						name: 'waitBetweenTries',
 						type: 'number',
 						typeOptions: {
@@ -239,15 +243,15 @@ export default mixins(
 							},
 						},
 						noDataExpression: true,
-						description: 'How long to wait between each attempt. Value in ms.',
+						description: this.$translateBase('nodeSettings.settings.waitBetweenTries.description'),
 					},
 					{
-						displayName: 'Continue On Fail',
+						displayName: this.$translateBase('nodeSettings.settings.continueOnFail.displayName'),
 						name: 'continueOnFail',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If active, the workflow continues even if this node\'s <br />execution fails. When this occurs, the node passes along input data from<br />previous nodes - so your workflow should account for unexpected output data.',
+						description: this.$translateBase('nodeSettings.settings.continueOnFail.description'),
 					},
 				] as INodeProperties[],
 

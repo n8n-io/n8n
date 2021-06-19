@@ -14,15 +14,15 @@
 				<font-awesome-icon v-else icon="spinner" spin />
 			</div>
 
-			Execute Node
+			{{ $translateBase('runData.executeNode') }}
 		</el-button>
 
 		<div class="header">
 			<div class="title-text">
 				<strong v-if="dataCount < maxDisplayItems">
-					Items: {{ dataCount }}
+					{{ $translateBase('runData.items') }}: {{ dataCount }}
 				</strong>
-				<strong v-else>Items:
+				<strong v-else>{{ $translateBase('runData.items') }}:
 					<el-select v-model="maxDisplayItems" @click.stop>
 						<el-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
 					</el-select>&nbsp;/
@@ -35,19 +35,19 @@
 					width="400"
 					trigger="hover"
 				>
-					<strong>Start Time:</strong> {{runMetadata.startTime}}<br/>
-					<strong>Execution Time:</strong> {{runMetadata.executionTime}} ms
+					<strong>{{ $translateBase('runData.startTime') }}:</strong> {{runMetadata.startTime}}<br/>
+					<strong>{{ $translateBase('runData.executionTime') }}:</strong> {{runMetadata.executionTime}} {{ $translateBase('runData.ms') }}
 					<font-awesome-icon icon="info-circle" class="primary-color" slot="reference" />
 				</el-popover>
 				<span v-if="maxOutputIndex > 0">
-					| Output:
+					| {{ $translateBase('runData.output') }}:
 					<el-select v-model="outputIndex" @click.stop>
 						<el-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
 						</el-option>
 					</el-select>
 				</span>
 				<span v-if="maxRunIndex > 0">
-					| Data of Execution:
+					| {{ $translateBase('runData.dataOfExecution') }}:
 					<el-select v-model="runIndex" @click.stop>
 						<el-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
 						</el-option>
@@ -70,9 +70,9 @@
 						</el-button>
 					</span>
 					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item :command="{command: 'itemPath'}">Copy Item Path</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'parameterPath'}">Copy Parameter Path</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'value'}">Copy Value</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'itemPath'}">{{ $translateBase('runData.copyItemPath') }}</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'parameterPath'}">{{ $translateBase('runData.copyParameterPath') }}</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'value'}">{{ $translateBase('runData.copyValue') }}</el-dropdown-item>
 					</el-dropdown-menu>
 				</el-dropdown>
 
@@ -86,11 +86,11 @@
 				<span v-else>
 					<div v-if="showData === false" class="to-much-data">
 						<h3>
-							Node returned a large amount of data
+							{{ $translateBase('runData.nodeReturnedALargeAmountOfData') }}
 						</h3>
 
 						<div class="text">
-							The node contains {{parseInt(dataSize/1024).toLocaleString()}} KB of data.<br />
+							The node contains {{ $translateBase('runData.theNodeContains', { interpolate: { numberOfKb: parseInt(dataSize/1024).toLocaleString() } }) }} KB of data.<br />
 							Displaying it could cause problems!<br />
 							<br />
 							If you do decide to display it, avoid the JSON view!
@@ -98,16 +98,16 @@
 
 						<el-button size="small" @click="displayMode = 'Table';showData = true;">
 							<font-awesome-icon icon="eye"/>
-							Display Data Anyway
+							{{ $translateBase('runData.displayDataAnyway') }}
 						</el-button>
 					</div>
 					<div v-else-if="['JSON', 'Table'].includes(displayMode)">
 						<div v-if="jsonData.length === 0" class="no-data">
-							No text data found
+							{{ $translateBase('runData.noTextDataFound') }}
 						</div>
 						<div v-else-if="displayMode === 'Table'">
 							<div v-if="tableData !== null && tableData.columns.length === 0" class="no-data">
-								Entries exist but they do not contain any JSON data.
+								{{ $translateBase('runData.entriesExistButThey') }}
 							</div>
 							<table v-else-if="tableData !== null">
 								<tr>
@@ -135,7 +135,7 @@
 					</div>
 					<div v-else-if="displayMode === 'Binary'">
 						<div v-if="binaryData.length === 0" class="no-data">
-							No binary data found
+							{{ $translateBase('runData.noBinaryDataFound') }}
 						</div>
 
 						<div v-else>
@@ -153,11 +153,11 @@
 												{{key}}
 											</div>
 											<div v-if="binaryData.fileName">
-												<div class="label">File Name: </div>
+												<div class="label">{{ $translateBase('runData.fileName') }}: </div>
 												<div class="value">{{binaryData.fileName}}</div>
 											</div>
 											<div v-if="binaryData.directory">
-												<div class="label">Directory: </div>
+												<div class="label">{{ $translateBase('runData.fileExtension') }}: </div>
 												<div class="value">{{binaryData.directory}}</div>
 											</div>
 											<div v-if="binaryData.fileExtension">
@@ -165,14 +165,14 @@
 												<div class="value">{{binaryData.fileExtension}}</div>
 											</div>
 											<div v-if="binaryData.mimeType">
-												<div class="label">Mime Type: </div>
+												<div class="label">{{ $translateBase('runData.mimeType') }}: </div>
 												<div class="value">{{binaryData.mimeType}}</div>
 											</div>
 
 											<!-- <el-button @click="displayBinaryData(binaryData)"> -->
 											<div class="binary-data-show-data-button-wrapper">
 												<el-button size="mini" class="binary-data-show-data-button" @click="displayBinaryData(index, key)">
-													Show Binary Data
+													{{ $translateBase('runData.showBinaryData') }}
 												</el-button>
 											</div>
 
@@ -186,9 +186,9 @@
 			</span>
 			<div v-else class="message">
 				<div>
-					<strong>No data</strong><br />
+					<strong>{{ $translateBase('runData.noData') }}</strong><br />
 					<br />
-					Data returned by this node will display here<br />
+					{{ $translateBase('runData.dataReturnedByTheNodeWillDisplayHere') }}<br />
 				</div>
 			</div>
 		</div>
@@ -225,7 +225,7 @@ import {
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
-import NodeErrorView from '@/components/Error/NodeViewError.vue';
+import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from "@/components/mixins/externalHooks";

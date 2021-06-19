@@ -2,14 +2,14 @@
 	<div v-if="webhooksNode.length" class="webhoooks">
 		<div class="clickable headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? 'Click to display Webhook URLs' : 'Click to hide Webhook URLs'">
 			<font-awesome-icon icon="angle-up" class="minimize-button minimize-icon" />
-			Webhook URLs
+			{{ $translateBase('nodeWebhooks.webhookUrls') }}
 		</div>
 		<el-collapse-transition>
 			<div class="node-webhooks" v-if="!isMinimized">
 				<div class="url-selection">
 					<el-row>
 						<el-col :span="10" class="mode-selection-headline">
-							Display URL for:
+							{{ $translateBase('nodeWebhooks.displayUrlFor', { colon: true }) }}
 						</el-col>
 						<el-col :span="14">
 							<el-radio-group v-model="showUrlFor" size="mini">
@@ -50,6 +50,7 @@ import {
 } from 'n8n-workflow';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
+import { translate } from '@/components/mixins/translate';
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
@@ -59,12 +60,13 @@ export default mixins(
 	copyPaste,
 	showMessage,
 	workflowHelpers,
+	translate,
 )
 	.extend({
 		name: 'NodeWebhooks',
 		props: [
 			'node', // NodeUi
-			'nodeType', // NodeTypeDescription
+			'nodeTypeDescription', // NodeTypeDescription
 		],
 		data () {
 			return {
@@ -74,11 +76,11 @@ export default mixins(
 		},
 		computed: {
 			webhooksNode (): IWebhookDescription[] {
-				if (this.nodeType === null || this.nodeType.webhooks === undefined) {
+				if (this.nodeTypeDescription === null || this.nodeTypeDescription.webhooks === undefined) {
 					return [];
 				}
 
-				return this.nodeType.webhooks;
+				return this.nodeTypeDescription.webhooks;
 			},
 		},
 		methods: {
@@ -87,8 +89,8 @@ export default mixins(
 				this.copyToClipboard(webhookUrl);
 
 				this.$showMessage({
-					title: 'Copied',
-					message: `The webhook URL was successfully copied!`,
+					title: this.$translateBase('nodeWebhooks.showMessage.title'),
+					message: this.$translateBase('nodeWebhooks.showMessage.message'),
 					type: 'success',
 				});
 			},

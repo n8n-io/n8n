@@ -2,7 +2,7 @@
 	<el-row class="tags-header">
 		<el-col :span="10">
 			<el-input
-				placeholder="Search tags"
+				:placeholder="$translateBase('tagsTableHeader.searchTags')"
 				:value="search"
 				@input="onSearchChange"
 				:disabled="disabled"
@@ -15,7 +15,7 @@
 		<el-col :span="14">
 			<el-button @click="onAddNew" :disabled="disabled" plain>
 				<font-awesome-icon icon="plus" />
-				<div class="next-icon-text">Add new</div>
+				<div class="next-icon-text">{{ $translateBase('tagsTableHeader.addNew') }}</div>
 			</el-button>
 		</el-col>
 	</el-row>
@@ -24,7 +24,10 @@
 <script lang="ts">
 import { MAX_TAG_NAME_LENGTH } from "@/constants";
 import Vue from "vue";
-export default Vue.extend({
+import mixins from 'vue-typed-mixins';
+import { translate } from '@/components/mixins/translate';
+
+export default mixins(translate).extend({
 	props: {
 		disabled: {
 			default: false,

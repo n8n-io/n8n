@@ -3,7 +3,7 @@
 		<credentials-edit :dialogVisible="credentialNewDialogVisible" :editCredentials="editCredentials" :setCredentialType="addType" :nodesInit="nodesInit" :node="node" @closeDialog="closeCredentialNewDialog" @credentialsCreated="credentialsCreated" @credentialsUpdated="credentialsUpdated"></credentials-edit>
 
 		<div class="headline">
-			Credentials
+			{{ $translateBase('nodeCredentials.credentials') }}
 		</div>
 
 		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name" class="credential-data">
@@ -214,12 +214,15 @@ export default mixins(
 		updateCredentials (credentialType: string): void {
 			const credentials = this.credentials[credentialType];
 
-			const name = this.credentials[credentialType];
+			const name = this.credentials[credentialType] as string;
 			const credentialData = this.credentialOptions[credentialType].find((optionData: ICredentialsResponse) => optionData.name === name);
 			if (credentialData === undefined) {
 				this.$showMessage({
-					title: 'Credentials not found',
-					message: `The credentials named "${name}" of type "${credentialType}" could not be found!`,
+					title: this.$translateBase('nodeCredentials.showMessage.title'),
+					message: this.$translateBase(
+						'nodeCredentials.showMessage.message',
+						{ interpolate: { name, credentialType } },
+					),
 					type: 'error',
 				});
 				return;

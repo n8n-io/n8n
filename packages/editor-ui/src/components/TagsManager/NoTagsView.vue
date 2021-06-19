@@ -3,13 +3,12 @@
 		<el-col class="notags" :span="16">
 			<div class="icon">🗄️</div>
 			<div>
-				<div class="headline">Ready to organize your workflows?</div>
+				<div class="headline">{{ $translateBase('noTagsView.readyToOrganizeYourWorkflows') }}</div>
 				<div class="description">
-					With workflow tags, you're free to create the perfect tagging system for
-					your flows
+					{{ $translateBase('noTagsView.withWorkflowTagsYouReFree') }}
 				</div>
 			</div>
-			<el-button ref="create" @click="$emit('enableCreate')"> Create a tag </el-button>
+			<el-button ref="create" @click="$emit('enableCreate')"> {{ $translateBase('noTagsView.createATag') }} </el-button>
 		</el-col>
 	</div>
 </template>

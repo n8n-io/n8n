@@ -1,11 +1,11 @@
 <template>
 	<div @keydown.stop class="fixed-collection-parameter">
 		<div v-if="getProperties.length === 0" class="no-items-exist">
-			Currently no items exist
+			{{ $translateBase('fixedCollectionParameter.currentlyNoItemsExist') }}
 		</div>
 
 		<div v-for="property in getProperties" :key="property.name" class="fixed-collection-parameter-property">
-			<div class="parameter-name" :title="property.displayName">{{property.displayName}}:</div>
+			<div class="parameter-name" :title="$translateNodeParameterName(property)">{{ $translateNodeParameterName(property) }}:</div>
 
 			<div v-if="multipleValues === true">
 				<div v-for="(value, index) in values[property.name]" :key="property.name + index" class="parameter-item">
@@ -37,7 +37,7 @@
 				<el-option
 					v-for="item in parameterOptions"
 					:key="item.name"
-					:label="item.displayName"
+					:label="$translateCollectionOptionName(parameter, item)"
 					:value="item.name">
 				</el-option>
 			</el-select>
@@ -61,10 +61,11 @@ import {
 import { get } from 'lodash';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { translate } from '@/components/mixins/translate';
 
 import mixins from 'vue-typed-mixins';
 
-export default mixins(genericHelpers)
+export default mixins(genericHelpers, translate)
 	.extend({
 		name: 'FixedCollectionParameter',
 		props: [
@@ -80,7 +81,9 @@ export default mixins(genericHelpers)
 		},
 		computed: {
 			getPlaceholderText (): string {
-				return this.parameter.placeholder ? this.parameter.placeholder : 'Choose Option To Add';
+				return this.$translatePlaceholder(this.parameter)
+					? this.$translatePlaceholder(this.parameter)
+					: this.$translateBase('fixedCollectionParameter.chooseOptionToAdd');
 			},
 			getProperties (): INodePropertyCollection[] {
 				const returnProperties = [];
