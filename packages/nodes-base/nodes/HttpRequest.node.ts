@@ -800,15 +800,16 @@ export class HttpRequest implements INodeType {
 							const parameterDataName = parameterData!.name as string;
 							const newValue = parameterData!.value;
 							if (optionName === 'qs') {
-								const requestOption = requestOptions[optionName];
-								const oldValue = requestOption[parameterDataName];
-								if (typeof oldValue === 'string') {
-									requestOption[parameterDataName] = [oldValue, newValue];
-								} else if (Array.isArray(oldValue)) {
-									oldValue.push(parameterData!.value)
-								} else {
-									requestOption[parameterDataName] = newValue;
-								}
+								const computeNewValue = (oldValue: unknown) => {
+									if (typeof oldValue === 'string') {
+										return [oldValue, newValue];
+									} else if (Array.isArray(oldValue)) {
+										return [...oldValue, newValue];
+									} else {
+										return newValue;
+									}
+								};
+								requestOptions[optionName][parameterDataName] = computeNewValue(requestOptions[optionName][parameterDataName]);
 							} else {
 								// @ts-ignore
 								requestOptions[optionName][parameterDataName] = newValue;
