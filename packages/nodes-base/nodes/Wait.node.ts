@@ -122,6 +122,11 @@ export class Wait implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'DateTime',
+						value: 'dateTime',
+						description: 'Waits until the set date time to continue.',
+					},
+					{
 						name: 'Time',
 						value: 'time',
 						description: 'Waits for a certain amount of time.',
@@ -134,6 +139,24 @@ export class Wait implements INodeType {
 				],
 				default: 'time',
 				description: 'For what the node should wait for before to continue with the execution.',
+			},
+
+			// ----------------------------------
+			//         mode:dateTime
+			// ----------------------------------
+			{
+				displayName: 'Date Time',
+				name: 'dateTime',
+				type: 'dateTime',
+				displayOptions: {
+					show: {
+						mode: [
+							'dateTime',
+						],
+					},
+				},
+				default: '',
+				description: 'The date time to wait for before to continue.',
 			},
 
 			// ----------------------------------
@@ -544,20 +567,33 @@ export class Wait implements INodeType {
 			return [this.getInputData()];
 		}
 
-		const unit = this.getNodeParameter('unit', 0) as string;
+		let sleepTill: Date;
+		if (mode === 'time') {
+			const unit = this.getNodeParameter('unit', 0) as string;
 
-		let sleepValue = this.getNodeParameter('value', 0) as number;
-		if (unit === 'minutes') {
-			sleepValue *= 60;
-		}
-		if (unit === 'hours') {
-			sleepValue *= 60 * 60;
-		}
-		if (unit === 'days') {
-			sleepValue *= 60 * 60 * 24;
+			let sleepValue = this.getNodeParameter('value', 0) as number;
+			if (unit === 'minutes') {
+				sleepValue *= 60;
+			}
+			if (unit === 'hours') {
+				sleepValue *= 60 * 60;
+			}
+			if (unit === 'days') {
+				sleepValue *= 60 * 60 * 24;
+			}
+
+			sleepValue *= 1000;
+
+			sleepTill = new Date(new Date().getTime() + sleepValue);
+
+		} else {
+			// Mode: dateTime
+			const dateTime = this.getNodeParameter('dateTime', 0) as string;
+
+			sleepTill = new Date(dateTime);
 		}
 
-		sleepValue *= 1000;
+		const sleepValue = Math.max(sleepTill.getTime() - new Date().getTime(), 0);
 
 		if (sleepValue < 60000) {
 			// If wait time is shorter than 60 seconds leave execution active because
@@ -570,7 +606,6 @@ export class Wait implements INodeType {
 		}
 
 		// If longer than 60 seconds put execution to sleep
-		const sleepTill = new Date(new Date().getTime() + sleepValue);
 		await this.putExecutionToSleep(sleepTill);
 
 		return [this.getInputData()];
