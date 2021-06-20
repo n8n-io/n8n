@@ -98,7 +98,7 @@ export class SleepTracker {
 				const fullExecutionDataFlatted = await Db.collections.Execution!.findOne(executionId);
 
 				if (fullExecutionDataFlatted === undefined) {
-					throw new ResponseHelper.ResponseError(`The execution with the id "${executionId}" does not exist.`, 404, 404);
+					throw new Error(`The execution with the id "${executionId}" does not exist.`);
 				}
 
 				const fullExecutionData = ResponseHelper.unflattenExecutionData(fullExecutionDataFlatted);

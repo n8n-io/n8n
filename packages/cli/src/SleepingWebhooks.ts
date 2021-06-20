@@ -41,9 +41,6 @@ export class SleepingWebhooks {
 		const executionId = pathParts.shift();
 		const path = pathParts.join('/');
 
-		console.log('executionId', executionId);
-		console.log('path', path);
-
 		const execution = await Db.collections.Execution?.findOne(executionId);
 
 		if (execution === undefined) {
@@ -52,8 +49,7 @@ export class SleepingWebhooks {
 
 		const fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
 
-		// TODO: also have to check if it did error, because then it would also be done
-		if (fullExecutionData.finished === true) {
+		if (fullExecutionData.finished === true || fullExecutionData.data.resultData.error) {
 			throw new ResponseHelper.ResponseError(`The execution "${executionId} did already complete.`, 409, 409);
 		}
 
