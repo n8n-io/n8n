@@ -73,7 +73,7 @@ export class Execute extends Command {
 		}
 
 		let workflowId: string | undefined;
-		let workflowData: IWorkflowBase | undefined = undefined;
+		let workflowData: IWorkflowBase | undefined;
 		if (flags.file) {
 			// Path to workflow is given
 			try {
@@ -89,7 +89,7 @@ export class Execute extends Command {
 
 			// Do a basic check if the data in the file looks right
 			// TODO: Later check with the help of TypeScript data if it is valid or not
-			if (workflowData === undefined || workflowData.nodes === undefined || workflowData.connections === undefined) {
+			if (typeof workflowData === 'undefined' || typeof workflowData.nodes === 'undefined' || typeof workflowData.connections === 'undefined') {
 				console.info(`The file "${flags.file}" does not contain valid workflow data.`);
 				return;
 			}
@@ -103,7 +103,7 @@ export class Execute extends Command {
 			// Id of workflow is given
 			workflowId = flags.id;
 			workflowData = await Db.collections!.Workflow!.findOne(workflowId);
-			if (workflowData === undefined) {
+			if (typeof workflowData === 'undefined') {
 				console.info(`The workflow with the id "${workflowId}" does not exist.`);
 				process.exit(1);
 			}
@@ -130,13 +130,13 @@ export class Execute extends Command {
 		await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
 
 		if (!WorkflowHelpers.isWorkflowIdValid(workflowId)) {
-			workflowId = undefined;
+			workflowId = void 0;
 		}
 
 		// Check if the workflow contains the required "Start" node
 		// "requiredNodeTypes" are also defined in editor-ui/views/NodeView.vue
 		const requiredNodeTypes = ['n8n-nodes-base.start'];
-		let startNode: INode | undefined = undefined;
+		let startNode: INode | undefined;
 		for (const node of workflowData!.nodes) {
 			if (requiredNodeTypes.includes(node.type)) {
 				startNode = node;
@@ -144,7 +144,7 @@ export class Execute extends Command {
 			}
 		}
 
-		if (startNode === undefined) {
+		if (typeof startNode === 'undefined') {
 			// If the workflow does not contain a start-node we can not know what
 			// should be executed and with which data to start.
 			console.info(`The workflow does not contain a "Start" node. So it can not be executed.`);
@@ -167,7 +167,7 @@ export class Execute extends Command {
 			const activeExecutions = ActiveExecutions.getInstance();
 			const data = await activeExecutions.getPostExecutePromise(executionId);
 
-			if (data === undefined) {
+			if (typeof data === 'undefined') {
 				throw new Error('Workflow did not return any data!');
 			}
 

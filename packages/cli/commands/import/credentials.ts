@@ -68,7 +68,7 @@ export class ImportCredentialsCommand extends Command {
 			let i;
 
 			const encryptionKey = await UserSettings.getEncryptionKey();
-			if (encryptionKey === undefined) {
+			if (typeof encryptionKey === 'undefined') {
 				throw new Error('No encryption key got found to encrypt the credentials!');
 			}
 

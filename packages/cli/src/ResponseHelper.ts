@@ -59,7 +59,7 @@ export function jwtAuthAuthorizationError(resp: Response, message?: string) {
 
 
 export function sendSuccessResponse(res: Response, data: any, raw?: boolean, responseCode?: number) { // tslint:disable-line:no-any
-	if (responseCode !== undefined) {
+	if (typeof responseCode !== 'undefined') {
 		res.status(responseCode);
 	}
 
@@ -159,15 +159,15 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
 		workflowData: fullExecutionData.workflowData!,
 	});
 
-	if (fullExecutionData.id !== undefined) {
+	if (typeof fullExecutionData.id !== 'undefined') {
 		returnData.id = fullExecutionData.id!.toString();
 	}
 
-	if (fullExecutionData.retryOf !== undefined) {
+	if (typeof fullExecutionData.retryOf !== 'undefined') {
 		returnData.retryOf = fullExecutionData.retryOf!.toString();
 	}
 
-	if (fullExecutionData.retrySuccessId !== undefined) {
+	if (typeof fullExecutionData.retrySuccessId !== 'undefined') {
 		returnData.retrySuccessId = fullExecutionData.retrySuccessId!.toString();
 	}
 

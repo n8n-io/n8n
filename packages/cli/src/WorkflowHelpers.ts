@@ -40,12 +40,12 @@ export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefi
 	const runData = inputData.data.resultData.runData;
 	const lastNodeExecuted = inputData.data.resultData.lastNodeExecuted;
 
-	if (lastNodeExecuted === undefined) {
-		return undefined;
+	if (typeof lastNodeExecuted === 'undefined') {
+		return;
 	}
 
-	if (runData[lastNodeExecuted] === undefined) {
-		return undefined;
+	if (typeof runData[lastNodeExecuted] === 'undefined') {
+		return;
 	}
 
 	return runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
@@ -87,7 +87,7 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 	try {
 		const workflowData = await Db.collections.Workflow!.findOne({ id: Number(workflowId) });
 
-		if (workflowData === undefined) {
+		if (typeof workflowData === 'undefined') {
 			// The error workflow could not be found
 			Logger.error(`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`, { workflowId });
 			return;
@@ -107,7 +107,7 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 			}
 		}
 
-		if (workflowStartNode === undefined) {
+		if (typeof workflowStartNode === 'undefined') {
 			Logger.error(`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${ERROR_TRIGGER_TYPE}" in workflow "${workflowId}"`);
 			return;
 		}
@@ -175,7 +175,7 @@ export function getAllNodeTypeData(): ITransferNodeTypes {
 	// can be loaded again in the process
 	const returnData: ITransferNodeTypes = {};
 	for (const nodeTypeName of Object.keys(nodeTypes.nodeTypes)) {
-		if (nodeTypes.nodeTypes[nodeTypeName] === undefined) {
+		if (typeof nodeTypes.nodeTypes[nodeTypeName] === 'undefined') {
 			throw new Error(`The NodeType "${nodeTypeName}" could not be found!`);
 		}
 
@@ -208,7 +208,7 @@ export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
 	// can be loaded again in the process
 	const returnData: ITransferNodeTypes = {};
 	for (const nodeTypeName of neededNodeTypes) {
-		if (nodeTypes.nodeTypes[nodeTypeName] === undefined) {
+		if (typeof nodeTypes.nodeTypes[nodeTypeName] === 'undefined') {
 			throw new Error(`The NodeType "${nodeTypeName}" could not be found!`);
 		}
 
@@ -238,12 +238,12 @@ export function getCredentialsDataWithParents(type: string): ICredentialsTypeDat
 	const credentialTypeData: ICredentialsTypeData = {};
 	credentialTypeData[type] = credentialType;
 
-	if (credentialType === undefined || credentialType.extends === undefined) {
+	if (typeof credentialType === 'undefined' || typeof credentialType.extends === 'undefined') {
 		return credentialTypeData;
 	}
 
 	for (const typeName of credentialType.extends) {
-		if (credentialTypeData[typeName] !== undefined) {
+		if (typeof credentialTypeData[typeName] !== 'undefined') {
 			continue;
 		}
 
@@ -268,7 +268,7 @@ export function getCredentialsData(credentials: IWorkflowCredentials): ICredenti
 	const credentialTypeData: ICredentialsTypeData = {};
 
 	for (const credentialType of Object.keys(credentials)) {
-		if (credentialTypeData[credentialType] !== undefined) {
+		if (typeof credentialTypeData[credentialType] !== 'undefined') {
 			continue;
 		}
 
@@ -354,7 +354,7 @@ export async function getStaticDataById(workflowId: string | number) {
 	const workflowData = await Db.collections.Workflow!
 		.findOne(workflowId, { select: ['staticData']});
 
-	if (workflowData === undefined) {
+	if (typeof workflowData === 'undefined') {
 		return {};
 	}
 
@@ -369,17 +369,17 @@ export async function validateWorkflow(newWorkflow: WorkflowEntity) {
 
 	if (errors.length) {
 		const validationErrorMessage = Object.values(errors[0].constraints!)[0];
-		throw new ResponseHelper.ResponseError(validationErrorMessage, undefined, 400);
+		throw new ResponseHelper.ResponseError(validationErrorMessage, void 0, 400);
 	}
 }
 
 export function throwDuplicateEntryError(error: Error) {
 	const errorMessage = error.message.toLowerCase();
 	if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
-		throw new ResponseHelper.ResponseError('There is already a workflow with this name', undefined, 400);
+		throw new ResponseHelper.ResponseError('There is already a workflow with this name', void 0, 400);
 	}
 
-	throw new ResponseHelper.ResponseError(errorMessage, undefined, 400);
+	throw new ResponseHelper.ResponseError(errorMessage, void 0, 400);
 }
 
 export type WorkflowNameRequest = Express.Request & {

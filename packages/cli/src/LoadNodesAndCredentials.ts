@@ -36,8 +36,8 @@ class LoadNodesAndCredentialsClass {
 		[key: string]: ICredentialType
 	} = {};
 
-	excludeNodes: string[] | undefined = undefined;
-	includeNodes: string[] | undefined = undefined;
+	excludeNodes: string[] | undefined;
+	includeNodes: string[] | undefined;
 
 	nodeModulesPath = '';
 
@@ -89,7 +89,7 @@ class LoadNodesAndCredentialsClass {
 		customDirectories.push(UserSettings.getUserN8nFolderCustomExtensionPath());
 
 		// Add folders from special environment variable
-		if (process.env[CUSTOM_EXTENSION_ENV] !== undefined) {
+		if (typeof process.env[CUSTOM_EXTENSION_ENV] !== 'undefined') {
 			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV]!.split(';');
 			customDirectories.push.apply(customDirectories, customExtensionFolders);
 		}
@@ -179,7 +179,7 @@ class LoadNodesAndCredentialsClass {
 		fullNodeName = packageName + '.' + tempNode.description.name;
 		tempNode.description.name = fullNodeName;
 
-		if (tempNode.description.icon !== undefined &&
+		if (typeof tempNode.description.icon !== 'undefined' &&
 			tempNode.description.icon.startsWith('file:')) {
 			// If a file icon gets used add the full path
 			tempNode.description.icon = 'file:' + path.join(path.dirname(filePath), tempNode.description.icon.substr(5));
@@ -189,12 +189,12 @@ class LoadNodesAndCredentialsClass {
 			this.logger.warn(`"executeSingle" will get deprecated soon. Please update the code of node "${packageName}.${nodeName}" to use "execute" instead!`, { filePath });
 		}
 
-		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
+		if (typeof this.includeNodes !== 'undefined' && !this.includeNodes.includes(fullNodeName)) {
 			return;
 		}
 
 		// Check if the node should be skiped
-		if (this.excludeNodes !== undefined && this.excludeNodes.includes(fullNodeName)) {
+		if (typeof this.excludeNodes !== 'undefined' && this.excludeNodes.includes(fullNodeName)) {
 			return;
 		}
 
@@ -329,7 +329,7 @@ class LoadNodesAndCredentialsClass {
 let packagesInformationInstance: LoadNodesAndCredentialsClass | undefined;
 
 export function LoadNodesAndCredentials(): LoadNodesAndCredentialsClass {
-	if (packagesInformationInstance === undefined) {
+	if (typeof packagesInformationInstance === 'undefined') {
 		packagesInformationInstance = new LoadNodesAndCredentialsClass();
 	}
 

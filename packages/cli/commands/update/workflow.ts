@@ -57,7 +57,7 @@ export class UpdateWorkflowCommand extends Command {
 		}
 
 		const updateQuery: IDataObject = {};
-		if (flags.active === undefined) {
+		if (typeof flags.active === 'undefined') {
 			console.info(`No update flag like "--active=true" has been set!`);
 			return;
 		} else {

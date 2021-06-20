@@ -29,7 +29,7 @@ class NodeTypesClass implements INodeTypes {
 	}
 
 	getByName(nodeType: string): INodeType | undefined {
-		if (this.nodeTypes[nodeType] === undefined) {
+		if (typeof this.nodeTypes[nodeType] === 'undefined') {
 			throw new Error(`The node-type "${nodeType}" is not known!`);
 		}
 		return this.nodeTypes[nodeType].type;
@@ -41,7 +41,7 @@ class NodeTypesClass implements INodeTypes {
 let nodeTypesInstance: NodeTypesClass | undefined;
 
 export function NodeTypes(): NodeTypesClass {
-	if (nodeTypesInstance === undefined) {
+	if (typeof nodeTypesInstance === 'undefined') {
 		nodeTypesInstance = new NodeTypesClass();
 	}
 

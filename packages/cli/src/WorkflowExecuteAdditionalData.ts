@@ -61,12 +61,12 @@ const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mode: WorkflowExecuteMode, executionId?: string, retryOf?: string): void {
 	// Check if there was an error and if so if an errorWorkflow or a trigger is set
 
-	let pastExecutionUrl: string | undefined = undefined;
-	if (executionId !== undefined) {
+	let pastExecutionUrl: string | undefined;
+	if (typeof executionId !== 'undefined') {
 		pastExecutionUrl = `${WebhookHelpers.getWebhookBaseUrl()}execution/${executionId}`;
 	}
 
-	if (fullRunData.data.resultData.error !== undefined) {
+	if (typeof fullRunData.data.resultData.error !== 'undefined') {
 		const workflowErrorData = {
 			execution: {
 				id: executionId,
@@ -77,18 +77,18 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
 				retryOf,
 			},
 			workflow: {
-				id: workflowData.id !== undefined ? workflowData.id.toString() as string : undefined,
+				id: typeof workflowData.id !== 'undefined' ? workflowData.id.toString() as string : void 0,
 				name: workflowData.name,
 			},
 		};
 
 		// Run the error workflow
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
-		if (workflowData.settings !== undefined && workflowData.settings.errorWorkflow && !(mode === 'error' && workflowData.id && workflowData.settings.errorWorkflow.toString() === workflowData.id.toString())) {
+		if (typeof workflowData.settings !== 'undefined' && workflowData.settings.errorWorkflow && !(mode === 'error' && workflowData.id && workflowData.settings.errorWorkflow.toString() === workflowData.id.toString())) {
 			Logger.verbose(`Start external error workflow`, { executionId, errorWorkflowId: workflowData.settings.errorWorkflow.toString(), workflowId: workflowData.id });
 			// If a specific error workflow is set run only that one
 			WorkflowHelpers.executeErrorWorkflow(workflowData.settings.errorWorkflow as string, workflowErrorData);
-		} else if (mode !== 'error' && workflowData.id !== undefined && workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)) {
+		} else if (mode !== 'error' && typeof workflowData.id !== 'undefined' && workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)) {
 			Logger.verbose(`Start internal error workflow`, { executionId, workflowId: workflowData.id });
 			// If the workflow contains
 			WorkflowHelpers.executeErrorWorkflow(workflowData.id.toString(), workflowErrorData);
@@ -134,7 +134,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
 				// Push data to session which started workflow before each
 				// node which starts rendering
-				if (this.sessionId === undefined) {
+				if (typeof this.sessionId === 'undefined') {
 					return;
 				}
 				Logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, { executionId: this.executionId, sessionId: this.sessionId, workflowId: this.workflowData.id });
@@ -149,7 +149,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 		nodeExecuteAfter: [
 			async function (this: WorkflowHooks, nodeName: string, data: ITaskData): Promise<void> {
 				// Push data to session which started workflow after each rendered node
-				if (this.sessionId === undefined) {
+				if (typeof this.sessionId === 'undefined') {
 					return;
 				}
 				Logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, { executionId: this.executionId, sessionId: this.sessionId, workflowId: this.workflowData.id });
@@ -166,7 +166,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 			async function (this: WorkflowHooks): Promise<void> {
 				Logger.debug(`Executing hook (hookFunctionsPush)`, { executionId: this.executionId, sessionId: this.sessionId, workflowId: this.workflowData.id });
 				// Push data to session which started the workflow
-				if (this.sessionId === undefined) {
+				if (typeof this.sessionId === 'undefined') {
 					return;
 				}
 				const pushInstance = Push.getInstance();
@@ -184,7 +184,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
 				Logger.debug(`Executing hook (hookFunctionsPush)`, { executionId: this.executionId, sessionId: this.sessionId, workflowId: this.workflowData.id });
 				// Push data to session which started the workflow
-				if (this.sessionId === undefined) {
+				if (typeof this.sessionId === 'undefined') {
 					return;
 				}
 
@@ -230,7 +230,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 		],
 		nodeExecuteAfter: [
 			async function (nodeName: string, data: ITaskData, executionData: IRunExecutionData): Promise<void> {
-				if (this.workflowData.settings !== undefined) {
+				if (typeof this.workflowData.settings !== 'undefined') {
 					if (this.workflowData.settings.saveExecutionProgress === false) {
 						return;
 					} else if (this.workflowData.settings.saveExecutionProgress !== true && !config.get('executions.saveExecutionProgress') as boolean) {
@@ -245,10 +245,10 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 
 					const execution = await Db.collections.Execution!.findOne(this.executionId);
 
-					if (execution === undefined) {
+					if (typeof execution === 'undefined') {
 						// Something went badly wrong if this happens.
 						// This check is here mostly to make typescript happy.
-						return undefined;
+						return;
 					}
 					const fullExecutionData: IExecutionResponse = ResponseHelper.unflattenExecutionData(execution);
 
@@ -260,7 +260,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 					}
 
 
-					if (fullExecutionData.data === undefined) {
+					if (typeof fullExecutionData.data === 'undefined') {
 						fullExecutionData.data = {
 							startData: {
 							},
@@ -338,7 +338,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					let saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
-					if (this.workflowData.settings !== undefined && this.workflowData.settings.saveManualExecutions !== undefined) {
+					if (typeof this.workflowData.settings !== 'undefined' && typeof this.workflowData.settings.saveManualExecutions !== 'undefined') {
 						// Apply to workflow override
 						saveManualExecutions = this.workflowData.settings.saveManualExecutions as boolean;
 					}
@@ -352,7 +352,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					// Check config to know if execution should be saved or not
 					let saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
 					let saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
-					if (this.workflowData.settings !== undefined) {
+					if (typeof this.workflowData.settings !== 'undefined') {
 						saveDataErrorExecution = (this.workflowData.settings.saveDataErrorExecution as string) || saveDataErrorExecution;
 						saveDataSuccessExecution = (this.workflowData.settings.saveDataSuccessExecution as string) || saveDataSuccessExecution;
 					}
@@ -362,7 +362,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						workflowDidSucceed === false && saveDataErrorExecution === 'none'
 					) {
 						if (!isManualMode) {
-							executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
+							executeErrorWorkflow(this.workflowData, fullRunData, this.mode, void 0, this.retryOf);
 						}
 						// Data is always saved, so we remove from database
 						await Db.collections.Execution!.delete(this.executionId);
@@ -378,11 +378,11 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						workflowData: this.workflowData,
 					};
 
-					if (this.retryOf !== undefined) {
+					if (typeof this.retryOf !== 'undefined') {
 						fullExecutionData.retryOf = this.retryOf.toString();
 					}
 
-					if (this.workflowData.id !== undefined && WorkflowHelpers.isWorkflowIdValid(this.workflowData.id.toString()) === true) {
+					if (typeof this.workflowData.id !== 'undefined' && WorkflowHelpers.isWorkflowIdValid(this.workflowData.id.toString()) === true) {
 						fullExecutionData.workflowId = this.workflowData.id.toString();
 					}
 
@@ -399,7 +399,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					// Save the Execution in DB
 					await Db.collections.Execution!.update(this.executionId, executionData as IExecutionFlattedDb);
 
-					if (fullRunData.finished === true && this.retryOf !== undefined) {
+					if (fullRunData.finished === true && typeof this.retryOf !== 'undefined') {
 						// If the retry was successful save the reference it on the original execution
 						// await Db.collections.Execution!.save(executionData as IExecutionFlattedDb);
 						await Db.collections.Execution!.update(this.retryOf, { retrySuccessId: this.executionId });
@@ -416,7 +416,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					});
 					
 					if (!isManualMode) {
-						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
+						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, void 0, this.retryOf);
 					}
 				}
 			},
@@ -451,7 +451,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 
 					const workflowDidSucceed = !fullRunData.data.resultData.error;
 					if (workflowDidSucceed === false) {
-						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
+						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, void 0, this.retryOf);
 					}
 
 					const fullExecutionData: IExecutionDb = {
@@ -463,11 +463,11 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						workflowData: this.workflowData,
 					};
 
-					if (this.retryOf !== undefined) {
+					if (typeof this.retryOf !== 'undefined') {
 						fullExecutionData.retryOf = this.retryOf.toString();
 					}
 
-					if (this.workflowData.id !== undefined && WorkflowHelpers.isWorkflowIdValid(this.workflowData.id.toString()) === true) {
+					if (typeof this.workflowData.id !== 'undefined' && WorkflowHelpers.isWorkflowIdValid(this.workflowData.id.toString()) === true) {
 						fullExecutionData.workflowId = this.workflowData.id.toString();
 					}
 
@@ -476,12 +476,12 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					// Save the Execution in DB
 					await Db.collections.Execution!.update(this.executionId, executionData as IExecutionFlattedDb);
 
-					if (fullRunData.finished === true && this.retryOf !== undefined) {
+					if (fullRunData.finished === true && typeof this.retryOf !== 'undefined') {
 						// If the retry was successful save the reference it on the original execution
 						await Db.collections.Execution!.update(this.retryOf, { retrySuccessId: this.executionId });
 					}
 				} catch (error) {
-					executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
+					executeErrorWorkflow(this.workflowData, fullRunData, this.mode, void 0, this.retryOf);
 				}
 			},
 		],
@@ -500,7 +500,7 @@ export async function getRunData(workflowData: IWorkflowBase, inputData?: INodeE
 			break;
 		}
 	}
-	if (startNode === undefined) {
+	if (typeof startNode === 'undefined') {
 		// If the workflow does not contain a start-node we can not know what
 		// should be executed and with what data to start.
 		throw new Error(`The workflow does not contain a "Start" node and can so not be executed.`);
@@ -554,7 +554,7 @@ export async function getRunData(workflowData: IWorkflowBase, inputData?: INodeE
 
 
 export async function getWorkflowData(workflowInfo: IExecuteWorkflowInfo): Promise<IWorkflowBase> {
-	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
+	if (typeof workflowInfo.id === 'undefined' && typeof workflowInfo.code === 'undefined') {
 		throw new Error(`No information about the workflow to execute found. Please provide either the "id" or "code"!`);
 	}
 
@@ -565,9 +565,9 @@ export async function getWorkflowData(workflowInfo: IExecuteWorkflowInfo): Promi
 	}
 
 	let workflowData: IWorkflowBase | undefined;
-	if (workflowInfo.id !== undefined) {
+	if (typeof workflowInfo.id !== 'undefined') {
 		workflowData = await Db.collections!.Workflow!.findOne(workflowInfo.id);
-		if (workflowData === undefined) {
+		if (typeof workflowData === 'undefined') {
 			throw new Error(`The workflow with the id "${workflowInfo.id}" does not exist.`);
 		}
 	} else {
@@ -593,19 +593,19 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 
 	const nodeTypes = NodeTypes();
 
-	const workflowData = loadedWorkflowData !== undefined ? loadedWorkflowData : await getWorkflowData(workflowInfo);
+	const workflowData = typeof loadedWorkflowData !== 'undefined' ? loadedWorkflowData : await getWorkflowData(workflowInfo);
 
-	const workflowName = workflowData ? workflowData.name : undefined;
+	const workflowName = workflowData ? workflowData.name : void 0;
 	const workflow = new Workflow({ id: workflowInfo.id, name: workflowName, nodes: workflowData!.nodes, connections: workflowData!.connections, active: workflowData!.active, nodeTypes, staticData: workflowData!.staticData });
 
-	const runData = loadedRunData !== undefined ? loadedRunData : await getRunData(workflowData, inputData);
+	const runData = typeof loadedRunData !== 'undefined' ? loadedRunData : await getRunData(workflowData, inputData);
 
 	let executionId;
 
-	if (parentExecutionId !== undefined) {
+	if (typeof parentExecutionId !== 'undefined') {
 		executionId = parentExecutionId;
 	} else {
-		executionId = parentExecutionId !== undefined ? parentExecutionId : await ActiveExecutions.getInstance().add(runData);
+		executionId = typeof parentExecutionId !== 'undefined' ? parentExecutionId : await ActiveExecutions.getInstance().add(runData);
 	}
 
 	const runExecutionData = runData.executionData as IRunExecutionData;
@@ -625,7 +625,7 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
 
 	let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
-	if (workflowData.settings?.executionTimeout !== undefined && workflowData.settings.executionTimeout > 0) {
+	if (typeof workflowData.settings?.executionTimeout !== 'undefined' && workflowData.settings.executionTimeout > 0) {
 		// We might have received a max timeout timestamp from the parent workflow
 		// If we did, then we get the minimum time between the two timeouts
 		// If no timeout was given from the parent, then we use our timeout.
@@ -637,7 +637,7 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 
 	// Execute the workflow
 	const workflowExecute = new WorkflowExecute(additionalDataIntegrated, runData.executionMode, runExecutionData);
-	if (parentExecutionId !== undefined) {
+	if (typeof parentExecutionId !== 'undefined') {
 		// Must be changed to become typed
 		return {
 			startedAt: new Date(),
@@ -668,7 +668,7 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 
 
 export function sendMessageToUI(source: string, message: any) { // tslint:disable-line:no-any
-	if (this.sessionId === undefined) {
+	if (typeof this.sessionId === 'undefined') {
 		return;
 	}
 
@@ -701,7 +701,7 @@ export async function getBase(credentials: IWorkflowCredentials, currentNodePara
 	const webhookTestBaseUrl = urlBaseWebhook + config.get('endpoints.webhookTest') as string;
 
 	const encryptionKey = await UserSettings.getEncryptionKey();
-	if (encryptionKey === undefined) {
+	if (typeof encryptionKey === 'undefined') {
 		throw new Error('No encryption key got found to decrypt the credentials!');
 	}
 
@@ -729,7 +729,7 @@ export function getWorkflowHooksIntegrated(mode: WorkflowExecuteMode, executionI
 	const hookFunctions = hookFunctionsSave(optionalParameters.parentProcessMode);
 	const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
 	for (const key of Object.keys(preExecuteFunctions)) {
-		if (hookFunctions[key] === undefined) {
+		if (typeof hookFunctions[key] === 'undefined') {
 			hookFunctions[key] = [];
 		}
 		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
@@ -746,7 +746,7 @@ export function getWorkflowHooksWorkerExecuter(mode: WorkflowExecuteMode, execut
 	const hookFunctions = hookFunctionsSaveWorker();
 	const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
 	for (const key of Object.keys(preExecuteFunctions)) {
-		if (hookFunctions[key] === undefined) {
+		if (typeof hookFunctions[key] === 'undefined') {
 			hookFunctions[key] = [];
 		}
 		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
@@ -762,7 +762,7 @@ export function getWorkflowHooksWorkerMain(mode: WorkflowExecuteMode, executionI
 	const hookFunctions = hookFunctionsPush();
 	const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
 	for (const key of Object.keys(preExecuteFunctions)) {
-		if (hookFunctions[key] === undefined) {
+		if (typeof hookFunctions[key] === 'undefined') {
 			hookFunctions[key] = [];
 		}
 		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
@@ -789,7 +789,7 @@ export function getWorkflowHooksMain(data: IWorkflowExecutionDataProcess, execut
 	const hookFunctions = hookFunctionsSave();
 	const pushFunctions = hookFunctionsPush();
 	for (const key of Object.keys(pushFunctions)) {
-		if (hookFunctions[key] === undefined) {
+		if (typeof hookFunctions[key] === 'undefined') {
 			hookFunctions[key] = [];
 		}
 		hookFunctions[key]!.push.apply(hookFunctions[key], pushFunctions[key]);
@@ -798,7 +798,7 @@ export function getWorkflowHooksMain(data: IWorkflowExecutionDataProcess, execut
 	if (isMainProcess) {
 		const preExecuteFunctions = hookFunctionsPreExecute();
 		for (const key of Object.keys(preExecuteFunctions)) {
-			if (hookFunctions[key] === undefined) {
+			if (typeof hookFunctions[key] === 'undefined') {
 				hookFunctions[key] = [];
 			}
 			hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);

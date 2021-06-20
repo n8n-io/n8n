@@ -92,7 +92,7 @@ export class Start extends Command {
 			const skipWebhookDeregistration = config.get('endpoints.skipWebhoooksDeregistrationOnShutdown') as boolean;
 
 			const removePromises = [];
-			if (activeWorkflowRunner !== undefined && skipWebhookDeregistration !== true) {
+			if (typeof activeWorkflowRunner !== 'undefined' && skipWebhookDeregistration !== true) {
 				removePromises.push(activeWorkflowRunner.removeAll());
 			}
 
@@ -244,13 +244,13 @@ export class Start extends Command {
 					this.log('\nWaiting for tunnel ...');
 
 					let tunnelSubdomain;
-					if (process.env[TUNNEL_SUBDOMAIN_ENV] !== undefined && process.env[TUNNEL_SUBDOMAIN_ENV] !== '') {
+					if (typeof process.env[TUNNEL_SUBDOMAIN_ENV] !== 'undefined' && process.env[TUNNEL_SUBDOMAIN_ENV] !== '') {
 						tunnelSubdomain = process.env[TUNNEL_SUBDOMAIN_ENV];
-					} else if (userSettings.tunnelSubdomain !== undefined) {
+					} else if (typeof userSettings.tunnelSubdomain !== 'undefined') {
 						tunnelSubdomain = userSettings.tunnelSubdomain;
 					}
 
-					if (tunnelSubdomain === undefined) {
+					if (typeof tunnelSubdomain === 'undefined') {
 						// When no tunnel subdomain did exist yet create a new random one
 						const availableCharacters = 'abcdefghijklmnopqrstuvwxyz0123456789';
 						userSettings.tunnelSubdomain = Array.from({ length: 24 }).map(() => {

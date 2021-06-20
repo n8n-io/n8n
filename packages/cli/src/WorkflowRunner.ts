@@ -174,10 +174,10 @@ export class WorkflowRunner {
 		}
 
 		const workflow = new Workflow({ id: data.workflowData.id as string | undefined, name: data.workflowData.name, nodes: data.workflowData!.nodes, connections: data.workflowData!.connections, active: data.workflowData!.active, nodeTypes, staticData: data.workflowData!.staticData });
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(data.credentials, undefined, workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(data.credentials, void 0, workflowTimeout <= 0 ? void 0 : Date.now() + workflowTimeout * 1000);
 
 		// Register the active execution
-		const executionId = await this.activeExecutions.add(data, undefined);
+		const executionId = await this.activeExecutions.add(data, void 0);
 		Logger.verbose(`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`, {executionId});
 
 		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
@@ -185,17 +185,17 @@ export class WorkflowRunner {
 		additionalData.sendMessageToUI = WorkflowExecuteAdditionalData.sendMessageToUI.bind({sessionId: data.sessionId});
 
 		let workflowExecution: PCancelable<IRun>;
-		if (data.executionData !== undefined) {
+		if (typeof data.executionData !== 'undefined') {
 			Logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {executionId});
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode, data.executionData);
 			workflowExecution = workflowExecute.processRunExecutionData(workflow);
-		} else if (data.runData === undefined || data.startNodes === undefined || data.startNodes.length === 0 || data.destinationNode === undefined) {
+		} else if (typeof data.runData === 'undefined' || typeof data.startNodes === 'undefined' || data.startNodes.length === 0 || typeof data.destinationNode === 'undefined') {
 			Logger.debug(`Execution ID ${executionId} will run executing all nodes.`, {executionId});
 			// Execute all nodes
 
 			// Can execute without webhook so go on
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-			workflowExecution = workflowExecute.run(workflow, undefined, data.destinationNode);
+			workflowExecution = workflowExecute.run(workflow, void 0, data.destinationNode);
 		} else {
 			Logger.debug(`Execution ID ${executionId} is a partial execution.`, {executionId});
 			// Execute only the nodes between start and destination nodes
@@ -228,7 +228,7 @@ export class WorkflowRunner {
 		// TODO: If "loadStaticData" is set to true it has to load data new on worker
 
 		// Register the active execution
-		const executionId = await this.activeExecutions.add(data, undefined);
+		const executionId = await this.activeExecutions.add(data, void 0);
 
 		const jobData: IBullJobData = {
 			executionId,
@@ -250,7 +250,7 @@ export class WorkflowRunner {
 		const job = await this.jobQueue.add(jobData, jobOptions);
 		console.log('Started with ID: ' + job.id.toString());
 
-		const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
+		const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : void 0 });
 
 		// Normally also workflow should be supplied here but as it only used for sending
 		// data to editor-UI is not needed.
@@ -310,7 +310,7 @@ export class WorkflowRunner {
 				const clearWatchdogInterval = () => {
 					if (watchDogInterval) {
 						clearInterval(watchDogInterval);
-						watchDogInterval = undefined;
+						watchDogInterval = void 0;
 					}
 				};
 
@@ -343,7 +343,7 @@ export class WorkflowRunner {
 				// based on workflow settings.
 				let saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
 				let saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
-				if (data.workflowData.settings !== undefined) {
+				if (typeof data.workflowData.settings !== 'undefined') {
 					saveDataErrorExecution = (data.workflowData.settings.saveDataErrorExecution as string) || saveDataErrorExecution;
 					saveDataSuccessExecution = (data.workflowData.settings.saveDataSuccessExecution as string) || saveDataSuccessExecution;
 				}
@@ -414,7 +414,7 @@ export class WorkflowRunner {
 
 			credentialsOverwrites = {};
 			for (const credentialName of Object.keys(credentialTypeData)) {
-				if (this.credentialsOverwrites[credentialName] !== undefined) {
+				if (typeof this.credentialsOverwrites[credentialName] !== 'undefined') {
 					credentialsOverwrites[credentialName] = this.credentialsOverwrites[credentialName];
 				}
 			}

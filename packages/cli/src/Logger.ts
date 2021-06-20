@@ -69,7 +69,7 @@ class Logger implements ILogger {
 		// Note: getting line number is useless because at this point
 		// We are in runtime, so it means we are looking at compiled js files
 		const logDetails = {} as IDataObject;
-		if (callsite[2] !== undefined) {
+		if (typeof callsite[2] !== 'undefined') {
 			logDetails.file = basename(callsite[2].getFileName() || '');
 			const functionName = callsite[2].getFunctionName();
 			if (functionName) {
@@ -106,7 +106,7 @@ class Logger implements ILogger {
 let activeLoggerInstance: Logger | undefined;
 
 export function getLogger() {
-	if (activeLoggerInstance === undefined) {
+	if (typeof activeLoggerInstance === 'undefined') {
 		activeLoggerInstance = new Logger();
 	}
 

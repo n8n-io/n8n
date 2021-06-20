@@ -30,7 +30,7 @@ class ExternalHooksClass implements IExternalHooksClass {
 	async reload(externalHooks?: IExternalHooksFileData) {
 		this.externalHooks = {};
 
-		if (externalHooks === undefined) {
+		if (typeof externalHooks === 'undefined') {
 			await this.loadHooksFiles(true);
 		} else {
 			this.loadHooks(externalHooks);
@@ -67,7 +67,7 @@ class ExternalHooksClass implements IExternalHooksClass {
 				// Save all the hook functions directly under their string
 				// format in an array
 				const hookString = `${resource}.${operation}`;
-				if (this.externalHooks[hookString] === undefined) {
+				if (typeof this.externalHooks[hookString] === 'undefined') {
 					this.externalHooks[hookString] = [];
 				}
 
@@ -82,7 +82,7 @@ class ExternalHooksClass implements IExternalHooksClass {
 			dbCollections: Db.collections,
 		};
 
-		if (this.externalHooks[hookName] === undefined) {
+		if (typeof this.externalHooks[hookName] === 'undefined') {
 			return;
 		}
 
@@ -103,7 +103,7 @@ class ExternalHooksClass implements IExternalHooksClass {
 let externalHooksInstance: ExternalHooksClass | undefined;
 
 export function ExternalHooks(): ExternalHooksClass {
-	if (externalHooksInstance === undefined) {
+	if (typeof externalHooksInstance === 'undefined') {
 		externalHooksInstance = new ExternalHooksClass();
 	}
 

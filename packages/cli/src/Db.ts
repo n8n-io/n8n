@@ -49,12 +49,12 @@ export async function init(): Promise<IDatabaseCollections> {
 			const sslKey = await GenericHelpers.getConfigValue('database.postgresdb.ssl.key') as string;
 			const sslRejectUnauthorized = await GenericHelpers.getConfigValue('database.postgresdb.ssl.rejectUnauthorized') as boolean;
 
-			let ssl: TlsOptions | undefined = undefined;
+			let ssl: TlsOptions | undefined;
 			if (sslCa !== '' || sslCert !== '' || sslKey !== '' || sslRejectUnauthorized !== true) {
 				ssl = {
-					ca: sslCa || undefined,
-					cert: sslCert || undefined,
-					key: sslKey || undefined,
+					ca: sslCa || void 0,
+					cert: sslCert || void 0,
+					key: sslKey || void 0,
 					rejectUnauthorized: sslRejectUnauthorized,
 				};
 			}

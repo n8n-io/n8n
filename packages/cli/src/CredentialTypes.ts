@@ -20,7 +20,7 @@ class CredentialTypesClass implements ICredentialTypesInterface {
 		const credentialsOverwrites = CredentialsOverwrites().getAll();
 
 		for (const credentialType of Object.keys(credentialsOverwrites)) {
-			if (credentialTypes[credentialType] === undefined) {
+			if (typeof credentialTypes[credentialType] === 'undefined') {
 				continue;
 			}
 
@@ -44,7 +44,7 @@ class CredentialTypesClass implements ICredentialTypesInterface {
 let credentialTypesInstance: CredentialTypesClass | undefined;
 
 export function CredentialTypes(): CredentialTypesClass {
-	if (credentialTypesInstance === undefined) {
+	if (typeof credentialTypesInstance === 'undefined') {
 		credentialTypesInstance = new CredentialTypesClass();
 	}
 

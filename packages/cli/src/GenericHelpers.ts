@@ -47,7 +47,7 @@ export function getSessionId(req: express.Request): string | undefined {
  * @returns {Promise<IPackageVersions>}
  */
 export async function getVersions(): Promise<IPackageVersions> {
-	if (versionCache !== undefined) {
+	if (typeof versionCache !== 'undefined') {
 		return versionCache;
 	}
 
@@ -72,9 +72,9 @@ function extractSchemaForKey(configKey: string, configSchema: IDataObject): IDat
 	const configKeyParts = configKey.split('.');
 
 	for (const key of configKeyParts) {
-		if (configSchema[key] === undefined) {
+		if (typeof configSchema[key] === 'undefined') {
 			throw new Error(`Key "${key}" of ConfigKey "${configKey}" does not exist`);
-		} else if ((configSchema[key]! as IDataObject)._cvtProperties === undefined) {
+		} else if (typeof (configSchema[key]! as IDataObject)._cvtProperties === 'undefined') {
 			configSchema = configSchema[key] as IDataObject;
 		} else {
 			configSchema = (configSchema[key] as IDataObject)._cvtProperties as IDataObject;
@@ -96,14 +96,14 @@ export async function getConfigValue(configKey: string): Promise<string | boolea
 	// @ts-ignore
 	const currentSchema = extractSchemaForKey(configKey, configSchema._cvtProperties as IDataObject);
 	// Check if environment variable is defined for config key
-	if (currentSchema.env === undefined) {
+	if (typeof currentSchema.env === 'undefined') {
 		// No environment variable defined, so return value from config
 		return config.get(configKey);
 	}
 
 	// Check if special file enviroment variable exists
 	const fileEnvironmentVariable = process.env[currentSchema.env + '_FILE'];
-	if (fileEnvironmentVariable === undefined) {
+	if (typeof fileEnvironmentVariable === 'undefined') {
 		// Does not exist, so return value from config
 		return config.get(configKey);
 	}
@@ -135,14 +135,14 @@ export function getConfigValueSync(configKey: string): string | boolean | number
 	// @ts-ignore
 	const currentSchema = extractSchemaForKey(configKey, configSchema._cvtProperties as IDataObject);
 	// Check if environment variable is defined for config key
-	if (currentSchema.env === undefined) {
+	if (typeof currentSchema.env === 'undefined') {
 		// No environment variable defined, so return value from config
 		return config.get(configKey);
 	}
 
 	// Check if special file enviroment variable exists
 	const fileEnvironmentVariable = process.env[currentSchema.env + '_FILE'];
-	if (fileEnvironmentVariable === undefined) {
+	if (typeof fileEnvironmentVariable === 'undefined') {
 		// Does not exist, so return value from config
 		return config.get(configKey);
 	}

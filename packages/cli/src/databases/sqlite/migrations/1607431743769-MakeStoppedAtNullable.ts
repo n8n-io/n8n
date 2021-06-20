@@ -11,9 +11,9 @@ export class MakeStoppedAtNullable1607431743769 implements MigrationInterface {
 		// Allowing a column to become nullable
 		// This is a very strict case when this can be done safely
 		// As no collateral effects exist.
-		await queryRunner.query(`PRAGMA writable_schema = 1; `, undefined);
-		await queryRunner.query(`UPDATE SQLITE_MASTER SET SQL = 'CREATE TABLE IF NOT EXISTS "${tablePrefix}execution_entity" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "data" text NOT NULL, "finished" boolean NOT NULL, "mode" varchar NOT NULL, "retryOf" varchar, "retrySuccessId" varchar, "startedAt" datetime NOT NULL, "stoppedAt" datetime, "workflowData" text NOT NULL, "workflowId" varchar)' WHERE NAME = "${tablePrefix}execution_entity";`, undefined);
-		await queryRunner.query(`PRAGMA writable_schema = 0;`, undefined);
+		await queryRunner.query(`PRAGMA writable_schema = 1; `, void 0);
+		await queryRunner.query(`UPDATE SQLITE_MASTER SET SQL = 'CREATE TABLE IF NOT EXISTS "${tablePrefix}execution_entity" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "data" text NOT NULL, "finished" boolean NOT NULL, "mode" varchar NOT NULL, "retryOf" varchar, "retrySuccessId" varchar, "startedAt" datetime NOT NULL, "stoppedAt" datetime, "workflowData" text NOT NULL, "workflowId" varchar)' WHERE NAME = "${tablePrefix}execution_entity";`, void 0);
+		await queryRunner.query(`PRAGMA writable_schema = 0;`, void 0);
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {

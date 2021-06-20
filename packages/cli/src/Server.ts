@@ -257,7 +257,7 @@ class App {
 				const realm = 'n8n - Editor UI';
 				const basicAuthData = basicAuth(req);
 
-				if (basicAuthData === undefined) {
+				if (typeof basicAuthData === 'undefined') {
 					// Authorization data is missing
 					return ResponseHelper.basicAuthAuthorizationError(res, realm, 'Authorization is required!');
 				}
@@ -325,7 +325,7 @@ class App {
 				}
 
 				let token = req.header(jwtAuthHeader) as string;
-				if (token === undefined || token === '') {
+				if (typeof token === 'undefined' || token === '') {
 					return ResponseHelper.jwtAuthAuthorizationError(res, "Missing token");
 				}
 				if (jwtHeaderValuePrefix !== '' && token.startsWith(jwtHeaderValuePrefix)) {
@@ -343,7 +343,7 @@ class App {
 				}
 
 				const jwtVerifyOptions: jwt.VerifyOptions = {
-					issuer: jwtIssuer !== '' ? jwtIssuer : undefined,
+					issuer: jwtIssuer !== '' ? jwtIssuer : void 0,
 					ignoreExpiration: false,
 				};
 
@@ -359,7 +359,7 @@ class App {
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			if (req.url.indexOf(`/${this.restEndpoint}/push`) === 0) {
 				// TODO: Later also has to add some kind of authentication token
-				if (req.query.sessionId === undefined) {
+				if (typeof req.query.sessionId === 'undefined') {
 					next(new Error('The query parameter "sessionId" is missing!'));
 					return;
 				}
@@ -440,7 +440,7 @@ class App {
 
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			if (Db.collections.Workflow === null) {
-				const error = new ResponseHelper.ResponseError('Database is not ready!', undefined, 503);
+				const error = new ResponseHelper.ResponseError('Database is not ready!', void 0, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 
@@ -460,13 +460,13 @@ class App {
 			const connectionManager = getConnectionManager();
 
 			if (connectionManager.connections.length === 0) {
-				const error = new ResponseHelper.ResponseError('No Database connection found!', undefined, 503);
+				const error = new ResponseHelper.ResponseError('No Database connection found!', void 0, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 
 			if (connectionManager.connections[0].isConnected === false) {
 				// Connection is not active
-				const error = new ResponseHelper.ResponseError('Database connection not active!', undefined, 503);
+				const error = new ResponseHelper.ResponseError('Database connection not active!', void 0, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 
@@ -524,11 +524,11 @@ class App {
 
 		// Reads and returns workflow data from an URL
 		this.app.get(`/${this.restEndpoint}/workflows/from-url`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowResponse> => {
-			if (req.query.url === undefined) {
-				throw new ResponseHelper.ResponseError(`The parameter "url" is missing!`, undefined, 400);
+			if (typeof req.query.url === 'undefined') {
+				throw new ResponseHelper.ResponseError(`The parameter "url" is missing!`, void 0, 400);
 			}
 			if (!(req.query.url as string).match(/^http[s]?:\/\/.*\.json$/i)) {
-				throw new ResponseHelper.ResponseError(`The parameter "url" is not valid! It does not seem to be a URL pointing to a n8n workflow JSON file.`, undefined, 400);
+				throw new ResponseHelper.ResponseError(`The parameter "url" is not valid! It does not seem to be a URL pointing to a n8n workflow JSON file.`, void 0, 400);
 			}
 			const data = await requestPromise.get(req.query.url as string);
 
@@ -536,14 +536,14 @@ class App {
 			try {
 				workflowData = JSON.parse(data);
 			} catch (error) {
-				throw new ResponseHelper.ResponseError(`The URL does not point to valid JSON file!`, undefined, 400);
+				throw new ResponseHelper.ResponseError(`The URL does not point to valid JSON file!`, void 0, 400);
 			}
 
 			// Do a very basic check if it is really a n8n-workflow-json
-			if (workflowData === undefined || workflowData.nodes === undefined || !Array.isArray(workflowData.nodes) ||
-				workflowData.connections === undefined || typeof workflowData.connections !== 'object' ||
+			if (typeof workflowData === 'undefined' || typeof workflowData.nodes === 'undefined' || !Array.isArray(workflowData.nodes) ||
+				typeof workflowData.connections === 'undefined' || typeof workflowData.connections !== 'object' ||
 				Array.isArray(workflowData.connections)) {
-				throw new ResponseHelper.ResponseError(`The data in the file does not seem to be a n8n workflow JSON file!`, undefined, 400);
+				throw new ResponseHelper.ResponseError(`The data in the file does not seem to be a n8n workflow JSON file!`, void 0, 400);
 			}
 
 			return workflowData;
@@ -615,8 +615,8 @@ class App {
 		this.app.get(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<WorkflowEntity | undefined> => {
 			const workflow = await Db.collections.Workflow!.findOne(req.params.id, { relations: ['tags'] });
 
-			if (workflow === undefined) {
-				return undefined;
+			if (typeof workflow === 'undefined') {
+				return;
 			}
 
 			// @ts-ignore
@@ -686,8 +686,8 @@ class App {
 			// nor the new value. So query now the hopefully updated entry.
 			const workflow = await Db.collections.Workflow!.findOne(id, { relations: ['tags'] });
 
-			if (workflow === undefined) {
-				throw new ResponseHelper.ResponseError(`Workflow with id "${id}" could not be found to be updated.`, undefined, 400);
+			if (typeof workflow === 'undefined') {
+				throw new ResponseHelper.ResponseError(`Workflow with id "${id}" could not be found to be updated.`, void 0, 400);
 			}
 
 			if (tags?.length) {
@@ -752,11 +752,11 @@ class App {
 			const sessionId = GenericHelpers.getSessionId(req);
 
 			// If webhooks nodes exist and are active we have to wait for till we receive a call
-			if (runData === undefined || startNodes === undefined || startNodes.length === 0 || destinationNode === undefined) {
+			if (typeof runData === 'undefined' || typeof startNodes === 'undefined' || startNodes.length === 0 || typeof destinationNode === 'undefined') {
 				const credentials = await WorkflowCredentials(workflowData.nodes);
 				const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
 				const nodeTypes = NodeTypes();
-				const workflowInstance = new Workflow({ id: workflowData.id, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: false, nodeTypes, staticData: undefined, settings: workflowData.settings });
+				const workflowInstance = new Workflow({ id: workflowData.id, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: false, nodeTypes, staticData: void 0, settings: workflowData.settings });
 				const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, activationMode, sessionId, destinationNode);
 				if (needsWebhook === true) {
 					return {
@@ -857,9 +857,9 @@ class App {
 		this.app.get(`/${this.restEndpoint}/node-parameter-options`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodePropertyOptions[]> => {
 			const nodeType = req.query.nodeType as string;
 			const path = req.query.path as string;
-			let credentials: INodeCredentials | undefined = undefined;
+			let credentials: INodeCredentials | undefined;
 			const currentNodeParameters = JSON.parse('' + req.query.currentNodeParameters) as INodeParameters;
-			if (req.query.credentials !== undefined) {
+			if (typeof req.query.credentials !== 'undefined') {
 				credentials = JSON.parse(req.query.credentials as string);
 			}
 			const methodName = req.query.methodName as string;
@@ -911,7 +911,7 @@ class App {
 				try {
 					return nodeTypes.getByName(name);
 				} catch (e) {
-					return undefined;
+					return;
 				}
 			}).filter(nodeData => !!nodeData).map(nodeData => nodeData!.description);
 		}));
@@ -930,12 +930,12 @@ class App {
 			const nodeTypes = NodeTypes();
 			const nodeType = nodeTypes.getByName(nodeTypeName);
 
-			if (nodeType === undefined) {
+			if (typeof nodeType === 'undefined') {
 				res.status(404).send('The nodeType is not known.');
 				return;
 			}
 
-			if (nodeType.description.icon === undefined) {
+			if (typeof nodeType.description.icon === 'undefined') {
 				res.status(404).send('No icon found for node.');
 				return;
 			}
@@ -996,7 +996,7 @@ class App {
 			const incomingData = req.body;
 
 			if (!incomingData.name || incomingData.name.length < 3) {
-				throw new ResponseHelper.ResponseError(`Credentials name must be at least 3 characters long.`, undefined, 400);
+				throw new ResponseHelper.ResponseError(`Credentials name must be at least 3 characters long.`, void 0, 400);
 			}
 
 			// Add the added date for node access permissions
@@ -1005,7 +1005,7 @@ class App {
 			}
 
 			const encryptionKey = await UserSettings.getEncryptionKey();
-			if (encryptionKey === undefined) {
+			if (typeof encryptionKey === 'undefined') {
 				throw new Error('No encryption key got found to encrypt the credentials!');
 			}
 
@@ -1022,8 +1022,8 @@ class App {
 			} as FindOneOptions;
 
 			const checkResult = await Db.collections.Credentials!.findOne(findQuery);
-			if (checkResult !== undefined) {
-				throw new ResponseHelper.ResponseError(`Credentials with the same type and name exist already.`, undefined, 400);
+			if (typeof checkResult !== 'undefined') {
+				throw new ResponseHelper.ResponseError(`Credentials with the same type and name exist already.`, void 0, 400);
 			}
 
 			// Encrypt the data
@@ -1074,19 +1074,19 @@ class App {
 			} as FindOneOptions;
 
 			const checkResult = await Db.collections.Credentials!.findOne(findQuery);
-			if (checkResult !== undefined) {
-				throw new ResponseHelper.ResponseError(`Credentials with the same type and name exist already.`, undefined, 400);
+			if (typeof checkResult !== 'undefined') {
+				throw new ResponseHelper.ResponseError(`Credentials with the same type and name exist already.`, void 0, 400);
 			}
 
 			const encryptionKey = await UserSettings.getEncryptionKey();
-			if (encryptionKey === undefined) {
+			if (typeof encryptionKey === 'undefined') {
 				throw new Error('No encryption key got found to encrypt the credentials!');
 			}
 
 			// Load the currently saved credentials to be able to persist some of the data if
 			const result = await Db.collections.Credentials!.findOne(id);
-			if (result === undefined) {
-				throw new ResponseHelper.ResponseError(`Credentials with the id "${id}" do not exist.`, undefined, 400);
+			if (typeof result === 'undefined') {
+				throw new ResponseHelper.ResponseError(`Credentials with the id "${id}" do not exist.`, void 0, 400);
 			}
 
 			const currentlySavedCredentials = new Credentials(result.name, result.type, result.nodesAccess, result.data);
@@ -1115,8 +1115,8 @@ class App {
 			// nor the new value. So query now the hopefully updated entry.
 			const responseData = await Db.collections.Credentials!.findOne(id);
 
-			if (responseData === undefined) {
-				throw new ResponseHelper.ResponseError(`Credentials with id "${id}" could not be found to be updated.`, undefined, 400);
+			if (typeof responseData === 'undefined') {
+				throw new ResponseHelper.ResponseError(`Credentials with id "${id}" could not be found to be updated.`, void 0, 400);
 			}
 
 			// Remove the encrypted data as it is not needed in the frontend
@@ -1142,14 +1142,14 @@ class App {
 
 			const result = await Db.collections.Credentials!.findOne(req.params.id);
 
-			if (result === undefined) {
+			if (typeof result === 'undefined') {
 				return result;
 			}
 
-			let encryptionKey = undefined;
+			let encryptionKey;
 			if (includeData === true) {
 				encryptionKey = await UserSettings.getEncryptionKey();
-				if (encryptionKey === undefined) {
+				if (typeof encryptionKey === 'undefined') {
 					throw new Error('No encryption key got found to decrypt the credentials!');
 				}
 
@@ -1168,7 +1168,7 @@ class App {
 			const findQuery = {} as FindManyOptions;
 			if (req.query.filter) {
 				findQuery.where = JSON.parse(req.query.filter as string);
-				if ((findQuery.where! as IDataObject).id !== undefined) {
+				if (typeof (findQuery.where! as IDataObject).id !== 'undefined') {
 					// No idea if multiple where parameters make db search
 					// slower but to be sure that that is not the case we
 					// remove all unnecessary fields in case the id is defined.
@@ -1180,12 +1180,12 @@ class App {
 
 			const results = await Db.collections.Credentials!.find(findQuery) as unknown as ICredentialsResponse[];
 
-			let encryptionKey = undefined;
+			let encryptionKey;
 
 			const includeData = ['true', true].includes(req.query.includeData as string);
 			if (includeData === true) {
 				encryptionKey = await UserSettings.getEncryptionKey();
-				if (encryptionKey === undefined) {
+				if (typeof encryptionKey === 'undefined') {
 					throw new Error('No encryption key got found to decrypt the credentials!');
 				}
 			}
@@ -1225,20 +1225,20 @@ class App {
 
 		// Authorize OAuth Data
 		this.app.get(`/${this.restEndpoint}/oauth1-credential/auth`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
-			if (req.query.id === undefined) {
+			if (typeof req.query.id === 'undefined') {
 				res.status(500).send('Required credential id is missing!');
 				return '';
 			}
 
 			const result = await Db.collections.Credentials!.findOne(req.query.id as string);
-			if (result === undefined) {
+			if (typeof result === 'undefined') {
 				res.status(404).send('The credential is not known.');
 				return '';
 			}
 
-			let encryptionKey = undefined;
+			let encryptionKey;
 			encryptionKey = await UserSettings.getEncryptionKey();
-			if (encryptionKey === undefined) {
+			if (typeof encryptionKey === 'undefined') {
 				res.status(500).send('No encryption key got found to decrypt the credentials!');
 				return '';
 			}
@@ -1316,21 +1316,21 @@ class App {
 		this.app.get(`/${this.restEndpoint}/oauth1-credential/callback`, async (req: express.Request, res: express.Response) => {
 			const { oauth_verifier, oauth_token, cid } = req.query;
 
-			if (oauth_verifier === undefined || oauth_token === undefined) {
-				const errorResponse = new ResponseHelper.ResponseError('Insufficient parameters for OAuth1 callback. Received following query parameters: ' + JSON.stringify(req.query), undefined, 503);
+			if (typeof oauth_verifier === 'undefined' || typeof oauth_token === 'undefined') {
+				const errorResponse = new ResponseHelper.ResponseError('Insufficient parameters for OAuth1 callback. Received following query parameters: ' + JSON.stringify(req.query), void 0, 503);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			const result = await Db.collections.Credentials!.findOne(cid as any); // tslint:disable-line:no-any
-			if (result === undefined) {
-				const errorResponse = new ResponseHelper.ResponseError('The credential is not known.', undefined, 404);
+			if (typeof result === 'undefined') {
+				const errorResponse = new ResponseHelper.ResponseError('The credential is not known.', void 0, 404);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
-			let encryptionKey = undefined;
+			let encryptionKey;
 			encryptionKey = await UserSettings.getEncryptionKey();
-			if (encryptionKey === undefined) {
-				const errorResponse = new ResponseHelper.ResponseError('No encryption key got found to decrypt the credentials!', undefined, 503);
+			if (typeof encryptionKey === 'undefined') {
+				const errorResponse = new ResponseHelper.ResponseError('No encryption key got found to decrypt the credentials!', void 0, 503);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
@@ -1359,7 +1359,7 @@ class App {
 			try {
 				oauthToken = await requestPromise(options);
 			} catch (error) {
-				const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', undefined, 404);
+				const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', void 0, 404);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
@@ -1388,20 +1388,20 @@ class App {
 
 		// Authorize OAuth Data
 		this.app.get(`/${this.restEndpoint}/oauth2-credential/auth`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
-			if (req.query.id === undefined) {
+			if (typeof req.query.id === 'undefined') {
 				res.status(500).send('Required credential id is missing.');
 				return '';
 			}
 
 			const result = await Db.collections.Credentials!.findOne(req.query.id as string);
-			if (result === undefined) {
+			if (typeof result === 'undefined') {
 				res.status(404).send('The credential is not known.');
 				return '';
 			}
 
-			let encryptionKey = undefined;
+			let encryptionKey;
 			encryptionKey = await UserSettings.getEncryptionKey();
-			if (encryptionKey === undefined) {
+			if (typeof encryptionKey === 'undefined') {
 				res.status(500).send('No encryption key got found to decrypt the credentials!');
 				return '';
 			}
@@ -1480,8 +1480,8 @@ class App {
 			// realmId it's currently just use for the quickbook OAuth2 flow
 			const { code, state: stateEncoded } = req.query;
 
-			if (code === undefined || stateEncoded === undefined) {
-				const errorResponse = new ResponseHelper.ResponseError('Insufficient parameters for OAuth2 callback. Received following query parameters: ' + JSON.stringify(req.query), undefined, 503);
+			if (typeof code === 'undefined' || typeof stateEncoded === 'undefined') {
+				const errorResponse = new ResponseHelper.ResponseError('Insufficient parameters for OAuth2 callback. Received following query parameters: ' + JSON.stringify(req.query), void 0, 503);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
@@ -1489,20 +1489,20 @@ class App {
 			try {
 				state = JSON.parse(Buffer.from(stateEncoded as string, 'base64').toString());
 			} catch (error) {
-				const errorResponse = new ResponseHelper.ResponseError('Invalid state format returned', undefined, 503);
+				const errorResponse = new ResponseHelper.ResponseError('Invalid state format returned', void 0, 503);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			const result = await Db.collections.Credentials!.findOne(state.cid);
-			if (result === undefined) {
-				const errorResponse = new ResponseHelper.ResponseError('The credential is not known.', undefined, 404);
+			if (typeof result === 'undefined') {
+				const errorResponse = new ResponseHelper.ResponseError('The credential is not known.', void 0, 404);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
-			let encryptionKey = undefined;
+			let encryptionKey;
 			encryptionKey = await UserSettings.getEncryptionKey();
-			if (encryptionKey === undefined) {
-				const errorResponse = new ResponseHelper.ResponseError('No encryption key got found to decrypt the credentials!', undefined, 503);
+			if (typeof encryptionKey === 'undefined') {
+				const errorResponse = new ResponseHelper.ResponseError('No encryption key got found to decrypt the credentials!', void 0, 503);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
@@ -1518,8 +1518,8 @@ class App {
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const token = new csrf();
-			if (decryptedDataOriginal.csrfSecret === undefined || !token.verify(decryptedDataOriginal.csrfSecret as string, state.token)) {
-				const errorResponse = new ResponseHelper.ResponseError('The OAuth2 callback state is invalid!', undefined, 404);
+			if (typeof decryptedDataOriginal.csrfSecret === 'undefined' || !token.verify(decryptedDataOriginal.csrfSecret as string, state.token)) {
+				const errorResponse = new ResponseHelper.ResponseError('The OAuth2 callback state is invalid!', void 0, 404);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
@@ -1556,8 +1556,8 @@ class App {
 				_.set(oauthToken.data, 'callbackQueryString', _.omit(req.query, 'state', 'code'));
 			}
 
-			if (oauthToken === undefined) {
-				const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', undefined, 404);
+			if (typeof oauthToken === 'undefined') {
+				const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', void 0, 404);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
@@ -1657,8 +1657,8 @@ class App {
 					id: result.id!.toString(),
 					finished: result.finished,
 					mode: result.mode,
-					retryOf: result.retryOf ? result.retryOf.toString() : undefined,
-					retrySuccessId: result.retrySuccessId ? result.retrySuccessId.toString() : undefined,
+					retryOf: result.retryOf ? result.retryOf.toString() : void 0,
+					retrySuccessId: result.retrySuccessId ? result.retrySuccessId.toString() : void 0,
 					startedAt: result.startedAt,
 					stoppedAt: result.stoppedAt,
 					workflowId: result.workflowData!.id ? result.workflowData!.id!.toString() : '',
@@ -1677,8 +1677,8 @@ class App {
 		this.app.get(`/${this.restEndpoint}/executions/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> => {
 			const result = await Db.collections.Execution!.findOne(req.params.id);
 
-			if (result === undefined) {
-				return undefined;
+			if (typeof result === 'undefined') {
+				return;
 			}
 
 			if (req.query.unflattedResponse === 'true') {
@@ -1697,7 +1697,7 @@ class App {
 			// Get the data to execute
 			const fullExecutionDataFlatted = await Db.collections.Execution!.findOne(req.params.id);
 
-			if (fullExecutionDataFlatted === undefined) {
+			if (typeof fullExecutionDataFlatted === 'undefined') {
 				throw new ResponseHelper.ResponseError(`The execution with the id "${req.params.id}" does not exist.`, 404, 404);
 			}
 
@@ -1728,7 +1728,7 @@ class App {
 				// Remove the old error and the data of the last run of the node that it can be replaced
 				delete data!.executionData!.resultData.error;
 				const length = data!.executionData!.resultData.runData[lastNodeExecuted].length;
-				if (length > 0 && data!.executionData!.resultData.runData[lastNodeExecuted][length - 1].error !== undefined) {
+				if (length > 0 && typeof data!.executionData!.resultData.runData[lastNodeExecuted][length - 1].error !== 'undefined') {
 					// Remove results only if it is an error.
 					// If we are retrying due to a crash, the information is simply success info from last node
 					data!.executionData!.resultData.runData[lastNodeExecuted].pop();
@@ -1742,13 +1742,13 @@ class App {
 				const workflowId = fullExecutionData.workflowData.id;
 				const workflowData = await Db.collections.Workflow!.findOne(workflowId) as IWorkflowBase;
 
-				if (workflowData === undefined) {
+				if (typeof workflowData === 'undefined') {
 					throw new Error(`The workflow with the ID "${workflowId}" could not be found and so the data not be loaded for the retry.`);
 				}
 
 				data.workflowData = workflowData;
 				const nodeTypes = NodeTypes();
-				const workflowInstance = new Workflow({ id: workflowData.id as string, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: false, nodeTypes, staticData: undefined, settings: workflowData.settings });
+				const workflowInstance = new Workflow({ id: workflowData.id as string, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: false, nodeTypes, staticData: void 0, settings: workflowData.settings });
 
 				// Replace all of the nodes in the execution stack with the ones of the new workflow
 				for (const stack of data!.executionData!.executionData!.nodeExecutionStack) {
@@ -1768,7 +1768,7 @@ class App {
 
 			const executionData = await this.activeExecutionsInstance.getPostExecutePromise(executionId);
 
-			if (executionData === undefined) {
+			if (typeof executionData === 'undefined') {
 				throw new Error('The retry did not start for an unknown reason.');
 			}
 
@@ -1782,16 +1782,16 @@ class App {
 		this.app.post(`/${this.restEndpoint}/executions/delete`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<void> => {
 			const deleteData = req.body as IExecutionDeleteFilter;
 
-			if (deleteData.deleteBefore !== undefined) {
+			if (typeof deleteData.deleteBefore !== 'undefined') {
 				const filters = {
 					startedAt: LessThanOrEqual(deleteData.deleteBefore),
 				};
-				if (deleteData.filters !== undefined) {
+				if (typeof deleteData.filters !== 'undefined') {
 					Object.assign(filters, deleteData.filters);
 				}
 
 				await Db.collections.Execution!.delete(filters);
-			} else if (deleteData.ids !== undefined) {
+			} else if (typeof deleteData.ids !== 'undefined') {
 				// Deletes all executions with the given ids
 				await Db.collections.Execution!.delete(deleteData.ids);
 			} else {
@@ -1835,7 +1835,7 @@ class App {
 
 				if (req.query.filter) {
 					const filter = JSON.parse(req.query.filter as string);
-					if (filter.workflowId !== undefined) {
+					if (typeof filter.workflowId !== 'undefined') {
 						resultsQuery.andWhere('execution.workflowId = :workflowId', {workflowId: filter.workflowId});
 					}
 				}
@@ -1847,7 +1847,7 @@ class App {
 						id: result.id,
 						workflowId: result.workflowId,
 						mode: result.mode,
-						retryOf: result.retryOf !== null ? result.retryOf : undefined,
+						retryOf: result.retryOf !== null ? result.retryOf : void 0,
 						startedAt: new Date(result.startedAt),
 					} as IExecutionsSummary;
 				});
@@ -1862,13 +1862,13 @@ class App {
 				}
 
 				for (const data of executingWorkflows) {
-					if (filter.workflowId !== undefined && filter.workflowId !== data.workflowId) {
+					if (typeof filter.workflowId !== 'undefined' && filter.workflowId !== data.workflowId) {
 						continue;
 					}
 					returnData.push(
 						{
 							id: data.id.toString(),
-							workflowId: data.workflowId === undefined ? '' : data.workflowId.toString(),
+							workflowId: typeof data.workflowId === 'undefined' ? '' : data.workflowId.toString(),
 							mode: data.mode,
 							retryOf: data.retryOf,
 							startedAt: new Date(data.startedAt),
@@ -1887,11 +1887,11 @@ class App {
 				// Manual executions should still be stoppable, so
 				// try notifying the `activeExecutions` to stop it.
 				const result = await this.activeExecutionsInstance.stopExecution(req.params.id);
-				if (result !== undefined) {
+				if (typeof result !== 'undefined') {
 					const returnData: IExecutionsStopData = {
 						mode: result.mode,
 						startedAt: new Date(result.startedAt),
-						stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
+						stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : void 0,
 						finished: result.finished,
 					};
 
@@ -1914,7 +1914,7 @@ class App {
 				const returnData: IExecutionsStopData = {
 					mode: fullExecutionData.mode,
 					startedAt: new Date(fullExecutionData.startedAt),
-					stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : undefined,
+					stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : void 0,
 					finished: fullExecutionData.finished,
 				};
 
@@ -1926,14 +1926,14 @@ class App {
 				// Stopt he execution and wait till it is done and we got the data
 				const result = await this.activeExecutionsInstance.stopExecution(executionId);
 
-				if (result === undefined) {
+				if (typeof result === 'undefined') {
 					throw new Error(`The execution id "${executionId}" could not be found.`);
 				}
 
 				const returnData: IExecutionsStopData = {
 					mode: result.mode,
 					startedAt: new Date(result.startedAt),
-					stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
+					stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : void 0,
 					finished: result.finished,
 				};
 
