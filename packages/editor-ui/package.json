@@ -40,6 +40,7 @@
     "@types/lodash.set": "^4.3.6",
     "@types/node": "^14.14.40",
     "@types/quill": "^2.0.1",
+    "@types/uuid": "^8.3.0",
     "@typescript-eslint/eslint-plugin": "^2.13.0",
     "@typescript-eslint/parser": "^2.13.0",
     "@vue/cli-plugin-babel": "^4.1.2",
