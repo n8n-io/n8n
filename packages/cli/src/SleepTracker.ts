@@ -75,15 +75,15 @@ export class SleepTracker {
 		// Add timers for each waiting execution that they get started at the correct time
 		for (const execution of executions) {
 			const executionId = execution.id.toString();
-
-			const triggerTime = execution.sleepTill!.getTime() - new Date().getTime();
-
-			this.sleepingExecutions[executionId] = {
-				executionId,
-				timer: setTimeout(() => {
-					this.startExecution(executionId);
-				}, triggerTime),
-			};
+			if (this.sleepingExecutions[executionId] === undefined) {
+				const triggerTime = execution.sleepTill!.getTime() - new Date().getTime();
+				this.sleepingExecutions[executionId] = {
+					executionId,
+					timer: setTimeout(() => {
+						this.startExecution(executionId);
+					}, triggerTime),
+				};
+			}
 		}
 	}
 
