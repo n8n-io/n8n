@@ -63,6 +63,7 @@ export class SleepTracker {
 			where: {
 				// This is needed because of issue in TypeORM <> SQLite:
 				// https://github.com/typeorm/typeorm/issues/2286
+				// TODO: Check if this causes problems with other databases
 				sleepTill: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(Date.now() + 70000))),
 			},
 			order: {
