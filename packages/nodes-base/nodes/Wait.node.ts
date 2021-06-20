@@ -10,11 +10,17 @@ import {
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as basicAuth from 'basic-auth';
 
 import { Response } from 'express';
+
+import * as fs from 'fs';
+
+import * as formidable from 'formidable';
+
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
@@ -354,52 +360,52 @@ export class Wait implements INodeType {
 				placeholder: 'Add Option',
 				default: {},
 				options: [
-					// {
-					// 	displayName: 'Binary Data',
-					// 	name: 'binaryData',
-					// 	type: 'boolean',
-					// 	displayOptions: {
-					// 		show: {
-					// 			'/httpMethod': [
-					// 				'POST',
-					// 			],
-					// 		},
-					// 	},
-					// 	default: false,
-					// 	description: 'Set to true if webhook will receive binary data.',
-					// },
-					// {
-					// 	displayName: 'Binary Property',
-					// 	name: 'binaryPropertyName',
-					// 	type: 'string',
-					// 	default: 'data',
-					// 	required: true,
-					// 	displayOptions: {
-					// 		show: {
-					// 			binaryData: [
-					// 				true,
-					// 			],
-					// 		},
-					// 	},
-					// 	description: `Name of the binary property to which to write the data of<br />
-					// 				the received file. If the data gets received via "Form-Data Multipart"<br />
-					// 				it will be the prefix and a number starting with 0 will be attached to it.`,
-					// },
-					// {
-					// 	displayName: 'Response Data',
-					// 	name: 'responseData',
-					// 	type: 'string',
-					// 	displayOptions: {
-					// 		show: {
-					// 			'/responseMode': [
-					// 				'onReceived',
-					// 			],
-					// 		},
-					// 	},
-					// 	default: '',
-					// 	placeholder: 'success',
-					// 	description: 'Custom response data to send.',
-					// },
+					{
+						displayName: 'Binary Data',
+						name: 'binaryData',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/httpMethod': [
+									'POST',
+								],
+							},
+						},
+						default: false,
+						description: 'Set to true if webhook will receive binary data.',
+					},
+					{
+						displayName: 'Binary Property',
+						name: 'binaryPropertyName',
+						type: 'string',
+						default: 'data',
+						required: true,
+						displayOptions: {
+							show: {
+								binaryData: [
+									true,
+								],
+							},
+						},
+						description: `Name of the binary property to which to write the data of<br />
+									the received file. If the data gets received via "Form-Data Multipart"<br />
+									it will be the prefix and a number starting with 0 will be attached to it.`,
+					},
+					{
+						displayName: 'Response Data',
+						name: 'responseData',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/responseMode': [
+									'onReceived',
+								],
+							},
+						},
+						default: '',
+						placeholder: 'success',
+						description: 'Custom response data to send.',
+					},
 					{
 						displayName: 'Response Content-Type',
 						name: 'responseContentType',
@@ -489,7 +495,9 @@ export class Wait implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		// INFO: Currently (20.06.2021) 100% identical with Webook-Node
 		const authentication = this.getNodeParameter('authentication') as string;
+		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const req = this.getRequestObject();
 		const resp = this.getResponseObject();
 		const headers = this.getHeaderData();
@@ -532,10 +540,87 @@ export class Wait implements INodeType {
 			}
 		}
 
-		// let webhookResponse: string | undefined;
-		// if (options.responseData) {
-		// 	webhookResponse = options.responseData as string;
-		// }
+		// @ts-ignore
+		const mimeType = headers['content-type'] || 'application/json';
+		if (mimeType.includes('multipart/form-data')) {
+			const form = new formidable.IncomingForm({});
+
+			return new Promise((resolve, reject) => {
+
+				form.parse(req, async (err, data, files) => {
+					const returnItem: INodeExecutionData = {
+						binary: {},
+						json: {
+							headers,
+							params: this.getParamsData(),
+							query: this.getQueryData(),
+							body: data,
+						},
+					};
+
+					let count = 0;
+					for (const file of Object.keys(files)) {
+
+						let binaryPropertyName = file;
+						if (options.binaryPropertyName) {
+							binaryPropertyName = `${options.binaryPropertyName}${count}`;
+						}
+
+						const fileJson = (files[file] as formidable.File).toJSON() as unknown as IDataObject;
+						const fileContent = await fs.promises.readFile((files[file] as formidable.File).path);
+
+						returnItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(Buffer.from(fileContent), fileJson.name as string, fileJson.type as string);
+
+						count += 1;
+					}
+					resolve({
+						workflowData: [
+							[
+								returnItem,
+							],
+						],
+					});
+				});
+
+			});
+		}
+
+		if (options.binaryData === true) {
+			return new Promise((resolve, reject) => {
+				const binaryPropertyName = options.binaryPropertyName || 'data';
+				const data: Buffer[] = [];
+
+				req.on('data', (chunk) => {
+					data.push(chunk);
+				});
+
+				req.on('end', async () => {
+					const returnItem: INodeExecutionData = {
+						binary: {},
+						json: {
+							headers,
+							params: this.getParamsData(),
+							query: this.getQueryData(),
+							body: this.getBodyData(),
+						},
+					};
+
+					returnItem.binary![binaryPropertyName as string] = await this.helpers.prepareBinaryData(Buffer.concat(data));
+
+					return resolve({
+						workflowData: [
+							[
+								returnItem,
+							],
+						],
+					});
+				});
+
+				req.on('error', (error) => {
+					throw new NodeOperationError(this.getNode(), error);
+				});
+			});
+		}
 
 		const response: INodeExecutionData = {
 			json: {
@@ -546,8 +631,23 @@ export class Wait implements INodeType {
 			},
 		};
 
+		if (options.rawBody) {
+			response.binary = {
+				data: {
+					// @ts-ignore
+					data: req.rawBody.toString(BINARY_ENCODING),
+					mimeType,
+				},
+			};
+		}
+
+		let webhookResponse: string | undefined;
+		if (options.responseData) {
+			webhookResponse = options.responseData as string;
+		}
+
 		return {
-			// webhookResponse,
+			webhookResponse,
 			workflowData: [
 				[
 					response,

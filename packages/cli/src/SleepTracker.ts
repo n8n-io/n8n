@@ -41,7 +41,6 @@ export class SleepTracker {
 		// TODO: Display correct URL in wait-node (will probably be only placeholder one as execution-ID will be unknown)
 		// TODO: Think about security. Is it OK that people can restart an execution by knowing (or guessing) the execution-ID?
 		// TODO: Think about how to best mark an execution waiting for a webhook in DB (currently also uses time)
-		// TODO: Implement the missing webhook functionality (for example receive binary data)
 		// TODO: Display sleeping URL information on wait-node so that people know how to retrieve it
 		// TODO: Allow to set time to continue (absolute & relative) in webhook-mode so that it goes on if no webhook is received (separate output?)
 
