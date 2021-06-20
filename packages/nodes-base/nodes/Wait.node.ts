@@ -124,17 +124,17 @@ export class Wait implements INodeType {
 					{
 						name: 'DateTime',
 						value: 'dateTime',
-						description: 'Waits until the set date time to continue.',
+						description: 'Waits until the set date time to continue',
 					},
 					{
 						name: 'Time',
 						value: 'time',
-						description: 'Waits for a certain amount of time.',
+						description: 'Waits for a certain amount of time',
 					},
 					{
 						name: 'Webhook',
 						value: 'webhook',
-						description: 'Waits for a webhook call.',
+						description: 'Waits for a webhook call',
 					},
 				],
 				default: 'time',
