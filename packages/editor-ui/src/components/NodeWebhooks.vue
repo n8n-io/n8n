@@ -6,7 +6,7 @@
 		</div>
 		<el-collapse-transition>
 			<div class="node-webhooks" v-if="!isMinimized">
-				<div class="url-selection">
+				<div class="url-selection" v-if="!constainsOnlyRestartWebhooks">
 					<el-row>
 						<el-col :span="10" class="mode-selection-headline">
 							Display URL for:
@@ -29,7 +29,7 @@
 							</div>
 							<div class="url-field">
 								<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
-									{{getWebhookUrl(webhook, 'path')}}<br />
+									{{getWebhookUrlDisplay(webhook)}}<br />
 								</div>
 							</div>
 					</div>
@@ -41,12 +41,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import {
 	IWebhookDescription,
 	NodeHelpers,
-	Workflow,
 } from 'n8n-workflow';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
@@ -73,6 +70,9 @@ export default mixins(
 			};
 		},
 		computed: {
+			constainsOnlyRestartWebhooks (): boolean {
+				return this.webhooksNode.filter(webhookData => webhookData.restartWebhook === true).length === this.webhooksNode.length;
+			},
 			webhooksNode (): IWebhookDescription[] {
 				if (this.nodeType === null || this.nodeType.webhooks === undefined) {
 					return [];
@@ -103,6 +103,9 @@ export default mixins(
 				}
 			},
 			getWebhookUrl (webhookData: IWebhookDescription): string {
+				if (webhookData.restartWebhook === true) {
+					return '$restartWebhookUrl';
+				}
 				let baseUrl = this.$store.getters.getWebhookUrl;
 				if (this.showUrlFor === 'Test') {
 					baseUrl = this.$store.getters.getWebhookTestUrl;
@@ -113,6 +116,13 @@ export default mixins(
 				const isFullPath = this.getValue(webhookData, 'isFullPath') as unknown as boolean || false;
 
 				return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, this.node, path, isFullPath);
+			},
+			getWebhookUrlDisplay (webhookData: IWebhookDescription): string {
+				if (webhookData.restartWebhook === true) {
+					return `Reference at runtime via "${this.getWebhookUrl(webhookData)}"`;
+				}
+
+				return this.getWebhookUrl(webhookData);
 			},
 		},
 		watch: {
