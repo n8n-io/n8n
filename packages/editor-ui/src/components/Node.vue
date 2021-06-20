@@ -300,7 +300,7 @@ export default mixins(nodeBase, nodeHelpers, workflowHelpers).extend({
 			position: absolute;
 			top: -18px;
 			right: 12px;
-			z-index: 10;
+			z-index: 11;
 
 			&.data-count {
 				font-weight: 600;
