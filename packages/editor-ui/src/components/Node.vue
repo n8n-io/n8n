@@ -144,7 +144,8 @@ export default mixins(nodeBase, nodeHelpers, workflowHelpers).extend({
 			if (workflowExecution && workflowExecution.sleepTill) {
 				const lastNodeExecuted = get(workflowExecution, 'data.resultData.lastNodeExecuted');
 				if (this.name === lastNodeExecuted) {
-					return `Node is sleeping till ${new Date(workflowExecution.sleepTill).toLocaleTimeString()}`;
+					const sleepDate = new Date(workflowExecution.sleepTill);
+					return `Node is sleeping till ${sleepDate.toLocaleDateString()} ${sleepDate.toLocaleTimeString()}`;
 				}
 			}
 

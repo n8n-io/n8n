@@ -615,7 +615,8 @@ export default mixins(
 		},
 		statusTooltipText (entry: IExecutionsSummary): string {
 			if (entry.sleepTill) {
-				return `The worklow is sleeping till ${new Date(entry.sleepTill).toLocaleTimeString()}.`;
+				const sleepDate = new Date(entry.sleepTill);
+				return `The worklow is sleeping till ${sleepDate.toLocaleDateString()} ${sleepDate.toLocaleTimeString()}.`;
 			} else if (entry.stoppedAt === undefined) {
 				return 'The worklow is currently executing.';
 			} else if (entry.finished === true && entry.retryOf !== undefined) {
