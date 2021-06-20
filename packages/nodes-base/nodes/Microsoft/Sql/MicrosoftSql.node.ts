@@ -229,6 +229,7 @@ export class MicrosoftSql implements INodeType {
 			connectTimeout: credentials.connectTimeout as number,
 			options: {
 				encrypt: credentials.tls as boolean,
+				enableArithAbort: false,
 			},
 		};
 
