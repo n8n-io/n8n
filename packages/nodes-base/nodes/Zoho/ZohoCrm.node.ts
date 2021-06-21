@@ -314,6 +314,7 @@ export class ZohoCrm implements INodeType {
 					// **********************************************************************
 
 					// https://www.zoho.com/crm/developer/docs/api/v2/accounts-response.html
+					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Accounts
 
 					if (operation === 'create') {
 
@@ -420,6 +421,7 @@ export class ZohoCrm implements INodeType {
 					// **********************************************************************
 
 					// https://www.zoho.com/crm/developer/docs/api/v2/contacts-response.html
+					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Contacts
 
 					if (operation === 'create') {
 
@@ -526,6 +528,7 @@ export class ZohoCrm implements INodeType {
 					// **********************************************************************
 
 					// https://www.zoho.com/crm/developer/docs/api/v2/deals-response.html
+					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Deals
 
 					if (operation === 'create') {
 
@@ -631,6 +634,7 @@ export class ZohoCrm implements INodeType {
 					// **********************************************************************
 
 					// https://www.zoho.com/crm/developer/docs/api/v2/invoices-response.html
+					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Invoices
 
 					if (operation === 'create') {
 
@@ -743,6 +747,7 @@ export class ZohoCrm implements INodeType {
 					// **********************************************************************
 
 					// https://www.zoho.com/crm/developer/docs/api/v2/leads-response.html
+					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Leads
 
 					if (operation === 'create') {
 
@@ -847,6 +852,7 @@ export class ZohoCrm implements INodeType {
 					// **********************************************************************
 
 					// https://www.zoho.com/crm/developer/docs/api/v2/products-response.html
+					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Products
 
 					if (operation === 'create') {
 
@@ -953,6 +959,7 @@ export class ZohoCrm implements INodeType {
 					// **********************************************************************
 
 					// https://www.zoho.com/crm/developer/docs/api/v2/purchase-orders-response.html
+					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Purchase_Order
 
 					if (operation === 'create') {
 
@@ -1067,6 +1074,7 @@ export class ZohoCrm implements INodeType {
 					// **********************************************************************
 
 					// https://www.zoho.com/crm/developer/docs/api/v2/quotes-response.html
+					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Quotes
 
 					if (operation === 'create') {
 
@@ -1176,6 +1184,7 @@ export class ZohoCrm implements INodeType {
 					// **********************************************************************
 
 					// https://www.zoho.com/crm/developer/docs/api/v2/sales-orders-response.html
+					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Sales_Orders
 
 					if (operation === 'create') {
 
@@ -1290,6 +1299,7 @@ export class ZohoCrm implements INodeType {
 					// **********************************************************************
 
 					// https://www.zoho.com/crm/developer/docs/api/v2/vendors-response.html
+					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Vendors
 
 					if (operation === 'create') {
 
