@@ -3,7 +3,6 @@ import {
 } from 'n8n-workflow';
 
 import {
-	makeSimpleField,
 	petitionAdditionalFieldsOptions,
 } from './SharedFields';
 
@@ -82,7 +81,6 @@ export const petitionFields = [
 			},
 		},
 	},
-	makeSimpleField('petition', 'create'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -123,8 +121,6 @@ export const petitionFields = [
 			},
 		},
 	},
-	makeSimpleField('petition', 'get'),
-
 	// ----------------------------------------
 	//             petition: getAll
 	// ----------------------------------------
@@ -168,8 +164,6 @@ export const petitionFields = [
 			},
 		},
 	},
-	makeSimpleField('petition', 'getAll'),
-
 	// ----------------------------------------
 	//             petition: update
 	// ----------------------------------------
@@ -191,7 +185,6 @@ export const petitionFields = [
 			},
 		},
 	},
-	makeSimpleField('petition', 'update'),
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',

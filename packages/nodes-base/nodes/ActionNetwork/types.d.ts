@@ -16,6 +16,11 @@ export type PersonResponse = {
 	phone_numbers: PhoneNumberField[];
 	postal_addresses: PostalAddressField[];
 	languages_spoken: LanguageCodes[];
+	_links: {
+		self: {
+			href: string,
+		}
+	}
 };
 
 // ----------------------------------------

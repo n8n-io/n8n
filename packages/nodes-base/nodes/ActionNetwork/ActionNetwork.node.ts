@@ -433,9 +433,10 @@ export class ActionNetwork implements INodeType {
 
 					const petitionId = this.getNodeParameter('petitionId', i);
 					const signatureId = this.getNodeParameter('signatureId', i);
-
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const endpoint = `/petitions/${petitionId}/signatures/${signatureId}`;
-					response = await actionNetworkApiRequest.call(this, 'PUT', endpoint);
+					const body = updateFields;
+					response = await actionNetworkApiRequest.call(this, 'PUT', endpoint, body);
 
 				}
 
@@ -485,9 +486,8 @@ export class ActionNetwork implements INodeType {
 				//                                personTag
 				// **********************************************************************
 
+				if (operation === 'add') {
 				// https://actionnetwork.org/docs/v2/taggings
-
-				if (operation === 'create') {
 
 					// ----------------------------------------
 					//             personTag: add
@@ -501,7 +501,7 @@ export class ActionNetwork implements INodeType {
 					const endpoint = `/tags/${tagId}/taggings`;
 					response = await actionNetworkApiRequest.call(this, 'POST', endpoint, body);
 
-				} else if (operation === 'delete') {
+				} else if (operation === 'remove') {
 
 					// ----------------------------------------
 					//             personTag: remove

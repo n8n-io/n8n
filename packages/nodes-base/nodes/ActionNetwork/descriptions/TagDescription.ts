@@ -1,7 +1,10 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
-import { makeSimpleField } from './SharedFields';
+
+import { 
+	makeSimpleField,
+} from './SharedFields';
 
 export const tagOperations = [
 	{
@@ -65,11 +68,8 @@ export const tagFields = [
 		displayName: 'Tag ID',
 		name: 'tagId',
 		description: 'ID of the tag to retrieve.',
-		typeOptions: {
-			loadOptionsMethod: 'getTags',
-		},
-		type: 'options',
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {

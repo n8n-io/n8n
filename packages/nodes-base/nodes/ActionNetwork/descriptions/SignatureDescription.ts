@@ -1,7 +1,10 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
-import { makeSimpleField } from './SharedFields';
+
+import { 
+	makeSimpleField,
+} from './SharedFields';
 
 export const signatureOperations = [
 	{
@@ -43,9 +46,9 @@ export const signatureFields = [
 	//            signature: create
 	// ----------------------------------------
 	{
-		displayName: 'Person ID',
-		name: 'personId',
-		description: 'ID of the person whose signature to create.',
+		displayName: 'Petition ID',
+		name: 'petitionId',
+		description: 'ID of the petition to sign.',
 		type: 'string',
 		default: '',
 		required: true,
@@ -61,9 +64,9 @@ export const signatureFields = [
 		},
 	},
 	{
-		displayName: 'Petition ID',
-		name: 'petitionId',
-		description: 'ID of the petition to sign.',
+		displayName: 'Person ID',
+		name: 'personId',
+		description: 'ID of the person whose signature to create.',
 		type: 'string',
 		default: '',
 		required: true,

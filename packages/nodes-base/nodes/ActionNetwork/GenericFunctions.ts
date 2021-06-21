@@ -61,7 +61,7 @@ export async function actionNetworkApiRequest(
 		if (!Object.keys(qs).length) {
 			delete options.qs;
 		}
-
+		console.log(options);
 		return await this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -125,10 +125,9 @@ const toItemsKey = (endpoint: string) => {
 	return `osdi:${endpoint.replace(/\//g, '')}`;
 };
 
-export const extractId = (identifiers: string[]) =>
-	identifiers
-		.filter(identifier => identifier.startsWith('action_network'))[0]
-		.replace(/action_network:/g, '');
+export const extractId = (data: { _links: { self: { href: string } } }) => {
+	return data?._links?.self?.href?.split('/')?.pop();
+};
 
 export const makeOsdiLink = (personId: string) => {
 	return {
@@ -255,28 +254,12 @@ async function loadResource(this: ILoadOptionsFunctions, resource: string) {
 }
 
 export const resourceLoaders = {
-	async getAttendances(this: ILoadOptionsFunctions) {
-		const eventId = this.getNodeParameter('eventId', 0);
-		const endpoint = `/events/${eventId}/attendances`;
-
-		// two-resource endpoint, so direct call
-		const attendances = await handleListing.call(
-			this, 'GET', endpoint, {}, {}, { returnAll: true },
-		) as ResourceIds[];
-
-		return attendances.map((signature) => {
-			return {
-				name: extractId(signature.identifiers),
-				value: extractId(signature.identifiers),
-			};
-		});
-	},
 
 	async getTags(this: ILoadOptionsFunctions) {
-		const tags = await loadResource.call(this, 'tags') as LoadedTag[];
+		const tags = await loadResource.call(this, 'tags') as [{ name: string, _links: { self: { href: string } } }];
 
-		return tags.map(({ name, identifiers }) => {
-			return { name, value: extractId(identifiers) };
+		return tags.map((data) => {
+			return { name: data.name, value: extractId(data) as string };
 		});
 	},
 
@@ -314,10 +297,12 @@ export const simplifyResponse = (response: any) => (isPerson = false) => {
 	const fieldsToSimplify = [
 		'identifiers',
 		'_links',
+		'action_network:sponsor',
+		'reminders',
 	];
 
 	return {
-		id: extractId(response.identifiers),
+		id: extractId(response),
 		...omit(response, fieldsToSimplify),
 	};
 };
@@ -338,11 +323,11 @@ export const simplifyPersonResponse = (response: PersonResponse) => {
 	];
 
 	return {
-		id: extractId(response.identifiers),
+		id: extractId(response),
 		...omit(response, fieldsToSimplify),
-		...emailAddress.length && { email_address: emailAddress[0].address },
-		...phoneNumber.length && { phone_number: phoneNumber[0].number },
-		...postalAddress.length && { postal_address: {
+		...{ email_address: emailAddress[0].address },
+		...{ phone_number: phoneNumber[0].number },
+		...{ postal_address: {
 				...postalAddress && omit(postalAddress[0], 'address_lines'),
 				address_lines: postalAddress[0].address_lines ?? '',
 			},

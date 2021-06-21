@@ -1,7 +1,10 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
-import { makeSimpleField } from './SharedFields';
+
+import { 
+	makeSimpleField,
+} from './SharedFields';
 
 export const attendanceOperations = [
 	{
@@ -27,10 +30,6 @@ export const attendanceOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-			},
-			{
-				name: 'Update',
-				value: 'update',
 			},
 		],
 		default: 'create',
@@ -105,14 +104,8 @@ export const attendanceFields = [
 		displayName: 'Attendance ID',
 		name: 'attendanceId',
 		description: 'ID of the attendance to retrieve.',
-		typeOptions: {
-			loadOptionsDependsOn: [
-				'eventId',
-			],
-			loadOptionsMethod: 'getAttendances',
-		},
-		type: 'options',
-		default: [],
+		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -189,51 +182,4 @@ export const attendanceFields = [
 		},
 	},
 	makeSimpleField('attendance', 'getAll'),
-
-	// ----------------------------------------
-	//            attendance: update
-	// ----------------------------------------
-	{
-		displayName: 'Event ID',
-		name: 'eventId',
-		description: 'ID of the event whose attendance to update.',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'attendance',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Attendance ID',
-		name: 'attendanceId',
-		description: 'ID of the attendance to update.',
-		typeOptions: {
-			loadOptionsDependsOn: [
-				'eventId',
-			],
-			loadOptionsMethod: 'getAttendances',
-		},
-		type: 'options',
-		default: [],
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'attendance',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-	},
-	makeSimpleField('attendance', 'update'),
 ] as INodeProperties[];
