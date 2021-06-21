@@ -9,8 +9,9 @@ vscode:
 tasks:  
   - name: config, build, dev
     before: |
-      export VUE_APP_URL_BASE_API=${GITPOD_WORKSPACE_URL//:\/\//:\/\/5678-}/ 
-      export EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=true
+      export VUE_APP_URL_BASE_API=${GITPOD_WORKSPACE_URL//:\/\//:\/\/5678-}/ && 
+      export EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=true  && 
+      export NODE_FUNCTION_ALLOW_BUILTIN=*
     init: |
       npm install -g lerna  && 
       lerna bootstrap --hoist &&    
