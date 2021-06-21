@@ -6,9 +6,9 @@ vscode:
 
 tasks:
   - init: npm install -g lerna  && lerna bootstrap --hoist 
-    command: export VUE_APP_URL_BASE_API=$GITPOD_WORKSPACE_URL && npm run dev
+    command: export VUE_APP_URL_BASE_API=${GITPOD_WORKSPACE_URL//:\/\//:\/\/5678-}/ && export N8N_HOST=${GITPOD_WORKSPACE_URL//:\/\//:\/\/5678-}/ && npm run dev
 
 # Ports to expose on workspace startup
 ports:
-  - port: 8080
+  - port: 5678
     onOpen: open-preview
