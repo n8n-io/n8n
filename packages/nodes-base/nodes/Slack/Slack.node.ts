@@ -1132,7 +1132,7 @@ export class Slack implements INodeType {
 					}
 				}
 
-				//https://api.slack.com/methods/usergroups.enable
+				//https://api.slack.com/methods/usergroups.update
 				if (operation === 'update') {
 					const userGroupId = this.getNodeParameter('userGroupId', i) as string;
 
