@@ -3,10 +3,19 @@ vscode:
     - coenraads.bracket-pair-colorizer-2 
     - pustelto.bracketeer
     - formulahendry.auto-close-tag
+    - dbaeumer.vscode-eslint
+    - mhutchie.git-graph
 
-tasks:
-  - init: npm install -g lerna  && lerna bootstrap --hoist
-    command: export VUE_APP_URL_BASE_API=${GITPOD_WORKSPACE_URL//:\/\//:\/\/5678-}/ && export N8N_HOST=${GITPOD_WORKSPACE_URL//:\/\//:\/\/5678-}/ && npm run build && npm run dev
+tasks:  
+  - name: config, build, dev
+    before: |
+      export VUE_APP_URL_BASE_API=${GITPOD_WORKSPACE_URL//:\/\//:\/\/5678-}/ 
+      export EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=true
+    init: |
+      npm install -g lerna  && 
+      lerna bootstrap --hoist &&    
+      npm run build 
+    command: npm run dev
 
 # Ports to expose on workspace startup
 ports:
