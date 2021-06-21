@@ -48,7 +48,7 @@ export const logEntryFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the log entry.',

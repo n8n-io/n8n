@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 
@@ -8,34 +8,34 @@ export class PayPalApi implements ICredentialType {
 	name = 'payPalApi';
 	displayName = 'PayPal API';
 	documentationUrl = 'payPal';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Client ID',
 			name: 'clientId',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Secret',
 			name: 'secret',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
-			displayName: 'Enviroment',
+			displayName: 'Environment',
 			name: 'env',
-			type: 'options' as NodePropertyTypes,
+			type: 'options',
 			default: 'live',
 			options: [
 				{
 					name: 'Sanbox',
-					value: 'sanbox'
+					value: 'sanbox',
 				},
 				{
 					name: 'Live',
-					value: 'live'
+					value: 'live',
 				},
-			]
+			],
 		},
 	];
 }

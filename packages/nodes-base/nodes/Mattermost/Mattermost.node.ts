@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -25,7 +26,7 @@ export class Mattermost implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mattermost',
 		name: 'mattermost',
-		icon: 'file:mattermost.png',
+		icon: 'file:mattermost.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -40,7 +41,7 @@ export class Mattermost implements INodeType {
 			{
 				name: 'mattermostApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -55,6 +56,10 @@ export class Mattermost implements INodeType {
 					{
 						name: 'Message',
 						value: 'message',
+					},
+					{
+						name: 'Reaction',
+						value: 'reaction',
 					},
 					{
 						name: 'User',
@@ -138,8 +143,44 @@ export class Mattermost implements INodeType {
 						value: 'post',
 						description: 'Post a message into a channel',
 					},
+					{
+						name: 'Post Ephemeral',
+						value: 'postEphemeral',
+						description: 'Post an ephemeral message into a channel',
+					},
 				],
 				default: 'post',
+				description: 'The operation to perform',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Add a reaction to a post.',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Remove a reaction from a post',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all the reactions to one or more posts',
+					},
+				],
+				default: 'create',
 				description: 'The operation to perform',
 			},
 
@@ -165,7 +206,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'channel',
@@ -183,7 +224,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'channel',
@@ -202,7 +243,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'channel',
@@ -219,7 +260,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'channel',
@@ -257,7 +298,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'delete'
+							'delete',
 						],
 						resource: [
 							'channel',
@@ -388,7 +429,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'restore'
+							'restore',
 						],
 						resource: [
 							'channel',
@@ -415,7 +456,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'addUser'
+							'addUser',
 						],
 						resource: [
 							'channel',
@@ -437,7 +478,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'addUser'
+							'addUser',
 						],
 						resource: [
 							'channel',
@@ -464,7 +505,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'statistics'
+							'statistics',
 						],
 						resource: [
 							'channel',
@@ -516,7 +557,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'post'
+							'post',
 						],
 						resource: [
 							'message',
@@ -536,7 +577,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'post'
+							'post',
 						],
 						resource: [
 							'message',
@@ -556,7 +597,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'post'
+							'post',
 						],
 						resource: [
 							'message',
@@ -606,7 +647,7 @@ export class Mattermost implements INodeType {
 										displayOptions: {
 											show: {
 												type: [
-													'select'
+													'select',
 												],
 											},
 										},
@@ -640,10 +681,10 @@ export class Mattermost implements INodeType {
 										displayOptions: {
 											show: {
 												data_source: [
-													'custom'
+													'custom',
 												],
 												type: [
-													'select'
+													'select',
 												],
 											},
 										},
@@ -668,7 +709,7 @@ export class Mattermost implements INodeType {
 														default: '',
 														description: 'Value of the option.',
 													},
-												]
+												],
 											},
 										],
 									},
@@ -732,15 +773,15 @@ export class Mattermost implements INodeType {
 																		default: '',
 																		description: 'Value of the property to set.',
 																	},
-																]
+																],
 															},
 														],
 													},
-												]
+												],
 											},
 										],
 									},
-								]
+								],
 							},
 						],
 					},
@@ -824,7 +865,7 @@ export class Mattermost implements INodeType {
 										default: true,
 										description: 'If items can be displayed next to each other.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -910,6 +951,73 @@ export class Mattermost implements INodeType {
 					},
 				],
 			},
+
+			// ----------------------------------
+			//      message:post (ephemeral)
+			// ----------------------------------
+			{
+				displayName: 'User ID',
+				name: 'userId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'postEphemeral',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				description: 'ID of the user to send the ephemeral message to.',
+			},
+			{
+				displayName: 'Channel ID',
+				name: 'channelId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getChannels',
+				},
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'postEphemeral',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				description: 'ID of the channel to send the ephemeral message in.',
+			},
+			{
+				displayName: 'Message',
+				name: 'message',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'postEphemeral',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				description: 'Text to send in the ephemeral message.',
+			},
 			{
 				displayName: 'Other Options',
 				name: 'otherOptions',
@@ -917,7 +1025,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'post'
+							'post',
 						],
 						resource: [
 							'message',
@@ -937,6 +1045,188 @@ export class Mattermost implements INodeType {
 					},
 				],
 			},
+
+			// ----------------------------------
+			//             reaction
+			// ----------------------------------
+			{
+				displayName: 'User ID',
+				name: 'userId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				description: 'ID of the user sending the reaction.',
+			},
+			{
+				displayName: 'Post ID',
+				name: 'postId',
+				type: 'string',
+				default: '',
+				placeholder: '3moacfqxmbdw38r38fjprh6zsr',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				description: 'ID of the post to react to.<br>Obtainable from the post link:<br><code>https://mattermost.internal.n8n.io/[server]/pl/[postId]</code>',
+			},
+			{
+				displayName: 'Emoji Name',
+				name: 'emojiName',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				description: 'Emoji to use for this reaction.',
+			},
+			{
+				displayName: 'User ID',
+				name: 'userId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+						operation: [
+							'delete',
+						],
+					},
+				},
+				description: 'ID of the user whose reaction to delete.',
+			},
+			{
+				displayName: 'Post ID',
+				name: 'postId',
+				type: 'string',
+				default: '',
+				placeholder: '3moacfqxmbdw38r38fjprh6zsr',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+						operation: [
+							'delete',
+						],
+					},
+				},
+				description: 'ID of the post whose reaction to delete.<br>Obtainable from the post link:<br><code>https://mattermost.internal.n8n.io/[server]/pl/[postId]</code>',
+			},
+			{
+				displayName: 'Emoji Name',
+				name: 'emojiName',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+						operation: [
+							'delete',
+						],
+					},
+				},
+				description: 'Name of the emoji to delete.',
+			},
+			{
+				displayName: 'Post ID',
+				name: 'postId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'reaction',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				description: 'One or more (comma-separated) posts to retrieve reactions from.',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'reaction',
+						],
+					},
+				},
+				default: true,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'reaction',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+
 			// ----------------------------------
 			//              user
 			// ----------------------------------
@@ -1109,7 +1399,7 @@ export class Mattermost implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The password used for email authentication.'
+				description: 'The password used for email authentication.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -1208,7 +1498,7 @@ export class Mattermost implements INodeType {
 										name: 'email',
 										type: 'boolean',
 										default: false,
-										description: `Set to "true" to enable email notifications, "false" to disable. Defaults to "true".`
+										description: `Set to "true" to enable email notifications, "false" to disable. Defaults to "true".`,
 									},
 									{
 										displayName: 'First Name',
@@ -1273,7 +1563,7 @@ export class Mattermost implements INodeType {
 					},
 				},
 				default: '',
-				description: 'User GUID'
+				description: 'User GUID',
 			},
 
 			// ----------------------------------
@@ -1514,23 +1804,29 @@ export class Mattermost implements INodeType {
 				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeOperationError(this.getNode(), 'No data got returned');
 				}
 
 				const returnData: INodePropertyOptions[] = [];
 				let name: string;
 				for (const data of responseData) {
-					if (data.delete_at !== 0) {
+					if (data.delete_at !== 0 || (!data.display_name || !data.name)) {
 						continue;
 					}
 
-					name = `${data.name} (${data.type === 'O' ? 'public' : 'private'})`;
+					name = `${data.team_display_name} - ${data.display_name || data.name} (${data.type === 'O' ? 'public' : 'private'})`;
 
 					returnData.push({
 						name,
 						value: data.id,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
 
 				return returnData;
 			},
@@ -1542,29 +1838,36 @@ export class Mattermost implements INodeType {
 				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeOperationError(this.getNode(), 'No data got returned');
 				}
 
 				const returnData: INodePropertyOptions[] = [];
 				let name: string;
 				for (const data of responseData) {
-					if (data.delete_at !== 0) {
+					if (data.delete_at !== 0 || (!data.display_name || !data.name)) {
 						continue;
 					}
 
 					const channelTypes: IDataObject = {
+						'D': 'direct',
+						'G': 'group',
 						'O': 'public',
 						'P': 'private',
-						'D': 'direct',
 					};
 
-					name = `${data.name} (${channelTypes[data.type as string]})`;
+					name = `${data.display_name} (${channelTypes[data.type as string]})`;
 
 					returnData.push({
 						name,
 						value: data.id,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
 
 				return returnData;
 			},
@@ -1574,7 +1877,7 @@ export class Mattermost implements INodeType {
 				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeOperationError(this.getNode(), 'No data got returned');
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1593,6 +1896,12 @@ export class Mattermost implements INodeType {
 					});
 				}
 
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -1600,7 +1909,7 @@ export class Mattermost implements INodeType {
 				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeOperationError(this.getNode(), 'No data got returned');
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1616,6 +1925,12 @@ export class Mattermost implements INodeType {
 					});
 				}
 
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 		},
@@ -1628,7 +1943,7 @@ export class Mattermost implements INodeType {
 		const credentials = this.getCredentials('mattermostApi');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		let operation: string;
@@ -1805,7 +2120,79 @@ export class Mattermost implements INodeType {
 					// Add all the other options to the request
 					const otherOptions = this.getNodeParameter('otherOptions', i) as IDataObject;
 					Object.assign(body, otherOptions);
+
+				} else if (operation === 'postEphemeral') {
+
+					// ----------------------------------
+					//      message:post (ephemeral)
+					// ----------------------------------
+
+					// https://api.mattermost.com/#tag/posts/paths/~1posts~1ephemeral/post
+
+					body = {
+						user_id: this.getNodeParameter('userId', i),
+						post: {
+							channel_id: this.getNodeParameter('channelId', i),
+							message: this.getNodeParameter('message', i),
+						},
+					} as IDataObject;
+
+					requestMethod = 'POST';
+					endpoint = 'posts/ephemeral';
+
 				}
+
+			} else if (resource === 'reaction') {
+
+				// ----------------------------------
+				//         reaction:create
+				// ----------------------------------
+
+				// https://api.mattermost.com/#tag/reactions/paths/~1reactions/post
+
+				if (operation === 'create') {
+
+					body = {
+						user_id: this.getNodeParameter('userId', i),
+						post_id: this.getNodeParameter('postId', i),
+						emoji_name: (this.getNodeParameter('emojiName', i) as string).replace(/:/g, ''),
+						create_at: Date.now(),
+					} as { user_id: string; post_id: string; emoji_name: string; create_at: number };
+
+					requestMethod = 'POST';
+					endpoint = 'reactions';
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------
+					//         reaction:delete
+					// ----------------------------------
+
+					// https://api.mattermost.com/#tag/reactions/paths/~1users~1{user_id}~1posts~1{post_id}~1reactions~1{emoji_name}/delete
+
+					const userId = this.getNodeParameter('userId', i) as string;
+					const postId = this.getNodeParameter('postId', i) as string;
+					const emojiName = (this.getNodeParameter('emojiName', i) as string).replace(/:/g, '');
+
+					requestMethod = 'DELETE';
+					endpoint = `users/${userId}/posts/${postId}/reactions/${emojiName}`;
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------
+					//         reaction:getAll
+					// ----------------------------------
+
+					// https://api.mattermost.com/#tag/reactions/paths/~1posts~1ids~1reactions/post
+
+					const postId = this.getNodeParameter('postId', i) as string;
+
+					requestMethod = 'GET';
+					endpoint = `posts/${postId}/reactions`;
+
+					qs.limit = this.getNodeParameter('limit', 0, 0) as number;
+				}
+
 			} else if (resource === 'user') {
 
 				if (operation === 'create') {
@@ -1893,26 +2280,26 @@ export class Mattermost implements INodeType {
 
 							if (additionalFields.inTeam !== undefined
 								&& !validRules.inTeam.includes(snakeCase(additionalFields.sort as string))) {
-								throw new Error(`When In Team is set the only valid values for sorting are ${validRules.inTeam.join(',')}`);
+								throw new NodeOperationError(this.getNode(), `When In Team is set the only valid values for sorting are ${validRules.inTeam.join(',')}`);
 							}
 							if (additionalFields.inChannel !== undefined
 								&& !validRules.inChannel.includes(snakeCase(additionalFields.sort as string))) {
-								throw new Error(`When In Channel is set the only valid values for sorting are ${validRules.inChannel.join(',')}`);
+								throw new NodeOperationError(this.getNode(), `When In Channel is set the only valid values for sorting are ${validRules.inChannel.join(',')}`);
 							}
 							if (additionalFields.inChannel !== undefined
 								&& additionalFields.inChannel === ''
 								&& additionalFields.sort !== 'username') {
-								throw new Error('When sort is different than username In Channel must be set');
+								throw new NodeOperationError(this.getNode(), 'When sort is different than username In Channel must be set');
 							}
 
 							if (additionalFields.inTeam !== undefined
 								&& additionalFields.inTeam === ''
 								&& additionalFields.sort !== 'username') {
-								throw new Error('When sort is different than username In Team must be set');
+								throw new NodeOperationError(this.getNode(), 'When sort is different than username In Team must be set');
 							}
 
 						} else {
-							throw new Error(`When sort is defined either 'in team' or 'in channel' must be defined`);
+							throw new NodeOperationError(this.getNode(), `When sort is defined either 'in team' or 'in channel' must be defined`);
 						}
 					}
 
@@ -1973,7 +2360,7 @@ export class Mattermost implements INodeType {
 				}
 			}
 			else {
-				throw new Error(`The resource "${resource}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 			}
 
 			let responseData;
@@ -1981,6 +2368,9 @@ export class Mattermost implements INodeType {
 				responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 			} else {
 				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+				if (qs.limit) {
+					responseData = responseData.slice(0, qs.limit);
+				}
 				if (resource === 'channel' && operation === 'members') {
 					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
 					if (resolveData) {

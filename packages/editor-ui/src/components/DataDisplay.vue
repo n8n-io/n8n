@@ -9,7 +9,7 @@
 				</div>
 				<transition name="fade">
 					<div v-if="showDocumentHelp && nodeType" class="doc-help-wrapper">
-								<svg id="help-logo" v-if="showDocumentHelp && nodeType" :href="'https://docs.n8n.io/nodes/' + nodeType.name" target="_blank" width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+								<svg id="help-logo" v-if="showDocumentHelp && nodeType" :href="documentationUrl" target="_blank" width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 									<title>Node Documentation</title>
 									<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
 										<g transform="translate(-1127.000000, -836.000000)" fill-rule="nonzero">
@@ -26,7 +26,7 @@
 								</svg>
 
 							<div v-if="showDocumentHelp && nodeType" class="text">
-								Need help? <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="'https://docs.n8n.io/nodes/' + nodeType.name + '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=' + nodeType.name" target="_blank">Open {{nodeType.displayName}} documentation</a>
+								Need help? <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="documentationUrl" target="_blank" @click="onDocumentationUrlClick">Open {{nodeType.displayName}} documentation</a>
 							</div>
 					</div>
 				</transition>
@@ -49,10 +49,16 @@ import {
 	IUpdateInformation,
 } from '../Interface';
 
+import { externalHooks } from '@/components/mixins/externalHooks';
+import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-export default Vue.extend({
+import mixins from 'vue-typed-mixins';
+
+export default mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	name: 'DataDisplay',
 	components: {
 		NodeSettings,
@@ -65,16 +71,32 @@ export default Vue.extend({
 		};
 	},
 	computed: {
+		documentationUrl (): string {
+			if (!this.nodeType) {
+				return '';
+			}
+
+			if (this.nodeType.documentationUrl && this.nodeType.documentationUrl.startsWith('http')) {
+				return this.nodeType.documentationUrl;
+			}
+
+			return 'https://docs.n8n.io/nodes/' + (this.nodeType.documentationUrl || this.nodeType.name) + '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=' + this.nodeType.name;
+		},
 		node (): INodeUi {
 			return this.$store.getters.activeNode;
 		},
 		nodeType (): INodeTypeDescription | null {
-			const activeNode = this.node;
 			if (this.node) {
 				return this.$store.getters.nodeType(this.node.type);
 			}
-
 			return null;
+		},
+	},
+	watch: {
+		node (node, oldNode) {
+			if(node && !oldNode) {
+				this.$externalHooks().run('dataDisplay.nodeTypeChanged', { nodeSubtitle: this.getNodeSubtitle(node, this.nodeType, this.getWorkflow()) });
+			}
 		},
 	},
 	methods: {
@@ -87,9 +109,13 @@ export default Vue.extend({
 		close (e: MouseEvent) {
 			// @ts-ignore
 			if (e.target.className && e.target.className.includes && e.target.className.includes('close-on-click')) {
+				this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 				this.showDocumentHelp = false;
 				this.$store.commit('setActiveNode', null);
 			}
+		},
+		onDocumentationUrlClick () {
+			this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', { nodeType: this.nodeType, documentationUrl: this.documentationUrl });
 		},
 	},
 });
@@ -136,7 +162,7 @@ export default Vue.extend({
 		position: relative;
 		width: 80%;
 		height: 80%;
-		margin: 6em auto;
+		margin: 3em auto;
 		background-color: #fff;
 		border-radius: 2px;
 		@media (max-height: 720px) {

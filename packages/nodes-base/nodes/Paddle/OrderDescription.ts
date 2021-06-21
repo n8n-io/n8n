@@ -19,7 +19,7 @@ export const orderOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get an order',
-			}
+			},
 		],
 		default: 'get',
 		description: 'The operation to perform.',

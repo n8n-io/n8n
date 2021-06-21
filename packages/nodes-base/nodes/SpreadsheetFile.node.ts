@@ -8,6 +8,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -26,7 +27,7 @@ import {
  * @param {IDataObject} data The object to flatten
  * @returns
  */
-function flattenObject (data: IDataObject) {
+function flattenObject(data: IDataObject) {
 	const returnData: IDataObject = {};
 	for (const key1 of Object.keys(data)) {
 		if (data[key1] !== null && (typeof data[key1]) === 'object') {
@@ -144,7 +145,7 @@ export class SpreadsheetFile implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'toFile'
+							'toFile',
 						],
 					},
 				},
@@ -207,13 +208,41 @@ export class SpreadsheetFile implements INodeType {
 						description: 'File name to set in binary data. By default will "spreadsheet.<fileFormat>" be used.',
 					},
 					{
+						displayName: 'Header Row',
+						name: 'headerRow',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'fromFile',
+								],
+							},
+						},
+						default: true,
+						description: 'The first row of the file contains the header names.',
+					},
+					{
+						displayName: 'Include Empty Cells',
+						name: 'includeEmptyCells',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'fromFile',
+								],
+							},
+						},
+						default: false,
+						description: 'When reading from file the empty cells will be filled with an empty string in the JSON.',
+					},
+					{
 						displayName: 'RAW Data',
 						name: 'rawData',
 						type: 'boolean',
 						displayOptions: {
 							show: {
 								'/operation': [
-									'fromFile'
+									'fromFile',
 								],
 							},
 						},
@@ -227,7 +256,7 @@ export class SpreadsheetFile implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'fromFile'
+									'fromFile',
 								],
 							},
 						},
@@ -241,7 +270,7 @@ export class SpreadsheetFile implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'fromFile'
+									'fromFile',
 								],
 							},
 						},
@@ -283,7 +312,7 @@ export class SpreadsheetFile implements INodeType {
 					},
 				],
 			},
-		]
+		],
 	};
 
 
@@ -320,13 +349,13 @@ export class SpreadsheetFile implements INodeType {
 				}
 
 				if (workbook.SheetNames.length === 0) {
-					throw new Error('Spreadsheet does not have any sheets!');
+					throw new NodeOperationError(this.getNode(), 'Spreadsheet does not have any sheets!');
 				}
 
 				let sheetName = workbook.SheetNames[0];
 				if (options.sheetName) {
 					if (!workbook.SheetNames.includes(options.sheetName as string)) {
-						throw new Error(`Spreadsheet does not contain sheet called "${options.sheetName}"!`);
+						throw new NodeOperationError(this.getNode(), `Spreadsheet does not contain sheet called "${options.sheetName}"!`);
 					}
 					sheetName = options.sheetName as string;
 				}
@@ -341,6 +370,13 @@ export class SpreadsheetFile implements INodeType {
 					}
 				}
 
+				if (options.includeEmptyCells) {
+					sheetToJsonOptions.defval = '';
+				}
+				if (options.headerRow === false) {
+					sheetToJsonOptions.header = 1; // Consider the first row as a data row
+				}
+
 				const sheetJson = xlsxUtils.sheet_to_json(workbook.Sheets[sheetName], sheetToJsonOptions);
 
 				// Check if data could be found in file
@@ -349,8 +385,15 @@ export class SpreadsheetFile implements INodeType {
 				}
 
 				// Add all the found data columns to the workflow data
-				for (const rowData of sheetJson) {
-					newItems.push({ json: rowData } as INodeExecutionData);
+				if (options.headerRow === false) {
+					// Data was returned as an array - https://github.com/SheetJS/sheetjs#json
+					for (const rowData of sheetJson) {
+						newItems.push({ json: { row: rowData } } as INodeExecutionData);
+					}
+				} else {
+					for (const rowData of sheetJson) {
+						newItems.push({ json: rowData } as INodeExecutionData);
+					}
 				}
 			}
 
@@ -373,7 +416,7 @@ export class SpreadsheetFile implements INodeType {
 
 			const wopts: WritingOptions = {
 				bookSST: false,
-				type: 'buffer'
+				type: 'buffer',
 			};
 
 			if (fileFormat === 'csv') {
@@ -402,7 +445,7 @@ export class SpreadsheetFile implements INodeType {
 				SheetNames: [sheetName],
 				Sheets: {
 					[sheetName]: ws,
-				}
+				},
 			};
 			const wbout = xlsxWrite(wb, wopts);
 
@@ -424,7 +467,7 @@ export class SpreadsheetFile implements INodeType {
 
 			return this.prepareOutputData(newItems);
 		} else {
-			throw new Error(`The operation "${operation}" is not supported!`);
+			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
 		}
 	}
 }

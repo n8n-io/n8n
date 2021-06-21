@@ -8,6 +8,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 import {
 	salesmateApiRequest,
@@ -56,7 +57,7 @@ export class Salesmate implements INodeType {
 			{
 				name: 'salesmateApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -112,7 +113,7 @@ export class Salesmate implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const qs: IDataObject = {
 					fields: ['name', 'id'],
-					query: {}
+					query: {},
 				};
 				const contacts = await salesmateApiRequest.call(this, 'POST', '/v2/contacts/search', qs);
 				for (const contact of contacts.Data.data) {
@@ -131,7 +132,7 @@ export class Salesmate implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const qs: IDataObject = {
 					fields: ['name', 'id'],
-					query: {}
+					query: {},
 				};
 				const companies = await salesmateApiRequest.call(this, 'POST', '/v2/companies/search', qs);
 				for (const company of companies.Data.data) {
@@ -313,7 +314,7 @@ export class Salesmate implements INodeType {
 					}
 					if (options.fields) {
 						if ((options.fields as string).trim() === '') {
-							throw new Error('You have to add at least one field');
+							throw new NodeOperationError(this.getNode(), 'You have to add at least one field');
 						}
 						body.fields = (options.fields as string).split(',') as string[];
 					} else {
@@ -478,7 +479,7 @@ export class Salesmate implements INodeType {
 					}
 					if (options.fields) {
 						if ((options.fields as string).trim() === '') {
-							throw new Error('You have to add at least one field');
+							throw new NodeOperationError(this.getNode(), 'You have to add at least one field');
 						}
 						body.fields = (options.fields as string).split(',') as string[];
 					} else {
@@ -670,7 +671,7 @@ export class Salesmate implements INodeType {
 					}
 					if (options.fields !== undefined) {
 						if ((options.fields as string).trim() === '') {
-							throw new Error('You have to add at least one field');
+							throw new NodeOperationError(this.getNode(), 'You have to add at least one field');
 						}
 						body.fields = (options.fields as string).split(',') as string[];
 					} else {

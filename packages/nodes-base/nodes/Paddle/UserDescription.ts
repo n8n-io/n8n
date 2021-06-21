@@ -19,7 +19,7 @@ export const userOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all users',
-			}
+			},
 		],
 		default: 'getAll',
 		description: 'The operation to perform.',
@@ -55,7 +55,7 @@ export const userFields = [
 		required: true,
 		typeOptions: {
 			minValue: 1,
-			maxValue: 200
+			maxValue: 200,
 		},
 		displayOptions: {
 			show: {
@@ -66,8 +66,8 @@ export const userFields = [
 					'getAll',
 				],
 				returnAll: [
-					false
-				]
+					false,
+				],
 			},
 		},
 		description: 'Number of subscription records to return per page.',
@@ -126,8 +126,8 @@ export const userFields = [
 					'getAll',
 				],
 				jsonParameters: [
-					false
-				]
+					false,
+				],
 			},
 		},
 		default: {},
@@ -155,21 +155,21 @@ export const userFields = [
 				options: [
 					{
 						name: 'Active',
-						value: 'active'
+						value: 'active',
 					},
 					{
 						name: 'Past Due',
-						value: 'past_due'
+						value: 'past_due',
 					},
 					{
 						name: 'Paused',
-						value: 'paused'
+						value: 'paused',
 					},
 					{
 						name: 'Trialing',
-						value: 'trialing'
+						value: 'trialing',
 					},
-				]
+				],
 			},
 		],
 	},

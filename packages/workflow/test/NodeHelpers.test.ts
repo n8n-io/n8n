@@ -1,8 +1,8 @@
 
 import {
-	NodeHelpers,
 	INodeParameters,
 	INodeProperties,
+	NodeHelpers,
 } from '../src';
 
 describe('Workflow', () => {
@@ -178,7 +178,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										boolean1: [
-											true
+											true,
 										],
 									},
 								},
@@ -230,7 +230,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									hide: {
 										boolean1: [
-											true
+											true,
 										],
 									},
 								},
@@ -278,7 +278,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										boolean1: [
-											true
+											true,
 										],
 									},
 								},
@@ -327,7 +327,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										mode: [
-											'mode1'
+											'mode1',
 										],
 									},
 								},
@@ -373,7 +373,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										string1: [
-											'default string1'
+											'default string1',
 										],
 									},
 								},
@@ -386,7 +386,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										boolean1: [
-											true
+											true,
 										],
 									},
 								},
@@ -437,7 +437,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										string1: [
-											'default string1'
+											'default string1',
 										],
 									},
 								},
@@ -450,7 +450,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										boolean1: [
-											true
+											true,
 										],
 									},
 								},
@@ -498,7 +498,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										mode: [
-											'mode1'
+											'mode1',
 										],
 									},
 								},
@@ -546,7 +546,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										mode: [
-											'mode2'
+											'mode2',
 										],
 									},
 								},
@@ -591,7 +591,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										mode: [
-											'mode2'
+											'mode2',
 										],
 									},
 								},
@@ -711,7 +711,7 @@ describe('Workflow', () => {
 								values: {
 									number: [
 										{
-											number1: 1
+											number1: 1,
 										},
 									],
 								},
@@ -794,7 +794,7 @@ describe('Workflow', () => {
 							values: {
 								number: {
 									number1: 1,
-								}
+								},
 							},
 						},
 					},
@@ -902,8 +902,8 @@ describe('Workflow', () => {
 									number1: 1,
 								},
 								singleString: {
-									string1: 'value1'
-								}
+									string1: 'value1',
+								},
 							},
 						},
 					},
@@ -915,7 +915,7 @@ describe('Workflow', () => {
 										number1: 1,
 									},
 									singleString: {
-										string1: 'value1'
+										string1: 'value1',
 									},
 								},
 							},
@@ -926,7 +926,7 @@ describe('Workflow', () => {
 										number1: 1,
 									},
 									singleString: {
-										string1: 'value1'
+										string1: 'value1',
 									},
 								},
 							},
@@ -938,7 +938,7 @@ describe('Workflow', () => {
 										number1: 1,
 									},
 									singleString: {
-										string1: 'value1'
+										string1: 'value1',
 									},
 								},
 							},
@@ -949,7 +949,7 @@ describe('Workflow', () => {
 										number1: 1,
 									},
 									singleString: {
-										string1: 'value1'
+										string1: 'value1',
 									},
 								},
 							},
@@ -1040,8 +1040,8 @@ describe('Workflow', () => {
 										number1: 1,
 										collection1: [
 											{
-												string1: 'value1'
-											}
+												string1: 'value1',
+											},
 										],
 									},
 								],
@@ -1057,8 +1057,8 @@ describe('Workflow', () => {
 											number1: 1,
 											collection1: [
 												{
-													string1: 'value1'
-												}
+													string1: 'value1',
+												},
 											],
 										},
 									],
@@ -1072,8 +1072,8 @@ describe('Workflow', () => {
 											number1: 1,
 											collection1: [
 												{
-													string1: 'value1'
-												}
+													string1: 'value1',
+												},
 											],
 										},
 									],
@@ -1088,8 +1088,8 @@ describe('Workflow', () => {
 											number1: 1,
 											collection1: [
 												{
-													string1: 'value1'
-												}
+													string1: 'value1',
+												},
 											],
 										},
 									],
@@ -1103,8 +1103,8 @@ describe('Workflow', () => {
 											number1: 1,
 											collection1: [
 												{
-													string1: 'value1'
-												}
+													string1: 'value1',
+												},
 											],
 										},
 									],
@@ -1140,7 +1140,7 @@ describe('Workflow', () => {
 												displayOptions: {
 													show: {
 														mode: [
-															'mode1'
+															'mode1',
 														],
 													},
 												},
@@ -1231,7 +1231,7 @@ describe('Workflow', () => {
 												displayOptions: {
 													show: {
 														'/mode': [
-															'mode1'
+															'mode1',
 														],
 													},
 												},
@@ -1322,7 +1322,7 @@ describe('Workflow', () => {
 												displayOptions: {
 													show: {
 														'/mode': [
-															'mode2'
+															'mode2',
 														],
 													},
 												},
@@ -1405,7 +1405,7 @@ describe('Workflow', () => {
 										displayOptions: {
 											show: {
 												'/mode': [
-													'mode1'
+													'mode1',
 												],
 											},
 										},
@@ -1481,7 +1481,7 @@ describe('Workflow', () => {
 										displayOptions: {
 											show: {
 												'/mode': [
-													'mode2'
+													'mode2',
 												],
 											},
 										},
@@ -1558,7 +1558,7 @@ describe('Workflow', () => {
 										displayOptions: {
 											show: {
 												'/mode': [
-													'mode1'
+													'mode1',
 												],
 											},
 										},
@@ -1577,7 +1577,7 @@ describe('Workflow', () => {
 							values: [
 								{
 									string1: 'own string1',
-								}
+								},
 							],
 						},
 					},
@@ -1587,7 +1587,7 @@ describe('Workflow', () => {
 								values: [
 									{
 										string1: 'own string1',
-									}
+									},
 								],
 							},
 							defaultsTrue: {
@@ -1595,7 +1595,7 @@ describe('Workflow', () => {
 								values: [
 									{
 										string1: 'own string1',
-									}
+									},
 								],
 							},
 						},
@@ -1604,7 +1604,7 @@ describe('Workflow', () => {
 								values: [
 									{
 										string1: 'own string1',
-									}
+									},
 								],
 							},
 							defaultsTrue: {
@@ -1612,7 +1612,7 @@ describe('Workflow', () => {
 								values: [
 									{
 										string1: 'own string1',
-									}
+									},
 								],
 							},
 						},
@@ -1648,7 +1648,7 @@ describe('Workflow', () => {
 										displayOptions: {
 											show: {
 												'/mode': [
-													'mode2'
+													'mode2',
 												],
 											},
 										},
@@ -1668,7 +1668,7 @@ describe('Workflow', () => {
 								{
 									string1: 'own string1',
 									number1: 0,
-								}
+								},
 							],
 						},
 					},
@@ -1740,7 +1740,7 @@ describe('Workflow', () => {
 												displayOptions: {
 													show: {
 														mode: [
-															'mode1'
+															'mode1',
 														],
 													},
 												},
@@ -1838,8 +1838,8 @@ describe('Workflow', () => {
 						nodeValues: {
 							collection1: [
 								{
-									string1: 'value1'
-								}
+									string1: 'value1',
+								},
 							],
 						},
 					},
@@ -1848,15 +1848,15 @@ describe('Workflow', () => {
 							defaultsFalse: {
 								collection1: [
 									{
-										string1: 'value1'
-									}
+										string1: 'value1',
+									},
 								],
 							},
 							defaultsTrue: {
 								collection1: [
 									{
-										string1: 'value1'
-									}
+										string1: 'value1',
+									},
 								],
 							},
 						},
@@ -1864,15 +1864,15 @@ describe('Workflow', () => {
 							defaultsFalse: {
 								collection1: [
 									{
-										string1: 'value1'
-									}
+										string1: 'value1',
+									},
 								],
 							},
 							defaultsTrue: {
 								collection1: [
 									{
-										string1: 'value1'
-									}
+										string1: 'value1',
+									},
 								],
 							},
 						},
@@ -1912,8 +1912,8 @@ describe('Workflow', () => {
 						nodeValues: {
 							collection1: [
 								{
-									string1: 'default string1'
-								}
+									string1: 'default string1',
+								},
 							],
 						},
 					},
@@ -1923,14 +1923,14 @@ describe('Workflow', () => {
 								collection1: [
 									{
 										string1: 'default string1',
-									}
+									},
 								],
 							},
 							defaultsTrue: {
 								collection1: [
 									{
 										string1: 'default string1',
-									}
+									},
 								],
 							},
 						},
@@ -1939,14 +1939,14 @@ describe('Workflow', () => {
 								collection1: [
 									{
 										string1: 'default string1',
-									}
+									},
 								],
 							},
 							defaultsTrue: {
 								collection1: [
 									{
 										string1: 'default string1',
-									}
+									},
 								],
 							},
 						},
@@ -2174,7 +2174,7 @@ describe('Workflow', () => {
 								typeOptions: {
 									multipleValues: true,
 								},
-								default: {},
+								default: [],
 								options: [
 									{
 										displayName: 'string1',
@@ -2195,17 +2195,13 @@ describe('Workflow', () => {
 					},
 					output: {
 						noneDisplayedFalse: {
-							defaultsFalse: {
-								// collection1: [],
-							},
+							defaultsFalse: {},
 							defaultsTrue: {
 								collection1: [],
 							},
 						},
 						noneDisplayedTrue: {
-							defaultsFalse: {
-								// collection1: [],
-							},
+							defaultsFalse: {},
 							defaultsTrue: {
 								collection1: [],
 							},
@@ -2650,7 +2646,7 @@ describe('Workflow', () => {
 							},
 						],
 						nodeValues: {
-							mainOption: 'option2'
+							mainOption: 'option2',
 						},
 					},
 					output: {
@@ -2677,7 +2673,7 @@ describe('Workflow', () => {
 					},
 				},
 				{
-				description: 'complex type "fixedCollection" with "multipleValues: true". Which contains complex type "fixedCollection" with "multipleValues: true". One value set.',
+					description: 'complex type "fixedCollection" with "multipleValues: true". Which contains complex type "fixedCollection" with "multipleValues: true". One value set.',
 					input: {
 						nodePropertiesArray: [
 							{
@@ -2807,6 +2803,302 @@ describe('Workflow', () => {
 													},
 												],
 											},
+										},
+									],
+								},
+							},
+						},
+					},
+				},
+				{
+					description: 'complex type "fixedCollection" with "multipleValues: true". Which contains parameters which get displayed on a parameter with a default expression with relative parameter references.',
+					input: {
+						nodePropertiesArray: [
+							{
+								displayName: 'Values1',
+								name: 'values1',
+								type: 'fixedCollection',
+								typeOptions: {
+									multipleValues: true,
+								},
+								description: 'The value to set.',
+								default: {},
+								options: [
+									{
+										displayName: 'Options1',
+										name: 'options1',
+										values: [
+											{
+												displayName: 'Key',
+												name: 'key',
+												type: 'string',
+												default: '',
+											},
+											{
+												displayName: 'Type',
+												name: 'type',
+												type: 'hidden',
+												default: '={{$parameter["&key"].split("|")[1]}}',
+											},
+											{
+												displayName: 'Title Value',
+												name: 'titleValue',
+												displayOptions: {
+													show: {
+														type: [
+															'title',
+														],
+													},
+												},
+												type: 'string',
+												default: 'defaultTitle',
+											},
+											{
+												displayName: 'Title Number',
+												name: 'numberValue',
+												displayOptions: {
+													show: {
+														type: [
+															'number',
+														],
+													},
+												},
+												type: 'number',
+												default: 1,
+											},
+										],
+									},
+								],
+							},
+						],
+						nodeValues: {
+							values1: {
+								options1: [
+									{
+										key: 'asdf|title',
+										titleValue: 'different',
+									},
+								],
+							},
+						},
+					},
+					output: {
+						noneDisplayedFalse: {
+							defaultsFalse: {
+								values1: {
+									options1: [
+										{
+											key: 'asdf|title',
+											titleValue: 'different',
+										},
+									],
+								},
+							},
+							defaultsTrue: {
+								values1: {
+									options1: [
+										{
+											key: 'asdf|title',
+											type: '={{$parameter["&key"].split("|")[1]}}',
+											// This is not great that it displays this theoretically hidden parameter
+											// but because we can not resolve the values for now
+											numberValue: 1,
+											titleValue: 'different',
+										},
+									],
+								},
+							},
+						},
+						noneDisplayedTrue: {
+							defaultsFalse: {
+								values1: {
+									options1: [
+										{
+											key: 'asdf|title',
+											titleValue: 'different',
+										},
+									],
+								},
+							},
+							defaultsTrue: {
+								values1: {
+									options1: [
+										{
+											key: 'asdf|title',
+											type: '={{$parameter["&key"].split("|")[1]}}',
+											titleValue: 'different',
+											numberValue: 1,
+										},
+									],
+								},
+							},
+						},
+					},
+				},
+				{
+					description: 'complex type "fixedCollection" with "multipleValues: true". Which contains parameter of type "multiOptions" and has so an array default value',
+					input: {
+						nodePropertiesArray: [
+							{
+								name: 'values',
+								displayName: 'Values',
+								type: 'fixedCollection',
+								typeOptions: {
+									multipleValues: true,
+								},
+								default: {},
+								options: [
+									{
+										name: 'propertyValues',
+										displayName: 'Property',
+										values: [
+											{
+												displayName: 'Options',
+												name: 'multiSelectValue',
+												type: 'multiOptions',
+												options: [
+													{
+														name: 'Value1',
+														value: 'value1',
+													},
+													{
+														name: 'Value2',
+														value: 'value2',
+													},
+												],
+												default: [],
+											},
+										],
+									},
+								],
+							},
+						],
+						nodeValues: {
+							values: {
+								propertyValues: [
+									{
+										multiSelectValue: [],
+									},
+								],
+							},
+						},
+					},
+					output: {
+						noneDisplayedFalse: {
+							defaultsFalse: {
+								values: {
+									propertyValues: [
+										{
+										},
+									],
+								},
+							},
+							defaultsTrue: {
+								values: {
+									propertyValues: [
+										{
+											multiSelectValue: [],
+										},
+									],
+								},
+							},
+						},
+						noneDisplayedTrue: {
+							defaultsFalse: {
+								values: {
+									propertyValues: [
+										{
+										},
+									],
+								},
+							},
+							defaultsTrue: {
+								values: {
+									propertyValues: [
+										{
+											multiSelectValue: [],
+										},
+									],
+								},
+							},
+						},
+					},
+				},
+				{
+					description: 'complex type "fixedCollection" with "multipleValues: true". Which contains parameter of type "string" with "multipleValues: true" and a custom default value',
+					input: {
+						nodePropertiesArray: [
+							{
+								name: 'values',
+								displayName: 'Values',
+								type: 'fixedCollection',
+								typeOptions: {
+									multipleValues: true,
+								},
+								default: {},
+								options: [
+									{
+										name: 'propertyValues',
+										displayName: 'Property',
+										values: [
+											{
+												displayName: 'MultiString',
+												name: 'multiString',
+												type: 'string',
+												typeOptions: {
+													multipleValues: true,
+												},
+												default: ['value1'],
+											},
+										],
+									},
+								],
+							},
+						],
+						nodeValues: {
+							values: {
+								propertyValues: [
+									{
+										multiString: ['value1'],
+									},
+								],
+							},
+						},
+					},
+					output: {
+						noneDisplayedFalse: {
+							defaultsFalse: {
+								values: {
+									propertyValues: [
+										{
+										},
+									],
+								},
+							},
+							defaultsTrue: {
+								values: {
+									propertyValues: [
+										{
+											multiString: ['value1'],
+										},
+									],
+								},
+							},
+						},
+						noneDisplayedTrue: {
+							defaultsFalse: {
+								values: {
+									propertyValues: [
+										{
+										},
+									],
+								},
+							},
+							defaultsTrue: {
+								values: {
+									propertyValues: [
+										{
+											multiString: ['value1'],
 										},
 									],
 								},

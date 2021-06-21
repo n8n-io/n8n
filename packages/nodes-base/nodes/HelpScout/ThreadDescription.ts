@@ -69,23 +69,23 @@ export const threadFields = [
 		options: [
 			{
 				name: 'Chat',
-				value: 'chat'
+				value: 'chat',
 			},
 			{
 				name: 'Customer',
-				value: 'customer'
+				value: 'customer',
 			},
 			{
 				name: 'Note',
-				value: 'note'
+				value: 'note',
 			},
 			{
 				name: 'Phone',
-				value: 'phone'
+				value: 'phone',
 			},
 			{
 				name: 'Reply',
-				value: 'reply'
+				value: 'reply',
 			},
 		],
 		default: '',
@@ -167,7 +167,7 @@ export const threadFields = [
 				default: false,
 				description: 'When imported is set to true, no outgoing emails or notifications will be generated.',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Attachments',

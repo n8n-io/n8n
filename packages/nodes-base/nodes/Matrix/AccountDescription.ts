@@ -18,7 +18,7 @@ export const accountOperations = [
 			{
 				name: 'Me',
 				value: 'me',
-				description: "Get current user's account information",
+				description: 'Get current user\'s account information',
 			},
 		],
 		default: 'me',

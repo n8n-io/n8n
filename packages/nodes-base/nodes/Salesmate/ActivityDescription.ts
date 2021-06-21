@@ -452,7 +452,7 @@ export const activityFields = [
 				],
 				default: 'desc',
 				description: 'Sort order',
-			}
+			},
 		],
 	},
 	{
@@ -596,12 +596,12 @@ export const activityFields = [
 										name: 'value',
 										type: 'string',
 										default: '',
-									}
-								]
+									},
+								],
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},

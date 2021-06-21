@@ -9,6 +9,8 @@ import {
 } from 'path';
 import {
 	getConnectionManager,
+	In,
+	Like,
 } from 'typeorm';
 import * as bodyParser from 'body-parser';
 require('body-parser-xml')(bodyParser);
@@ -20,48 +22,53 @@ import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
+// IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
+// tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
+import * as promClient from 'prom-client';
 
 import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
 	CredentialsHelper,
+	CredentialsOverwrites,
 	CredentialTypes,
 	Db,
 	ExternalHooks,
+	GenericHelpers,
 	IActivationError,
-	ICustomRequest,
 	ICredentialsDb,
 	ICredentialsDecryptedDb,
 	ICredentialsDecryptedResponse,
+	ICredentialsOverwrite,
 	ICredentialsResponse,
+	ICustomRequest,
 	IExecutionDeleteFilter,
 	IExecutionFlatted,
 	IExecutionFlattedDb,
 	IExecutionFlattedResponse,
 	IExecutionPushResponse,
+	IExecutionResponse,
 	IExecutionsListResponse,
 	IExecutionsStopData,
 	IExecutionsSummary,
 	IExternalHooksClass,
 	IN8nUISettings,
 	IPackageVersions,
-	IWorkflowBase,
-	IWorkflowShortResponse,
-	IWorkflowResponse,
+	ITagWithCountDb,
 	IWorkflowExecutionDataProcess,
+	IWorkflowResponse,
+	LoadNodesAndCredentials,
 	NodeTypes,
 	Push,
 	ResponseHelper,
 	TestWebhooks,
-	WorkflowCredentials,
 	WebhookHelpers,
+	WebhookServer,
+	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
+	WorkflowHelpers,
 	WorkflowRunner,
-	GenericHelpers,
-	CredentialsOverwrites,
-	ICredentialsOverwrite,
-	LoadNodesAndCredentials,
 } from './';
 
 import {
@@ -75,18 +82,19 @@ import {
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
-	INodeTypeDescription,
 	INodeParameters,
 	INodePropertyOptions,
+	INodeTypeDescription,
 	IRunData,
+	IWorkflowBase,
 	IWorkflowCredentials,
 	Workflow,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import {
 	FindManyOptions,
 	FindOneOptions,
-	LessThan,
 	LessThanOrEqual,
 	Not,
 } from 'typeorm';
@@ -100,7 +108,14 @@ import * as jwks from 'jwks-rsa';
 import * as timezones from 'google-timezones-json';
 import * as parseUrl from 'parseurl';
 import * as querystring from 'querystring';
+import * as Queue from '../src/Queue';
 import { OptionsWithUrl } from 'request-promise-native';
+import { Registry } from 'prom-client';
+
+import * as TagHelpers from './TagHelpers';
+import { TagEntity } from './databases/entities/TagEntity';
+import { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { WorkflowNameRequest } from './WorkflowHelpers';
 
 class App {
 
@@ -111,6 +126,7 @@ class App {
 	endpointWebhookTest: string;
 	endpointPresetCredentials: string;
 	externalHooks: IExternalHooksClass;
+	defaultWorkflowName: string;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
@@ -125,6 +141,7 @@ class App {
 	protocol: string;
 	sslKey: string;
 	sslCert: string;
+	payloadSizeMax: number;
 
 	presetCredentialsLoaded: boolean;
 
@@ -133,11 +150,15 @@ class App {
 
 		this.endpointWebhook = config.get('endpoints.webhook') as string;
 		this.endpointWebhookTest = config.get('endpoints.webhookTest') as string;
+
+		this.defaultWorkflowName = config.get('workflows.defaultName') as string;
+
 		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
 		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
 		this.saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
 		this.executionTimeout = config.get('executions.timeout') as number;
 		this.maxExecutionTimeout = config.get('executions.maxTimeout') as number;
+		this.payloadSizeMax = config.get('endpoints.payloadSizeMax') as number;
 		this.timezone = config.get('generic.timezone') as string;
 		this.restEndpoint = config.get('endpoints.rest') as string;
 
@@ -172,7 +193,7 @@ class App {
 			oauthCallbackUrls: {
 				'oauth1': urlBaseWebhook + `${this.restEndpoint}/oauth1-credential/callback`,
 				'oauth2': urlBaseWebhook + `${this.restEndpoint}/oauth2-credential/callback`,
-			}
+			},
 		};
 	}
 
@@ -190,6 +211,16 @@ class App {
 
 	async config(): Promise<void> {
 
+		const enableMetrics = config.get('endpoints.metrics.enable') as boolean;
+		let register: Registry;
+
+		if (enableMetrics === true) {
+			const prefix = config.get('endpoints.metrics.prefix') as string;
+			register = new promClient.Registry();
+			register.setDefaultLabels({ prefix });
+			promClient.collectDefaultMetrics({ register });
+		}
+
 		this.versions = await GenericHelpers.getVersions();
 		this.frontendSettings.versionCli = this.versions.cli;
 
@@ -197,7 +228,7 @@ class App {
 
 		const excludeEndpoints = config.get('security.excludeEndpoints') as string;
 
-		const ignoredEndpoints = ['healthz', this.endpointWebhook, this.endpointWebhookTest, this.endpointPresetCredentials];
+		const ignoredEndpoints = ['healthz', 'metrics', this.endpointWebhook, this.endpointWebhookTest, this.endpointPresetCredentials];
 		ignoredEndpoints.push.apply(ignoredEndpoints, excludeEndpoints.split(':'));
 
 		const authIgnoreRegex = new RegExp(`^\/(${_(ignoredEndpoints).compact().join('|')})\/?.*$`);
@@ -313,7 +344,7 @@ class App {
 
 				const jwtVerifyOptions: jwt.VerifyOptions = {
 					issuer: jwtIssuer !== '' ? jwtIssuer : undefined,
-					ignoreExpiration: false
+					ignoreExpiration: false,
 				};
 
 				jwt.verify(token, getKey, jwtVerifyOptions, (err: jwt.VerifyErrors, decoded: object) => {
@@ -352,47 +383,48 @@ class App {
 
 		// Support application/json type post data
 		this.app.use(bodyParser.json({
-			limit: '16mb', verify: (req, res, buf) => {
+			limit: this.payloadSizeMax + 'mb', verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
-			}
+			},
 		}));
 
 		// Support application/xml type post data
 		// @ts-ignore
 		this.app.use(bodyParser.xml({
-			limit: '16mb', xmlParseOptions: {
+			limit: this.payloadSizeMax + 'mb', xmlParseOptions: {
 				normalize: true,     // Trim whitespace inside text nodes
 				normalizeTags: true, // Transform tags to lowercase
 				explicitArray: false, // Only put properties in array if length > 1
-			}
+			},
 		}));
 
 		this.app.use(bodyParser.text({
-			limit: '16mb', verify: (req, res, buf) => {
+			limit: this.payloadSizeMax + 'mb', verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
-			}
+			},
 		}));
 
 		// Make sure that Vue history mode works properly
 		this.app.use(history({
 			rewrites: [
 				{
-					from: new RegExp(`^\/(${this.restEndpoint}|healthz|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`),
+					from: new RegExp(`^\/(${this.restEndpoint}|healthz|metrics|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`),
 					to: (context) => {
 						return context.parsedUrl!.pathname!.toString();
-					}
-				}
-			]
+					},
+				},
+			],
 		}));
 
 		//support application/x-www-form-urlencoded post data
-		this.app.use(bodyParser.urlencoded({ extended: false,
+		this.app.use(bodyParser.urlencoded({
+			extended: false,
 			verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
-			}
+			},
 		}));
 
 		if (process.env['NODE_ENV'] !== 'production') {
@@ -446,7 +478,16 @@ class App {
 			ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
 		});
 
-
+		// ----------------------------------------
+		// Metrics
+		// ----------------------------------------
+		if (enableMetrics === true) {
+			this.app.get('/metrics', async (req: express.Request, res: express.Response) => {
+				const response = await register.metrics();
+				res.setHeader('Content-Type', register.contentType);
+				ResponseHelper.sendSuccessResponse(res, response, true, 200);
+			});
+		}
 
 		// ----------------------------------------
 		// Workflow
@@ -454,25 +495,30 @@ class App {
 
 
 		// Creates a new workflow
-		this.app.post(`/${this.restEndpoint}/workflows`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowResponse> => {
+		this.app.post(`/${this.restEndpoint}/workflows`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<WorkflowEntity> => {
+			delete req.body.id; // ignore if sent by mistake
+			const incomingData = req.body;
 
-			const newWorkflowData = req.body as IWorkflowBase;
+			const newWorkflow = new WorkflowEntity();
 
-			newWorkflowData.name = newWorkflowData.name.trim();
-			newWorkflowData.createdAt = this.getCurrentDate();
-			newWorkflowData.updatedAt = this.getCurrentDate();
+			Object.assign(newWorkflow, incomingData);
+			newWorkflow.name = incomingData.name.trim();
 
-			newWorkflowData.id = undefined;
+			const incomingTagOrder = incomingData.tags.slice();
 
-			await this.externalHooks.run('workflow.create', [newWorkflowData]);
+			if (incomingData.tags.length) {
+				newWorkflow.tags = await Db.collections.Tag!.findByIds(incomingData.tags, { select: ['id', 'name'] });
+			}
 
-			// Save the workflow in DB
-			const result = await Db.collections.Workflow!.save(newWorkflowData);
+			await this.externalHooks.run('workflow.create', [newWorkflow]);
 
-			// Convert to response format in which the id is a string
-			(result as IWorkflowBase as IWorkflowResponse).id = result.id.toString();
-			return result as IWorkflowBase as IWorkflowResponse;
+			await WorkflowHelpers.validateWorkflow(newWorkflow);
+			const savedWorkflow = await Db.collections.Workflow!.save(newWorkflow).catch(WorkflowHelpers.throwDuplicateEntryError) as WorkflowEntity;
+			savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, incomingTagOrder);
 
+			// @ts-ignore
+			savedWorkflow.id = savedWorkflow.id.toString();
+			return savedWorkflow;
 		}));
 
 
@@ -505,46 +551,90 @@ class App {
 
 
 		// Returns workflows
-		this.app.get(`/${this.restEndpoint}/workflows`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowShortResponse[]> => {
-			const findQuery = {} as FindManyOptions;
+		this.app.get(`/${this.restEndpoint}/workflows`, ResponseHelper.send(async (req: express.Request, res: express.Response) => {
+			const findQuery: FindManyOptions<WorkflowEntity> = {
+				select: ['id', 'name', 'active', 'createdAt', 'updatedAt'],
+				relations: ['tags'],
+			};
+
 			if (req.query.filter) {
 				findQuery.where = JSON.parse(req.query.filter as string);
 			}
 
-			// Return only the fields we need
-			findQuery.select = ['id', 'name', 'active', 'createdAt', 'updatedAt'];
+			const workflows = await Db.collections.Workflow!.find(findQuery);
 
-			const results = await Db.collections.Workflow!.find(findQuery);
+			workflows.forEach(workflow => {
+				// @ts-ignore
+				workflow.id = workflow.id.toString();
+				// @ts-ignore
+				workflow.tags = workflow.tags.map(({ id, name }) => ({ id: id.toString(), name }));
+			});
+			return workflows;
+		}));
 
-			for (const entry of results) {
-				(entry as unknown as IWorkflowShortResponse).id = entry.id.toString();
+
+		this.app.get(`/${this.restEndpoint}/workflows/new`, ResponseHelper.send(async (req: WorkflowNameRequest, res: express.Response): Promise<{ name: string }> => {
+			const nameToReturn = req.query.name && req.query.name !== ''
+				? req.query.name
+				: this.defaultWorkflowName;
+
+			const workflows = await Db.collections.Workflow!.find({
+				select: ['name'],
+				where: { name: Like(`${nameToReturn}%`) },
+			});
+
+			// name is unique
+			if (workflows.length === 0) {
+				return { name: nameToReturn };
 			}
 
-			return results as unknown as IWorkflowShortResponse[];
+			const maxSuffix = workflows.reduce((acc: number, { name }) => {
+				const parts = name.split(`${nameToReturn} `);
+
+				if (parts.length > 2) return acc;
+
+				const suffix = Number(parts[1]);
+
+				if (!isNaN(suffix) && Math.ceil(suffix) > acc) {
+					acc = Math.ceil(suffix);
+				}
+
+				return acc;
+			}, 0);
+
+			// name is duplicate but no numeric suffixes exist yet
+			if (maxSuffix === 0) {
+				return { name: `${nameToReturn} 2` };
+			}
+
+			return { name: `${nameToReturn} ${maxSuffix + 1}` };
 		}));
 
 
 		// Returns a specific workflow
-		this.app.get(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowResponse | undefined> => {
-			const result = await Db.collections.Workflow!.findOne(req.params.id);
+		this.app.get(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<WorkflowEntity | undefined> => {
+			const workflow = await Db.collections.Workflow!.findOne(req.params.id, { relations: ['tags'] });
 
-			if (result === undefined) {
+			if (workflow === undefined) {
 				return undefined;
 			}
 
-			// Convert to response format in which the id is a string
-			(result as IWorkflowBase as IWorkflowResponse).id = result.id.toString();
-			return result as IWorkflowBase as IWorkflowResponse;
+			// @ts-ignore
+			workflow.id = workflow.id.toString();
+			// @ts-ignore
+			workflow.tags.forEach(tag => tag.id = tag.id.toString());
+			return workflow;
 		}));
 
 
 		// Updates an existing workflow
-		this.app.patch(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowResponse> => {
+		this.app.patch(`/${this.restEndpoint}/workflows/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<WorkflowEntity> => {
+			const { tags, ...updateData } = req.body;
 
-			const newWorkflowData = req.body as IWorkflowBase;
 			const id = req.params.id;
+			updateData.id = id;
 
-			await this.externalHooks.run('workflow.update', [newWorkflowData]);
+			await this.externalHooks.run('workflow.update', [updateData]);
 
 			const isActive = await this.activeWorkflowRunner.isActive(id);
 
@@ -554,63 +644,81 @@ class App {
 				await this.activeWorkflowRunner.remove(id);
 			}
 
-			if (newWorkflowData.settings) {
-				if (newWorkflowData.settings.timezone === 'DEFAULT') {
+			if (updateData.settings) {
+				if (updateData.settings.timezone === 'DEFAULT') {
 					// Do not save the default timezone
-					delete newWorkflowData.settings.timezone;
+					delete updateData.settings.timezone;
 				}
-				if (newWorkflowData.settings.saveDataErrorExecution === 'DEFAULT') {
+				if (updateData.settings.saveDataErrorExecution === 'DEFAULT') {
 					// Do not save when default got set
-					delete newWorkflowData.settings.saveDataErrorExecution;
+					delete updateData.settings.saveDataErrorExecution;
 				}
-				if (newWorkflowData.settings.saveDataSuccessExecution === 'DEFAULT') {
+				if (updateData.settings.saveDataSuccessExecution === 'DEFAULT') {
 					// Do not save when default got set
-					delete newWorkflowData.settings.saveDataSuccessExecution;
+					delete updateData.settings.saveDataSuccessExecution;
 				}
-				if (newWorkflowData.settings.saveManualExecutions === 'DEFAULT') {
+				if (updateData.settings.saveManualExecutions === 'DEFAULT') {
 					// Do not save when default got set
-					delete newWorkflowData.settings.saveManualExecutions;
+					delete updateData.settings.saveManualExecutions;
 				}
-				if (parseInt(newWorkflowData.settings.executionTimeout as string, 10) === this.executionTimeout) {
+				if (parseInt(updateData.settings.executionTimeout as string, 10) === this.executionTimeout) {
 					// Do not save when default got set
-					delete newWorkflowData.settings.executionTimeout;
+					delete updateData.settings.executionTimeout;
 				}
 			}
 
-			newWorkflowData.updatedAt = this.getCurrentDate();
+			// required due to atomic update
+			updateData.updatedAt = this.getCurrentDate();
 
-			await Db.collections.Workflow!.update(id, newWorkflowData);
+			await WorkflowHelpers.validateWorkflow(updateData);
+			await Db.collections.Workflow!.update(id, updateData).catch(WorkflowHelpers.throwDuplicateEntryError);
+
+			if (tags) {
+				const tablePrefix = config.get('database.tablePrefix');
+				await TagHelpers.removeRelations(req.params.id, tablePrefix);
+
+				if (tags.length) {
+					await TagHelpers.createRelations(req.params.id, tags, tablePrefix);
+				}
+			}
 
 			// We sadly get nothing back from "update". Neither if it updated a record
 			// nor the new value. So query now the hopefully updated entry.
-			const responseData = await Db.collections.Workflow!.findOne(id);
+			const workflow = await Db.collections.Workflow!.findOne(id, { relations: ['tags'] });
 
-			if (responseData === undefined) {
+			if (workflow === undefined) {
 				throw new ResponseHelper.ResponseError(`Workflow with id "${id}" could not be found to be updated.`, undefined, 400);
 			}
 
-			if (responseData.active === true) {
+			if (tags?.length) {
+				workflow.tags = TagHelpers.sortByRequestOrder(workflow.tags, tags);
+			}
+
+			await this.externalHooks.run('workflow.afterUpdate', [workflow]);
+
+			if (workflow.active === true) {
 				// When the workflow is supposed to be active add it again
 				try {
-					await this.externalHooks.run('workflow.activate', [responseData]);
+					await this.externalHooks.run('workflow.activate', [workflow]);
 
-					await this.activeWorkflowRunner.add(id);
+					await this.activeWorkflowRunner.add(id, isActive ? 'update' : 'activate');
 				} catch (error) {
 					// If workflow could not be activated set it again to inactive
-					newWorkflowData.active = false;
-					await Db.collections.Workflow!.update(id, newWorkflowData);
+					updateData.active = false;
+					// @ts-ignore
+					await Db.collections.Workflow!.update(id, updateData);
 
 					// Also set it in the returned data
-					responseData.active = false;
+					workflow.active = false;
 
 					// Now return the original error for UI to display
 					throw error;
 				}
 			}
 
-			// Convert to response format in which the id is a string
-			(responseData as IWorkflowBase as IWorkflowResponse).id = responseData.id.toString();
-			return responseData as IWorkflowBase as IWorkflowResponse;
+			// @ts-ignore
+			workflow.id = workflow.id.toString();
+			return workflow;
 		}));
 
 
@@ -628,10 +736,10 @@ class App {
 			}
 
 			await Db.collections.Workflow!.delete(id);
+			await this.externalHooks.run('workflow.afterDelete', [id]);
 
 			return true;
 		}));
-
 
 		this.app.post(`/${this.restEndpoint}/workflows/run`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionPushResponse> => {
 			const workflowData = req.body.workflowData;
@@ -639,6 +747,7 @@ class App {
 			const startNodes: string[] | undefined = req.body.startNodes;
 			const destinationNode: string | undefined = req.body.destinationNode;
 			const executionMode = 'manual';
+			const activationMode = 'manual';
 
 			const sessionId = GenericHelpers.getSessionId(req);
 
@@ -648,7 +757,7 @@ class App {
 				const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
 				const nodeTypes = NodeTypes();
 				const workflowInstance = new Workflow({ id: workflowData.id, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: false, nodeTypes, staticData: undefined, settings: workflowData.settings });
-				const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, sessionId, destinationNode);
+				const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, activationMode, sessionId, destinationNode);
 				if (needsWebhook === true) {
 					return {
 						waitingForWebhook: true,
@@ -679,11 +788,75 @@ class App {
 			};
 		}));
 
+		// Retrieves all tags, with or without usage count
+		this.app.get(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<TagEntity[] | ITagWithCountDb[]> => {
+			if (req.query.withUsageCount === 'true') {
+				const tablePrefix = config.get('database.tablePrefix');
+				return TagHelpers.getTagsWithCountDb(tablePrefix);
+			}
+
+			const tags = await Db.collections.Tag!.find({ select: ['id', 'name'] });
+			// @ts-ignore
+			tags.forEach(tag => tag.id = tag.id.toString());
+			return tags;
+		}));
+
+		// Creates a tag
+		this.app.post(`/${this.restEndpoint}/tags`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<TagEntity | void> => {
+			const newTag = new TagEntity();
+			newTag.name = req.body.name.trim();
+
+			await this.externalHooks.run('tag.beforeCreate', [newTag]);
+
+			await TagHelpers.validateTag(newTag);
+			const tag = await Db.collections.Tag!.save(newTag).catch(TagHelpers.throwDuplicateEntryError);
+
+			await this.externalHooks.run('tag.afterCreate', [tag]);
+
+			// @ts-ignore
+			tag.id = tag.id.toString();
+			return tag;
+		}));
+
+		// Updates a tag
+		this.app.patch(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<TagEntity | void> => {
+			const { name } = req.body;
+			const { id } = req.params;
+
+			const newTag = new TagEntity();
+			newTag.id = Number(id);
+			newTag.name = name.trim();
+
+			await this.externalHooks.run('tag.beforeUpdate', [newTag]);
+
+			await TagHelpers.validateTag(newTag);
+			const tag = await Db.collections.Tag!.save(newTag).catch(TagHelpers.throwDuplicateEntryError);
+
+			await this.externalHooks.run('tag.afterUpdate', [tag]);
+
+			// @ts-ignore
+			tag.id = tag.id.toString();
+			return tag;
+		}));
+
+		// Deletes a tag
+		this.app.delete(`/${this.restEndpoint}/tags/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
+			const id = Number(req.params.id);
+
+			await this.externalHooks.run('tag.beforeDelete', [id]);
+
+			await Db.collections.Tag!.delete({ id });
+
+			await this.externalHooks.run('tag.afterDelete', [id]);
+
+			return true;
+		}));
 
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
 		this.app.get(`/${this.restEndpoint}/node-parameter-options`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodePropertyOptions[]> => {
 			const nodeType = req.query.nodeType as string;
+			const path = req.query.path as string;
 			let credentials: INodeCredentials | undefined = undefined;
 			const currentNodeParameters = JSON.parse('' + req.query.currentNodeParameters) as INodeParameters;
 			if (req.query.credentials !== undefined) {
@@ -693,7 +866,8 @@ class App {
 
 			const nodeTypes = NodeTypes();
 
-			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, JSON.parse('' + req.query.currentNodeParameters), credentials!);
+			// @ts-ignore
+			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, path, JSON.parse('' + req.query.currentNodeParameters), credentials!);
 
 			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
 			const workflowCredentials = await WorkflowCredentials(workflowData.nodes);
@@ -713,10 +887,33 @@ class App {
 			const allNodes = nodeTypes.getAll();
 
 			allNodes.forEach((nodeData) => {
-				returnData.push(nodeData.description);
+				// Make a copy of the object. If we don't do this, then when
+				// The method below is called the properties are removed for good
+				// This happens because nodes are returned as reference.
+				const nodeInfo: INodeTypeDescription = { ...nodeData.description };
+				if (req.query.includeProperties !== 'true') {
+					// @ts-ignore
+					delete nodeInfo.properties;
+				}
+				returnData.push(nodeInfo);
 			});
 
 			return returnData;
+		}));
+
+
+		// Returns node information baesd on namese
+		this.app.post(`/${this.restEndpoint}/node-types`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
+			const nodeNames = _.get(req, 'body.nodeNames', []) as string[];
+			const nodeTypes = NodeTypes();
+
+			return nodeNames.map(name => {
+				try {
+					return nodeTypes.getByName(name);
+				} catch (e) {
+					return undefined;
+				}
+			}).filter(nodeData => !!nodeData).map(nodeData => nodeData!.description);
 		}));
 
 
@@ -749,6 +946,9 @@ class App {
 			}
 
 			const filepath = nodeType.description.icon.substr(5);
+
+			const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+			res.setHeader('Cache-control', `private max-age=${maxAge}`);
 
 			res.sendFile(filepath);
 		});
@@ -834,8 +1034,6 @@ class App {
 			await this.externalHooks.run('credentials.create', [newCredentialsData]);
 
 			// Add special database related data
-			newCredentialsData.createdAt = this.getCurrentDate();
-			newCredentialsData.updatedAt = this.getCurrentDate();
 
 			// TODO: also add user automatically depending on who is logged in, if anybody is logged in
 
@@ -1051,9 +1249,10 @@ class App {
 					[result.name as string]: result as ICredentialsEncrypted,
 				},
 			};
+			const mode: WorkflowExecuteMode = 'internal';
 			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, true);
-			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type);
+			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
 
@@ -1072,7 +1271,7 @@ class App {
 			};
 
 			const oauthRequestData = {
-				oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth1-credential/callback?cid=${req.query.id}`
+				oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth1-credential/callback?cid=${req.query.id}`,
 			};
 
 			await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
@@ -1141,9 +1340,10 @@ class App {
 					[result.name as string]: result as ICredentialsEncrypted,
 				},
 			};
+			const mode: WorkflowExecuteMode = 'internal';
 			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, true);
-			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type);
+			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const options: OptionsWithUrl = {
 				method: 'POST',
@@ -1151,7 +1351,7 @@ class App {
 				qs: {
 					oauth_token,
 					oauth_verifier,
-				}
+				},
 			};
 
 			let oauthToken;
@@ -1212,9 +1412,10 @@ class App {
 					[result.name as string]: result as ICredentialsEncrypted,
 				},
 			};
+			const mode: WorkflowExecuteMode = 'internal';
 			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, true);
-			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type);
+			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const token = new csrf();
 			// Generate a CSRF prevention token and send it as a OAuth2 state stringma/ERR
@@ -1275,6 +1476,8 @@ class App {
 
 		// Verify and store app code. Generate access tokens and store for respective credential.
 		this.app.get(`/${this.restEndpoint}/oauth2-credential/callback`, async (req: express.Request, res: express.Response) => {
+
+			// realmId it's currently just use for the quickbook OAuth2 flow
 			const { code, state: stateEncoded } = req.query;
 
 			if (code === undefined || stateEncoded === undefined) {
@@ -1309,9 +1512,10 @@ class App {
 					[result.name as string]: result as ICredentialsEncrypted,
 				},
 			};
+			const mode: WorkflowExecuteMode = 'internal';
 			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
-			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, true);
-			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type);
+			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, mode, true);
+			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type, mode);
 
 			const token = new csrf();
 			if (decryptedDataOriginal.csrfSecret === undefined || !token.verify(decryptedDataOriginal.csrfSecret as string, state.token)) {
@@ -1327,7 +1531,7 @@ class App {
 				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
 				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
-				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ',')
+				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
 			};
 
 			if (_.get(oauthCredentials, 'authentication', 'header') as string === 'body') {
@@ -1347,6 +1551,10 @@ class App {
 			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
 
 			const oauthToken = await oAuthObj.code.getToken(`${oAuth2Parameters.redirectUri}?${queryParameters}`, options);
+
+			if (Object.keys(req.query).length > 2) {
+				_.set(oauthToken.data, 'callbackQueryString', _.omit(req.query, 'state', 'code'));
+			}
 
 			if (oauthToken === undefined) {
 				const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', undefined, 404);
@@ -1394,29 +1602,48 @@ class App {
 				limit = parseInt(req.query.limit as string, 10);
 			}
 
-			const countFilter = JSON.parse(JSON.stringify(filter));
-			if (req.query.lastId) {
-				filter.id = LessThan(req.query.lastId);
-			}
-			countFilter.select = ['id'];
+			const executingWorkflowIds: string[] = [];
 
-			const resultsPromise = Db.collections.Execution!.find({
-				select: [
-					'id',
-					'finished',
-					'mode',
-					'retryOf',
-					'retrySuccessId',
-					'startedAt',
-					'stoppedAt',
-					'workflowData',
-				],
-				where: filter,
-				order: {
-					id: 'DESC',
-				},
-				take: limit,
+			if (config.get('executions.mode') === 'queue') {
+				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
+				executingWorkflowIds.push(...currentJobs.map(job => job.data.executionId) as string[]);
+			}
+			// We may have manual executions even with queue so we must account for these.
+			executingWorkflowIds.push(...this.activeExecutionsInstance.getActiveExecutions().map(execution => execution.id.toString()) as string[]);
+
+			const countFilter = JSON.parse(JSON.stringify(filter));
+			countFilter.select = ['id'];
+			countFilter.where = {id: Not(In(executingWorkflowIds))};
+
+			const resultsQuery = await Db.collections.Execution!
+				.createQueryBuilder("execution")
+				.select([
+					'execution.id',
+					'execution.finished',
+					'execution.mode',
+					'execution.retryOf',
+					'execution.retrySuccessId',
+					'execution.startedAt',
+					'execution.stoppedAt',
+					'execution.workflowData',
+				])
+				.orderBy('execution.id', 'DESC')
+				.take(limit);
+
+			Object.keys(filter).forEach((filterField) => {
+				resultsQuery.andWhere(`execution.${filterField} = :${filterField}`, {[filterField]: filter[filterField]});
 			});
+			if (req.query.lastId) {
+				resultsQuery.andWhere(`execution.id < :lastId`, {lastId: req.query.lastId});
+			}
+			if (req.query.firstId) {
+				resultsQuery.andWhere(`execution.id > :firstId`, {firstId: req.query.firstId});
+			}
+			if (executingWorkflowIds.length > 0) {
+				resultsQuery.andWhere(`execution.id NOT IN (:...ids)`, {ids: executingWorkflowIds});
+			}
+
+			const resultsPromise = resultsQuery.getMany();
 
 			const countPromise = Db.collections.Execution!.count(countFilter);
 
@@ -1447,16 +1674,21 @@ class App {
 
 
 		// Returns a specific execution
-		this.app.get(`/${this.restEndpoint}/executions/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionFlattedResponse | undefined> => {
+		this.app.get(`/${this.restEndpoint}/executions/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> => {
 			const result = await Db.collections.Execution!.findOne(req.params.id);
 
 			if (result === undefined) {
 				return undefined;
 			}
 
-			// Convert to response format in which the id is a string
-			(result as IExecutionFlatted as IExecutionFlattedResponse).id = result.id.toString();
-			return result as IExecutionFlatted as IExecutionFlattedResponse;
+			if (req.query.unflattedResponse === 'true') {
+				const fullExecutionData = ResponseHelper.unflattenExecutionData(result);
+				return fullExecutionData as IExecutionResponse;
+			} else {
+				// Convert to response format in which the id is a string
+				(result as IExecutionFlatted as IExecutionFlattedResponse).id = result.id.toString();
+				return result as IExecutionFlatted as IExecutionFlattedResponse;
+			}
 		}));
 
 
@@ -1490,27 +1722,39 @@ class App {
 				workflowData: fullExecutionData.workflowData,
 			};
 
-			const lastNodeExecuted = data!.executionData!.resultData.lastNodeExecuted as string;
+			const lastNodeExecuted = data!.executionData!.resultData.lastNodeExecuted as string | undefined;
 
-			// Remove the old error and the data of the last run of the node that it can be replaced
-			delete data!.executionData!.resultData.error;
-			data!.executionData!.resultData.runData[lastNodeExecuted].pop();
+			if (lastNodeExecuted) {
+				// Remove the old error and the data of the last run of the node that it can be replaced
+				delete data!.executionData!.resultData.error;
+				const length = data!.executionData!.resultData.runData[lastNodeExecuted].length;
+				if (length > 0 && data!.executionData!.resultData.runData[lastNodeExecuted][length - 1].error !== undefined) {
+					// Remove results only if it is an error.
+					// If we are retrying due to a crash, the information is simply success info from last node
+					data!.executionData!.resultData.runData[lastNodeExecuted].pop();
+					// Stack will determine what to run next
+				}
+			}
 
 			if (req.body.loadWorkflow === true) {
 				// Loads the currently saved workflow to execute instead of the
 				// one saved at the time of the execution.
 				const workflowId = fullExecutionData.workflowData.id;
-				data.workflowData = await Db.collections.Workflow!.findOne(workflowId) as IWorkflowBase;
+				const workflowData = await Db.collections.Workflow!.findOne(workflowId) as IWorkflowBase;
 
-				if (data.workflowData === undefined) {
+				if (workflowData === undefined) {
 					throw new Error(`The workflow with the ID "${workflowId}" could not be found and so the data not be loaded for the retry.`);
 				}
+
+				data.workflowData = workflowData;
+				const nodeTypes = NodeTypes();
+				const workflowInstance = new Workflow({ id: workflowData.id as string, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: false, nodeTypes, staticData: undefined, settings: workflowData.settings });
 
 				// Replace all of the nodes in the execution stack with the ones of the new workflow
 				for (const stack of data!.executionData!.executionData!.nodeExecutionStack) {
 					// Find the data of the last executed node in the new workflow
-					const node = data.workflowData.nodes.find(node => node.name === stack.node.name);
-					if (node === undefined) {
+					const node = workflowInstance.getNode(stack.node.name);
+					if (node === null) {
 						throw new Error(`Could not find the node "${stack.node.name}" in workflow. It probably got deleted or renamed. Without it the workflow can sadly not be retried.`);
 					}
 
@@ -1563,52 +1807,138 @@ class App {
 
 		// Returns all the currently working executions
 		this.app.get(`/${this.restEndpoint}/executions-current`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionsSummary[]> => {
-			const executingWorkflows = this.activeExecutionsInstance.getActiveExecutions();
+			if (config.get('executions.mode') === 'queue') {
+				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
 
-			const returnData: IExecutionsSummary[] = [];
+				const currentlyRunningQueueIds = currentJobs.map(job => job.data.executionId);
 
-			let filter: any = {}; // tslint:disable-line:no-any
-			if (req.query.filter) {
-				filter = JSON.parse(req.query.filter as string);
-			}
+				const currentlyRunningManualExecutions = this.activeExecutionsInstance.getActiveExecutions();
+				const manualExecutionIds = currentlyRunningManualExecutions.map(execution => execution.id);
 
-			for (const data of executingWorkflows) {
-				if (filter.workflowId !== undefined && filter.workflowId !== data.workflowId) {
-					continue;
+				const currentlyRunningExecutionIds = currentlyRunningQueueIds.concat(manualExecutionIds);
+
+				if (currentlyRunningExecutionIds.length === 0) {
+					return [];
 				}
-				returnData.push(
-					{
-						idActive: data.id.toString(),
-						workflowId: data.workflowId.toString(),
-						mode: data.mode,
-						retryOf: data.retryOf,
-						startedAt: new Date(data.startedAt),
-					}
-				);
-			}
 
-			return returnData;
+				const resultsQuery = await Db.collections.Execution!
+					.createQueryBuilder("execution")
+					.select([
+						'execution.id',
+						'execution.workflowId',
+						'execution.mode',
+						'execution.retryOf',
+						'execution.startedAt',
+					])
+					.orderBy('execution.id', 'DESC')
+					.andWhere(`execution.id IN (:...ids)`, {ids: currentlyRunningExecutionIds});
+
+				if (req.query.filter) {
+					const filter = JSON.parse(req.query.filter as string);
+					if (filter.workflowId !== undefined) {
+						resultsQuery.andWhere('execution.workflowId = :workflowId', {workflowId: filter.workflowId});
+					}
+				}
+
+				const results = await resultsQuery.getMany();
+
+				return results.map(result => {
+					return {
+						id: result.id,
+						workflowId: result.workflowId,
+						mode: result.mode,
+						retryOf: result.retryOf !== null ? result.retryOf : undefined,
+						startedAt: new Date(result.startedAt),
+					} as IExecutionsSummary;
+				});
+			} else {
+				const executingWorkflows = this.activeExecutionsInstance.getActiveExecutions();
+
+				const returnData: IExecutionsSummary[] = [];
+
+				let filter: any = {}; // tslint:disable-line:no-any
+				if (req.query.filter) {
+					filter = JSON.parse(req.query.filter as string);
+				}
+
+				for (const data of executingWorkflows) {
+					if (filter.workflowId !== undefined && filter.workflowId !== data.workflowId) {
+						continue;
+					}
+					returnData.push(
+						{
+							id: data.id.toString(),
+							workflowId: data.workflowId === undefined ? '' : data.workflowId.toString(),
+							mode: data.mode,
+							retryOf: data.retryOf,
+							startedAt: new Date(data.startedAt),
+						}
+					);
+				}
+				returnData.sort((a, b) => parseInt(b.id, 10) - parseInt(a.id, 10));
+
+				return returnData;
+			}
 		}));
 
 		// Forces the execution to stop
 		this.app.post(`/${this.restEndpoint}/executions-current/:id/stop`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionsStopData> => {
-			const executionId = req.params.id;
+			if (config.get('executions.mode') === 'queue') {
+				// Manual executions should still be stoppable, so
+				// try notifying the `activeExecutions` to stop it.
+				const result = await this.activeExecutionsInstance.stopExecution(req.params.id);
+				if (result !== undefined) {
+					const returnData: IExecutionsStopData = {
+						mode: result.mode,
+						startedAt: new Date(result.startedAt),
+						stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
+						finished: result.finished,
+					};
 
-			// Stopt he execution and wait till it is done and we got the data
-			const result = await this.activeExecutionsInstance.stopExecution(executionId);
+					return returnData;
+				}
 
-			if (result === undefined) {
-				throw new Error(`The execution id "${executionId}" could not be found.`);
+				const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
+
+				const job = currentJobs.find(job => job.data.executionId.toString() === req.params.id);
+
+				if (!job) {
+					throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
+				} else {
+					await Queue.getInstance().stopJob(job);
+				}
+
+				const executionDb = await Db.collections.Execution?.findOne(req.params.id) as IExecutionFlattedDb;
+				const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
+
+				const returnData: IExecutionsStopData = {
+					mode: fullExecutionData.mode,
+					startedAt: new Date(fullExecutionData.startedAt),
+					stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : undefined,
+					finished: fullExecutionData.finished,
+				};
+
+				return returnData;
+
+			} else {
+				const executionId = req.params.id;
+
+				// Stopt he execution and wait till it is done and we got the data
+				const result = await this.activeExecutionsInstance.stopExecution(executionId);
+
+				if (result === undefined) {
+					throw new Error(`The execution id "${executionId}" could not be found.`);
+				}
+
+				const returnData: IExecutionsStopData = {
+					mode: result.mode,
+					startedAt: new Date(result.startedAt),
+					stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
+					finished: result.finished,
+				};
+
+				return returnData;
 			}
-
-			const returnData: IExecutionsStopData = {
-				mode: result.mode,
-				startedAt: new Date(result.startedAt),
-				stoppedAt: new Date(result.stoppedAt),
-				finished: result.finished,
-			};
-
-			return returnData;
 		}));
 
 
@@ -1648,88 +1978,9 @@ class App {
 		// Webhooks
 		// ----------------------------------------
 
-		// HEAD webhook requests
-		this.app.head(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
-
-			let response;
-			try {
-				response = await this.activeWorkflowRunner.executeWebhook('HEAD', requestUrl, req, res);
-			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-		});
-
-		// OPTIONS webhook requests
-		this.app.options(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
-
-			let allowedMethods: string[];
-			try {
-				allowedMethods = await this.activeWorkflowRunner.getWebhookMethods(requestUrl);
-				allowedMethods.push('OPTIONS');
-
-				// Add custom "Allow" header to satisfy OPTIONS response.
-				res.append('Allow', allowedMethods);
-			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(res, {}, true, 204);
-		});
-
-		// GET webhook requests
-		this.app.get(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
-
-			let response;
-			try {
-				response = await this.activeWorkflowRunner.executeWebhook('GET', requestUrl, req, res);
-			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-		});
-
-		// POST webhook requests
-		this.app.post(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
-			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
-
-			let response;
-			try {
-				response = await this.activeWorkflowRunner.executeWebhook('POST', requestUrl, req, res);
-			} catch (error) {
-				ResponseHelper.sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-		});
+		if (config.get('endpoints.disableProductionWebhooksOnMainProcess') !== true) {
+			WebhookServer.registerProductionWebhooks.apply(this);
+		}
 
 		// HEAD webhook requests (test for UI)
 		this.app.head(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {
@@ -1875,7 +2126,7 @@ class App {
 					// got used
 					res.setHeader('Last-Modified', startTime);
 				}
-			}
+			},
 		}));
 	}
 
@@ -1907,6 +2158,6 @@ export async function start(): Promise<void> {
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);
 
-		await app.externalHooks.run('n8n.ready', []);
+		await app.externalHooks.run('n8n.ready', [app]);
 	});
 }

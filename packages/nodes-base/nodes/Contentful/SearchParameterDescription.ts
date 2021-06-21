@@ -21,17 +21,17 @@ export const fields = [
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'Name of the search parameter to set.'
+						description: 'Name of the search parameter to set.',
 					},
 					{
 						displayName: 'Parameter Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the search parameter to set.'
+						description: 'Value of the search parameter to set.',
 					},
 				],
 			},
 		],
-	}
+	},
 ] as INodeProperties[];

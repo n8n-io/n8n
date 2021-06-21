@@ -24,7 +24,7 @@ export class ConvertKitTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ConvertKit Trigger',
 		name: 'convertKitTrigger',
-		icon: 'file:convertKit.png',
+		icon: 'file:convertKit.svg',
 		subtitle: '={{$parameter["event"]}}',
 		group: ['trigger'],
 		version: 1,
@@ -254,7 +254,7 @@ export class ConvertKitTrigger implements INodeType {
 
 				return returnData;
 			},
-		}
+		},
 	};
 
 	// @ts-ignore (because of request)
@@ -290,7 +290,7 @@ export class ConvertKitTrigger implements INodeType {
 				const body: IDataObject = {
 					target_url: webhookUrl as string,
 					event: {
-						name: event
+						name: event,
 					},
 				};
 

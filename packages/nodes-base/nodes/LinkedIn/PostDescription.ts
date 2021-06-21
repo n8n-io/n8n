@@ -1,4 +1,4 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
 export const postOperations = [
 	{
@@ -66,15 +66,16 @@ export const postFields = [
 				resource: [
 					'post',
 				],
-			}
-		}
+			},
+		},
 	},
 	{
 		displayName: 'Organization URN',
 		name: 'organization',
 		type: 'string',
 		default: '',
-		description: 'URN of Organization as which the post should be posted as',
+		placeholder: '1234567',
+		description: 'URN of Organization as which the post should be posted as.',
 		displayOptions: {
 			show: {
 				operation: [
@@ -126,7 +127,7 @@ export const postFields = [
 				name: 'Image',
 				value: 'IMAGE',
 				description: 'The post contains an image',
-			}
+			},
 		],
 		displayOptions: {
 			show: {

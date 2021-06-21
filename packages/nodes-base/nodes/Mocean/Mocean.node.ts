@@ -4,6 +4,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {moceanApiRequest} from './GenericFunctions';
@@ -27,7 +28,7 @@ export class Mocean implements INodeType {
 			{
 				name: 'moceanApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			// Node properties which the user gets displayed and
@@ -44,7 +45,7 @@ export class Mocean implements INodeType {
 					{
 						name: 'Voice',
 						value: 'voice',
-					}
+					},
 				],
 				default: 'sms',
 			},
@@ -119,23 +120,23 @@ export class Mocean implements INodeType {
 				options:[
 					{
 						name: 'Chinese Mandarin (China)',
-						value: 'cmn-CN'
+						value: 'cmn-CN',
 					},
 					{
 						name: 'English (United Kingdom)',
-						value: 'en-GB'
+						value: 'en-GB',
 					},
 					{
 						name: 'English (United States)',
-						value: 'en-US'
+						value: 'en-US',
 					},
 					{
 						name: 'Japanese (Japan)',
-						value: 'ja-JP'
+						value: 'ja-JP',
 					},
 					{
 						name: 'Korean (Korea)',
-						value: 'ko-KR'
+						value: 'ko-KR',
 					},
 				],
 				displayOptions: {
@@ -209,7 +210,7 @@ export class Mocean implements INodeType {
 						action: 'say',
 						language,
 						text,
-					}
+					},
 				];
 
 				dataKey = 'voice';
@@ -220,7 +221,7 @@ export class Mocean implements INodeType {
 				body['mocean-text'] = text;
 				endpoint = '/rest/2/sms';
 			} else {
-				throw new Error(`Unknown resource ${resource}`);
+				throw new NodeOperationError(this.getNode(), `Unknown resource ${resource}`);
 			}
 
 			if (operation === 'send') {
@@ -232,7 +233,7 @@ export class Mocean implements INodeType {
 				}
 
 			} else {
-				throw new Error(`Unknown operation ${operation}`);
+				throw new NodeOperationError(this.getNode(), `Unknown operation ${operation}`);
 			}
 		}
 

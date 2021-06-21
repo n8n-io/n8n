@@ -24,7 +24,7 @@ export const paymentOperations = [
 				name: 'Reschedule',
 				value: 'reschedule',
 				description: 'Reschedule payment.',
-			}
+			},
 		],
 		default: 'getAll',
 		description: 'The operation to perform.',
@@ -130,8 +130,8 @@ export const paymentFields = [
 					'getAll',
 				],
 				jsonParameters: [
-					false
-				]
+					false,
+				],
 			},
 		},
 		default: {},
@@ -180,21 +180,21 @@ export const paymentFields = [
 				options: [
 					{
 						name: 'Active',
-						value: 'active'
+						value: 'active',
 					},
 					{
 						name: 'Past Due',
-						value: 'past_due'
+						value: 'past_due',
 					},
 					{
 						name: 'Paused',
-						value: 'paused'
+						value: 'paused',
 					},
 					{
 						name: 'Trialing',
-						value: 'trialing'
+						value: 'trialing',
 					},
-				]
+				],
 			},
 			{
 				displayName: 'One off charge',

@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
-} from "n8n-workflow";
+} from 'n8n-workflow';
 
 import {
 	activeCampaignDefaultGetAllProperties,

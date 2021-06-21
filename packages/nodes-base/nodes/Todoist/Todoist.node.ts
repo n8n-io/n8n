@@ -17,7 +17,9 @@ import {
 
 interface IBodyCreateTask {
 	content: string;
+	description?: string;
 	project_id?: number;
+	section_id?: number;
 	parent?: number;
 	order?: number;
 	label_ids?: number[];
@@ -33,7 +35,7 @@ export class Todoist implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Todoist',
 		name: 'todoist',
-		icon: 'file:todoist.png',
+		icon: 'file:todoist.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -248,6 +250,13 @@ export class Todoist implements INodeType {
 				},
 				options: [
 					{
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+						default: '',
+						description: 'A description for the task.',
+					},
+					{
 						displayName: 'Due Date Time',
 						name: 'dueDateTime',
 						type: 'dateTime',
@@ -272,6 +281,19 @@ export class Todoist implements INodeType {
 						},
 						default: 1,
 						description: 'Task priority from 1 (normal) to 4 (urgent).',
+					},
+					{
+						displayName: 'Section',
+						name: 'section',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getSections',
+							loadOptionsDependsOn: [
+								'project',
+							],
+						},
+						default: {},
+						description: 'The section you want to operate on.',
 					},
 				],
 			},
@@ -399,6 +421,29 @@ export class Todoist implements INodeType {
 				return returnData;
 			},
 
+			// Get all the available sections in the selected project, to display them
+			// to user so that he can select one easily
+			async getSections(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const projectId = this.getCurrentNodeParameter('project') as number;
+				if (projectId) {
+					const qs: IDataObject = {project_id: projectId};
+					const sections = await todoistApiRequest.call(this, 'GET', '/sections', {}, qs);
+					for (const section of sections) {
+						const sectionName = section.name;
+						const sectionId = section.id;
+
+						returnData.push({
+							name: sectionName,
+							value: sectionId,
+						});
+					}
+				}
+
+				return returnData;
+			},
+
 			// Get all the available labels to display them to user so that he can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -416,8 +461,8 @@ export class Todoist implements INodeType {
 				}
 
 				return returnData;
-			}
-		}
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -446,6 +491,10 @@ export class Todoist implements INodeType {
 						priority: (options.priority!) ? parseInt(options.priority as string, 10) : 1,
 					};
 
+					if (options.description) {
+						body.description = options.description as string;
+					}
+
 					if (options.dueDateTime) {
 						body.due_datetime = options.dueDateTime as string;
 					}
@@ -456,6 +505,10 @@ export class Todoist implements INodeType {
 
 					if (labels !== undefined && labels.length !== 0) {
 						body.label_ids = labels;
+					}
+
+					if (options.section) {
+						body.section_id = options.section as number;
 					}
 
 					responseData = await todoistApiRequest.call(this, 'POST', '/tasks', body);

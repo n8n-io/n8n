@@ -1,0 +1,27 @@
+{
+	"node": "n8n-nodes-base.githubTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Development"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/github"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.githubTrigger/"
+			}
+		],
+		"generic": [
+			{
+				"label": "5 workflow automations for Mattermost that we love at n8n",
+				"icon": "🤖",
+				"url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/"
+			}
+		]
+	}
+}

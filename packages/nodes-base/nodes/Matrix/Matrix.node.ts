@@ -112,7 +112,7 @@ export class Matrix implements INodeType {
 			...roomFields,
 			...roomMemberOperations,
 			...roomMemberFields,
-		]
+		],
 	};
 
 
@@ -130,7 +130,7 @@ export class Matrix implements INodeType {
 							name: roomNameResponse.name,
 							value: roomId,
 						});
-					} catch (e) {
+					} catch (error) {
 						// TODO: Check, there is probably another way to get the name of this private-chats
 						returnData.push({
 							name: `Unknown: ${roomId}`,
@@ -147,7 +147,7 @@ export class Matrix implements INodeType {
 
 				return returnData;
 			},
-		}
+		},
 	};
 
 

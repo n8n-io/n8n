@@ -9,7 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
 
 import * as moment from 'moment-timezone';
@@ -39,38 +39,19 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			const credentials = this.getCredentials('googleApi');
 
 			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
 
 			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
-			//@ts-ignore
-			return await this.helpers.request(options);
+			return await this.helpers.request!(options);
 		} else {
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'googleDriveOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error) {
-
-			let errorMessages;
-
-			if (error.response.body.error.errors) {
-				// Try to return the error prettier
-				errorMessages = error.response.body.error.errors;
-
-				errorMessages = errorMessages.map((errorItem: IDataObject) => errorItem.message);
-
-				errorMessages = errorMessages.join('|');
-
-			} else if (error.response.body.error.message) {
-				errorMessages = error.response.body.error.message;
-			}
-
-			throw new Error(`Google Drive error response [${error.statusCode}]: ${errorMessages}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -80,6 +61,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 
 	let responseData;
 	query.maxResults = 100;
+	query.pageSize = 100;
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
@@ -107,7 +89,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 	const signature = jwt.sign(
 		{
 			'iss': credentials.email as string,
-			'sub': credentials.email as string,
+			'sub': credentials.delegatedEmail || credentials.email as string,
 			'scope': scopes.join(' '),
 			'aud': `https://oauth2.googleapis.com/token`,
 			'iat': now,
@@ -121,7 +103,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 				'typ': 'JWT',
 				'alg': 'RS256',
 			},
-		}
+		},
 	);
 
 	const options: OptionsWithUri = {
@@ -134,9 +116,8 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 			assertion: signature,
 		},
 		uri: 'https://oauth2.googleapis.com/token',
-		json: true
+		json: true,
 	};
 
-	//@ts-ignore
-	return this.helpers.request(options);
+	return this.helpers.request!(options);
 }

@@ -25,7 +25,7 @@ export class Bitly implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Bitly',
 		name: 'bitly',
-		icon: 'file:bitly.png',
+		icon: 'file:bitly.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

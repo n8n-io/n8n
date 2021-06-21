@@ -61,7 +61,7 @@ export const messageFields = [
 				operation: [
 					'get',
 					'delete',
-				]
+				],
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
@@ -80,7 +80,7 @@ export const messageFields = [
 				],
 				operation: [
 					'reply',
-				]
+				],
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
@@ -99,7 +99,7 @@ export const messageFields = [
 				],
 				operation: [
 					'reply',
-				]
+				],
 			},
 		},
 		placeholder: 'CAHNQoFsC6JMMbOBJgtjsqN0eEc+gDg2a=SQj-tWUebQeHMDgqQ@mail.gmail.com',
@@ -119,11 +119,51 @@ export const messageFields = [
 				operation: [
 					'reply',
 					'send',
-				]
+				],
 			},
 		},
 		placeholder: 'Hello World!',
 		description: 'The message subject.',
+	},
+	{
+		displayName: 'HTML',
+		name: 'includeHtml',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'send',
+					'reply',
+				],
+			},
+		},
+		default: false,
+		description: 'Switch ON if the message should also be included as HTML.',
+	},
+	{
+		displayName: 'HTML Message',
+		name: 'htmlMessage',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				includeHtml: [
+					true,
+				],
+				resource: [
+					'message',
+				],
+				operation: [
+					'reply',
+					'send',
+				],
+			},
+		},
+		description: 'The HTML message body.',
 	},
 	{
 		displayName: 'Message',
@@ -139,11 +179,10 @@ export const messageFields = [
 				operation: [
 					'reply',
 					'send',
-				]
+				],
 			},
 		},
-		placeholder: 'Hello World!',
-		description: 'The message body. This can be in HTML.',
+		description: 'Plain text message body.',
 	},
 	{
 		displayName: 'To Email',
@@ -163,7 +202,7 @@ export const messageFields = [
 				operation: [
 					'reply',
 					'send',
-				]
+				],
 			},
 		},
 		placeholder: 'info@example.com',
@@ -182,35 +221,11 @@ export const messageFields = [
 				operation: [
 					'send',
 					'reply',
-				]
+				],
 			},
 		},
 		default: {},
 		options: [
-			{
-				displayName: 'CC Email',
-				name: 'ccList',
-				type: 'string',
-				description: 'The email addresses of the copy recipients.',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add CC Email',
-				},
-				placeholder: 'info@example.com',
-				default: [],
-			},
-			{
-				displayName: 'BCC Email',
-				name: 'bccList',
-				type: 'string',
-				description: 'The email addresses of the blind copy recipients.',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add BCC Email',
-				},
-				placeholder: 'info@example.com',
-				default: [],
-			},
 			{
 				displayName: 'Attachments',
 				name: 'attachmentsUi',
@@ -229,7 +244,8 @@ export const messageFields = [
 								name: 'property',
 								type: 'string',
 								default: '',
-								description: 'Name of the binary properties which contain data which should be added to email as attachment',
+								description: `Name of the binary property containing the data to be added to the email as an attachment.</br>
+								Multiples can be set separated by comma.`,
 							},
 						],
 					},
@@ -237,7 +253,31 @@ export const messageFields = [
 				default: '',
 				description: 'Array of supported attachments to add to the message.',
 			},
-		]
+			{
+				displayName: 'BCC Email',
+				name: 'bccList',
+				type: 'string',
+				description: 'The email addresses of the blind copy recipients.',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add BCC Email',
+				},
+				placeholder: 'info@example.com',
+				default: [],
+			},
+			{
+				displayName: 'CC Email',
+				name: 'ccList',
+				type: 'string',
+				description: 'The email addresses of the copy recipients.',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add CC Email',
+				},
+				placeholder: 'info@example.com',
+				default: [],
+			},
+		],
 	},
 	{
 		displayName: 'Additional Fields',
@@ -251,7 +291,7 @@ export const messageFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		default: {},
@@ -279,7 +319,7 @@ export const messageFields = [
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.'
+						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.',
 					},
 					{
 						name: 'Resolved',
@@ -307,7 +347,7 @@ export const messageFields = [
 				},
 				description: 'Prefix for name of the binary property to which to<br />write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
-		]
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -417,7 +457,7 @@ export const messageFields = [
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.'
+						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.',
 					},
 					{
 						name: 'Resolved',

@@ -104,7 +104,7 @@ export const companyFields = [
 					false,
 				],
 			},
-		}
+		},
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                company:create                               */
@@ -206,29 +206,29 @@ export const companyFields = [
 				options: [
 					{
 						name: '0',
-						value: 0
+						value: 0,
 					},
 					{
 						name: '1',
-						value: 1
+						value: 1,
 					},
 					{
 						name: '2',
-						value: 2
+						value: 2,
 					},
 					{
 						name: '3',
-						value: 3
+						value: 3,
 					},
 					{
 						name: '4',
-						value: 4
+						value: 4,
 					},
 					{
 						name: '5',
-						value: 5
+						value: 5,
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Tags',
@@ -339,7 +339,7 @@ export const companyFields = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Property name.'
+								description: 'Property name.',
 							},
 							{
 								displayName: 'Sub Type',
@@ -653,7 +653,7 @@ export const companyFields = [
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},

@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export const taskOperations = [
 	{
@@ -58,9 +58,9 @@ export const taskOperations = [
 
 export const taskFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                task:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                task:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
 		name: 'team',
@@ -352,9 +352,10 @@ export const taskFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                task:update                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                task:update                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'id',
@@ -395,7 +396,7 @@ export const taskFields = [
 				name: 'addAssignees',
 				type: 'string',
 				default: '',
-				description: 'Assignees IDs. Multiple ca be added separated by comma'
+				description: 'Assignees IDs. Multiple ca be added separated by comma',
 			},
 			{
 				displayName: 'Content',
@@ -458,14 +459,14 @@ export const taskFields = [
 				name: 'removeAssignees',
 				type: 'string',
 				default: '',
-				description: 'Assignees IDs. Multiple ca be added separated by comma'
+				description: 'Assignees IDs. Multiple ca be added separated by comma',
 			},
 			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'string',
 				default: '',
-				description: 'status'
+				description: 'status',
 			},
 			{
 				displayName: 'Start Date',
@@ -489,9 +490,10 @@ export const taskFields = [
 		],
 
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 task:get                                   */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:get                                   */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'id',
@@ -510,9 +512,10 @@ export const taskFields = [
 		},
 		description: 'Task ID',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 task:getAll                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
 		name: 'team',
@@ -552,7 +555,7 @@ export const taskFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -920,9 +923,10 @@ export const taskFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                task:delete                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                task:delete                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'id',
@@ -941,9 +945,10 @@ export const taskFields = [
 		},
 		description: 'task ID',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                task:member                                 */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                task:member                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'id',
@@ -1003,9 +1008,10 @@ export const taskFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                task:setCustomField                         */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                task:setCustomField                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'task',
@@ -1053,7 +1059,7 @@ export const taskFields = [
 				],
 				operation: [
 					'setCustomField',
-				]
+				],
 			},
 		},
 		default: false,

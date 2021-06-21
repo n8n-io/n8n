@@ -17,7 +17,7 @@ export class ChargebeeTrigger implements INodeType {
 		icon: 'file:chargebee.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Chargebee events occure.',
+		description: 'Starts the workflow when Chargebee events occur.',
 		defaults: {
 			name: 'Chargebee Trigger',
 			color: '#559922',
@@ -216,7 +216,7 @@ export class ChargebeeTrigger implements INodeType {
 						value: 'card_deleted',
 						description: 'Triggered when a card is deleted for a customer.',
 					},
-				]
+				],
 			},
 		],
 
@@ -238,7 +238,7 @@ export class ChargebeeTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body)
+				this.helpers.returnJsonArray(req.body),
 			],
 		};
 	}

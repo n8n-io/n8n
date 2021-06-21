@@ -1,4 +1,6 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -8,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 interface OMauticErrorResponse {
@@ -17,17 +19,6 @@ interface OMauticErrorResponse {
 		message: string;
 	}>;
 }
-
-export function getErrors(error: OMauticErrorResponse): string {
-	const returnErrors: string[] = [];
-
-	for (const errorItem of error.errors) {
-		returnErrors.push(errorItem.message);
-	}
-
-	return returnErrors.join(', ');
-}
-
 
 export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'credentials') as string;
@@ -38,7 +29,7 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 		qs: query,
 		uri: uri || `/api${endpoint}`,
 		body,
-		json: true
+		json: true,
 	};
 
 	try {
@@ -48,11 +39,12 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 		if (authenticationMethod === 'credentials') {
 			const credentials = this.getCredentials('mauticApi') as IDataObject;
 
-			const base64Key =  Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
+			const base64Key = Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
 
 			options.headers!.Authorization = `Basic ${base64Key}`;
 
 			options.uri = `${credentials.url}${options.uri}`;
+
 			//@ts-ignore
 			returnData = await this.helpers.request(options);
 		} else {
@@ -60,20 +52,17 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 			options.uri = `${credentials.url}${options.uri}`;
 			//@ts-ignore
-			returnData = await this.helpers.requestOAuth2.call(this, 'mauticOAuth2Api', options);
+			returnData = await this.helpers.requestOAuth2.call(this, 'mauticOAuth2Api', options, { includeCredentialsOnRefreshOnBody: true });
 		}
 
 		if (returnData.errors) {
 			// They seem to to sometimes return 200 status but still error.
-			throw new Error(getErrors(returnData));
+			throw new NodeApiError(this.getNode(), returnData);
 		}
 
 		return returnData;
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.errors) {
-			throw new Error('Mautic Error: ' + getErrors(error.response.body));
-		}
-		throw new Error(`Mautic Error: ${error.message}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -102,7 +91,7 @@ export async function mauticApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	} while (
 		responseData.total !== undefined &&
 		((query.limit * query.start) - parseInt(responseData.total, 10)) < 0
-		);
+	);
 
 	return returnData;
 }

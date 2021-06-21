@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -42,7 +43,7 @@ export class Shopify implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Shopify',
 		name: 'shopify',
-		icon: 'file:shopify.png',
+		icon: 'file:shopify.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -139,7 +140,7 @@ export class Shopify implements INodeType {
 					const shipping = additionalFields.shippingAddressUi as IDataObject;
 					const lineItem = (this.getNodeParameter('limeItemsUi', i) as IDataObject).lineItemValues as IDataObject[];
 					if (lineItem === undefined) {
-						throw new Error('At least one line item has to be added');
+						throw new NodeOperationError(this.getNode(), 'At least one line item has to be added');
 					}
 					const body: IOrder = {
 						test: true,

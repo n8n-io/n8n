@@ -6,6 +6,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 import {
 	customerIoApiRequest,
@@ -33,7 +34,7 @@ export class CustomerIo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Customer.io',
 		name: 'customerIo',
-		icon: 'file:customerio.png',
+		icon: 'file:customerio.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -48,7 +49,7 @@ export class CustomerIo implements INodeType {
 			{
 				name: 'customerIoApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -87,7 +88,7 @@ export class CustomerIo implements INodeType {
 			...eventFields,
 			// SEGMENT
 			...segmentOperations,
-			...segmentFields
+			...segmentFields,
 		],
 	};
 
@@ -131,7 +132,7 @@ export class CustomerIo implements INodeType {
 								Object.assign(body, JSON.parse(additionalFieldsJson));
 
 							} else {
-								throw new Error('Additional fields must be a valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
 							}
 						}
 					} else {
@@ -175,7 +176,7 @@ export class CustomerIo implements INodeType {
 								Object.assign(body, JSON.parse(additionalFieldsJson));
 
 							} else {
-								throw new Error('Additional fields must be a valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
 							}
 						}
 					} else {
@@ -238,7 +239,7 @@ export class CustomerIo implements INodeType {
 							if (validateJSON(additionalFieldsJson) !== undefined) {
 								Object.assign(body, JSON.parse(additionalFieldsJson));
 							} else {
-								throw new Error('Additional fields must be a valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
 							}
 						}
 					} else {
@@ -283,7 +284,7 @@ export class CustomerIo implements INodeType {
 								Object.assign(body, JSON.parse(additionalFieldsJson));
 
 							} else {
-								throw new Error('Additional fields must be a valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
 							}
 						}
 					} else {

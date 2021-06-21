@@ -23,7 +23,7 @@ export async function createTemplate(sourceFilePath: string, destinationFilePath
 	// Replace the variables in the template file
 	const options: ReplaceInFileConfig = {
 		files: [
-			destinationFilePath
+			destinationFilePath,
 		],
 		from: [],
 		to: [],

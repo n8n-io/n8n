@@ -295,7 +295,7 @@ export const projectFields = [
 				name: 'contains-client',
 				type: 'boolean',
 				default: false,
-				description: 'If provided, projects will be filtered by whether they have a client.;			'
+				description: 'If provided, projects will be filtered by whether they have a client.;			',
 			},
 			{
 				displayName: 'Client Status',

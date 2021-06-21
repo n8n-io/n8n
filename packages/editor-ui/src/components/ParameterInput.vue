@@ -10,7 +10,7 @@
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
 			</div>
 
-			<el-input v-else v-model="tempValue" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
+			<el-input v-else v-model="tempValue" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="!isValueExpression && isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
 				<font-awesome-icon v-if="!isValueExpression && !isReadOnly" slot="suffix" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
 			</el-input>
 		</div>
@@ -82,8 +82,8 @@
 		</el-select>
 
 		<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
-			<el-color-picker :value="displayValue" :disabled="isReadOnly" @change="valueChanged" size="small" class="color-picker" @focus="setFocus" :title="displayTitle" ></el-color-picker>
-			<el-input v-model="tempValue" size="small" type="text" :value="displayValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" ></el-input>
+			<el-color-picker :value="displayValue" :disabled="isReadOnly" @change="valueChanged" size="small" class="color-picker" @focus="setFocus" :title="displayTitle" :show-alpha="getArgument('showAlpha')"></el-color-picker>
+			<el-input v-model="tempValue" size="small" type="text" :value="tempValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" ></el-input>
 		</div>
 
 		<div v-else-if="parameter.type === 'boolean'">
@@ -213,6 +213,10 @@ export default mixins(
 				this.loadRemoteParameterOptions();
 			},
 			value () {
+				if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true) {
+					// Do not set for color with alpha else wrong value gets displayed in field
+					return;
+				}
 				this.tempValue = this.displayValue as string;
 			},
 		},
@@ -226,7 +230,7 @@ export default mixins(
 
 				// Get the resolved parameter values of the current node
 				const currentNodeParameters = this.$store.getters.activeNode.parameters;
-				const resolvedNodeParameters = this.getResolveNodeParameters(currentNodeParameters);
+				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
 
 				const returnValues: string[] = [];
 				for (const parameterPath of loadOptionsDependsOn) {
@@ -236,10 +240,6 @@ export default mixins(
 				return returnValues.join('|');
 			},
 			node (): INodeUi | null {
-				if (this.isCredential === true) {
-					return null;
-				}
-
 				return this.$store.getters.activeNode;
 			},
 			displayTitle (): string {
@@ -274,6 +274,18 @@ export default mixins(
 					returnValue = this.expressionValueComputed;
 				}
 
+				if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && returnValue.charAt(0) === '#') {
+					// Convert the value to rgba that el-color-picker can display it correctly
+					const bigint = parseInt(returnValue.slice(1), 16);
+					const h = [];
+					h.push((bigint >> 24) & 255);
+					h.push((bigint >> 16) & 255);
+					h.push((bigint >> 8) & 255);
+					h.push((255 - bigint & 255) / 255);
+
+					returnValue = 'rgba('+h.join()+')';
+				}
+
 				if (returnValue !== undefined && returnValue !== null && this.parameter.type === 'string') {
 					const rows = this.getArgument('rows');
 					if (rows === undefined || rows === 1) {
@@ -298,7 +310,7 @@ export default mixins(
 				return false;
 			},
 			expressionValueComputed (): NodeParameterValue | null {
-				if (this.isCredential === true || this.node === null) {
+				if (this.node === null) {
 					return null;
 				}
 
@@ -444,21 +456,6 @@ export default mixins(
 			},
 		},
 		methods: {
-			getResolveNodeParameters (nodeParameters: INodeParameters): INodeParameters {
-				const returnData: INodeParameters = {};
-				for (const key of Object.keys(nodeParameters)) {
-					if (Array.isArray(nodeParameters[key])) {
-						returnData[key] = (nodeParameters[key] as string[]).map(value => {
-							return this.resolveExpression(value as string) as string;
-						});
-					} else if (typeof nodeParameters[key] === 'object') {
-						returnData[key] = this.getResolveNodeParameters(nodeParameters[key] as INodeParameters);
-					} else {
-						returnData[key] = this.resolveExpression(nodeParameters[key] as string);
-					}
-				}
-				return returnData;
-			},
 			async loadRemoteParameterOptions () {
 				if (this.node === null || this.remoteMethod === undefined || this.remoteParameterOptionsLoading) {
 					return;
@@ -469,10 +466,10 @@ export default mixins(
 
 				// Get the resolved parameter values of the current node
 				const currentNodeParameters = this.$store.getters.activeNode.parameters;
-				const resolvedNodeParameters = this.getResolveNodeParameters(currentNodeParameters);
+				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 
 				try {
-					const options = await this.restApi().getNodeParameterOptions(this.node.type, this.remoteMethod, resolvedNodeParameters, this.node.credentials);
+					const options = await this.restApi().getNodeParameterOptions(this.node.type, this.path, this.remoteMethod, resolvedNodeParameters, this.node.credentials);
 					this.remoteParameterOptions.push.apply(this.remoteParameterOptions, options);
 				} catch (error) {
 					this.remoteParameterOptionsLoadingIssues = error.message;
@@ -511,9 +508,6 @@ export default mixins(
 				this.valueChanged(value);
 			},
 			setFocus () {
-				if (this.isReadOnly === true) {
-					return;
-				}
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
 					return;
@@ -537,12 +531,33 @@ export default mixins(
 				// Set focus on field
 				setTimeout(() => {
 					// @ts-ignore
-					(this.$refs.inputField.$el.querySelector('input') as HTMLInputElement).focus();
+					if (this.$refs.inputField.$el) {
+						// @ts-ignore
+						(this.$refs.inputField.$el.querySelector(this.getStringInputType === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
+					}
 				});
+			},
+			rgbaToHex (value: string): string | null {
+				// Convert rgba to hex from: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
+				const valueMatch = (value as string).match(/^rgba\((\d+),\s*(\d+),\s*(\d+),\s*(\d+(\.\d+)?)\)$/);
+				if (valueMatch === null) {
+					// TODO: Display something if value is not valid
+					return null;
+				}
+				const [r, g, b, a] = valueMatch.splice(1, 4).map(v => Number(v));
+				return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1) + ((1 << 8) + Math.floor((1-a)*255)).toString(16).slice(1);
 			},
 			valueChanged (value: string | number | boolean | Date | null) {
 				if (value instanceof Date) {
 					value = value.toISOString();
+				}
+
+				if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && value !== null && value.toString().charAt(0) !== '#') {
+					const newValue = this.rgbaToHex(value as string);
+					if (newValue !== null) {
+						this.tempValue = newValue;
+						value = newValue;
+					}
 				}
 
 				const parameterData = {
@@ -568,6 +583,13 @@ export default mixins(
 			this.tempValue = this.displayValue as string;
 			if (this.node !== null) {
 				this.nodeName = this.node.name;
+			}
+
+			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && this.displayValue !== null && this.displayValue.toString().charAt(0) !== '#') {
+				const newValue = this.rgbaToHex(this.displayValue as string);
+				if (newValue !== null) {
+					this.tempValue = newValue;
+				}
 			}
 
 			if (this.remoteMethod !== undefined && this.node !== null) {

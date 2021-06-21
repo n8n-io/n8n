@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 import {
 	zulipApiRequest,
@@ -40,7 +41,7 @@ export class Zulip implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Zulip',
 		name: 'zulip',
-		icon: 'file:zulip.png',
+		icon: 'file:zulip.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -55,7 +56,7 @@ export class Zulip implements INodeType {
 			{
 				name: 'zulipApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -89,7 +90,7 @@ export class Zulip implements INodeType {
 
 			// USER
 			...userOperations,
-			...userFields
+			...userFields,
 
 		],
 	};
@@ -210,11 +211,11 @@ export class Zulip implements INodeType {
 					const credentials = this.getCredentials('zulipApi');
 					const binaryProperty = this.getNodeParameter('dataBinaryProperty', i) as string;
 					if (items[i].binary === undefined) {
-						throw new Error('No binary data exists on item!');
+						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 					}
 					//@ts-ignore
 					if (items[i].binary[binaryProperty] === undefined) {
-						throw new Error(`No binary data property "${binaryProperty}" does not exists on item!`);
+						throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`);
 					}
 					const formData = {
 						file: {
@@ -225,8 +226,8 @@ export class Zulip implements INodeType {
 								filename: items[i].binary[binaryProperty].fileName,
 								//@ts-ignore
 								contentType: items[i].binary[binaryProperty].mimeType,
-							}
-						}
+							},
+						},
 					};
 					responseData = await zulipApiRequest.call(this, 'POST', '/user_uploads', {}, {}, undefined, { formData });
 					responseData.uri = `${credentials!.url}${responseData.uri}`;
@@ -283,7 +284,7 @@ export class Zulip implements INodeType {
 							if (validateJSON(additionalFieldsJson) !== undefined) {
 								Object.assign(body, JSON.parse(additionalFieldsJson));
 							} else {
-								throw new Error('Additional fields must be a valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
 							}
 						}
 
@@ -342,7 +343,7 @@ export class Zulip implements INodeType {
 								Object.assign(body, JSON.parse(additionalFieldsJson));
 
 							} else {
-								throw new Error('Additional fields must be a valid JSON');
+								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON');
 							}
 						}
 

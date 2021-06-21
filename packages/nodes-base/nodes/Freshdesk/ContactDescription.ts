@@ -176,7 +176,7 @@ export const contactFields = [
 								default: '',
 								description: `Custom Field\'s values.`,
 							},
-						]
+						],
 					},
 				],
 			},

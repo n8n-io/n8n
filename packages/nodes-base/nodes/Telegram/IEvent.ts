@@ -9,4 +9,5 @@ export interface IEvent {
 			file_id: string;
 		},
 	};
+	download_link?: string;
 }

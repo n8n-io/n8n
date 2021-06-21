@@ -11,6 +11,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -35,10 +37,10 @@ export class SurveyMonkeyTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SurveyMonkey Trigger',
 		name: 'surveyMonkeyTrigger',
-		icon: 'file:surveyMonkey.png',
+		icon: 'file:surveyMonkey.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Survey Monkey events occure.',
+		description: 'Starts the workflow when Survey Monkey events occur.',
 		defaults: {
 			name: 'SurveyMonkey Trigger',
 			color: '#53b675',
@@ -124,7 +126,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						objectType: [
-							'survey'
+							'survey',
 						],
 					},
 				},
@@ -471,7 +473,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 
 					try {
 						await surveyMonkeyApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 
@@ -529,7 +531,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				let returnItem: INodeExecutionData[] = [
 					{
 						json: responseData,
-					}
+					},
 				];
 
 				if (event === 'response_completed') {
@@ -725,7 +727,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 						returnItem = [
 							{
 								json: responseData,
-							}
+							},
 						];
 					}
 				}
@@ -737,8 +739,8 @@ export class SurveyMonkeyTrigger implements INodeType {
 				});
 			});
 
-			req.on('error', (err) => {
-				throw new Error(err.message);
+			req.on('error', (error) => {
+				throw new NodeOperationError(this.getNode(), error);
 			});
 		});
 	}

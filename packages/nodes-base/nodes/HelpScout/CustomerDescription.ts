@@ -165,7 +165,7 @@ export const customerFields = [
 				default: '',
 				description: 'URL of the customer’s photo',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Address',
@@ -701,7 +701,7 @@ export const customerFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Advanced search <a href="https://developer.helpscout.com/mailbox-api/endpoints/customers/list/#query">Examples</a>'
+				description: 'Advanced search <a href="https://developer.helpscout.com/mailbox-api/endpoints/customers/list/#query">Examples</a>',
 			},
 		],
 	},

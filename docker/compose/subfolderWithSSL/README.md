@@ -20,7 +20,3 @@ To stop it execute:
 ```
 docker-compose stop
 ```
-
-## Configuration
-
-The default name of the database, user and password for MongoDB can be changed in the `.env` file in the current directory.

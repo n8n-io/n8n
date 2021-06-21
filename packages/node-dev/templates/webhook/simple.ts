@@ -54,9 +54,10 @@ export class ClassNameReplace implements INodeType {
 		const returnData: IDataObject[] = [];
 		returnData.push(
 			{
-				body: this.getBodyData(),
 				headers: this.getHeaderData(),
+				params: this.getParamsData(),
 				query: this.getQueryData(),
+				body: this.getBodyData(),
 			}
 		);
 

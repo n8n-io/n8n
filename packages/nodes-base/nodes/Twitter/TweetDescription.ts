@@ -21,6 +21,11 @@ export const tweetOperations = [
 				description: 'Create or reply a tweet',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a tweet',
+			},
+			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search tweets',
@@ -42,9 +47,9 @@ export const tweetOperations = [
 ] as INodeProperties[];
 
 export const tweetFields = [
-/* -------------------------------------------------------------------------- */
-/*                                tweet:create                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                tweet:create                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Text',
 		name: 'text',
@@ -143,11 +148,34 @@ export const tweetFields = [
 				default: false,
 				description: 'If you upload Tweet media that might be considered sensitive content such as nudity, or medical procedures, you must set this value to true.',
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                tweet:search                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                tweet:delete                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Tweet ID',
+		name: 'tweetId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'delete',
+				],
+				resource: [
+					'tweet',
+				],
+			},
+		},
+		description: 'The ID of the tweet to delete.',
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                tweet:search                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Search Text',
 		name: 'searchText',
@@ -323,7 +351,7 @@ export const tweetFields = [
 					{
 						name: 'Popular',
 						value: 'popular',
-						description: 'Return only the most popular results in the response.'
+						description: 'Return only the most popular results in the response.',
 					},
 				],
 				default: 'mixed',
@@ -338,9 +366,10 @@ export const tweetFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                tweet:like                                  */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                tweet:like                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Tweet ID',
 		name: 'tweetId',
@@ -385,9 +414,10 @@ export const tweetFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                tweet:retweet                               */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                tweet:retweet                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Tweet ID',
 		name: 'tweetId',

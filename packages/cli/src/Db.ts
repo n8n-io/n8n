@@ -18,43 +18,19 @@ import { TlsOptions } from 'tls';
 
 import * as config from '../config';
 
-import {
-	MongoDb,
-	MySQLDb,
-	PostgresDb,
-	SQLite,
-} from './databases';
+import { entities } from './databases/entities';
 
 export let collections: IDatabaseCollections = {
 	Credentials: null,
 	Execution: null,
 	Workflow: null,
 	Webhook: null,
+	Tag: null,
 };
 
-import {
-	InitialMigration1587669153312,
-	WebhookModel1589476000887,
-	CreateIndexStoppedAt1594828256133,
-} from './databases/postgresdb/migrations';
-
-import {
-	InitialMigration1587563438936,
-	WebhookModel1592679094242,
-	CreateIndexStoppedAt1594910478695,
-} from './databases/mongodb/migrations';
-
-import {
-	InitialMigration1588157391238,
-	WebhookModel1592447867632,
-	CreateIndexStoppedAt1594902918301,
-} from './databases/mysqldb/migrations';
-
-import {
-	InitialMigration1588102412422,
-	WebhookModel1592445003908,
-	CreateIndexStoppedAt1594825041918,
-} from './databases/sqlite/migrations';
+import { postgresMigrations } from './databases/postgresdb/migrations';
+import { mysqlMigrations } from './databases/mysqldb/migrations';
+import { sqliteMigrations } from './databases/sqlite/migrations';
 
 import * as path from 'path';
 
@@ -62,32 +38,12 @@ export async function init(): Promise<IDatabaseCollections> {
 	const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
 	const n8nFolder = UserSettings.getUserN8nFolderPath();
 
-	let entities;
 	let connectionOptions: ConnectionOptions;
 
 	const entityPrefix = config.get('database.tablePrefix');
 
 	switch (dbType) {
-		case 'mongodb':
-			entities = MongoDb;
-			connectionOptions = {
-				type: 'mongodb',
-				entityPrefix,
-				url: await GenericHelpers.getConfigValue('database.mongodb.connectionUrl') as string,
-				useNewUrlParser: true,
-				migrations: [
-					InitialMigration1587563438936,
-					WebhookModel1592679094242,
-					CreateIndexStoppedAt1594910478695,
-				],
-				migrationsRun: true,
-				migrationsTableName: `${entityPrefix}migrations`,
-			};
-			break;
-
 		case 'postgresdb':
-			entities = PostgresDb;
-
 			const sslCa = await GenericHelpers.getConfigValue('database.postgresdb.ssl.ca') as string;
 			const sslCert = await GenericHelpers.getConfigValue('database.postgresdb.ssl.cert') as string;
 			const sslKey = await GenericHelpers.getConfigValue('database.postgresdb.ssl.key') as string;
@@ -112,11 +68,7 @@ export async function init(): Promise<IDatabaseCollections> {
 				port: await GenericHelpers.getConfigValue('database.postgresdb.port') as number,
 				username: await GenericHelpers.getConfigValue('database.postgresdb.user') as string,
 				schema: config.get('database.postgresdb.schema'),
-				migrations: [
-					InitialMigration1587669153312,
-					WebhookModel1589476000887,
-					CreateIndexStoppedAt1594828256133,
-				],
+				migrations: postgresMigrations,
 				migrationsRun: true,
 				migrationsTableName: `${entityPrefix}migrations`,
 				ssl,
@@ -126,7 +78,6 @@ export async function init(): Promise<IDatabaseCollections> {
 
 		case 'mariadb':
 		case 'mysqldb':
-			entities = MySQLDb;
 			connectionOptions = {
 				type: dbType === 'mysqldb' ? 'mysql' : 'mariadb',
 				database: await GenericHelpers.getConfigValue('database.mysqldb.database') as string,
@@ -135,35 +86,26 @@ export async function init(): Promise<IDatabaseCollections> {
 				password: await GenericHelpers.getConfigValue('database.mysqldb.password') as string,
 				port: await GenericHelpers.getConfigValue('database.mysqldb.port') as number,
 				username: await GenericHelpers.getConfigValue('database.mysqldb.user') as string,
-				migrations: [
-					InitialMigration1588157391238,
-					WebhookModel1592447867632,
-					CreateIndexStoppedAt1594902918301,
-				],
+				migrations: mysqlMigrations,
 				migrationsRun: true,
 				migrationsTableName: `${entityPrefix}migrations`,
 			};
 			break;
 
 		case 'sqlite':
-			entities = SQLite;
 			connectionOptions = {
 				type: 'sqlite',
-				database:  path.join(n8nFolder, 'database.sqlite'),
+				database: path.join(n8nFolder, 'database.sqlite'),
 				entityPrefix,
-				migrations: [
-					InitialMigration1588102412422,
-					WebhookModel1592445003908,
-					CreateIndexStoppedAt1594825041918
-				],
-				migrationsRun: true,
+				migrations: sqliteMigrations,
+				migrationsRun: false, // migrations for sqlite will be ran manually for now; see below
 				migrationsTableName: `${entityPrefix}migrations`,
 			};
 			break;
 
 		default:
 			throw new Error(`The database "${dbType}" is currently not supported!`);
-	}
+		}
 
 	Object.assign(connectionOptions, {
 		entities: Object.values(entities),
@@ -171,16 +113,36 @@ export async function init(): Promise<IDatabaseCollections> {
 		logging: false,
 	});
 
-	const connection = await createConnection(connectionOptions);
+	let connection = await createConnection(connectionOptions);
 
-	await connection.runMigrations({
-		transaction: 'none',
-	});
+	if (dbType === 'sqlite') {
+		// This specific migration changes database metadata.
+		// A field is now nullable. We need to reconnect so that
+		// n8n knows it has changed. Happens only on sqlite.
+		let migrations = [];
+		try {
+			migrations = await connection.query(`SELECT id FROM ${entityPrefix}migrations where name = "MakeStoppedAtNullable1607431743769"`);
+		} catch(error) {
+			// Migration table does not exist yet - it will be created after migrations run for the first time.
+		}
+
+		// If you remove this call, remember to turn back on the
+		// setting to run migrations automatically above.
+		await connection.runMigrations({
+			transaction: 'none',
+		});
+
+		if (migrations.length === 0) {
+			await connection.close();
+			connection = await createConnection(connectionOptions);
+		}
+	}
 
 	collections.Credentials = getRepository(entities.CredentialsEntity);
 	collections.Execution = getRepository(entities.ExecutionEntity);
 	collections.Workflow = getRepository(entities.WorkflowEntity);
 	collections.Webhook = getRepository(entities.WebhookEntity);
+	collections.Tag = getRepository(entities.TagEntity);
 
 	return collections;
 }

@@ -38,6 +38,7 @@ export class Set implements INodeType {
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
+					sortable: true,
 				},
 				description: 'The value to set.',
 				default: {},
@@ -60,7 +61,7 @@ export class Set implements INodeType {
 								default: false,
 								description: 'The boolean value to write in the property.',
 							},
-						]
+						],
 					},
 					{
 						name: 'number',
@@ -80,7 +81,7 @@ export class Set implements INodeType {
 								default: 0,
 								description: 'The number value to write in the property.',
 							},
-						]
+						],
 					},
 					{
 						name: 'string',
@@ -100,7 +101,7 @@ export class Set implements INodeType {
 								default: '',
 								description: 'The string value to write in the property.',
 							},
-						]
+						],
 					},
 				],
 			},
@@ -124,7 +125,7 @@ export class Set implements INodeType {
 					},
 				],
 			},
-		]
+		],
 	};
 
 
@@ -141,7 +142,7 @@ export class Set implements INodeType {
 		let item: INodeExecutionData;
 		let keepOnlySet: boolean;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, []) as boolean;
+			keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, false) as boolean;
 			item = items[itemIndex];
 			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 

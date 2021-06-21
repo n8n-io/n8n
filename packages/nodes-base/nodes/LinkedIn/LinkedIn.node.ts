@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { linkedInApiRequest } from './GenericFunctions';
 import {
@@ -68,7 +69,7 @@ export class LinkedIn implements INodeType {
 				returnData.push({ name: `${person.localizedFirstName} ${person.localizedLastName}`, value: person.id });
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -138,13 +139,13 @@ export class LinkedIn implements INodeType {
 						const item = items[i];
 
 						if (item.binary === undefined) {
-							throw new Error('No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
 
 						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
 						if (item.binary[propertyNameUpload] === undefined) {
-							throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
 						}
 
 						// Buffer binary data
@@ -206,19 +207,19 @@ export class LinkedIn implements INodeType {
 										{
 											status: 'READY',
 											description: {
-												text: description
+												text: description,
 											},
 											originalUrl,
 											title: {
-												text: title
-											}
-										}
-									]
-								}
+												text: title,
+											},
+										},
+									],
+								},
 							},
 							visibility: {
-								'com.linkedin.ugc.MemberNetworkVisibility': visibility
-							}
+								'com.linkedin.ugc.MemberNetworkVisibility': visibility,
+							},
 						};
 					} else {
 						body = {
@@ -233,8 +234,8 @@ export class LinkedIn implements INodeType {
 								},
 							},
 							visibility: {
-								'com.linkedin.ugc.MemberNetworkVisibility': visibility
-							}
+								'com.linkedin.ugc.MemberNetworkVisibility': visibility,
+							},
 						};
 					}
 

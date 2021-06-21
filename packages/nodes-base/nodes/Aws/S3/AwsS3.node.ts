@@ -23,6 +23,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -50,7 +51,7 @@ export class AwsS3 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS S3',
 		name: 'awsS3',
-		icon: 'file:s3.png',
+		icon: 'file:s3.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -65,7 +66,7 @@ export class AwsS3 implements INodeType {
 			{
 				name: 'aws',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -148,7 +149,7 @@ export class AwsS3 implements INodeType {
 							'$': {
 								xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
 							},
-						}
+						},
 					};
 					let data = '';
 					// if credentials has the S3 defaul region (us-east-1) the body (XML) does not have to be sent.
@@ -282,7 +283,7 @@ export class AwsS3 implements INodeType {
 						for (const childObject of responseData) {
 							//@ts-ignore
 							(body.Delete.Object as IDataObject[]).push({
-								Key: childObject.Key as string
+								Key: childObject.Key as string,
 							});
 						}
 
@@ -422,7 +423,7 @@ export class AwsS3 implements INodeType {
 					const fileName = fileKey.split('/')[fileKey.split('/').length - 1];
 
 					if (fileKey.substring(fileKey.length - 1) === '/') {
-						throw new Error('Downloding a whole directory is not yet supported, please provide a file key');
+						throw new NodeOperationError(this.getNode(), 'Downloding a whole directory is not yet supported, please provide a file key');
 					}
 
 					let region = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'GET', '', '', { location: '' });
@@ -588,11 +589,11 @@ export class AwsS3 implements INodeType {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
 
 						if (items[i].binary === undefined) {
-							throw new Error('No binary data exists on item!');
+							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
 						}
 
 						if ((items[i].binary as IBinaryKeyData)[binaryPropertyName] === undefined) {
-							throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
 						}
 
 						const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
