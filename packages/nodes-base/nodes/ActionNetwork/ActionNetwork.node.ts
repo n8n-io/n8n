@@ -140,6 +140,8 @@ export class ActionNetwork implements INodeType {
 				//                               attendance
 				// **********************************************************************
 
+				// https://actionnetwork.org/docs/v2/attendances
+
 				if (operation === 'create') {
 
 					// ----------------------------------------
@@ -197,6 +199,8 @@ export class ActionNetwork implements INodeType {
 				//                                 event
 				// **********************************************************************
 
+				// https://actionnetwork.org/docs/v2/events
+
 				if (operation === 'create') {
 
 					// ----------------------------------------
@@ -241,6 +245,8 @@ export class ActionNetwork implements INodeType {
 				// **********************************************************************
 				//                                 person
 				// **********************************************************************
+
+				// https://actionnetwork.org/docs/v2/people
 
 				if (operation === 'create') {
 
@@ -303,6 +309,8 @@ export class ActionNetwork implements INodeType {
 				}
 
 			} else if (resource === 'petition') {
+
+				// https://actionnetwork.org/docs/v2/petitions
 
 				// **********************************************************************
 				//                                petition
@@ -372,6 +380,8 @@ export class ActionNetwork implements INodeType {
 				//                               signature
 				// **********************************************************************
 
+				// https://actionnetwork.org/docs/v2/signatures
+
 				if (operation === 'create') {
 
 					// ----------------------------------------
@@ -435,6 +445,8 @@ export class ActionNetwork implements INodeType {
 				//                                  tag
 				// **********************************************************************
 
+				// https://actionnetwork.org/docs/v2/tags
+
 				if (operation === 'create') {
 
 					// ----------------------------------------
@@ -472,6 +484,8 @@ export class ActionNetwork implements INodeType {
 				// **********************************************************************
 				//                                personTag
 				// **********************************************************************
+
+				// https://actionnetwork.org/docs/v2/taggings
 
 				if (operation === 'create') {
 
