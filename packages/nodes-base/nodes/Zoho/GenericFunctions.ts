@@ -342,7 +342,7 @@ export async function getFields(
 }
 
 function getModuleName(resource: string) {
-	return {
+	const map: { [key: string]: string } = {
 		account: 'Accounts',
 		contact: 'Contacts',
 		deal: 'Deals',
@@ -353,7 +353,9 @@ function getModuleName(resource: string) {
 		salesOrder: 'Sales_Orders',
 		vendor: 'Vendors',
 		quote: 'Quotes',
-	}[resource];
+	};
+
+	return map[resource];
 }
 
 export async function getPicklistOptions(
