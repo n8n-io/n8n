@@ -387,7 +387,12 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					// Leave log message before flatten as that operation increased memory usage a lot and the chance of a crash is highest here
-					Logger.debug(`Save execution data to database for execution ID ${this.executionId}`, { executionId: this.executionId, workflowId: this.workflowData.id });
+					Logger.debug(`Save execution data to database for execution ID ${this.executionId}`, { 
+						executionId: this.executionId, 
+						workflowId: this.workflowData.id, 
+						finished: fullExecutionData.finished,
+						stoppedAt: fullExecutionData.stoppedAt,
+					});
 
 					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
@@ -404,6 +409,12 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, this.retryOf);
 					}
 				} catch (error) {
+					Logger.error(`Failed saving execution data to DB on execution ID ${this.executionId}`, { 
+						executionId: this.executionId, 
+						workflowId: this.workflowData.id,
+						error,
+					});
+					
 					if (!isManualMode) {
 						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
 					}
@@ -438,14 +449,8 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						}
 					}
 
-					// Check config to know if execution should be saved or not
-					let saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
-					if (this.workflowData.settings !== undefined) {
-						saveDataErrorExecution = (this.workflowData.settings.saveDataErrorExecution as string) || saveDataErrorExecution;
-					}
-
 					const workflowDidSucceed = !fullRunData.data.resultData.error;
-					if (workflowDidSucceed === false && saveDataErrorExecution === 'none') {
+					if (workflowDidSucceed === false) {
 						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
 					}
 
@@ -473,7 +478,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
-						// await Db.collections.Execution!.save(executionData as IExecutionFlattedDb);
 						await Db.collections.Execution!.update(this.retryOf, { retrySuccessId: this.executionId });
 					}
 				} catch (error) {
@@ -663,7 +667,7 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 }
 
 
-export function sendMessageToUI(source: string, message: string) {
+export function sendMessageToUI(source: string, message: any) { // tslint:disable-line:no-any
 	if (this.sessionId === undefined) {
 		return;
 	}

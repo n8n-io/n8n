@@ -68,6 +68,11 @@ export async function makeRestApiRequest(context: IRestApiContext, method: Metho
 
 		const errorResponseData = error.response.data;
 		if (errorResponseData !== undefined && errorResponseData.message !== undefined) {
+			if (errorResponseData.name === 'NodeApiError') {
+				errorResponseData.httpStatusCode = error.response.status;
+				throw errorResponseData;
+			}
+
 			throw new ResponseError(errorResponseData.message, {errorCode: errorResponseData.code, httpStatusCode: error.response.status, stack: errorResponseData.stack});
 		}
 

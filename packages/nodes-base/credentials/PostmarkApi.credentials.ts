@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 
@@ -8,11 +8,11 @@ export class PostmarkApi implements ICredentialType {
 	name = 'postmarkApi';
 	displayName = 'Postmark API';
 	documentationUrl = 'postmark';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Server API Token',
 			name: 'serverToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 	];

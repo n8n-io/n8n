@@ -355,12 +355,45 @@ export interface IExecutionDeleteFilter {
 	ids?: string[];
 }
 
-export interface IPushData {
-	data: IPushDataExecutionFinished | IPushDataNodeExecuteAfter | IPushDataNodeExecuteBefore | IPushDataTestWebhook | IPushDataConsoleMessage;
-	type: IPushDataType;
-}
+export type IPushDataType = IPushData['type'];
 
-export type IPushDataType = 'executionFinished' | 'executionStarted' | 'nodeExecuteAfter' | 'nodeExecuteBefore' | 'sendConsoleMessage' | 'testWebhookDeleted' | 'testWebhookReceived';
+export type IPushData =
+	| PushDataExecutionFinished
+	| PushDataExecutionStarted
+	| PushDataExecuteAfter
+	| PushDataExecuteBefore
+	| PushDataConsoleMessage
+	| PushDataTestWebhook;
+
+type PushDataExecutionFinished = {
+	data: IPushDataExecutionFinished;
+	type: 'executionFinished';
+};
+
+type PushDataExecutionStarted = {
+	data: IPushDataExecutionStarted;
+	type: 'executionStarted';
+};
+
+type PushDataExecuteAfter = {
+	data: IPushDataNodeExecuteAfter;
+	type: 'nodeExecuteAfter';
+};
+
+type PushDataExecuteBefore = {
+	data: IPushDataNodeExecuteBefore;
+	type: 'nodeExecuteBefore';
+};
+
+type PushDataConsoleMessage = {
+	data: IPushDataConsoleMessage;
+	type: 'sendConsoleMessage';
+};
+
+type PushDataTestWebhook = {
+	data: IPushDataTestWebhook;
+	type: 'testWebhookDeleted' | 'testWebhookReceived';
+};
 
 export interface IPushDataExecutionStarted {
 	executionId: string;
@@ -454,6 +487,39 @@ export interface ILinkMenuItemProperties {
 	icon: string;
 	href: string;
 	newWindow?: boolean;
+}
+
+export interface ISubcategoryItemProps {
+	subcategory: string;
+	description: string;
+}
+
+export interface INodeItemProps {
+	subcategory: string;
+	nodeType: INodeTypeDescription;
+}
+
+export interface ICategoryItemProps {
+	expanded: boolean;
+}
+
+export interface INodeCreateElement {
+	type: 'node' | 'category' | 'subcategory';
+	category: string;
+	key: string;
+	includedByTrigger?: boolean;
+	includedByRegular?: boolean;
+	properties: ISubcategoryItemProps | INodeItemProps | ICategoryItemProps;
+}
+
+export interface ICategoriesWithNodes {
+	[category: string]: {
+		[subcategory: string]: {
+			regularCount: number;
+			triggerCount: number;
+			nodes: INodeCreateElement[];
+		};
+	};
 }
 
 export interface ITag {
