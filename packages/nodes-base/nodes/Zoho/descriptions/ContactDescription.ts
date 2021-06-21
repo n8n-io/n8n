@@ -3,6 +3,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	currencies,
 	mailingAddress,
 	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
@@ -468,9 +469,10 @@ export const contactFields = [
 			{
 				displayName: 'Currency',
 				name: 'Currency',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: 'USD',
 				description: 'Symbol of the currency in which revenue is generated.',
+				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('contact'),
 			{

@@ -4,6 +4,7 @@ import {
 
 import {
 	address,
+	currencies,
 	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
 } from './SharedFields';
@@ -127,8 +128,9 @@ export const vendorFields = [
 			{
 				displayName: 'Currency',
 				name: 'Currency',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: 'USD',
+				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('vendor'),
 			{

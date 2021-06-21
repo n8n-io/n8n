@@ -4,6 +4,7 @@ import {
 
 import {
 	billingAddress,
+	currencies,
 	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
 	makeProductDetails,
@@ -176,9 +177,10 @@ export const salesOrderFields = [
 			{
 				displayName: 'Currency',
 				name: 'Currency',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: 'USD',
 				description: 'Symbol of the currency in which revenue is generated.',
+				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('salesOrder'),
 			{
@@ -414,9 +416,10 @@ export const salesOrderFields = [
 			{
 				displayName: 'Currency',
 				name: 'Currency',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: 'USD',
 				description: 'Symbol of the currency in which revenue is generated.',
+				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('salesOrder'),
 			{

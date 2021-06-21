@@ -3,6 +3,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	currencies,
 	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
 } from './SharedFields';
@@ -150,9 +151,10 @@ export const dealFields = [
 			{
 				displayName: 'Currency',
 				name: 'Currency',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: 'USD',
 				description: 'Symbol of the currency in which revenue is generated.',
+				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('deal'),
 			{

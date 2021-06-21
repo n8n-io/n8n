@@ -4,6 +4,7 @@ import {
 
 import {
 	address,
+	currencies,
 	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
 } from './SharedFields';
@@ -119,9 +120,10 @@ export const leadFields = [
 			{
 				displayName: 'Currency',
 				name: 'Currency',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: 'USD',
 				description: 'Symbol of the currency in which revenue is generated.',
+				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('lead'),
 			{
@@ -312,9 +314,10 @@ export const leadFields = [
 			{
 				displayName: 'Currency',
 				name: 'Currency',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: 'USD',
 				description: 'Symbol of the currency in which revenue is generated.',
+				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('lead'),
 			{
@@ -545,9 +548,10 @@ export const leadFields = [
 			{
 				displayName: 'Currency',
 				name: 'Currency',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: 'USD',
 				description: 'Symbol of the currency in which revenue is generated.',
+				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('lead'),
 			{
