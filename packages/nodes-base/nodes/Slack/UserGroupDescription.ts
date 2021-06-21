@@ -38,7 +38,7 @@ export const userGroupOperations = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Updates a userGroup.',
+				description: 'Updates a user group.',
 			},
 		],
 		default: 'create',
