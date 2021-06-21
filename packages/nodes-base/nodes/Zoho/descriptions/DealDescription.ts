@@ -102,9 +102,12 @@ export const dealFields = [
 	{
 		displayName: 'Stage',
 		name: 'stage',
-		type: 'string',
+		type: 'options',
 		required: true,
-		default: '',
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getDealStage',
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -367,8 +370,11 @@ export const dealFields = [
 			{
 				displayName: 'Stage',
 				name: 'Stage',
-				type: 'string',
-				default: '',
+				type: 'options',
+					typeOptions: {
+						loadOptionsMethod: 'getDealStage',
+					},
+				default: [],
 			},
 		],
 	},

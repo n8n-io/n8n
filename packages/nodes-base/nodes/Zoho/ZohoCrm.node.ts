@@ -24,6 +24,7 @@ import {
 	adjustSalesOrderPayload,
 	adjustVendorPayload,
 	getFields,
+	getPicklistOptions,
 	handleListing,
 	throwOnEmptyUpdate,
 	toLoadOptions,
@@ -194,7 +195,7 @@ export class ZohoCrm implements INodeType {
 			//             resource fields
 			// ----------------------------------------
 
-			// standard fields
+			// standard fields - called from `makeGetAllFields`
 
 			async getAccountFields(this: ILoadOptionsFunctions) {
 				return getFields.call(this, 'account');
@@ -284,6 +285,30 @@ export class ZohoCrm implements INodeType {
 
 			async getCustomVendorFields(this: ILoadOptionsFunctions) {
 				return getFields.call(this, 'vendor', { onlyCustom: true });
+			},
+
+			// ----------------------------------------
+			//        resource picklist options
+			// ----------------------------------------
+
+			async getAccountType(this: ILoadOptionsFunctions) {
+				return getPicklistOptions.call(this, 'account', 'Account_Type');
+			},
+
+			async getDealStage(this: ILoadOptionsFunctions) {
+				return getPicklistOptions.call(this, 'deal', 'Stage');
+			},
+
+			async getPurchaseOrderStatus(this: ILoadOptionsFunctions) {
+				return getPicklistOptions.call(this, 'purchaseOrder', 'Status');
+			},
+
+			async getSalesOrderStatus(this: ILoadOptionsFunctions) {
+				return getPicklistOptions.call(this, 'salesOrder', 'Status');
+			},
+
+			async getQuoteStage(this: ILoadOptionsFunctions) {
+				return getPicklistOptions.call(this, 'quote', 'Quote_Stage');
 			},
 		},
 	};

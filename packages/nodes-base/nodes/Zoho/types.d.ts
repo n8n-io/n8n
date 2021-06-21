@@ -85,3 +85,18 @@ export type LoadedProducts = Array<{
 	Product_Name: string;
 	id: string;
 }>;
+
+export type LoadedLayouts = {
+	layouts: Array<{
+		sections: Array<{
+			api_name: string;
+			fields: Array<{
+				api_name: string;
+				pick_list_values: Array<{
+					display_value: string;
+					actual_value: string;
+				}>
+			}>
+		}>
+	}>
+}

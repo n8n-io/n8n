@@ -255,8 +255,11 @@ export const salesOrderFields = [
 			{
 				displayName: 'Status',
 				name: 'Status',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getSalesOrderStatus',
+				},
 				description: 'Status of the sales order.',
 			},
 			{
@@ -493,8 +496,11 @@ export const salesOrderFields = [
 			{
 				displayName: 'Status',
 				name: 'Status',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getSalesOrderStatus',
+				},
 				description: 'Status of the sales order.',
 			},
 			{

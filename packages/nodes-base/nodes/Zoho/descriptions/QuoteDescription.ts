@@ -177,8 +177,12 @@ export const quoteFields = [
 			{
 				displayName: 'Quote Stage',
 				name: 'Quote_Stage',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getQuoteStage',
+				},
+				description: 'Stage of the quote.',
 			},
 			shippingAddress,
 			{
@@ -367,8 +371,12 @@ export const quoteFields = [
 			{
 				displayName: 'Quote Stage',
 				name: 'Quote_Stage',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getQuoteStage',
+				},
+				description: 'Stage of the quote.',
 			},
 			shippingAddress,
 			{

@@ -135,8 +135,11 @@ export const accountFields = [
 			{
 				displayName: 'Account Type',
 				name: 'Account_Type',
-				type: 'string',
-				default: '',
+				type: 'options',
+					typeOptions: {
+						loadOptionsMethod: 'getAccountType',
+					},
+				default: [],
 			},
 			{
 				displayName: 'Annual Revenue',
@@ -323,8 +326,11 @@ export const accountFields = [
 			{
 				displayName: 'Account Type',
 				name: 'Account_Type',
-				type: 'string',
-				default: '',
+				type: 'options',
+					typeOptions: {
+						loadOptionsMethod: 'getAccountType',
+					},
+				default: [],
 			},
 			{
 				displayName: 'Annual Revenue',

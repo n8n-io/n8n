@@ -284,8 +284,11 @@ export const purchaseOrderFields = [
 			{
 				displayName: 'Status',
 				name: 'Status',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getPurchaseOrderStatus',
+				},
 				description: 'Status of the purchase order.',
 			},
 			{
@@ -508,8 +511,11 @@ export const purchaseOrderFields = [
 			{
 				displayName: 'Status',
 				name: 'Status',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: [],
+				typeOptions: {
+					loadOptionsMethod: 'getPurchaseOrderStatus',
+				},
 				description: 'Status of the purchase order.',
 			},
 			{

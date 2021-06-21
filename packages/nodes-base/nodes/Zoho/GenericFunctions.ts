@@ -26,6 +26,7 @@ import {
 	GetAllFilterOptions,
 	IdType,
 	LoadedFields,
+	LoadedLayouts,
 	LocationType,
 	NameType,
 	ProductDetails,
@@ -327,19 +328,7 @@ export async function getFields(
 	resource: SnakeCaseResource,
 	{ onlyCustom } = { onlyCustom: false },
 ) {
-	const moduleMap: { [resource: string]: string } = {
-		account: 'Accounts',
-		contact: 'Contacts',
-		deal: 'Deals',
-		invoice: 'Invoices',
-		lead: 'Leads',
-		product: 'Products',
-		purchaseOrder: 'Purchase_Orders',
-		salesOrder: 'Sales_Orders',
-		vendor: 'Vendors',
-	};
-
-	const qs = { module: moduleMap[resource] };
+	const qs = { module: getModuleName(resource) };
 
 	let { fields } = await zohoApiRequest.call(this, 'GET', '/settings/fields', {}, qs) as LoadedFields;
 
@@ -350,6 +339,49 @@ export async function getFields(
 	const options = fields.map(({ field_label, api_name }) => ({ name: field_label, value: api_name }));
 
 	return sortBy(options, o => o.name);
+}
+
+function getModuleName(resource: string) {
+	return {
+		account: 'Accounts',
+		contact: 'Contacts',
+		deal: 'Deals',
+		invoice: 'Invoices',
+		lead: 'Leads',
+		product: 'Products',
+		purchaseOrder: 'Purchase_Orders',
+		salesOrder: 'Sales_Orders',
+		vendor: 'Vendors',
+		quote: 'Quotes',
+	}[resource];
+}
+
+export async function getPicklistOptions(
+	this: ILoadOptionsFunctions,
+	resource: string,
+	targetField: string,
+) {
+	const qs = { module: getModuleName(resource) };
+	const responseData = await zohoApiRequest.call(this, 'GET', '/settings/layouts', {}, qs) as LoadedLayouts;
+
+	const	pickListOptions = responseData.layouts[0]
+		.sections.find(section => section.api_name === getSectionApiName(resource))
+		?.fields.find(f => f.api_name === targetField)
+		?.pick_list_values;
+
+	if (!pickListOptions) return [];
+
+	return pickListOptions.map(
+		(option) => ({ name: option.display_value, value: option.actual_value }),
+	);
+}
+
+
+function getSectionApiName(resource: string) {
+	if (resource === 'purchaseOrder') return 'Purchase Order Information';
+	if (resource === 'salesOrder') return 'Sales Order Information';
+
+	return `${capitalizeInitial(resource)} Information`;
 }
 
 /**
