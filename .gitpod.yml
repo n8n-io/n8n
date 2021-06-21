@@ -1,6 +1,13 @@
+vscode:
+  extensions:
+    - coenraads.bracket-pair-colorizer-2 
+    - pustelto.bracketeer
+    - formulahendry.auto-close-tag
+
 tasks:
   - init: npm install -g lerna  && lerna bootstrap --hoist 
     command: npm run dev
+
 # Ports to expose on workspace startup
 ports:
   - port: 5678
