@@ -9,14 +9,19 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject,
+	IHookFunctions,
+	ITriggerFunctions,
+	IWebhookFunctions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import * as moment from 'moment-timezone';
-
 import * as jwt from 'jsonwebtoken';
+import uuid = require('uuid');
 
-export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions | ITriggerFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'serviceAccount') as string;
 	const options: OptionsWithUri = {
 		headers: {
@@ -76,7 +81,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	return returnData;
 }
 
-function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IDataObject): Promise<IDataObject> {
+function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions | ITriggerFunctions, credentials: IDataObject): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [
@@ -126,7 +131,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 
 // Hex to RGB
 export function hexToRgb(hex: string) {
-	// Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
+	// Expand shorthand form (e.g. '03F') to full form (e.g. '0033FF')
 	const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
 	hex = hex.replace(shorthandRegex, (m, r, g, b) => {
 		return r + r + g + g + b + b;
@@ -138,4 +143,81 @@ export function hexToRgb(hex: string) {
 		green: parseInt(result[2], 16),
 		blue: parseInt(result[3], 16),
 	} : null;
+}
+
+/**
+ * Create a Google Drive push notifications channel.
+ */
+export async function createGoogleDriveChannel(this: ITriggerFunctions): Promise<boolean> {
+	const body: IDataObject = {
+		id: uuid(),
+		type: 'web_hook',
+		address: this.getNodeWebhookUrl('default'),
+	};
+
+	// 'sync', 'update', 'add', 'remove', 'trash', 'untrash'
+	// https://developers.google.com/drive/api/v3/reference/files/watch
+
+	const fileId = this.getNodeParameter('fileId', 0);
+	const watchEndpoint = `https://www.googleapis.com/drive/v3/files/${fileId}/watch`;
+	body.expiration = moment().add(23, 'hours').add(59, 'minutes').valueOf();
+
+	const response = await googleApiRequest.call(this, 'POST', '', body, {}, watchEndpoint);
+
+	if (response?.id === undefined) {
+		return false;
+	}
+
+	const webhookData = this.getWorkflowStaticData('node');
+	webhookData.webhookId = response.id; // Google Drive channel ID
+	webhookData.resourceId = response.resourceId; // Google Drive file ID
+
+	return true;
+}
+
+/**
+ * Delete a Google Drive API push notifications channel.
+ */
+export async function deleteGoogleDriveChannel(this: ITriggerFunctions): Promise<boolean> {
+	const webhookData = this.getWorkflowStaticData('node');
+
+	if (webhookData.webhookId === undefined) {
+		return false;
+	}
+
+	const stopEndpoint = 'https://www.googleapis.com/drive/v3/channels/stop';
+	const body = {
+		id: webhookData.webhookId,
+		resourceId: webhookData.resourceId,
+	};
+
+	try {
+		await googleApiRequest.call(this, 'POST', '', body, {}, stopEndpoint);
+	} catch (error) {
+		return false;
+	}
+
+	delete webhookData.webhookId;
+	delete webhookData.webhookEvents;
+	return true;
+}
+
+export type GoogleDriveNotificationHeader = {
+	'x-goog-channel-id': string;
+	'x-goog-channel-expiration': string;
+	'x-goog-resource-state': GoogleDriveFileEvent,
+	'x-goog-changed': GoogleSpreadsheetUpdateType,
+	'x-goog-resource-id': string;
+	'x-goog-resource-uri': string;
+	resolveData?: IDataObject; // added by GET request
+};
+
+export type GoogleDriveFileEvent = 'sync' | 'add' | 'remove' | 'trash' | 'untrash' | 'update';
+
+export type GoogleSpreadsheetUpdateType = '*' | 'content' | 'permissions' | 'properties';
+
+export type GoogleSheetEvent = Exclude<GoogleDriveFileEvent, 'sync' | 'add'>;
+
+export async function resolveFileData(this: IWebhookFunctions, fileUri: string) {
+	return await googleApiRequest.call(this, 'GET', '', {}, { fields: '*' }, fileUri);
 }

@@ -306,6 +306,7 @@ export interface ITriggerFunctions {
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
 	getNode(): INode;
+	getNodeWebhookUrl: (name: string) => string | undefined;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getRestApiUrl(): string;
 	getTimezone(): string;
