@@ -1,0 +1,7 @@
+tasks:
+  - init: npm install -g lerna  && lerna bootstrap --hoist 
+    command: npm run dev
+# Ports to expose on workspace startup
+ports:
+  - port: 5678
+    onOpen: open-preview
