@@ -11,12 +11,12 @@ tasks:
     before: |
       export VUE_APP_URL_BASE_API=${GITPOD_WORKSPACE_URL//:\/\//:\/\/5678-}/ && 
       export EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=true  && 
-      export NODE_FUNCTION_ALLOW_BUILTIN=*
+      export NODE_FUNCTION_ALLOW_BUILTIN=* &&
+      export NODE_FUNCTION_ALLOW_EXTERNAL=*
     init: |
       npm install -g lerna  && 
-      lerna bootstrap --hoist &&    
-      npm run build 
-    command: npm run dev
+      lerna bootstrap --hoist      
+    command: npm run build && npm run dev
 
 # Ports to expose on workspace startup
 ports:
