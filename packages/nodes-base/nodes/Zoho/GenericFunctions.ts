@@ -66,6 +66,7 @@ export async function zohoApiRequest(
 	}
 
 	try {
+		console.log(JSON.stringify(options, null, 2));
 		const responseData = await this.helpers.requestOAuth2?.call(this, 'zohoOAuth2Api', options);
 
 		if (responseData === undefined) return [];
@@ -138,6 +139,19 @@ export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: CamelCaseR
 	);
 }
 
+export function throwOnMissingProducts(
+	this: IExecuteFunctions,
+	resource: CamelCaseResource,
+	productDetails: ProductDetails,
+	) {
+	if (!productDetails.length) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Please enter at least one product for the ${resource}.`,
+		);
+	}
+}
+
 export function throwOnErrorStatus(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
 	responseData: { data?: Array<{ status: string, message: string }> },
@@ -167,6 +181,23 @@ export const adjustProductDetails = (productDetails: ProductDetails) => {
 // ----------------------------------------
 //        additional field adjusters
 // ----------------------------------------
+
+/**
+ * Place a product ID at a nested position in a product details field.
+ *
+ * Only for updating products from Invoice, Purchase Order, Quote, and Sales Order.
+ */
+export const adjustProductDetailsOnUpdate = (allFields: AllFields) => {
+	if (!allFields.Product_Details) return allFields;
+
+	return allFields.Product_Details.map(p => {
+		return {
+			...omit('product', p),
+			product: { id: p.id },
+			quantity: p.quantity || 1,
+		};
+	});
+};
 
 /**
  * Place a location field's contents at the top level of the payload.
@@ -266,6 +297,11 @@ export const adjustInvoicePayload = flow(
 	adjustDueDateField,
 	adjustAccountIdField,
 	adjustCustomFields,
+);
+
+export const adjustInvoicePayloadOnUpdate = flow(
+	adjustInvoicePayload,
+	adjustProductDetailsOnUpdate,
 );
 
 export const adjustLeadPayload = flow(

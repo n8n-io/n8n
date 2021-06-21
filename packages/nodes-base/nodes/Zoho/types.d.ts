@@ -43,6 +43,7 @@ export type AllFields =
 	{ Account?: { subfields: { id: string; name: string; } } } &
 	{ [key in 'accountId' | 'contactId' | 'dealId']?: string } &
 	{ customFields?: { customFields: Array<{ fieldId: string; value: string; }> } } &
+	{ Product_Details?: ProductDetails } &
 	IDataObject;
 
 export type ProductDetails = Array<{ id: string, quantity: number }>;

@@ -7,7 +7,7 @@ import {
 	currencies,
 	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
-	makeProductDetails,
+	productDetailsOptions,
 	shippingAddress,
 } from './SharedFields';
 
@@ -124,7 +124,29 @@ export const purchaseOrderFields = [
 			},
 		},
 	},
-	makeProductDetails('purchaseOrder'),
+	{
+		displayName: 'Products',
+		name: 'Product_Details',
+		type: 'collection',
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add Product',
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: productDetailsOptions,
+		displayOptions: {
+			show: {
+				resource: [
+					'purchaseOrder',
+				],
+				operation: [
+					'create',
+					'upsert',
+				],
+			},
+		},
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

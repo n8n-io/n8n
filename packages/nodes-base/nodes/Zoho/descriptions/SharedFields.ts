@@ -225,93 +225,91 @@ export const address = {
 	],
 };
 
-export const makeProductDetails = (resource: CamelCaseResource) => ({
-	displayName: 'Products',
-	name: 'Product_Details',
-	type: 'collection',
-	typeOptions: {
-		multipleValues: true,
-		multipleValueButtonText: 'Add Product',
+// displayName: 'Products',
+// name: 'Product_Details',
+// type: 'collection',
+// typeOptions: {
+// 	multipleValues: true,
+// 	multipleValueButtonText: 'Add Product',
+// },
+// default: {},
+// placeholder: 'Add Field',
+// displayOptions: {
+// 	show: {
+// 		resource: [
+// 			resource,
+// 		],
+// 		operation: [
+// 			operation,
+// 		],
+// 	},
+// },
+
+export const productDetailsOptions = [
+	{
+		displayName: 'List Price',
+		name: 'list_price',
+		type: 'number',
+		default: '',
 	},
-	default: {},
-	placeholder: 'Add Field',
-	displayOptions: {
-		show: {
-			resource: [
-				resource,
-			],
-			operation: [
-				'create',
-				'upsert',
-			],
+	{
+		displayName: 'Product ID',
+		name: 'id',
+		type: 'options',
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getProducts',
 		},
 	},
-	options: [
-		{
-			displayName: 'List Price',
-			name: 'list_price',
-			type: 'number',
-			default: '',
-		},
-		{
-			displayName: 'Product ID',
-			name: 'id',
-			type: 'options',
-			default: [],
-			typeOptions: {
-				loadOptionsMethod: 'getProducts',
-			},
-		},
-		{
-			displayName: 'Product Description',
-			name: 'product_description',
-			type: 'string',
-			default: '',
-		},
-		{
-			displayName: 'Quantity',
-			name: 'quantity',
-			type: 'number',
-			default: '',
-		},
-		{
-			displayName: 'Quantity in Stock',
-			name: 'quantity_in_stock',
-			type: 'number',
-			default: '',
-		},
-		{
-			displayName: 'Tax',
-			name: 'Tax',
-			type: 'number',
-			default: '',
-		},
-		{
-			displayName: 'Total',
-			name: 'total',
-			type: 'number',
-			default: '',
-		},
-		{
-			displayName: 'Total After Discount',
-			name: 'total_after_discount',
-			type: 'number',
-			default: '',
-		},
-		{
-			displayName: 'Total (Net)',
-			name: 'net_total',
-			type: 'number',
-			default: '',
-		},
-		{
-			displayName: 'Unit Price',
-			name: 'unit_price',
-			type: 'number',
-			default: '',
-		},
-	],
-});
+	{
+		displayName: 'Product Description',
+		name: 'product_description',
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Quantity',
+		name: 'quantity',
+		type: 'number',
+		default: '',
+	},
+	{
+		displayName: 'Quantity in Stock',
+		name: 'quantity_in_stock',
+		type: 'number',
+		default: '',
+	},
+	{
+		displayName: 'Tax',
+		name: 'Tax',
+		type: 'number',
+		default: '',
+	},
+	{
+		displayName: 'Total',
+		name: 'total',
+		type: 'number',
+		default: '',
+	},
+	{
+		displayName: 'Total After Discount',
+		name: 'total_after_discount',
+		type: 'number',
+		default: '',
+	},
+	{
+		displayName: 'Total (Net)',
+		name: 'net_total',
+		type: 'number',
+		default: '',
+	},
+	{
+		displayName: 'Unit Price',
+		name: 'unit_price',
+		type: 'number',
+		default: '',
+	},
+];
 
 export const makeGetAllFields = (resource: CamelCaseResource) => {
 	const loadOptionsMethod = `get${capitalizeInitial(resource)}Fields`;

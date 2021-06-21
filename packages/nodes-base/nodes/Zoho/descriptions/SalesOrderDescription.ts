@@ -7,7 +7,7 @@ import {
 	currencies,
 	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
-	makeProductDetails,
+	productDetailsOptions,
 	shippingAddress,
 } from './SharedFields';
 
@@ -128,7 +128,29 @@ export const salesOrderFields = [
 	// ----------------------------------------
 	//       salesOrder: create + upsert
 	// ----------------------------------------
-	makeProductDetails('salesOrder'),
+	{
+		displayName: 'Products',
+		name: 'Product_Details',
+		type: 'collection',
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add Product',
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: productDetailsOptions,
+		displayOptions: {
+			show: {
+				resource: [
+					'salesOrder',
+				],
+				operation: [
+					'create',
+					'upsert',
+				],
+			},
+		},
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

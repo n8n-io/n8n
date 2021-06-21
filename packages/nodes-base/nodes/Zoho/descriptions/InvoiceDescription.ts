@@ -7,7 +7,7 @@ import {
 	currencies,
 	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
-	makeProductDetails,
+	productDetailsOptions,
 	shippingAddress,
 } from './SharedFields';
 
@@ -103,7 +103,29 @@ export const invoiceFields = [
 	// ----------------------------------------
 	//        invoice: create + upsert
 	// ----------------------------------------
-	makeProductDetails('invoice'),
+	{
+		displayName: 'Products',
+		name: 'Product_Details',
+		type: 'collection',
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add Product',
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: productDetailsOptions,
+		displayOptions: {
+			show: {
+				resource: [
+					'invoice',
+				],
+				operation: [
+					'create',
+					'upsert',
+				],
+			},
+		},
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -376,6 +398,18 @@ export const invoiceFields = [
 				name: 'Invoice_Number',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Products',
+				name: 'Product_Details',
+				type: 'collection',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add Product',
+				},
+				default: {},
+				placeholder: 'Add Field',
+				options: productDetailsOptions,
 			},
 			{
 				displayName: 'Sales Commission',

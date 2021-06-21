@@ -16,6 +16,7 @@ import {
 	adjustContactPayload,
 	adjustDealPayload,
 	adjustInvoicePayload,
+	adjustInvoicePayloadOnUpdate,
 	adjustLeadPayload,
 	adjustProductDetails,
 	adjustProductPayload,
@@ -27,6 +28,7 @@ import {
 	getPicklistOptions,
 	handleListing,
 	throwOnEmptyUpdate,
+	throwOnMissingProducts,
 	toLoadOptions,
 	zohoApiRequest,
 	zohoApiRequestAllItems,
@@ -669,6 +671,8 @@ export class ZohoCrm implements INodeType {
 
 						const productDetails = this.getNodeParameter('Product_Details', i) as ProductDetails;
 
+						throwOnMissingProducts.call(this, resource, productDetails);
+
 						const body: IDataObject = {
 							Subject: this.getNodeParameter('subject', i),
 							Product_Details: adjustProductDetails(productDetails),
@@ -730,7 +734,7 @@ export class ZohoCrm implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						if (Object.keys(updateFields).length) {
-							Object.assign(body, adjustInvoicePayload(updateFields));
+							Object.assign(body, adjustInvoicePayloadOnUpdate(updateFields));
 						} else {
 							throwOnEmptyUpdate.call(this, resource);
 						}
@@ -738,6 +742,7 @@ export class ZohoCrm implements INodeType {
 						const invoiceId = this.getNodeParameter('invoiceId', i);
 
 						const endpoint = `/invoices/${invoiceId}`;
+
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.data;
 
@@ -760,7 +765,7 @@ export class ZohoCrm implements INodeType {
 							Object.assign(body, adjustInvoicePayload(additionalFields));
 						}
 
-						responseData = await zohoApiRequest.call(this, 'POST', `/invoices/upsert`, body);
+						responseData = await zohoApiRequest.call(this, 'POST', '/invoices/upsert', body);
 						responseData = responseData.data;
 
 					}
@@ -994,6 +999,8 @@ export class ZohoCrm implements INodeType {
 
 						const productDetails = this.getNodeParameter('Product_Details', i) as ProductDetails;
 
+						throwOnMissingProducts.call(this, resource, productDetails);
+
 						const body: IDataObject = {
 							Subject: this.getNodeParameter('subject', i),
 							Vendor_Name: { id: this.getNodeParameter('vendorId', i) },
@@ -1108,6 +1115,8 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const productDetails = this.getNodeParameter('Product_Details', i) as ProductDetails;
+
+						throwOnMissingProducts.call(this, resource, productDetails);
 
 						const body: IDataObject = {
 							Subject: this.getNodeParameter('subject', i),
