@@ -5,7 +5,7 @@ vscode:
     - formulahendry.auto-close-tag
 
 tasks:
-  - init: npm install -g lerna  && lerna bootstrap --hoist 
+  - init: npm install -g lerna  && lerna bootstrap --hoist && npm run build
     command: export VUE_APP_URL_BASE_API=${GITPOD_WORKSPACE_URL//:\/\//:\/\/5678-}/ && export N8N_HOST=${GITPOD_WORKSPACE_URL//:\/\//:\/\/5678-}/ && npm run dev
 
 # Ports to expose on workspace startup
