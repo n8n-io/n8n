@@ -15,7 +15,6 @@ import {
 export async function serviceNowApiRequest(this:  IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = this.getCredentials('serviceNowOAuth2Api');
-	console.log(credentials);
 
 	const options: OptionsWithUri = {
 		headers: {},
@@ -46,47 +45,31 @@ export async function serviceNowApiRequest(this:  IExecuteFunctions | ILoadOptio
 	}
 }
 
-// export async function serviceNowRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function serviceNowRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-// 	const returnData: IDataObject[] = [];
+	const returnData: IDataObject[] = [];
+	let responseData;
 
-// 	let responseData;
+	let uri: string | undefined;
+	const page = 100;
 
-// 	let link;
+	query.sysparm_limit = page;
 
-// 	let uri: string | undefined;
+	responseData = await serviceNowApiRequest.call(this, method, resource, body, query, uri, { resolveWithFullResponse: true });
+	returnData.push.apply(returnData, responseData.body.result);
 
-// 	do {
-// 		responseData = await serviceNowApiRequest.call(this, method, resource, body, query, uri, { resolveWithFullResponse: true });
-// 		link = responseData.headers.link;
-// 		uri = getNext(link);
-// 		returnData.push.apply(returnData, responseData.body);
-// 		if (query.limit && (query.limit >= returnData.length)) {
-// 			return;
-// 		}
-// 	} while (
-// 		hasMore(link)
-// 	);
+	const quantity = responseData.headers['x-total-count'];
+	const iterations = Math.round(quantity/page) + (quantity%page? 1:0);
 
-// 	return returnData;
-// }
+	for( let iteration = 1; iteration < iterations; iteration++ ){
 
-// function getNext(link: string) {
-// 	if (link === undefined) {
-// 		return;
-// 	}
-// 	const next = link.split(',')[1];
-// 	if (next.includes('rel="next"')) {
-// 		return next.split(';')[0].replace('<', '').replace('>', '').trim();
-// 	}
-// }
+		query.sysparm_limit = page;
+		query.sysparm_offset = iteration*page;
+		responseData = await serviceNowApiRequest.call(this, method, resource, body, query, uri, { resolveWithFullResponse: true });
 
-// function hasMore(link: string) {
-// 	if (link === undefined) {
-// 		return;
-// 	}
-// 	const next = link.split(',')[1];
-// 	if (next.includes('rel="next"')) {
-// 		return next.includes('results="true"');
-// 	}
-// }
+		returnData.push.apply(returnData, responseData.body.result);
+
+	}
+
+	return returnData;
+}

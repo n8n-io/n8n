@@ -1,21 +1,25 @@
 import {
 	IExecuteFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
 	IDataObject,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	serviceNowApiRequest,
+	serviceNowRequestAllItems,
 } from './GenericFunctions';
 
 import {
 	tableRecordFields,
-	tableRecordOperations
+	tableRecordOperations,
 } from './TableRecordDescription';
 
 export class ServiceNow implements INodeType {
@@ -70,23 +74,134 @@ export class ServiceNow implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			// Get all the table column to display them to user
+			async getTableColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const tableName = this.getNodeParameter('tableName') as string;
+				const qs = {
+					sysparm_query: `name=${tableName}`,
+					sysparm_fields: 'column_label,element'
+				}
+				const response = await serviceNowApiRequest.call(this, 'GET', `/now/table/sys_dictionary`, {}, qs);
+				for (const column of response.result) {
+					if(column.element){
+						returnData.push({
+							name: column.column_label,
+							value: column.element,
+						});
+					}
+				}
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+				return returnData;
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		let responseData= {};
-		const qs: IDataObject = {};
+		let responseData = {};
+		let qs: IDataObject;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
 
+			if (resource === 'tableRecord') {
 
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
+				if (operation === 'create') {
+
+					const tableName = this.getNodeParameter('tableName', i) as string;
+					const json = this.getNodeParameter('json', i) as boolean;
+					let body = {};
+					if (json) {
+						const jsonData = this.getNodeParameter('jsonData', i) as string;
+						body = JSON.parse(jsonData);
+					} else {
+						const inputFields = this.getNodeParameter('inputFields', i) as {
+							field: IDataObject[]
+						};
+						body = inputFields.field.reduce((obj,field) => {
+							obj[field.column as string] = field.value;
+							return obj;
+						},{});
+					}
+
+					responseData = await serviceNowApiRequest.call(this, 'POST', `/now/table/${tableName}`, body)
+
+				} else if (operation === 'delete') {
+
+					const tableName = this.getNodeParameter('tableName', i) as string;
+					const id = this.getNodeParameter('id', i) as string;
+					responseData = await serviceNowApiRequest.call(this, 'DELETE', `/now/table/${tableName}/${id}`)
+					responseData = {success : true};
+
+				} else if (operation === 'get') {
+
+					const tableName = this.getNodeParameter('tableName', i) as string;
+					const id = this.getNodeParameter('id', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					qs = {
+						...additionalFields,
+					}
+					responseData = await serviceNowApiRequest.call(this, 'GET', `/now/table/${tableName}/${id}`, {}, qs)
+
+				} else if (operation === 'getAll') {
+
+					const tableName = this.getNodeParameter('tableName', i) as string;
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					qs = additionalFields
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.sysparm_limit = limit;
+						const response = await serviceNowApiRequest.call(this, 'GET', `/now/table/${tableName}`, {}, qs);
+						responseData = response.result;
+					} else {
+						responseData = await serviceNowRequestAllItems.call(this, 'GET', `/now/table/${tableName}`, {}, qs);
+					}
+
+
+				} else if (operation === 'update') {
+
+					const tableName = this.getNodeParameter('tableName', i) as string;
+					const id = this.getNodeParameter('id', i) as string;
+					const json = this.getNodeParameter('json', i) as boolean;
+					let body = {};
+					if (json) {
+						const jsonData = this.getNodeParameter('jsonData', i) as string;
+						body = JSON.parse(jsonData);
+					} else {
+						const updateFields = this.getNodeParameter('updateFields', i) as {
+							field: IDataObject[]
+						};
+						body = updateFields.field.reduce((obj,field) => {
+							obj[field.column as string] = field.value;
+							return obj;
+						},{});
+					}
+
+					responseData = await serviceNowApiRequest.call(this, 'PATCH', `/now/table/${tableName}/${id}`, body)
+
+				} else {
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+				}
 			} else {
-				returnData.push(responseData as IDataObject);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 			}
+
+			Array.isArray(responseData)
+				? returnData.push(...responseData)
+				: returnData.push(responseData);
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

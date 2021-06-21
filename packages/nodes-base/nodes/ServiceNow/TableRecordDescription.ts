@@ -43,15 +43,12 @@ export const tableRecordOperations = [
 
 export const tableRecordFields = [
 	/* -------------------------------------------------------------------------- */
-	/*                                tableRecord:getAll                                */
+	/*                                tableRecord:create                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
-		name: 'organizationSlug',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getOrganizations',
-		},
+		displayName: 'Table Name',
+		name: 'tableName',
+		type: 'string',
 		default: '',
 		displayOptions: {
 			show: {
@@ -59,40 +56,16 @@ export const tableRecordFields = [
 					'tableRecord',
 				],
 				operation: [
-					'getAll',
+					'create',
 				],
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the events belong to.',
+		description: 'The table name.',
 	},
 	{
-		displayName: 'Project Slug',
-		name: 'projectSlug',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getProjects',
-			loadOptionsDependsOn: [
-				'organizationSlug',
-			],
-		},
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'tableRecord',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		required: true,
-		description: 'The slug of the project the events belong to.',
-	},
-	{
-		displayName: 'Full',
-		name: 'full',
+		displayName: 'JSON input',
+		name: 'json',
 		type: 'boolean',
 		default: true,
 		displayOptions: {
@@ -101,11 +74,103 @@ export const tableRecordFields = [
 					'tableRecord',
 				],
 				operation: [
+					'create',
+				],
+			},
+		},
+		required: true,
+		description: 'Choose to provide input data as JSON.',
+	},
+	{
+		displayName: 'JSON Data',
+		name: 'jsonData',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'tableRecord',
+				],
+				operation: [
+					'create',
+				],
+				json: [
+					true
+				]
+			},
+		},
+		required: true,
+		description: 'Choose to provide input data as JSON.',
+	},
+	{
+		displayName: 'Input Fields',
+		name: 'inputFields',
+		type: 'fixedCollection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				resource: [
+					'tableRecord',
+				],
+				operation: [
+					'create',
+				],
+				json: [
+					false
+				]
+			},
+		},
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Input Field',
+				name: 'field',
+				values: [
+					{
+						displayName: 'Field Name',
+						name: 'column',
+						type: 'options',
+						typeOptions:{
+							loadOptionsMethod: 'getTableColumns',
+							loadOptionsDependsOn: [
+								'tableName'
+							]
+						},
+						default: '',
+					},
+					{
+						displayName: 'Field Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                tableRecord:getAll                          */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Table Name',
+		name: 'tableName',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'tableRecord',
+				],
+				operation: [
 					'getAll',
 				],
 			},
 		},
-		description: 'If this is set to true, then the event payload will include the full event body, including the stack trace.',
+		required: true,
+		description: 'The table name.',
 	},
 	{
 		displayName: 'Return All',
@@ -150,53 +215,11 @@ export const tableRecordFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                tableRecord:get                                   */
+	/*                                tableRecord:get/delete                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization Slug',
-		name: 'organizationSlug',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getOrganizations',
-		},
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'tableRecord',
-				],
-				operation: [
-					'get',
-				],
-			},
-		},
-		required: true,
-		description: 'The slug of the organization the events belong to.',
-	},
-	{
-		displayName: 'Project Slug',
-		name: 'projectSlug',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getProjects',
-		},
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'tableRecord',
-				],
-				operation: [
-					'get',
-				],
-			},
-		},
-		required: true,
-		description: 'The slug of the project the events belong to.',
-	},
-	{
-		displayName: 'Event ID',
-		name: 'eventId',
+		displayName: 'Table Name',
+		name: 'tableName',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -205,11 +228,220 @@ export const tableRecordFields = [
 					'tableRecord',
 				],
 				operation: [
+					'delete',
 					'get',
 				],
 			},
 		},
 		required: true,
-		description: 'The ID of the event to retrieve (either the numeric primary-key or the hexadecimal ID as reported by the raven client).',
+		description: 'Name of the table in which the record exists.',
+	},
+	{
+		displayName: 'ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'tableRecord',
+				],
+				operation: [
+					'delete',
+					'get',
+				],
+			},
+		},
+		required: true,
+		description: 'Unique identifier of the record.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				resource: [
+					'tableRecord',
+				],
+				operation: [
+					'get',
+					'getAll',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Display values',
+				name: 'sysparm_display_value',
+				type: 'options',
+				options: [
+					{
+						name: 'Display values',
+						value: 'true'
+					},
+					{
+						name: 'Acutal values',
+						value: 'false'
+					},
+					{
+						name: 'Both',
+						value: 'all'
+					},
+				],
+				default: 'false',
+				description: 'Choose which values to return.',
+			},
+			{
+				displayName: 'Exclude reference link',
+				name: 'sysparm_exclude_reference_link',
+				type: 'boolean',
+				default: false,
+				description: 'Exclude Table API links for reference fields.',
+			},
+			{
+				displayName: 'Fields',
+				name: 'sysparm_fields',
+				type: 'string',
+				default: '',
+				description: 'A comma-separated list of fields to return.',
+			},
+			{
+				displayName: 'View',
+				name: 'sysparm_view',
+				type: 'boolean',
+				default: false,
+				description: 'Render the response according to the specified UI view (overridden by Fields option).',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                tableRecord:create                          */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Table Name',
+		name: 'tableName',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'tableRecord',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		required: true,
+		description: 'The table name.',
+	},
+	{
+		displayName: 'ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'tableRecord',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		required: true,
+		description: 'Unique identifier of the record.',
+	},
+	{
+		displayName: 'JSON input',
+		name: 'json',
+		type: 'boolean',
+		default: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'tableRecord',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		required: true,
+		description: 'Choose to provide input data as JSON.',
+	},
+	{
+		displayName: 'JSON Data',
+		name: 'jsonData',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'tableRecord',
+				],
+				operation: [
+					'update',
+				],
+				json: [
+					true
+				]
+			},
+		},
+		required: true,
+		description: 'Choose to provide input data as JSON.',
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'fixedCollection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				resource: [
+					'tableRecord',
+				],
+				operation: [
+					'update',
+				],
+				json: [
+					false
+				]
+			},
+		},
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Input Field',
+				name: 'field',
+				values: [
+					{
+						displayName: 'Field Name',
+						name: 'column',
+						type: 'options',
+						typeOptions:{
+							loadOptionsMethod: 'getTableColumns',
+							loadOptionsDependsOn: [
+								'tableName'
+							]
+						},
+						default: '',
+					},
+					{
+						displayName: 'Field Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 ] as INodeProperties[];
