@@ -1517,6 +1517,7 @@ export default mixins(
 				await this.addNodes([DEFAULT_START_NODE]);
 				this.$store.commit('setStateDirty', false);
 
+				this.setZoomLevel(1);
 			},
 			async initView (): Promise<void> {
 				if (this.$route.params.action === 'workflowSave') {
