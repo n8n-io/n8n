@@ -71,3 +71,20 @@ export const scaleBigger = ({scale, offset: [xOffset, yOffset]}: IZoomConfig): I
 		offset: [xOffset, yOffset],
 	};
 };
+
+export const scaleReset = (config: IZoomConfig): IZoomConfig => {
+	if (config.scale > 1) { // zoomed in
+		while (config.scale > 1) {
+			config = scaleSmaller(config);
+		}
+	}
+	else {
+		while (config.scale < 1) {
+			config = scaleBigger(config);
+		}
+	}
+
+	config.scale = 1;
+
+	return config;
+};

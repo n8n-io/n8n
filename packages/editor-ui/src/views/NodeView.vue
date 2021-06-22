@@ -136,7 +136,7 @@ import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { getWorkflowCorners, getLeftmostTopNode, scaleSmaller, scaleBigger } from './helpers';
+import { getWorkflowCorners, getLeftmostTopNode, scaleSmaller, scaleBigger, scaleReset } from './helpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -784,25 +784,8 @@ export default mixins(
 			},
 
 			resetZoom () {
-				let scale = this.nodeViewScale;
-				let offset = this.$store.getters.getNodeViewOffsetPosition;
+				const { scale, offset } = scaleReset({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
 
-				if (scale > 1) { // zoomed in
-					while (scale > 1) {
-						const updated = scaleSmaller({scale, offset});
-						scale = updated.scale;
-						offset = updated.offset;
-					}
-				}
-				else {
-					while (scale < 1) {
-						const updated = scaleBigger({scale, offset});
-						scale = updated.scale;
-						offset = updated.offset;
-					}
-				}
-
-				scale = 1;
 				this.setZoomLevel(scale);
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: offset});
 			},
