@@ -27,6 +27,15 @@ export class CreateTagEntity1617268711084 implements MigrationInterface {
 		async down(queryRunner: QueryRunner): Promise<void> {
 			const tablePrefix = config.get('database.tablePrefix');
 
+			// `createdAt` and `updatedAt`
+
+			await queryRunner.query("ALTER TABLE `" + tablePrefix + "workflow_entity` CHANGE `updatedAt` `updatedAt` datetime NOT NULL");
+			await queryRunner.query("ALTER TABLE `" + tablePrefix + "workflow_entity` CHANGE `createdAt` `createdAt` datetime NOT NULL");
+			await queryRunner.query("ALTER TABLE `" + tablePrefix + "tag_entity` CHANGE `updatedAt` `updatedAt` datetime NOT NULL");
+			await queryRunner.query("ALTER TABLE `" + tablePrefix + "tag_entity` CHANGE `createdAt` `createdAt` datetime NOT NULL");
+			await queryRunner.query("ALTER TABLE `" + tablePrefix + "credentials_entity` CHANGE `updatedAt` `updatedAt` datetime NOT NULL");
+			await queryRunner.query("ALTER TABLE `" + tablePrefix + "credentials_entity` CHANGE `createdAt` `createdAt` datetime NOT NULL");
+
 			// tags
 
 			await queryRunner.query('ALTER TABLE `' + tablePrefix + 'workflows_tags` DROP FOREIGN KEY `FK_' + tablePrefix + '77505b341625b0b4768082e2171`');
@@ -36,15 +45,6 @@ export class CreateTagEntity1617268711084 implements MigrationInterface {
 			await queryRunner.query('DROP TABLE `' + tablePrefix + 'workflows_tags`');
 			await queryRunner.query('DROP INDEX `IDX_' + tablePrefix + '8f949d7a3a984759044054e89b` ON `' + tablePrefix + 'tag_entity`');
 			await queryRunner.query('DROP TABLE `' + tablePrefix + 'tag_entity`');
-
-			// `createdAt` and `updatedAt`
-
-			await queryRunner.query("ALTER TABLE `" + tablePrefix + "workflow_entity` CHANGE `updatedAt` `updatedAt` datetime(0) NOT NULL");
-			await queryRunner.query("ALTER TABLE `" + tablePrefix + "workflow_entity` CHANGE `createdAt` `createdAt` datetime(0) NOT NULL");
-			await queryRunner.query("ALTER TABLE `" + tablePrefix + "tag_entity` CHANGE `updatedAt` `updatedAt` datetime(0) NOT NULL");
-			await queryRunner.query("ALTER TABLE `" + tablePrefix + "tag_entity` CHANGE `createdAt` `createdAt` datetime(0) NOT NULL");
-			await queryRunner.query("ALTER TABLE `" + tablePrefix + "credentials_entity` CHANGE `updatedAt` `updatedAt` datetime(0) NOT NULL");
-			await queryRunner.query("ALTER TABLE `" + tablePrefix + "credentials_entity` CHANGE `createdAt` `createdAt` datetime(0) NOT NULL");
 		}
 
 }

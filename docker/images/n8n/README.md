@@ -227,10 +227,10 @@ docker run -it --rm \
 ## Build Docker-Image
 
 ```
-docker build --build-arg N8N_VERSION=<VERSION> -t n8nio/n8n:<VERSION> .
+docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --build-arg N8N_VERSION=<VERSION> -t n8nio/n8n:<VERSION> .
 
 # For example:
-docker build --build-arg N8N_VERSION=0.18.1 -t n8nio/n8n:0.18.1 .
+docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --build-arg N8N_VERSION=0.114.0 -t n8nio/n8n:0.114.0 .
 ```
 
 

@@ -38,14 +38,6 @@ export class CreateTagEntity1617213344594 implements MigrationInterface {
 	async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.get('database.tablePrefix');
 
-		// tags
-
-		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}77505b341625b0b4768082e217"`);
-		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}54b2f0343d6a2078fa13744386"`);
-		await queryRunner.query(`DROP TABLE "${tablePrefix}workflows_tags"`);
-		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}8f949d7a3a984759044054e89b"`);
-		await queryRunner.query(`DROP TABLE "${tablePrefix}tag_entity"`);
-
 		// `createdAt` and `updatedAt`
 
 		await queryRunner.query(`ALTER TABLE "${tablePrefix}workflow_entity" RENAME TO "${tablePrefix}temporary_workflow_entity"`);
@@ -64,6 +56,14 @@ export class CreateTagEntity1617213344594 implements MigrationInterface {
 		await queryRunner.query(`INSERT INTO "${tablePrefix}credentials_entity"("id", "name", "data", "type", "nodesAccess", "createdAt", "updatedAt") SELECT "id", "name", "data", "type", "nodesAccess", "createdAt", "updatedAt" FROM "${tablePrefix}temporary_credentials_entity"`);
 		await queryRunner.query(`DROP TABLE "${tablePrefix}temporary_credentials_entity"`);
 		await queryRunner.query(`CREATE INDEX "IDX_${tablePrefix}07fde106c0b471d8cc80a64fc8" ON "credentials_entity" ("type") `);
+
+		// tags
+
+		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}77505b341625b0b4768082e217"`);
+		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}54b2f0343d6a2078fa13744386"`);
+		await queryRunner.query(`DROP TABLE "${tablePrefix}workflows_tags"`);
+		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}8f949d7a3a984759044054e89b"`);
+		await queryRunner.query(`DROP TABLE "${tablePrefix}tag_entity"`);
 	}
 
 }

@@ -673,10 +673,13 @@ class App {
 			await WorkflowHelpers.validateWorkflow(updateData);
 			await Db.collections.Workflow!.update(id, updateData).catch(WorkflowHelpers.throwDuplicateEntryError);
 
-			const tablePrefix = config.get('database.tablePrefix');
-			await TagHelpers.removeRelations(req.params.id, tablePrefix);
-			if (tags?.length) {
-				await TagHelpers.createRelations(req.params.id, tags, tablePrefix);
+			if (tags) {
+				const tablePrefix = config.get('database.tablePrefix');
+				await TagHelpers.removeRelations(req.params.id, tablePrefix);
+
+				if (tags.length) {
+					await TagHelpers.createRelations(req.params.id, tags, tablePrefix);
+				}
 			}
 
 			// We sadly get nothing back from "update". Neither if it updated a record
@@ -943,6 +946,9 @@ class App {
 			}
 
 			const filepath = nodeType.description.icon.substr(5);
+
+			const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+			res.setHeader('Cache-control', `private max-age=${maxAge}`);
 
 			res.sendFile(filepath);
 		});
