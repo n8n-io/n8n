@@ -24,7 +24,7 @@
 		"paths": {
 			"@config": [
 				"config/index"
-			],
+			]
 		}
 	},
 	"include": [
