@@ -51,9 +51,9 @@ import {
 	faEnvelope,
 	faEye,
 	faExclamationTriangle,
+	faExpand,
 	faExternalLinkAlt,
 	faExchangeAlt,
-	faExpand,
 	faFile,
 	faFileArchive,
 	faFileCode,
@@ -140,6 +140,7 @@ library.add(faEdit);
 library.add(faEnvelope);
 library.add(faEye);
 library.add(faExclamationTriangle);
+library.add(faExpand);
 library.add(faExternalLinkAlt);
 library.add(faExchangeAlt);
 library.add(faFile);
@@ -181,7 +182,6 @@ library.add(faSpinner);
 library.add(faStop);
 library.add(faSun);
 library.add(faSync);
-library.add(faExpand);
 library.add(faSyncAlt);
 library.add(faTable);
 library.add(faTasks);
