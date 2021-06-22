@@ -1,5 +1,5 @@
 import {MigrationInterface, QueryRunner} from "typeorm";
-import * as config from '../../../../config';
+import { config } from '@config';
 
 export class AddWebhookId1611071044839 implements MigrationInterface {
 	name = 'AddWebhookId1611071044839';

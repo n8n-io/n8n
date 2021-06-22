@@ -36,7 +36,7 @@ import {
 	WorkflowOperationError,
 } from 'n8n-workflow';
 
-import * as config from '../config';
+import { config } from '@config';
 import * as PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
