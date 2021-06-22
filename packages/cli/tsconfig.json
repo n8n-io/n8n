@@ -25,7 +25,7 @@
 			"@config": [
 				"config/index"
 			],
-		},
+		}
 	},
 	"include": [
 		"**/*.d.ts",
