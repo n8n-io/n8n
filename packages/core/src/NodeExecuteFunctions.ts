@@ -318,7 +318,6 @@ export function returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExe
  * @returns {(ICredentialDataDecryptedObject | undefined)}
  */
 export function getCredentials(workflow: Workflow, node: INode, type: string, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, runExecutionData?: IRunExecutionData | null, runIndex?: number, connectionInputData?: INodeExecutionData[], itemIndex?: number): ICredentialDataDecryptedObject | undefined {
-
 	// Get the NodeType as it has the information if the credentials are required
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {

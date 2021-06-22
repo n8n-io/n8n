@@ -8,6 +8,7 @@ import {
 	ILogger,
 	INodeType,
 	INodeTypeData,
+	INodeTypeNameVersion,
 	INodeVersionedType,
 	LoggerProxy,
 } from 'n8n-workflow';
@@ -165,19 +166,13 @@ class LoadNodesAndCredentialsClass {
 	 * @returns {Promise<void>}
 	 */
 	async loadNodeFromFile(packageName: string, nodeName: string, filePath: string): Promise<void> {
-		let tempNode: INodeType;
+		let tempNode: INodeType | INodeVersionedType;
 		let fullNodeName: string;
 
 		const tempModule = require(filePath);
 
 		try {
-			const nodeObject = new tempModule[nodeName]();
-			if (nodeObject.getNodeType !== undefined) {
-				tempNode = nodeObject.getNodeType();
-			} else {
-				tempNode = nodeObject;
-			}
-			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });
+			tempNode = new tempModule[nodeName]();
 		} catch (error) {
 			console.error(`Error loading node "${nodeName}" from: "${filePath}"`);
 			throw error;
@@ -192,7 +187,7 @@ class LoadNodesAndCredentialsClass {
 			tempNode.description.icon = 'file:' + path.join(path.dirname(filePath), tempNode.description.icon.substr(5));
 		}
 
-		if (tempNode.executeSingle) {
+		if (tempNode.hasOwnProperty('executeSingle')) {
 			this.logger.warn(`"executeSingle" will get deprecated soon. Please update the code of node "${packageName}.${nodeName}" to use "execute" instead!`, { filePath });
 		}
 

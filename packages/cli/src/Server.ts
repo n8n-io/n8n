@@ -870,7 +870,7 @@ class App {
 
 			const nodeTypes = NodeTypes();
 
-			const loadDataInstance = new LoadNodeParameterOptions(nodeTypeAndVersion, nodeTypes, JSON.parse(`${req.query.currentNodeParameters}`), credentials!);
+			const loadDataInstance = new LoadNodeParameterOptions(nodeTypeAndVersion, nodeTypes, path, JSON.parse(`${req.query.currentNodeParameters}`), credentials!);
 
 			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
 			const workflowCredentials = await WorkflowCredentials(workflowData.nodes);

@@ -40,7 +40,6 @@ export class LoadNodeParameterOptions {
 				0,
 			],
 		};
-
 		if (credentials) {
 			nodeData.credentials = credentials;
 		}
