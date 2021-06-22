@@ -1,15 +1,10 @@
-import { INodeUi, XYPositon } from "@/Interface";
+import { INodeUi, IZoomConfig } from "@/Interface";
 
 interface ICorners {
 	minX: number;
 	minY: number;
 	maxX: number;
 	maxY: number;
-}
-
-interface IZoomConfig {
-	scale: number;
-	offset: XYPositon;
 }
 
 export const getLeftmostTopNode = (nodes: INodeUi[]): INodeUi => {
