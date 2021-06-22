@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const tableRecordOperations = [
+export const incidentOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const tableRecordOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'tableRecord',
+					'incident',
 				],
 			},
 		},
@@ -41,19 +41,20 @@ export const tableRecordOperations = [
 	},
 ] as INodeProperties[];
 
-export const tableRecordFields = [
+export const incidentFields = [
 	/* -------------------------------------------------------------------------- */
-	/*                                tableRecord:create                          */
+	/*                                incident:create                          */
 	/* -------------------------------------------------------------------------- */
+
 	{
-		displayName: 'Table Name',
-		name: 'tableName',
-		type: 'string',
-		default: '',
+		displayName: 'Short description',
+    name: 'short_description',
+    type: 'string',
+    default: '',
 		displayOptions: {
 			show: {
 				resource: [
-					'tableRecord',
+					'incident',
 				],
 				operation: [
 					'create',
@@ -61,117 +62,128 @@ export const tableRecordFields = [
 			},
 		},
 		required: true,
-		description: 'The table name.',
+		description: 'Short description of the incident.',
 	},
 	{
-		displayName: 'JSON input',
-		name: 'json',
-		type: 'boolean',
-		default: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'tableRecord',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		required: true,
-		description: 'Choose to provide input data as JSON.',
-	},
-	{
-		displayName: 'JSON Data',
-		name: 'jsonData',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'tableRecord',
-				],
-				operation: [
-					'create',
-				],
-				json: [
-					true
-				]
-			},
-		},
-		required: true,
-		description: 'Choose to provide input data as JSON.',
-	},
-	{
-		displayName: 'Input Fields',
-		name: 'inputFields',
-		type: 'fixedCollection',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
 				resource: [
-					'tableRecord',
+					'incident',
 				],
 				operation: [
 					'create',
 				],
-				json: [
-					false
-				]
 			},
-		},
-		typeOptions: {
-			multipleValues: true,
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Input Field',
-				name: 'field',
-				values: [
-					{
-						displayName: 'Field Name',
-						name: 'column',
-						type: 'options',
-						typeOptions:{
-							loadOptionsMethod: 'getTableColumns',
-							loadOptionsDependsOn: [
-								'tableName'
-							]
-						},
-						default: '',
-					},
-					{
-						displayName: 'Field Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-					},
-				],
+				displayName: 'Caller ID',
+				name: 'caller_id',
+				type: 'string',
+				default: '',
+				description:'The unique identifier of the caller of the incident.'
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				description:'The description of the incident.'
+			},
+			{
+				displayName: 'Category',
+				name: 'category',
+				type: 'string',
+				default: '',
+				description:'The category of the incident.'
+			},
+			{
+				displayName: 'Subcategory',
+				name: 'subcategory',
+				type: 'string',
+				default: '',
+				description:'The subcategory of the incident.'
+			},
+			{
+				displayName: 'Business service',
+				name: 'business_service',
+				type: 'string',
+				default: '',
+				description:'The business service.'
+			},
+			{
+				displayName: 'Configuration Items',
+				name: 'cmdb_ci',
+				type: 'string',
+				default: '',
+				description:'Configuration Items, \'cmdb_ci\' in metadata.'
+			},
+			{
+				displayName: 'Contact type',
+				name: 'contact_type',
+				type: 'string',
+				default: '',
+				description:'The contact type.'
+			},
+			{
+				displayName: 'State',
+				name: 'state',
+				type: 'number',
+				default: '',
+				description:'The state of the incident.'
+			},
+			{
+				displayName: 'Impact',
+				name: 'impact',
+				type: 'number',
+				default: '',
+				description:'The impact of the incident.'
+			},
+			{
+				displayName: 'Urgency',
+				name: 'urgency',
+				type: 'number',
+				default: '',
+				description:'The urgency of the incident.'
+			},
+			{
+				displayName: 'Assignment group',
+				name: 'assignment_group',
+				type: 'string',
+				default: '',
+				description:'The assignment group of the incident.'
+			},
+			{
+				displayName: 'Assigned to',
+				name: 'assigned_to',
+				type: 'string',
+				default: '',
+				description:'What user is the incident assigned to.'
+			},
+			{
+				displayName: 'Resolution code',
+				name: 'close_code',
+				type: 'string',
+				default: '',
+				description:'The resolution code of the incident. \'close_code\' in metadata.'
+			},
+			{
+				displayName: 'Close note',
+				name: 'close_notes',
+				type: 'string',
+				default: '',
+				description:'The close notes for the incident.'
 			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                tableRecord:getAll                          */
+	/*                                incident:getAll                          */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Table Name',
-		name: 'tableName',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'tableRecord',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		required: true,
-		description: 'The table name.',
-	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -182,7 +194,7 @@ export const tableRecordFields = [
 					'getAll',
 				],
 				resource: [
-					'tableRecord',
+					'incident',
 				],
 			},
 		},
@@ -199,7 +211,7 @@ export const tableRecordFields = [
 					'getAll',
 				],
 				resource: [
-					'tableRecord',
+					'incident',
 				],
 				returnAll: [
 					false,
@@ -215,27 +227,8 @@ export const tableRecordFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                tableRecord:get/delete                       */
+	/*                                incident:get/delete                       */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Table Name',
-		name: 'tableName',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'tableRecord',
-				],
-				operation: [
-					'delete',
-					'get',
-				],
-			},
-		},
-		required: true,
-		description: 'Name of the table in which the record exists.',
-	},
 	{
 		displayName: 'ID',
 		name: 'id',
@@ -244,7 +237,7 @@ export const tableRecordFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'tableRecord',
+					'incident',
 				],
 				operation: [
 					'delete',
@@ -253,7 +246,7 @@ export const tableRecordFields = [
 			},
 		},
 		required: true,
-		description: 'Unique identifier of the record.',
+		description: 'Unique identifier of the incident.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -263,7 +256,7 @@ export const tableRecordFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'tableRecord',
+					'incident',
 				],
 				operation: [
 					'get',
@@ -318,26 +311,8 @@ export const tableRecordFields = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                tableRecord:update                          */
+	/*                                incident:update                             */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Table Name',
-		name: 'tableName',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'tableRecord',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-		required: true,
-		description: 'The table name.',
-	},
 	{
 		displayName: 'ID',
 		name: 'id',
@@ -346,7 +321,7 @@ export const tableRecordFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'tableRecord',
+					'incident',
 				],
 				operation: [
 					'update',
@@ -354,93 +329,59 @@ export const tableRecordFields = [
 			},
 		},
 		required: true,
-		description: 'Unique identifier of the record.',
-	},
-	{
-		displayName: 'JSON input',
-		name: 'json',
-		type: 'boolean',
-		default: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'tableRecord',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-		required: true,
-		description: 'Choose to provide input data as JSON.',
-	},
-	{
-		displayName: 'JSON Data',
-		name: 'jsonData',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'tableRecord',
-				],
-				operation: [
-					'update',
-				],
-				json: [
-					true
-				]
-			},
-		},
-		required: true,
-		description: 'Choose to provide input data as JSON.',
+		description: 'Unique identifier of the incident.',
 	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
-		type: 'fixedCollection',
+		type: 'collection',
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
 				resource: [
-					'tableRecord',
+					'incident',
 				],
 				operation: [
 					'update',
 				],
-				json: [
-					false
-				]
 			},
-		},
-		typeOptions: {
-			multipleValues: true,
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Input Field',
-				name: 'field',
-				values: [
-					{
-						displayName: 'Field Name',
-						name: 'column',
-						type: 'options',
-						typeOptions:{
-							loadOptionsMethod: 'getTableColumns',
-							loadOptionsDependsOn: [
-								'tableName'
-							]
-						},
-						default: '',
-					},
-					{
-						displayName: 'Field Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-					},
-				],
+				displayName: 'State',
+				name: 'state',
+				type: 'number',
+				default: '',
+				description:'The state of the incident.'
+			},
+			{
+				displayName: 'Assigned to',
+				name: 'assigned_to',
+				type: 'string',
+				default: '',
+				description:'The user who is assigned to the incident.'
+			},
+			{
+				displayName: 'On hold reason',
+				name: 'hold_reason',
+				type: 'number',
+				default: '',
+				description:'The on hold reason for the incident.'
+			},
+			{
+				displayName: 'Resolution code',
+				name: 'close_code',
+				type: 'string',
+				default: '',
+				description:'The resolution code of the incident. \'close_code\' in metadata.'
+			},
+			{
+				displayName: 'Close notes',
+				name: 'close_notes',
+				type: 'string',
+				default: '',
+				description:'The close notes for the incident.'
 			},
 		],
 	},

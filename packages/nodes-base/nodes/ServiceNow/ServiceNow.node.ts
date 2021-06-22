@@ -22,6 +22,11 @@ import {
 	tableRecordOperations,
 } from './TableRecordDescription';
 
+import {
+	incidentFields,
+	incidentOperations,
+} from './IncidentDescription';
+
 export class ServiceNow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Service Now',
@@ -33,7 +38,7 @@ export class ServiceNow implements INodeType {
 		description: 'Consume Service Now API',
 		defaults: {
 			name: 'Service Now',
-			color: '#362d59',
+			color: '#81b5a1',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -70,7 +75,9 @@ export class ServiceNow implements INodeType {
 			// TABLE RECORD
 			...tableRecordOperations,
 			...tableRecordFields,
-
+			// INCIDENT
+			...incidentOperations,
+			...incidentFields,
 		],
 	};
 
@@ -134,7 +141,8 @@ export class ServiceNow implements INodeType {
 						},{});
 					}
 
-					responseData = await serviceNowApiRequest.call(this, 'POST', `/now/table/${tableName}`, body)
+					const response = await serviceNowApiRequest.call(this, 'POST', `/now/table/${tableName}`, body)
+					responseData = response.result;
 
 				} else if (operation === 'delete') {
 
@@ -148,10 +156,10 @@ export class ServiceNow implements INodeType {
 					const tableName = this.getNodeParameter('tableName', i) as string;
 					const id = this.getNodeParameter('id', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					qs = {
-						...additionalFields,
-					}
-					responseData = await serviceNowApiRequest.call(this, 'GET', `/now/table/${tableName}/${id}`, {}, qs)
+					qs = additionalFields
+
+					const response = await serviceNowApiRequest.call(this, 'GET', `/now/table/${tableName}/${id}`, {}, qs)
+					responseData = response.result;
 
 				} else if (operation === 'getAll') {
 
@@ -190,7 +198,64 @@ export class ServiceNow implements INodeType {
 						},{});
 					}
 
-					responseData = await serviceNowApiRequest.call(this, 'PATCH', `/now/table/${tableName}/${id}`, body)
+					const response = await serviceNowApiRequest.call(this, 'PATCH', `/now/table/${tableName}/${id}`, body)
+					responseData = response.result;
+
+				} else {
+					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+				}
+			} else if (resource === 'incident') {
+
+				if (operation === 'create') {
+
+					const short_description = this.getNodeParameter('short_description', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body = {
+						short_description,
+						...additionalFields,
+					}
+
+					const response = await serviceNowApiRequest.call(this, 'POST', `/now/table/incident`, body)
+					responseData = response.result;
+
+				} else if (operation === 'delete') {
+
+					const id = this.getNodeParameter('id', i) as string;
+					responseData = await serviceNowApiRequest.call(this, 'DELETE', `/now/table/incident/${id}`)
+					responseData = {success : true};
+
+				} else if (operation === 'get') {
+
+					const id = this.getNodeParameter('id', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					qs = additionalFields
+
+					const response = await serviceNowApiRequest.call(this, 'GET', `/now/table/incident/${id}`, {}, qs)
+					responseData = response.result;
+
+				} else if (operation === 'getAll') {
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					qs = additionalFields
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.sysparm_limit = limit;
+						const response = await serviceNowApiRequest.call(this, 'GET', `/now/table/incident`, {}, qs);
+						responseData = response.result;
+					} else {
+						responseData = await serviceNowRequestAllItems.call(this, 'GET', `/now/table/incident`, {}, qs);
+					}
+
+				} else if (operation === 'update') {
+
+					const id = this.getNodeParameter('id', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					let body = updateFields;
+
+					const response = await serviceNowApiRequest.call(this, 'PATCH', `/now/table/incident/${id}`, body)
+					responseData = response.result;
 
 				} else {
 					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
