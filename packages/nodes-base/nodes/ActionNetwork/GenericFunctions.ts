@@ -5,6 +5,7 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -20,13 +21,12 @@ import {
 
 import {
 	AllFieldsUi,
-	EmailAddressField,
-	LoadedTag,
-	LodadedTagging,
+	FieldWithPrimaryField,
+	LinksFieldContainer,
 	PersonResponse,
-	PhoneNumberField,
-	PostalAddressField,
-	ResourceIds,
+	PetitionResponse,
+	Resource,
+	Response,
 } from './types';
 
 export async function actionNetworkApiRequest(
@@ -53,15 +53,15 @@ export async function actionNetworkApiRequest(
 		json: true,
 	};
 
-	try {
-		if (!Object.keys(body).length) {
-			delete options.body;
-		}
+	if (!Object.keys(body).length) {
+		delete options.body;
+	}
 
-		if (!Object.keys(qs).length) {
-			delete options.qs;
-		}
-		console.log(options);
+	if (!Object.keys(qs).length) {
+		delete options.qs;
+	}
+
+	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -118,15 +118,14 @@ const toItemsKey = (endpoint: string) => {
 		endpoint.includes('/attendances') ||
 		endpoint.includes('/taggings')
 	) {
-		const relevantPart = endpoint.split('/').pop();
-		return `osdi:${relevantPart?.replace(/\//g, '')}`;
+		endpoint = endpoint.split('/').pop()!;
 	}
 
 	return `osdi:${endpoint.replace(/\//g, '')}`;
 };
 
-export const extractId = (data: { _links: { self: { href: string } } }) => {
-	return data?._links?.self?.href?.split('/')?.pop();
+export const extractId = (response: LinksFieldContainer) => {
+	return response._links.self.href.split('/').pop() ?? 'No ID';
 };
 
 export const makeOsdiLink = (personId: string) => {
@@ -139,9 +138,7 @@ export const makeOsdiLink = (personId: string) => {
 	};
 };
 
-export const isPrimary = (
-	field: EmailAddressField | PhoneNumberField | PostalAddressField,
-) => field.primary;
+export const isPrimary = (field: FieldWithPrimaryField) => field.primary;
 
 
 // ----------------------------------------
@@ -256,11 +253,9 @@ async function loadResource(this: ILoadOptionsFunctions, resource: string) {
 export const resourceLoaders = {
 
 	async getTags(this: ILoadOptionsFunctions) {
-		const tags = await loadResource.call(this, 'tags') as [{ name: string, _links: { self: { href: string } } }];
+		const tags = await loadResource.call(this, 'tags') as Array<{ name: string } & LinksFieldContainer>;
 
-		return tags.map((data) => {
-			return { name: data.name, value: extractId(data) as string };
-		});
+		return tags.map((tag) => ({ name: tag.name, value: extractId(tag) }));
 	},
 
 	async getTaggings(this: ILoadOptionsFunctions) {
@@ -270,10 +265,10 @@ export const resourceLoaders = {
 		// two-resource endpoint, so direct call
 		const taggings = await handleListing.call(
 			this, 'GET', endpoint, {}, {}, { returnAll: true },
-		) as LodadedTagging[];
+		) as LinksFieldContainer[];
 
 		return taggings.map((tagging) => {
-			const taggingId = tagging._links.self.href.split('/').pop() ?? 'No tagging ID';
+			const taggingId = extractId(tagging);
 
 			return {
 				name: taggingId,
@@ -288,10 +283,11 @@ export const resourceLoaders = {
 //          response simplifiers
 // ----------------------------------------
 
-// tslint:disable-next-line: no-any
-export const simplifyResponse = (response: any) => (isPerson = false) => {
-	if (isPerson) {
-		return simplifyPersonResponse(response);
+export const simplifyResponse = (response: Response, resource: Resource) => {
+	if (resource === 'person') {
+		return simplifyPersonResponse(response as PersonResponse);
+	} else if (resource === 'petition') {
+		return simplifyPetitionResponse(response as PetitionResponse);
 	}
 
 	const fieldsToSimplify = [
@@ -308,7 +304,22 @@ export const simplifyResponse = (response: any) => (isPerson = false) => {
 };
 
 
-export const simplifyPersonResponse = (response: PersonResponse) => {
+const simplifyPetitionResponse = (response: PetitionResponse) => {
+	const fieldsToSimplify = [
+		'identifiers',
+		'_links',
+		'action_network:hidden',
+		'_embedded',
+	];
+
+	return {
+		id: extractId(response),
+		...omit(response, fieldsToSimplify),
+		creator: simplifyPersonResponse(response._embedded['osdi:creator']),
+	};
+};
+
+const simplifyPersonResponse = (response: PersonResponse) => {
 	const emailAddress = response.email_addresses.filter(isPrimary);
 	const phoneNumber = response.phone_numbers.filter(isPrimary);
 	const postalAddress = response.postal_addresses.filter(isPrimary);
@@ -325,9 +336,9 @@ export const simplifyPersonResponse = (response: PersonResponse) => {
 	return {
 		id: extractId(response),
 		...omit(response, fieldsToSimplify),
-		...{ email_address: emailAddress[0].address },
-		...{ phone_number: phoneNumber[0].number },
-		...{ postal_address: {
+		...emailAddress.length && { email_address: emailAddress[0].address },
+		...phoneNumber.length && { phone_number: phoneNumber[0].number },
+		...postalAddress.length && { postal_address: {
 				...postalAddress && omit(postalAddress[0], 'address_lines'),
 				address_lines: postalAddress[0].address_lines ?? '',
 			},

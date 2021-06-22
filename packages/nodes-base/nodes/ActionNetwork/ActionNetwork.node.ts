@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -40,7 +41,10 @@ import {
 import {
 	AllFieldsUi,
 	EmailAddressUi,
+	Operation,
 	PersonResponse,
+	Resource,
+	Response,
 } from './types';
 
 export class ActionNetwork implements INodeType {
@@ -127,8 +131,8 @@ export class ActionNetwork implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0) as Resource;
+		const operation = this.getNodeParameter('operation', 0) as Operation;
 
 		let response;
 
@@ -178,18 +182,6 @@ export class ActionNetwork implements INodeType {
 
 					const endpoint = `/events/${eventId}/attendances`;
 					response = await handleListing.call(this, 'GET', endpoint);
-
-				} else if (operation === 'update') {
-
-					// ----------------------------------------
-					//            attendance: update
-					// ----------------------------------------
-
-					const eventId = this.getNodeParameter('eventId', i);
-					const attendanceId = this.getNodeParameter('attendanceId', i);
-
-					const endpoint = `/events/${eventId}/attendances/${attendanceId}`;
-					response = await actionNetworkApiRequest.call(this, 'PUT', endpoint);
 
 				}
 
@@ -301,7 +293,10 @@ export class ActionNetwork implements INodeType {
 					if (Object.keys(updateFields).length) {
 						Object.assign(body, adjustPersonPayload(updateFields));
 					} else {
-						throw new Error(`Please enter at least one field to update for the ${resource}.`);
+						throw new NodeOperationError(
+							this.getNode(),
+							`Please enter at least one field to update for the ${resource}.`,
+						);
 					}
 
 					response = await actionNetworkApiRequest.call(this, 'PUT', `/people/${personId}`, body);
@@ -367,7 +362,10 @@ export class ActionNetwork implements INodeType {
 					if (Object.keys(updateFields).length) {
 						Object.assign(body, adjustPetitionPayload(updateFields));
 					} else {
-						throw new Error(`Please enter at least one field to update for the ${resource}.`);
+						throw new NodeOperationError(
+							this.getNode(),
+							`Please enter at least one field to update for the ${resource}.`,
+						);
 					}
 
 					response = await actionNetworkApiRequest.call(this, 'PUT', `/petitions/${petitionId}`, body);
@@ -434,13 +432,15 @@ export class ActionNetwork implements INodeType {
 					const petitionId = this.getNodeParameter('petitionId', i);
 					const signatureId = this.getNodeParameter('signatureId', i);
 					const body = {};
-
 					const updateFields = this.getNodeParameter('updateFields', i) as AllFieldsUi;
 
 					if (Object.keys(updateFields).length) {
 						Object.assign(body, updateFields);
 					} else {
-						throw new Error(`Please enter at least one field to update for the ${resource}.`);
+						throw new NodeOperationError(
+							this.getNode(),
+							`Please enter at least one field to update for the ${resource}.`,
+						);
 					}
 
 					const endpoint = `/petitions/${petitionId}/signatures/${signatureId}`;
@@ -529,10 +529,9 @@ export class ActionNetwork implements INodeType {
 			const simplify = this.getNodeParameter('simple', i, false) as boolean;
 
 			if (simplify) {
-				const isPerson = resource === 'person';
 				response = operation === 'getAll'
-					? response.map((i: any) => simplifyResponse(i)(isPerson)) // tslint:disable-line: no-any
-					: simplifyResponse(response)(isPerson);
+					? response.map((i: Response) => simplifyResponse(i, resource))
+					: simplifyResponse(response, resource);
 			}
 
 			Array.isArray(response)

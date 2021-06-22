@@ -2,26 +2,10 @@ import { languageOptions } from './descriptions/SharedFields';
 
 export type Resource = 'attendance' | 'event' | 'person' | 'personTag' | 'petition' | 'signature' | 'tag';
 
-export type Operation = 'create' | 'delete' | 'get' | 'getAll' | 'update';
+export type Operation = 'create' | 'delete' | 'get' | 'getAll' | 'update' | 'add' | 'remove';
 
 export type LanguageCodes = typeof languageOptions[number]['value']
 
-// ----------------------------------------
-//              responses
-// ----------------------------------------
-
-export type PersonResponse = {
-	identifiers: string[];
-	email_addresses: EmailAddressField[];
-	phone_numbers: PhoneNumberField[];
-	postal_addresses: PostalAddressField[];
-	languages_spoken: LanguageCodes[];
-	_links: {
-		self: {
-			href: string,
-		}
-	}
-};
 
 // ----------------------------------------
 //              UI fields
@@ -84,18 +68,32 @@ type LatitudeLongitude = {
 	longitude: string;
 }
 
+export type FieldWithPrimaryField = EmailAddressField | PhoneNumberField | PostalAddressField;
+
+
 // ----------------------------------------
-//           loaded resources
+//                 responses
 // ----------------------------------------
 
-export type ResourceIds = { identifiers: string[] }
+export type LinksFieldContainer = { _links: { self: { href: string } } };
 
-export type LoadedTag = ResourceIds & { name: string };
+export type Response = JsonObject & LinksFieldContainer;
 
-export type LodadedTagging = {
-	_links: {
-		self: {
-			href: string;
-		}
-	}
+export type PersonResponse = Response & {
+	identifiers: string[];
+	email_addresses: EmailAddressField[];
+	phone_numbers: PhoneNumberField[];
+	postal_addresses: PostalAddressField[];
+	languages_spoken: LanguageCodes[];
 };
+
+export type PetitionResponse = Response & { _embedded: { 'osdi:creator': PersonResponse } };
+
+
+// ----------------------------------------
+//                 utils
+// ----------------------------------------
+
+export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+
+export type JsonObject = { [key: string]: JsonValue };

@@ -119,7 +119,6 @@ export const personFields = [
 			},
 		],
 	},
-	makeSimpleField('event', 'get'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
