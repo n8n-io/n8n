@@ -65,6 +65,7 @@ export class Postgres implements INodeType {
 				name: 'query',
 				type: 'string',
 				typeOptions: {
+					alwaysOpenEditWindow: true,
 					rows: 5,
 				},
 				displayOptions: {
