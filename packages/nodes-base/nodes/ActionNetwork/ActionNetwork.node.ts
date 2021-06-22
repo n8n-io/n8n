@@ -433,9 +433,17 @@ export class ActionNetwork implements INodeType {
 
 					const petitionId = this.getNodeParameter('petitionId', i);
 					const signatureId = this.getNodeParameter('signatureId', i);
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const body = {};
+
+					const updateFields = this.getNodeParameter('updateFields', i) as AllFieldsUi;
+
+					if (Object.keys(updateFields).length) {
+						Object.assign(body, updateFields);
+					} else {
+						throw new Error(`Please enter at least one field to update for the ${resource}.`);
+					}
+
 					const endpoint = `/petitions/${petitionId}/signatures/${signatureId}`;
-					const body = updateFields;
 					response = await actionNetworkApiRequest.call(this, 'PUT', endpoint, body);
 
 				}
