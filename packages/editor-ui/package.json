@@ -87,7 +87,7 @@
     "vue-router": "^3.0.6",
     "vue-template-compiler": "^2.5.17",
     "vue-typed-mixins": "^0.2.0",
-    "vue2-touch-events": "^2.3.2",
+    "vue2-touch-events": "^3.2.1",
     "vuex": "^3.1.1"
   }
 }
