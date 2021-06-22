@@ -310,11 +310,11 @@ export class ActionNetwork implements INodeType {
 
 			} else if (resource === 'petition') {
 
-				// https://actionnetwork.org/docs/v2/petitions
-
 				// **********************************************************************
 				//                                petition
 				// **********************************************************************
+
+				// https://actionnetwork.org/docs/v2/petitions
 
 				if (operation === 'create') {
 
@@ -486,8 +486,9 @@ export class ActionNetwork implements INodeType {
 				//                                personTag
 				// **********************************************************************
 
-				if (operation === 'add') {
 				// https://actionnetwork.org/docs/v2/taggings
+
+				if (operation === 'add') {
 
 					// ----------------------------------------
 					//             personTag: add
