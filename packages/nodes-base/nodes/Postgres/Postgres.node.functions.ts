@@ -60,27 +60,40 @@ export async function pgQuery(
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
-	input: INodeExecutionData[],
+	items: INodeExecutionData[],
 	continueOnFail: boolean,
 	overrideMode?: string,
 ): Promise<IDataObject[]> {
 	const additionalFields = getNodeParam('additionalFields', 0) as IDataObject;
+
+	let valuesArray = [] as string[][];
+	if (additionalFields.queryParams) {
+		const propertiesString = additionalFields.queryParams as string;
+		const properties = propertiesString.split(',').map(column => column.trim());
+		const paramsItems = getItemsCopy(items, properties);
+		valuesArray = paramsItems.map((row) => properties.map(col => row[col])) as string[][];
+	}
+
+	const allQueries = [] as Array<{query: string, values?: string[]}>;
+	for (let i = 0; i < items.length; i++) {
+		const query = getNodeParam('query', i) as string;
+		const values = valuesArray[i];
+		const queryFormat = { query, values };
+		allQueries.push(queryFormat);
+	}
+
 	const mode = overrideMode ? overrideMode : (additionalFields.mode ?? 'multiple') as string;
 	if (mode === 'multiple') {
-		const queries: string[] = [];
-		for (let i = 0; i < input.length; i++) {
-			queries.push(getNodeParam('query', i) as string);
-		}
-		return (await db.multi(pgp.helpers.concat(queries))).flat(1);
+		return (await db.multi(pgp.helpers.concat(allQueries))).flat(1);
 	} else if (mode === 'transaction') {
 		return db.tx(async t => {
 			const result: IDataObject[] = [];
-			for (let i = 0; i < input.length; i++) {
+			for (let i = 0; i < allQueries.length; i++) {
 				try {
-					Array.prototype.push.apply(result, await t.any(getNodeParam('query', i) as string));
+					Array.prototype.push.apply(result, await t.any(allQueries[i].query, allQueries[i].values));
 				} catch (err) {
 					if (continueOnFail === false) throw err;
-					result.push({ ...input[i].json, code: err.code, message: err.message });
+					result.push({ ...items[i].json, code: err.code, message: err.message });
 					return result;
 				}
 			}
@@ -89,12 +102,12 @@ export async function pgQuery(
 	} else if (mode === 'independently') {
 		return db.task(async t => {
 			const result: IDataObject[] = [];
-			for (let i = 0; i < input.length; i++) {
+			for (let i = 0; i < allQueries.length; i++) {
 				try {
-					Array.prototype.push.apply(result, await t.any(getNodeParam('query', i) as string));
+					Array.prototype.push.apply(result, await t.any(allQueries[i].query, allQueries[i].values));
 				} catch (err) {
 					if (continueOnFail === false) throw err;
-					result.push({ ...input[i].json, code: err.code, message: err.message });
+					result.push({ ...items[i].json, code: err.code, message: err.message });
 				}
 			}
 			return result;

@@ -2106,7 +2106,7 @@ export class Hubspot implements INodeType {
 							responseData = await hubspotApiRequestAllItems.call(this, 'results', 'POST', endpoint, body, qs);
 
 						} else {
-							qs.count = this.getNodeParameter('limit', 0) as number;
+							body.limit = this.getNodeParameter('limit', 0) as number;
 							responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body, qs);
 							responseData = responseData.results;
 						}

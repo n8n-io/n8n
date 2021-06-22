@@ -51,7 +51,7 @@ export class PagerDuty implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'PagerDuty',
 		name: 'pagerDuty',
-		icon: 'file:pagerDuty.png',
+		icon: 'file:pagerDuty.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

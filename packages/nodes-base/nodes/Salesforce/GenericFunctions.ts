@@ -18,6 +18,10 @@ import * as moment from 'moment-timezone';
 
 import * as jwt from 'jsonwebtoken';
 
+import {
+	LoggerProxy as Logger
+} from 'n8n-workflow';
+
 export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
 
@@ -29,6 +33,7 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 			const response = await getAccessToken.call(this, credentials as IDataObject);
 			const { instance_url, access_token } = response;
 			const options = getOptions.call(this, method, (uri || endpoint), body, qs, instance_url as string);
+			Logger.debug(`Authentication for "Salesforce" node is using "jwt". Invoking URI ${options.uri}`);
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			//@ts-ignore
 			return await this.helpers.request(options);
@@ -38,6 +43,7 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 			const credentials = this.getCredentials(credentialsType);
 			const subdomain = ((credentials!.accessTokenUrl as string).match(/https:\/\/(.+).salesforce\.com/) || [])[1];
 			const options = getOptions.call(this, method, (uri || endpoint), body, qs, `https://${subdomain}.salesforce.com`);
+			Logger.debug(`Authentication for "Salesforce" node is using "OAuth2". Invoking URI ${options.uri}`);
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, credentialsType, options);
 		}

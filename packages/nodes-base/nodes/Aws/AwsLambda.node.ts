@@ -16,7 +16,7 @@ export class AwsLambda implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS Lambda',
 		name: 'awsLambda',
-		icon: 'file:lambda.png',
+		icon: 'file:lambda.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["function"]}}',
@@ -140,6 +140,27 @@ export class AwsLambda implements INodeType {
 						value: func.FunctionArn as string,
 					});
 				}
+
+				if (data.NextMarker) {
+					let marker: string = data.NextMarker;
+					while (true) {
+						const dataLoop = await awsApiRequestREST.call(this, 'lambda', 'GET', `/2015-03-31/functions/?MaxItems=50&Marker=${encodeURIComponent(marker)}`);
+
+						for (const func of dataLoop.Functions!) {
+							returnData.push({
+								name: func.FunctionName as string,
+								value: func.FunctionArn as string,
+							});
+						}
+
+						if (dataLoop.NextMarker) {
+							marker = dataLoop.NextMarker;
+						} else {
+							break;
+						}
+					}
+				}
+
 				return returnData;
 			},
 		},

@@ -11,6 +11,13 @@ import {
 	GenericHelpers,
 } from '../../src';
 
+import { 
+	getLogger,
+} from '../../src/Logger';
+
+import {
+	LoggerProxy,
+} from 'n8n-workflow';
 
 export class UpdateWorkflowCommand extends Command {
 	static description = '\Update workflows';
@@ -34,25 +41,28 @@ export class UpdateWorkflowCommand extends Command {
 	};
 
 	async run() {
+		const logger = getLogger();
+		LoggerProxy.init(logger);
+
 		const { flags } = this.parse(UpdateWorkflowCommand);
 
 		if (!flags.all && !flags.id) {
-			GenericHelpers.logOutput(`Either option "--all" or "--id" have to be set!`);
+			console.info(`Either option "--all" or "--id" have to be set!`);
 			return;
 		}
 
 		if (flags.all && flags.id) {
-			GenericHelpers.logOutput(`Either something else on top should be "--all" or "--id" can be set never both!`);
+			console.info(`Either something else on top should be "--all" or "--id" can be set never both!`);
 			return;
 		}
 
 		const updateQuery: IDataObject = {};
 		if (flags.active === undefined) {
-			GenericHelpers.logOutput(`No update flag like "--active=true" has been set!`);
+			console.info(`No update flag like "--active=true" has been set!`);
 			return;
 		} else {
 			if (!['false', 'true'].includes(flags.active)) {
-				GenericHelpers.logOutput(`Valid values for flag "--active" are only "false" or "true"!`);
+				console.info(`Valid values for flag "--active" are only "false" or "true"!`);
 				return;
 			}
 			updateQuery.active = flags.active === 'true';
@@ -63,20 +73,21 @@ export class UpdateWorkflowCommand extends Command {
 
 			const findQuery: IDataObject = {};
 			if (flags.id) {
-				console.log(`Deactivating workflow with ID: ${flags.id}`);
+				console.info(`Deactivating workflow with ID: ${flags.id}`);
 				findQuery.id = flags.id;
 			} else {
-				console.log('Deactivating all workflows');
+				console.info('Deactivating all workflows');
 				findQuery.active = true;
 			}
 
 			await Db.collections.Workflow!.update(findQuery, updateQuery);
-			console.log('Done');
+			console.info('Done');
 		} catch (e) {
-			console.error('\nGOT ERROR');
-			console.log('====================================');
-			console.error(e.message);
-			console.error(e.stack);
+			console.error('Error updating database. See log messages for details.');
+			logger.error('\nGOT ERROR');
+			logger.info('====================================');
+			logger.error(e.message);
+			logger.error(e.stack);
 			this.exit(1);
 		}
 

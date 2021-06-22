@@ -11,5 +11,10 @@
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.xml/"
 			}
 		]
+	},
+	"subcategories": {
+		"Core Nodes": [
+			"Files"
+		]
 	}
 }
