@@ -32,6 +32,11 @@ import {
 	userOperations,
 } from './UserDescription';
 
+import {
+	businessServiceFields,
+	businessServiceOperations,
+} from './BusinessServiceDescription';
+
 export class ServiceNow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Service Now',
@@ -71,7 +76,10 @@ export class ServiceNow implements INodeType {
 						name: 'User',
 						value: 'user',
 					},
-
+					{
+						name: 'Business Service',
+						value: 'businessService',
+					},
 				],
 				default: 'user',
 				description: 'Resource to consume.',
@@ -86,6 +94,9 @@ export class ServiceNow implements INodeType {
 			// USER
 			...userOperations,
 			...userFields,
+			// BUSINESS SERVICE
+			...businessServiceOperations,
+			...businessServiceFields,
 		],
 	};
 
@@ -268,7 +279,7 @@ export class ServiceNow implements INodeType {
 				} else {
 					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 				}
-			}  else if (resource === 'user') {
+			} else if (resource === 'user') {
 
 				if (operation === 'create') {
 
@@ -336,6 +347,24 @@ export class ServiceNow implements INodeType {
 
 				} else {
 					throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+				}
+			} else if (resource === 'businessService') {
+
+				if (operation === 'getAll') {
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					qs = additionalFields;
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.sysparm_limit = limit;
+						const response = await serviceNowApiRequest.call(this, 'GET', '/now/table/cmdb_ci_service', {}, qs);
+						responseData = response.result;
+					} else {
+						responseData = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/cmdb_ci_service', {}, qs);
+					}
+
 				}
 			} else {
 				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
