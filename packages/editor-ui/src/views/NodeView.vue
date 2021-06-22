@@ -136,7 +136,7 @@ import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
-import { getWorkflowCorners, getLeftmostTopNode } from './helpers';
+import { getWorkflowCorners, getLeftmostTopNode, scaleSmaller, scaleBigger } from './helpers';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
@@ -785,55 +785,37 @@ export default mixins(
 
 			resetZoom () {
 				let scale = this.nodeViewScale;
-				let [xOffset, yOffset] = this.$store.getters.getNodeViewOffsetPosition;
+				let offset = this.$store.getters.getNodeViewOffsetPosition;
 
 				if (scale > 1) { // zoomed in
 					while (scale > 1) {
-						scale /= 1.25;
-						xOffset /= 1.25;
-						yOffset /= 1.25;
-						xOffset += window.innerWidth / 10;
-						yOffset += window.innerHeight / 10;
+						const updated = scaleSmaller({scale, offset});
+						scale = updated.scale;
+						offset = updated.offset;
 					}
 				}
 				else {
 					while (scale < 1) {
-						scale *= 1.25;
-						xOffset -= window.innerWidth / 10;
-						yOffset -= window.innerHeight / 10;
-						xOffset *= 1.25;
-						yOffset *= 1.25;
+						const updated = scaleBigger({scale, offset});
+						scale = updated.scale;
+						offset = updated.offset;
 					}
 				}
 
 				scale = 1;
 				this.setZoomLevel(scale);
-				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
+				this.$store.commit('setNodeViewOffsetPosition', {newOffset: offset});
 			},
 
 			zoomIn() {
-				let scale = this.nodeViewScale;
-				let [xOffset, yOffset] = this.$store.getters.getNodeViewOffsetPosition;
-
-				scale *= 1.25;
-				xOffset -= window.innerWidth / 10;
-				yOffset -= window.innerHeight / 10;
-				xOffset *= 1.25;
-				yOffset *= 1.25;
+				const { scale, offset: [xOffset, yOffset] } = scaleBigger({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
 
 				this.setZoomLevel(scale);
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
 			},
 
 			zoomOut() {
-				let scale = this.nodeViewScale;
-				let [xOffset, yOffset] = this.$store.getters.getNodeViewOffsetPosition;
-
-				scale /= 1.25;
-				xOffset /= 1.25;
-				yOffset /= 1.25;
-				xOffset += window.innerWidth / 10;
-				yOffset += window.innerHeight / 10;
+				const { scale, offset: [xOffset, yOffset] } = scaleSmaller({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
 
 				this.setZoomLevel(scale);
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});				

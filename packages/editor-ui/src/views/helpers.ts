@@ -1,10 +1,15 @@
-import { INodeUi } from "@/Interface";
+import { INodeUi, XYPositon } from "@/Interface";
 
 interface ICorners {
 	minX: number;
 	minY: number;
 	maxX: number;
 	maxY: number;
+}
+
+interface IZoomConfig {
+	scale: number;
+	offset: XYPositon;
 }
 
 export const getLeftmostTopNode = (nodes: INodeUi[]): INodeUi => {
@@ -39,4 +44,30 @@ export const getWorkflowCorners = (nodes: INodeUi[]): ICorners => {
 		maxX: nodes[0].position[0],
 		maxY: nodes[0].position[1],
 	});
+};
+
+export const scaleSmaller = ({scale, offset: [xOffset, yOffset]}: IZoomConfig): IZoomConfig => {
+	scale /= 1.25;
+	xOffset /= 1.25;
+	yOffset /= 1.25;
+	xOffset += window.innerWidth / 10;
+	yOffset += window.innerHeight / 10;
+
+	return {
+		scale,
+		offset: [xOffset, yOffset],
+	};
+};
+
+export const scaleBigger = ({scale, offset: [xOffset, yOffset]}: IZoomConfig): IZoomConfig => {
+	scale *= 1.25;
+	xOffset -= window.innerWidth / 10;
+	yOffset -= window.innerHeight / 10;
+	xOffset *= 1.25;
+	yOffset *= 1.25;
+
+	return {
+		scale,
+		offset: [xOffset, yOffset],
+	};
 };
