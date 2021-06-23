@@ -32,6 +32,14 @@ export const userOperations = [
 				value: 'getAll',
 			},
 			{
+				name: 'Get User Groups',
+				value: 'getUserGroups',
+			},
+			{
+				name: 'Get User Roles',
+				value: 'getUserRoles',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 			},
@@ -252,7 +260,7 @@ export const userFields = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                user:getAll                          */
+	/*                                user:getAll/getUserGroups                   */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -262,6 +270,8 @@ export const userFields = [
 			show: {
 				operation: [
 					'getAll',
+					'getUserGroups',
+					'getUserRoles',
 				],
 				resource: [
 					'user',
@@ -279,6 +289,8 @@ export const userFields = [
 			show: {
 				operation: [
 					'getAll',
+					'getUserGroups',
+					'getUserRoles',
 				],
 				resource: [
 					'user',
@@ -383,6 +395,8 @@ export const userFields = [
 				operation: [
 					'get',
 					'getAll',
+					'getUserGroups',
+					'getUserRoles',
 				],
 			},
 		},
@@ -408,6 +422,13 @@ export const userFields = [
 				],
 				default: 'false',
 				description: 'Choose which values to return.',
+			},
+			{
+				displayName: 'Query',
+				name: 'sysparm_query',
+				type: 'boolean',
+				default: false,
+				description: 'An encoded query string used to filter the results.',
 			},
 			{
 				displayName: 'Exclude reference link',

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const businessServiceOperations = [
+export const departmentOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const businessServiceOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'businessService',
+					'department',
 				],
 			},
 		},
@@ -25,10 +25,10 @@ export const businessServiceOperations = [
 	},
 ] as INodeProperties[];
 
-export const businessServiceFields = [
+export const departmentFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                businessService:getAll                      */
+	/*                                department:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -40,7 +40,7 @@ export const businessServiceFields = [
 					'getAll',
 				],
 				resource: [
-					'businessService',
+					'department',
 				],
 			},
 		},
@@ -57,7 +57,7 @@ export const businessServiceFields = [
 					'getAll',
 				],
 				resource: [
-					'businessService',
+					'department',
 				],
 				returnAll: [
 					false,
@@ -79,7 +79,7 @@ export const businessServiceFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'businessService',
+					'department',
 				],
 				operation: [
 					'getAll',

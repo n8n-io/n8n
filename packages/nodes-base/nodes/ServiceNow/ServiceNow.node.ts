@@ -37,6 +37,21 @@ import {
 	businessServiceOperations,
 } from './BusinessServiceDescription';
 
+import {
+	configurationItemsFields,
+	configurationItemsOperations,
+} from './ConfigurationItemsDescription';
+
+import {
+	departmentFields,
+	departmentOperations,
+} from './DepartmentDescription';
+
+import {
+	dictionaryFields,
+	dictionaryOperations,
+} from './DictionaryDescription';
+
 export class ServiceNow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Service Now',
@@ -65,6 +80,22 @@ export class ServiceNow implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Business Service',
+						value: 'businessService',
+					},
+					{
+						name: 'Configuration Items',
+						value: 'configurationItems',
+					},
+					{
+						name: 'Department',
+						value: 'department',
+					},
+					{
+						name: 'Dictionary',
+						value: 'dictionary',
+					},
+					{
 						name: 'Incident',
 						value: 'incident',
 					},
@@ -75,10 +106,6 @@ export class ServiceNow implements INodeType {
 					{
 						name: 'User',
 						value: 'user',
-					},
-					{
-						name: 'Business Service',
-						value: 'businessService',
 					},
 				],
 				default: 'user',
@@ -97,6 +124,15 @@ export class ServiceNow implements INodeType {
 			// BUSINESS SERVICE
 			...businessServiceOperations,
 			...businessServiceFields,
+			// CONFIGURATION ITEMS
+			...configurationItemsOperations,
+			...configurationItemsFields,
+			// DEPARTMENT
+			...departmentOperations,
+			...departmentFields,
+			// DICTIONARY
+			...dictionaryOperations,
+			...dictionaryFields,
 		],
 	};
 
@@ -290,7 +326,7 @@ export class ServiceNow implements INodeType {
 						body.roles = (body.roles as string).split(',');
 					}
 
-					const response = await serviceNowApiRequest.call(this, 'POST', `/now/table/sys_user`, body)
+					const response = await serviceNowApiRequest.call(this, 'POST', '/now/table/sys_user', body)
 					responseData = response.result;
 
 				} else if (operation === 'delete') {
@@ -313,7 +349,7 @@ export class ServiceNow implements INodeType {
 						const user_name = this.getNodeParameter('user_name', i) as string;
 						qs.sysparm_query = `user_name=${user_name}`;
 						qs.sysparm_limit = 1;
-						const response = await serviceNowApiRequest.call(this, 'GET', `/now/table/sys_user`, {}, qs)
+						const response = await serviceNowApiRequest.call(this, 'GET', '/now/table/sys_user', {}, qs)
 						responseData = response.result;
 					}
 
@@ -326,10 +362,40 @@ export class ServiceNow implements INodeType {
 					if (!returnAll) {
 						const limit = this.getNodeParameter('limit', i) as number;
 						qs.sysparm_limit = limit;
-						const response = await serviceNowApiRequest.call(this, 'GET', `/now/table/sys_user`, {}, qs);
+						const response = await serviceNowApiRequest.call(this, 'GET', '/now/table/sys_user', {}, qs);
 						responseData = response.result;
 					} else {
-						responseData = await serviceNowRequestAllItems.call(this, 'GET', `/now/table/sys_user`, {}, qs);
+						responseData = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/sys_user', {}, qs);
+					}
+
+				} else if (operation === 'getUserGroups') {
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					qs = additionalFields;
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.sysparm_limit = limit;
+						const response = await serviceNowApiRequest.call(this, 'GET', '/now/table/sys_user_group', {}, qs);
+						responseData = response.result;
+					} else {
+						responseData = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/sys_user_group', {}, qs);
+					}
+
+				} else if (operation === 'getUserRoles') {
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					qs = additionalFields;
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.sysparm_limit = limit;
+						const response = await serviceNowApiRequest.call(this, 'GET', '/now/table/sys_user_role', {}, qs);
+						responseData = response.result;
+					} else {
+						responseData = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/sys_user_role', {}, qs);
 					}
 
 				} else if (operation === 'update') {
@@ -363,6 +429,60 @@ export class ServiceNow implements INodeType {
 						responseData = response.result;
 					} else {
 						responseData = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/cmdb_ci_service', {}, qs);
+					}
+
+				}
+			} else if (resource === 'configurationItems') {
+
+				if (operation === 'getAll') {
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					qs = additionalFields;
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.sysparm_limit = limit;
+						const response = await serviceNowApiRequest.call(this, 'GET', '/now/table/cmdb_ci', {}, qs);
+						responseData = response.result;
+					} else {
+						responseData = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/cmdb_ci', {}, qs);
+					}
+
+				}
+			} else if (resource === 'department') {
+
+				if (operation === 'getAll') {
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					qs = additionalFields;
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.sysparm_limit = limit;
+						const response = await serviceNowApiRequest.call(this, 'GET', '/now/table/cmn_department', {}, qs);
+						responseData = response.result;
+					} else {
+						responseData = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/cmn_department', {}, qs);
+					}
+
+				}
+			} else if (resource === 'dictionary') {
+
+				if (operation === 'getAll') {
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					qs = additionalFields;
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.sysparm_limit = limit;
+						const response = await serviceNowApiRequest.call(this, 'GET', '/now/table/sys_dictionary', {}, qs);
+						responseData = response.result;
+					} else {
+						responseData = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/sys_dictionary', {}, qs);
 					}
 
 				}

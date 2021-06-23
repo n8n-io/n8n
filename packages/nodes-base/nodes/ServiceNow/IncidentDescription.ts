@@ -288,6 +288,13 @@ export const incidentFields = [
 				description: 'Choose which values to return.',
 			},
 			{
+				displayName: 'Query',
+				name: 'sysparm_query',
+				type: 'boolean',
+				default: false,
+				description: 'An encoded query string used to filter the results.',
+			},
+			{
 				displayName: 'Exclude reference link',
 				name: 'sysparm_exclude_reference_link',
 				type: 'boolean',
