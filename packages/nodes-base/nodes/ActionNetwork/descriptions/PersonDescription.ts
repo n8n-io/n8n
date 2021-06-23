@@ -119,6 +119,7 @@ export const personFields = [
 			},
 		],
 	},
+	makeSimpleField('person', 'create'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

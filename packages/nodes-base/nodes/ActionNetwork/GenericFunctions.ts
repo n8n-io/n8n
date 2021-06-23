@@ -5,7 +5,6 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -336,9 +335,10 @@ const simplifyPersonResponse = (response: PersonResponse) => {
 	return {
 		id: extractId(response),
 		...omit(response, fieldsToSimplify),
-		...emailAddress.length && { email_address: emailAddress[0].address },
-		...phoneNumber.length && { phone_number: phoneNumber[0].number },
-		...postalAddress.length && { postal_address: {
+		...{ email_address: emailAddress[0].address || '' },
+		...{ phone_number: phoneNumber[0].number || '' },
+		...{
+			postal_address: {
 				...postalAddress && omit(postalAddress[0], 'address_lines'),
 				address_lines: postalAddress[0].address_lines ?? '',
 			},
