@@ -1,5 +1,5 @@
 import {MigrationInterface, QueryRunner} from "typeorm";
-import { config } from '@config';
+import * as config from '../../../../config';
 
 export class CreateTagEntity1617213344594 implements MigrationInterface {
 	name = 'CreateTagEntity1617213344594';
