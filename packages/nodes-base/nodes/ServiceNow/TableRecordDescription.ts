@@ -64,7 +64,7 @@ export const tableRecordFields = [
 		description: 'The table name.',
 	},
 	{
-		displayName: 'JSON input',
+		displayName: 'JSON/RAW fields',
 		name: 'json',
 		type: 'boolean',
 		default: true,
@@ -79,11 +79,11 @@ export const tableRecordFields = [
 			},
 		},
 		required: true,
-		description: 'Choose to provide input data as JSON.',
+		description: 'If the input fields should be set via the value-key pair UI or JSON/RAW.',
 	},
 	{
-		displayName: 'JSON Data',
-		name: 'jsonData',
+		displayName: 'JSON Body',
+		name: 'jsonBody',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -100,7 +100,7 @@ export const tableRecordFields = [
 			},
 		},
 		required: true,
-		description: 'Choose to provide input data as JSON.',
+		description: 'The Input fields in JSON format.',
 	},
 	{
 		displayName: 'Input Fields',
@@ -364,7 +364,7 @@ export const tableRecordFields = [
 		description: 'Unique identifier of the record.',
 	},
 	{
-		displayName: 'JSON input',
+		displayName: 'JSON/RAW fields',
 		name: 'json',
 		type: 'boolean',
 		default: true,
@@ -379,11 +379,11 @@ export const tableRecordFields = [
 			},
 		},
 		required: true,
-		description: 'Choose to provide input data as JSON.',
+		description: 'If the update fields should be set via the value-key pair UI or JSON/RAW.',
 	},
 	{
-		displayName: 'JSON Data',
-		name: 'jsonData',
+		displayName: 'JSON Body',
+		name: 'jsonBody',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -400,7 +400,7 @@ export const tableRecordFields = [
 			},
 		},
 		required: true,
-		description: 'Choose to provide input data as JSON.',
+		description: 'The Update fields in JSON format.',
 	},
 	{
 		displayName: 'Update Fields',
