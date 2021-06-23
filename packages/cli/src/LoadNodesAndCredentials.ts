@@ -11,7 +11,7 @@ import {
 	LoggerProxy,
 } from 'n8n-workflow';
 
-import { config } from '@config';
+import * as config from '../config';
 
 import {
 	getLogger,
