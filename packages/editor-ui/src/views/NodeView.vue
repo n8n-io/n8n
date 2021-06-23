@@ -383,6 +383,7 @@ export default mixins(
 					if (!data) {
 						throw new Error(`Workflow template with id "${templateId}" could not be found!`);
 					}
+
 					data.workflow.nodes.forEach((node) => {
 						if (!this.$store.getters.nodeType(node.type)) {
 							const name = node.type.replace('n8n-nodes-base.', '');
@@ -839,6 +840,7 @@ export default mixins(
 
 				let yOffset = (minY * -1) * zoomLevel + HEADER_HEIGHT; // find top right corner
 				yOffset += (editorHeight - HEADER_HEIGHT - (maxY - minY + NODE_SIZE * 2) * zoomLevel) / 2; // add padding to center workflow
+
 				this.setZoomLevel(zoomLevel);
 				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
 			},
