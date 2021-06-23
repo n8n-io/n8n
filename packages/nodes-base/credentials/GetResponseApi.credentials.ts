@@ -6,6 +6,7 @@ import {
 export class GetResponseApi implements ICredentialType {
 	name = 'getResponseApi';
 	displayName = 'GetResponse API';
+	documentationUrl = 'getResponse';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',

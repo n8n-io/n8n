@@ -50,7 +50,7 @@
 								class="json-data"
 							/>
 							<span v-else>
-								The exact cause can sadly not displayed right now as the returned data is too large.
+								<font-awesome-icon icon="info-circle" /> The error cause is too large to be displayed.
 							</span>
 						</div>
 					</el-card>
