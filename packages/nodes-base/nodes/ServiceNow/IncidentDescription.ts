@@ -48,9 +48,9 @@ export const incidentFields = [
 
 	{
 		displayName: 'Short description',
-    name: 'short_description',
-    type: 'string',
-    default: '',
+		name: 'short_description',
+		type: 'string',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -82,102 +82,102 @@ export const incidentFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Caller ID',
-				name: 'caller_id',
+				displayName: 'Assigned to',
+				name: 'assigned_to',
 				type: 'string',
 				default: '',
-				description:'The unique identifier of the caller of the incident.'
-			},
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				default: '',
-				description:'The description of the incident.'
-			},
-			{
-				displayName: 'Category',
-				name: 'category',
-				type: 'string',
-				default: '',
-				description:'The category of the incident.'
-			},
-			{
-				displayName: 'Subcategory',
-				name: 'subcategory',
-				type: 'string',
-				default: '',
-				description:'The subcategory of the incident.'
-			},
-			{
-				displayName: 'Business service',
-				name: 'business_service',
-				type: 'string',
-				default: '',
-				description:'The business service.'
-			},
-			{
-				displayName: 'Configuration Items',
-				name: 'cmdb_ci',
-				type: 'string',
-				default: '',
-				description:'Configuration Items, \'cmdb_ci\' in metadata.'
-			},
-			{
-				displayName: 'Contact type',
-				name: 'contact_type',
-				type: 'string',
-				default: '',
-				description:'The contact type.'
-			},
-			{
-				displayName: 'State',
-				name: 'state',
-				type: 'number',
-				default: '',
-				description:'The state of the incident.'
-			},
-			{
-				displayName: 'Impact',
-				name: 'impact',
-				type: 'number',
-				default: '',
-				description:'The impact of the incident.'
-			},
-			{
-				displayName: 'Urgency',
-				name: 'urgency',
-				type: 'number',
-				default: '',
-				description:'The urgency of the incident.'
+				description: 'What user is the incident assigned to.',
 			},
 			{
 				displayName: 'Assignment group',
 				name: 'assignment_group',
 				type: 'string',
 				default: '',
-				description:'The assignment group of the incident.'
+				description: 'The assignment group of the incident.',
 			},
 			{
-				displayName: 'Assigned to',
-				name: 'assigned_to',
+				displayName: 'Business service',
+				name: 'business_service',
 				type: 'string',
 				default: '',
-				description:'What user is the incident assigned to.'
+				description: 'The business service.',
 			},
 			{
-				displayName: 'Resolution code',
-				name: 'close_code',
+				displayName: 'Caller ID',
+				name: 'caller_id',
 				type: 'string',
 				default: '',
-				description:'The resolution code of the incident. \'close_code\' in metadata.'
+				description: 'The unique identifier of the caller of the incident.',
+			},
+			{
+				displayName: 'Category',
+				name: 'category',
+				type: 'string',
+				default: '',
+				description: 'The category of the incident.',
 			},
 			{
 				displayName: 'Close note',
 				name: 'close_notes',
 				type: 'string',
 				default: '',
-				description:'The close notes for the incident.'
+				description: 'The close notes for the incident.',
+			},
+			{
+				displayName: 'Configuration Items',
+				name: 'cmdb_ci',
+				type: 'string',
+				default: '',
+				description: 'Configuration Items, \'cmdb_ci\' in metadata.',
+			},
+			{
+				displayName: 'Contact type',
+				name: 'contact_type',
+				type: 'string',
+				default: '',
+				description: 'The contact type.',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				description: 'The description of the incident.',
+			},
+			{
+				displayName: 'Impact',
+				name: 'impact',
+				type: 'number',
+				default: '',
+				description: 'The impact of the incident.',
+			},
+			{
+				displayName: 'Resolution code',
+				name: 'close_code',
+				type: 'string',
+				default: '',
+				description: 'The resolution code of the incident. \'close_code\' in metadata.',
+			},
+			{
+				displayName: 'State',
+				name: 'state',
+				type: 'number',
+				default: '',
+				description: 'The state of the incident.',
+			},
+			{
+				displayName: 'Subcategory',
+				name: 'subcategory',
+				type: 'string',
+				default: '',
+				description: 'The subcategory of the incident.',
+			},
+			{
+				displayName: 'Urgency',
+				name: 'urgency',
+				type: 'number',
+				default: '',
+				description: 'The urgency of the incident.',
 			},
 		],
 	},
@@ -273,26 +273,19 @@ export const incidentFields = [
 				options: [
 					{
 						name: 'Display values',
-						value: 'true'
+						value: 'true',
 					},
 					{
 						name: 'Actual values',
-						value: 'false'
+						value: 'false',
 					},
 					{
 						name: 'Both',
-						value: 'all'
+						value: 'all',
 					},
 				],
 				default: 'false',
 				description: 'Choose which values to return.',
-			},
-			{
-				displayName: 'Query',
-				name: 'sysparm_query',
-				type: 'boolean',
-				default: false,
-				description: 'An encoded query string used to filter the results.',
 			},
 			{
 				displayName: 'Exclude reference link',
@@ -307,6 +300,13 @@ export const incidentFields = [
 				type: 'string',
 				default: '',
 				description: 'A comma-separated list of fields to return.',
+			},
+			{
+				displayName: 'Query',
+				name: 'sysparm_query',
+				type: 'boolean',
+				default: false,
+				description: 'An encoded query string used to filter the results.',
 			},
 			{
 				displayName: 'View',
@@ -356,39 +356,39 @@ export const incidentFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'State',
-				name: 'state',
-				type: 'number',
-				default: '',
-				description:'The state of the incident.'
-			},
-			{
 				displayName: 'Assigned to',
 				name: 'assigned_to',
 				type: 'string',
 				default: '',
-				description:'The user who is assigned to the incident.'
-			},
-			{
-				displayName: 'On hold reason',
-				name: 'hold_reason',
-				type: 'number',
-				default: '',
-				description:'The on hold reason for the incident.'
-			},
-			{
-				displayName: 'Resolution code',
-				name: 'close_code',
-				type: 'string',
-				default: '',
-				description:'The resolution code of the incident. \'close_code\' in metadata.'
+				description: 'The user who is assigned to the incident.',
 			},
 			{
 				displayName: 'Close notes',
 				name: 'close_notes',
 				type: 'string',
 				default: '',
-				description:'The close notes for the incident.'
+				description: 'The close notes for the incident.',
+			},
+			{
+				displayName: 'On hold reason',
+				name: 'hold_reason',
+				type: 'number',
+				default: '',
+				description: 'The on hold reason for the incident.',
+			},
+			{
+				displayName: 'Resolution code',
+				name: 'close_code',
+				type: 'string',
+				default: '',
+				description: 'The resolution code of the incident. \'close_code\' in metadata.',
+			},
+			{
+				displayName: 'State',
+				name: 'state',
+				type: 'number',
+				default: '',
+				description: 'The state of the incident.',
 			},
 		],
 	},

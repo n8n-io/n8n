@@ -95,26 +95,19 @@ export const configurationItemsFields = [
 				options: [
 					{
 						name: 'Display values',
-						value: 'true'
+						value: 'true',
 					},
 					{
 						name: 'Actual values',
-						value: 'false'
+						value: 'false',
 					},
 					{
 						name: 'Both',
-						value: 'all'
+						value: 'all',
 					},
 				],
 				default: 'false',
 				description: 'Choose which values to return.',
-			},
-			{
-				displayName: 'Query',
-				name: 'sysparm_query',
-				type: 'boolean',
-				default: false,
-				description: 'An encoded query string used to filter the results.',
 			},
 			{
 				displayName: 'Exclude reference link',
@@ -129,6 +122,13 @@ export const configurationItemsFields = [
 				type: 'string',
 				default: '',
 				description: 'A comma-separated list of fields to return.',
+			},
+			{
+				displayName: 'Query',
+				name: 'sysparm_query',
+				type: 'boolean',
+				default: false,
+				description: 'An encoded query string used to filter the results.',
 			},
 			{
 				displayName: 'View',

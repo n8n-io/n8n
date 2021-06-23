@@ -54,24 +54,24 @@ export const userFields = [
 	/*                                user:create                          */
 	/* -------------------------------------------------------------------------- */
 
-	// {
-	// 	displayName: 'Short description',
-  //   name: 'short_description',
-  //   type: 'string',
-  //   default: '',
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'user',
-	// 			],
-	// 			operation: [
-	// 				'create',
-	// 			],
-	// 		},
-	// 	},
-	// 	required: true,
-	// 	description: 'Short description of the user.',
-	// },
+	{
+		displayName: 'Short description',
+		name: 'short_description',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		required: true,
+		description: 'Short description of the user.',
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -90,172 +90,172 @@ export const userFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'First name',
-				name: 'first_name',
-				type: 'string',
-				default: '',
-				description:'The first name of the user.'
-			},
-			{
-				displayName: 'Middle name',
-				name: 'middle_name',
-				type: 'string',
-				default: '',
-				description:'The middle name of the user.'
-			},
-			{
-				displayName: 'Last name',
-				name: 'last_name',
-				type: 'string',
-				default: '',
-				description:'The last name of the user.'
-			},
-			{
-				displayName: 'Gender',
-				name: 'gender',
-				type: 'string',
-				default: '',
-				description:'The gender of the user.'
-			},
-			{
-				displayName: 'Email',
-				name: 'email',
-				type: 'string',
-				default: '',
-				description:'The email address associated with the user.'
-			},
-			{
-				displayName: 'User name',
-				name: 'user_name',
-				type: 'string',
-				default: '',
-				description:'A username associated with the user (e.g. user_name.123).'
-			},
-			{
-				displayName: 'Password',
-				name: 'user_password',
-				type: 'string',
-				default: '',
-				description:'The user\'s password.'
-			},
-			{
-				displayName: 'Password needs reset',
-				name: 'password_needs_reset',
+				displayName: 'Active',
+				name: 'active',
 				type: 'boolean',
 				default: '',
-				description:'If checked, the password will need to be reset when the user logs in.'
-			},
-			{
-				displayName: 'Phone',
-				name: 'phone',
-				type: 'string',
-				default: '',
-				description:'The main phone number of the user.'
-			},
-			{
-				displayName: 'Home phone',
-				name: 'home_phone',
-				type: 'string',
-				default: '',
-				description:'Home phone of the user.'
-			},
-			{
-				displayName: 'Mobile phone',
-				name: 'mobile_phone',
-				type: 'string',
-				default: '',
-				description:'Mobile phone number of the user.'
-			},
-			{
-				displayName: 'Street',
-				name: 'street',
-				type: 'string',
-				default: '',
-				description:'Street information for the user separated by comma.'
-			},
-			{
-				displayName: 'City',
-				name: 'city',
-				type: 'string',
-				default: '',
-				description:'City of the user.'
-			},
-			{
-				displayName: 'Country',
-				name: 'country',
-				type: 'string',
-				default: '',
-				description:'Country of the user.'
-			},
-			{
-				displayName: 'Zip',
-				name: 'zip',
-				type: 'string',
-				default: '',
-				description:'Zip code for the user.'
-			},
-			{
-				displayName: 'State',
-				name: 'state',
-				type: 'string',
-				default: '',
-				description:'State for the user.'
-			},
-			{
-				displayName: 'Roles',
-				name: 'roles',
-				type: 'string',
-				default: '',
-				description:'Roles of the user separated by comma.'
-			},
-			{
-				displayName: 'Company',
-				name: 'company',
-				type: 'string',
-				default: '',
-				description:'The name of the company for the user.'
-			},
-			{
-				displayName: 'Location',
-				name: 'location',
-				type: 'string',
-				default: '',
-				description:'Location of the user.'
-			},
-			{
-				displayName: 'Department',
-				name: 'department',
-				type: 'string',
-				default: '',
-				description:'Department of the user.'
-			},
-			{
-				displayName: 'Manager',
-				name: 'manager',
-				type: 'string',
-				default: '',
-				description:'Manager of the user.'
-			},
-			{
-				displayName: 'Source',
-				name: 'source',
-				type: 'string',
-				default: '',
-				description:'The source.'
+				description:'If checked, the user will be set to active.',
 			},
 			{
 				displayName: 'Building',
 				name: 'building',
 				type: 'string',
 				default: '',
-				description:'The Building address.'
+				description:'The Building address.',
 			},
 			{
-				displayName: 'Active',
-				name: 'active',
+				displayName: 'City',
+				name: 'city',
+				type: 'string',
+				default: '',
+				description:'City of the user.',
+			},
+			{
+				displayName: 'Company',
+				name: 'company',
+				type: 'string',
+				default: '',
+				description:'The name of the company for the user.',
+			},
+			{
+				displayName: 'Country',
+				name: 'country',
+				type: 'string',
+				default: '',
+				description:'Country of the user.',
+			},
+			{
+				displayName: 'Department',
+				name: 'department',
+				type: 'string',
+				default: '',
+				description:'Department of the user.',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				description:'The email address associated with the user.',
+			},
+			{
+				displayName: 'First name',
+				name: 'first_name',
+				type: 'string',
+				default: '',
+				description:'The first name of the user.',
+			},
+			{
+				displayName: 'Gender',
+				name: 'gender',
+				type: 'string',
+				default: '',
+				description:'The gender of the user.',
+			},
+			{
+				displayName: 'Home phone',
+				name: 'home_phone',
+				type: 'string',
+				default: '',
+				description:'Home phone of the user.',
+			},
+			{
+				displayName: 'Last name',
+				name: 'last_name',
+				type: 'string',
+				default: '',
+				description:'The last name of the user.',
+			},
+			{
+				displayName: 'Location',
+				name: 'location',
+				type: 'string',
+				default: '',
+				description:'Location of the user.',
+			},
+			{
+				displayName: 'Manager',
+				name: 'manager',
+				type: 'string',
+				default: '',
+				description:'Manager of the user.',
+			},
+			{
+				displayName: 'Middle name',
+				name: 'middle_name',
+				type: 'string',
+				default: '',
+				description:'The middle name of the user.',
+			},
+			{
+				displayName: 'Mobile phone',
+				name: 'mobile_phone',
+				type: 'string',
+				default: '',
+				description:'Mobile phone number of the user.',
+			},
+			{
+				displayName: 'Password',
+				name: 'user_password',
+				type: 'string',
+				default: '',
+				description:'The user\'s password.',
+			},
+			{
+				displayName: 'Password needs reset',
+				name: 'password_needs_reset',
 				type: 'boolean',
 				default: '',
-				description:'If checked, the user will be set to active.'
+				description:'If checked, the password will need to be reset when the user logs in.',
+			},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+				description:'The main phone number of the user.',
+			},
+			{
+				displayName: 'Roles',
+				name: 'roles',
+				type: 'string',
+				default: '',
+				description:'Roles of the user separated by comma.',
+			},
+			{
+				displayName: 'Source',
+				name: 'source',
+				type: 'string',
+				default: '',
+				description:'The source.',
+			},
+			{
+				displayName: 'State',
+				name: 'state',
+				type: 'string',
+				default: '',
+				description:'State for the user.',
+			},
+			{
+				displayName: 'Street',
+				name: 'street',
+				type: 'string',
+				default: '',
+				description:'Street information for the user separated by comma.',
+			},
+			{
+				displayName: 'User name',
+				name: 'user_name',
+				type: 'string',
+				default: '',
+				description:'A username associated with the user (e.g. user_name.123).',
+			},
+			{
+				displayName: 'Zip',
+				name: 'zip',
+				type: 'string',
+				default: '',
+				description:'Zip code for the user.',
 			},
 		],
 	},
@@ -371,11 +371,28 @@ export const userFields = [
 					'user',
 				],
 				operation: [
-					'delete',
 					'get',
 				],
 				getOption: [
 					'id',
+				],
+			},
+		},
+		required: true,
+		description: 'Unique identifier of the user.',
+	},
+	{
+		displayName: 'ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'delete',
 				],
 			},
 		},
@@ -409,26 +426,19 @@ export const userFields = [
 				options: [
 					{
 						name: 'Display values',
-						value: 'true'
+						value: 'true',
 					},
 					{
 						name: 'Actual values',
-						value: 'false'
+						value: 'false',
 					},
 					{
 						name: 'Both',
-						value: 'all'
+						value: 'all',
 					},
 				],
 				default: 'false',
 				description: 'Choose which values to return.',
-			},
-			{
-				displayName: 'Query',
-				name: 'sysparm_query',
-				type: 'boolean',
-				default: false,
-				description: 'An encoded query string used to filter the results.',
 			},
 			{
 				displayName: 'Exclude reference link',
@@ -443,6 +453,13 @@ export const userFields = [
 				type: 'string',
 				default: '',
 				description: 'A comma-separated list of fields to return.',
+			},
+			{
+				displayName: 'Query',
+				name: 'sysparm_query',
+				type: 'boolean',
+				default: false,
+				description: 'An encoded query string used to filter the results.',
 			},
 			{
 				displayName: 'View',
@@ -492,172 +509,172 @@ export const userFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'First name',
-				name: 'first_name',
-				type: 'string',
-				default: '',
-				description:'The first name of the user.'
-			},
-			{
-				displayName: 'Middle name',
-				name: 'middle_name',
-				type: 'string',
-				default: '',
-				description:'The middle name of the user.'
-			},
-			{
-				displayName: 'Last name',
-				name: 'last_name',
-				type: 'string',
-				default: '',
-				description:'The last name of the user.'
-			},
-			{
-				displayName: 'Gender',
-				name: 'gender',
-				type: 'string',
-				default: '',
-				description:'The gender of the user.'
-			},
-			{
-				displayName: 'Email',
-				name: 'email',
-				type: 'string',
-				default: '',
-				description:'The email address associated with the user.'
-			},
-			{
-				displayName: 'User name',
-				name: 'user_name',
-				type: 'string',
-				default: '',
-				description:'A username associated with the user (e.g. user_name.123).'
-			},
-			{
-				displayName: 'Password',
-				name: 'user_password',
-				type: 'string',
-				default: '',
-				description:'The user\'s password.'
-			},
-			{
-				displayName: 'Password needs reset',
-				name: 'password_needs_reset',
+				displayName: 'Active',
+				name: 'active',
 				type: 'boolean',
 				default: '',
-				description:'If checked, the password will need to be reset when the user logs in.'
-			},
-			{
-				displayName: 'Phone',
-				name: 'phone',
-				type: 'string',
-				default: '',
-				description:'The main phone number of the user.'
-			},
-			{
-				displayName: 'Home phone',
-				name: 'home_phone',
-				type: 'string',
-				default: '',
-				description:'Home phone of the user.'
-			},
-			{
-				displayName: 'Mobile phone',
-				name: 'mobile_phone',
-				type: 'string',
-				default: '',
-				description:'Mobile phone number of the user.'
-			},
-			{
-				displayName: 'Street',
-				name: 'street',
-				type: 'string',
-				default: '',
-				description:'Street information for the user separated by comma.'
-			},
-			{
-				displayName: 'City',
-				name: 'city',
-				type: 'string',
-				default: '',
-				description:'City of the user.'
-			},
-			{
-				displayName: 'Country',
-				name: 'country',
-				type: 'string',
-				default: '',
-				description:'Country of the user.'
-			},
-			{
-				displayName: 'Zip',
-				name: 'zip',
-				type: 'string',
-				default: '',
-				description:'Zip code for the user.'
-			},
-			{
-				displayName: 'State',
-				name: 'state',
-				type: 'string',
-				default: '',
-				description:'State for the user.'
-			},
-			{
-				displayName: 'Roles',
-				name: 'roles',
-				type: 'string',
-				default: '',
-				description:'Roles of the user separated by comma.'
-			},
-			{
-				displayName: 'Company',
-				name: 'company',
-				type: 'string',
-				default: '',
-				description:'The name of the company for the user.'
-			},
-			{
-				displayName: 'Location',
-				name: 'location',
-				type: 'string',
-				default: '',
-				description:'Location of the user.'
-			},
-			{
-				displayName: 'Department',
-				name: 'department',
-				type: 'string',
-				default: '',
-				description:'Department of the user.'
-			},
-			{
-				displayName: 'Manager',
-				name: 'manager',
-				type: 'string',
-				default: '',
-				description:'Manager of the user.'
-			},
-			{
-				displayName: 'Source',
-				name: 'source',
-				type: 'string',
-				default: '',
-				description:'The source.'
+				description:'If checked, the user will be set to active.',
 			},
 			{
 				displayName: 'Building',
 				name: 'building',
 				type: 'string',
 				default: '',
-				description:'The Building address.'
+				description:'The Building address.',
 			},
 			{
-				displayName: 'Active',
-				name: 'active',
+				displayName: 'City',
+				name: 'city',
+				type: 'string',
+				default: '',
+				description:'City of the user.',
+			},
+			{
+				displayName: 'Company',
+				name: 'company',
+				type: 'string',
+				default: '',
+				description:'The name of the company for the user.',
+			},
+			{
+				displayName: 'Country',
+				name: 'country',
+				type: 'string',
+				default: '',
+				description:'Country of the user.',
+			},
+			{
+				displayName: 'Department',
+				name: 'department',
+				type: 'string',
+				default: '',
+				description:'Department of the user.',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				description:'The email address associated with the user.',
+			},
+			{
+				displayName: 'First name',
+				name: 'first_name',
+				type: 'string',
+				default: '',
+				description:'The first name of the user.',
+			},
+			{
+				displayName: 'Gender',
+				name: 'gender',
+				type: 'string',
+				default: '',
+				description:'The gender of the user.',
+			},
+			{
+				displayName: 'Home phone',
+				name: 'home_phone',
+				type: 'string',
+				default: '',
+				description:'Home phone of the user.',
+			},
+			{
+				displayName: 'Last name',
+				name: 'last_name',
+				type: 'string',
+				default: '',
+				description:'The last name of the user.',
+			},
+			{
+				displayName: 'Location',
+				name: 'location',
+				type: 'string',
+				default: '',
+				description:'Location of the user.',
+			},
+			{
+				displayName: 'Manager',
+				name: 'manager',
+				type: 'string',
+				default: '',
+				description:'Manager of the user.',
+			},
+			{
+				displayName: 'Middle name',
+				name: 'middle_name',
+				type: 'string',
+				default: '',
+				description:'The middle name of the user.',
+			},
+			{
+				displayName: 'Mobile phone',
+				name: 'mobile_phone',
+				type: 'string',
+				default: '',
+				description:'Mobile phone number of the user.',
+			},
+			{
+				displayName: 'Password',
+				name: 'user_password',
+				type: 'string',
+				default: '',
+				description:'The user\'s password.',
+			},
+			{
+				displayName: 'Password needs reset',
+				name: 'password_needs_reset',
 				type: 'boolean',
 				default: '',
-				description:'If checked, the user will be set to active.'
+				description:'If checked, the password will need to be reset when the user logs in.',
+			},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+				description:'The main phone number of the user.',
+			},
+			{
+				displayName: 'Roles',
+				name: 'roles',
+				type: 'string',
+				default: '',
+				description:'Roles of the user separated by comma.',
+			},
+			{
+				displayName: 'Source',
+				name: 'source',
+				type: 'string',
+				default: '',
+				description:'The source.',
+			},
+			{
+				displayName: 'State',
+				name: 'state',
+				type: 'string',
+				default: '',
+				description:'State for the user.',
+			},
+			{
+				displayName: 'Street',
+				name: 'street',
+				type: 'string',
+				default: '',
+				description:'Street information for the user separated by comma.',
+			},
+			{
+				displayName: 'User name',
+				name: 'user_name',
+				type: 'string',
+				default: '',
+				description:'A username associated with the user (e.g. user_name.123).',
+			},
+			{
+				displayName: 'Zip',
+				name: 'zip',
+				type: 'string',
+				default: '',
+				description:'Zip code for the user.',
 			},
 		],
 	},

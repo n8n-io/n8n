@@ -50,12 +50,11 @@ export async function serviceNowRequestAllItems(this: IExecuteFunctions | ILoadO
 	const returnData: IDataObject[] = [];
 	let responseData;
 
-	let uri: string | undefined;
 	const page = 100;
 
 	query.sysparm_limit = page;
 
-	responseData = await serviceNowApiRequest.call(this, method, resource, body, query, uri, { resolveWithFullResponse: true });
+	responseData = await serviceNowApiRequest.call(this, method, resource, body, query, undefined, { resolveWithFullResponse: true });
 	returnData.push.apply(returnData, responseData.body.result);
 
 	const quantity = responseData.headers['x-total-count'];
@@ -65,7 +64,7 @@ export async function serviceNowRequestAllItems(this: IExecuteFunctions | ILoadO
 
 		query.sysparm_limit = page;
 		query.sysparm_offset = iteration*page;
-		responseData = await serviceNowApiRequest.call(this, method, resource, body, query, uri, { resolveWithFullResponse: true });
+		responseData = await serviceNowApiRequest.call(this, method, resource, body, query, undefined, { resolveWithFullResponse: true });
 
 		returnData.push.apply(returnData, responseData.body.result);
 

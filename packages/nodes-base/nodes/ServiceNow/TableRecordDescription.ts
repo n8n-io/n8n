@@ -95,8 +95,8 @@ export const tableRecordFields = [
 					'create',
 				],
 				json: [
-					true
-				]
+					true,
+				],
 			},
 		},
 		required: true,
@@ -116,8 +116,8 @@ export const tableRecordFields = [
 					'create',
 				],
 				json: [
-					false
-				]
+					false,
+				],
 			},
 		},
 		typeOptions: {
@@ -136,8 +136,8 @@ export const tableRecordFields = [
 						typeOptions:{
 							loadOptionsMethod: 'getTableColumns',
 							loadOptionsDependsOn: [
-								'tableName'
-							]
+								'tableName',
+							],
 						},
 						default: '',
 					},
@@ -280,26 +280,19 @@ export const tableRecordFields = [
 				options: [
 					{
 						name: 'Display values',
-						value: 'true'
+						value: 'true',
 					},
 					{
 						name: 'Actual values',
-						value: 'false'
+						value: 'false',
 					},
 					{
 						name: 'Both',
-						value: 'all'
+						value: 'all',
 					},
 				],
 				default: 'false',
 				description: 'Choose which values to return.',
-			},
-			{
-				displayName: 'Query',
-				name: 'sysparm_query',
-				type: 'boolean',
-				default: false,
-				description: 'An encoded query string used to filter the results.',
 			},
 			{
 				displayName: 'Exclude reference link',
@@ -314,6 +307,13 @@ export const tableRecordFields = [
 				type: 'string',
 				default: '',
 				description: 'A comma-separated list of fields to return.',
+			},
+			{
+				displayName: 'Query',
+				name: 'sysparm_query',
+				type: 'boolean',
+				default: false,
+				description: 'An encoded query string used to filter the results.',
 			},
 			{
 				displayName: 'View',
@@ -395,8 +395,8 @@ export const tableRecordFields = [
 					'update',
 				],
 				json: [
-					true
-				]
+					true,
+				],
 			},
 		},
 		required: true,
@@ -416,8 +416,8 @@ export const tableRecordFields = [
 					'update',
 				],
 				json: [
-					false
-				]
+					false,
+				],
 			},
 		},
 		typeOptions: {
@@ -436,8 +436,8 @@ export const tableRecordFields = [
 						typeOptions:{
 							loadOptionsMethod: 'getTableColumns',
 							loadOptionsDependsOn: [
-								'tableName'
-							]
+								'tableName',
+							],
 						},
 						default: '',
 					},
