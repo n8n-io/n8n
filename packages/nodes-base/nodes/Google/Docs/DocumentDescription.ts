@@ -112,7 +112,7 @@ export const documentFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'When set to true a simplified version of the response will be used else the raw data.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -144,7 +144,7 @@ export const documentFields = [
 	/*                                 document: get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Document URL',
+		displayName: 'Document URL or ID',
 		name: 'documentURL',
 		type: 'string',
 		required: true,
@@ -159,7 +159,7 @@ export const documentFields = [
 			},
 		},
 		default: '',
-		description: 'The document URL.',
+		description: 'The ID in the document URL (or just paste the whole URL).',
 	},
 	{
 		displayName: 'Simple',
@@ -182,7 +182,7 @@ export const documentFields = [
 	/*                                 document: update                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Document URL',
+		displayName: 'Document URL or ID',
 		name: 'documentURL',
 		type: 'string',
 		required: true,
@@ -197,7 +197,7 @@ export const documentFields = [
 			},
 		},
 		default: '',
-		description: 'The document URL.',
+		description: 'The ID in the document URL (or just paste the whole URL).',
 	},
 	{
 		displayName: 'Simple',
@@ -214,7 +214,7 @@ export const documentFields = [
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'When set to true a simplified version of the response will be used else the raw data.',
 	},
 	{
 		displayName: 'Actions',
@@ -258,24 +258,32 @@ export const documentFields = [
 						type: 'options',
 						options: [
 							{
-								name: 'Positioned Object',
-								value: 'positionedObject',
-							},
-							{
-								name: 'Page Break',
-								value: 'pageBreak',
-							},
-							{
-								name: 'Table',
-								value: 'table',
-							},
-							{
 								name: 'Footer',
 								value: 'footer',
 							},
 							{
 								name: 'Header',
 								value: 'header',
+							},
+							{
+								name: 'Named Range',
+								value: 'namedRange',
+							},
+							{
+								name: 'Page Break',
+								value: 'pageBreak',
+							},
+							{
+								name: 'Paragraph Bullets',
+								value: 'paragraphBullets',
+							},
+							{
+								name: 'Positioned Object',
+								value: 'positionedObject',
+							},
+							{
+								name: 'Table',
+								value: 'table',
 							},
 							{
 								name: 'Table Column',
@@ -289,26 +297,38 @@ export const documentFields = [
 								name: 'Text',
 								value: 'text',
 							},
-							{
-								name: 'Paragraph Bullets',
-								value: 'paragraphBullets',
-							},
-							{
-								name: 'Named Range',
-								value: 'namedRange',
-							},
 						],
-						description: 'The action object.',
+						description: 'The update object.',
 						default: 'text',
 					},
-					// Action field
 					{
 						displayName: 'Action',
 						name: 'action',
 						type: 'options',
-						typeOptions: {
-							loadOptionsDependsOn: 'object',
+						options: [
+							{
+								name: 'Insert',
+								value: 'insert',
+							},
+							{
+								name: 'Find and replace text',
+								value: 'replaceAll',
+							},
+						],
+						displayOptions: {
+							show: {
+								object: [
+									'text',
+								],
+							},
 						},
+						description: 'The update action.',
+						default: '',
+					},
+					{
+						displayName: 'Action',
+						name: 'action',
+						type: 'options',
 						options: [
 							{
 								name: 'Create',
@@ -329,16 +349,13 @@ export const documentFields = [
 								],
 							},
 						},
-						description: 'The action object.',
-						default: 'create',
+						description: 'The update action.',
+						default: '',
 					},
 					{
 						displayName: 'Action',
 						name: 'action',
 						type: 'options',
-						typeOptions: {
-							loadOptionsDependsOn: 'object',
-						},
 						options: [
 							{
 								name: 'Delete',
@@ -357,43 +374,13 @@ export const documentFields = [
 								],
 							},
 						},
-						description: 'The action itself.',
-						default: 'insert',
+						description: 'The update action.',
+						default: '',
 					},
 					{
 						displayName: 'Action',
 						name: 'action',
 						type: 'options',
-						typeOptions: {
-							loadOptionsDependsOn: 'object',
-						},
-						options: [
-							{
-								name: 'Insert',
-								value: 'insert',
-							},
-							{
-								name: 'Find and replace text',
-								value: 'replaceAll',
-							},
-						],
-						displayOptions: {
-							show: {
-								object: [
-									'text',
-								],
-							},
-						},
-						description: 'The action itself.',
-						default: 'insert',
-					},
-					{
-						displayName: 'Action',
-						name: 'action',
-						type: 'options',
-						typeOptions: {
-							loadOptionsDependsOn: 'object',
-						},
 						options: [
 							{
 								name: 'Insert',
@@ -408,16 +395,13 @@ export const documentFields = [
 								],
 							},
 						},
-						description: 'The action itself.',
-						default: 'insert',
+						description: 'The update action.',
+						default: '',
 					},
 					{
 						displayName: 'Action',
 						name: 'action',
 						type: 'options',
-						typeOptions: {
-							loadOptionsDependsOn: 'object',
-						},
 						options: [
 							{
 								name: 'Delete',
@@ -431,8 +415,69 @@ export const documentFields = [
 								],
 							},
 						},
-						description: 'The action itself.',
-						default: 'delete',
+						description: 'The update action.',
+						default: '',
+					},
+					// Segment ID related inputs
+					// Create action
+					{
+						displayName: 'Insert Segment',
+						name: 'insertSegment',
+						type: 'options',
+						options: [
+							{
+								name: 'Header',
+								value: 'header',
+							},
+							{
+								name: 'Body',
+								value: 'body',
+							},
+							{
+								name: 'Footer',
+								value: 'footer',
+							},
+						],
+						description: 'The location where to create the object.',
+						default: 'body',
+						displayOptions: {
+							show: {
+								object: [
+									'footer',
+									'header',
+									'paragraphBullets',
+									'namedRange',
+								],
+								action: [
+									'create',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Segment ID',
+						name: 'segmentId',
+						type: 'string',
+						description: 'The ID of the header, footer or footnote the location is in.The ID can be found in the output <br>of the <code>update document</code> operation with <code>create Footer/Header</code> action<br> or in the output of the of the <code>get document</code> operation (using raw data).',
+						default: '',
+						displayOptions: {
+							show: {
+								object: [
+									'footer',
+									'header',
+									'paragraphBullets',
+									'namedRange',
+								],
+								action: [
+									'create',
+								],
+							},
+							hide: {
+								insertSegment: [
+									'body',
+								],
+							},
+						},
 					},
 					// Operation fields
 					// create footer
@@ -545,7 +590,7 @@ export const documentFields = [
 								description: 'A numbered list with <code>DECIMAL</code> numeric glyphs separated by periods, where each nesting level uses the previous nesting level\'s glyph as a prefix. For example: 1., 1.1., 2., 2.2 .',
 							},
 						],
-						description: 'Preset pattern of bullet glyphs for list.',
+						description: 'The Preset pattern of bullet glyphs for list.',
 						default: 'BULLET_DISC_CIRCLE_SQUARE',
 						displayOptions: {
 							show: {
@@ -609,7 +654,7 @@ export const documentFields = [
 								value: 'namedRangeId',
 							},
 						],
-						description: 'The value that determines which range or ranges to delete.',
+						description: 'The value determines which range or ranges to delete.',
 						default: 'namedRangeId',
 						displayOptions: {
 							show: {
@@ -693,14 +738,13 @@ export const documentFields = [
 						type: 'options',
 						options: [
 							{
-								name: 'Insert at end of specific position',
+								name: 'At end of specific position',
 								value: 'endOfSegmentLocation',
-								description: 'Inserts the text at the end of a header, footer, footnote or the document body.',
+								description: 'Inserts the text at the end of a header, footer, footnote, or document body.',
 							},
 							{
-								name: 'Insert at index',
+								name: 'At index',
 								value: 'location',
-								description: 'Inserts the text at a specific index in the document.',
 							},
 						],
 						description: 'The location where the text will be inserted.',
@@ -734,7 +778,10 @@ export const documentFields = [
 								],
 							},
 						},
-						default: 0,
+						typeOptions: {
+							minValue: 1,
+						},
+						default: 1,
 					},
 					// insert table
 					{
@@ -777,14 +824,13 @@ export const documentFields = [
 						type: 'options',
 						options: [
 							{
-								name: 'Insert at end of specific position',
+								name: 'At end of specific position',
 								value: 'endOfSegmentLocation',
-								description: 'Inserts the text at the end of a header, footer, footnote or the document body.',
+								description: 'Inserts the text at the end of a header, footer, footnote, or document body.',
 							},
 							{
-								name: 'Insert at index',
+								name: 'At index',
 								value: 'location',
-								description: 'Inserts the text at a specific index in the document.',
 							},
 						],
 						description: 'The location where the text will be inserted.',
@@ -804,7 +850,7 @@ export const documentFields = [
 						displayName: 'Index',
 						name: 'index',
 						type: 'number',
-						description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer a table).',
+						description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer to a table).',
 						displayOptions: {
 							show: {
 								locationChoice: [
@@ -818,7 +864,10 @@ export const documentFields = [
 								],
 							},
 						},
-						default: 0,
+						default: 1,
+						typeOptions: {
+							minValue: 1,
+						},
 					},
 					// insert text
 					{
@@ -827,14 +876,13 @@ export const documentFields = [
 						type: 'options',
 						options: [
 							{
-								name: 'Insert at end of specific position',
+								name: 'At end of specific position',
 								value: 'endOfSegmentLocation',
-								description: 'Inserts the text at the end of a header, footer, footnote or the document body.',
+								description: 'Inserts the text at the end of a header, footer, footnote, or document body.',
 							},
 							{
-								name: 'Insert at index',
+								name: 'At index',
 								value: 'location',
-								description: 'Inserts the text at a specific index in the document.',
 							},
 						],
 						description: 'The location where the text will be inserted.',
@@ -850,10 +898,76 @@ export const documentFields = [
 							},
 						},
 					},
+					// Segment ID related inputs
+					// insert action
+					{
+						displayName: 'Insert Segment',
+						name: 'insertSegment',
+						type: 'options',
+						options: [
+							{
+								name: 'Header',
+								value: 'header',
+							},
+							{
+								name: 'Body',
+								value: 'body',
+							},
+							{
+								name: 'Footer',
+								value: 'footer',
+							},
+						],
+						description: 'The location where to create the object.',
+						default: 'body',
+						displayOptions: {
+							show: {
+								object: [
+									'pageBreak',
+									'table',
+									'tableColumn',
+									'tableRow',
+									'text',
+								],
+								action: [
+									'insert',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Segment ID',
+						name: 'segmentId',
+						type: 'string',
+						description: 'The ID of the header, footer or footnote the location is in.The ID can be found in the output <br>of the <code>update document</code> operation with <code>create Footer/Header</code> action<br> or in the output of the of the <code>get document</code> operation (using raw data).',
+						default: '',
+						displayOptions: {
+							show: {
+								object: [
+									'pageBreak',
+									'table',
+									'tableColumn',
+									'tableRow',
+									'text',
+								],
+								action: [
+									'insert',
+								],
+							},
+							hide: {
+								insertSegment: [
+									'body',
+								],
+							},
+						},
+					},
 					{
 						displayName: 'Index',
 						name: 'index',
 						type: 'number',
+						typeOptions: {
+							minValue: 1,
+						},
 						description: 'The zero-based index, relative to the beginning of the specified segment.',
 						displayOptions: {
 							show: {
@@ -868,7 +982,7 @@ export const documentFields = [
 								],
 							},
 						},
-						default: 0,
+						default: 1,
 					},
 					{
 						displayName: 'Text',
@@ -893,10 +1007,10 @@ export const documentFields = [
 
 					// replace all text
 					{
-						displayName: 'New Text',
-						name: 'replaceText',
+						displayName: 'Old Text',
+						name: 'text',
 						type: 'string',
-						description: 'The text that will replace the matched text.',
+						description: 'The text to search for in the document.',
 						default: '',
 						displayOptions: {
 							show: {
@@ -910,10 +1024,10 @@ export const documentFields = [
 						},
 					},
 					{
-						displayName: 'Old Text',
-						name: 'text',
+						displayName: 'New Text',
+						name: 'replaceText',
 						type: 'string',
-						description: 'The text to search for in the document.',
+						description: 'The text that will replace the matched text.',
 						default: '',
 						displayOptions: {
 							show: {
@@ -949,128 +1063,6 @@ export const documentFields = [
 
 					// Segment ID related inputs
 
-					// Create action
-					{
-						displayName: 'Insert Segment',
-						name: 'insertSegment',
-						type: 'options',
-						options: [
-							{
-								name: 'Header',
-								value: 'header',
-							},
-							{
-								name: 'Body',
-								value: 'body',
-							},
-							{
-								name: 'Footer',
-								value: 'footer',
-							},
-						],
-						description: 'The location where to create the boject.',
-						default: 'body',
-						displayOptions: {
-							show: {
-								object: [
-									'footer',
-									'header',
-									'paragraphBullets',
-									'namedRange',
-								],
-								action: [
-									'create',
-								],
-							},
-						},
-					},
-					{
-						displayName: 'Segment ID',
-						name: 'segmentId',
-						type: 'string',
-						description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
-						default: '',
-						displayOptions: {
-							show: {
-								object: [
-									'footer',
-									'header',
-									'paragraphBullets',
-									'namedRange',
-								],
-								action: [
-									'create',
-								],
-							},
-							hide: {
-								insertSegment: [
-									'body',
-								],
-							},
-						},
-					},
-					// insert action
-					{
-						displayName: 'Insert Segment',
-						name: 'insertSegment',
-						type: 'options',
-						options: [
-							{
-								name: 'Header',
-								value: 'header',
-							},
-							{
-								name: 'Body',
-								value: 'body',
-							},
-							{
-								name: 'Footer',
-								value: 'footer',
-							},
-						],
-						description: 'The location where to create the boject.',
-						default: 'body',
-						displayOptions: {
-							show: {
-								object: [
-									'pageBreak',
-									'table',
-									'tableColumn',
-									'tableRow',
-									'text',
-								],
-								action: [
-									'insert',
-								],
-							},
-						},
-					},
-					{
-						displayName: 'Segment ID',
-						name: 'segmentId',
-						type: 'string',
-						description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
-						default: '',
-						displayOptions: {
-							show: {
-								object: [
-									'pageBreak',
-									'table',
-									'tableColumn',
-									'tableRow',
-									'text',
-								],
-								action: [
-									'insert',
-								],
-							},
-							hide: {
-								insertSegment: [
-									'body',
-								],
-							},
-						},
-					},
 					// delete action
 					{
 						displayName: 'Insert Segment',
@@ -1090,7 +1082,7 @@ export const documentFields = [
 								value: 'footer',
 							},
 						],
-						description: 'The location where to create the boject.',
+						description: 'The location where to create the object.',
 						default: 'body',
 						displayOptions: {
 							show: {
@@ -1109,7 +1101,7 @@ export const documentFields = [
 						displayName: 'Segment ID',
 						name: 'segmentId',
 						type: 'string',
-						description: 'The ID of the header, footer or footnote the location is in. An empty segment ID signifies the document\'s body.',
+						description: 'The ID of the header, footer or footnote the location is in.The ID can be found in the output <br>of the <code>update document</code> operation with <code>create Footer/Header</code> action<br> or in the output of the of the <code>get document</code> operation (using raw data).',
 						default: '',
 						displayOptions: {
 							show: {
@@ -1130,7 +1122,7 @@ export const documentFields = [
 						},
 					},
 
-					// Shared between paragrahs oeprations
+					// Shared between paragrahs operations
 					{
 						displayName: 'Start Index',
 						name: 'startIndex',
@@ -1161,11 +1153,41 @@ export const documentFields = [
 					},
 					// share between table column and table row
 					{
+						displayName: 'Insert',
+						name: 'insertPosition',
+						type: 'options',
+						options: [
+							{
+								name: 'Before content at index',
+								value: false,
+							},
+							{
+								name: 'After content at index',
+								value: true,
+							},
+						],
+						default: true,
+						displayOptions: {
+							show: {
+								object: [
+									'tableColumn',
+									'tableRow',
+								],
+								action: [
+									'insert',
+								],
+							},
+						},
+					},
+					{
 						displayName: 'Index',
 						name: 'index',
 						type: 'number',
-						description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer a table).',
-						default: 0,
+						description: 'The zero-based index, relative to the beginning of the specified segment (use index + 1 to refer to a table).',
+						default: 1,
+						typeOptions: {
+							minValue: 1,
+						},
 						displayOptions: {
 							show: {
 								object: [
@@ -1205,33 +1227,6 @@ export const documentFields = [
 							},
 						},
 					},
-					{
-						displayName: 'Insert',
-						name: 'insertPosition',
-						type: 'options',
-						options: [
-							{
-								name: 'Before content at index',
-								value: false,
-							},
-							{
-								name: 'After content at index',
-								value: true,
-							},
-						],
-						default: true,
-						displayOptions: {
-							show: {
-								object: [
-									'tableColumn',
-									'tableRow',
-								],
-								action: [
-									'insert',
-								],
-							},
-						},
-					},
 				],
 			},
 		],
@@ -1239,7 +1234,7 @@ export const documentFields = [
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
-		type: 'collection',
+		type: 'fixedCollection',
 		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
@@ -1254,43 +1249,33 @@ export const documentFields = [
 		},
 		options: [
 			{
-				displayName: 'Write Control',
-				name: 'writeControl',
-				placeholder: 'Add Write Control',
-				type: 'fixedCollection',
-				description: 'Settings for how to execute update requests.',
-				default: {},
-				options: [
+				displayName: 'Write Control Object',
+				name: 'writeControlObject',
+				values: [
 					{
-						displayName: 'Write Control Object',
-						name: 'writeControlObject',
-						values: [
+						displayName: 'Revision mode',
+						name: 'control',
+						type: 'options',
+						options: [
 							{
-								displayName: 'Revision mode',
-								name: 'control',
-								type: 'options',
-								options: [
-									{
-										name: 'Target',
-										value: 'targetRevisionId',
-										description: 'Apply changes to the latest revision. Otherwise request changes will not be processed.',
-									},
-									{
-										name: 'Required',
-										value: 'requiredRevisionId',
-										description: 'Apply changes to the provided revision while incorporating other collaborators\' changes. This mode is used for the recent revision, Otherwise request changes will not be processed.',
-									},
-								],
-								default: 'requiredRevisionId',
-								description: 'Determines how the requests changes are applied to the revision.',
+								name: 'Target',
+								value: 'targetRevisionId',
+								description: 'Apply changes to the latest revision. Otherwise changes will not be processed.',
 							},
 							{
-								displayName: 'Revision ID',
-								name: 'value',
-								type: 'string',
-								default: '',
+								name: 'Required',
+								value: 'requiredRevisionId',
+								description: 'Apply changes to the provided revision while incorporating other collaborators\' changes. This mode is used for the recent revision, Otherwise changes will not be processed.',
 							},
 						],
+						default: 'requiredRevisionId',
+						description: 'Determines how the changes are applied to the revision.',
+					},
+					{
+						displayName: 'Revision ID',
+						name: 'value',
+						type: 'string',
+						default: '',
 					},
 				],
 			},

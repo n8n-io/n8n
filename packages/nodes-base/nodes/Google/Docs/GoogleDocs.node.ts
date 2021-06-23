@@ -9,7 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError
+	NodeApiError,
 } from 'n8n-workflow';
 
 import {
@@ -118,7 +118,12 @@ export class GoogleDocs implements INodeType {
 						value: 'sharedWithMe',
 					},
 				];
-				const drives = await googleApiRequestAllItems.call(this, 'drives', 'GET', '', {}, {}, 'https://www.googleapis.com/drive/v3/drives');
+				let drives;
+				try {
+					drives = await googleApiRequestAllItems.call(this, 'drives', 'GET', '', {}, {}, 'https://www.googleapis.com/drive/v3/drives');
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error, { message: 'Error in loading Drives' });
+				}
 
 				for (const drive of drives) {
 					returnData.push({
@@ -141,8 +146,13 @@ export class GoogleDocs implements INodeType {
 					q: `mimeType = \'application/vnd.google-apps.folder\' ${driveId==='sharedWithMe' ? 'and sharedWithMe = true':' and \'root\' in parents'}`,
 					...(driveId && driveId!=='myDrive' && driveId!=='sharedWithMe') ? {driveId} : {},
 				};
+				let folders;
 
-				const folders = await googleApiRequestAllItems.call(this, 'files', 'GET', '', {}, qs, 'https://www.googleapis.com/drive/v3/files');
+				try {
+					folders = await googleApiRequestAllItems.call(this, 'files', 'GET', '', {}, qs, 'https://www.googleapis.com/drive/v3/files');
+				} catch (error) {
+					throw new NodeApiError(this.getNode(), error);
+				}
 
 				for (const folder of folders) {
 					returnData.push({
@@ -213,7 +223,7 @@ export class GoogleDocs implements INodeType {
 							}
 						}
 					}
-
+					responseData.documentId = responseData.id;
 
 				} else if (operation === 'get') {
 
@@ -221,10 +231,10 @@ export class GoogleDocs implements INodeType {
 
 					const documentURL = this.getNodeParameter('documentURL', i) as string;
 					const simple = this.getNodeParameter('simple', i) as boolean;
-					const documentId = extractID(documentURL);
+					let documentId = extractID(documentURL);
 
 					if (!documentId) {
-						throw new NodeOperationError(this.getNode(), 'Incorrect document URL');
+						documentId = documentURL;
 					}
 					responseData = await googleApiRequest.call(this, 'GET', `/documents/${documentId}`);
 					if (simple) {
@@ -244,7 +254,10 @@ export class GoogleDocs implements INodeType {
 						},[])
 						.join('');
 
-						responseData = {content};
+						responseData = {
+							documentId,
+							content,
+						};
 
 					}
 
@@ -253,23 +266,23 @@ export class GoogleDocs implements INodeType {
 					// https://developers.google.com/docs/api/reference/rest/v1/documents/batchUpdate
 
 					const documentURL = this.getNodeParameter('documentURL', i) as string;
-					const documentId = extractID(documentURL);
+					let documentId = extractID(documentURL);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					const actionsUi = this.getNodeParameter('actionsUi', i) as {
 						actionFields: IDataObject[]
 					};
-					const { writeControl } = this.getNodeParameter('updateFields', i) as IUpdateFields;
+					const { writeControlObject } = this.getNodeParameter('updateFields', i) as IUpdateFields;
 
 					if (!documentId) {
-						throw new NodeOperationError(this.getNode(), 'Incorrect document URL');
+						documentId = documentURL;
 					}
 
 					const body = {
 						requests: [],
 					} as IUpdateBody;
 
-					if (hasKeys(writeControl)) {
-						const { control, value } = writeControl.writeControlObject;
+					if (hasKeys(writeControlObject)) {
+						const { control, value } = writeControlObject;
 						body.writeControl = {
 							[control]: value,
 						};
@@ -457,6 +470,7 @@ export class GoogleDocs implements INodeType {
 							responseData = {};
 						}
 					}
+					responseData.documentId = documentId;
 				}
 			}
 

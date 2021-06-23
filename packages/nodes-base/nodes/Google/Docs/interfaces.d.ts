@@ -6,10 +6,8 @@ export interface IUpdateBody extends IDataObject {
 }
 
 export interface IUpdateFields {
-	writeControl: {
-		writeControlObject: {
-			control: string,
-			value: string,
-		}
+	writeControlObject: {
+		control: string,
+		value: string,
 	};
 }
