@@ -509,7 +509,9 @@ export default mixins(
 				// else which should ignore the default keybindings
 				for (let index = 0; index < path.length; index++) {
 					if (path[index].className && typeof path[index].className === 'string' && (
-						path[index].className.includes('el-message-box') || path[index].className.includes('ignore-key-press')
+						path[index].className.includes('el-message-box') ||
+						path[index].className.includes('el-select') ||
+						path[index].className.includes('ignore-key-press')
 					)) {
 						return;
 					}
@@ -798,7 +800,7 @@ export default mixins(
 				const { scale, offset: [xOffset, yOffset] } = scaleSmaller({scale: this.nodeViewScale, offset: this.$store.getters.getNodeViewOffsetPosition});
 
 				this.setZoomLevel(scale);
-				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});				
+				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
 			},
 
 			setZoomLevel (zoomLevel: number) {
