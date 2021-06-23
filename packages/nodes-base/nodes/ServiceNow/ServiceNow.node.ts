@@ -54,7 +54,7 @@ import {
 
 export class ServiceNow implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Service Now',
+		displayName: 'ServiceNow',
 		name: 'serviceNow',
 		icon: 'file:servicenow.svg',
 		group: ['output'],
