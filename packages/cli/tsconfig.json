@@ -19,7 +19,13 @@
 		"target": "es2017",
 		"sourceMap": true,
 		"emitDecoratorMetadata": true,
-		"experimentalDecorators": true
+		"experimentalDecorators": true,
+		"baseUrl": ".",
+		"paths": {
+			"@config": [
+				"config/index"
+			]
+		}
 	},
 	"include": [
 		"**/*.d.ts",

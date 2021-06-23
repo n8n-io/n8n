@@ -68,6 +68,9 @@ export const genericHelpers = mixins(showMessage).extend({
 				},
 			);
 		},
+		setLoadingText (text: string) {
+			this.loadingService.text = text;
+		},
 		stopLoading () {
 			if (this.loadingService !== null) {
 				this.loadingService.close();
