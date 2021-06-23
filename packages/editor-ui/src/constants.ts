@@ -21,6 +21,11 @@ export const BREAKPOINT_MD = 992;
 export const BREAKPOINT_LG = 1200;
 export const BREAKPOINT_XL = 1920;
 
+
+// templates
+export const TEMPLATES_BASE_URL = `https://api.n8n.io/`;
+export const START_NODE_TYPE = 'n8n-nodes-base.start';
+
 // Node creator
 export const CORE_NODES_CATEGORY = 'Core Nodes';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
