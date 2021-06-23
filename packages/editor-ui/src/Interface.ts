@@ -611,3 +611,8 @@ export interface IRestApiContext {
 	baseUrl: string;
 	sessionId: string;
 }
+
+export interface IZoomConfig {
+	scale: number;
+	offset: XYPositon;
+}
