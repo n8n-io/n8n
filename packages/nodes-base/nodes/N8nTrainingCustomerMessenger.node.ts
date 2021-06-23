@@ -9,16 +9,16 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-export class N8nTrainingCustomerMessageService implements INodeType {
+export class N8nTrainingCustomerMessenger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Customer Message Service (n8n training)',
-		name: 'n8nTrainingCustomeMessageService',
-		icon: 'file:n8nTrainingCustomerMessageService.svg',
+		displayName: 'Customer Messenger (n8n training)',
+		name: 'n8nTrainingCustomeMessenger',
+		icon: 'file:n8nTrainingCustomerMessenger.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Dummy node used for n8n training',
 		defaults: {
-			name: 'Customer Message Service',
+			name: 'Customer Messenger',
 			color: '#ff6d5a',
 		},
 		inputs: ['main'],
