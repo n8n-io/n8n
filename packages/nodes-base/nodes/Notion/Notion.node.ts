@@ -47,7 +47,6 @@ import {
 	databasePageFields,
 	databasePageOperations,
 } from './DatabasePageDescription';
-import { getServers } from 'dns';
 
 export class Notion implements INodeType {
 	description: INodeTypeDescription = {
@@ -323,7 +322,6 @@ export class Notion implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					const body: IDataObject = {
-						page_size: 100,
 						filter: { property: 'object', value: 'database' },
 					};
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;

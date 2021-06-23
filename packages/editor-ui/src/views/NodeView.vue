@@ -140,7 +140,6 @@ import { getWorkflowCorners, getLeftmostTopNode, scaleSmaller, scaleBigger, scal
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
-import axios from 'axios';
 import {
 	IConnection,
 	IConnections,
@@ -149,7 +148,6 @@ import {
 	INodeConnections,
 	INodeIssues,
 	INodeTypeDescription,
-	IRunData,
 	NodeInputConnections,
 	NodeHelpers,
 	Workflow,
@@ -160,11 +158,9 @@ import {
 	IExecutionResponse,
 	IExecutionsStopData,
 	IN8nUISettings,
-	IStartRunData,
 	IWorkflowDb,
 	IWorkflowData,
 	INodeUi,
-	IRunDataUi,
 	IUpdateInformation,
 	IWorkflowDataUpdate,
 	XYPositon,
@@ -531,6 +527,7 @@ export default mixins(
 
 					this.callDebounced('deleteSelectedNodes', 500);
 				} else if (e.key === 'Escape') {
+					this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 					this.createNodeActive = false;
 					this.$store.commit('setActiveNode', null);
 				} else if (e.key === 'Tab') {

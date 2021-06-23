@@ -49,7 +49,7 @@ export default new Router({
 			redirect: '/workflow',
 		},
 		{
-			path: '/workflows/template/:id',
+			path: '/workflows/templates/:id',
 			name: 'WorkflowTemplate',
 			components: {
 				default: NodeView,
