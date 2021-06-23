@@ -105,7 +105,6 @@
     "jwks-rsa": "~1.12.1",
     "localtunnel": "^2.0.0",
     "lodash.get": "^4.4.2",
-    "module-alias": "^2.2.2",
     "mysql2": "~2.2.0",
     "n8n-core": "~0.75.0",
     "n8n-editor-ui": "~0.95.0",
@@ -121,9 +120,6 @@
     "tslib": "1.14.1",
     "typeorm": "^0.2.30",
     "winston": "^3.3.3"
-  },
-  "_moduleAliases": {
-    "@config": "./dist/config/index.js"
   },
   "jest": {
     "transform": {

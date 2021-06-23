@@ -5,7 +5,7 @@ import {
 	IExternalHooksFunctions,
 } from './';
 
-import { config } from '@config';
+import * as config from '../config';
 
 
 class ExternalHooksClass implements IExternalHooksClass {

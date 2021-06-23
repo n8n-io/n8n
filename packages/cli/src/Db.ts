@@ -16,7 +16,7 @@ import {
 
 import { TlsOptions } from 'tls';
 
-import { config } from '@config';
+import * as config from '../config';
 
 import { entities } from './databases/entities';
 
