@@ -11,45 +11,45 @@ import {
 
 const data = [
 	{
-		"id": "23423532",
-		"name": "Jay Gatsby",
-		"email": "gatsby@west-egg.com",
-		"notes": "Keeps asking about a green light??",
-		"country": "US",
-		"created": "1925-04-10"
+		id: '23423532',
+		name: 'Jay Gatsby',
+		email: 'gatsby@west-egg.com',
+		notes: 'Keeps asking about a green light??',
+		country: 'US',
+		created: '1925-04-10',
 	},
 	{
-		"id": "23423533",
-		"name": "José Arcadio Buendía",
-		"email": "jab@macondo.co",
-		"notes": "Lots of people named after him. Very confusing",
-		"country": "CO",
-		"created": "1967-05-05"
+		id: '23423533',
+		name: 'José Arcadio Buendía',
+		email: 'jab@macondo.co',
+		notes: 'Lots of people named after him. Very confusing',
+		country: 'CO',
+		created: '1967-05-05',
 	},
 	{
-		"id": "23423534",
-		"name": "Max Sendak",
-		"email": "info@in-and-out-of-weeks.org",
-		"notes": "Keeps rolling his terrible eyes",
-		"country": "US",
-		"created": "1963-04-09"
+		id: '23423534',
+		name: 'Max Sendak',
+		email: 'info@in-and-out-of-weeks.org',
+		notes: 'Keeps rolling his terrible eyes',
+		country: 'US',
+		created: '1963-04-09',
 	},
 	{
-		"id": "23423535",
-		"name": "Zaphod Beeblebrox",
-		"email": "captain@heartofgold.com",
-		"notes": "Felt like I was talking to more than one person",
-		"country": null,
-		"created": "1979-10-12"
+		id: '23423535',
+		name: 'Zaphod Beeblebrox',
+		email: 'captain@heartofgold.com',
+		notes: 'Felt like I was talking to more than one person',
+		country: null,
+		created: '1979-10-12',
 	},
 	{
-		"id": "23423536",
-		"name": "Edmund Pevensie",
-		"email": "edmund@narnia.gov",
-		"notes": "Passionate sailor",
-		"country": "UK",
-		"created": "1950-10-16"
-	}
+		id: '23423536',
+		name: 'Edmund Pevensie',
+		email: 'edmund@narnia.gov',
+		notes: 'Passionate sailor',
+		country: 'UK',
+		created: '1950-10-16',
+	},
 ];
 
 export class N8nTrainingCustomerDatastore implements INodeType {
