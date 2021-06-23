@@ -54,7 +54,6 @@ import {
 	faExpand,
 	faExternalLinkAlt,
 	faExchangeAlt,
-	faExpand,
 	faFile,
 	faFileArchive,
 	faFileCode,
@@ -183,7 +182,6 @@ library.add(faSpinner);
 library.add(faStop);
 library.add(faSun);
 library.add(faSync);
-library.add(faExpand);
 library.add(faSyncAlt);
 library.add(faTable);
 library.add(faTasks);
