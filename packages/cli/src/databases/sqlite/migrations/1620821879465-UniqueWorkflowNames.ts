@@ -1,5 +1,5 @@
 import {MigrationInterface, QueryRunner} from "typeorm";
-import { config } from '@config';
+import config = require("../../../../config");
 
 export class UniqueWorkflowNames1620821879465 implements MigrationInterface {
 		name = 'UniqueWorkflowNames1620821879465';

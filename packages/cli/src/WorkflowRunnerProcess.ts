@@ -38,7 +38,7 @@ import {
 	getLogger,
 } from '../src/Logger';
 
-import { config } from '@config';
+import * as config from '../config';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
