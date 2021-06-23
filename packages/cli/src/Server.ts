@@ -101,7 +101,7 @@ import {
 
 import * as basicAuth from 'basic-auth';
 import * as compression from 'compression';
-import * as config from '../config';
+import { config } from '@config';
 import * as jwt from 'jsonwebtoken';
 import * as jwks from 'jwks-rsa';
 // @ts-ignore

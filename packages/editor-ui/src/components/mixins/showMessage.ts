@@ -15,12 +15,12 @@ export const showMessage = mixins(externalHooks).extend({
 			return Notification(messageData);
 		},
 
-		$showError(error: Error, title: string, message: string) {
+		$showError(error: Error, title: string, message?: string) {
+			const messageLine = message ? `${message}<br/>` : '';
 			this.$showMessage({
 				title,
 				message: `
-					${message}
-					<br>
+					${messageLine}
 					<i>${error.message}</i>
 					${this.collapsableDetails(error)}`,
 				type: 'error',

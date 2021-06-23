@@ -7,7 +7,7 @@ import { Command, flags } from '@oclif/command';
 const open = require('open');
 import * as Redis from 'ioredis';
 
-import * as config from '../config';
+import { config } from '@config';
 import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
@@ -25,7 +25,7 @@ import {
 } from '../src';
 import { IDataObject } from 'n8n-workflow';
 
-import { 
+import {
 	getLogger,
 } from '../src/Logger';
 
