@@ -301,20 +301,6 @@ export class HttpRequest implements INodeType {
 						description: 'Content-Type to use to send body parameters.',
 					},
 					{
-						displayName: 'Flatten output',
-						name: 'flattenOutput',
-						type: 'boolean',
-						default: false,
-						description: 'Convert the output to a single array of elements',
-						displayOptions: {
-							show: {
-								'/responseFormat': [
-									'json',
-								],
-							},
-						},
-					},
-					{
 						displayName: 'Full Response',
 						name: 'fullResponse',
 						type: 'boolean',
@@ -360,6 +346,20 @@ export class HttpRequest implements INodeType {
 						default: '',
 						placeholder: 'http://myproxy:3128',
 						description: 'HTTP proxy to use.',
+					},
+					{
+						displayName: 'Split Into Items',
+						name: 'splitIntoItems',
+						type: 'boolean',
+						default: false,
+						description: 'Outputs each element of an array as own item.',
+						displayOptions: {
+							show: {
+								'/responseFormat': [
+									'json',
+								],
+							},
+						},
 					},
 					{
 						displayName: 'Timeout',
@@ -1019,7 +1019,7 @@ export class HttpRequest implements INodeType {
 						}
 					}
 
-					if (options.flattenOutput === true && Array.isArray(response)) {
+					if (options.splitIntoItems === true && Array.isArray(response)) {
 						response.forEach(item => returnItems.push({ json: item }));
 					} else {
 						returnItems.push({ json: response });
