@@ -1,21 +1,68 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
+// https://api.baserow.io/api/redoc/#section/Authentication
 
 export class BaserowApi implements ICredentialType {
 	name = 'baserowApi';
 	displayName = 'Baserow API';
-	properties = [
-		// The credentials to get from user and save encrypted.
-		// Properties can be defined exactly in the same way
-		// as node properties.
+	properties: INodeProperties[] = [
+		{
+			displayName: 'Authentication Method',
+			name: 'authenticationMethod',
+			type: 'options',
+			default: 'apiToken',
+			options: [
+				{
+					name: 'API Token',
+					value: 'apiToken',
+				},
+				{
+					name: 'JWT Token',
+					value: 'jwtToken',
+				},
+			],
+		},
 		{
 			displayName: 'API Token',
 			name: 'apiToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
+			displayOptions: {
+				show: {
+					authenticationMethod: [
+						'apiToken',
+					],
+				},
+			},
+		},
+		{
+			displayName: 'Username',
+			name: 'username',
+			type: 'string',
+			default: '',
+			displayOptions: {
+				show: {
+					authenticationMethod: [
+						'jwtToken',
+					],
+				},
+			},
+		},
+		{
+			displayName: 'Password',
+			name: 'password',
+			type: 'string',
+			default: '',
+			displayOptions: {
+				show: {
+					authenticationMethod: [
+						'jwtToken',
+					],
+				},
+			},
 		},
 	];
 }

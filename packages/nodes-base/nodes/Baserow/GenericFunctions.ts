@@ -1,106 +1,80 @@
 import {
 	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions
 } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IDataObject,
-	IPollFunctions,
 	NodeApiError,
 	NodeOperationError
 } from 'n8n-workflow';
 
-interface IAttachment {
-	url: string;
-	filename: string;
-	type: string;
-}
-
-export interface IRecord {
-	fields: {
-		[key: string]: string | IAttachment[];
-	};
-}
+import {
+	BaserowCredentials,
+} from './types';
 
 /**
- * Make an API request to Baserow
- *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>} call result
+ * Make a request to Baserow API.
  */
-export async function apiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| ILoadOptionsFunctions
-		| IPollFunctions,
+export async function baserowApiRequest(
+	this: IExecuteFunctions,
 	method: string,
 	endpoint: string,
-	body: object,
-	query?: IDataObject,
-	uri?: string,
-	option: IDataObject = {},
-// tslint:disable-next-line: no-any
-): Promise<any> {
-	const credentials = this.getCredentials('baserowApi');
+	body: IDataObject = {},
+	qs: IDataObject = {},
+) {
 	const host = this.getNodeParameter('host', 0) as string;
+	const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
 
 	if (credentials === undefined) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'No credentials got returned!',
-		);
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
-	query = query || {};
+	const authorizationString = credentials.authenticationMethod === 'jwtToken'
+		? `JWT ${await getJwtToken.call(this)}`
+		: `Token ${credentials.apiToken}`;
 
 	const options: OptionsWithUri = {
 		headers: {
-			authorization: `Token ${credentials.apiToken}`,
+			Authorization: authorizationString,
 		},
 		method,
 		body,
-		qs: query,
-		uri: uri || `${host}${endpoint}`,
+		qs,
+		uri: `${host}${endpoint}`,
 		useQuerystring: false,
 		json: true,
 	};
 
-	// Allow to manually extend options
-	if (Object.keys(option).length !== 0) {
-		Object.assign(options, option);
+	if (Object.keys(qs).length === 0) {
+		delete options.qs;
 	}
 
-	// Remove an empty body
 	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		console.log(options);
+		return await this.helpers.request(options);
 	} catch (error) {
+		if (error.statusCode === 401) {
+			const message = 'Invalid authentication. Please try using JWT authentication for this operation.';
+			throw new NodeApiError(this.getNode(), error, { message });
+		}
+
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
 /**
- * Get all results for the paginated query.
- * @param this
- * @param method
- * @param endpoint
- * @param body
- * @param query
- * @param limit limit the result count.
- * @returns result list.
+ * Get all results from a paginated query to Baserow API.
  */
-export async function apiRequestAllItems(
-	this: IHookFunctions | IExecuteFunctions | IPollFunctions,
+export async function baserowApiRequestAllItems(
+	this: IExecuteFunctions,
 	method: string,
 	endpoint: string,
 	body: IDataObject,
@@ -120,7 +94,7 @@ export async function apiRequestAllItems(
 	let responseData;
 
 	do {
-		responseData = await apiRequest.call(this, method, endpoint, body, query);
+		responseData = await baserowApiRequest.call(this, method, endpoint, body, query);
 
 		if (limit > 0) {
 			// We limit the result size
@@ -136,4 +110,31 @@ export async function apiRequestAllItems(
 	} while (responseData.next !== undefined && remaining > 0);
 
 	return returnData;
+}
+
+/**
+ * Get a JWT token based on Baserow account username and password.
+ */
+export async function getJwtToken(this: IExecuteFunctions) {
+	const host = this.getNodeParameter('host', 0) as string;
+	const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
+
+	if (credentials.authenticationMethod !== 'jwtToken') return;
+
+	const options: OptionsWithUri = {
+		method: 'POST',
+		body: {
+			username: credentials.username,
+			password: credentials.password,
+		},
+		uri: `${host}/api/user/token-auth/`,
+		json: true,
+	};
+
+	try {
+		const { token } = await this.helpers.request(options);
+		return token;
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
+	}
 }

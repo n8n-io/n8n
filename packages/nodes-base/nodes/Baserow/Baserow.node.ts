@@ -7,9 +7,11 @@ import {
 	INodeTypeDescription
 } from 'n8n-workflow';
 
-import { apiRequest, apiRequestAllItems } from './GenericFunctions';
-
-type Mapping = { [x: string]: string };
+import {
+	baserowApiRequest,
+	baserowApiRequestAllItems,
+} from './GenericFunctions';
+import { Mapping } from './types';
 
 const fromEntries = (entries: Iterable<[string, GenericValue]>) => {
 	const obj: IDataObject = {};
@@ -418,7 +420,7 @@ export class Baserow implements INodeType {
 		if (!disableAutoMapping) {
 			// Compute map for automapping
 			endpoint = `/api/database/fields/table/${table}/`;
-			responseData = await apiRequest.call(this, 'GET', endpoint, {}, {});
+			responseData = await baserowApiRequest.call(this, 'GET', endpoint, {}, {});
 			nameToField = fromEntries(
 				responseData.map((field: { name: string; id: number }) => [
 					field.name,
@@ -493,7 +495,7 @@ export class Baserow implements INodeType {
 
 			// Process all items
 			for (let i = 0; i < items.length; i++) {
-				responseData = await apiRequestAllItems.call(
+				responseData = await baserowApiRequestAllItems.call(
 					this,
 					requestMethod,
 					endpoint,
@@ -524,7 +526,7 @@ export class Baserow implements INodeType {
 			for (let i = 0; i < items.length; i++) {
 				rowId = encodeURI(this.getNodeParameter('rowId', i) as string);
 				endpoint = `/api/database/rows/table/${table}/${rowId}/`;
-				responseData = await apiRequest.call(
+				responseData = await baserowApiRequest.call(
 					this,
 					requestMethod,
 					endpoint,
@@ -559,7 +561,7 @@ export class Baserow implements INodeType {
 					);
 				}
 
-				responseData = await apiRequest.call(
+				responseData = await baserowApiRequest.call(
 					this,
 					requestMethod,
 					endpoint,
@@ -598,7 +600,7 @@ export class Baserow implements INodeType {
 					);
 				}
 
-				responseData = await apiRequest.call(
+				responseData = await baserowApiRequest.call(
 					this,
 					requestMethod,
 					endpoint,
@@ -626,7 +628,7 @@ export class Baserow implements INodeType {
 			for (let i = 0; i < items.length; i++) {
 				rowId = encodeURI(this.getNodeParameter('rowId', i) as string);
 				endpoint = `/api/database/rows/table/${table}/${rowId}/`;
-				responseData = await apiRequest.call(
+				responseData = await baserowApiRequest.call(
 					this,
 					requestMethod,
 					endpoint,
