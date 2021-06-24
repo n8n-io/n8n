@@ -10,6 +10,12 @@ export class BaserowApi implements ICredentialType {
 	displayName = 'Baserow API';
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Host',
+			name: 'host',
+			type: 'string',
+			default: 'https://api.baserow.io',
+		},
+		{
 			displayName: 'Authentication Method',
 			name: 'authenticationMethod',
 			type: 'options',

@@ -8,25 +8,28 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	NodeApiError,
 	NodeOperationError
 } from 'n8n-workflow';
 
 import {
+	Accumulator,
 	BaserowCredentials,
+	BaserowJwtTokenCredentials,
+	TableField,
 } from './types';
 
 /**
  * Make a request to Baserow API.
  */
 export async function baserowApiRequest(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const host = this.getNodeParameter('host', 0) as string;
 	const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
 
 	if (credentials === undefined) {
@@ -34,7 +37,7 @@ export async function baserowApiRequest(
 	}
 
 	const authorizationString = credentials.authenticationMethod === 'jwtToken'
-		? `JWT ${await getJwtToken.call(this)}`
+		? `JWT ${await getJwtToken.call(this, credentials)}`
 		: `Token ${credentials.apiToken}`;
 
 	const options: OptionsWithUri = {
@@ -44,8 +47,7 @@ export async function baserowApiRequest(
 		method,
 		body,
 		qs,
-		uri: `${host}${endpoint}`,
-		useQuerystring: false,
+		uri: `${credentials.host}${endpoint}`,
 		json: true,
 	};
 
@@ -58,8 +60,7 @@ export async function baserowApiRequest(
 	}
 
 	try {
-		console.log(options);
-		return await this.helpers.request(options);
+		return await this.helpers.request!(options);
 	} catch (error) {
 		if (error.statusCode === 401) {
 			const message = 'Invalid authentication. Please try using JWT authentication for this operation.';
@@ -78,63 +79,108 @@ export async function baserowApiRequestAllItems(
 	method: string,
 	endpoint: string,
 	body: IDataObject,
-	query?: IDataObject,
-	limit = 0,
+	qs: IDataObject = {},
 ): Promise<IDataObject[]> {
-	if (query === undefined) {
-		query = {};
-	}
-	query.size = query.size || 100;
-	query.page = 1;
-
-	let remaining = limit;
-
 	const returnData: IDataObject[] = [];
-
 	let responseData;
 
-	do {
-		responseData = await baserowApiRequest.call(this, method, endpoint, body, query);
+	qs.page = 1;
+	qs.size = 100;
 
-		if (limit > 0) {
-			// We limit the result size
-			if (responseData.results.length > remaining) {
-				responseData.results = responseData.results.slice(0, remaining);
-			}
-			remaining -= responseData.results.length;
+	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
+	const limit = this.getNodeParameter('limit', 0, 0) as number;
+
+	do {
+		responseData = await baserowApiRequest.call(this, method, endpoint, body, qs);
+		returnData.push(...responseData.results);
+
+		if (!returnAll && returnData.length > limit) {
+			return returnData.slice(0, limit);
 		}
 
-		returnData.push.apply(returnData, responseData.results);
-
-		query.page += 1;
-	} while (responseData.next !== undefined && remaining > 0);
+		qs.page += 1;
+	} while (responseData.next !== null);
 
 	return returnData;
 }
 
+
 /**
  * Get a JWT token based on Baserow account username and password.
  */
-export async function getJwtToken(this: IExecuteFunctions) {
-	const host = this.getNodeParameter('host', 0) as string;
-	const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
-
-	if (credentials.authenticationMethod !== 'jwtToken') return;
-
+export async function getJwtToken(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	credentials: BaserowJwtTokenCredentials,
+) {
 	const options: OptionsWithUri = {
 		method: 'POST',
 		body: {
 			username: credentials.username,
 			password: credentials.password,
 		},
-		uri: `${host}/api/user/token-auth/`,
+		uri: `${credentials.host}/api/user/token-auth/`,
 		json: true,
 	};
 
 	try {
-		const { token } = await this.helpers.request(options);
+		const { token } = await this.helpers.request!(options);
 		return token;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
+	}
+}
+
+/**
+ * Responsible for mapping field IDs `field_n` to names and vice versa.
+ */
+export class TableFieldMapper {
+	nameToIdMapping: Record<string, string> = {};
+	idToNameMapping: Record<string, string> = {};
+	mapIds = true;
+
+	async getTableFields(this: IExecuteFunctions, table: string): Promise<TableField[]> {
+		const endpoint = `/api/database/fields/table/${table}/`;
+		return await baserowApiRequest.call(this, 'GET', endpoint);
+	}
+
+	createMappings(tableFields: TableField[]) {
+		this.nameToIdMapping = this.createNameToIdMapping(tableFields);
+		this.idToNameMapping = this.createIdToNameMapping(tableFields);
+	}
+
+	private createIdToNameMapping(responseData: TableField[]) {
+		return responseData.reduce<Accumulator>((acc, cur) => {
+			acc[`field_${cur.id}`] = cur.name;
+			return acc;
+		}, {});
+	}
+
+	private createNameToIdMapping(responseData: TableField[]) {
+		return responseData.reduce<Accumulator>((acc, cur) => {
+			acc[cur.name] = `field_${cur.id}`;
+			return acc;
+		}, {});
+	}
+
+	setField(field: string) {
+		return this.mapIds ? field : this.nameToIdMapping[field] ?? field;
+	}
+
+	idsToNames(obj: Record<string, unknown>) {
+		Object.entries(obj).forEach(([key, value]) => {
+			if (this.idToNameMapping[key] !== undefined) {
+				delete obj[key];
+				obj[this.idToNameMapping[key]] = value;
+			}
+		});
+	}
+
+	 namesToIds(obj: Record<string, unknown>) {
+		Object.entries(obj).forEach(([key, value]) => {
+			if (this.nameToIdMapping[key] !== undefined) {
+				delete obj[key];
+				obj[this.nameToIdMapping[key]] = value;
+			}
+		});
 	}
 }
