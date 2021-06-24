@@ -151,7 +151,7 @@ export class GoogleDocs implements INodeType {
 				try {
 					folders = await googleApiRequestAllItems.call(this, 'files', 'GET', '', {}, qs, 'https://www.googleapis.com/drive/v3/files');
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error, { message: 'Error in loading Folders' });
 				}
 
 				for (const folder of folders) {

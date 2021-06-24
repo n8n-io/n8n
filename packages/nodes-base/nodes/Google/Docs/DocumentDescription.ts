@@ -35,7 +35,7 @@ export const documentOperations = [
 
 export const documentFields = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 document: create                             */
+	/*                                 document: create                           */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Drive',
@@ -144,7 +144,7 @@ export const documentFields = [
 	/*                                 document: get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Document URL or ID',
+		displayName: 'Doc ID or URL',
 		name: 'documentURL',
 		type: 'string',
 		required: true,
@@ -182,7 +182,7 @@ export const documentFields = [
 	/*                                 document: update                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Document URL or ID',
+		displayName: 'Doc ID or URL',
 		name: 'documentURL',
 		type: 'string',
 		required: true,
@@ -301,6 +301,7 @@ export const documentFields = [
 						description: 'The update object.',
 						default: 'text',
 					},
+					// Action fields (depend on the Object field)
 					{
 						displayName: 'Action',
 						name: 'action',
@@ -418,8 +419,7 @@ export const documentFields = [
 						description: 'The update action.',
 						default: '',
 					},
-					// Segment ID related inputs
-					// Create action
+					// Shared Segment inputs for Create action (moved up for display purposes)
 					{
 						displayName: 'Insert Segment',
 						name: 'insertSegment',
@@ -458,7 +458,7 @@ export const documentFields = [
 						displayName: 'Segment ID',
 						name: 'segmentId',
 						type: 'string',
-						description: 'The ID of the header, footer or footnote the location is in.The ID can be found in the output <br>of the <code>update document</code> operation with <code>create Footer/Header</code> action<br> or in the output of the of the <code>get document</code> operation (using raw data).',
+						description: 'The ID of the header, footer or footnote. The <code>Document → Get</code> operation lists all segment IDs (make sure you disable the <code>simple</code> toggle).',
 						default: '',
 						displayOptions: {
 							show: {
@@ -479,7 +479,7 @@ export const documentFields = [
 							},
 						},
 					},
-					// Operation fields
+					// Inputs fields
 					// create footer
 					{
 						displayName: 'Index',
@@ -707,8 +707,7 @@ export const documentFields = [
 							},
 						},
 					},
-					// delete bullets
-
+					// delete bullets (shared inputs added below)
 					// delete positioned object
 					{
 						displayName: 'Object ID',
@@ -727,13 +726,73 @@ export const documentFields = [
 							},
 						},
 					},
-					// delete table column
-
-					// delete table row
-
+					// insert table column/row (shared inputs added below)
+					// delete table column/row (shared inputs added below)
+					// Shared Segment inputs for Insert action (moved up for display purposes)
+					{
+						displayName: 'Insert Segment',
+						name: 'insertSegment',
+						type: 'options',
+						options: [
+							{
+								name: 'Header',
+								value: 'header',
+							},
+							{
+								name: 'Body',
+								value: 'body',
+							},
+							{
+								name: 'Footer',
+								value: 'footer',
+							},
+						],
+						description: 'The location where to create the object.',
+						default: 'body',
+						displayOptions: {
+							show: {
+								object: [
+									'pageBreak',
+									'table',
+									'tableColumn',
+									'tableRow',
+									'text',
+								],
+								action: [
+									'insert',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Segment ID',
+						name: 'segmentId',
+						type: 'string',
+						description: 'The ID of the header, footer or footnote. The <code>Document → Get</code> operation lists all segment IDs (make sure you disable the <code>simple</code> toggle).',
+						default: '',
+						displayOptions: {
+							show: {
+								object: [
+									'pageBreak',
+									'table',
+									'tableColumn',
+									'tableRow',
+									'text',
+								],
+								action: [
+									'insert',
+								],
+							},
+							hide: {
+								insertSegment: [
+									'body',
+								],
+							},
+						},
+					},
 					// insert page break
 					{
-						displayName: 'Insertion Location',
+						displayName: 'Insert Location',
 						name: 'locationChoice',
 						type: 'options',
 						options: [
@@ -785,41 +844,7 @@ export const documentFields = [
 					},
 					// insert table
 					{
-						displayName: 'Rows',
-						name: 'rows',
-						type: 'number',
-						description: 'The number of rows in the table.',
-						default: 0,
-						displayOptions: {
-							show: {
-								object: [
-									'table',
-								],
-								action: [
-									'insert',
-								],
-							},
-						},
-					},
-					{
-						displayName: 'Columns',
-						name: 'columns',
-						type: 'number',
-						description: 'The number of columns in the table.',
-						default: 0,
-						displayOptions: {
-							show: {
-								object: [
-									'table',
-								],
-								action: [
-									'insert',
-								],
-							},
-						},
-					},
-					{
-						displayName: 'Insertion Location',
+						displayName: 'Insert Location',
 						name: 'locationChoice',
 						type: 'options',
 						options: [
@@ -869,9 +894,43 @@ export const documentFields = [
 							minValue: 1,
 						},
 					},
+					{
+						displayName: 'Rows',
+						name: 'rows',
+						type: 'number',
+						description: 'The number of rows in the table.',
+						default: 0,
+						displayOptions: {
+							show: {
+								object: [
+									'table',
+								],
+								action: [
+									'insert',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'Columns',
+						name: 'columns',
+						type: 'number',
+						description: 'The number of columns in the table.',
+						default: 0,
+						displayOptions: {
+							show: {
+								object: [
+									'table',
+								],
+								action: [
+									'insert',
+								],
+							},
+						},
+					},
 					// insert text
 					{
-						displayName: 'Insertion Location',
+						displayName: 'Insert Location',
 						name: 'locationChoice',
 						type: 'options',
 						options: [
@@ -894,69 +953,6 @@ export const documentFields = [
 								],
 								action: [
 									'insert',
-								],
-							},
-						},
-					},
-					// Segment ID related inputs
-					// insert action
-					{
-						displayName: 'Insert Segment',
-						name: 'insertSegment',
-						type: 'options',
-						options: [
-							{
-								name: 'Header',
-								value: 'header',
-							},
-							{
-								name: 'Body',
-								value: 'body',
-							},
-							{
-								name: 'Footer',
-								value: 'footer',
-							},
-						],
-						description: 'The location where to create the object.',
-						default: 'body',
-						displayOptions: {
-							show: {
-								object: [
-									'pageBreak',
-									'table',
-									'tableColumn',
-									'tableRow',
-									'text',
-								],
-								action: [
-									'insert',
-								],
-							},
-						},
-					},
-					{
-						displayName: 'Segment ID',
-						name: 'segmentId',
-						type: 'string',
-						description: 'The ID of the header, footer or footnote the location is in.The ID can be found in the output <br>of the <code>update document</code> operation with <code>create Footer/Header</code> action<br> or in the output of the of the <code>get document</code> operation (using raw data).',
-						default: '',
-						displayOptions: {
-							show: {
-								object: [
-									'pageBreak',
-									'table',
-									'tableColumn',
-									'tableRow',
-									'text',
-								],
-								action: [
-									'insert',
-								],
-							},
-							hide: {
-								insertSegment: [
-									'body',
 								],
 							},
 						},
@@ -1001,10 +997,6 @@ export const documentFields = [
 							},
 						},
 					},
-					// insert table column
-
-					// insert table row
-
 					// replace all text
 					{
 						displayName: 'Old Text',
@@ -1057,13 +1049,7 @@ export const documentFields = [
 							},
 						},
 					},
-					/*                                                */
-					/*                 Common Fields                  */
-					/*                                                */
-
-					// Segment ID related inputs
-
-					// delete action
+					// Shared Segment inputs for Delete action
 					{
 						displayName: 'Insert Segment',
 						name: 'insertSegment',
@@ -1101,7 +1087,7 @@ export const documentFields = [
 						displayName: 'Segment ID',
 						name: 'segmentId',
 						type: 'string',
-						description: 'The ID of the header, footer or footnote the location is in.The ID can be found in the output <br>of the <code>update document</code> operation with <code>create Footer/Header</code> action<br> or in the output of the of the <code>get document</code> operation (using raw data).',
+						description: 'The ID of the header, footer or footnote. The <code>Document → Get</code> operation lists all segment IDs (make sure you disable the <code>simple</code> toggle).',
 						default: '',
 						displayOptions: {
 							show: {
@@ -1121,8 +1107,7 @@ export const documentFields = [
 							},
 						},
 					},
-
-					// Shared between paragrahs operations
+					// Shared inputs for paragraph bullets
 					{
 						displayName: 'Start Index',
 						name: 'startIndex',
@@ -1151,9 +1136,9 @@ export const documentFields = [
 							},
 						},
 					},
-					// share between table column and table row
+					// Shared inputs for table column/row
 					{
-						displayName: 'Insert',
+						displayName: 'Insert Position',
 						name: 'insertPosition',
 						type: 'options',
 						options: [
