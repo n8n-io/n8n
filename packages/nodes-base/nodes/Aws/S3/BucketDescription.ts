@@ -21,6 +21,11 @@ export const bucketOperations = [
 				description: 'Create a bucket',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a bucket',
+			},
+			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all buckets',
@@ -152,6 +157,29 @@ export const bucketFields = [
 			},
 		],
 	},
+
+/* -------------------------------------------------------------------------- */
+/*                                bucket:delete                               */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'bucket',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+		description: 'Name of the AWS S3 bucket to delete.',
+	},
+
 /* -------------------------------------------------------------------------- */
 /*                                 bucket:getAll                              */
 /* -------------------------------------------------------------------------- */
