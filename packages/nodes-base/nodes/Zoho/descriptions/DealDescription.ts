@@ -6,6 +6,7 @@ import {
 	currencies,
 	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
+	makeResolve,
 } from './SharedFields';
 
 export const dealOperations = [
@@ -95,7 +96,6 @@ export const dealFields = [
 			},
 		},
 	},
-
 	// ----------------------------------------
 	//          deal: create + upsert
 	// ----------------------------------------
@@ -120,6 +120,7 @@ export const dealFields = [
 			},
 		},
 	},
+	makeResolve('deal', ['create', 'upsert']),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -278,6 +279,7 @@ export const dealFields = [
 			},
 		},
 	},
+	makeResolve('deal', ['update']),
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',

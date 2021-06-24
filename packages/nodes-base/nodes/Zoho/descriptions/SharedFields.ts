@@ -271,43 +271,43 @@ export const productDetailsOptions = [
 		displayName: 'Quantity',
 		name: 'quantity',
 		type: 'number',
-		default: '',
+		default: 1,
 	},
 	{
 		displayName: 'Quantity in Stock',
 		name: 'quantity_in_stock',
 		type: 'number',
-		default: '',
+		default: 0,
 	},
 	{
 		displayName: 'Tax',
 		name: 'Tax',
 		type: 'number',
-		default: '',
+		default: 0,
 	},
 	{
 		displayName: 'Total',
 		name: 'total',
 		type: 'number',
-		default: '',
+		default: 0,
 	},
 	{
 		displayName: 'Total After Discount',
 		name: 'total_after_discount',
 		type: 'number',
-		default: '',
+		default: 0,
 	},
 	{
 		displayName: 'Total (Net)',
 		name: 'net_total',
 		type: 'number',
-		default: '',
+		default: 0,
 	},
 	{
 		displayName: 'Unit Price',
 		name: 'unit_price',
 		type: 'number',
-		default: '',
+		default: 0,
 	},
 ];
 
@@ -481,6 +481,22 @@ export const makeCustomFieldsFixedCollection = (resource: CamelCaseResource) => 
 				],
 			},
 		],
+	};
+};
+
+export const makeResolve = (resource: string, operations: string[]) => {
+	return {
+		displayName: 'Resolve Data',
+		name: 'resolveData',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [resource],
+				operation: operations,
+			},
+		},
+		default: false,
+		description: `By default the response only contain the ID of the ${resource}. If this option gets activated it<br />will resolve the data automatically.`,
 	};
 };
 

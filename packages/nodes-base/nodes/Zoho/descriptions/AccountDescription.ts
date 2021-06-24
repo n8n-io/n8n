@@ -7,6 +7,7 @@ import {
 	currencies,
 	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
+	makeResolve,
 	shippingAddress,
 } from './SharedFields';
 
@@ -75,7 +76,7 @@ export const accountFields = [
 			},
 		},
 	},
-
+	
 	// ----------------------------------------
 	//          account: upsert
 	// ----------------------------------------
@@ -97,6 +98,8 @@ export const accountFields = [
 			},
 		},
 	},
+
+	makeResolve('account', ['create', 'update', 'upsert']),
 
 	// ----------------------------------------
 	//        account: create + upsert

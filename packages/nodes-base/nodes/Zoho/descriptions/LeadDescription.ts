@@ -7,6 +7,7 @@ import {
 	currencies,
 	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
+	makeResolve,
 } from './SharedFields';
 
 export const leadOperations = [
@@ -92,6 +93,7 @@ export const leadFields = [
 			},
 		},
 	},
+	makeResolve('lead', ['create']),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -286,6 +288,7 @@ export const leadFields = [
 			},
 		},
 	},
+	makeResolve('lead', ['upsert']),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -513,6 +516,7 @@ export const leadFields = [
 			},
 		},
 	},
+	makeResolve('lead', ['update']),
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',

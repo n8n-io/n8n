@@ -25,6 +25,7 @@ import {
 	adjustSalesOrderPayload,
 	adjustVendorPayload,
 	getFields,
+	getModuleName,
 	getPicklistOptions,
 	handleListing,
 	throwOnEmptyUpdate,
@@ -321,6 +322,7 @@ export class ZohoCrm implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0) as CamelCaseResource;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		const resolveData = this.getNodeParameter('resolveData', 0, false) as boolean;
 
 		let responseData;
 
@@ -1442,6 +1444,11 @@ export class ZohoCrm implements INodeType {
 				}
 
 				throw error;
+			}
+
+			if (resolveData) {
+				responseData = await zohoApiRequest.call(this, 'GET', `/${getModuleName(resource)}/${responseData[0].details.id}`);
+				responseData = responseData.data;
 			}
 
 			Array.isArray(responseData)
