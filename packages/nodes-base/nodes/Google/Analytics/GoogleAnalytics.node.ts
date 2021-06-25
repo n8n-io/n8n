@@ -212,6 +212,14 @@ export class GoogleAnalytics implements INodeType {
 							body.dimensions = dimensions;
 						}
 					}
+					if (additionalFields.dimensionFiltersUi) {
+						const dimensionFilters = (additionalFields.dimensionFiltersUi as IDataObject).filterValues as IDataObject[];
+						if (dimensionFilters) {
+							dimensionFilters.forEach(filter => filter.expressions = [filter.expressions]);
+							body.dimensionFilterClauses = { filters: dimensionFilters };
+						}
+					}
+
 					if (additionalFields.includeEmptyRows) {
 						Object.assign(body, { includeEmptyRows: additionalFields.includeEmptyRows });
 					}
