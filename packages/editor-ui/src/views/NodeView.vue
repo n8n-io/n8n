@@ -515,10 +515,6 @@ export default mixins(
 						return;
 					}
 				}
-				const anyModalsOpen = this.$store.getters['ui/anyModalsOpen'];
-				if (anyModalsOpen) {
-					return;
-				}
 
 				// el-dialog element is open
 				if (window.document.body.classList.contains('el-popup-parent--hidden')) {
