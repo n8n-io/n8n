@@ -372,6 +372,7 @@
       "dist/nodes/Ghost/Ghost.node.js",
       "dist/nodes/Git/Git.node.js",
       "dist/nodes/Github/Github.node.js",
+      "dist/nodes/GithubAction/GithubAction.node.js",
       "dist/nodes/Github/GithubTrigger.node.js",
       "dist/nodes/Gitlab/Gitlab.node.js",
       "dist/nodes/Gitlab/GitlabTrigger.node.js",
