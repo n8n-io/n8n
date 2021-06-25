@@ -73,10 +73,8 @@ export async function ghostApiRequestAllItems(this: IHookFunctions | IExecuteFun
 	query.limit = 50;
 	query.page = 1;
 
-	let uri: string | undefined;
-
 	do {
-		responseData = await ghostApiRequest.call(this, method, endpoint, body, query, uri);
+		responseData = await ghostApiRequest.call(this, method, endpoint, body, query);
 		query.page = responseData.meta.pagination.next;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
