@@ -509,14 +509,13 @@ export default mixins(
 				// else which should ignore the default keybindings
 				for (let index = 0; index < path.length; index++) {
 					if (path[index].className && typeof path[index].className === 'string' && (
-						path[index].className.includes('el-message-box') ||
 						path[index].className.includes('ignore-key-press')
 					)) {
 						return;
 					}
 				}
 
-				// el-dialog element is open
+				// el-dialog or el-message-box element is open
 				if (window.document.body.classList.contains('el-popup-parent--hidden')) {
 					return;
 				}
