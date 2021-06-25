@@ -9,7 +9,8 @@ import {
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
-	INodeTypeDescription
+	INodeTypeDescription,
+	NodeOperationError
 } from 'n8n-workflow';
 
 import {
@@ -361,10 +362,9 @@ export class SendGrid implements INodeType {
 						};
 
 						if (fields) {
+							body.personalizations[0].dynamic_template_data = {};
 							fields.forEach(field => {
-								body.personalizations[0].dynamic_template_data = {
-									[field.key]: field.value,
-								};
+								body.personalizations[0].dynamic_template_data![field.key] = field.value;
 							});
 						}
 
@@ -383,7 +383,7 @@ export class SendGrid implements INodeType {
 
 						for (const property of binaryProperties) {
 							if (!items[i].binary?.hasOwnProperty(property)) {
-								throw new Error(`The binary property ${property} does not exist`);
+								throw new NodeOperationError(this.getNode(), `The binary property ${property} does not exist`);
 							}
 
 							const binaryProperty = items[i].binary![property];

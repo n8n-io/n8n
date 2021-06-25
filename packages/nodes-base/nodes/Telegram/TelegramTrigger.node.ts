@@ -199,7 +199,7 @@ export class TelegramTrigger implements INodeType {
 
 				try {
 					await apiRequest.call(this, 'POST', endpoint, body);
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 

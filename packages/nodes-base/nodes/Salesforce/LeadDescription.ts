@@ -31,6 +31,11 @@ export const leadOperations = [
 				description: 'Create a lead',
 			},
 			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new lead, or update the current one if it already exists (upsert)',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a lead',
@@ -67,6 +72,48 @@ export const leadFields = [
 	/*                                lead:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Match Against',
+		name: 'externalId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getExternalIdFields',
+			loadOptionsDependsOn: [
+				'resource',
+			],
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `The field to check to see if the lead already exists`,
+	},
+	{
+		displayName: 'Value to Match',
+		name: 'externalIdValue',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `If this value exists in the 'match against' field, update the lead. Otherwise create a new one`,
+	},
+	{
 		displayName: 'Company',
 		name: 'company',
 		type: 'string',
@@ -79,6 +126,7 @@ export const leadFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -97,6 +145,7 @@ export const leadFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -115,6 +164,7 @@ export const leadFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -157,7 +207,7 @@ export const leadFields = [
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getLeadCustomFields',
+									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
 								description: 'The ID of the field to add custom field to.',
@@ -251,7 +301,7 @@ export const leadFields = [
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getUsers',
+					loadOptionsMethod: 'getLeadOwners',
 				},
 				default: '',
 				description: 'The owner of the lead.',
@@ -408,7 +458,7 @@ export const leadFields = [
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getLeadCustomFields',
+									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
 								description: 'The ID of the field to add custom field to.',
@@ -509,7 +559,7 @@ export const leadFields = [
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getUsers',
+					loadOptionsMethod: 'getLeadOwners',
 				},
 				default: '',
 				description: 'The owner of the lead.',

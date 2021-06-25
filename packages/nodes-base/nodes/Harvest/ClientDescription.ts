@@ -1,6 +1,10 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-const resource = ['client'];
+const resource = [
+	'client',
+];
 
 export const clientOperations = [
 	{
@@ -49,7 +53,7 @@ export const clientOperations = [
 export const clientFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                client:getAll                            */
+	/*                                client:getAll                               */
 	/* -------------------------------------------------------------------------- */
 
 	{
@@ -122,7 +126,7 @@ export const clientFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                client:get                            */
+	/*                                client:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Client Id',
@@ -142,7 +146,7 @@ export const clientFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                client:delete                            */
+	/*                                client:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Client Id',
@@ -162,7 +166,7 @@ export const clientFields = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                client:create                           */
+	/*                                client:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
@@ -196,13 +200,6 @@ export const clientFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Is Active',
-				name: 'is_active',
-				type: 'string',
-				default: '',
-				description: 'Whether the client is active, or archived. Defaults to true.',
-			},
-			{
 				displayName: 'Address',
 				name: 'address',
 				type: 'string',
@@ -216,11 +213,18 @@ export const clientFields = [
 				default: '',
 				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
+			{
+				displayName: 'Is Active',
+				name: 'is_active',
+				type: 'string',
+				default: '',
+				description: 'Whether the client is active, or archived. Defaults to true.',
+			},
 		],
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                client:update                           */
+	/*                                client:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Client Id',

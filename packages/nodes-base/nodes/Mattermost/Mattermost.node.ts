@@ -9,6 +9,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -1803,7 +1804,7 @@ export class Mattermost implements INodeType {
 				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeOperationError(this.getNode(), 'No data got returned');
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1837,7 +1838,7 @@ export class Mattermost implements INodeType {
 				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeOperationError(this.getNode(), 'No data got returned');
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1876,7 +1877,7 @@ export class Mattermost implements INodeType {
 				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeOperationError(this.getNode(), 'No data got returned');
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1908,7 +1909,7 @@ export class Mattermost implements INodeType {
 				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData === undefined) {
-					throw new Error('No data got returned');
+					throw new NodeOperationError(this.getNode(), 'No data got returned');
 				}
 
 				const returnData: INodePropertyOptions[] = [];
@@ -1942,7 +1943,7 @@ export class Mattermost implements INodeType {
 		const credentials = this.getCredentials('mattermostApi');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		let operation: string;
@@ -2279,26 +2280,26 @@ export class Mattermost implements INodeType {
 
 							if (additionalFields.inTeam !== undefined
 								&& !validRules.inTeam.includes(snakeCase(additionalFields.sort as string))) {
-								throw new Error(`When In Team is set the only valid values for sorting are ${validRules.inTeam.join(',')}`);
+								throw new NodeOperationError(this.getNode(), `When In Team is set the only valid values for sorting are ${validRules.inTeam.join(',')}`);
 							}
 							if (additionalFields.inChannel !== undefined
 								&& !validRules.inChannel.includes(snakeCase(additionalFields.sort as string))) {
-								throw new Error(`When In Channel is set the only valid values for sorting are ${validRules.inChannel.join(',')}`);
+								throw new NodeOperationError(this.getNode(), `When In Channel is set the only valid values for sorting are ${validRules.inChannel.join(',')}`);
 							}
 							if (additionalFields.inChannel !== undefined
 								&& additionalFields.inChannel === ''
 								&& additionalFields.sort !== 'username') {
-								throw new Error('When sort is different than username In Channel must be set');
+								throw new NodeOperationError(this.getNode(), 'When sort is different than username In Channel must be set');
 							}
 
 							if (additionalFields.inTeam !== undefined
 								&& additionalFields.inTeam === ''
 								&& additionalFields.sort !== 'username') {
-								throw new Error('When sort is different than username In Team must be set');
+								throw new NodeOperationError(this.getNode(), 'When sort is different than username In Team must be set');
 							}
 
 						} else {
-							throw new Error(`When sort is defined either 'in team' or 'in channel' must be defined`);
+							throw new NodeOperationError(this.getNode(), `When sort is defined either 'in team' or 'in channel' must be defined`);
 						}
 					}
 
@@ -2359,7 +2360,7 @@ export class Mattermost implements INodeType {
 				}
 			}
 			else {
-				throw new Error(`The resource "${resource}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
 			}
 
 			let responseData;

@@ -162,7 +162,7 @@ export class MailerLiteTrigger implements INodeType {
 
 					try {
 						await mailerliteApiRequest.call(this, 'DELETE', endpoint);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 

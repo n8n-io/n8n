@@ -9,7 +9,13 @@ import {
 
 import {
 	IDataObject,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
+
+import {
+	get,
+} from 'lodash';
 
 /**
  * Make an API request to Spotify
@@ -30,37 +36,18 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 			'Content-Type': 'text/plain',
 			'Accept': ' application/json',
 		},
-		body,
 		qs: query,
 		uri: uri || `https://api.spotify.com/v1${endpoint}`,
 		json: true,
 	};
 
+	if (Object.keys(body).length > 0) {
+		options.body = body;
+	}
 	try {
-		const credentials = this.getCredentials('spotifyOAuth2Api');
-
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
-		}
-
-		if (Object.keys(body).length === 0) {
-			delete options.body;
-		}
-
 		return await this.helpers.requestOAuth2.call(this, 'spotifyOAuth2Api', options);
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Spotify credentials are not valid!');
-		}
-
-		if (error.error && error.error.error && error.error.error.message) {
-			// Try to return the error prettier
-			throw new Error(`Spotify error response [${error.error.error.status}]: ${error.error.error.message}`);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -75,11 +62,16 @@ export async function spotifyApiRequestAllItems(this: IHookFunctions | IExecuteF
 
 	do {
 		responseData = await spotifyApiRequest.call(this, method, endpoint, body, query, uri);
-		returnData.push.apply(returnData, responseData[propertyName]);
-		uri = responseData.next;
-
+		returnData.push.apply(returnData, get(responseData, propertyName));
+		uri = responseData.next || responseData[propertyName.split('.')[0]].next;
+		//remove the query as the query parameters are already included in the next, else api throws error.
+		query = {};
+		if (uri?.includes('offset=1000')) {
+			return returnData;
+		}
 	} while (
-		responseData['next'] !== null
+		(responseData['next'] !== null && responseData['next'] !== undefined) ||
+		responseData[propertyName.split('.')[0]].next !== null
 	);
 
 	return returnData;

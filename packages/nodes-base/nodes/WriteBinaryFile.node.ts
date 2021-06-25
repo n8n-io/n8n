@@ -8,14 +8,12 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
 	writeFile as fsWriteFile,
-} from 'fs';
-import { promisify } from 'util';
-
-const fsWriteFileAsync = promisify(fsWriteFile);
+} from 'fs/promises';
 
 
 export class WriteBinaryFile implements INodeType {
@@ -71,15 +69,15 @@ export class WriteBinaryFile implements INodeType {
 			item = items[itemIndex];
 
 			if (item.binary === undefined) {
-				throw new Error('No binary data set. So file can not be written!');
+				throw new NodeOperationError(this.getNode(), 'No binary data set. So file can not be written!');
 			}
 
 			if (item.binary[dataPropertyName] === undefined) {
-				throw new Error(`The binary property "${dataPropertyName}" does not exist. So no file can be written!`);
+				throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So no file can be written!`);
 			}
 
 			// Write the file to disk
-			await fsWriteFileAsync(fileName, Buffer.from(item.binary[dataPropertyName].data, BINARY_ENCODING), 'binary');
+			await fsWriteFile(fileName, Buffer.from(item.binary[dataPropertyName].data, BINARY_ENCODING), 'binary');
 
 			const newItem: INodeExecutionData = {
 				json: {},

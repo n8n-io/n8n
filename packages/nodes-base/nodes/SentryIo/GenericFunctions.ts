@@ -11,7 +11,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, NodeApiError,
 } from 'n8n-workflow';
 
 export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -69,7 +69,7 @@ export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunction
 		}
 
 	} catch (error) {
-		throw new Error(`Sentry.io Error: ${error}`);
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

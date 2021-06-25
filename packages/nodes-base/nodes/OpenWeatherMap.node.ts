@@ -6,6 +6,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
@@ -209,7 +211,7 @@ export class OpenWeatherMap implements INodeType {
 		const credentials = this.getCredentials('openWeatherMapApi');
 
 		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 		}
 
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -239,7 +241,7 @@ export class OpenWeatherMap implements INodeType {
 			} else if (locationSelection === 'zipCode') {
 				qs.zip = this.getNodeParameter('zipCode', i) as string;
 			} else {
-				throw new Error(`The locationSelection "${locationSelection}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The locationSelection "${locationSelection}" is not known!`);
 			}
 
 			// Get the language
@@ -261,7 +263,7 @@ export class OpenWeatherMap implements INodeType {
 
 				endpoint = 'forecast';
 			} else {
-				throw new Error(`The operation "${operation}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 			}
 
 			const options: OptionsWithUri = {
@@ -271,7 +273,13 @@ export class OpenWeatherMap implements INodeType {
 				json: true,
 			};
 
-			const responseData = await this.helpers.request(options);
+			let responseData;
+			try {
+				responseData = await this.helpers.request(options);
+			} catch (error) {
+				throw new NodeApiError(this.getNode(), error);
+			}
+
 
 			returnData.push(responseData as IDataObject);
 		}
