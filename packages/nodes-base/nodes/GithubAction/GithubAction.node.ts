@@ -1,15 +1,21 @@
 import {
   IExecuteFunctions,
 } from 'n8n-core';
-
 import {
   ICredentialDataDecryptedObject,
   INodeExecutionData,
   INodeType,
   INodeTypeDescription,
 } from 'n8n-workflow';
+import { Property, Resource } from './Common';
+import { ConfigCredentials } from './Credentials/ConfigCredentials';
 import { getArrayFromNodeParameter } from './GenericFunctions';
-import { addLabelsToIssue, removeLabelOfIssue, updateLabelsOfIssue } from './GithubIssueActions';
+import { ConfigIssueNumber, IssueConfigOperation, IssueOperation } from './Issue/ConfigIssue';
+import { addLabelsToIssue, removeLabelOfIssue, updateLabelsOfIssue } from './Issue/IssueActions';
+import { ConfigIssueLabelsToAdd, ConfigIssueLabelsToRemove, ConfigIssueLabelToRemove } from './Label/ConfigLabel';
+import { ConfigOwner } from './Owner/ConfigOwner';
+import { ConfigRepository } from './Repository/ConfigRepository';
+import { ConfigResource } from './Resource/ConfigResource';
 
 export class GithubAction implements INodeType {
   description: INodeTypeDescription = {
@@ -25,201 +31,46 @@ export class GithubAction implements INodeType {
       },
       inputs: ['main'],
       outputs: ['main'],
-      credentials: [
-        {
-          name: 'oAuth2Api',
-          required: true
-        },
-      ],
+      credentials: ConfigCredentials,
       properties: [
-        {
-          displayName: 'Resource',
-          name: 'resource',
-          type: 'options',
-          options: [
-            {
-              name: 'Issue',
-              value: 'issue',
-            },
-          ],
-          default: 'issue',
-          required: true,
-          description: 'Issue to alter',
-        },
-        {
-          displayName: 'Operation',
-          name: 'operation',
-          type: 'options',
-          displayOptions: {
-            show: {
-              resource: [
-                'issue',
-              ],
-            },
-          },
-          options: [
-            {
-              name: 'Update labels',
-              value: 'updateLabels',
-              description: 'Update labels of Issue',
-            },
-            {
-              name: 'Add labels',
-              value: 'addLabels',
-              description: 'Add labels of Issue',
-            },
-            {
-              name: 'Remove label',
-              value: 'removeLabel',
-              description: 'Remove label of Issue',
-            },
-          ],
-          default: '',
-          description: 'Operations on Issue',
-        },
-        {
-          displayName: 'Owner',
-          name: 'owner',
-          type: 'string',
-          required: true,
-          default: '',
-          description: 'Owner of the repository'
-        },
-        {
-          displayName: 'Repository',
-          name: 'repository',
-          type: 'string',
-          required: true,
-          default: '',
-          description: 'Repository'
-        },
-        {
-          displayName: 'Issue ID',
-          name: 'issue_number',
-          type: 'number',
-          required: true,
-          default: '',
-          description: "ID of the issue"
-        },
-        {
-          displayName: 'Labels to add',
-          name: 'labelsToAdd',
-          type: 'fixedCollection',
-          placeholder: 'Add a Label',
-          typeOptions: {
-            multipleValues: true,
-          },
-          default: {},
-          displayOptions: {
-            show: {
-              resource: [
-                'issue'
-              ],
-              operation: [
-                'updateLabels',
-                'addLabels'
-              ]
-            }
-          },
-          options: [
-            {
-              name: 'parameter',
-              displayName: 'Labels',
-              values: [
-                {
-                  displayName: 'Name',
-                  name: 'value',
-                  type: 'string',
-                  default: '',
-                  description: 'Name of the Label.',
-                }
-              ],
-            },
-          ],
-        },
-        {
-          displayName: 'Label to remove',
-          name: 'labelToRemove',
-          type: 'string',
-          required: true,
-          default: '',
-          description: 'Name of the label',
-          displayOptions: {
-            show: {
-              resource: [
-                'issue'
-              ],
-              operation: [
-                'removeLabel'
-              ]
-            }
-          },
-        },
-        {
-          displayName: 'Labels to remove',
-          name: 'labelsToRemove',
-          type: 'fixedCollection',
-          placeholder: 'Add a Label',
-          typeOptions: {
-            multipleValues: true,
-          },
-          default: {},
-          displayOptions: {
-            show: {
-              resource: [
-                'issue'
-              ],
-              operation: [
-                'updateLabels'
-              ]
-            }
-          },
-          options: [
-            {
-              name: 'parameter',
-              displayName: 'Labels',
-              values: [
-                {
-                  displayName: 'Name',
-                  name: 'value',
-                  type: 'string',
-                  default: '',
-                  description: 'Name of the Label.',
-                }
-              ],
-            },
-          ],
-        }
+        ConfigResource,
+        IssueConfigOperation,
+        ConfigOwner,
+        ConfigRepository,
+        ConfigIssueNumber,
+        ConfigIssueLabelsToAdd,
+        ConfigIssueLabelToRemove,
+        ConfigIssueLabelsToRemove
       ],
   };
 
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     const credentials = this.getCredentials('oAuth2Api') as ICredentialDataDecryptedObject;
-    const resource = this.getNodeParameter('resource', 0) as string;
-    const operation = this.getNodeParameter('operation', 0) as string;
-    const owner = this.getNodeParameter('owner', 0) as string;
-    const repository = this.getNodeParameter('repository', 0) as string;
-    const issue_number = this.getNodeParameter('issue_number', 0) as number;
+    const resource = this.getNodeParameter(Property.Resource, 0) as string;
+    const operation = this.getNodeParameter(Property.Operation, 0) as string;
+    const owner = this.getNodeParameter(Property.Owner, 0) as string;
+    const repository = this.getNodeParameter(Property.Repository, 0) as string;
+    const issueNumber = this.getNodeParameter(Property.IssueNumber, 0) as number;
 
-    if (resource === 'issue') {
-      if (operation === 'updateLabels') {
-        const labelsToAdd = getArrayFromNodeParameter.call(this, 'labelsToAdd', 0);
-        const labelsToRemove = getArrayFromNodeParameter.call(this, 'labelsToRemove', 0);
+    if (resource === Resource.Issue) {
+      if (operation === IssueOperation.UpdateLabels) {
+        const labelsToAdd = getArrayFromNodeParameter.call(this, Property.LabelsToAdd, 0);
+        const labelsToRemove = getArrayFromNodeParameter.call(this, Property.LabelsToRemove, 0);
 
         await updateLabelsOfIssue.call(
           this,
           credentials,
           owner,
           repository,
-          issue_number,
+          issueNumber,
           labelsToAdd,
           labelsToRemove);
-      } else if (operation === 'addLabels') {
-        const labelsToAdd = getArrayFromNodeParameter.call(this, 'labelsToAdd', 0);
-        await addLabelsToIssue.call(this, credentials, owner, repository, issue_number, labelsToAdd);
-      } else if (operation === 'removeLabel') {
-        const labelToRemove = this.getNodeParameter('labelToRemove', 0) as string;
-        await removeLabelOfIssue.call(this, credentials, owner, repository, issue_number, labelToRemove);
+      } else if (operation === IssueOperation.AddLabels) {
+        const labelsToAdd = getArrayFromNodeParameter.call(this, Property.LabelsToAdd, 0);
+        await addLabelsToIssue.call(this, credentials, owner, repository, issueNumber, labelsToAdd);
+      } else if (operation === IssueOperation.RemoveLabel) {
+        const labelToRemove = this.getNodeParameter(Property.LabelToRemove, 0) as string;
+        await removeLabelOfIssue.call(this, credentials, owner, repository, issueNumber, labelToRemove);
       }
     }
     return [[]];

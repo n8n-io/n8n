@@ -7,8 +7,8 @@ import {
   IDataObject,
 } from 'n8n-workflow';
 import * as _ from 'lodash';
-import { ApiMethod } from './Types';
-import { githubRequest } from './GenericFunctions';
+import { ApiMethod } from '../Types';
+import { githubRequest } from '../GenericFunctions';
 
 export async function getLabelsOfIssue(
   this: IHookFunctions | IExecuteFunctions,
