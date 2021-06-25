@@ -370,6 +370,12 @@ const config = convict({
 		env: 'N8N_SSL_CERT',
 		doc: 'SSL Cert for HTTPS Protocol',
 	},
+	baseurl: {
+		format: String,
+		default: '',
+		env: 'N8N_BASEURL',
+		doc: 'Base URL n8n can be reached (Optional)'
+	},
 
 	security: {
 		excludeEndpoints: {
