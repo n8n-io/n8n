@@ -112,6 +112,15 @@ export class GoogleAnalytics implements INodeType {
 						});
 					}
 				}
+
+				returnData.sort((a, b) => {
+					const aName= a.name.toLowerCase();
+					const bName= b.name.toLowerCase();
+					if (aName < bName) { return -1; }
+					if (aName > bName) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 			// Get all the views to display them to user so that he can
