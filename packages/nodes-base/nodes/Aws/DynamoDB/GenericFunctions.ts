@@ -16,6 +16,7 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	INodeExecutionData,
 } from 'n8n-workflow';
 
 import { 
@@ -90,6 +91,20 @@ export async function awsApiRequestAllItems(this: IHookFunctions | IExecuteFunct
 	);
 
 	return returnData;
+}
+
+export function copyInputItem(item: INodeExecutionData, properties: string[]): IDataObject {
+	// Prepare the data to insert and copy it to be returned
+	let newItem: IDataObject;
+		newItem = {};
+	for (const property of properties) {
+		if (item.json[property] === undefined) {
+			newItem[property] = null;
+		} else {
+			newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
+		}
+	}
+	return newItem;
 }
 
 

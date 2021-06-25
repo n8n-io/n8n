@@ -68,6 +68,24 @@ export const itemFields = [
 	//           upsert
 	// ----------------------------------
 	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'item',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		default: '',
+		placeholder: 'id,name,description',
+		description: 'Comma separated list of the properties which should used as columns for the new rows.',
+	},
+	{
 		displayName: 'Expression Attribute Values',
 		name: 'expressionAttributeValues',
 		description: 'Substitution tokens for attribute names in an expression.',

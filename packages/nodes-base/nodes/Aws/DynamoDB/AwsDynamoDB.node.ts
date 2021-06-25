@@ -1,3 +1,5 @@
+
+
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -9,10 +11,12 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { copyInputItems } from '../../MySql/GenericFunctions';
 
 import {
 	awsApiRequest,
 	awsApiRequestAllItems,
+	copyInputItem,
 } from './GenericFunctions';
 
 import {
@@ -111,16 +115,28 @@ export class AwsDynamoDB implements INodeType {
 						TableName: this.getNodeParameter('tableName', i) as string,
 						//ConditionExpression: this.getNodeParameter('conditionExpression', i) as string,
 						//ExpressionAttributeValues: adjustExpressionAttributeValues(eavUi),
+						ReturnValues: 'ALL_OLD',
 					};
 
-					body.Item = items[i].json;
+					const columnString = this.getNodeParameter('columns', 0) as string;
+					const columns = columnString.split(',').map(column => column.trim());
+
+					const insertItem = copyInputItem(items[i], columns);
+
+					body.Item = insertItem;
 
 					const headers = {
 						'Content-Type': 'application/x-amz-json-1.0',
 						'X-Amz-Target': 'DynamoDB_20120810.PutItem',
 					};
 
+					console.log(body);
+
 					responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', body, headers);
+					
+					console.log(responseData);
+
+					responseData = decodeItem(responseData.Attributes);
 					//responseData = { success: true };
 
 				} else if (operation === 'delete') {
