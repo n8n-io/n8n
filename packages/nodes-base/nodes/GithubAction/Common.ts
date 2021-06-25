@@ -10,10 +10,14 @@ export enum Property {
   LabelsToAdd = 'labelsToAdd',
   LabelsToRemove = 'labelsToRemove',
   LabelToRemove = 'labelToRemove',
+  ProjectType = 'projectType',
+  ProjectName = 'projectName',
+  ProjectColumn = 'projectColumn'
 }
 
 export enum Resource {
-  Issue = 'issue'
+  Issue = 'issue',
+  Project = 'project'
 }
 
 export const ConfigOperationBase: INodeProperties = {

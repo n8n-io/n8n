@@ -9,12 +9,12 @@ import {
 } from 'n8n-workflow';
 import { Property, Resource } from './Common';
 import { ConfigCredentials } from './Credentials/ConfigCredentials';
-import { getArrayFromNodeParameter } from './GenericFunctions';
-import { ConfigIssueNumber, IssueConfigOperation, IssueOperation } from './Issue/ConfigIssue';
-import { addLabelsToIssue, removeLabelOfIssue, updateLabelsOfIssue } from './Issue/IssueActions';
+import { ConfigIssueNumber, IssueConfigOperation } from './Issue/ConfigIssue';
 import { orchestrateIssueOperation } from './Issue/IssueOrchestrator';
 import { ConfigIssueLabelsToAdd, ConfigIssueLabelsToRemove, ConfigIssueLabelToRemove } from './Label/ConfigLabel';
 import { ConfigOwner } from './Owner/ConfigOwner';
+import { ConfigProjectColumn, ConfigProjectName, ConfigProjectType, ProjectConfigOperation } from './Project/ConfigProject';
+import { orchestrateProjectOperation } from './Project/ProjectOrchestrator';
 import { ConfigRepository } from './Repository/ConfigRepository';
 import { ConfigResource } from './Resource/ConfigResource';
 
@@ -35,7 +35,11 @@ export class GithubAction implements INodeType {
       credentials: ConfigCredentials,
       properties: [
         ConfigResource,
+        ConfigProjectType,
         IssueConfigOperation,
+        ProjectConfigOperation,
+        ConfigProjectName,
+        ConfigProjectColumn,
         ConfigOwner,
         ConfigRepository,
         ConfigIssueNumber,
@@ -46,21 +50,18 @@ export class GithubAction implements INodeType {
   };
 
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+    const items = this.getInputData();
     const credentials = this.getCredentials('oAuth2Api') as ICredentialDataDecryptedObject;
     const resource = this.getNodeParameter(Property.Resource, 0) as string;
-    const operation = this.getNodeParameter(Property.Operation, 0) as string;
-    const owner = this.getNodeParameter(Property.Owner, 0) as string;
-    const repository = this.getNodeParameter(Property.Repository, 0) as string;
-    const issueNumber = this.getNodeParameter(Property.IssueNumber, 0) as number;
+    let response: any;
 
     if (resource === Resource.Issue) {
-      await orchestrateIssueOperation.call(
-        this, credentials, 
-        operation as IssueOperation, 
-        owner, 
-        repository, 
-        issueNumber);
+      await orchestrateIssueOperation.call(this, credentials);
+    } else if (resource === Resource.Project) {
+      response = await orchestrateProjectOperation.call(this, credentials);
     }
-    return [[]];
+
+    return [this.helpers.returnJsonArray(response)];
+    //return this.prepareOutputData(items);
   }
 }

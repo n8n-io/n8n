@@ -1,18 +1,20 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { ICredentialDataDecryptedObject } from '../../../../workflow/dist/src';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import { ICredentialDataDecryptedObject, IDataObject } from '../../../../workflow/dist/src';
 import { Property } from '../Common';
 import { getArrayFromNodeParameter } from '../GenericFunctions';
 import { IssueOperation } from './ConfigIssue';
-import { addLabelsToIssue, removeLabelOfIssue, updateLabelsOfIssue } from './IssueActions';
+import { addLabelsToIssue, removeLabelOfIssue } from './IssueRequests';
+import { updateLabelsOfIssue } from './IssueActions';
 
 export async function orchestrateIssueOperation(
   this: IExecuteFunctions,
-  credentials: ICredentialDataDecryptedObject,
-  operation: IssueOperation,
-  owner: string,
-  repository: string,
-  issueNumber: number
+  credentials: ICredentialDataDecryptedObject
 ): Promise<any> {
+  const operation = this.getNodeParameter(Property.Operation, 0) as IssueOperation;
+  const owner = this.getNodeParameter(Property.Owner, 0) as string;
+  const repository = this.getNodeParameter(Property.Repository, 0) as string;
+  const issueNumber = this.getNodeParameter(Property.IssueNumber, 0) as number;
+
   if (operation === IssueOperation.UpdateLabels) {
     const labelsToAdd = getArrayFromNodeParameter.call(this, Property.LabelsToAdd, 0);
     const labelsToRemove = getArrayFromNodeParameter.call(this, Property.LabelsToRemove, 0);

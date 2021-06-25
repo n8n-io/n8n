@@ -11,6 +11,10 @@ export const ConfigResource: INodeProperties = {
       name: capitalCase(Resource.Issue),
       value: Resource.Issue,
     },
+    {
+      name: capitalCase(Resource.Project),
+      value: Resource.Project
+    }
   ],
   default: Resource.Issue,
   required: true,

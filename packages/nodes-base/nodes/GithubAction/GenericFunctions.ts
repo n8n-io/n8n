@@ -53,6 +53,7 @@ export function getArrayFromNodeParameter(
 		method,
 		headers: {
 			'User-Agent': 'n8n-jeffdanielperso',
+      'Accept': 'application/vnd.github.inertia-preview+json'
 		},
 		body,
 		qs: query,
