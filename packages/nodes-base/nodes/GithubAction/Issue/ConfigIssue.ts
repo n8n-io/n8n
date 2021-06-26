@@ -108,6 +108,7 @@ const IssueConfig: IConfigurationMap = {
     type: 'number'
   },
   [IssueProperty.LabelsToAdd]: {
+    ...IssueConfigElementBase,
     displayName: IssuePropertyDisplay.LabelsToAdd,
     name: IssueProperty.LabelsToAdd,
     type: 'fixedCollection',
@@ -117,7 +118,7 @@ const IssueConfig: IConfigurationMap = {
     },
     default: {},
     displayOptions: {
-      ...IssueConfigElementBase,
+      ...IssueDisplayOptions,
       show: {
         [IssueProperty.Operation]: [
           IssueOperation.UpdateLabels,
