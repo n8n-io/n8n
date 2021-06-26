@@ -1,9 +1,8 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { ICredentialDataDecryptedObject } from '../../../../workflow/dist/src';
-import { Property } from '../Common/Enums';
 import { IIssue } from '../Issue/IssueEntities';
 import { getIssue } from '../Issue/IssueRequests';
-import { ProjectMovePosition, ProjectOperation, ProjectProperty, ProjectType } from './ConfigProject';
+import { ProjectKnownIssueId, ProjectMovePosition, ProjectOperation, ProjectProperty, ProjectType } from './ConfigProject';
 import { findOrganizationalProject, findRepositoryProject, findUserProject } from './ProjectActions';
 import { IProject, IProjectCard, IProjectColumn } from './ProjectEntities';
 import { createCard, getCardsOfColumn, getColumns, moveCard } from './ProjectRequests';
@@ -49,9 +48,20 @@ export async function orchestrateProjectOperation(
         await moveCard.call(this, credentials, matchingCard.id, columnId, ProjectMovePosition.Bottom);
       } else {
         const owner = this.getNodeParameter(ProjectProperty.Owner, 0) as string;
-        const repository = this.getNodeParameter(ProjectProperty.Repository, 0) as string;
-        const issue = await getIssue.call(this, credentials, owner, repository, issueNumber) as IIssue;
-        await createCard.call(this, credentials, columnId, issue.id);
+        const knownIssueId = this.getNodeParameter(ProjectProperty.KnownIssueId, 0) as ProjectKnownIssueId;
+        let issueId: number | undefined;
+
+        if (knownIssueId === ProjectKnownIssueId.Yes) {
+          issueId = this.getNodeParameter(ProjectProperty.IssueId, 0) as number;
+        } else if (knownIssueId === ProjectKnownIssueId.No) {
+          const repository = this.getNodeParameter(ProjectProperty.IssueRepository, 0) as string;
+          const issue = await getIssue.call(this, credentials, owner, repository, issueNumber) as IIssue;
+          issueId = issue.id;
+        }
+
+        if (issueId) {
+          await createCard.call(this, credentials, columnId, issueId);
+        }
       }
     }
   }

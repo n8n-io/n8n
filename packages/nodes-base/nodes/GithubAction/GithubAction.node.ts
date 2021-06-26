@@ -31,9 +31,9 @@ export class GithubAction implements INodeType {
       outputs: ['main'],
       credentials: ConfigCredentials,
       properties: [
-        //ConfigResource,
+        ConfigResource,
         // ...IssueConfiguration,
-        // ...ProjectConfiguration,
+        ...ProjectConfiguration,
       ],
   };
 

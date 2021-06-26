@@ -8,5 +8,6 @@ export enum PropertyDisplay {
   Organization = 'Organization',
   Repository = 'Repository',
   User = 'User',
-  IssueNumber = 'Issue Number'
+  IssueNumber = 'Issue Number',
+  IssueId = 'Issue ID'
 }

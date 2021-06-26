@@ -21,6 +21,10 @@ export enum ProjectPropertyDisplay {
   OrganizationDescription = 'Organization project',
   RepositoryDescription = 'Repository project',
   UserDescription = 'User project',
+  KnownIssueId = 'Known Issue ID',
+  IssueRepository = 'Issue repository',
+  Yes = 'Yes',
+  No = 'No'
 }
 
 export enum ProjectProperty {
@@ -31,7 +35,15 @@ export enum ProjectProperty {
   User = 'project_user',
   Name = 'project_name',
   ColumnId = 'project_columnId',
-  IssueNumber = 'project_issueNumber'
+  KnownIssueId = 'project_knownIssueId',
+  IssueNumber = 'project_issueNumber',
+  IssueRepository = 'project_issueRepository',
+  IssueId = 'project_issueId'
+}
+
+export enum ProjectKnownIssueId {
+  Yes = 'yes',
+  No = 'no'
 }
 
 export enum ProjectType {
@@ -83,6 +95,17 @@ const ProjectTypeOptions = [
   },
 ]
 
+const ProjectKnownIssueIdOptions = [
+  {
+    name: ProjectPropertyDisplay.Yes,
+    value: ProjectKnownIssueId.Yes
+  },
+  {
+    name: ProjectPropertyDisplay.No,
+    value: ProjectKnownIssueId.No
+  }
+]
+
 //#endregion
 
 const ProjectConfigElementBase: INodeProperties = {
@@ -111,7 +134,6 @@ const ProjectConfig: IConfigurationMap = {
     description: ProjectPropertyDisplay.TypeDescription,
     type: 'options',
     options: ProjectTypeOptions,
-    default: ProjectOperation.MoveCard,
   },
   [ProjectProperty.Owner]: {
     ...ProjectConfigElementBase,
@@ -175,6 +197,44 @@ const ProjectConfig: IConfigurationMap = {
     name: ProjectProperty.IssueNumber,
     description: PropertyDisplay.IssueNumber,
     type: 'number'
+  },
+  [ProjectProperty.KnownIssueId]: {
+    ...ProjectConfigElementBase,
+    displayName: ProjectPropertyDisplay.KnownIssueId,
+    name: ProjectProperty.KnownIssueId,
+    description: ProjectPropertyDisplay.KnownIssueId,
+    default: ProjectKnownIssueId.No,
+    type: 'options',
+    options: ProjectKnownIssueIdOptions,
+  },
+  [ProjectProperty.IssueId]: {
+    ...ProjectConfigElementBase,
+    displayName: PropertyDisplay.IssueId,
+    name: ProjectProperty.IssueId,
+    description: PropertyDisplay.IssueId,
+    type: 'number',
+    displayOptions: {
+      ...ProjectDisplayOptions,
+      show: {
+        [ProjectProperty.KnownIssueId]: [
+          ProjectKnownIssueId.Yes
+        ]
+      }
+    }
+  },
+  [ProjectProperty.IssueRepository]: {
+    ...ProjectConfigElementBase,
+    displayName: ProjectPropertyDisplay.IssueRepository,
+    name: ProjectProperty.IssueRepository,
+    description: ProjectPropertyDisplay.IssueRepository,
+    displayOptions: {
+      ...ProjectDisplayOptions,
+      show: {
+        [ProjectProperty.KnownIssueId]: [
+          ProjectKnownIssueId.No
+        ]
+      }
+    }
   }
 }
 
@@ -186,5 +246,8 @@ export const ProjectConfiguration: INodeProperties[] = [
   ProjectConfig[ProjectProperty.User],
   ProjectConfig[ProjectProperty.Name],
   ProjectConfig[ProjectProperty.ColumnId],
-  ProjectConfig[ProjectProperty.IssueNumber]
+  ProjectConfig[ProjectProperty.IssueNumber],
+  ProjectConfig[ProjectProperty.KnownIssueId],
+  ProjectConfig[ProjectProperty.IssueRepository],
+  ProjectConfig[ProjectProperty.IssueId],
 ]
