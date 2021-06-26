@@ -1,9 +1,37 @@
-import { capitalCase } from "change-case";
 import { INodeProperties } from "../../../../workflow/dist/src";
-import { ConfigOperationBase, Property, Resource } from "../Common";
+import { Property, Resource } from "../Common/Enums";
+import { PropertyDisplay } from "../Common/DisplayNames";
+import { IConfigurationMap } from "../Common/Configuration";
+
+//#region Enums
 
 export enum ProjectOperation {
   MoveCard = 'project_moveCard',
+}
+
+export enum ProjectPropertyDisplay {
+  OperationMoveCard = 'Move Card',
+  OperationMoveCardDescription = 'Move Card of Issue',
+  Name = 'Project name',
+  NameDescription = 'Name of the Project',
+  ColumnId = 'Column ID',
+  ColumnIdDescription = 'ID of the Project Column',
+  TypeDescription = 'Type of the Project',
+  OwnerDescription = 'Owner of the Repository',
+  OrganizationDescription = 'Organization project',
+  RepositoryDescription = 'Repository project',
+  UserDescription = 'User project',
+}
+
+export enum ProjectProperty {
+  Operation = 'project_operation',
+  Type = 'project_type',
+  Owner = 'project_owner',
+  Repository = 'project_repository',
+  User = 'project_user',
+  Name = 'project_name',
+  ColumnId = 'project_columnId',
+  IssueNumber = 'project_issueNumber'
 }
 
 export enum ProjectType {
@@ -17,74 +45,146 @@ export enum ProjectMovePosition {
   Bottom = 'bottom'
 }
 
-const OperationDisplayOptions = {
+//#endregion
+
+//#region Options
+
+const ProjectDisplayOptions = {
   show: {
-    resource: [
+    [Property.Resource]: [
       Resource.Project
     ]
   }
 }
 
-const OperationOptions = [
+const ProjectOperationOptions = [
   {
-    name: 'Move Card',
+    name: ProjectPropertyDisplay.OperationMoveCard,
     value: ProjectOperation.MoveCard,
-    description: 'Move Card of Issue',
+    description: ProjectPropertyDisplay.OperationMoveCardDescription
   }
 ]
 
-export const ProjectConfigOperation: INodeProperties = {
-  ...ConfigOperationBase,
-  displayOptions: OperationDisplayOptions,
-  options: OperationOptions,
-  description: 'Operations on Project',
-}
-
-const TypeOptions = [
+const ProjectTypeOptions = [
   {
-    name: capitalCase(ProjectType.Organization),
+    name: PropertyDisplay.Organization,
     value: ProjectType.Organization,
-    description: 'Organization project',
+    description: ProjectPropertyDisplay.OrganizationDescription,
   },
   {
-    name: capitalCase(ProjectType.Repository),
+    name: PropertyDisplay.Repository,
     value: ProjectType.Repository,
-    description: 'Repository project',
+    description: ProjectPropertyDisplay.RepositoryDescription
   },
   {
-    name: capitalCase(ProjectType.User),
+    name: PropertyDisplay.User,
     value: ProjectType.User,
-    description: 'User project',
+    description: ProjectPropertyDisplay.UserDescription,
   },
 ]
 
-export const ConfigProjectType: INodeProperties = {
-  displayName: 'Project type',
-  name: Property.ProjectType,
-  type: 'options',
-  options: TypeOptions,
-  displayOptions: OperationDisplayOptions,
-  required: true,
-  default: ProjectType.Organization,
-  description: 'Type of Project'
-}
+//#endregion
 
-export const ConfigProjectName: INodeProperties = {
-  displayName: 'Project name',
-  name: Property.ProjectName,
+const ProjectConfigElementBase: INodeProperties = {
+  displayName: '',
+  name: '',
   type: 'string',
-  required: true,
-  displayOptions: OperationDisplayOptions,
   default: '',
-  description: "Name of Project"
+  displayOptions: ProjectDisplayOptions,
+  required: true
 }
 
-export const ConfigProjectColumn: INodeProperties = {
-  displayName: 'Project column',
-  name: Property.ProjectColumn,
-  type: 'number',
-  required: true,
-  displayOptions: OperationDisplayOptions,
-  default: '',
-  description: "ID of Column"
+const ProjectConfig: IConfigurationMap = {
+  [ProjectProperty.Operation]: {
+    ...ProjectConfigElementBase,
+    displayName: PropertyDisplay.Operation,
+    name: ProjectProperty.Operation,
+    description: PropertyDisplay.Operation,
+    type: 'options',
+    options: ProjectOperationOptions,
+    default: ProjectOperation.MoveCard,
+  },
+  [ProjectProperty.Type]: {
+    ...ProjectConfigElementBase,
+    displayName: PropertyDisplay.Type,
+    name: ProjectProperty.Type,
+    description: ProjectPropertyDisplay.TypeDescription,
+    type: 'options',
+    options: ProjectTypeOptions,
+    default: ProjectOperation.MoveCard,
+  },
+  [ProjectProperty.Owner]: {
+    ...ProjectConfigElementBase,
+    displayName: PropertyDisplay.Owner,
+    name: ProjectProperty.Owner,
+    description: ProjectPropertyDisplay.OwnerDescription,
+    displayOptions: {
+      ...ProjectDisplayOptions,
+      show: {
+        [ProjectProperty.Type]: [
+          ProjectType.Organization,
+          ProjectType.Repository
+        ]
+      }
+    }
+  },
+  [ProjectProperty.Repository]: {
+    ...ProjectConfigElementBase,
+    displayName: PropertyDisplay.Repository,
+    name: ProjectProperty.Repository,
+    description: PropertyDisplay.Repository,
+    displayOptions: {
+      ...ProjectDisplayOptions,
+      show: {
+        [ProjectProperty.Type]: [
+          ProjectType.Repository
+        ]
+      }
+    }
+  },
+  [ProjectProperty.User]: {
+    ...ProjectConfigElementBase,
+    displayName: PropertyDisplay.User,
+    name: ProjectProperty.User,
+    description: PropertyDisplay.User,
+    displayOptions: {
+      ...ProjectDisplayOptions,
+      show: {
+        [ProjectProperty.Type]: [
+          ProjectType.User
+        ]
+      }
+    }
+  },
+  [ProjectProperty.Name]: {
+    ...ProjectConfigElementBase,
+    displayName: ProjectPropertyDisplay.Name,
+    name: ProjectProperty.Name,
+    description: ProjectPropertyDisplay.NameDescription
+  },
+  [ProjectProperty.ColumnId]: {
+    ...ProjectConfigElementBase,
+    displayName: ProjectPropertyDisplay.ColumnId,
+    name: ProjectProperty.ColumnId,
+    description: ProjectPropertyDisplay.ColumnIdDescription,
+    type: 'number'
+  },
+  [ProjectProperty.IssueNumber]: {
+    ...ProjectConfigElementBase,
+    displayName: PropertyDisplay.IssueNumber,
+    name: ProjectProperty.IssueNumber,
+    description: PropertyDisplay.IssueNumber,
+    type: 'number'
+  }
 }
+
+export const ProjectConfiguration: INodeProperties[] = [
+  ProjectConfig[ProjectProperty.Operation],
+  ProjectConfig[ProjectProperty.Type],
+  ProjectConfig[ProjectProperty.Owner],
+  ProjectConfig[ProjectProperty.Repository],
+  ProjectConfig[ProjectProperty.User],
+  ProjectConfig[ProjectProperty.Name],
+  ProjectConfig[ProjectProperty.ColumnId],
+  ProjectConfig[ProjectProperty.IssueNumber]
+]

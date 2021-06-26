@@ -1,22 +1,22 @@
-import { capitalCase } from "change-case";
 import { INodeProperties } from "../../../../workflow/dist/src";
-import { Property, Resource } from "../Common";
+import { Property, Resource } from "../Common/Enums";
+import { PropertyDisplay } from "./DisplayNames";
 
 export const ConfigResource: INodeProperties = {
-  displayName: capitalCase(Property.Resource),
+  displayName: PropertyDisplay.Resource,
   name: Property.Resource,
   type: 'options',
   options: [
     {
-      name: capitalCase(Resource.Issue),
+      name: PropertyDisplay.Issue,
       value: Resource.Issue,
     },
     {
-      name: capitalCase(Resource.Project),
+      name: PropertyDisplay.Project,
       value: Resource.Project
     }
   ],
   default: Resource.Issue,
   required: true,
-  description: capitalCase(Property.Resource)
+  description: PropertyDisplay.Resource
 }

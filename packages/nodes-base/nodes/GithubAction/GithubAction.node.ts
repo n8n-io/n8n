@@ -7,16 +7,13 @@ import {
   INodeType,
   INodeTypeDescription,
 } from 'n8n-workflow';
-import { Property, Resource } from './Common';
+import { Property, Resource } from './Common/Enums';
 import { ConfigCredentials } from './Credentials/ConfigCredentials';
-import { ConfigIssueNumber, IssueConfigOperation } from './Issue/ConfigIssue';
+import { IssueConfiguration } from './Issue/ConfigIssue';
 import { orchestrateIssueOperation } from './Issue/IssueOrchestrator';
-import { ConfigIssueLabelsToAdd, ConfigIssueLabelsToRemove, ConfigIssueLabelToRemove } from './Label/ConfigLabel';
-import { ConfigOwner } from './Owner/ConfigOwner';
-import { ConfigProjectColumn, ConfigProjectName, ConfigProjectType, ProjectConfigOperation } from './Project/ConfigProject';
+import { ProjectConfiguration } from './Project/ConfigProject';
 import { orchestrateProjectOperation } from './Project/ProjectOrchestrator';
-import { ConfigRepository } from './Repository/ConfigRepository';
-import { ConfigResource } from './Resource/ConfigResource';
+import { ConfigResource } from './Common/ConfigResource';
 
 export class GithubAction implements INodeType {
   description: INodeTypeDescription = {
@@ -34,18 +31,9 @@ export class GithubAction implements INodeType {
       outputs: ['main'],
       credentials: ConfigCredentials,
       properties: [
-        ConfigResource,
-        ConfigProjectType,
-        IssueConfigOperation,
-        ProjectConfigOperation,
-        ConfigProjectName,
-        ConfigProjectColumn,
-        ConfigOwner,
-        ConfigRepository,
-        ConfigIssueNumber,
-        ConfigIssueLabelsToAdd,
-        ConfigIssueLabelToRemove,
-        ConfigIssueLabelsToRemove
+        //ConfigResource,
+        // ...IssueConfiguration,
+        // ...ProjectConfiguration,
       ],
   };
 
