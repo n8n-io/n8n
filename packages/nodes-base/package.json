@@ -27,6 +27,7 @@
   ],
   "n8n": {
     "credentials": [
+      "dist/credentials/ActionNetworkApi.credentials.js",
       "dist/credentials/ActiveCampaignApi.credentials.js",
       "dist/credentials/AgileCrmApi.credentials.js",
       "dist/credentials/AcuitySchedulingApi.credentials.js",
@@ -282,6 +283,7 @@
       "dist/credentials/ZulipApi.credentials.js"
     ],
     "nodes": [
+      "dist/nodes/ActionNetwork/ActionNetwork.node.js",
       "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
       "dist/nodes/ActiveCampaign/ActiveCampaignTrigger.node.js",
       "dist/nodes/AgileCrm/AgileCrm.node.js",
