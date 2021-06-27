@@ -44,6 +44,16 @@
 				"url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/"
 			},
 			{
+				"label": "What are APIs and how to use them with no code",
+				"icon": " 🪢",
+				"url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/"
+			},
+			{
+				"label": "5 tasks you can automate with the new Notion API ",
+				"icon": "⚡️",
+				"url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/"
+			},
+			{
 				"label": "Celebrating World Poetry Day with a daily poem in Telegram",
 				"icon": "📜",
 				"url": "https://n8n.io/blog/world-poetry-day-workflow/"
@@ -84,6 +94,11 @@
 				"url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/"
 			},
 			{
+				"label": "How Common Knowledge use workflow automation for activism",
+				"icon": "✨",
+				"url": "https://n8n.io/blog/automations-for-activists/"
+			},
+			{
 				"label": "Creating scheduled text affirmations with n8n",
 				"icon": "🤟",
 				"url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/"
@@ -95,6 +110,12 @@
 			}
 		]
 	},
+	"alias": [
+		"API",
+		"Request",
+		"URL",
+		"Build"
+	],
 	"subcategories": {
 		"Core Nodes": [
 			"Helpers"

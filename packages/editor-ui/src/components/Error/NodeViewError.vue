@@ -37,10 +37,11 @@
 							<span class="box-card__subtitle">Data below may contain sensitive information. Proceed with caution when sharing.</span>
 						</div>
 						<div>
-							<el-button class="copy-button" @click="copyCause" circle type="text" title="Copy to clipboard">
+							<el-button v-if="displayCause" class="copy-button" @click="copyCause" circle type="text" title="Copy to clipboard">
 								<font-awesome-icon icon="copy" />
 							</el-button>
 							<vue-json-pretty
+								v-if="displayCause"
 								:data="error.cause"
 								:deep="3"
 								:showLength="true"
@@ -48,6 +49,9 @@
 								path="error"
 								class="json-data"
 							/>
+							<span v-else>
+								<font-awesome-icon icon="info-circle" /> The error cause is too large to be displayed.
+							</span>
 						</div>
 					</el-card>
 				</div>
@@ -67,13 +71,14 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 //@ts-ignore
 import VueJsonPretty from 'vue-json-pretty';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
-
+import {
+	MAX_DISPLAY_DATA_SIZE,
+} from '@/constants';
 
 export default mixins(
 	copyPaste,
@@ -85,6 +90,11 @@ export default mixins(
 	],
 	components: {
 		VueJsonPretty,
+	},
+	computed: {
+		displayCause(): boolean {
+			return JSON.stringify(this.error.cause).length < MAX_DISPLAY_DATA_SIZE;
+		},
 	},
 	methods: {
 		copyCause() {

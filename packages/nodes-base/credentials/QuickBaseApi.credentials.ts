@@ -1,17 +1,17 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class QuickBaseApi implements ICredentialType {
 	name = 'quickbaseApi';
 	displayName = 'Quick Base API';
 	documentationUrl = 'quickbase';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Hostname',
 			name: 'hostname',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			required: true,
 			placeholder: 'demo.quickbase.com',
@@ -19,7 +19,7 @@ export class QuickBaseApi implements ICredentialType {
 		{
 			displayName: 'User Token',
 			name: 'userToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			required: true,
 		},

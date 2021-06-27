@@ -32,7 +32,7 @@ export class MicrosoftOneDrive implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft OneDrive',
 		name: 'microsoftOneDrive',
-		icon: 'file:oneDrive.png',
+		icon: 'file:oneDrive.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
