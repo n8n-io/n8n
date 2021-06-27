@@ -12,6 +12,13 @@
 			{
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.crypto/"
 			}
+		],
+		"generic": [
+			{
+				"label": "How to build a low-code, self-hosted URL shortener in 3 steps",
+				"icon": "🔗",
+				"url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/"
+			}
 		]
 	},
 	"alias": [
