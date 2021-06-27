@@ -68,7 +68,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	const query: IDataObject = {...qs};
+	const query: IDataObject = { ...qs };
 	query.maxResults = 100;
 	query.pageSize = 100;
 
@@ -133,7 +133,7 @@ function getAccessToken(this: IExecuteFunctions | ILoadOptionsFunctions, credent
 
 export const hasKeys = (obj = {}) => Object.keys(obj).length > 0;
 export const extractID = (url: string) => {
-	const regex  = new RegExp('https://docs.google.com/document/d/([a-zA-Z0-9-_]+)/');
+	const regex = new RegExp('https://docs.google.com/document/d/([a-zA-Z0-9-_]+)/');
 	const results = regex.exec(url);
 	return results ? results[1] : undefined;
 };

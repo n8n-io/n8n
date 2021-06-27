@@ -97,49 +97,7 @@ export const documentFields = [
 			},
 		},
 	},
-	{
-		displayName: 'Simple',
-		name: 'simple',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'document',
-				],
-			},
-		},
-		default: true,
-		description: 'When set to true a simplified version of the response will be used else the raw data.',
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'document',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Content',
-				name: 'content',
-				type: 'string',
-				default: '',
-				description: 'Document content.',
-			},
-		],
-	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 document: get                                */
 	/* -------------------------------------------------------------------------- */
@@ -178,6 +136,7 @@ export const documentFields = [
 		default: true,
 		description: 'When set to true the document text content will be used else the raw data.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 document: update                            */
 	/* -------------------------------------------------------------------------- */
@@ -308,12 +267,12 @@ export const documentFields = [
 						type: 'options',
 						options: [
 							{
-								name: 'Insert',
-								value: 'insert',
-							},
-							{
 								name: 'Find and replace text',
 								value: 'replaceAll',
+							},
+							{
+								name: 'Insert',
+								value: 'insert',
 							},
 						],
 						displayOptions: {
@@ -345,8 +304,8 @@ export const documentFields = [
 								object: [
 									'footer',
 									'header',
-									'paragraphBullets',
 									'namedRange',
+									'paragraphBullets',
 								],
 							},
 						},
@@ -481,23 +440,6 @@ export const documentFields = [
 					},
 					// Inputs fields
 					// create footer
-					{
-						displayName: 'Index',
-						name: 'index',
-						type: 'number',
-						description: 'The zero-based index, relative to the beginning of the specified segment.',
-						default: 0,
-						displayOptions: {
-							show: {
-								object: [
-									'footer',
-								],
-								action: [
-									'create',
-								],
-							},
-						},
-					},
 					// create header
 					{
 						displayName: 'Index',
@@ -508,6 +450,7 @@ export const documentFields = [
 						displayOptions: {
 							show: {
 								object: [
+									'footer',
 									'header',
 								],
 								action: [
@@ -575,14 +518,14 @@ export const documentFields = [
 						type: 'options',
 						options: [
 							{
-								name: 'Checkbox List',
-								value: 'BULLET_CHECKBOX',
-								description: 'A bulleted list with CHECKBOX bullet glyphs for all list nesting levels.',
-							},
-							{
 								name: 'Bullet List',
 								value: 'BULLET_DISC_CIRCLE_SQUARE',
 								description: 'A bulleted list with a <code>DISC</code>, <code>CIRCLE</code> and <code>SQUARE</code> bullet glyph for the first 3 list nesting levels.',
+							},
+							{
+								name: 'Checkbox List',
+								value: 'BULLET_CHECKBOX',
+								description: 'A bulleted list with CHECKBOX bullet glyphs for all list nesting levels.',
 							},
 							{
 								name: 'Numbered List',
@@ -646,12 +589,12 @@ export const documentFields = [
 						type: 'options',
 						options: [
 							{
-								name: 'Name',
-								value: 'name',
-							},
-							{
 								name: 'ID',
 								value: 'namedRangeId',
+							},
+							{
+								name: 'Name',
+								value: 'name',
 							},
 						],
 						description: 'The value determines which range or ranges to delete.',
