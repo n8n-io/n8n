@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "0.92.2",
+  "version": "0.96.0",
   "description": "Workflow Editor UI for n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -40,6 +40,7 @@
     "@types/lodash.set": "^4.3.6",
     "@types/node": "^14.14.40",
     "@types/quill": "^2.0.1",
+    "@types/uuid": "^8.3.0",
     "@typescript-eslint/eslint-plugin": "^2.13.0",
     "@typescript-eslint/parser": "^2.13.0",
     "@vue/cli-plugin-babel": "^4.1.2",
@@ -67,7 +68,7 @@
     "lodash.debounce": "^4.0.8",
     "lodash.get": "^4.4.2",
     "lodash.set": "^4.3.2",
-    "n8n-workflow": "~0.60.0",
+    "n8n-workflow": "~0.62.0",
     "node-sass": "^4.12.0",
     "normalize-wheel": "^1.0.1",
     "prismjs": "^1.17.1",
@@ -78,7 +79,7 @@
     "ts-jest": "^26.3.0",
     "tslint": "^6.1.2",
     "typescript": "~3.9.7",
-    "uuid": "^8.1.0",
+    "uuid": "^8.3.0",
     "vue": "^2.6.9",
     "vue-cli-plugin-webpack-bundle-analyzer": "^2.0.0",
     "vue-json-pretty": "1.7.1",
@@ -86,7 +87,7 @@
     "vue-router": "^3.0.6",
     "vue-template-compiler": "^2.5.17",
     "vue-typed-mixins": "^0.2.0",
-    "vue2-touch-events": "^2.3.2",
+    "vue2-touch-events": "^3.2.1",
     "vuex": "^3.1.1"
   }
 }

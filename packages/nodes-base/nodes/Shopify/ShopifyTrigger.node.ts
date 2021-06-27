@@ -22,7 +22,7 @@ export class ShopifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Shopify Trigger',
 		name: 'shopifyTrigger',
-		icon: 'file:shopify.png',
+		icon: 'file:shopify.svg',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["event"]}}',

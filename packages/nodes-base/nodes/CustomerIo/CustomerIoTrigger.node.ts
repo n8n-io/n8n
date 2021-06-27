@@ -29,7 +29,7 @@ export class CustomerIoTrigger implements INodeType {
 		displayName: 'Customer.io Trigger',
 		name: 'customerIoTrigger',
 		group: ['trigger'],
-		icon: 'file:customerio.png',
+		icon: 'file:customerio.svg',
 		version: 1,
 		description: 'Starts the workflow on a Customer.io update. (Beta)',
 		defaults: {
