@@ -18,6 +18,7 @@ export async function operationMoveCard(
       this,
       credentials,
       matchingProject.id,
+      projectType,
       issueNumber,
       destinationColumnId
     );

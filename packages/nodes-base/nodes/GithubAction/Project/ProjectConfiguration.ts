@@ -238,6 +238,11 @@ const ProjectConfig: IConfigurationMap = {
         [ProjectProperty.KnownIssueId]: [
           ProjectKnownIssueId.No
         ]
+      },
+      hide: {
+        [ProjectProperty.Type]: [
+          ProjectType.Repository
+        ]
       }
     }
   }

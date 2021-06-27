@@ -1,3 +1,4 @@
+import { response } from 'express';
 import { IHookFunctions, IExecuteFunctions } from 'n8n-core';
 import { ICredentialDataDecryptedObject } from '../../../../workflow/dist/src';
 import { IIssue } from '../Issue/IssueEntities';
@@ -94,6 +95,7 @@ export async function moveOrCreateIssueCardInColumn(
   this: IHookFunctions | IExecuteFunctions,
   credentials: ICredentialDataDecryptedObject,
   projectId: number,
+  projectType: ProjectType,
   issueNumber: number,
   columnId: number,
   movePosition: ProjectMovePosition = ProjectMovePosition.Bottom
@@ -109,7 +111,13 @@ export async function moveOrCreateIssueCardInColumn(
     if (knownIssueId === ProjectKnownIssueId.Yes) {
       issueId = this.getNodeParameter(ProjectProperty.IssueId, 0) as number;
     } else if (knownIssueId === ProjectKnownIssueId.No) {
-      const repository = this.getNodeParameter(ProjectProperty.IssueRepository, 0) as string;
+      let repository: string;
+      if (projectType === ProjectType.Repository) {
+        repository = this.getNodeParameter(ProjectProperty.Repository, 0) as string;
+      } else {
+        repository = this.getNodeParameter(ProjectProperty.IssueRepository, 0) as string;
+      }
+
       const issue = await getIssue.call(this, credentials, owner, repository, issueNumber) as IIssue;
       issueId = issue.id;
     }
