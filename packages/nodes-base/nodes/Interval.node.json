@@ -24,6 +24,11 @@
 			}
 		]
 	},
+	"alias": [
+		"Time",
+		"Scheduler",
+		"Polling"
+	],
 	"subcategories": {
 		"Core Nodes": [
 			"Flow"

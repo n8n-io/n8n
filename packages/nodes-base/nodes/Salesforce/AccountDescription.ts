@@ -26,6 +26,11 @@ export const accountOperations = [
 				description: 'Create an account',
 			},
 			{
+				name: 'Create or Update',
+				value: 'upsert',
+				description: 'Create a new account, or update the current one if it already exists (upsert)',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an account',
@@ -62,6 +67,48 @@ export const accountFields = [
 	/*                                account:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Match Against',
+		name: 'externalId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getExternalIdFields',
+			loadOptionsDependsOn: [
+				'resource',
+			],
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'account',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `The field to check to see if the account already exists`,
+	},
+	{
+		displayName: 'Value to Match',
+		name: 'externalIdValue',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'account',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: `If this value exists in the 'match against' field, update the account. Otherwise create a new one`,
+	},
+	{
 		displayName: 'Name',
 		name: 'name',
 		type: 'string',
@@ -74,6 +121,7 @@ export const accountFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},
@@ -92,6 +140,7 @@ export const accountFields = [
 				],
 				operation: [
 					'create',
+					'upsert',
 				],
 			},
 		},

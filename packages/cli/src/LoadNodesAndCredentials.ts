@@ -3,6 +3,7 @@ import {
 	UserSettings,
 } from 'n8n-core';
 import {
+	CodexData,
 	ICredentialType,
 	ILogger,
 	INodeType,
@@ -24,6 +25,8 @@ import {
  } from 'fs/promises';
 import * as glob from 'glob-promise';
 import * as path from 'path';
+
+const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 
 
 class LoadNodesAndCredentialsClass {
@@ -133,7 +136,6 @@ class LoadNodesAndCredentialsClass {
 	 * @param {string} credentialName The name of the credentials
 	 * @param {string} filePath The file to read credentials from
 	 * @returns {Promise<void>}
-	 * @memberof N8nPackagesInformationClass
 	 */
 	async loadCredentialsFromFile(credentialName: string, filePath: string): Promise<void> {
 		const tempModule = require(filePath);
@@ -160,7 +162,6 @@ class LoadNodesAndCredentialsClass {
 	 * @param {string} nodeName Tha name of the node
 	 * @param {string} filePath The file to read node from
 	 * @returns {Promise<void>}
-	 * @memberof N8nPackagesInformationClass
 	 */
 	async loadNodeFromFile(packageName: string, nodeName: string, filePath: string): Promise<void> {
 		let tempNode: INodeType;
@@ -169,6 +170,7 @@ class LoadNodesAndCredentialsClass {
 		const tempModule = require(filePath);
 		try {
 			tempNode = new tempModule[nodeName]() as INodeType;
+			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });
 		} catch (error) {
 			console.error(`Error loading node "${nodeName}" from: "${filePath}"`);
 			throw error;
@@ -202,6 +204,57 @@ class LoadNodesAndCredentialsClass {
 		};
 	}
 
+	/**
+	 * Retrieves `categories`, `subcategories` and alias (if defined)
+	 * from the codex data for the node at the given file path.
+	 *
+	 * @param {string} filePath The file path to a `*.node.js` file
+	 * @returns {CodexData}
+	 */
+	getCodex(filePath: string): CodexData {
+		const { categories, subcategories, alias } = require(`${filePath}on`); // .js to .json
+		return {
+			...(categories && { categories }),
+			...(subcategories && { subcategories }),
+			...(alias && { alias }),
+		};
+	}
+
+	/**
+	 * Adds a node codex `categories` and `subcategories` (if defined)
+	 * to a node description `codex` property.
+	 *
+	 * @param {object} obj
+	 * @param obj.node Node to add categories to
+	 * @param obj.filePath Path to the built node
+	 * @param obj.isCustom Whether the node is custom
+	 * @returns {void}
+	 */
+	addCodex({ node, filePath, isCustom }: {
+		node: INodeType;
+		filePath: string;
+		isCustom: boolean;
+	}) {
+		try {
+			const codex = this.getCodex(filePath);
+
+			if (isCustom) {
+				codex.categories = codex.categories
+					? codex.categories.concat(CUSTOM_NODES_CATEGORY)
+					: [CUSTOM_NODES_CATEGORY];
+			}
+
+			node.description.codex = codex;
+		} catch (_) {
+			this.logger.debug(`No codex available for: ${filePath.split('/').pop()}`);
+
+			if (isCustom) {
+				node.description.codex = {
+					categories: [CUSTOM_NODES_CATEGORY],
+				};
+			}
+		}
+	}
 
 	/**
 	 * Loads nodes and credentials from the given directory
@@ -209,7 +262,6 @@ class LoadNodesAndCredentialsClass {
 	 * @param {string} setPackageName The package name to set for the found nodes
 	 * @param {string} directory The directory to look in
 	 * @returns {Promise<void>}
-	 * @memberof N8nPackagesInformationClass
 	 */
 	async loadDataFromDirectory(setPackageName: string, directory: string): Promise<void> {
 		const files = await glob(path.join(directory, '**/*\.@(node|credentials)\.js'));
@@ -237,7 +289,6 @@ class LoadNodesAndCredentialsClass {
 	 *
 	 * @param {string} packageName The name to read data from
 	 * @returns {Promise<void>}
-	 * @memberof N8nPackagesInformationClass
 	 */
 	async loadDataFromPackage(packageName: string): Promise<void> {
 		// Get the absolute path of the package

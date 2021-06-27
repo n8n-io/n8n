@@ -26,6 +26,8 @@ import {
 	itemOperations,
 	paymentFields,
 	paymentOperations,
+	purchaseFields,
+	purchaseOperations,
 	vendorFields,
 	vendorOperations,
 } from './descriptions';
@@ -49,17 +51,21 @@ import {
 	isEmpty,
 } from 'lodash';
 
+import {
+	QuickBooksOAuth2Credentials,
+} from './types';
+
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'QuickBooks',
+		displayName: 'QuickBooks Online',
 		name: 'quickbooks',
 		icon: 'file:quickbooks.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume the QuickBooks API',
+		description: 'Consume the QuickBooks Online API',
 		defaults: {
-			name: 'QuickBooks',
+			name: 'QuickBooks Online',
 			color: '#2CA01C',
 		},
 		inputs: ['main'],
@@ -105,6 +111,10 @@ export class QuickBooks implements INodeType {
 						value: 'payment',
 					},
 					{
+						name: 'Purchase',
+						value: 'purchase',
+					},
+					{
 						name: 'Vendor',
 						value: 'vendor',
 					},
@@ -126,6 +136,8 @@ export class QuickBooks implements INodeType {
 			...itemFields,
 			...paymentOperations,
 			...paymentFields,
+			...purchaseOperations,
+			...purchaseFields,
 			...vendorOperations,
 			...vendorFields,
 		],
@@ -145,6 +157,10 @@ export class QuickBooks implements INodeType {
 				return await loadResource.call(this, 'item');
 			},
 
+			async getPurchases(this: ILoadOptionsFunctions) {
+				return await loadResource.call(this, 'purchase');
+			},
+
 			async getVendors(this: ILoadOptionsFunctions) {
 				return await loadResource.call(this, 'vendor');
 			},
@@ -160,8 +176,8 @@ export class QuickBooks implements INodeType {
 		let responseData;
 		const returnData: IDataObject[] = [];
 
-		const { oauthTokenData } = this.getCredentials('quickBooksOAuth2Api') as IDataObject;
-		// @ts-ignore
+		const { oauthTokenData } = this.getCredentials('quickBooksOAuth2Api') as QuickBooksOAuth2Credentials;
+
 		const companyId = oauthTokenData.callbackQueryString.realmId;
 
 		for (let i = 0; i < items.length; i++) {
@@ -169,10 +185,10 @@ export class QuickBooks implements INodeType {
 			if (resource === 'bill') {
 
 				// *********************************************************************
-				//           bill
+				//                            bill
 				// *********************************************************************
 
-				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/estimate
+				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/bill
 
 				if (operation === 'create') {
 
@@ -288,7 +304,7 @@ export class QuickBooks implements INodeType {
 			} else if (resource === 'customer') {
 
 				// *********************************************************************
-				//         customer
+				//                            customer
 				// *********************************************************************
 
 				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/customer
@@ -360,7 +376,7 @@ export class QuickBooks implements INodeType {
 			} else if (resource === 'employee') {
 
 				// *********************************************************************
-				//         employee
+				//                            employee
 				// *********************************************************************
 
 				if (operation === 'create') {
@@ -431,7 +447,7 @@ export class QuickBooks implements INodeType {
 			} else if (resource === 'estimate') {
 
 				// *********************************************************************
-				//         estimate
+				//                            estimate
 				// *********************************************************************
 
 				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/estimate
@@ -574,7 +590,7 @@ export class QuickBooks implements INodeType {
 			} else if (resource === 'invoice') {
 
 				// *********************************************************************
-				//         invoice
+				//                            invoice
 				// *********************************************************************
 
 				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/invoice
@@ -733,7 +749,7 @@ export class QuickBooks implements INodeType {
 			} else if (resource === 'item') {
 
 				// *********************************************************************
-				//           item
+				//                            item
 				// *********************************************************************
 
 				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/item
@@ -763,7 +779,7 @@ export class QuickBooks implements INodeType {
 			} else if (resource === 'payment') {
 
 				// *********************************************************************
-				//         payment
+				//                            payment
 				// *********************************************************************
 
 				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/payment
@@ -902,10 +918,40 @@ export class QuickBooks implements INodeType {
 
 				}
 
+			} else if (resource === 'purchase') {
+
+				// *********************************************************************
+				//                            purchase
+				// *********************************************************************
+
+				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/purchase
+
+				if (operation === 'get') {
+
+					// ----------------------------------
+					//         purchase: get
+					// ----------------------------------
+
+					const purchaseId = this.getNodeParameter('purchaseId', i);
+					const endpoint = `/v3/company/${companyId}/${resource}/${purchaseId}`;
+					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+					responseData = responseData[capitalCase(resource)];
+
+				} else if (operation === 'getAll') {
+
+					// ----------------------------------
+					//         purchase: getAll
+					// ----------------------------------
+
+					const endpoint = `/v3/company/${companyId}/query`;
+					responseData = await handleListing.call(this, i, endpoint, resource);
+
+				}
+
 			} else if (resource === 'vendor') {
 
 				// *********************************************************************
-				//         vendor
+				//                            vendor
 				// *********************************************************************
 
 				// https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/vendor
@@ -975,6 +1021,7 @@ export class QuickBooks implements INodeType {
 				}
 
 			}
+
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
 				: returnData.push(responseData);
