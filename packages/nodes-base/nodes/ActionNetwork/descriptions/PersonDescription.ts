@@ -46,6 +46,7 @@ export const personFields = [
 	// ----------------------------------------
 	//              person: create
 	// ----------------------------------------
+	makeSimpleField('person', 'create'),
 	{
 		displayName: 'Email Address', // on create, only _one_ must be passed in
 		name: 'email_addresses',
@@ -119,7 +120,6 @@ export const personFields = [
 			},
 		],
 	},
-	makeSimpleField('person', 'create'),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

@@ -5,16 +5,16 @@ import {
 
 export const languageOptions = [
 	{
-		name: 'English',
-		value: 'en',
-	},
-	{
 		name: 'Danish',
 		value: 'da',
 	},
 	{
 		name: 'Dutch',
 		value: 'nl',
+	},
+	{
+		name: 'English',
+		value: 'en',
 	},
 	{
 		name: 'Finnish',

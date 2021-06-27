@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { 
+import {
 	makeSimpleField,
 } from './SharedFields';
 
