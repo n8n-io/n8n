@@ -189,9 +189,6 @@ export class Airtable implements INodeType {
 						operation: [
 							'delete',
 						],
-						bulk: [
-							false,
-						],
 					},
 				},
 				default: '',
@@ -391,9 +388,6 @@ export class Airtable implements INodeType {
 						operation: [
 							'update',
 						],
-						bulk: [
-							false,
-						],
 					},
 				},
 				default: '',
@@ -567,15 +561,7 @@ export class Airtable implements INodeType {
 			for (let i = 0; i < items.length; i++) {
 				let id: string;
 
-				if (bulk) {
-					if (items[i].json.id === undefined) {
-						throw new NodeOperationError(this.getNode(), '"id" field no exists on item!');
-					}
-
-					id = items[i].json.id!.toString();
-				} else {
-					id = this.getNodeParameter('id', i) as string;
-				}
+				id = this.getNodeParameter('id', i) as string;
 
 				rows.push(id);
 
@@ -675,7 +661,7 @@ export class Airtable implements INodeType {
 			const rows: IDataObject[] = [];
 			const bulk: boolean = this.getNodeParameter('bulk', 0) as boolean;
 			const bulkSize: number = bulk ? this.getNodeParameter('bulkSize', 0) as number : 1;
-			
+
 			for (let i = 0; i < items.length; i++) {
 				updateAllFields = this.getNodeParameter('updateAllFields', i) as boolean;
 				options = this.getNodeParameter('options', i, {}) as IDataObject;
@@ -706,14 +692,7 @@ export class Airtable implements INodeType {
 					}
 				}
 
-				if (bulk) {
-					if (items[i].json.id === undefined) {
-						throw new NodeOperationError(this.getNode(), '"id" field no exists on item!');
-					}
-					row.id = items[i].json.id!.toString();
-				} else {
-					row.id = this.getNodeParameter('id', i) as string;
-				}
+				row.id = this.getNodeParameter('id', i) as string;
 
 				rows.push(row);
 
@@ -726,11 +705,11 @@ export class Airtable implements INodeType {
 					// functionality in core should make it easy to make requests
 					// according to specific rules like not more than 5 requests
 					// per seconds.
-	
+
 					const data = { records: rows, typecast: (options.typecast) ? true : false };
-	
+
 					responseData = await apiRequest.call(this, requestMethod, endpoint, data, qs);
-	
+
 					returnData.push(...responseData.records);
 
 					// empty rows
