@@ -18,6 +18,10 @@ export class Mqtt implements ICredentialType {
 					value: 'mqtt',
 				},
 				{
+					name: 'mqtts',
+					value: 'mqtts',
+				},
+				{
 					name: 'ws',
 					value: 'ws',
 				},
