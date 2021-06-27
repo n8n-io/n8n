@@ -32,7 +32,7 @@ export class CoinGecko implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'CoinGecko',
 		name: 'coinGecko',
-		icon: 'file:coinGecko.png',
+		icon: 'file:coinGecko.svg',
 		group: ['output'],
 		version: 1,
 		description: 'Consume CoinGecko API',

@@ -749,7 +749,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				return workflow.getStaticData(type, node);
 			},
 			prepareOutputData: NodeHelpers.prepareOutputData,
-			sendMessageToUI(message: string): void {
+			sendMessageToUI(message: any): void { // tslint:disable-line:no-any
 				if (mode !== 'manual') {
 					return;
 				}

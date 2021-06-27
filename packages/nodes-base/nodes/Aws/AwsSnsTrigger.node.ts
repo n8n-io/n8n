@@ -26,7 +26,7 @@ export class AwsSnsTrigger implements INodeType {
 		displayName: 'AWS SNS Trigger',
 		subtitle: `={{$parameter["topic"].split(':')[5]}}`,
 		name: 'awsSnsTrigger',
-		icon: 'file:sns.png',
+		icon: 'file:sns.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle AWS SNS events via webhooks',

@@ -20,7 +20,7 @@ export class StripeTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Stripe Trigger',
 		name: 'stripeTrigger',
-		icon: 'file:stripe.png',
+		icon: 'file:stripe.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Stripe events via webhooks',
