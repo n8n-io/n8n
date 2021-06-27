@@ -95,7 +95,16 @@ export function executeQueryQueue(
  */
 export function extractValues(item: IDataObject): string {
 	return `(${Object.values(item as any) // tslint:disable-line:no-any
-		.map(val => (typeof val === 'string' ? `'${val}'` : val)) // maybe other types such as dates have to be handled as well
+		.map(val => {
+			//the column cannot be found in the input
+			//so, set it to null in the sql query
+			if (val === null) {
+				return 'NULL';
+			} else if (typeof val === 'string') {
+				return `'${val.replace(/'/g, '\'\'')}'`;
+			}
+			return val;
+		}) // maybe other types such as dates have to be handled as well
 		.join(',')})`;
 }
 
