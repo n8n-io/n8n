@@ -1,9 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { ICredentialDataDecryptedObject } from '../../../../workflow/dist/src';
-import { getArrayFromNodeParameter } from '../GenericFunctions';
 import { IssueOperation, IssueProperty } from './IssueConfiguration';
-import { addLabelsToIssue, removeLabelOfIssue } from './IssueRequests';
-import { updateLabelsOfIssue } from './IssueActions';
+import { operationAddLabels, operationRemoveLabel, operationUpdateLabels } from './IssueOperations';
 
 export async function orchestrateIssueOperation(
   this: IExecuteFunctions,
@@ -15,22 +13,10 @@ export async function orchestrateIssueOperation(
   const issueNumber = this.getNodeParameter(IssueProperty.Number, 0) as number;
 
   if (operation === IssueOperation.UpdateLabels) {
-    const labelsToAdd = getArrayFromNodeParameter.call(this, IssueProperty.LabelsToAdd, 0);
-    const labelsToRemove = getArrayFromNodeParameter.call(this, IssueProperty.LabelsToRemove, 0);
-
-    await updateLabelsOfIssue.call(
-      this,
-      credentials,
-      owner,
-      repository,
-      issueNumber,
-      labelsToAdd,
-      labelsToRemove);
+    return await operationUpdateLabels.call(this, credentials, owner, repository, issueNumber);
   } else if (operation === IssueOperation.AddLabels) {
-    const labelsToAdd = getArrayFromNodeParameter.call(this, IssueProperty.LabelsToAdd, 0);
-    await addLabelsToIssue.call(this, credentials, owner, repository, issueNumber, labelsToAdd);
+    return await operationAddLabels.call(this, credentials, owner, repository, issueNumber);
   } else if (operation === IssueOperation.RemoveLabel) {
-    const labelToRemove = this.getNodeParameter(IssueProperty.LabelToRemove, 0) as string;
-    await removeLabelOfIssue.call(this, credentials, owner, repository, issueNumber, labelToRemove);
+    return await operationRemoveLabel.call(this, credentials, owner, repository, issueNumber);
   }
 }

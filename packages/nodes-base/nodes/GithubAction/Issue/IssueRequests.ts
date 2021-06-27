@@ -1,6 +1,6 @@
 import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 import { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { githubRequest } from '../GenericFunctions';
+import { githubRequest } from '../Common/GenericFunctions';
 import { HttpMethod } from '../Common/HttpMethod';
 
 export async function getLabelsOfIssue(

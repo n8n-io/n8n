@@ -1,7 +1,7 @@
 import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 import { ICredentialDataDecryptedObject } from '../../../../workflow/dist/src';
 import { HttpMethod } from '../Common/HttpMethod';
-import { githubRequest } from '../GenericFunctions';
+import { githubRequest } from '../Common/GenericFunctions';
 import { ProjectMovePosition } from './ProjectConfiguration';
 
 export async function getOrganizationProjects(

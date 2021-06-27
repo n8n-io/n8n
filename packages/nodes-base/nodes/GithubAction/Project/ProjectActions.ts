@@ -1,4 +1,3 @@
-import { response } from 'express';
 import { IHookFunctions, IExecuteFunctions } from 'n8n-core';
 import { ICredentialDataDecryptedObject } from '../../../../workflow/dist/src';
 import { IIssue } from '../Issue/IssueEntities';
