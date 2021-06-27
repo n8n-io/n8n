@@ -18,6 +18,11 @@
 		],
 		"generic": [
 			{
+				"label": "5 tasks you can automate with the new Notion API ",
+				"icon": "⚡️",
+				"url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/"
+			},
+			{
 				"label": "Hey founders! Your business doesn't need you to operate",
 				"icon": " 🖥️",
 				"url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/"
