@@ -66,6 +66,11 @@ const ProjectDisplayOptions = {
     [Property.Resource]: [
       Resource.Project
     ]
+  },
+  hide: {
+    [Property.Resource]: [
+      Resource.Issue
+    ]
   }
 }
 

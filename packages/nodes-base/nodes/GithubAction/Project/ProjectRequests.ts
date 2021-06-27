@@ -1,11 +1,8 @@
-import {
-  IExecuteFunctions,
-  IHookFunctions
-} from 'n8n-core';
-import { ICredentialDataDecryptedObject, IDataObject } from '../../../../workflow/dist/src';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import { ICredentialDataDecryptedObject } from '../../../../workflow/dist/src';
+import { HttpMethod } from '../Common/HttpMethod';
 import { githubRequest } from '../GenericFunctions';
-import { ApiMethod } from '../Types';
-import { ProjectMovePosition } from './ConfigProject';
+import { ProjectMovePosition } from './ProjectConfiguration';
 
 export async function getOrganizationProjects(
   this: IHookFunctions | IExecuteFunctions,
@@ -13,7 +10,7 @@ export async function getOrganizationProjects(
   owner: string
 ): Promise<any> {
   const endpoint = `/orgs/${owner}/projects`;
-  return await githubRequest.call(this, credentials, ApiMethod.GET, endpoint, {});
+  return await githubRequest.call(this, credentials, HttpMethod.GET, endpoint, {});
 }
 
 export async function getRepositoryProjects(
@@ -23,7 +20,7 @@ export async function getRepositoryProjects(
   repository: string
 ): Promise<any> {
   const endpoint = `/repos/${owner}/${repository}/projects`;
-  return await githubRequest.call(this, credentials, ApiMethod.GET, endpoint, {});
+  return await githubRequest.call(this, credentials, HttpMethod.GET, endpoint, {});
 }
 
 export async function getUserProjects(
@@ -32,7 +29,7 @@ export async function getUserProjects(
   user: string,
 ): Promise<any> {
   const endpoint = `/users/${user}/projects`;
-  return await githubRequest.call(this, credentials, ApiMethod.GET, endpoint, {});
+  return await githubRequest.call(this, credentials, HttpMethod.GET, endpoint, {});
 }
 
 export async function getColumns(
@@ -41,7 +38,7 @@ export async function getColumns(
   projectId: number
 ) : Promise<any> {
   const endpoint = `/projects/${projectId}/columns`;
-  return await githubRequest.call(this, credentials, ApiMethod.GET, endpoint, {});
+  return await githubRequest.call(this, credentials, HttpMethod.GET, endpoint, {});
 }
 
 export async function getCardsOfColumn(
@@ -50,7 +47,7 @@ export async function getCardsOfColumn(
   columnId: number
 ) : Promise<any> {
   const endpoint = `/projects/columns/${columnId}/cards`;
-  return await githubRequest.call(this, credentials, ApiMethod.GET, endpoint, {});
+  return await githubRequest.call(this, credentials, HttpMethod.GET, endpoint, {});
 }
 
 export async function createCard(
@@ -64,7 +61,7 @@ export async function createCard(
     'content_type': 'Issue',
     'content_id': contentId
   }
-  return await githubRequest.call(this, credentials, ApiMethod.POST, endpoint, body);
+  return await githubRequest.call(this, credentials, HttpMethod.POST, endpoint, body);
 }
 
 export async function moveCard(
@@ -79,5 +76,5 @@ export async function moveCard(
     'position': position,
     'column_id': columnId
   }
-  return await githubRequest.call(this, credentials, ApiMethod.POST, endpoint, body);
+  return await githubRequest.call(this, credentials, HttpMethod.POST, endpoint, body);
 }

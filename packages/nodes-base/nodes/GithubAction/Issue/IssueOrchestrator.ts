@@ -1,7 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { ICredentialDataDecryptedObject } from '../../../../workflow/dist/src';
 import { getArrayFromNodeParameter } from '../GenericFunctions';
-import { IssueOperation, IssueProperty } from './ConfigIssue';
+import { IssueOperation, IssueProperty } from './IssueConfiguration';
 import { addLabelsToIssue, removeLabelOfIssue } from './IssueRequests';
 import { updateLabelsOfIssue } from './IssueActions';
 

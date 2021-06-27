@@ -1,13 +1,7 @@
-import {
-  IExecuteFunctions,
-  IHookFunctions
-} from 'n8n-core';
-import {
-  ICredentialDataDecryptedObject,
-  IDataObject,
-} from 'n8n-workflow';
-import { ApiMethod } from '../Types';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { githubRequest } from '../GenericFunctions';
+import { HttpMethod } from '../Common/HttpMethod';
 
 export async function getLabelsOfIssue(
   this: IHookFunctions | IExecuteFunctions,
@@ -17,7 +11,7 @@ export async function getLabelsOfIssue(
   issue_number: number
 ): Promise<any> {
   const endpoint = `/repos/${owner}/${repository}/issues/${issue_number}/labels`;
-  return await githubRequest.call(this, credentials, ApiMethod.GET, endpoint, {});
+  return await githubRequest.call(this, credentials, HttpMethod.GET, endpoint, {});
 }
 
 export async function setLabelsOfIssue(
@@ -29,7 +23,7 @@ export async function setLabelsOfIssue(
   labels: string[]
 ): Promise<any> {
   const endpoint = `/repos/${owner}/${repository}/issues/${issue_number}/labels`;
-  return await githubRequest.call(this, credentials, ApiMethod.PUT, endpoint, labels);
+  return await githubRequest.call(this, credentials, HttpMethod.PUT, endpoint, labels);
 }
 
 export async function addLabelsToIssue(
@@ -41,7 +35,7 @@ export async function addLabelsToIssue(
   labelsToAdd: string[],
 ): Promise<any> {
   const endpoint = `/repos/${owner}/${repository}/issues/${issue_number}/labels`;
-  return await githubRequest.call(this, credentials, ApiMethod.POST, endpoint, labelsToAdd);
+  return await githubRequest.call(this, credentials, HttpMethod.POST, endpoint, labelsToAdd);
 }
 
 export async function removeLabelOfIssue(
@@ -53,7 +47,7 @@ export async function removeLabelOfIssue(
   labelToRemove: string,
 ): Promise<any> {
   const endpoint = `/repos/${owner}/${repository}/issues/${issue_number}/labels/${labelToRemove}`
-  return await githubRequest.call(this, credentials, ApiMethod.DELETE, endpoint, {});
+  return await githubRequest.call(this, credentials, HttpMethod.DELETE, endpoint, {});
 }
 
 export async function getIssue(
@@ -64,5 +58,5 @@ export async function getIssue(
   issueNumber: number
 ): Promise<any> {
   const endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}`;
-  return await githubRequest.call(this, credentials, ApiMethod.GET, endpoint, {});
+  return await githubRequest.call(this, credentials, HttpMethod.GET, endpoint, {});
 }

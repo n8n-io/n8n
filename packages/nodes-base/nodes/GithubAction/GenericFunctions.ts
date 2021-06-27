@@ -1,18 +1,9 @@
 import { OptionsWithUri } from 'request';
-
-import {
-  IExecuteFunctions,
-  IHookFunctions
-} from 'n8n-core';
-
-import {
-  ICredentialDataDecryptedObject,
-  IDataObject,
-  NodeApiError,
-} from 'n8n-workflow';
-
-import { IValueData, ApiMethod } from './Types';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import { ICredentialDataDecryptedObject, IDataObject, NodeApiError } from 'n8n-workflow';
 import * as _ from 'lodash';
+import { IValueData } from './Common/Interfaces';
+import { HttpMethod } from './Common/HttpMethod';
 
 export function getArrayFromNodeParameter(
   this: IExecuteFunctions,
@@ -42,7 +33,7 @@ export function getArrayFromNodeParameter(
  export async function githubRequest(
    this: IHookFunctions | IExecuteFunctions,
    credentials: ICredentialDataDecryptedObject,
-   method: ApiMethod,
+   method: HttpMethod,
    endpoint: string,
    body: object,
    query?: object,

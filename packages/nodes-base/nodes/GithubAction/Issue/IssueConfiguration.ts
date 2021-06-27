@@ -47,6 +47,11 @@ const IssueDisplayOptions = {
     [Property.Resource]: [
       Resource.Issue
     ]
+  },
+  hide: {
+    [Property.Resource]: [
+      Resource.Project
+    ]
   }
 }
 

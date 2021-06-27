@@ -9,9 +9,9 @@ import {
 } from 'n8n-workflow';
 import { Property, Resource } from './Common/Enums';
 import { ConfigCredentials } from './Credentials/ConfigCredentials';
-import { IssueConfiguration } from './Issue/ConfigIssue';
+import { IssueConfiguration } from './Issue/IssueConfiguration';
 import { orchestrateIssueOperation } from './Issue/IssueOrchestrator';
-import { ProjectConfiguration } from './Project/ConfigProject';
+import { ProjectConfiguration } from './Project/ProjectConfiguration';
 import { orchestrateProjectOperation } from './Project/ProjectOrchestrator';
 import { ConfigResource } from './Common/ConfigResource';
 
