@@ -122,6 +122,13 @@ export class KafkaTrigger implements INodeType {
 						default: 30000,
 						description: 'The time to await a response in ms.',
 					},
+					{
+						displayName: 'Return headers',
+						name: 'returnHeaders',
+						type: 'boolean',
+						default: false,
+						description: 'Return the headers received from Kafka',
+					},
 				],
 			},
 		],
@@ -197,6 +204,16 @@ export class KafkaTrigger implements INodeType {
 						try {
 							value = await registry.decode(message.value as Buffer);
 						} catch (error) { }
+					}
+
+					if (options.returnHeaders) {
+						const headers: {[key: string]: string} = {};
+						for (const key in message.headers) {
+							const header = message.headers[key];
+							headers[key] = header?.toString('utf8') || '';
+						}
+
+						data.headers = headers;
 					}
 
 					data.message = value;
