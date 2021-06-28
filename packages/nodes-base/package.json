@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.122.0",
+  "version": "0.123.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -27,6 +27,7 @@
   ],
   "n8n": {
     "credentials": [
+      "dist/credentials/ActionNetworkApi.credentials.js",
       "dist/credentials/ActiveCampaignApi.credentials.js",
       "dist/credentials/AgileCrmApi.credentials.js",
       "dist/credentials/AcuitySchedulingApi.credentials.js",
@@ -100,6 +101,7 @@
       "dist/credentials/GoogleBooksOAuth2Api.credentials.js",
       "dist/credentials/GoogleCalendarOAuth2Api.credentials.js",
       "dist/credentials/GoogleContactsOAuth2Api.credentials.js",
+      "dist/credentials/GoogleDocsOAuth2Api.credentials.js",
       "dist/credentials/GoogleCloudNaturalLanguageOAuth2Api.credentials.js",
       "dist/credentials/GoogleDriveOAuth2Api.credentials.js",
       "dist/credentials/GoogleFirebaseCloudFirestoreOAuth2Api.credentials.js",
@@ -281,6 +283,7 @@
       "dist/credentials/ZulipApi.credentials.js"
     ],
     "nodes": [
+      "dist/nodes/ActionNetwork/ActionNetwork.node.js",
       "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
       "dist/nodes/ActiveCampaign/ActiveCampaignTrigger.node.js",
       "dist/nodes/AgileCrm/AgileCrm.node.js",
@@ -381,6 +384,7 @@
       "dist/nodes/Google/Calendar/GoogleCalendar.node.js",
       "dist/nodes/Google/CloudNaturalLanguage/GoogleCloudNaturalLanguage.node.js",
       "dist/nodes/Google/Contacts/GoogleContacts.node.js",
+      "dist/nodes/Google/Docs/GoogleDocs.node.js",
       "dist/nodes/Google/Drive/GoogleDrive.node.js",
       "dist/nodes/Google/Firebase/CloudFirestore/CloudFirestore.node.js",
       "dist/nodes/Google/Firebase/RealtimeDatabase/RealtimeDatabase.node.js",
@@ -463,6 +467,8 @@
       "dist/nodes/NoOp.node.js",
       "dist/nodes/Notion/Notion.node.js",
       "dist/nodes/Notion/NotionTrigger.node.js",
+      "dist/nodes/N8nTrainingCustomerDatastore.node.js",
+      "dist/nodes/N8nTrainingCustomerMessenger.node.js",
       "dist/nodes/OpenThesaurus/OpenThesaurus.node.js",
       "dist/nodes/OpenWeatherMap.node.js",
       "dist/nodes/Orbit/Orbit.node.js",
