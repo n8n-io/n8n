@@ -349,6 +349,7 @@ export default mixins(
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'add_node_button' });
 			},
 			async openExecution (executionId: string) {
+				this.resetWorkspace();
 
 				let data: IExecutionResponse | undefined;
 				try {
@@ -368,6 +369,10 @@ export default mixins(
 				this.$store.commit('setWorkflowExecutionData', data);
 
 				await this.addNodes(JSON.parse(JSON.stringify(data.workflowData.nodes)), JSON.parse(JSON.stringify(data.workflowData.connections)));
+				this.$nextTick(() => {
+					this.zoomToFit();
+					this.$store.commit('setStateDirty', false);
+				});
 
 				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
 			},
@@ -823,6 +828,10 @@ export default mixins(
 
 			zoomToFit () {
 				const nodes = this.$store.getters.allNodes as INodeUi[];
+
+				if (nodes.length === 0) { // some unknown workflow executions
+					return;
+				}
 
 				const {minX, minY, maxX, maxY} = getWorkflowCorners(nodes);
 

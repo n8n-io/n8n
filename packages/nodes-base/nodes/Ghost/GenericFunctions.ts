@@ -70,16 +70,15 @@ export async function ghostApiRequestAllItems(this: IHookFunctions | IExecuteFun
 
 	let responseData;
 
-	query.limit = 20;
-
-	let uri: string | undefined;
+	query.limit = 50;
+	query.page = 1;
 
 	do {
-		responseData = await ghostApiRequest.call(this, method, endpoint, body, query, uri);
-		uri = responseData.meta.pagination.next;
+		responseData = await ghostApiRequest.call(this, method, endpoint, body, query);
+		query.page = responseData.meta.pagination.next;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
-		responseData.meta.pagination.next !== null
+		query.page !== null
 	);
 	return returnData;
 }
