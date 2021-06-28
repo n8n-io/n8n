@@ -24,7 +24,7 @@
 			<el-row class="parameter-wrapper">
 				<el-col :span="6" class="parameter-name">
 					{{ $translateCredentialsPropertyName(parameter, credentialsParams) }}:
-					<el-tooltip placement="top" class="parameter-info" v-if="$translateCredentialsPropertyDescription(parameter, credentialsParams)" effect="light">
+					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
 						<div slot="content" v-html="$translateCredentialsPropertyDescription(parameter, credentialsParams)"></div>
 						<font-awesome-icon icon="question-circle"/>
 					</el-tooltip>

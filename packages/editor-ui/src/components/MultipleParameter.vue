@@ -3,7 +3,7 @@
 
 		<div class="parameter-name">
 			{{ $translateNodeParameterName(parameter) }}:
-			<el-tooltip class="parameter-info" placement="top" v-if="$translateDescription(parameter)" effect="light">
+			<el-tooltip class="parameter-info" placement="top" v-if="parameter.description" effect="light">
 				<div slot="content" v-html="$translateDescription(parameter)"></div>
 				<font-awesome-icon icon="question-circle" />
 			</el-tooltip>

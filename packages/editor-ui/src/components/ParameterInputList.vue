@@ -28,7 +28,7 @@
 						/>
 					</div>
 					{{ $translateNodeParameterName(parameter) }}:
-					<el-tooltip placement="top" class="parameter-info" v-if="$translateDescription(parameter)" effect="light">
+					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
 						<div slot="content" v-html="$translateDescription(parameter)"></div>
 						<font-awesome-icon icon="question-circle"/>
 					</el-tooltip>
