@@ -9,7 +9,7 @@ export const operationFields = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'ID of the table to operate on. Found as part of the table URL: <code>https://baserow.io/database/{databaseId}/table/{tableId}</code>',
+		description: 'ID of the table to operate on. Found as part of the table URL:<br><code>https://baserow.io/database/{databaseId}/table/{tableId}</code><br>You can also enter the full URL.',
 	},
 	// ----------------------------------
 	//               get

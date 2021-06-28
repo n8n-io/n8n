@@ -13,6 +13,7 @@ import {
 import {
 	baserowApiRequest,
 	baserowApiRequestAllItems,
+	extractTableIdFromUrl,
 	TableFieldMapper,
 } from './GenericFunctions';
 
@@ -83,7 +84,9 @@ export class Baserow implements INodeType {
 	methods = {
 		loadOptions: {
 			async getTableFields(this: ILoadOptionsFunctions) {
-				const tableId = this.getNodeParameter('tableId', 0) as string;
+				const tableIdOrUrl = this.getNodeParameter('tableId', 0) as string;
+				const tableId = extractTableIdFromUrl(tableIdOrUrl);
+
 				const endpoint = `/api/database/fields/table/${tableId}/`;
 
 				const fields = await baserowApiRequest.call(this, 'GET', endpoint) as TableField[];
@@ -99,7 +102,8 @@ export class Baserow implements INodeType {
 		const returnData: IDataObject[] = [];
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		const tableId = this.getNodeParameter('tableId', 0) as string;
+		const tableIdOrUrl = this.getNodeParameter('tableId', 0) as string;
+		const tableId = extractTableIdFromUrl(tableIdOrUrl);
 
 		const { disableAutoMapping } = this.getNodeParameter('additionalOptions', 0) as { disableAutoMapping: boolean };
 

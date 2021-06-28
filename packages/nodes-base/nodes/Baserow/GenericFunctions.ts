@@ -104,6 +104,15 @@ export async function baserowApiRequestAllItems(
 	return returnData;
 }
 
+export function extractTableIdFromUrl(url: string) {
+	if (url.includes('/table/')) {
+		const match = url.split('/table/').pop()?.match(/\d+/);
+		if (match?.length === 1) return match[0];
+	}
+
+	return url;
+}
+
 
 /**
  * Get a JWT token based on Baserow account username and password.
