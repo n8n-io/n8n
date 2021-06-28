@@ -41,6 +41,11 @@ export const fileOperations = [
 				description: 'Search files',
 			},
 			{
+				name: 'Share',
+				value: 'share',
+				description: 'Share a file',
+			},
+			{
 				name: 'Upload',
 				value: 'upload',
 				description: 'Upload a file',
@@ -495,7 +500,233 @@ export const fileFields = [
 			},
 		],
 	},
-
+	/* -------------------------------------------------------------------------- */
+	/*                                 file:share                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'File ID',
+		name: 'fileId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+			},
+		},
+		default: '',
+		description: 'The ID of the file to share.',
+	},
+	{
+		displayName: 'Accessible By',
+		name: 'accessibleBy',
+		type: 'options',
+		options: [
+			{
+				name: 'User',
+				value: 'user',
+			},
+			{
+				name: 'Group',
+				value: 'group',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+			},
+		},
+		default: '',
+		description: 'The type of object the file will be shared with.',
+	},
+	{
+		displayName: 'Use Email',
+		name: 'useEmail',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+				accessibleBy: [
+					'user',
+				],
+			},
+		},
+		default: '',
+		description: 'Whether identify the user by email or ID.',
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+				useEmail: [
+					true,
+				],
+				accessibleBy: [
+					'user',
+				],
+			},
+		},
+		default: '',
+		description: `The user's email address to share the file with.`,
+	},
+	{
+		displayName: 'User ID',
+		name: 'userId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+				useEmail: [
+					false,
+				],
+				accessibleBy: [
+					'user',
+				],
+			},
+		},
+		default: '',
+		description: `The user's ID to share the file with.`,
+	},
+	{
+		displayName: 'Group ID',
+		name: 'groupId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+				accessibleBy: [
+					'group',
+				],
+			},
+		},
+		default: '',
+		description: `The group's ID to share the file with.`,
+	},
+	{
+		displayName: 'Role',
+		name: 'role',
+		type: 'options',
+		options: [
+			{
+				name: 'Editor',
+				value: 'editor',
+			},
+			{
+				name: 'Viewer',
+				value: 'viewer',
+			},
+			{
+				name: 'Previewer',
+				value: 'previewer',
+			},
+			{
+				name: 'Uploader',
+				value: 'uploader',
+			},
+			{
+				name: 'Previewer Uploader',
+				value: 'previewerUploader',
+			},
+			{
+				name: 'Viewer Uploader',
+				value: 'viewerUploader',
+			},
+			{
+				name: 'coOwner',
+				value: 'coOwner',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+			},
+		},
+		default: '',
+		description: 'The level of access granted.',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		displayOptions: {
+			show: {
+				operation: [
+					'share',
+				],
+				resource: [
+					'file',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Can View Path',
+				name: 'can_view_path',
+				type: 'boolean',
+				default: false,
+				description: 'Determines if the invited users can see the entire parent path to the associated folder. The user will not gain privileges in any parent folder and therefore can not see content the user is not collaborated on.',
+			},
+			{
+				displayName: 'Expires At',
+				name: 'expires_at',
+				type: 'dateTime',
+				default: '',
+				description: 'Set the expiration date for the collaboration. At this date, the collaboration will be automatically removed from the item.',
+			},
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				default: '',
+				description: 'A comma-separated list of attributes to include in the response. This can be used to request fields that are not normally returned in a standard response.',
+			},
+			{
+				displayName: 'Notify',
+				name: 'notify',
+				type: 'boolean',
+				default: false,
+				description: 'Determines if users should receive email notification for the action performed.',
+			},
+		],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 file:upload                                */
 	/* -------------------------------------------------------------------------- */
