@@ -4,7 +4,7 @@
 			<div>
 				<el-row>
 					<el-col :span="8" class="info-name">
-						{{ $translateBase('about.n8nVersion') }}:
+						{{ $translateBase('about.n8nVersion', { colon: true }) }}
 					</el-col>
 					<el-col :span="16">
 						{{versionCli}}
@@ -12,7 +12,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="8" class="info-name">
-						{{ $translateBase('about.sourceCode') }}:
+						{{ $translateBase('about.sourceCode', { colon: true }) }}
 					</el-col>
 					<el-col :span="16">
 						<a href="https://github.com/n8n-io/n8n" target="_blank">https://github.com/n8n-io/n8n</a>
@@ -20,7 +20,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="8" class="info-name">
-						{{ $translateBase('about.license') }}:
+						{{ $translateBase('about.license', { colon: true }) }}
 					</el-col>
 					<el-col :span="16">
 						<a href="https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md" target="_blank">

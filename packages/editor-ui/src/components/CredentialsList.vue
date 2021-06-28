@@ -4,7 +4,7 @@
 
 		<el-dialog :visible="dialogVisible" append-to-body width="80%" :title="$translateBase('credentialsList.yourSavedCredentials')" :before-close="closeDialog">
 			<div class="text-very-light">
-				{{ $translateBase('credentialsList.yourSavedCredentials') }}:
+				{{ $translateBase('credentialsList.yourSavedCredentials', { colon: true }) }}
 			</div>
 
 			<el-button :title="$translateBase('credentialsList.createNewCredentials')" class="new-credentials-button" @click="createCredential()">

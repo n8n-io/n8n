@@ -62,7 +62,7 @@
 		<PushConnectionTracker class="actions">
 			<template>
 				<span class="activator">
-					<span>{{ $translateBase('workflowDetails.active') }}:</span>
+					<span>{{ $translateBase('workflowDetails.active', { colon: true }) }}</span>
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" :disabled="!currentWorkflowId"/>
 				</span>
 				<SaveWorkflowButton />

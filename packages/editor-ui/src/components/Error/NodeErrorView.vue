@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<div class="error-header">
-			<div class="error-message">{{ $translateBase('nodeErrorView.error') }}: {{error.message}}</div>
+			<div class="error-message">{{ $translateBase('nodeErrorView.error', { colon: true }) }} {{error.message}}</div>
 			<div class="error-description" v-if="error.description">{{error.description}}</div>
 		</div>
 		<details>

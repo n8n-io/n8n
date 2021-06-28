@@ -38,7 +38,7 @@
 
 			<div class="selection-options">
 				<span v-if="checkAll === true || isIndeterminate === true">
-					{{ $translateBase('executionsList.selected') }}: {{numSelected}}/{{finishedExecutionsCount}}
+					{{ $translateBase('executionsList.selected', { colon: true }) }} {{numSelected}}/{{finishedExecutionsCount}}
 					<el-button type="danger" title="Delete Selected" icon="el-icon-delete" size="mini" @click="handleDeleteSelected" circle></el-button>
 				</span>
 			</div>

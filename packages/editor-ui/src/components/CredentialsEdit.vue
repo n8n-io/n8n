@@ -27,7 +27,7 @@
 			<div class="credential-type-item">
 				<el-row v-if="!setCredentialType">
 					<el-col :span="6">
-						{{ $translateBase('credentialsEdit.credentialType') }}:
+						{{ $translateBase('credentialsEdit.credentialType', { colon: true }) }}
 					</el-col>
 					<el-col :span="18">
 						<el-select v-model="credentialType" filterable placeholder="Select Type" size="small" ref="credentialsDropdown">

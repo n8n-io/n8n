@@ -4,7 +4,7 @@
 			<div v-loading="isLoading">
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $translateBase('workflowSettings.errorWorkflow') }}:
+						{{ $translateBase('workflowSettings.errorWorkflow', { colon: true }) }}
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.errorWorkflow"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -23,7 +23,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $translateBase('workflowSettings.timezone') }}:
+						{{ $translateBase('workflowSettings.timezone', { colon: true }) }}
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.timezone"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -42,7 +42,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $translateBase('workflowSettings.saveDataErrorExecution') }}:
+						{{ $translateBase('workflowSettings.saveDataErrorExecution', { colon: true }) }}
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.saveDataErrorExecution"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -99,7 +99,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $translateBase('workflowSettings.saveExecutionProgress') }}:
+						{{ $translateBase('workflowSettings.saveExecutionProgress', { colon: true }) }}
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.saveExecutionProgress"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -118,7 +118,7 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						{{ $translateBase('workflowSettings.timeoutWorkflow') }}:
+						{{ $translateBase('workflowSettings.timeoutWorkflow', { colon: true }) }}
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.executionTimeoutToggle"></div>
 							<font-awesome-icon icon="question-circle" />
@@ -134,7 +134,7 @@
 				<div v-if="workflowSettings.executionTimeout > -1">
 					<el-row>
 						<el-col :span="10" class="setting-name">
-							{{ $translateBase('workflowSettings.timeoutAfter') }}:
+							{{ $translateBase('workflowSettings.timeoutAfter', { colon: true }) }}
 							<el-tooltip class="setting-info" placement="top" effect="light">
 								<div slot="content" v-html="helpTexts.executionTimeout"></div>
 								<font-awesome-icon icon="question-circle" />

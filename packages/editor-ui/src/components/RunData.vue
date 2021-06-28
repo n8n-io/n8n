@@ -20,9 +20,9 @@
 		<div class="header">
 			<div class="title-text">
 				<strong v-if="dataCount < maxDisplayItems">
-					{{ $translateBase('runData.items') }}: {{ dataCount }}
+					{{ $translateBase('runData.items', { colon: true }) }} {{ dataCount }}
 				</strong>
-				<strong v-else>{{ $translateBase('runData.items') }}:
+				<strong v-else>{{ $translateBase('runData.items', { colon: true }) }}
 					<el-select v-model="maxDisplayItems" @click.stop>
 						<el-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
 					</el-select>&nbsp;/
@@ -35,19 +35,19 @@
 					width="400"
 					trigger="hover"
 				>
-					<strong>{{ $translateBase('runData.startTime') }}:</strong> {{runMetadata.startTime}}<br/>
-					<strong>{{ $translateBase('runData.executionTime') }}:</strong> {{runMetadata.executionTime}} {{ $translateBase('runData.ms') }}
+					<strong>{{ $translateBase('runData.startTime', { colon: true }) }}</strong> {{runMetadata.startTime}}<br/>
+					<strong>{{ $translateBase('runData.executionTime', { colon: true }) }}</strong> {{runMetadata.executionTime}} {{ $translateBase('runData.ms') }}
 					<font-awesome-icon icon="info-circle" class="primary-color" slot="reference" />
 				</el-popover>
 				<span v-if="maxOutputIndex > 0">
-					| {{ $translateBase('runData.output') }}:
+					| {{ $translateBase('runData.output', { colon: true }) }}
 					<el-select v-model="outputIndex" @click.stop>
 						<el-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
 						</el-option>
 					</el-select>
 				</span>
 				<span v-if="maxRunIndex > 0">
-					| {{ $translateBase('runData.dataOfExecution') }}:
+					| {{ $translateBase('runData.dataOfExecution', { colon: true }) }}
 					<el-select v-model="runIndex" @click.stop>
 						<el-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
 						</el-option>
@@ -150,11 +150,11 @@
 												{{key}}
 											</div>
 											<div v-if="binaryData.fileName">
-												<div class="label">{{ $translateBase('runData.fileName') }}: </div>
+												<div class="label">{{ $translateBase('runData.fileName', { colon: true }) }} </div>
 												<div class="value">{{binaryData.fileName}}</div>
 											</div>
 											<div v-if="binaryData.directory">
-												<div class="label">{{ $translateBase('runData.fileExtension') }}: </div>
+												<div class="label">{{ $translateBase('runData.fileExtension', { colon: true }) }} </div>
 												<div class="value">{{binaryData.directory}}</div>
 											</div>
 											<div v-if="binaryData.fileExtension">
@@ -162,7 +162,7 @@
 												<div class="value">{{binaryData.fileExtension}}</div>
 											</div>
 											<div v-if="binaryData.mimeType">
-												<div class="label">{{ $translateBase('runData.mimeType') }}: </div>
+												<div class="label">{{ $translateBase('runData.mimeType', { colon: true }) }} </div>
 												<div class="value">{{binaryData.mimeType}}</div>
 											</div>
 

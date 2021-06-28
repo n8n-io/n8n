@@ -2,7 +2,7 @@
 	<div @keydown.stop class="credentials-input-wrapper">
 		<el-row>
 			<el-col :span="6" class="headline-regular">
-				{{ $translateBase('credentialsInput.credentialsName') }}:
+				{{ $translateBase('credentialsInput.credentialsName', { colon: true }) }}
 				<el-tooltip class="credentials-info" placement="top" effect="light">
 					<div slot="content" v-html="helpTexts.credentialsName"></div>
 					<font-awesome-icon icon="question-circle" />
@@ -14,7 +14,7 @@
 		</el-row>
 		<br />
 		<div class="headline" v-if="credentialProperties.length">
-			{{ $translateBase('credentialsInput.credentialData') }}:
+			{{ $translateBase('credentialsInput.credentialData', { colon: true }) }}
 			<el-tooltip class="credentials-info" placement="top" effect="light">
 				<div slot="content" v-html="helpTexts.credentialsData"></div>
 				<font-awesome-icon icon="question-circle" />
