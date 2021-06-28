@@ -90,10 +90,7 @@
 						</h3>
 
 						<div class="text">
-							The node contains {{ $translateBase('runData.theNodeContains', { interpolate: { numberOfKb: parseInt(dataSize/1024).toLocaleString() } }) }} KB of data.<br />
-							Displaying it could cause problems!<br />
-							<br />
-							If you do decide to display it, avoid the JSON view!
+							{{ $translateBase('runData.theNodeContains', { interpolate: { numberOfKb: parseInt(dataSize/1024).toLocaleString() } }) }}
 						</div>
 
 						<el-button size="small" @click="displayMode = 'Table';showData = true;">
