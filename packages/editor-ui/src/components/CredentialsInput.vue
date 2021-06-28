@@ -303,13 +303,6 @@ export default mixins(
 		},
 	},
 	methods: {
-		// async loadNodeTranslations(): Promise<void> {
-		// 	const nodeInfo = await this.restApi().getNodesInformation([this.nodeTypeOfCredentials]);
-		// 	const nodeTranslations = nodeInfo[0].translation;
-
-		// 	if (nodeTranslations) addNodeTranslations(nodeTranslations);
-		// },
-
 		copyCallbackUrl (): void {
 			this.copyToClipboard(this.oAuthCallbackUrl);
 
