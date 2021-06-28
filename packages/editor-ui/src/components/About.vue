@@ -44,7 +44,6 @@ import Vue from 'vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
-import { loadLanguageAsync } from '@/i18n/i18n';
 
 import mixins from 'vue-typed-mixins';
 
