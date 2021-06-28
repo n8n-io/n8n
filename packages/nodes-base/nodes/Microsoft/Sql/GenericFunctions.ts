@@ -102,6 +102,8 @@ export function extractValues(item: IDataObject): string {
 				return 'NULL';
 			} else if (typeof val === 'string') {
 				return `'${val.replace(/'/g, '\'\'')}'`;
+			} else if (typeof val === 'boolean') {
+				return +!!val;
 			}
 			return val;
 		}) // maybe other types such as dates have to be handled as well
