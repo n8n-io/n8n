@@ -835,6 +835,11 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await handleListing.call(this, 'GET', '/leads', {}, qs);
 
+					} else if (operation === 'getFields') {
+
+						responseData = await zohoApiRequest.call(this, 'GET', '/settings/fields', {}, { module: 'leads' });
+						responseData = responseData.fields;
+
 					} else if (operation === 'update') {
 
 						// ----------------------------------------

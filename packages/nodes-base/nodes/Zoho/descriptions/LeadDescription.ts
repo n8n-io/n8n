@@ -45,6 +45,10 @@ export const leadOperations = [
 				value: 'getAll',
 			},
 			{
+				name: 'Get Fields',
+				value: 'getFields',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 			},
