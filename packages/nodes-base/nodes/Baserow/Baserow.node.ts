@@ -101,7 +101,9 @@ export class Baserow implements INodeType {
 
 		const tableId = this.getNodeParameter('tableId', 0) as string;
 
-		const mapIds = !this.getNodeParameter('additionalOptions.disableAutoMapping', 0) as boolean;
+		const { disableAutoMapping } = this.getNodeParameter('additionalOptions', 0) as { disableAutoMapping: boolean };
+
+		const mapIds = !disableAutoMapping;
 
 		if (mapIds) {
 			mapper.mapIds = mapIds;
@@ -109,120 +111,124 @@ export class Baserow implements INodeType {
 			mapper.createMappings(fields);
 		}
 
-		if (operation === 'getAll') {
+		for (let i = 0; i < items.length; i++) {
 
-			// ----------------------------------
-			//             getAll
-			// ----------------------------------
+			try {
 
-			// https://api.baserow.io/api/redoc/#operation/list_database_table_rows
+				if (operation === 'getAll') {
 
-			for (let i = 0; i < items.length; i++) {
+					// ----------------------------------
+					//             getAll
+					// ----------------------------------
 
-				const { order, filters } = this.getNodeParameter('additionalOptions', 0) as GetAllAdditionalOptions;
+					// https://api.baserow.io/api/redoc/#operation/list_database_table_rows
 
-				const qs: IDataObject = {};
+					const { order, filters } = this.getNodeParameter('additionalOptions', 0) as GetAllAdditionalOptions;
 
-				if (order?.fields) {
-					qs['order_by'] = order.fields
-						.map(({ field, direction }) => `${direction}${mapper.setField(field)}`)
-						.join(',');
+					const qs: IDataObject = {};
+
+					if (order?.fields) {
+						qs['order_by'] = order.fields
+							.map(({ field, direction }) => `${direction}${mapper.setField(field)}`)
+							.join(',');
+					}
+
+					if (filters?.fields) {
+						filters.fields.forEach(({ field, operator, value }) => {
+							qs[`filter__field_${mapper.setField(field)}__${operator}`] = value;
+						});
+					}
+
+					const endpoint = `/api/database/rows/table/${tableId}/`;
+					const rows = await baserowApiRequestAllItems.call(this, 'GET', endpoint, {}, qs) as Row[];
+
+					if (mapIds) {
+						rows.forEach(row => mapper.idsToNames(row));
+					}
+
+					returnData.push(...rows);
+
+				} else if (operation === 'get') {
+
+					// ----------------------------------
+					//             get
+					// ----------------------------------
+
+					// https://api.baserow.io/api/redoc/#operation/get_database_table_row
+
+					const rowId = this.getNodeParameter('rowId', i) as string;
+					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
+					const row = await baserowApiRequest.call(this, 'GET', endpoint);
+
+					if (mapIds) mapper.idsToNames(row);
+
+					returnData.push(row);
+
+				} else if (operation === 'create') {
+
+					// ----------------------------------
+					//             create
+					// ----------------------------------
+
+					// https://api.baserow.io/api/redoc/#operation/create_database_table_row
+
+					const body = { ...items[i].json };
+
+					if (mapIds) mapper.namesToIds(body);
+
+					const endpoint = `/api/database/rows/table/${tableId}/`;
+					const createdRow = await baserowApiRequest.call(this, 'POST', endpoint, body);
+
+					if (mapIds) mapper.idsToNames(createdRow);
+
+					returnData.push(createdRow);
+
+				} else if (operation === 'update') {
+
+					// ----------------------------------
+					//             update
+					// ----------------------------------
+
+					// https://api.baserow.io/api/redoc/#operation/update_database_table_row
+
+					const rowId = this.getNodeParameter('rowId', i) as string;
+
+					const body = { ...items[i].json };
+
+					if (mapIds) mapper.namesToIds(body);
+
+					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
+					const updatedRow = await baserowApiRequest.call(this, 'PATCH', endpoint, body);
+
+					if (mapIds) mapper.idsToNames(updatedRow);
+
+					returnData.push(updatedRow);
+
+				} else if (operation === 'delete') {
+
+					// ----------------------------------
+					//             delete
+					// ----------------------------------
+
+					// https://api.baserow.io/api/redoc/#operation/delete_database_table_row
+
+					const rowId = this.getNodeParameter('rowId', i) as string;
+
+					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
+					await baserowApiRequest.call(this, 'DELETE', endpoint);
+
+					returnData.push({ success: true });
+
 				}
 
-				if (filters?.fields) {
-					filters.fields.forEach(({ field, operator, value }) => {
-						qs[`filter__field_${mapper.setField(field)}__${operator}`] = value;
-					});
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
 				}
-
-				const endpoint = `/api/database/rows/table/${tableId}/`;
-				const rows = await baserowApiRequestAllItems.call(this, 'GET', endpoint, {}, qs) as Row[];
-
-				if (mapIds) {
-					rows.forEach(row => mapper.idsToNames(row));
-				}
-
-				returnData.push(...rows);
+				throw error;
 			}
 
-		} else if (operation === 'get') {
-
-			// ----------------------------------
-			//             get
-			// ----------------------------------
-
-			// https://api.baserow.io/api/redoc/#operation/get_database_table_row
-
-			for (let i = 0; i < items.length; i++) {
-				const rowId = this.getNodeParameter('rowId', i) as string;
-				const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
-				const row = await baserowApiRequest.call(this, 'GET', endpoint);
-
-				if (mapIds) mapper.idsToNames(row);
-
-				returnData.push(row);
-			}
-
-		} else if (operation === 'create') {
-
-			// ----------------------------------
-			//             create
-			// ----------------------------------
-
-			// https://api.baserow.io/api/redoc/#operation/create_database_table_row
-
-			for (let i = 0; i < items.length; i++) {
-				const body = { ...items[i].json };
-
-				if (mapIds) mapper.namesToIds(body);
-
-				const endpoint = `/api/database/rows/table/${tableId}/`;
-				const createdRow = await baserowApiRequest.call(this, 'POST', endpoint, body);
-
-				if (mapIds) mapper.idsToNames(createdRow);
-
-				returnData.push(createdRow);
-			}
-
-		} else if (operation === 'update') {
-
-			// ----------------------------------
-			//             update
-			// ----------------------------------
-
-			// https://api.baserow.io/api/redoc/#operation/update_database_table_row
-
-			for (let i = 0; i < items.length; i++) {
-				const rowId = this.getNodeParameter('rowId', i) as string;
-
-				const body = { ...items[i].json };
-
-				if (mapIds) mapper.namesToIds(body);
-
-				const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
-				const updatedRow = await baserowApiRequest.call(this, 'PATCH', endpoint, body);
-
-				if (mapIds) mapper.idsToNames(updatedRow);
-
-				returnData.push(updatedRow);
-			}
-
-		} else if (operation === 'delete') {
-
-			// ----------------------------------
-			//             delete
-			// ----------------------------------
-
-			// https://api.baserow.io/api/redoc/#operation/delete_database_table_row
-
-			for (let i = 0; i < items.length; i++) {
-				const rowId = this.getNodeParameter('rowId', i) as string;
-
-				const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
-				await baserowApiRequest.call(this, 'DELETE', endpoint);
-
-				returnData.push({ success: true });
-			}
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
