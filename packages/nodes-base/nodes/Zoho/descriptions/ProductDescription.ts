@@ -28,7 +28,6 @@ export const productOperations = [
 			{
 				name: 'Create or update',
 				value: 'upsert',
-				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
