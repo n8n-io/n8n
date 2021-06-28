@@ -12,6 +12,11 @@
 			}
 		]
 	},
+	"alias": [
+		"Text",
+		"Save",
+		"Export"
+	],
 	"subcategories": {
 		"Core Nodes": [
 			"Files"

@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "0.95.0",
+  "version": "0.96.0",
   "description": "Workflow Editor UI for n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -87,7 +87,7 @@
     "vue-router": "^3.0.6",
     "vue-template-compiler": "^2.5.17",
     "vue-typed-mixins": "^0.2.0",
-    "vue2-touch-events": "^2.3.2",
+    "vue2-touch-events": "^3.2.1",
     "vuex": "^3.1.1"
   }
 }

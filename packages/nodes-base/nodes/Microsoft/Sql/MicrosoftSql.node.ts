@@ -278,7 +278,6 @@ export class MicrosoftSql implements INodeType {
 							const values = insertValues
 								.map((item: IDataObject) => extractValues(item))
 								.join(',');
-
 							return pool
 								.request()
 								.query(
