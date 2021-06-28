@@ -5,7 +5,7 @@
 			element-loading-spinner="el-icon-loading"
 			:value="workflowActive"
 			@change="activeChanged"
-			:title="workflowActive?$translateBase('workflowActivator.deactivateWorkflow'):$translateBase('workflowActivator.activateWorkflow')"
+			:title="workflowActive ? $translateBase('workflowActivator.deactivateWorkflow') : $translateBase('workflowActivator.activateWorkflow')"
 			:disabled="disabled || loading"
 			:active-color="getActiveColor"
 			inactive-color="#8899AA">

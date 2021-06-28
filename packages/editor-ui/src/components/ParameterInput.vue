@@ -10,7 +10,21 @@
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
 			</div>
 
-			<el-input v-else v-model="tempValue" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="!isValueExpression && isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'': translatePlaceholder(parameter)">
+			<el-input
+				v-else
+				v-model="tempValue"
+				ref="inputField"
+				size="small"
+				:type="getStringInputType"
+				:rows="getArgument('rows')"
+				:value="displayValue"
+				:disabled="!isValueExpression && isReadOnly"
+				@change="valueChanged"
+				@keydown.stop
+				@focus="setFocus"
+				:title="displayTitle"
+				:placeholder="isValueExpression ? '' : translatePlaceholder(parameter)"
+			>
 				<font-awesome-icon v-if="!isValueExpression && !isReadOnly" slot="suffix" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
 			</el-input>
 		</div>
@@ -34,7 +48,21 @@
 
 		<div v-else-if="parameter.type === 'number'">
 			<!-- <el-slider :value="value" @input="valueChanged"></el-slider> -->
-			<el-input-number ref="inputField" size="small" :value="displayValue" :max="getArgument('maxValue')" :min="getArgument('minValue')" :precision="getArgument('numberPrecision')" :step="getArgument('numberStepSize')" :disabled="isReadOnly" @change="valueChanged" @focus="setFocus" @keydown.stop :title="displayTitle" :placeholder="translatePlaceholder(parameter)"></el-input-number>
+			<el-input-number
+				ref="inputField"
+				size="small"
+				:value="displayValue"
+				:max="getArgument('maxValue')"
+				:min="getArgument('minValue')"
+				:precision="getArgument('numberPrecision')"
+				:step="getArgument('numberStepSize')"
+				:disabled="isReadOnly"
+				@change="valueChanged"
+				@focus="setFocus"
+				@keydown.stop
+				:title="displayTitle"
+				:placeholder="translatePlaceholder(parameter)"
+			></el-input-number>
 		</div>
 
 		<el-select
