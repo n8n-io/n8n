@@ -26,30 +26,37 @@ export const leadOperations = [
 			{
 				name: 'Create',
 				value: 'create',
+				description: 'Create a lead',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				description: 'Delete a lead',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				description: 'Get a lead',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				description: 'Get all leads',
 			},
 			{
 				name: 'Get Fields',
 				value: 'getFields',
+				description: 'Get lead fields',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				description: 'Update a lead',
 			},
 		],
 		default: 'create',

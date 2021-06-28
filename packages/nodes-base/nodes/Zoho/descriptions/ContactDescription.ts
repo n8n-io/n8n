@@ -27,26 +27,32 @@ export const contactOperations = [
 			{
 				name: 'Create',
 				value: 'create',
+				description: 'Create a contact',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				description: 'Delete a contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				description: 'Get a contact',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				description: 'Get all contacts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				description: 'Update a contact',
 			},
 		],
 		default: 'create',

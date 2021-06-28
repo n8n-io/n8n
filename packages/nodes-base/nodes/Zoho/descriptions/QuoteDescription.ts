@@ -28,26 +28,32 @@ export const quoteOperations = [
 			{
 				name: 'Create',
 				value: 'create',
+				description: 'Create a quote',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				description: 'Delete a quote',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				description: 'Get a quote',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				description: 'Get all quotes',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				description: 'Update a quote',
 			},
 		],
 		default: 'create',

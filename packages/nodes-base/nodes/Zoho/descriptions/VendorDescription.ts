@@ -26,26 +26,32 @@ export const vendorOperations = [
 			{
 				name: 'Create',
 				value: 'create',
+				description: 'Create a vendor',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				description: 'Delete a vendor',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				description: 'Get a vendor',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				description: 'Get all vendors',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				description: 'Update a vendor',
 			},
 		],
 		default: 'create',

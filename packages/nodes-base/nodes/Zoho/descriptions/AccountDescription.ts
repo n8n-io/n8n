@@ -27,26 +27,32 @@ export const accountOperations = [
 			{
 				name: 'Create',
 				value: 'create',
+				description: 'Create an account',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				description: 'Delete an account',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				description: 'Get an account',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				description: 'Get all accounts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				description: 'Update an account',
 			},
 		],
 		default: 'create',

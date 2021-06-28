@@ -28,26 +28,32 @@ export const purchaseOrderOperations = [
 			{
 				name: 'Create',
 				value: 'create',
+				description: 'Create a purchase order',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
+				description: 'Create a new record, or update the current one if it already exists (upsert)',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				description: 'Delete a purchase order',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				description: 'Get a purchase order',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
+				description: 'Get all purchase orders',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				description: 'Update a purchase order',
 			},
 		],
 		default: 'create',
