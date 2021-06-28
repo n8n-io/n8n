@@ -32,7 +32,7 @@ export const translate = Vue.extend({
 			options?: { colon?: true, interpolate?: { [key: string]: string } },
 		): string {
 			const translatedBaseString = options && options.interpolate
-				? this.$t(key, { ...options.interpolate })
+				? this.$t(key, options.interpolate)
 				: this.$t(key);
 
 			return translatedBaseString.toString() + (options && options.colon ? ':' : '');
