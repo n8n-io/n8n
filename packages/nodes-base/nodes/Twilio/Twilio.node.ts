@@ -17,7 +17,7 @@ export class Twilio implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Twilio',
 		name: 'twilio',
-		icon: 'file:twilio.png',
+		icon: 'file:twilio.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

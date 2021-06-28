@@ -24,6 +24,21 @@
 				"url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/"
 			},
 			{
+				"label": "How to build a low-code, self-hosted URL shortener in 3 steps",
+				"icon": "🔗",
+				"url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/"
+			},
+			{
+				"label": "What are APIs and how to use them with no code",
+				"icon": " 🪢",
+				"url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/"
+			},
+			{
+				"label": "5 tasks you can automate with the new Notion API ",
+				"icon": "⚡️",
+				"url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/"
+			},
+			{
 				"label": "How a digital strategist uses n8n for online marketing",
 				"icon": "💻",
 				"url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/"
@@ -70,6 +85,12 @@
 			}
 		]
 	},
+	"alias": [
+		"HTTP",
+		"API",
+		"Build",
+		"WH"
+	],
 	"subcategories": {
 		"Core Nodes": [
 			"Flow"

@@ -1,6 +1,6 @@
 import {
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class MauticOAuth2Api implements ICredentialType {
@@ -10,44 +10,44 @@ export class MauticOAuth2Api implements ICredentialType {
 	];
 	displayName = 'Mautic OAuth2 API';
 	documentationUrl = 'mautic';
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',
 			name: 'url',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			placeholder: 'https://name.mautic.net',
 		},
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: '={{$self["url"]}}/oauth/v2/authorize',
 			required: true,
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: '={{$self["url"]}}/oauth/v2/token',
 			required: true,
 		},
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: '',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: '',
 		},
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
-			type: 'hidden' as NodePropertyTypes,
+			type: 'hidden',
 			default: 'body',
 		},
 	];
