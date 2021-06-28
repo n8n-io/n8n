@@ -495,7 +495,7 @@ export const makeResolve = (resource: string, operations: string[]) => {
 				operation: operations,
 			},
 		},
-		default: false,
+		default: true,
 		description: `By default the response only contain the ID of the ${resource}. If this option gets activated it<br />will resolve the data automatically.`,
 	};
 };
