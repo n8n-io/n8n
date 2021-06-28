@@ -29,7 +29,7 @@ export const accountOperations = [
 				value: 'create',
 			},
 			{
-				name: 'Create or update',
+				name: 'Create or Update',
 				value: 'upsert',
 			},
 			{

@@ -30,7 +30,7 @@ export const purchaseOrderOperations = [
 				value: 'create',
 			},
 			{
-				name: 'Create or update',
+				name: 'Create or Update',
 				value: 'upsert',
 			},
 			{
