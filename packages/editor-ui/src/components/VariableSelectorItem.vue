@@ -36,13 +36,16 @@
 
 <script lang="ts">
 
+import { translate } from '@/components/mixins/translate';
+import mixins from 'vue-typed-mixins';
+
 import Vue from 'vue';
 import {
 	IVariableSelectorOption,
 	IVariableItemSelected,
 } from '@/Interface';
 
-export default Vue.extend({
+export default mixins(translate).extend({
 	name: 'VariableSelectorItem',
 	props: [
 		'allowParentSelect',
