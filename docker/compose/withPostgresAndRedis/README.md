@@ -1,6 +1,10 @@
-# n8n with PostgreSQL
+# n8n in queue mode with PostgreSQL and Redis
 
-Starts n8n with PostgreSQL as database.
+Starts n8n with PostgreSQL as database  
++  
+a queue worker  
++  
+a webhook worker
 
 
 ## Start
@@ -24,3 +28,6 @@ docker-compose stop
 ## Configuration
 
 The default name of the database, user and password for PostgreSQL can be changed in the [`.env`](.env) file in the current directory.
+
+Also you will need to set up a reverse proxy or configure the urls with alternate ports somehow.
+i use traefik
