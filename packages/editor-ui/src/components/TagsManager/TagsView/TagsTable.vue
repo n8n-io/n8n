@@ -44,7 +44,7 @@
 			<template slot-scope="scope">
 				<transition name="fade" mode="out-in">
 					<div class="ops" v-if="scope.row.create">
-						<el-button :title="$translateBase('tagsTable.cancel')" @click.stop="cancel" size="small" plain :disabled="isSaving">Cancel</el-button>
+						<el-button :title="$translateBase('tagsTable.cancel')" @click.stop="cancel" size="small" plain :disabled="isSaving">{{ $translateBase('tagsTable.cancel') }}</el-button>
 						<el-button :title="$translateBase('tagsTable.createTag')" @click.stop="apply" size="small" :loading="isSaving">
 							{{ $translateBase('tagsTable.createTag') }}
 						</el-button>
