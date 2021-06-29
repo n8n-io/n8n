@@ -10,11 +10,13 @@ tasks:
   - name: config, build, dev
     before: |
       export VUE_APP_URL_BASE_API=${GITPOD_WORKSPACE_URL//:\/\//:\/\/5678-}/ && 
+      export N8N_HOST=${GITPOD_WORKSPACE_URL//:\/\//:\/\/5678-}/ && 
+      export EXECUTIONS_PROCESS=main && 
       export EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=true  && 
       export NODE_FUNCTION_ALLOW_BUILTIN=* &&
       export NODE_FUNCTION_ALLOW_EXTERNAL=*
     init: |
-      npm install -g lerna  && 
+      npm install -g lerna  &&
       lerna bootstrap --hoist      
     command: npm run build && npm run dev
 
