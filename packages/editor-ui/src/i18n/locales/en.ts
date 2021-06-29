@@ -460,8 +460,8 @@ const baseStrings = {
 				},
 				showMaxNodeTypeError: {
 					message: {
-						singular: 'Node can not be created because in a workflow max. {maxNodes} node of type ${nodeTypeDataDisplayName} is allowed!',
-						plural: 'Node can not be created because in a workflow max. {maxNodes} nodes of type ${nodeTypeDataDisplayName} are allowed!',
+						singular: 'Node can not be created because in a workflow max. {maxNodes} node of type {nodeTypeDataDisplayName} is allowed!',
+						plural: 'Node can not be created because in a workflow max. {maxNodes} nodes of type {nodeTypeDataDisplayName} are allowed!',
 					},
 					title: 'Could not create node!',
 				},
