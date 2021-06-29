@@ -19,7 +19,6 @@ export class Mattermost extends NodeVersionedType {
 		},
 		nodeVersions: INodeVersions = {
 			1: new MattermostV1(description),
-			// 2: new HttpRequestV2(description),
 		},
 		defaultVersion = description.defaultVersion;
 		super(nodeVersions, description, defaultVersion);

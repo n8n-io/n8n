@@ -569,6 +569,7 @@ export interface INodeTypeBaseDescription {
 	documentationUrl?: string;
 	subtitle?: string;
 	defaultVersion?: number;
+	codex?: CodexData;
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
@@ -588,7 +589,6 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 		deactivate?: INodeHookDescription[];
 	};
 	webhooks?: IWebhookDescription[];
-	codex?: CodexData;
 }
 
 export interface INodeHookDescription {

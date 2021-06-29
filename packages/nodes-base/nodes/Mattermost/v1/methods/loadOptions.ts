@@ -7,7 +7,7 @@ import {
 
 import {
 	apiRequest,
-} from '../GenericFunctions';
+} from '../transport';
 
 const loadOptions = {
 	// Get all the available channels

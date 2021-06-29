@@ -22,7 +22,7 @@ export interface IAttachment {
 }
 
 /**
- * Make an API request to Telegram
+ * Make an API request to Mattermost
  *
  * @param {IHookFunctions} this
  * @param {string} method
@@ -34,7 +34,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	const credentials = this.getCredentials('mattermostApi');
 
 	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials returned!');
 	}
 
 	query = query || {};
