@@ -173,7 +173,7 @@ export class ActiveWorkflowRunner {
 			}
 
 			// TODO:
-			// TS 4.3.2 is flaging `.webhookPath` twice because `webhook` is undefined.
+			// TS 4.3.2 is flagging `.webhookPath` twice because `webhook` is undefined.
 			// Ask about the logic for the property access.
 			// @ts-ignore
 			path = webhook!.webhookPath;

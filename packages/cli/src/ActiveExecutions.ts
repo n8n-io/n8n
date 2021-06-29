@@ -59,7 +59,7 @@ export class ActiveExecutions {
 		const executionResult = await Db.collections.Execution!.save(execution as IExecutionFlattedDb);
 
 		// TODO:
-		// TS 4.3.2 is flaging `.toString()` because `id` is an object.
+		// TS 4.3.2 is flagging `.toString()` because `id` is an object.
 		// Ask about the logic for the check before removing the method call.
 		// @ts-ignore
 		const executionId = typeof executionResult.id === "object" ? executionResult.id!.toString() : executionResult.id + "";
