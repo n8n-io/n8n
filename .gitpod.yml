@@ -5,6 +5,7 @@ vscode:
     - formulahendry.auto-close-tag
     - dbaeumer.vscode-eslint
     - mhutchie.git-graph
+    - octref.vetur
 
 tasks:  
   - name: config, build, dev
