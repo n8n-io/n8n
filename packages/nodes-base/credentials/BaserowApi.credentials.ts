@@ -16,58 +16,18 @@ export class BaserowApi implements ICredentialType {
 			default: 'https://api.baserow.io',
 		},
 		{
-			displayName: 'Authentication Method',
-			name: 'authenticationMethod',
-			type: 'options',
-			default: 'apiToken',
-			options: [
-				{
-					name: 'API Token',
-					value: 'apiToken',
-				},
-				{
-					name: 'JWT Token',
-					value: 'jwtToken',
-				},
-			],
-		},
-		{
-			displayName: 'API Token',
-			name: 'apiToken',
-			type: 'string',
-			default: '',
-			displayOptions: {
-				show: {
-					authenticationMethod: [
-						'apiToken',
-					],
-				},
-			},
-		},
-		{
 			displayName: 'Username',
 			name: 'username',
 			type: 'string',
 			default: '',
-			displayOptions: {
-				show: {
-					authenticationMethod: [
-						'jwtToken',
-					],
-				},
-			},
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
 			type: 'string',
 			default: '',
-			displayOptions: {
-				show: {
-					authenticationMethod: [
-						'jwtToken',
-					],
-				},
+			typeOptions: {
+				password: true,
 			},
 		},
 	];

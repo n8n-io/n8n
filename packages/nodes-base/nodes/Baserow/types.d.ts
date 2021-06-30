@@ -1,13 +1,4 @@
-export type BaserowCredentials = BaserowApiTokenCredentials | BaserowJwtTokenCredentials
-
-type BaserowApiTokenCredentials = {
-	authenticationMethod: 'apiToken';
-	apiToken: string;
-	host: string;
-}
-
-type BaserowJwtTokenCredentials = {
-	authenticationMethod: 'jwtToken',
+export type BaserowCredentials = {
 	username: string;
 	password: string;
 	host: string;

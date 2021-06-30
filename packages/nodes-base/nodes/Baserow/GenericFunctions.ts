@@ -16,7 +16,6 @@ import {
 import {
 	Accumulator,
 	BaserowCredentials,
-	BaserowJwtTokenCredentials,
 	TableField,
 } from './types';
 
@@ -36,13 +35,11 @@ export async function baserowApiRequest(
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
-	const authorizationString = credentials.authenticationMethod === 'jwtToken'
-		? `JWT ${await getJwtToken.call(this, credentials)}`
-		: `Token ${credentials.apiToken}`;
+	const jwtToken = await getJwtToken.call(this, credentials);
 
 	const options: OptionsWithUri = {
 		headers: {
-			Authorization: authorizationString,
+			Authorization: `JWT ${jwtToken}`,
 		},
 		method,
 		body,
@@ -62,11 +59,6 @@ export async function baserowApiRequest(
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.statusCode === 401) {
-			const message = 'Invalid authentication. Please try using JWT authentication for this operation.';
-			throw new NodeApiError(this.getNode(), error, { message });
-		}
-
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
@@ -119,15 +111,15 @@ export function extractTableIdFromUrl(url: string) {
  */
 export async function getJwtToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	credentials: BaserowJwtTokenCredentials,
+	{ username, password, host }: BaserowCredentials,
 ) {
 	const options: OptionsWithUri = {
 		method: 'POST',
 		body: {
-			username: credentials.username,
-			password: credentials.password,
+			username,
+			password,
 		},
-		uri: `${credentials.host}/api/user/token-auth/`,
+		uri: `${host}/api/user/token-auth/`,
 		json: true,
 	};
 
