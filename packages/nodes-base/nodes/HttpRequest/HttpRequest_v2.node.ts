@@ -349,6 +349,20 @@ export class HttpRequestV2 implements INodeType {
 							description: 'HTTP proxy to use.',
 						},
 						{
+							displayName: 'Split Into Items',
+							name: 'splitIntoItems',
+							type: 'boolean',
+							default: false,
+							description: 'Outputs each element of an array as own item.',
+							displayOptions: {
+								show: {
+									'/responseFormat': [
+										'json',
+									],
+								},
+							},
+						},
+						{
 							displayName: 'Timeout',
 							name: 'timeout',
 							type: 'number',
@@ -367,8 +381,6 @@ export class HttpRequestV2 implements INodeType {
 						},
 					],
 				},
-
-
 				// Body Parameter
 				{
 					displayName: 'Send Binary Data',
@@ -1010,7 +1022,11 @@ export class HttpRequestV2 implements INodeType {
 						}
 					}
 
-					returnItems.push({ json: response });
+					if (options.splitIntoItems === true && Array.isArray(response)) {
+						response.forEach(item => returnItems.push({ json: item }));
+					} else {
+						returnItems.push({ json: response });
+					}
 				}
 			}
 		}

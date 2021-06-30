@@ -24,6 +24,15 @@
 			}
 		]
 	},
+	"alias": [
+		"Router",
+		"If",
+		"Path",
+		"Filter",
+		"Condition",
+		"Logic",
+		"Branch"
+	],
 	"subcategories": {
 		"Core Nodes": [
 			"Flow"
