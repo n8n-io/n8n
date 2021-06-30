@@ -71,6 +71,13 @@ export class KafkaTrigger implements INodeType {
 						description: 'Allow sending message to a previously non exisiting topic .',
 					},
 					{
+						displayName: 'Read messages from beginning',
+						name: 'fromBeginning',
+						type: 'boolean',
+						default: true,
+						description: 'Read message from beginning .',
+					},					
+					{
 						displayName: 'JSON Parse Message',
 						name: 'jsonParseMessage',
 						type: 'boolean',
@@ -141,7 +148,7 @@ export class KafkaTrigger implements INodeType {
 
 		await consumer.connect();
 
-		await consumer.subscribe({ topic, fromBeginning: true });
+		await consumer.subscribe({ topic, fromBeginning: (options.fromBeginning)? true : false });
 
 		const self = this;
 
