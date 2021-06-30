@@ -127,6 +127,12 @@
 
 				<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
 
+				<div class="foot-menu-items">
+					<el-menu-item index="updates" class="updates">
+						<i><font-awesome-icon icon="gift"/></i>
+						<span slot="title" class="item-title-root">Updates available</span>
+					</el-menu-item>
+				</div>
 			</el-menu>
 
 		</div>
@@ -569,6 +575,33 @@ a.logo {
 
 	&.expanded {
 		width: $--sidebar-expanded-width;
+	}
+
+	ul {
+		display: flex;
+		flex-direction: column;
+	}
+}
+
+.foot-menu-items {
+	display: flex;
+	flex-grow: 1;
+	flex-direction: column;
+	justify-content: flex-end;
+}
+
+.el-menu-item.updates {
+	color: $--sidebar-inactive-color;	
+
+	&:hover {
+		color: $--sidebar-active-color;
+	}
+
+	i:after {
+		content: "\2022";
+		color: $--sidebar-active-color;
+		font-size: 30px;
+		position: absolute;
 	}
 }
 

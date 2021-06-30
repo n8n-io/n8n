@@ -44,8 +44,12 @@ $--custom-input-border-shadow: 1px solid $--custom-input-border-color;
 
 $--header-height: 65px;
 
+// sidebar
 $--sidebar-width: 65px;
 $--sidebar-expanded-width: 200px;
+$--sidebar-inactive-color: #909399;
+$--sidebar-active-color: $--color-primary;
+
 $--tags-manager-min-height: 300px;
 
 // based on element.io breakpoints
