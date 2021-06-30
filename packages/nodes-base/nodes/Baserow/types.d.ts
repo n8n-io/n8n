@@ -6,10 +6,17 @@ export type BaserowCredentials = {
 
 export type GetAllAdditionalOptions = {
 	order?: {
-		fields: Array<{ field: string; direction: string; }>
+		fields: Array<{
+			field: string;
+			direction: string;
+		}>
 	};
 	filters?: {
-		fields: Array<{ field: string; operator: string; value: string; }>
+		fields: Array<{
+			field: string;
+			operator: string;
+			value: string;
+		}>;
 	};
 };
 
