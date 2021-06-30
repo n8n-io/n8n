@@ -9,7 +9,7 @@ export const operationFields = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'ID of the table to operate on. Found as part of the table URL:<br><code>https://baserow.io/database/{databaseId}/table/{tableId}</code><br>You can also enter the full URL.',
+		description: 'ID of the table to operate on. Found as part of the table URL:<br><code>https://baserow.io/database/{databaseId}/table/{tableId}</code><br>You can also enter the full URL',
 	},
 	// ----------------------------------
 	//               get
@@ -27,13 +27,14 @@ export const operationFields = [
 		},
 		default: '',
 		required: true,
-		description: 'ID of the row to return.',
+		description: 'ID of the row to return',
 	},
 	{
 		displayName: 'Additional Options',
 		name: 'additionalOptions',
 		type: 'collection',
 		placeholder: 'Add Option',
+		description: 'Additional options for retrieving a row',
 		default: {},
 		displayOptions: {
 			show: {
@@ -48,7 +49,7 @@ export const operationFields = [
 				name: 'disableAutoMapping',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to use table column IDs instead of table column names in the response.<br>Enable this setting to use the default Baserow table column IDs, i.e. <code>field_n</code>.',
+				description: 'Whether to use table column IDs instead of table column names in the response.<br>Enable this setting to use the default Baserow table column IDs, i.e. <code>field_n</code>',
 			},
 		],
 	},
@@ -69,7 +70,7 @@ export const operationFields = [
 		},
 		default: '',
 		required: true,
-		description: 'ID of the row to update.',
+		description: 'ID of the row to update',
 	},
 
 	// ----------------------------------
@@ -88,7 +89,7 @@ export const operationFields = [
 		},
 		default: '',
 		required: true,
-		description: 'ID of the row to delete.',
+		description: 'ID of the row to delete',
 	},
 
 	// ----------------------------------
@@ -115,7 +116,7 @@ export const operationFields = [
 				name: 'disableAutoMapping',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to use table column IDs instead of table column names in the response.<br>Enable this setting to use the default Baserow table column IDs, i.e. <code>field_n</code>.',
+				description: 'Whether to use table column IDs instead of table column names in the response.<br>Enable this setting to use the default Baserow table column IDs, i.e. <code>field_n</code>',
 			},
 		],
 	},
@@ -128,7 +129,7 @@ export const operationFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
 				operation: [
@@ -141,8 +142,8 @@ export const operationFields = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
-		description: 'The number of results to return.',
+		default: 50,
+		description: 'How many results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
@@ -176,7 +177,7 @@ export const operationFields = [
 				displayName: 'Filters',
 				name: 'filters',
 				placeholder: 'Add Filter',
-				description: 'Filter rows based on comparison operators.',
+				description: 'Filter rows based on comparison operators',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -192,7 +193,7 @@ export const operationFields = [
 								name: 'field',
 								type: 'options',
 								default: '',
-								description: 'Field to compare.',
+								description: 'Field to compare',
 								typeOptions: {
 									loadOptionsDependsOn: [
 										'tableId',
@@ -203,92 +204,93 @@ export const operationFields = [
 							{
 								displayName: 'Filter',
 								name: 'operator',
+								description: 'Operator to compare field and value with',
 								type: 'options',
 								options: [
 									{
 										name: 'Equal',
 										value: 'equal',
-										description: 'Field is equal to value.',
+										description: 'Field is equal to value',
 									},
 									{
 										name: 'Not Equal',
 										value: 'not_equal',
-										description: 'Field is not equal to value.',
+										description: 'Field is not equal to value',
 									},
 									{
 										name: 'Date Equal',
 										value: 'date_equal',
-										description: 'Field is date. Format: \'YYY-MM-DD\'.',
+										description: 'Field is date. Format: \'YYYY-MM-DD\'',
 									},
 									{
 										name: 'Date Not Equal',
 										value: 'date_not_equal',
-										description: 'Field is not date. Format: \'YYY-MM-DD\'.',
+										description: 'Field is not date. Format: \'YYYY-MM-DD\'',
 									},
 									{
 										name: 'Date Equals Today',
 										value: 'date_equals_today',
-										description: 'Field is today. Format: string.',
+										description: 'Field is today. Format: string',
 									},
 									{
 										name: 'Date Equals Month',
 										value: 'date_equals_month',
-										description: 'Field in this month. Format: string.',
+										description: 'Field in this month. Format: string',
 									},
 									{
 										name: 'Date Equals Year',
 										value: 'date_equals_year',
-										description: 'Field in this year. Format: string.',
+										description: 'Field in this year. Format: string',
 									},
 									{
 										name: 'Contains',
 										value: 'contains',
-										description: 'Field contains value.',
+										description: 'Field contains value',
 									},
 									{
 										name: 'File Name Contains',
 										value: 'filename_contains',
-										description: 'Field filename contains value.',
+										description: 'Field filename contains value',
 									},
 									{
 										name: 'Contains Not',
 										value: 'contains_not',
-										description: 'Field does not contain value.',
+										description: 'Field does not contain value',
 									},
 									{
 										name: 'Higher Than',
 										value: 'higher_than',
-										description: 'Field is higher than value.',
+										description: 'Field is higher than value',
 									},
 									{
 										name: 'Lower Than',
 										value: 'lower_than',
-										description: 'Field is lower than value.',
+										description: 'Field is lower than value',
 									},
 									{
 										name: 'Single Select Equal',
 										value: 'single_select_equal',
-										description: 'Field selected option is value.',
+										description: 'Field selected option is value',
 									},
 									{
 										name: 'Single Select Not Equal',
 										value: 'single_select_not_equal',
-										description: 'Field selected option is not value.',
+										description: 'Field selected option is not value',
 									},
 									{
 										name: 'Is True',
 										value: 'boolean',
-										description: 'Boolean field is true.',
+										description: 'Boolean field is true',
 									},
 									{
 										name: 'Is Empty',
 										value: 'empty',
-										description: 'Field is empty.',
+										description: 'Field is empty',
 									},
 									{
 										name: 'Not Empty',
 										value: 'not_empty',
-										description: 'Field is not empty.',
+										description: 'Field is not empty',
 									},
 								],
 								default: 'equal',
@@ -298,7 +300,7 @@ export const operationFields = [
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value to compare to.',
+								description: 'Value to compare to',
 							},
 						],
 					},
@@ -308,7 +310,7 @@ export const operationFields = [
 				displayName: 'Sort Order',
 				name: 'order',
 				placeholder: 'Add Sort Order',
-				description: 'Set the sort order of the result rows.',
+				description: 'Set the sort order of the result rows',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -316,22 +318,9 @@ export const operationFields = [
 				default: {},
 				options: [
 					{
-						name: 'fields',
+						name: 'Fields',
 						displayName: 'Field',
 						values: [
-							{
-								displayName: 'Field',
-								name: 'field',
-								type: 'options',
-								default: '',
-								description: 'Field name to order.',
-								typeOptions: {
-									loadOptionsDependsOn: [
-										'tableId',
-									],
-									loadOptionsMethod: 'getTableFields',
-								},
-							},
 							{
 								displayName: 'Direction',
 								name: 'direction',
@@ -340,16 +329,29 @@ export const operationFields = [
 									{
 										name: 'ASC',
 										value: '',
-										description: 'Sort in ascending order.',
+										description: 'Sort in ascending order',
 									},
 									{
 										name: 'DESC',
 										value: '-',
-										description: 'Sort in descending order.',
+										description: 'Sort in descending order',
 									},
 								],
 								default: '',
-								description: 'Sort direction, either ascending or descending.',
+								description: 'Sort direction, either ascending or descending',
+							},
+							{
+								displayName: 'Field Name',
+								name: 'field',
+								type: 'options',
+								default: '',
+								description: 'Field name to sort by',
+								typeOptions: {
+									loadOptionsDependsOn: [
+										'tableId',
+									],
+									loadOptionsMethod: 'getTableFields',
+								},
 							},
 						],
 					},
@@ -360,14 +362,14 @@ export const operationFields = [
 				name: 'search',
 				type: 'string',
 				default: '',
-				description: 'Return only rows with data matching the search conditions.',
+				description: 'Return only rows with data matching the search conditions',
 			},
 			{
 				displayName: 'Use IDs',
 				name: 'disableAutoMapping',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to use table column IDs instead of table column names in the response.<br>Enable this setting to use the default Baserow table column IDs, i.e. <code>field_n</code>.',
+				description: 'Whether to use table column IDs instead of table column names in the response.<br>Enable this setting to use the default Baserow table column IDs, i.e. <code>field_n</code>',
 			},
 		],
 	},

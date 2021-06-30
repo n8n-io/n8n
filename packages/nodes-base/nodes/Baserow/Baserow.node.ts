@@ -34,7 +34,8 @@ export class Baserow implements INodeType {
 		icon: 'file:baserow.svg',
 		group: ['output'],
 		version: 1,
-		description: 'Consume the Baserow API.',
+		description: 'Consume the Baserow API',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Baserow',
 			color: '#00a2ce',
@@ -56,26 +57,31 @@ export class Baserow implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
+						description: 'Create a row',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
+						description: 'Delete a row',
 					},
 					{
 						name: 'Get',
 						value: 'get',
+						description: 'Retrieve a row',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
+						description: 'Retrieve all rows',
 					},
 					{
 						name: 'Update',
 						value: 'update',
+						description: 'Update a row',
 					},
 				],
 				default: 'getAll',
-				description: 'Operation to perform.',
+				description: 'Operation to perform',
 			},
 			...operationFields,
 		],
