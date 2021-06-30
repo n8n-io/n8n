@@ -564,7 +564,7 @@ export const fileFields = [
 				],
 			},
 		},
-		default: '',
+		default: true,
 		description: 'Whether identify the user by email or ID.',
 	},
 	{
@@ -641,30 +641,37 @@ export const fileFields = [
 			{
 				name: 'Editor',
 				value: 'editor',
+				description: 'An editor has full read/write access to a folder or file',
 			},
 			{
 				name: 'Viewer',
 				value: 'viewer',
+				description: 'A viewer has read access to a folder or file',
 			},
 			{
 				name: 'Previewer',
 				value: 'previewer',
+				description: 'A previewer has limited read access',
 			},
 			{
 				name: 'Uploader',
 				value: 'uploader',
+				description: 'An uploader has limited write access',
 			},
 			{
 				name: 'Previewer Uploader',
 				value: 'previewerUploader',
+				description: 'This access level is a combination of Previewer and Uploader',
 			},
 			{
 				name: 'Viewer Uploader',
 				value: 'viewerUploader',
+				description: 'This access level is a combination of Viewer and Uploader',
 			},
 			{
-				name: 'coOwner',
+				name: 'Co-Owner',
 				value: 'coOwner',
+				description: 'A Co-owner has all of functional read/write access that an editor does',
 			},
 		],
 		displayOptions: {
@@ -677,7 +684,7 @@ export const fileFields = [
 				],
 			},
 		},
-		default: '',
+		default: 'editor',
 		description: 'The level of access granted.',
 	},
 	{
@@ -702,7 +709,8 @@ export const fileFields = [
 				name: 'can_view_path',
 				type: 'boolean',
 				default: false,
-				description: 'Determines if the invited users can see the entire parent path to the associated folder. The user will not gain privileges in any parent folder and therefore can not see content the user is not collaborated on.',
+				description: `Whether the invited users can see the entire parent path to the associated folder.</br>
+				The user will not gain privileges in any parent folder and therefore cannot see content the user is not collaborated on.`,
 			},
 			{
 				displayName: 'Expires At',
@@ -723,7 +731,7 @@ export const fileFields = [
 				name: 'notify',
 				type: 'boolean',
 				default: false,
-				description: 'Determines if users should receive email notification for the action performed.',
+				description: 'Whether if users should receive email notification for the action performed.',
 			},
 		],
 	},

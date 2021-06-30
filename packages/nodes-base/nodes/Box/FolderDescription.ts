@@ -495,7 +495,7 @@ export const folderFields = [
 				],
 			},
 		},
-		default: '',
+		default: 'user',
 		description: 'The type of object the file will be shared with.',
 	},
 	{
@@ -515,7 +515,7 @@ export const folderFields = [
 				],
 			},
 		},
-		default: '',
+		default: true,
 		description: 'Whether identify the user by email or ID.',
 	},
 	{
@@ -530,11 +530,11 @@ export const folderFields = [
 				resource: [
 					'folder',
 				],
-				useEmail: [
-					true,
-				],
 				accessibleBy: [
 					'user',
+				],
+				useEmail: [
+					true,
 				],
 			},
 		},
@@ -553,11 +553,11 @@ export const folderFields = [
 				resource: [
 					'folder',
 				],
-				useEmail: [
-					false,
-				],
 				accessibleBy: [
 					'user',
+				],
+				useEmail: [
+					false,
 				],
 			},
 		},
@@ -592,30 +592,37 @@ export const folderFields = [
 			{
 				name: 'Editor',
 				value: 'editor',
+				description: 'An editor has full read/write access to a folder or file',
 			},
 			{
 				name: 'Viewer',
 				value: 'viewer',
+				description: 'A viewer has read access to a folder or file',
 			},
 			{
 				name: 'Previewer',
 				value: 'previewer',
+				description: 'A previewer has limited read access',
 			},
 			{
 				name: 'Uploader',
 				value: 'uploader',
+				description: 'An uploader has limited write access',
 			},
 			{
 				name: 'Previewer Uploader',
 				value: 'previewerUploader',
+				description: 'This access level is a combination of Previewer and Uploader',
 			},
 			{
 				name: 'Viewer Uploader',
 				value: 'viewerUploader',
+				description: 'This access level is a combination of Viewer and Uploader',
 			},
 			{
-				name: 'coOwner',
+				name: 'Co-Owner',
 				value: 'coOwner',
+				description: 'A Co-owner has all of functional read/write access that an editor does',
 			},
 		],
 		displayOptions: {
@@ -628,7 +635,7 @@ export const folderFields = [
 				],
 			},
 		},
-		default: '',
+		default: 'editor',
 		description: 'The level of access granted.',
 	},
 	{
@@ -653,7 +660,8 @@ export const folderFields = [
 				name: 'can_view_path',
 				type: 'boolean',
 				default: false,
-				description: 'Determines if the invited users can see the entire parent path to the associated folder. The user will not gain privileges in any parent folder and therefore can not see content the user is not collaborated on.',
+				description: `Whether the invited users can see the entire parent path to the associated folder.</br>
+				The user will not gain privileges in any parent folder and therefore cannot see content the user is not collaborated on.`,
 			},
 			{
 				displayName: 'Expires At',
@@ -674,7 +682,7 @@ export const folderFields = [
 				name: 'notify',
 				type: 'boolean',
 				default: false,
-				description: 'Determines if users should receive email notification for the action performed.',
+				description: 'Whether if users should receive email notification for the action performed.',
 			},
 		],
 	},
@@ -717,14 +725,14 @@ export const folderFields = [
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Can Non Owners Invite',
+				displayName: 'Can Non-Owners Invite',
 				name: 'can_non_owners_invite',
 				type: 'boolean',
 				default: false,
 				description: 'Specifies if users who are not the owner of the folder can invite new collaborators to the folder.',
 			},
 			{
-				displayName: 'Can Non Owners View Colaborators',
+				displayName: 'Can Non-Owners View Colaborators',
 				name: 'can_non_owners_view_collaborators',
 				type: 'boolean',
 				default: false,
@@ -797,7 +805,7 @@ export const folderFields = [
 								description: 'Only those who have been invited to the folder',
 							},
 						],
-						default: '',
+						default: 'open',
 					},
 					{
 						displayName: 'Password',
