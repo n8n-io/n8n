@@ -87,6 +87,9 @@ something that long every time in the CLI. That is when I then ended up on
 
 [![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#prebuild/https://github.com/st-ax/n8n)
 
+
+[![Deploy on Vercel](https://vercel.com/button)](https://vercel.com/new/git/external?repository-url=https://github.com/st-ax/n8n&env=N8N_PROTOCOL,N8N_HOST,VUE_APP_URL_BASE_API,EXECUTIONS_PROCESS,NODE_FUNCTION_ALLOW_BUILTIN,NODE_FUNCTION_ALLOW_EXTERNAL&envDescription=Environment%20variables%20needed%20to%20configure%20the%20user%20and%20database%20connection&envLink=https://docs.n8n.io/reference/configuration.html)
+
 Have you found a bug :bug: ? Or maybe you have a nice feature :sparkles: to contribute ?  
 The [CONTRIBUTING guide](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md) will help you get your development environment ready in minutes.
 
