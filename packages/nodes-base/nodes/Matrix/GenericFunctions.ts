@@ -12,7 +12,7 @@ import {
 } from 'n8n-core';
 
 import * as _ from 'lodash';
-import * as uuid from 'uuid/v4';
+import { v4 as uuid } from 'uuid';
 
 
 interface MessageResponse {
