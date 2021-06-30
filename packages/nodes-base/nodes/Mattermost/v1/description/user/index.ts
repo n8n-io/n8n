@@ -3,7 +3,7 @@ import {
 } from 'n8n-workflow';
 
 import { userCreateDescription } from './create';
-import { userDeactivateDescription } from './deactivate';
+import { userDeactiveDescription } from './deactivate';
 import { userInviteDescription } from './invite';
 import { userGetAllDescription } from './getAll';
 import { userGetByEmailDescription } from './getByEmail';
@@ -58,7 +58,7 @@ const userDescription: INodeProperties[] = [
 		description: 'The operation to perform.',
 	},
 	...userCreateDescription,
-	...userDeactivateDescription,
+	...userDeactiveDescription,
 	...userInviteDescription,
 	...userGetAllDescription,
 	...userGetByEmailDescription,

@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-const userDeactivateDescription: INodeProperties[] = [
+const userDeactiveDescription: INodeProperties[] = [
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -23,4 +23,4 @@ const userDeactivateDescription: INodeProperties[] = [
 	},
 ];
 
-export { userDeactivateDescription };
+export { userDeactiveDescription };

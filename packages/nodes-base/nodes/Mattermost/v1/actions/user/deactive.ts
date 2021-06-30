@@ -11,7 +11,7 @@ import {
 	apiRequest,
 } from '../../transport';
 
-export async function deactivate(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function deactive(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const userId = this.getNodeParameter('userId', index) as string;
 	const qs = {} as IDataObject;
 	const requestMethod = 'DELETE';

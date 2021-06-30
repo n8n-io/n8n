@@ -15,9 +15,9 @@ export async function getById(this: IExecuteFunctions, index: number): Promise<I
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
 	const endpoint = 'users/ids';
-	const body = {} as IDataObject;
 	const userIds = (this.getNodeParameter('userIds', index) as string).split(',') as string[];
 	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const body = userIds;
 
 	if (additionalFields.since) {
 		qs.since = new Date(additionalFields.since as string).getTime();
