@@ -46,6 +46,7 @@ import {
 import * as config from '../config';
 
 import { LessThanOrEqual } from 'typeorm';
+import { DateUtils } from 'typeorm/util/DateUtils';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
 
@@ -112,8 +113,11 @@ function pruneExecutionData(this: WorkflowHooks): void {
 		const date = new Date(); // today
 		date.setHours(date.getHours() - maxAge);
 
+		// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
+		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
+
 		// throttle just on success to allow for self healing on failure
-		Db.collections.Execution!.delete({ stoppedAt: LessThanOrEqual(date.toISOString()) })
+		Db.collections.Execution!.delete({ stoppedAt: LessThanOrEqual(utcDate) })
 			.then(data =>
 				setTimeout(() => {
 					throttling = false;
