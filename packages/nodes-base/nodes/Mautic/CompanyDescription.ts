@@ -437,8 +437,8 @@ export const companyFields = [
 			},
 			{
 				displayName: 'Search',
-				name: 'isPublished',
-				type: 'boolean',
+				name: 'search',
+				type: 'string',
 				default: '',
 				description: 'String or search command to filter entities by.',
 			},
