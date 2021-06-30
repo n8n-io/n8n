@@ -14,6 +14,7 @@ import {
 	baserowApiRequest,
 	baserowApiRequestAllItems,
 	extractTableIdFromUrl,
+	getFieldNamesAndIds,
 	TableFieldMapper,
 } from './GenericFunctions';
 
@@ -182,7 +183,24 @@ export class Baserow implements INodeType {
 
 					// https://api.baserow.io/api/redoc/#operation/create_database_table_row
 
-					const body = { ...items[i].json };
+					const body: IDataObject = {};
+
+					const rawColumns = this.getNodeParameter('columns', i) as string;
+					const columns = rawColumns.split(',').map(c => c.trim());
+					const incomingKeys = Object.keys(items[i].json);
+					const dbFields = await getFieldNamesAndIds.call(this, tableId);
+
+					for (const key of incomingKeys) {
+						if (!columns.includes(key)) continue;
+
+						if (mapIds && dbFields.names.includes(key)) {
+							body[key] = items[i].json[key];
+						}
+
+						if (!mapIds && dbFields.ids.includes(key)) {
+							body[key] = items[i].json[key];
+						}
+					}
 
 					if (mapIds) mapper.namesToIds(body);
 
@@ -203,7 +221,24 @@ export class Baserow implements INodeType {
 
 					const rowId = this.getNodeParameter('rowId', i) as string;
 
-					const body = { ...items[i].json };
+					const body: IDataObject = {};
+
+					const rawColumns = this.getNodeParameter('columns', i) as string;
+					const columns = rawColumns.split(',').map(c => c.trim());
+					const incomingKeys = Object.keys(items[i].json);
+					const dbFields = await getFieldNamesAndIds.call(this, tableId);
+
+					for (const key of incomingKeys) {
+						if (!columns.includes(key)) continue;
+
+						if (mapIds && dbFields.names.includes(key)) {
+							body[key] = items[i].json[key];
+						}
+
+						if (!mapIds && dbFields.ids.includes(key)) {
+							body[key] = items[i].json[key];
+						}
+					}
 
 					if (mapIds) mapper.namesToIds(body);
 

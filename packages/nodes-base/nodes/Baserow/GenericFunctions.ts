@@ -131,6 +131,16 @@ export async function getJwtToken(
 	}
 }
 
+export async function getFieldNamesAndIds(this: IExecuteFunctions, tableId: string) {
+	const endpoint = `/api/database/fields/table/${tableId}/`;
+	const response = await baserowApiRequest.call(this, 'GET', endpoint) as TableField[];
+
+	return {
+		names: response.map((field) => field.name),
+		ids: response.map((field) => `field_${field.id}`),
+	};
+}
+
 /**
  * Responsible for mapping field IDs `field_n` to names and vice versa.
  */

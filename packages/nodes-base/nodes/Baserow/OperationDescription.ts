@@ -72,6 +72,42 @@ export const operationFields = [
 		required: true,
 		description: 'ID of the row to update',
 	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+			},
+		},
+		default: '',
+		required: true,
+		description: 'Comma-separated list of the properties to use as columns for the rows to update',
+		placeholder: 'Enter fields...',
+	},
+
+	// ----------------------------------
+	//             create
+	// ----------------------------------
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		required: true,
+		description: 'Comma-separated list of the properties to use as columns for the rows to create',
+		placeholder: 'Enter fields...',
+	},
 
 	// ----------------------------------
 	//             delete
