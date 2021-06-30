@@ -102,7 +102,7 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
  *
  */
 let throttling = false;
-function pruneExecutionData(): void {
+function pruneExecutionData(this: WorkflowHooks): void {
 	if (!throttling) {
 		Logger.verbose('Pruning execution data from database');
 
@@ -118,7 +118,11 @@ function pruneExecutionData(): void {
 				setTimeout(() => {
 					throttling = false;
 				}, timeout * 1000)
-			).catch(err => throttling = false);
+			).catch(error => {
+				throttling = false;
+
+				Logger.error(`Failed pruning execution data from database for execution ID ${this.executionId} (hookFunctionsSave)`, { ...error, executionId: this.executionId, sessionId: this.sessionId, workflowId: this.workflowData.id });
+			});
 	}
 }
 
@@ -322,7 +326,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 				// Prune old execution data
 				if (config.get('executions.pruneData')) {
-					pruneExecutionData();
+					pruneExecutionData.call(this);
 				}
 
 				const isManualMode = [this.mode, parentProcessMode].includes('manual');
@@ -387,9 +391,9 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					// Leave log message before flatten as that operation increased memory usage a lot and the chance of a crash is highest here
-					Logger.debug(`Save execution data to database for execution ID ${this.executionId}`, { 
-						executionId: this.executionId, 
-						workflowId: this.workflowData.id, 
+					Logger.debug(`Save execution data to database for execution ID ${this.executionId}`, {
+						executionId: this.executionId,
+						workflowId: this.workflowData.id,
 						finished: fullExecutionData.finished,
 						stoppedAt: fullExecutionData.stoppedAt,
 					});
@@ -409,12 +413,12 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, this.retryOf);
 					}
 				} catch (error) {
-					Logger.error(`Failed saving execution data to DB on execution ID ${this.executionId}`, { 
-						executionId: this.executionId, 
+					Logger.error(`Failed saving execution data to DB on execution ID ${this.executionId}`, {
+						executionId: this.executionId,
 						workflowId: this.workflowData.id,
 						error,
 					});
-					
+
 					if (!isManualMode) {
 						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
 					}
