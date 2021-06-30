@@ -514,15 +514,29 @@ export default mixins(
 				// else which should ignore the default keybindings
 				for (let index = 0; index < path.length; index++) {
 					if (path[index].className && typeof path[index].className === 'string' && (
-						path[index].className.includes('el-message-box') ||
-						path[index].className.includes('el-select') ||
 						path[index].className.includes('ignore-key-press')
 					)) {
 						return;
 					}
 				}
-				const anyModalsOpen = this.$store.getters['ui/anyModalsOpen'];
-				if (anyModalsOpen) {
+
+				// el-dialog or el-message-box element is open
+				if (window.document.body.classList.contains('el-popup-parent--hidden')) {
+					return;
+				}
+
+				if (e.key === 'Escape') {
+					this.createNodeActive = false;
+					if (this.activeNode) {
+						this.$externalHooks().run('dataDisplay.nodeEditingFinished');
+						this.$store.commit('setActiveNode', null);
+					}
+
+					return;
+				}
+
+				// node modal is open
+				if (this.activeNode) {
 					return;
 				}
 
@@ -533,15 +547,12 @@ export default mixins(
 					e.preventDefault();
 
 					this.callDebounced('deleteSelectedNodes', 500);
-				} else if (e.key === 'Escape') {
-					this.$externalHooks().run('dataDisplay.nodeEditingFinished');
-					this.createNodeActive = false;
-					this.$store.commit('setActiveNode', null);
+
 				} else if (e.key === 'Tab') {
 					this.createNodeActive = !this.createNodeActive && !this.isReadOnly;
 				} else if (e.key === this.controlKeyCode) {
 					this.ctrlKeyPressed = true;
-				} else if (e.key === 'F2') {
+				} else if (e.key === 'F2' && !this.isReadOnly) {
 					const lastSelectedNode = this.lastSelectedNode;
 					if (lastSelectedNode !== null) {
 						this.callDebounced('renameNodePrompt', 1500, lastSelectedNode.name);
