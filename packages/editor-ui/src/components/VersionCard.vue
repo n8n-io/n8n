@@ -1,5 +1,5 @@
 <template>
-	<a :href="version.documentationUrl" :class="$style.card">
+	<a :href="version.documentationUrl" target="_blank" :class="$style.card">
 		<div :class="$style.header">
 			<div :class="$style.name">
 				Version {{version.name}}
@@ -47,6 +47,7 @@ export default Vue.extend({
 		border-radius: 8px;
 		display: block;
 		padding: 15px;
+		text-decoration: none;
 	}
 
 	.header {

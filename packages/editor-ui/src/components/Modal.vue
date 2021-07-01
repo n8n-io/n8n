@@ -3,6 +3,7 @@
 		<el-drawer
 			v-if="drawer"
 			:direction="drawerDirection"
+			:before-close="closeDialog"
 			:visible="dialogVisible"
 			:size="drawerWidth"
 			>
@@ -37,7 +38,6 @@
 
 <script lang="ts">
 import Vue from "vue";
-import Drawer from "./Drawer.vue";
 
 const sizeMap: {[size: string]: string} = {
 	xl: '80%',
@@ -47,9 +47,6 @@ const sizeMap: {[size: string]: string} = {
 
 export default Vue.extend({
 	name: "Modal",
-	components: {
-		Drawer,
-	},
 	props: ['name', 'title', 'eventBus', 'size', 'drawer', 'drawerDirection', 'drawerWidth'],
 	mounted() {
 		window.addEventListener('keydown', this.onWindowKeydown);
@@ -105,6 +102,10 @@ export default Vue.extend({
 .el-drawer__header {
 	margin: 0;
 	padding: 30px 30px 0 30px;; //todo
+}
+
+.el-drawer__body {
+	overflow: hidden;
 }
 
 .dialog-wrapper {

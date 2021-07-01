@@ -11,7 +11,11 @@
 		<template slot="content">
 			<section :class="$style['header-content']">
 				<p>You’re on {{ currentVersion.name }}, which is <strong>{{currentReleaseDate}}</strong> and {{ nextVersions.length }} version{{nextVersions.length > 1 ? 's' : ''}} behind the latest and greatest n8n</p>	
-				<a><font-awesome-icon icon="info-circle"></font-awesome-icon>How to update your n8n version</a>
+
+				<a :class="$style.update" :href="UPDATE_INFO_URL" v-if="UPDATE_INFO_URL" target="_blank">
+					<font-awesome-icon icon="info-circle"></font-awesome-icon>
+					<span>How to update your n8n version</span>
+				</a>
 			</section>
 			<section :class="$style.versions">
 				<VersionCard 
@@ -32,6 +36,7 @@ import { format } from 'timeago.js';
 
 import Modal from './Modal.vue';
 import VersionCard from './VersionCard.vue';
+import { UPDATE_INFO_URL } from '@/constants';
 
 export default Vue.extend({
 	name: 'VersionsModal',
@@ -40,6 +45,11 @@ export default Vue.extend({
 		VersionCard,
 	},
 	props: ['modalName'],
+	data() {
+		return {
+			UPDATE_INFO_URL,
+		};
+	},
 	computed: {
 		...mapGetters('versions', [
 			'nextVersions',
@@ -76,14 +86,34 @@ export default Vue.extend({
 		font-weight: 400;
 	}
 
+	.content {
+		overflow: hidden;
+	}
+
 	.versions {
 		background-color: #F8F9FB;
 		border-top: 1px #DBDFE7 solid;
 		height: 100%;
 		padding: 30px;
+		overflow-y: scroll;
+		padding-bottom: 140px;
 	}
 
 	.versions-card {
 		margin-bottom: 15px;
+	}
+
+	.update {
+		text-decoration: none;
+
+		svg {
+			color: #909399;
+			margin-right: 5px;
+		}
+
+		span {
+			color: $--color-primary;
+			font-weight: 600;
+		}
 	}
 </style>

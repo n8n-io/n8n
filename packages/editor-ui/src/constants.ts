@@ -52,3 +52,4 @@ export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fB
 
 // versions
 export const VERSIONS_BASE_URL = `https://api-staging.n8n.io/versions/`;
+export const UPDATE_INFO_URL = 'https://docs.n8n.io/';
