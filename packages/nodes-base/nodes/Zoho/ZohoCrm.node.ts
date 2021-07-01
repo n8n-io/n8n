@@ -362,7 +362,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/accounts', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'delete') {
 
@@ -374,7 +374,7 @@ export class ZohoCrm implements INodeType {
 
 						const endpoint = `/accounts/${accountId}`;
 						responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'get') {
 
@@ -420,7 +420,7 @@ export class ZohoCrm implements INodeType {
 
 						const endpoint = `/accounts/${accountId}`;
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'upsert') {
 
@@ -439,7 +439,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/accounts/upsert', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					}
 
@@ -469,7 +469,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/contacts', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'delete') {
 
@@ -481,7 +481,7 @@ export class ZohoCrm implements INodeType {
 
 						const endpoint = `/contacts/${contactId}`;
 						responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'get') {
 
@@ -527,7 +527,7 @@ export class ZohoCrm implements INodeType {
 
 						const endpoint = `/contacts/${contactId}`;
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'upsert') {
 
@@ -546,7 +546,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/contacts/upsert', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					}
 
@@ -577,7 +577,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/deals', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'delete') {
 
@@ -588,7 +588,7 @@ export class ZohoCrm implements INodeType {
 						const dealId = this.getNodeParameter('dealId', i);
 
 						responseData = await zohoApiRequest.call(this, 'DELETE', `/deals/${dealId}`);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'get') {
 
@@ -632,7 +632,7 @@ export class ZohoCrm implements INodeType {
 						const dealId = this.getNodeParameter('dealId', i);
 
 						responseData = await zohoApiRequest.call(this, 'PUT', `/deals/${dealId}`, body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'upsert') {
 
@@ -652,7 +652,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/deals/upsert', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					}
 
@@ -687,7 +687,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/invoices', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'delete') {
 
@@ -699,7 +699,7 @@ export class ZohoCrm implements INodeType {
 
 						const endpoint = `/invoices/${invoiceId}`;
 						responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'get') {
 
@@ -746,7 +746,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/invoices/${invoiceId}`;
 
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'upsert') {
 
@@ -768,7 +768,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/invoices/upsert', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					}
 
@@ -799,7 +799,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/leads', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'delete') {
 
@@ -810,7 +810,7 @@ export class ZohoCrm implements INodeType {
 						const leadId = this.getNodeParameter('leadId', i);
 
 						responseData = await zohoApiRequest.call(this, 'DELETE', `/leads/${leadId}`);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'get') {
 
@@ -837,6 +837,10 @@ export class ZohoCrm implements INodeType {
 
 					} else if (operation === 'getFields') {
 
+						// ----------------------------------------
+						//            lead: getFields
+						// ----------------------------------------
+
 						responseData = await zohoApiRequest.call(this, 'GET', '/settings/fields', {}, { module: 'leads' });
 						responseData = responseData.fields;
 
@@ -858,7 +862,7 @@ export class ZohoCrm implements INodeType {
 						const leadId = this.getNodeParameter('leadId', i);
 
 						responseData = await zohoApiRequest.call(this, 'PUT', `/leads/${leadId}`, body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'upsert') {
 
@@ -878,7 +882,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/leads/upsert', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					}
 
@@ -908,7 +912,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/products', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'delete') {
 
@@ -920,7 +924,7 @@ export class ZohoCrm implements INodeType {
 
 						const endpoint = `/products/${productId}`;
 						responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'get') {
 
@@ -966,7 +970,7 @@ export class ZohoCrm implements INodeType {
 
 						const endpoint = `/products/${productId}`;
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'upsert') {
 
@@ -985,7 +989,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/products/upsert', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					}
 
@@ -1021,7 +1025,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/purchase_orders', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'delete') {
 
@@ -1033,7 +1037,7 @@ export class ZohoCrm implements INodeType {
 
 						const endpoint = `/purchase_orders/${purchaseOrderId}`;
 						responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'get') {
 
@@ -1079,7 +1083,7 @@ export class ZohoCrm implements INodeType {
 
 						const endpoint = `/purchase_orders/${purchaseOrderId}`;
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'upsert') {
 
@@ -1102,7 +1106,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/purchase_orders/upsert', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					}
 
@@ -1137,7 +1141,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/quotes', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'delete') {
 
@@ -1148,7 +1152,7 @@ export class ZohoCrm implements INodeType {
 						const quoteId = this.getNodeParameter('quoteId', i);
 
 						responseData = await zohoApiRequest.call(this, 'DELETE', `/quotes/${quoteId}`);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'get') {
 
@@ -1192,7 +1196,7 @@ export class ZohoCrm implements INodeType {
 						const quoteId = this.getNodeParameter('quoteId', i);
 
 						responseData = await zohoApiRequest.call(this, 'PUT', `/quotes/${quoteId}`, body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'upsert') {
 
@@ -1214,7 +1218,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/quotes/upsert', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					}
 
@@ -1248,7 +1252,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/sales_orders', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'delete') {
 
@@ -1260,7 +1264,7 @@ export class ZohoCrm implements INodeType {
 
 						const endpoint = `/sales_orders/${salesOrderId}`;
 						responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'get') {
 
@@ -1306,7 +1310,7 @@ export class ZohoCrm implements INodeType {
 
 						const endpoint = `/sales_orders/${salesOrderId}`;
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'upsert') {
 
@@ -1329,7 +1333,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/sales_orders/upsert', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					}
 
@@ -1359,7 +1363,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/vendors', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'delete') {
 
@@ -1371,7 +1375,7 @@ export class ZohoCrm implements INodeType {
 
 						const endpoint = `/vendors/${vendorId}`;
 						responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'get') {
 
@@ -1417,7 +1421,7 @@ export class ZohoCrm implements INodeType {
 
 						const endpoint = `/vendors/${vendorId}`;
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					} else if (operation === 'upsert') {
 
@@ -1436,7 +1440,7 @@ export class ZohoCrm implements INodeType {
 						}
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/vendors/upsert', body);
-						responseData = responseData.data;
+						responseData = responseData.data[0].details;
 
 					}
 
@@ -1452,7 +1456,7 @@ export class ZohoCrm implements INodeType {
 			}
 
 			if (resolveData) {
-				responseData = await zohoApiRequest.call(this, 'GET', `/${getModuleName(resource)}/${responseData[0].details.id}`);
+				responseData = await zohoApiRequest.call(this, 'GET', `/${getModuleName(resource)}/${responseData.id}`);
 				responseData = responseData.data;
 			}
 
