@@ -18,6 +18,8 @@ export type GetAllAdditionalOptions = {
 			value: string;
 		}>;
 	};
+	filterType: string,
+	search: string,
 };
 
 export type LoadedResource = {

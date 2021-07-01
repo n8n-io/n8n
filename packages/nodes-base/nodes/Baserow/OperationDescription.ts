@@ -50,31 +50,6 @@ export const operationFields = [
 		required: true,
 		description: 'ID of the row to return',
 	},
-	{
-		displayName: 'Additional Options',
-		name: 'additionalOptions',
-		type: 'collection',
-		placeholder: 'Add Option',
-		description: 'Additional options for retrieving a row',
-		default: {},
-		displayOptions: {
-			show: {
-				operation: [
-					'get',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Use IDs',
-				name: 'disableAutoMapping',
-				type: 'boolean',
-				default: true,
-				description: 'Whether to use table column IDs instead of table column names in the response.<br>Enable this setting to use the default Baserow table column IDs, i.e. <code>field_n</code>',
-			},
-		],
-	},
-
 	// ----------------------------------
 	//              update
 	// ----------------------------------
@@ -94,6 +69,20 @@ export const operationFields = [
 		description: 'ID of the row to update',
 	},
 	{
+		displayName: 'Send Input Data',
+		name: 'sendInputData',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+			},
+		},
+		default: true,
+		description: 'Send the the data the node receives as JSON.',
+	},
+	{
 		displayName: 'Columns',
 		name: 'columns',
 		type: 'string',
@@ -102,6 +91,9 @@ export const operationFields = [
 				operation: [
 					'update',
 				],
+				sendInputData: [
+					true,
+				],
 			},
 		},
 		default: '',
@@ -109,10 +101,71 @@ export const operationFields = [
 		description: 'Comma-separated list of the properties to use as columns for the rows to update',
 		placeholder: 'Enter fields...',
 	},
+	{
+		displayName: 'Fields',
+		name: 'fieldsUi',
+		placeholder: 'Add Field',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				sendInputData: [
+					false,
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Field',
+				name: 'fieldValues',
+				values: [
+					{
+						displayName: 'Field ID',
+						name: 'fieldId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsDependsOn: [
+								'tableId',
+							],
+							loadOptionsMethod: 'getTableFields',
+						},
+						default: '',
+					},
+					{
+						displayName: 'Field Value',
+						name: 'fieldValue',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+	},
 
 	// ----------------------------------
 	//             create
 	// ----------------------------------
+	
+	{
+		displayName: 'Send Input Data',
+		name: 'sendInputData',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: true,
+		description: 'Send the the data the node receives as JSON.',
+	},
 	{
 		displayName: 'Columns',
 		name: 'columns',
@@ -122,12 +175,61 @@ export const operationFields = [
 				operation: [
 					'create',
 				],
+				sendInputData: [
+					true,
+				],
 			},
 		},
 		default: '',
 		required: true,
 		description: 'Comma-separated list of the properties to use as columns for the rows to create',
 		placeholder: 'Enter fields...',
+	},
+	{
+		displayName: 'Fields',
+		name: 'fieldsUi',
+		placeholder: 'Add Field',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				sendInputData: [
+					false,
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Field',
+				name: 'fieldValues',
+				values: [
+					{
+						displayName: 'Field ID',
+						name: 'fieldId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsDependsOn: [
+								'tableId',
+							],
+							loadOptionsMethod: 'getTableFields',
+						},
+						default: '',
+					},
+					{
+						displayName: 'Field Value',
+						name: 'fieldValue',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 
 	// ----------------------------------
@@ -147,35 +249,6 @@ export const operationFields = [
 		default: '',
 		required: true,
 		description: 'ID of the row to delete',
-	},
-
-	// ----------------------------------
-	//         shared (bottom)
-	// ----------------------------------
-	{
-		displayName: 'Additional Options',
-		name: 'additionalOptions',
-		type: 'collection',
-		placeholder: 'Add Option',
-		default: {},
-		displayOptions: {
-			show: {
-				operation: [
-					'create',
-					'update',
-					'delete',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Use IDs',
-				name: 'disableAutoMapping',
-				type: 'boolean',
-				default: true,
-				description: 'Whether to use table column IDs instead of table column names in the response.<br>Enable this setting to use the default Baserow table column IDs, i.e. <code>field_n</code>',
-			},
-		],
 	},
 
 	// ----------------------------------
@@ -217,7 +290,7 @@ export const operationFields = [
 		},
 	},
 	{
-		displayName: 'Additional Options',
+		displayName: 'Options',
 		name: 'additionalOptions',
 		type: 'collection',
 		placeholder: 'Add Option',
@@ -364,6 +437,32 @@ export const operationFields = [
 				],
 			},
 			{
+				displayName: 'Filter Type',
+				name: 'filterType',
+				type: 'options',
+				options: [
+					{
+						name: 'AND',
+						value: 'AND',
+						description: 'Indicates that the rows must match all the provided filters.',
+					},
+					{
+						name: 'OR',
+						value: 'OR',
+						description: 'Indicates that the rows only have to match one of the filters.',
+					},
+				],
+				default: 'AND',
+				description: 'This works only if two or more filters are provided.',
+			},
+			{
+				displayName: 'Search Term',
+				name: 'search',
+				type: 'string',
+				default: '',
+				description: 'If provided only rows with data that matches the search query are going to be returned.',
+			},
+			{
 				displayName: 'Sort Order',
 				name: 'order',
 				placeholder: 'Add Sort Order',
@@ -413,13 +512,6 @@ export const operationFields = [
 						],
 					},
 				],
-			},
-			{
-				displayName: 'Use IDs',
-				name: 'disableAutoMapping',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to use table column IDs instead of table column names in the response.<br>Enable this setting to use the default Baserow table column IDs, i.e. <code>field_n</code>',
 			},
 		],
 	},

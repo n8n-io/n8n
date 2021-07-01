@@ -13,7 +13,6 @@ import {
 import {
 	baserowApiRequest,
 	baserowApiRequestAllItems,
-	getFieldNamesAndIds,
 	getJwtToken,
 	TableFieldMapper,
 	toOptions,
@@ -38,7 +37,7 @@ export class Baserow implements INodeType {
 		group: ['output'],
 		version: 1,
 		description: 'Consume the Baserow API',
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		defaults: {
 			name: 'Baserow',
 			color: '#00a2ce',
@@ -53,9 +52,29 @@ export class Baserow implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
+					{
+						name: 'Row',
+						value: 'row',
+					},
+				],
+				default: 'row',
+				description: 'Operation to perform',
+			},
+			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'row',
+						],
+					},
+				},
 				options: [
 					{
 						name: 'Create',
@@ -95,32 +114,26 @@ export class Baserow implements INodeType {
 			async getDatabaseIds(this: ILoadOptionsFunctions) {
 				const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
-
 				const endpoint = '/api/applications/';
 				const databases = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
-
 				return toOptions(databases);
 			},
 
 			async getTableIds(this: ILoadOptionsFunctions) {
 				const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
-
 				const databaseId = this.getNodeParameter('databaseId', 0) as string;
 				const endpoint = `/api/database/tables/database/${databaseId}`;
 				const tables = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
-
 				return toOptions(tables);
 			},
 
 			async getTableFields(this: ILoadOptionsFunctions) {
 				const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
-
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const endpoint = `/api/database/fields/table/${tableId}/`;
 				const fields = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
-
 				return toOptions(fields);
 			},
 		},
@@ -133,19 +146,10 @@ export class Baserow implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		const tableId = this.getNodeParameter('tableId', 0) as string;
-
-		const { disableAutoMapping } = this.getNodeParameter('additionalOptions', 0) as { disableAutoMapping: boolean };
-
 		const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
 		const jwtToken = await getJwtToken.call(this, credentials);
-
-		const mapIds = !disableAutoMapping;
-
-		if (mapIds) {
-			mapper.mapIds = mapIds;
-			const fields = await mapper.getTableFields.call(this, tableId, jwtToken);
-			mapper.createMappings(fields);
-		}
+		const fields = await mapper.getTableFields.call(this, tableId, jwtToken);
+		mapper.createMappings(fields);
 
 		for (let i = 0; i < items.length; i++) {
 
@@ -159,7 +163,7 @@ export class Baserow implements INodeType {
 
 					// https://api.baserow.io/api/redoc/#operation/list_database_table_rows
 
-					const { order, filters } = this.getNodeParameter('additionalOptions', 0) as GetAllAdditionalOptions;
+					const { order, filters, filterType, search } = this.getNodeParameter('additionalOptions', 0) as GetAllAdditionalOptions;
 
 					const qs: IDataObject = {};
 
@@ -175,12 +179,18 @@ export class Baserow implements INodeType {
 						});
 					}
 
+					if (filterType) {
+						qs.filter_type = filterType;
+					}
+
+					if (search) {
+						qs.search = search;
+					}
+					
 					const endpoint = `/api/database/rows/table/${tableId}/`;
 					const rows = await baserowApiRequestAllItems.call(this, 'GET', endpoint, {}, qs, jwtToken) as Row[];
 
-					if (mapIds) {
-						rows.forEach(row => mapper.idsToNames(row));
-					}
+					rows.forEach(row => mapper.idsToNames(row));
 
 					returnData.push(...rows);
 
@@ -196,7 +206,7 @@ export class Baserow implements INodeType {
 					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
 					const row = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken);
 
-					if (mapIds) mapper.idsToNames(row);
+					mapper.idsToNames(row);
 
 					returnData.push(row);
 
@@ -210,29 +220,30 @@ export class Baserow implements INodeType {
 
 					const body: IDataObject = {};
 
-					const rawColumns = this.getNodeParameter('columns', i) as string;
-					const columns = rawColumns.split(',').map(c => c.trim());
-					const incomingKeys = Object.keys(items[i].json);
-					const dbFields = await getFieldNamesAndIds.call(this, tableId, jwtToken);
+					const sendInputData = this.getNodeParameter('sendInputData', 0, false) as boolean;
 
-					for (const key of incomingKeys) {
-						if (!columns.includes(key)) continue;
+					if (sendInputData) {
 
-						if (mapIds && dbFields.names.includes(key)) {
+						const incomingKeys = Object.keys(items[i].json);
+						const rawColumns = this.getNodeParameter('columns', i) as string;
+						const columns = rawColumns.split(',').map(c => c.trim());
+
+						for (const key of incomingKeys) {
+							if (!columns.includes(key)) continue;
 							body[key] = items[i].json[key];
+							mapper.namesToIds(body);
 						}
-
-						if (!mapIds && dbFields.ids.includes(key)) {
-							body[key] = items[i].json[key];
+					} else {
+						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as [{ fieldId: string, fieldValue: string }];
+						for (const field of fields) {
+							body[`field_${field.fieldId}`] = field.fieldValue;
 						}
 					}
-
-					if (mapIds) mapper.namesToIds(body);
 
 					const endpoint = `/api/database/rows/table/${tableId}/`;
 					const createdRow = await baserowApiRequest.call(this, 'POST', endpoint, body, {}, jwtToken);
 
-					if (mapIds) mapper.idsToNames(createdRow);
+					mapper.idsToNames(createdRow);
 
 					returnData.push(createdRow);
 
@@ -248,29 +259,30 @@ export class Baserow implements INodeType {
 
 					const body: IDataObject = {};
 
-					const rawColumns = this.getNodeParameter('columns', i) as string;
-					const columns = rawColumns.split(',').map(c => c.trim());
-					const incomingKeys = Object.keys(items[i].json);
-					const dbFields = await getFieldNamesAndIds.call(this, tableId, jwtToken);
+					const sendInputData = this.getNodeParameter('sendInputData', 0, false) as boolean;
 
-					for (const key of incomingKeys) {
-						if (!columns.includes(key)) continue;
+					if (sendInputData) {
 
-						if (mapIds && dbFields.names.includes(key)) {
+						const incomingKeys = Object.keys(items[i].json);
+						const rawColumns = this.getNodeParameter('columns', i) as string;
+						const columns = rawColumns.split(',').map(c => c.trim());
+
+						for (const key of incomingKeys) {
+							if (!columns.includes(key)) continue;
 							body[key] = items[i].json[key];
 						}
-
-						if (!mapIds && dbFields.ids.includes(key)) {
-							body[key] = items[i].json[key];
+					} else {
+						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as [{ fieldId: string, fieldValue: string }];
+						for (const field of fields) {
+							body[`field_${field.fieldId}`] = field.fieldValue;
 						}
 					}
 
-					if (mapIds) mapper.namesToIds(body);
 
 					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
 					const updatedRow = await baserowApiRequest.call(this, 'PATCH', endpoint, body, {}, jwtToken);
 
-					if (mapIds) mapper.idsToNames(updatedRow);
+					mapper.idsToNames(updatedRow);
 
 					returnData.push(updatedRow);
 
@@ -288,7 +300,6 @@ export class Baserow implements INodeType {
 					await baserowApiRequest.call(this, 'DELETE', endpoint, {}, {}, jwtToken);
 
 					returnData.push({ success: true });
-
 				}
 
 			} catch (error) {
@@ -298,7 +309,6 @@ export class Baserow implements INodeType {
 				}
 				throw error;
 			}
-
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
