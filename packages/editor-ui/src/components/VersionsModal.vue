@@ -10,7 +10,7 @@
 		</template>
 		<template slot="content">
 			<section :class="$style['header-content']">
-				<p>You’re on {{ currentVersion.name }}, which is <strong>{{currentReleaseDate}}</strong> and {{ nextVersions.length }} version{{nextVersions.length > 1 ? 's' : ''}} behind the latest and greatest n8n</p>	
+				<p>You’re on {{ currentVersion.name }}, which was released <strong>{{currentReleaseDate}}</strong> and {{ nextVersions.length }} version{{nextVersions.length > 1 ? 's' : ''}} behind the latest and greatest n8n</p>	
 
 				<a :class="$style.update" :href="UPDATE_INFO_URL" v-if="UPDATE_INFO_URL" target="_blank">
 					<font-awesome-icon icon="info-circle"></font-awesome-icon>
@@ -56,7 +56,7 @@ export default Vue.extend({
 			'currentVersion',
 		]),
 		currentReleaseDate() {
-			return format(this.currentVersion.createdAt).replace('ago', 'old');
+			return format(this.currentVersion.createdAt);
 		},
 	},
 });
