@@ -67,3 +67,17 @@ jobs:
         shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
+      -
+        name: Export credentials
+        run: n8n/packages/cli/bin/n8n export:credentials --output=test-workflows/credentials.json --all --pretty
+        shell: bash
+        env:
+          N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
+      -
+        name: Commit and push credential changes
+        run: |
+          cd test-workflows
+          git config --global user.name 'n8n test bot'
+          git config --global user.email 'n8n-test-bot@users.noreply.github.com'
+          git commit -am "Automated credential update"
+          git push
