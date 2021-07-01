@@ -1455,11 +1455,6 @@ export class ZohoCrm implements INodeType {
 				throw error;
 			}
 
-			if (resolveData) {
-				responseData = await zohoApiRequest.call(this, 'GET', `/${getModuleName(resource)}/${responseData.id}`);
-				responseData = responseData.data;
-			}
-
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
 				: returnData.push(responseData);

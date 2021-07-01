@@ -7,7 +7,6 @@ import {
 	mailingAddress,
 	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
-	makeResolve,
 	otherAddress,
 } from './SharedFields';
 
@@ -81,7 +80,6 @@ export const contactFields = [
 			},
 		},
 	},
-	makeResolve('contact', ['create']),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -237,7 +235,6 @@ export const contactFields = [
 			},
 		},
 	},
-	makeResolve('contact', ['upsert']),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -444,7 +441,6 @@ export const contactFields = [
 			},
 		},
 	},
-	makeResolve('contact', ['update']),
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',

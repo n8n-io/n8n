@@ -5,7 +5,6 @@ import {
 import {
 	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
-	makeResolve,
 } from './SharedFields';
 
 export const productOperations = [
@@ -104,8 +103,6 @@ export const productFields = [
 	// ----------------------------------------
 	//         product: create + upsert
 	// ----------------------------------------
-	makeResolve('product', ['create', 'upsert']),
-
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -265,7 +262,6 @@ export const productFields = [
 			},
 		},
 	},
-	makeResolve('product', ['update']),
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',

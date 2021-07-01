@@ -7,7 +7,6 @@ import {
 	currencies,
 	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
-	makeResolve,
 } from './SharedFields';
 
 export const vendorOperations = [
@@ -106,7 +105,6 @@ export const vendorFields = [
 	// ----------------------------------------
 	//         vendor: create + upsert
 	// ----------------------------------------
-	makeResolve('vendor', ['create', 'upsert']),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -237,7 +235,6 @@ export const vendorFields = [
 			},
 		},
 	},
-	makeResolve('vendor', ['update']),
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',

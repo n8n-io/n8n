@@ -484,22 +484,6 @@ export const makeCustomFieldsFixedCollection = (resource: CamelCaseResource) => 
 	};
 };
 
-export const makeResolve = (resource: string, operations: string[]) => {
-	return {
-		displayName: 'Resolve Data',
-		name: 'resolveData',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [resource],
-				operation: operations,
-			},
-		},
-		default: false,
-		description: `By default the response only contain the ID of the ${resource}. If this option gets activated it<br />will resolve the data automatically.`,
-	};
-};
-
 // https://www.zoho.com/subscriptions/help/supported-currencies.html
 
 export const currencies = [

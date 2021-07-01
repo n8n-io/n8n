@@ -7,7 +7,6 @@ import {
 	currencies,
 	makeCustomFieldsFixedCollection,
 	makeGetAllFields,
-	makeResolve,
 	productDetailsOptions,
 	shippingAddress,
 } from './SharedFields';
@@ -132,7 +131,6 @@ export const quoteFields = [
 			},
 		},
 	},
-	makeResolve('quote', ['create', 'upsert']),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -328,7 +326,6 @@ export const quoteFields = [
 			},
 		},
 	},
-	makeResolve('quote', ['update']),
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
