@@ -18,6 +18,9 @@ import {
 import * as fs from 'fs';
 import * as glob from 'glob-promise';
 import * as path from 'path';
+import { 
+	UserSettings,
+} from 'n8n-core';
 
 export class ImportWorkflowsCommand extends Command {
 	static description = 'Import workflows';
@@ -60,6 +63,9 @@ export class ImportWorkflowsCommand extends Command {
 
 		try {
 			await Db.init();
+
+			// Make sure the settings exist
+			await UserSettings.prepareUserSettings();
 			let i;
 			if (flags.separate) {
 				const files = await glob((flags.input.endsWith(path.sep) ? flags.input : flags.input + path.sep) + '*.json');
