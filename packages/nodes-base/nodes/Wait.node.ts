@@ -224,6 +224,19 @@ export class Wait implements INodeType {
 			//         mode:webhook
 			// ----------------------------------
 			{
+				displayName: 'The URL to call will be generated at run time, and can be referenced under <strong>$restartWebhookUrl</strong>',
+				name: 'webhookNotice',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						mode: [
+							'webhook',
+						],
+					},
+				},
+				default: '',
+			},
+			{
 				displayName: 'HTTP Method',
 				name: 'httpMethod',
 				type: 'options',
