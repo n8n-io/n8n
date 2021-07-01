@@ -1,5 +1,5 @@
 import {
-	Command, 
+	Command,
 	flags,
 } from '@oclif/command';
 
@@ -52,7 +52,7 @@ export class ListWorkflowCommand extends Command {
 			} else {
 				workflows.forEach(workflow => console.log(workflow.id + "|" + workflow.name));
 			}
-			
+
 
 		} catch (e) {
 			console.error('\nGOT ERROR');

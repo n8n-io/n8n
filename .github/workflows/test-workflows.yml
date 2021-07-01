@@ -1,9 +1,10 @@
 name: Run test workflows
 
-on: [push, workflow_dispatch]
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
 
-
-# TODO: add files to /tmp
 
 jobs:
   run-test-workflows:
@@ -25,12 +26,12 @@ jobs:
         with:
           repository: n8n-io/test-workflows
           path: test-workflows
-      - 
+      -
         name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - 
+      -
         name: npm install and build
         run: |
           cd n8n
@@ -40,19 +41,19 @@ jobs:
         env:
           CI: true
         shell: bash
-      - 
+      -
         name: Import credentials
         run: n8n/packages/cli/bin/n8n import:credentials --input=test-workflows/credentials.json
         shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
-      - 
+      -
         name: Import workflows
         run: n8n/packages/cli/bin/n8n import:workflow --separate --input=test-workflows/workflows
         shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
-      - 
+      -
         name: Copy static assets
         run: |
           cp n8n/assets/n8n-logo.png /tmp/n8n-logo.png

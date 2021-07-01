@@ -1,18 +1,18 @@
 interface IResult {
-	totalWorkflows:number;
-	summary:{
-		failedExecutions:number,
-		successfulExecutions:number,
-		warningExecutions:number,
-		errors:IExecutionError[],
-		warnings:IExecutionError[],
+	totalWorkflows: number;
+	summary: {
+		failedExecutions: number,
+		successfulExecutions: number,
+		warningExecutions: number,
+		errors: IExecutionError[],
+		warnings: IExecutionError[],
 	};
-	coveredNodes:{
-		[nodeType:string]:number
+	coveredNodes: {
+		[nodeType: string]: number
 	};
-	executions:IExecutionResult[];
+	executions: IExecutionResult[];
 }
-interface IExecutionResult{
+interface IExecutionResult {
 	workflowId: string | number;
 	workflowName: string;
 	executionTime: number; // Given in seconds with decimals for milisseconds
@@ -20,8 +20,8 @@ interface IExecutionResult{
 	executionStatus: ExecutionStatus;
 	error?: string;
 	changes?: string;
-	coveredNodes:{
-		[nodeType:string]:number
+	coveredNodes: {
+		[nodeType: string]: number
 	};
 }
 

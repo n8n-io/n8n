@@ -22,7 +22,7 @@ import {
 	WorkflowRunner,
 } from '../src';
 
-import { 
+import {
 	getLogger,
 } from '../src/Logger';
 
