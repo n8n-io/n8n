@@ -109,7 +109,6 @@ export const invoiceFields = [
 	// ----------------------------------------
 	//        invoice: create + upsert
 	// ----------------------------------------
-	makeResolve('invoice', ['create', 'upsert']),
 	{
 		displayName: 'Products',
 		name: 'Product_Details',
@@ -133,6 +132,7 @@ export const invoiceFields = [
 			},
 		},
 	},
+	makeResolve('invoice', ['create', 'upsert']),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

@@ -130,7 +130,6 @@ export const purchaseOrderFields = [
 			},
 		},
 	},
-	makeResolve('purchaseOrder', ['create', 'upsert']),
 	{
 		displayName: 'Products',
 		name: 'Product_Details',
@@ -154,6 +153,7 @@ export const purchaseOrderFields = [
 			},
 		},
 	},
+	makeResolve('purchaseOrder', ['create', 'upsert']),
 
 	{
 		displayName: 'Additional Fields',
@@ -409,7 +409,6 @@ export const purchaseOrderFields = [
 	// ----------------------------------------
 	//          purchaseOrder: update
 	// ----------------------------------------
-	makeResolve('purchaseOrder', ['update']),
 	{
 		displayName: 'Purchase Order ID',
 		name: 'purchaseOrderId',
@@ -428,6 +427,7 @@ export const purchaseOrderFields = [
 			},
 		},
 	},
+	makeResolve('purchaseOrder', ['update']),
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
