@@ -138,7 +138,7 @@ export class WorkflowRunnerProcess {
 		additionalData.hooks = this.getProcessForwardHooks();
 		additionalData.executionId = inputData.executionId;
 
-		additionalData.sendMessageToUI = async (source: string, message: string) => {
+		additionalData.sendMessageToUI = async (source: string, message: any) => { // tslint:disable-line:no-any
 			if (workflowRunner.data!.executionMode !== 'manual') {
 				return;
 			}

@@ -1,5 +1,5 @@
 <template>
-	<div :class="{'tags-container': true, focused}" @keydown.stop v-click-outside="onBlur">
+	<div :class="{'tags-container': true, focused}" @keydown.stop v-click-outside="onClickOutside">
 		<el-select
 			:popperAppendToBody="false"
 			:value="appliedTags"
@@ -215,8 +215,10 @@ export default mixins(showMessage).extend({
 				this.focusOnInput();
 			});
 		},
-		onBlur() {
-			this.$emit('blur');
+		onClickOutside(e: Event) {
+			if (e.type === 'click') {
+				this.$emit('blur');
+			}
 		},
 	},
 	watch: {

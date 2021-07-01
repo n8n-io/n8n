@@ -313,7 +313,6 @@ export class ActiveWorkflowRunner {
 
 			try {
 				await Db.collections.Webhook?.insert(webhook);
-
 				const webhookExists = await workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, activation, false);
 				if (webhookExists !== true) {
 					// If webhook does not exist yet create it
@@ -341,7 +340,7 @@ export class ActiveWorkflowRunner {
 					errorMessage = error.message;
 				}
 
-				throw new Error(errorMessage);
+				throw error;
 			}
 		}
 		// Save static data!

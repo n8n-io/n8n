@@ -348,6 +348,20 @@ export class HttpRequest implements INodeType {
 						description: 'HTTP proxy to use.',
 					},
 					{
+						displayName: 'Split Into Items',
+						name: 'splitIntoItems',
+						type: 'boolean',
+						default: false,
+						description: 'Outputs each element of an array as own item.',
+						displayOptions: {
+							show: {
+								'/responseFormat': [
+									'json',
+								],
+							},
+						},
+					},
+					{
 						displayName: 'Timeout',
 						name: 'timeout',
 						type: 'number',
@@ -867,6 +881,18 @@ export class HttpRequest implements INodeType {
 				}
 			}
 
+			try {
+				let sendRequest: any = requestOptions; // tslint:disable-line:no-any
+				// Protect browser from sending large binary data
+				if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
+					sendRequest = {
+						...requestOptions,
+						body: `Binary data got replaced with this text. Original was a Buffer with a size of ${requestOptions.body.length} byte.`,
+					};
+				}
+				this.sendMessageToUI(sendRequest);
+			} catch (e) {}
+
 			// Now that the options are all set make the actual http request
 			if (oAuth1Api !== undefined) {
 				requestPromises.push(this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions));
@@ -993,7 +1019,11 @@ export class HttpRequest implements INodeType {
 						}
 					}
 
-					returnItems.push({ json: response });
+					if (options.splitIntoItems === true && Array.isArray(response)) {
+						response.forEach(item => returnItems.push({ json: item }));
+					} else {
+						returnItems.push({ json: response });
+					}
 				}
 			}
 		}

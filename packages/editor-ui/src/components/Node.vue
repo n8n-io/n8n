@@ -37,7 +37,7 @@
 				</div>
 			</div>
 
-			<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :style="nodeIconStyle"/>
+			<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :style="nodeIconStyle" :shrink="true"/>
 		</div>
 		<div class="node-description">
 			<div class="node-name" :title="data.name">
@@ -53,6 +53,7 @@
 <script lang="ts">
 
 import Vue from 'vue';
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
@@ -68,7 +69,7 @@ import mixins from 'vue-typed-mixins';
 
 import { get } from 'lodash';
 
-export default mixins(nodeBase, nodeHelpers, workflowHelpers).extend({
+export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Node',
 	components: {
 		NodeIcon,
@@ -174,6 +175,7 @@ export default mixins(nodeBase, nodeHelpers, workflowHelpers).extend({
 			this.$emit('runWorkflow', this.data.name, 'Node.executeNode');
 		},
 		deleteNode () {
+			this.$externalHooks().run('node.deleteNode', { node: this.data});
 			Vue.nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('removeNode', this.data.name);

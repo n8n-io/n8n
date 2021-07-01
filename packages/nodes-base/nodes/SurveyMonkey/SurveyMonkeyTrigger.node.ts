@@ -37,7 +37,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SurveyMonkey Trigger',
 		name: 'surveyMonkeyTrigger',
-		icon: 'file:surveyMonkey.png',
+		icon: 'file:surveyMonkey.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Starts the workflow when Survey Monkey events occur.',

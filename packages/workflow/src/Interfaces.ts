@@ -224,7 +224,7 @@ export interface IExecuteFunctions {
 	getWorkflow(): IWorkflowMetadata;
 	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
 	putExecutionToSleep(sleepTill: Date): Promise<void>;
-	sendMessageToUI(message: string): void;
+	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
 	helpers: {
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
 	};
@@ -349,6 +349,7 @@ export interface INode {
 	type: string;
 	position: [number, number];
 	disabled?: boolean;
+	notes?: string;
 	notesInFlow?: boolean;
 	retryOnFail?: boolean;
 	maxTries?: number;
@@ -565,6 +566,7 @@ export interface INodeTypeDescription {
 		deactivate?: INodeHookDescription[];
 	};
 	webhooks?: IWebhookDescription[];
+	codex?: CodexData;
 }
 
 export interface INodeHookDescription {
@@ -751,7 +753,7 @@ export interface IWorkflowExecuteAdditionalData {
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
 	restApiUrl: string;
-	sendMessageToUI?: (source: string, message: string) => void;
+	sendMessageToUI?: (source: string, message: any) => void; // tslint:disable-line:no-any
 	timezone: string;
 	webhookBaseUrl: string;
 	webhookSleepingBaseUrl: string;
@@ -783,10 +785,17 @@ export interface ILogger {
 	warn: (message: string, meta?: object) => void;
 	error: (message: string, meta?: object) => void;
 }
-export interface IRawErrorObject {
-	[key: string]: string | object | number | boolean | undefined | null | string[] | object[] | number[] | boolean[];
-}
 
 export interface IStatusCodeMessages {
 	[key: string]: string;
 }
+
+export type CodexData = {
+	categories?: string[];
+	subcategories?: {[category: string]: string[]};
+	alias?: string[];
+};
+
+export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+
+export type JsonObject = { [key: string]: JsonValue };

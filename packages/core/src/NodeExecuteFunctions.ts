@@ -772,7 +772,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			async putExecutionToSleep(sleepTill: Date): Promise<void> {
 				runExecutionData.sleepTill = sleepTill;
 			},
-			sendMessageToUI(message: string): void {
+			sendMessageToUI(message	: any): void { // tslint:disable-line:no-any
 				if (mode !== 'manual') {
 					return;
 				}
