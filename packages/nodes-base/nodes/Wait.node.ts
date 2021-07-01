@@ -128,36 +128,36 @@ export class Wait implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'DateTime',
-						value: 'dateTime',
-						description: 'Waits until the set date time to continue',
-					},
-					{
-						name: 'Time',
-						value: 'time',
+						name: 'Wait for time interval',
+						value: 'timeInterval',
 						description: 'Waits for a certain amount of time',
 					},
 					{
-						name: 'Webhook',
+						name: 'Wait until specified time',
+						value: 'specificTime',
+						description: 'Waits until the set date time to continue',
+					},
+					{
+						name: 'Wait for webhook',
 						value: 'webhook',
 						description: 'Waits for a webhook call',
 					},
 				],
-				default: 'time',
+				default: 'timeInterval',
 				description: 'For what the node should wait for before to continue with the execution.',
 			},
 
 			// ----------------------------------
-			//         mode:dateTime
+			//         mode:specificTime
 			// ----------------------------------
 			{
-				displayName: 'Date Time',
+				displayName: 'Date and Time',
 				name: 'dateTime',
 				type: 'dateTime',
 				displayOptions: {
 					show: {
 						mode: [
-							'dateTime',
+							'specificTime',
 						],
 					},
 				},
@@ -166,21 +166,22 @@ export class Wait implements INodeType {
 			},
 
 			// ----------------------------------
-			//         mode:time
+			//         mode:timeInterval
 			// ----------------------------------
 			{
-				displayName: 'Value',
-				name: 'value',
+				displayName: 'Amount',
+				name: 'amount',
 				type: 'number',
 				displayOptions: {
 					show: {
 						mode: [
-							'time',
+							'timeInterval',
 						],
 					},
 				},
 				typeOptions: {
-					minValue: 1,
+					minValue: 0,
+					numberPrecision: 2,
 				},
 				default: 1,
 				description: 'The time to wait.',
@@ -192,7 +193,7 @@ export class Wait implements INodeType {
 				displayOptions: {
 					show: {
 						mode: [
-							'time',
+							'timeInterval',
 						],
 					},
 				},
@@ -668,23 +669,23 @@ export class Wait implements INodeType {
 		}
 
 		let sleepTill: Date;
-		if (mode === 'time') {
+		if (mode === 'timeInterval') {
 			const unit = this.getNodeParameter('unit', 0) as string;
 
-			let sleepValue = this.getNodeParameter('value', 0) as number;
+			let sleepAmount = this.getNodeParameter('amount', 0) as number;
 			if (unit === 'minutes') {
-				sleepValue *= 60;
+				sleepAmount *= 60;
 			}
 			if (unit === 'hours') {
-				sleepValue *= 60 * 60;
+				sleepAmount *= 60 * 60;
 			}
 			if (unit === 'days') {
-				sleepValue *= 60 * 60 * 24;
+				sleepAmount *= 60 * 60 * 24;
 			}
 
-			sleepValue *= 1000;
+			sleepAmount *= 1000;
 
-			sleepTill = new Date(new Date().getTime() + sleepValue);
+			sleepTill = new Date(new Date().getTime() + sleepAmount);
 
 		} else {
 			// Mode: dateTime
