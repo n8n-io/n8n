@@ -10,7 +10,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	NodeApiError,
-	NodeOperationError
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -28,14 +28,13 @@ export async function baserowApiRequest(
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
+	jwtToken: string,
 ) {
 	const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
-
-	const jwtToken = await getJwtToken.call(this, credentials);
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -72,6 +71,7 @@ export async function baserowApiRequestAllItems(
 	endpoint: string,
 	body: IDataObject,
 	qs: IDataObject = {},
+	jwtToken: string,
 ): Promise<IDataObject[]> {
 	const returnData: IDataObject[] = [];
 	let responseData;
@@ -83,7 +83,7 @@ export async function baserowApiRequestAllItems(
 	const limit = this.getNodeParameter('limit', 0, 0) as number;
 
 	do {
-		responseData = await baserowApiRequest.call(this, method, endpoint, body, qs);
+		responseData = await baserowApiRequest.call(this, method, endpoint, body, qs, jwtToken);
 		returnData.push(...responseData.results);
 
 		if (!returnAll && returnData.length > limit) {
@@ -124,16 +124,20 @@ export async function getJwtToken(
 	};
 
 	try {
-		const { token } = await this.helpers.request!(options);
+		const { token } = await this.helpers.request!(options) as { token: string };
 		return token;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function getFieldNamesAndIds(this: IExecuteFunctions, tableId: string) {
+export async function getFieldNamesAndIds(
+	this: IExecuteFunctions,
+	tableId: string,
+	jwtToken: string,
+) {
 	const endpoint = `/api/database/fields/table/${tableId}/`;
-	const response = await baserowApiRequest.call(this, 'GET', endpoint) as TableField[];
+	const response = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as TableField[];
 
 	return {
 		names: response.map((field) => field.name),
@@ -149,9 +153,13 @@ export class TableFieldMapper {
 	idToNameMapping: Record<string, string> = {};
 	mapIds = true;
 
-	async getTableFields(this: IExecuteFunctions, table: string): Promise<TableField[]> {
+	async getTableFields(
+		this: IExecuteFunctions,
+		table: string,
+		jwtToken: string,
+	): Promise<TableField[]> {
 		const endpoint = `/api/database/fields/table/${table}/`;
-		return await baserowApiRequest.call(this, 'GET', endpoint);
+		return await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken);
 	}
 
 	createMappings(tableFields: TableField[]) {
