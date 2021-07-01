@@ -3,14 +3,35 @@ import {
 } from 'n8n-workflow';
 
 export const operationFields = [
+	// ----------------------------------
+	//           shared (top)
+	// ----------------------------------
+	{
+		displayName: 'Database ID',
+		name: 'databaseId',
+		type: 'options',
+		default: '',
+		required: true,
+		description: 'ID of the database to operate on',
+		typeOptions: {
+			loadOptionsMethod: 'getDatabaseIds',
+		},
+	},
 	{
 		displayName: 'Table ID',
 		name: 'tableId',
-		type: 'string',
+		type: 'options',
 		default: '',
 		required: true,
-		description: 'ID of the table to operate on. Found as part of the table URL:<br><code>https://baserow.io/database/{databaseId}/table/{tableId}</code><br>You can also enter the full URL',
+		description: 'ID of the table to operate on',
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'databaseId',
+			],
+			loadOptionsMethod: 'getTableIds',
+		},
 	},
+
 	// ----------------------------------
 	//               get
 	// ----------------------------------
@@ -129,7 +150,7 @@ export const operationFields = [
 	},
 
 	// ----------------------------------
-	//         shared fields
+	//         shared (bottom)
 	// ----------------------------------
 	{
 		displayName: 'Additional Options',
@@ -392,13 +413,6 @@ export const operationFields = [
 						],
 					},
 				],
-			},
-			{
-				displayName: 'Search',
-				name: 'search',
-				type: 'string',
-				default: '',
-				description: 'Return only rows with data matching the search conditions',
 			},
 			{
 				displayName: 'Use IDs',

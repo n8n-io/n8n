@@ -16,7 +16,7 @@ import {
 import {
 	Accumulator,
 	BaserowCredentials,
-	TableField,
+	LoadedResource,
 } from './types';
 
 /**
@@ -96,16 +96,6 @@ export async function baserowApiRequestAllItems(
 	return returnData;
 }
 
-export function extractTableIdFromUrl(url: string) {
-	if (url.includes('/table/')) {
-		const match = url.split('/table/').pop()?.match(/\d+/);
-		if (match?.length === 1) return match[0];
-	}
-
-	return url;
-}
-
-
 /**
  * Get a JWT token based on Baserow account username and password.
  */
@@ -137,13 +127,16 @@ export async function getFieldNamesAndIds(
 	jwtToken: string,
 ) {
 	const endpoint = `/api/database/fields/table/${tableId}/`;
-	const response = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as TableField[];
+	const response = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
 
 	return {
 		names: response.map((field) => field.name),
 		ids: response.map((field) => `field_${field.id}`),
 	};
 }
+
+export const toOptions = (items: LoadedResource[]) =>
+	items.map(({ name, id }) => ({ name, value: id }));
 
 /**
  * Responsible for mapping field IDs `field_n` to names and vice versa.
@@ -157,24 +150,24 @@ export class TableFieldMapper {
 		this: IExecuteFunctions,
 		table: string,
 		jwtToken: string,
-	): Promise<TableField[]> {
+	): Promise<LoadedResource[]> {
 		const endpoint = `/api/database/fields/table/${table}/`;
 		return await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken);
 	}
 
-	createMappings(tableFields: TableField[]) {
+	createMappings(tableFields: LoadedResource[]) {
 		this.nameToIdMapping = this.createNameToIdMapping(tableFields);
 		this.idToNameMapping = this.createIdToNameMapping(tableFields);
 	}
 
-	private createIdToNameMapping(responseData: TableField[]) {
+	private createIdToNameMapping(responseData: LoadedResource[]) {
 		return responseData.reduce<Accumulator>((acc, cur) => {
 			acc[`field_${cur.id}`] = cur.name;
 			return acc;
 		}, {});
 	}
 
-	private createNameToIdMapping(responseData: TableField[]) {
+	private createNameToIdMapping(responseData: LoadedResource[]) {
 		return responseData.reduce<Accumulator>((acc, cur) => {
 			acc[cur.name] = `field_${cur.id}`;
 			return acc;

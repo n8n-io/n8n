@@ -20,9 +20,9 @@ export type GetAllAdditionalOptions = {
 	};
 };
 
-export type TableField = {
-	name: string;
+export type LoadedResource = {
 	id: number;
+	name: string;
 }
 
 export type Accumulator = {

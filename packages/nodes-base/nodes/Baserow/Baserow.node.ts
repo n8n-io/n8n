@@ -13,10 +13,10 @@ import {
 import {
 	baserowApiRequest,
 	baserowApiRequestAllItems,
-	extractTableIdFromUrl,
 	getFieldNamesAndIds,
 	getJwtToken,
 	TableFieldMapper,
+	toOptions,
 } from './GenericFunctions';
 
 import {
@@ -26,8 +26,8 @@ import {
 import {
 	BaserowCredentials,
 	GetAllAdditionalOptions,
+	LoadedResource,
 	Row,
-	TableField,
 } from './types';
 
 export class Baserow implements INodeType {
@@ -92,17 +92,36 @@ export class Baserow implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getTableFields(this: ILoadOptionsFunctions) {
-				const tableIdOrUrl = this.getNodeParameter('tableId', 0) as string;
-				const tableId = extractTableIdFromUrl(tableIdOrUrl);
-
+			async getDatabaseIds(this: ILoadOptionsFunctions) {
 				const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
 
-				const endpoint = `/api/database/fields/table/${tableId}/`;
-				const fields = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as TableField[];
+				const endpoint = '/api/applications/';
+				const databases = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
 
-				return fields.map(({ name, id }) => ({ name, value: id }));
+				return toOptions(databases);
+			},
+
+			async getTableIds(this: ILoadOptionsFunctions) {
+				const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
+				const jwtToken = await getJwtToken.call(this, credentials);
+
+				const databaseId = this.getNodeParameter('databaseId', 0) as string;
+				const endpoint = `/api/database/tables/database/${databaseId}`;
+				const tables = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
+
+				return toOptions(tables);
+			},
+
+			async getTableFields(this: ILoadOptionsFunctions) {
+				const credentials = this.getCredentials('baserowApi') as BaserowCredentials;
+				const jwtToken = await getJwtToken.call(this, credentials);
+
+				const tableId = this.getNodeParameter('tableId', 0) as string;
+				const endpoint = `/api/database/fields/table/${tableId}/`;
+				const fields = await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken) as LoadedResource[];
+
+				return toOptions(fields);
 			},
 		},
 	};
@@ -113,8 +132,7 @@ export class Baserow implements INodeType {
 		const returnData: IDataObject[] = [];
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		const tableIdOrUrl = this.getNodeParameter('tableId', 0) as string;
-		const tableId = extractTableIdFromUrl(tableIdOrUrl);
+		const tableId = this.getNodeParameter('tableId', 0) as string;
 
 		const { disableAutoMapping } = this.getNodeParameter('additionalOptions', 0) as { disableAutoMapping: boolean };
 
