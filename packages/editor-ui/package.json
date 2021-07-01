@@ -25,6 +25,7 @@
     "test:unit": "vue-cli-service test:unit"
   },
   "dependencies": {
+    "timeago.js": "^4.0.2",
     "v-click-outside": "^3.1.2"
   },
   "devDependencies": {

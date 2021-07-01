@@ -1,8 +1,8 @@
 <template>
 	<div class="node-icon-wrapper" :style="iconStyleData" :class="{shrink: isSvgIcon && shrink, full: !shrink}">
 		<div v-if="nodeIconData !== null" class="icon">
-			<img :src="nodeIconData.path" style="max-width: 100%; max-height: 100%;" v-if="nodeIconData.type === 'file'"/>
-			<font-awesome-icon :icon="nodeIconData.path" v-else-if="nodeIconData.type === 'fa'" />
+			<img :src="nodeIconData.fileBuffer || nodeIconData.path" style="max-width: 100%; max-height: 100%;" v-if="nodeIconData.type === 'file'"/>
+			<font-awesome-icon :icon="nodeIconData.icon || nodeIconData.path" v-else />
 		</div>
 		<div v-else class="node-icon-placeholder">
 			{{nodeType !== null ? nodeType.displayName.charAt(0) : '?' }}
@@ -52,6 +52,10 @@ export default Vue.extend({
 		nodeIconData (): null | NodeIconData {
 			if (this.nodeType === null) {
 				return null;
+			}
+
+			if (this.nodeType.iconData) {
+				return this.nodeType.iconData;
 			}
 
 			const restUrl = this.$store.getters.getRestUrl;

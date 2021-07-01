@@ -36,6 +36,7 @@ import {
 import tags from './modules/tags';
 import ui from './modules/ui';
 import workflows from './modules/workflows';
+import versions from './modules/versions';
 
 Vue.use(Vuex);
 
@@ -92,6 +93,7 @@ const modules = {
 	tags,
 	ui,
 	workflows,
+	versions,
 };
 
 export const store = new Vuex.Store({

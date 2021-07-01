@@ -128,9 +128,9 @@
 				<MenuItemsIterator :items="sidebarMenuBottomItems" :root="true"/>
 
 				<div class="foot-menu-items">
-					<el-menu-item index="updates" class="updates">
+					<el-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openVersionsModal">
 						<i><font-awesome-icon icon="gift"/></i>
-						<span slot="title" class="item-title-root">Updates available</span>
+						<span slot="title" class="item-title-root">{{nextVersions.length}} update{{nextVersions.length > 1? 's': ''}} available</span>
 					</el-menu-item>
 				</div>
 			</el-menu>
@@ -238,6 +238,10 @@ export default mixins(
 			...mapGetters('ui', {
 				isCollapsed: 'sidebarMenuCollapsed',
 			}),
+			...mapGetters('versions', [
+				'hasVersionUpdates',
+				'nextVersions',
+			]),
 			exeuctionId (): string | undefined {
 				return this.$route.params.id;
 			},
@@ -316,6 +320,9 @@ export default mixins(
 			},
 			openTagManager() {
 				this.$store.dispatch('ui/openTagsManagerModal');
+			},
+			openVersionsModal() {
+				this.$store.dispatch('ui/openVersionsModal');
 			},
 			async stopExecution () {
 				const executionId = this.$store.getters.activeExecutionId;
@@ -592,6 +599,7 @@ a.logo {
 
 .el-menu-item.updates {
 	color: $--sidebar-inactive-color;	
+	font-size: 13px;
 
 	&:hover {
 		color: $--sidebar-active-color;

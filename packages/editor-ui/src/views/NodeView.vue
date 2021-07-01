@@ -2234,6 +2234,10 @@ export default mixins(
 					this.$showError(error, 'Init Problem', 'There was a problem initializing the workflow:');
 				}
 				this.stopLoading();
+
+				setTimeout(() => {
+					this.$store.dispatch('versions/fetchVersions');
+				}, 0);
 			});
 
 			this.$externalHooks().run('nodeView.mount');
