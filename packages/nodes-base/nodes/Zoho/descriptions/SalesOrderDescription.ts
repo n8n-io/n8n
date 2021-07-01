@@ -134,6 +134,7 @@ export const salesOrderFields = [
 	// ----------------------------------------
 	//       salesOrder: create + upsert
 	// ----------------------------------------
+	makeResolve('salesOrder', ['create', 'upsert']),
 	{
 		displayName: 'Products',
 		name: 'Product_Details',
@@ -157,7 +158,6 @@ export const salesOrderFields = [
 			},
 		},
 	},
-	makeResolve('salesOrder', ['create', 'upsert']),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

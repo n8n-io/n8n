@@ -109,6 +109,7 @@ export const quoteFields = [
 	// ----------------------------------------
 	//          quote: create + upsert
 	// ----------------------------------------
+	makeResolve('quote', ['create', 'upsert']),
 	{
 		displayName: 'Products',
 		name: 'Product_Details',
@@ -132,7 +133,6 @@ export const quoteFields = [
 			},
 		},
 	},
-	makeResolve('quote', ['create', 'upsert']),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
