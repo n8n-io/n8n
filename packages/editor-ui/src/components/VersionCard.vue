@@ -1,15 +1,17 @@
 <template>
 	<a :href="version.documentationUrl" target="_blank" :class="$style.card">
 		<div :class="$style.header">
-			<div :class="$style.name">
-				Version {{version.name}}
+			<div>
+				<div :class="$style.name">
+					Version {{version.name}}
+				</div>
+				<el-tooltip class="item" effect="light" content=" " placement="top" v-if="version.hasSecurityIssue">
+					<div slot="content">This version has a security issue.<br/>It is listed here for completeness.</div>
+					<font-awesome-icon :class="$style['security-flag']" icon="exclamation-triangle"></font-awesome-icon>
+				</el-tooltip>
+				<el-tag type="danger" v-if="version.hasSecurityFix" size="small" :class="$style['security-update']">Security Update</el-tag>
+				<el-tag v-if="version.hasBreakingChange" size="small" :class="$style['breaking-change']">Breaking Change</el-tag>
 			</div>
-			<el-tooltip class="item" effect="light" content=" " placement="top" v-if="version.hasSecurityIssue">
-				<div slot="content">This version has a security issue.<br/>It is listed here for completeness.</div>
-				<font-awesome-icon :class="$style['security-flag']" icon="exclamation-triangle"></font-awesome-icon>
-    			</el-tooltip>
-			<el-tag type="danger" v-if="version.hasSecurityFix" size="small" :class="$style['security-update']">Security Update</el-tag>
-			<el-tag v-if="version.hasBreakingChange" size="small" :class="$style['breaking-change']">Breaking Change</el-tag>
 			<div :class="$style.released">
 				Released {{releaseDate}}
 			</div>
@@ -63,8 +65,16 @@ export default Vue.extend({
 		padding-bottom: 10px;
 
 		> * {
-			margin-right: 5px;
+			display: flex;
 			margin-bottom: 5px;
+		}
+
+		> div:first-child {
+			flex-grow: 1;
+
+			> * {
+				margin-right: 5px;
+			}
 		}
 	}
 
@@ -83,11 +93,9 @@ export default Vue.extend({
 	}
 
 	.released {
-		flex-grow: 1;
 		font-size: 12px;
 		line-height: 18px;
 		color: #909399;
-		text-align: right;
 	}
 
 	.nodes {
