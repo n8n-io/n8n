@@ -587,7 +587,7 @@ const config = convict({
 		level: {
 			doc: 'Log output level. Options are error, warn, info, verbose and debug.',
 			format: String,
-			default: 'info',
+			default: 'debug',
 			env: 'N8N_LOG_LEVEL',
 		},
 		output: {
