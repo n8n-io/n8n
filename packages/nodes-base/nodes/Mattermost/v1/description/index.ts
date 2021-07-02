@@ -7,7 +7,7 @@ import { messageDescription } from './message';
 import { reactionDescription } from './reaction';
 import { userDescription } from './user';
 
-const description: INodeTypeDescription = {
+export const description: INodeTypeDescription = {
 	displayName: 'Mattermost',
 	name: 'mattermost',
 	icon: 'file:mattermost.svg',
@@ -57,8 +57,6 @@ const description: INodeTypeDescription = {
 		...messageDescription,
 		...reactionDescription,
 		...userDescription,
-		
+
 	],
 };
-
-export { description };
