@@ -55,6 +55,7 @@ export default Vue.extend({
 		border-radius: 8px;
 		display: block;
 		padding: 15px;
+		padding-bottom: 10px;
 		text-decoration: none;
 	}
 
@@ -101,6 +102,7 @@ export default Vue.extend({
 	.nodes {
 		display: flex;
 		margin-top: 20px;
+		flex-wrap: wrap;
 	}
 
 	.security-update {
@@ -110,6 +112,7 @@ export default Vue.extend({
 
 	.node-icon {
 		margin-right: 15px;
+		margin-bottom: 5px;
 	}
 
 	.breaking-change {
