@@ -17,7 +17,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const operationResult: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const resource = this.getNodeParameter('resource', i);
+		const resource = this.getNodeParameter<Mattermost>('resource', i);
 		let operation = this.getNodeParameter('operation', i);
 		if (operation === 'delete') {
 			operation = 'del';
