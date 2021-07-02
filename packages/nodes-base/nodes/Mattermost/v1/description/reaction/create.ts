@@ -2,7 +2,7 @@ import {
 	ReactionProperties,
 } from '../../actions/Interfaces';
 
-const reactionCreateDescription: ReactionProperties = [
+export const reactionCreateDescription: ReactionProperties = [
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -63,5 +63,3 @@ const reactionCreateDescription: ReactionProperties = [
 		description: 'Emoji to use for this reaction.',
 	},
 ];
-
-export { reactionCreateDescription };

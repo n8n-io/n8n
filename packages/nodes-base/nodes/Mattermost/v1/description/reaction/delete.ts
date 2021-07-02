@@ -2,7 +2,7 @@ import {
 	ReactionProperties,
 } from '../../actions/Interfaces';
 
-const reactionDeleteDescription: ReactionProperties = [
+export const reactionDeleteDescription: ReactionProperties = [
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -63,5 +63,3 @@ const reactionDeleteDescription: ReactionProperties = [
 		description: 'Name of the emoji to delete.',
 	},
 ];
-
-export { reactionDeleteDescription };

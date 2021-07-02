@@ -2,7 +2,7 @@ import {
 	ReactionProperties,
 } from '../../actions/Interfaces';
 
-const reactionGetAllDescription: ReactionProperties = [
+export const reactionGetAllDescription: ReactionProperties = [
 	{
 		displayName: 'Post ID',
 		name: 'postId',
@@ -63,5 +63,3 @@ const reactionGetAllDescription: ReactionProperties = [
 		description: 'How many results to return.',
 	},
 ];
-
-export { reactionGetAllDescription };
