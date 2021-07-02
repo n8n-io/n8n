@@ -5,9 +5,9 @@ import { getByEmail } from './getByEmail';
 import { getById } from './getById';
 import { invite } from './invite';
 
-export { 
+export {
 	create,
-	deactive,
+	deactive as desactive,
 	getAll,
 	getByEmail,
 	getById,

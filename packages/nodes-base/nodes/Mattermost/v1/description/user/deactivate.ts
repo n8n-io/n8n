@@ -14,7 +14,7 @@ const userDeactiveDescription: UserProperties = [
 					'user',
 				],
 				operation: [
-					'deactive',
+					'desactive',
 				],
 			},
 		},
