@@ -1,8 +1,8 @@
 import {
-	INodeProperties,
-} from 'n8n-workflow';
+	ReactionProperties,
+} from '../../actions/Interfaces';
 
-const reactionCreateDescription: INodeProperties[] = [
+const reactionCreateDescription: ReactionProperties = [
 	{
 		displayName: 'User ID',
 		name: 'userId',
