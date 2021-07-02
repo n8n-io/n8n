@@ -2,7 +2,7 @@ import {
 	UserProperties,
 } from '../../actions/Interfaces';
 
-const userDeactiveDescription: UserProperties = [
+export const userDeactiveDescription: UserProperties = [
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -22,5 +22,3 @@ const userDeactiveDescription: UserProperties = [
 		description: 'User GUID',
 	},
 ];
-
-export { userDeactiveDescription };

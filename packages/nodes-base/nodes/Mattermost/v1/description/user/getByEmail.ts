@@ -2,7 +2,7 @@ import {
 	UserProperties,
 } from '../../actions/Interfaces';
 
-const userGetByEmailDescription: UserProperties = [
+export const userGetByEmailDescription: UserProperties = [
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -21,8 +21,4 @@ const userGetByEmailDescription: UserProperties = [
 		default: '',
 		description: `User's email`,
 	},
-
-
 ];
-
-export { userGetByEmailDescription };

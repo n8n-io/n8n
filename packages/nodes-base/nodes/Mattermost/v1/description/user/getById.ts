@@ -2,7 +2,7 @@ import {
 	UserProperties,
 } from '../../actions/Interfaces';
 
-const userGetByIdDescription: UserProperties = [
+export const userGetByIdDescription: UserProperties = [
 	{
 		displayName: 'User IDs',
 		name: 'userIds',
@@ -47,7 +47,4 @@ const userGetByIdDescription: UserProperties = [
 			},
 		],
 	},
-
 ];
-
-export { userGetByIdDescription };

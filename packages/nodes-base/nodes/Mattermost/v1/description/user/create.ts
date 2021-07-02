@@ -2,7 +2,7 @@ import {
 	UserProperties,
 } from '../../actions/Interfaces';
 
-const userCreateDescription: UserProperties = [
+export const userCreateDescription: UserProperties = [
 	{
 		displayName: 'Username',
 		name: 'username',
@@ -268,5 +268,3 @@ const userCreateDescription: UserProperties = [
 		],
 	},
 ];
-
-export { userCreateDescription };

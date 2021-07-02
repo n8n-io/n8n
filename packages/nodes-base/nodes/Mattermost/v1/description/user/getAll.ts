@@ -2,7 +2,7 @@ import {
 	UserProperties,
 } from '../../actions/Interfaces';
 
-const userGetAllDescription: UserProperties = [
+export const userGetAllDescription: UserProperties = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -116,8 +116,4 @@ const userGetAllDescription: UserProperties = [
 			},
 		],
 	},
-
-
 ];
-
-export { userGetAllDescription };

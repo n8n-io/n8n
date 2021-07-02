@@ -2,7 +2,7 @@ import {
 	UserProperties,
 } from '../../actions/Interfaces';
 
-const userInviteDescription: UserProperties = [
+export const userInviteDescription: UserProperties = [
 	{
 		displayName: 'Team ID',
 		name: 'teamId',
@@ -41,7 +41,4 @@ const userInviteDescription: UserProperties = [
 		default: '',
 		description: `User's email. Multiple can be set separated by comma.`,
 	},
-
 ];
-
-export { userInviteDescription };
