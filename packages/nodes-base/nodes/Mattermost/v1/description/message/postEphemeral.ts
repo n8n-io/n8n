@@ -2,7 +2,7 @@ import {
 	MessageProperties,
 } from '../../actions/Interfaces';
 
-const messagePostEphemeralDescription: MessageProperties = [
+export const messagePostEphemeralDescription: MessageProperties = [
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -66,7 +66,4 @@ const messagePostEphemeralDescription: MessageProperties = [
 		},
 		description: 'Text to send in the ephemeral message.',
 	},
-
 ];
-
-export { messagePostEphemeralDescription };

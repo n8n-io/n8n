@@ -2,7 +2,7 @@ import {
 	MessageProperties,
 } from '../../actions/Interfaces';
 
-const messagePostDescription: MessageProperties = [
+export const messagePostDescription: MessageProperties = [
 	{
 		displayName: 'Channel ID',
 		name: 'channelId',
@@ -437,7 +437,4 @@ const messagePostDescription: MessageProperties = [
 			},
 		],
 	},
-
 ];
-
-export { messagePostDescription };

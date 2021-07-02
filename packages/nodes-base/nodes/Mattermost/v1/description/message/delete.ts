@@ -2,7 +2,7 @@ import {
 	MessageProperties,
 } from '../../actions/Interfaces';
 
-const messageDeleteDescription: MessageProperties = [
+export const messageDeleteDescription: MessageProperties = [
 	{
 		displayName: 'Post ID',
 		name: 'postId',
@@ -22,5 +22,3 @@ const messageDeleteDescription: MessageProperties = [
 		description: 'ID of the post to delete',
 	},
 ];
-
-export { messageDeleteDescription };
