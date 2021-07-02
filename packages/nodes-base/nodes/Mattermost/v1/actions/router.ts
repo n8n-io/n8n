@@ -17,8 +17,8 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const operationResult: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const resource = this.getNodeParameter('resource', i) as string;
-		let operation = this.getNodeParameter('operation', i) as string;
+		const resource = this.getNodeParameter('resource', i);
+		let operation = this.getNodeParameter('operation', i);
 		if (operation === 'delete') {
 			operation = 'del';
 		} else if (operation === 'desactive') {
