@@ -552,6 +552,7 @@ export interface IVersion {
 		name: string;
 		displayName: string;
 		icon: string;
+		defaults: INodeParameters;
 		iconData: {
 			type: string;
 			icon?: string;

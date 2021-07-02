@@ -26,16 +26,19 @@ export default Vue.extend({
 		'nodeType',
 		'size',
 		'shrink',
+		'disabled',
 	],
 	computed: {
 		iconStyleData (): object {
+			const color = this.disabled ? '#ccc' : this.nodeType.defaults && this.nodeType.defaults.color;
 			if (!this.size) {
-				return {};
+				return {color};
 			}
 
 			const size = parseInt(this.size, 10);
 
 			return {
+				color,
 				width: size + 'px',
 				height: size + 'px',
 				'font-size': Math.floor(parseInt(this.size, 10) * 0.6) + 'px',
@@ -98,6 +101,10 @@ export default Vue.extend({
 	&.full .icon {
 		height: 100%;
 		width: 100%;
+
+		display: flex;
+		justify-content: center;
+		align-items: center;
 	}
 
 	&.shrink .icon {

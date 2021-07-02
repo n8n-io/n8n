@@ -4,6 +4,10 @@
 			<div :class="$style.name">
 				Version {{version.name}}
 			</div>
+			<el-tooltip class="item" effect="light" content=" " placement="top" v-if="version.hasSecurityIssue">
+				<div slot="content">This version has a security issue.<br/>It is listed here for completeness.</div>
+				<font-awesome-icon :class="$style['security-flag']" icon="exclamation-triangle"></font-awesome-icon>
+    			</el-tooltip>
 			<el-tag type="danger" v-if="version.hasSecurityFix" size="small" :class="$style['security-update']">Security Update</el-tag>
 			<el-tag v-if="version.hasBreakingChange" size="small" :class="$style['breaking-change']">Breaking Change</el-tag>
 			<div :class="$style.released">
@@ -14,6 +18,7 @@
 			<div v-html="version.description" :class="$style.description"></div>
 			<div :class="$style.nodes" v-if="version.nodes && version.nodes.length > 0">
 				<NodeIcon 
+					:class="$style['node-icon']"
 					v-for="node in version.nodes"
 					:key="node.name"
 					:nodeType="node"
@@ -95,6 +100,10 @@ export default Vue.extend({
 		max-height: 18px;
 	}
 
+	.node-icon {
+		margin-right: 15px;
+	}
+
 	.breaking-change {
 		background-color: rgba(255, 229, 100, 0.3);
 		color: #6B5900;
@@ -105,5 +114,9 @@ export default Vue.extend({
 		font-weight: 400;
 		display: flex;
 		align-items: center;
+	}
+
+	.security-flag {
+		color: red;
 	}
 </style>
