@@ -8,7 +8,7 @@ type MattermostMap = {
 	channel: 'addUser' | 'create' | 'delete' | 'members' | 'restore' | 'statistics';
 	message: 'delete' | 'post' | 'postEphemeral';
 	reaction: 'create' | 'delete' | 'getAll';
-	user: 'create' | 'deactive' | 'getAll' | 'getById' | 'invite';
+	user: 'create' | 'desactive' | 'getAll' | 'getByEmail' | 'getById' | 'invite';
 };
 
 export type Mattermost = AllEntities<MattermostMap>;
