@@ -10,6 +10,7 @@ import * as channel from './channel';
 import * as message from './message';
 import * as reaction from './reaction';
 import * as user from './user';
+import { Mattermost } from './Interfaces';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
@@ -27,7 +28,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			resource,
 			operation,
 		} as Mattermost;
-		
+
 		try {
 			if (mattermost.resource === 'channel') {
 				operationResult.push(...await channel[mattermost.operation].call(this, i));
