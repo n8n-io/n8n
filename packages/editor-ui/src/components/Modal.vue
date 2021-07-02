@@ -3,7 +3,7 @@
 		<el-drawer
 			v-if="drawer"
 			:direction="drawerDirection"
-			:visible="visibleDrawer"
+			:visible="visible && visibleDrawer"
 			:size="drawerWidth"
 			:before-close="closeDrawer"
 			>
@@ -47,7 +47,7 @@ const sizeMap: {[size: string]: string} = {
 
 export default Vue.extend({
 	name: "Modal",
-	props: ['name', 'title', 'eventBus', 'size', 'drawer', 'drawerDirection', 'drawerWidth'],
+	props: ['name', 'title', 'eventBus', 'size', 'drawer', 'drawerDirection', 'drawerWidth', 'visible'],
 	data() {
 		return {
 			visibleDrawer: this.drawer,
@@ -85,13 +85,17 @@ export default Vue.extend({
 				this.$emit('enter');
 			}
 		},
-		closeDialog() {
+		closeDialog(done?: () => void) {
 			this.$store.commit('ui/closeTopModal');
+			if (done) {
+				done();
+			}
 		},
 		closeDrawer() {
 			this.visibleDrawer = false;
 			setTimeout(() =>{
 				this.$store.commit('ui/closeTopModal');
+				this.visibleDrawer = true;
 			}, 300); // delayed for closing animation to take effect
 		},
 	},

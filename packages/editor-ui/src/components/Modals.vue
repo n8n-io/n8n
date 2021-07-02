@@ -24,10 +24,11 @@
 				/>
 			</template>
 		</ModalRoot>
-		<ModalRoot :name="VERSIONS_MODAL_KEY">
-			<template v-slot="{ modalName }">
+		<ModalRoot :name="VERSIONS_MODAL_KEY" :keepAlive="true">
+			<template v-slot="{ modalName, open }">
 				<VersionsModal
 					:modalName="modalName"
+					:visible="open"
 				/>
 			</template>
 		</ModalRoot>

@@ -1,7 +1,9 @@
 <template>
 	<Modal
+		v-if="currentVersion"
 		:name="modalName"
 		:drawer="true"
+		:visible="visible"
 		drawerDirection="ltr"
 		drawerWidth="480px"
 	>
@@ -44,7 +46,7 @@ export default Vue.extend({
 		Modal,
 		VersionCard,
 	},
-	props: ['modalName'],
+	props: ['modalName', 'visible'],
 	data() {
 		return {
 			UPDATE_INFO_URL,
