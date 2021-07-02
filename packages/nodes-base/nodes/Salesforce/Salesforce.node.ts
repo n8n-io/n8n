@@ -1337,6 +1337,9 @@ export class Salesforce implements INodeType {
 					if (!Object.keys(updateFields).length) {
 						throw new NodeOperationError(this.getNode(), 'You must add at least one update field');
 					}
+					if (updateFields.lastName !== undefined) {
+						body.LastName = updateFields.lastName as string;
+					}
 					if (updateFields.fax !== undefined) {
 						body.Fax = updateFields.fax as string;
 					}
