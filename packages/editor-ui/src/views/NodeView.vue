@@ -2239,12 +2239,14 @@ export default mixins(
 				setTimeout(async () => {
 					await this.$store.dispatch('versions/fetchVersions');
 					const currentVersion: IVersion | undefined = this.$store.getters['versions/currentVersion'];
-					if (currentVersion && currentVersion.hasSecurityIssue) {
+					const nextVersions: IVersion[] = this.$store.getters['versions/nextVersions'];
+					if (currentVersion && currentVersion.hasSecurityIssue && nextVersions.length) {
 						const fixVersion = currentVersion.securityIssueFixVersion;
 						let message = `Please update to latest version.`;
 						if (fixVersion) {
 							message = `Please update to version ${fixVersion} or higher.`;
 						}
+
 						message = `${message}<br/><a class="primary-color">More info</a>`;
 						this.$showWarning('Critical Update', message, {
 							onClick: () => {

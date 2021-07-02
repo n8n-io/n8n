@@ -28,6 +28,9 @@ const module: Module<IUiState, IRootState> = {
 		isPageLoading: true,
 	},
 	getters: {
+		isVersionsOpen: (state: IUiState) => {
+			return state.modals[VERSIONS_MODAL_KEY].open;
+		},
 		isModalOpen: (state: IUiState) => {
 			return (name: string) => state.modals[name].open;
 		},

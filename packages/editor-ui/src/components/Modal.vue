@@ -4,7 +4,7 @@
 			v-if="drawer"
 			:direction="drawerDirection"
 			:before-close="closeDialog"
-			:visible="dialogVisible"
+			:visible="true"
 			:size="drawerWidth"
 			>
 			<template v-slot:title>
