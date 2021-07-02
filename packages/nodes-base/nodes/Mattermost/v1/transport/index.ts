@@ -21,7 +21,7 @@ export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	body: IDataObject = {},
+	body: object = {},
 	qs: IDataObject = {},
 ) {
 	const credentials = this.getCredentials('mattermostApi');
