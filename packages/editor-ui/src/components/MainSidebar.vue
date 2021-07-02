@@ -129,7 +129,14 @@
 
 				<div class="foot-menu-items">
 					<el-menu-item index="updates" class="updates" v-if="hasVersionUpdates" @click="openVersionsModal">
-						<i><font-awesome-icon icon="gift"/></i>
+						<div class="gift-container">
+							<div class="gift-icon">
+								<font-awesome-icon icon="gift"/>
+								<div class="notification">
+									<div></div>
+								</div>
+							</div>
+						</div>
 						<span slot="title" class="item-title-root">{{nextVersions.length}} update{{nextVersions.length > 1? 's': ''}} available</span>
 					</el-menu-item>
 				</div>
@@ -605,11 +612,46 @@ a.logo {
 		color: $--sidebar-active-color;
 	}
 
-	i:after {
-		content: "\2022";
-		color: $--sidebar-active-color;
-		font-size: 30px;
-		position: absolute;
+	.gift-container {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		height: 100%;
+		width: 100%;
+	}
+
+	.gift-icon {
+		width: 19px;
+		height: 16.8px;
+		display: flex;
+		position: relative;
+
+		svg {
+			font-size: 16.8px;
+			line-height: 19px;
+		}
+
+		.notification {
+			height: 6px;
+			width: 6px;
+			border-radius: 50%;
+			color: $--sidebar-active-color;
+			position: absolute;
+			background-color: #fff;
+			z-index: 9999;
+			left: 75%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			top: -1px;
+			
+			div {
+				height: 4px;
+				width: 4px;
+				background-color: $--color-primary;
+				border-radius: 50%;
+			}
+		}
 	}
 }
 
