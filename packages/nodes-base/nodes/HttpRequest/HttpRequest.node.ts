@@ -1,6 +1,6 @@
 import {
 	INodeTypeBaseDescription,
-	INodeVersions,
+	INodeVersionedType,
 } from 'n8n-workflow';
 
 import { HttpRequestV1 } from './HttpRequest_v1.node';
@@ -19,7 +19,7 @@ export class HttpRequest extends NodeVersionedType {
 			defaultVersion: 2,
 		};
 
-		const nodeVersions: INodeVersions = {
+		const nodeVersions: INodeVersionedType['nodeVersions'] = {
 			1: new HttpRequestV1(baseDescription),
 			2: new HttpRequestV2(baseDescription),
 		};

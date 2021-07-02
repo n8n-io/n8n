@@ -1,6 +1,6 @@
 import {
 	INodeTypeBaseDescription,
-	INodeVersions,
+	INodeVersionedType,
 } from 'n8n-workflow';
 
 import { MattermostV1 } from './v1/MattermostV1.node';
@@ -18,7 +18,7 @@ export class Mattermost extends NodeVersionedType {
 			defaultVersion: 1,
 		};
 
-		const nodeVersions: INodeVersions = {
+		const nodeVersions: INodeVersionedType['nodeVersions'] = {
 			1: new MattermostV1(baseDescription),
 		};
 

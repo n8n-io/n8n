@@ -1,11 +1,11 @@
-import { INodeType, INodeTypeBaseDescription, INodeVersionedType, INodeVersions } from 'n8n-workflow';
+import { INodeType, INodeTypeBaseDescription, INodeVersionedType } from 'n8n-workflow';
 
 export class NodeVersionedType implements INodeVersionedType {
 	currentVersion: number;
-	nodeVersions: INodeVersions;
+	nodeVersions: INodeVersionedType['nodeVersions'];
 	description: INodeTypeBaseDescription;
 
-	constructor(nodeVersions: INodeVersions, description: INodeTypeBaseDescription) {
+	constructor(nodeVersions: INodeVersionedType['nodeVersions'], description: INodeTypeBaseDescription) {
 		this.nodeVersions = nodeVersions;
 		this.currentVersion = description.defaultVersion ?? this.getLatestVersion();
 		this.description = description;
