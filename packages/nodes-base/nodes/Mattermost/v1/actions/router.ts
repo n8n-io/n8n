@@ -3,7 +3,7 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeExecutionData, NodeApiError,
+	INodeExecutionData,
 } from 'n8n-workflow';
 
 import * as channel from './channel';
@@ -38,8 +38,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				operationResult.push(...await reaction[mattermost.operation].call(this, i));
 			} else if (mattermost.resource === 'user') {
 				operationResult.push(...await user[mattermost.operation].call(this, i));
-			} else {
-				throw new NodeApiError(this.getNode(), {message: 'Resource not supported.'});
 			}
 		} catch (err) {
 			if (this.continueOnFail()) {
